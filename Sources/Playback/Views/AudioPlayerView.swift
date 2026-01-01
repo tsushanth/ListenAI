@@ -1,5 +1,35 @@
 import SwiftUI
 
+// MARK: - Accessibility Extensions
+
+extension TimeInterval {
+    /// Returns a VoiceOver-friendly duration string.
+    var accessibleDuration: String {
+        let totalSeconds = Int(self)
+        let hours = totalSeconds / 3600
+        let minutes = (totalSeconds % 3600) / 60
+        let seconds = totalSeconds % 60
+
+        var components: [String] = []
+
+        if hours > 0 {
+            components.append(hours == 1 ? "1 hour" : "\(hours) hours")
+        }
+        if minutes > 0 {
+            components.append(minutes == 1 ? "1 minute" : "\(minutes) minutes")
+        }
+        if seconds > 0 && hours == 0 {
+            components.append(seconds == 1 ? "1 second" : "\(seconds) seconds")
+        }
+
+        if components.isEmpty {
+            return "0 seconds"
+        }
+
+        return components.joined(separator: " ")
+    }
+}
+
 // MARK: - Audio Player View
 
 /// Full-screen audio player view similar to podcast players.
@@ -7,6 +37,8 @@ struct AudioPlayerView: View {
 
     @ObservedObject var playbackService: AudioPlaybackService
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorSchemeContrast) private var contrast
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @State private var isDraggingScrubber = false
     @State private var scrubberValue: Double = 0
@@ -78,6 +110,7 @@ struct AudioPlayerView: View {
             .fill(Color(.systemGray3))
             .frame(width: 36, height: 5)
             .padding(.top, 8)
+            .accessibilityHidden(true)
     }
 
     private func artworkView(size: CGFloat) -> some View {
@@ -100,6 +133,7 @@ struct AudioPlayerView: View {
         .frame(width: size, height: size)
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .shadow(color: .black.opacity(0.2), radius: 20, y: 10)
+        .accessibilityHidden(true)
     }
 
     private var artworkPlaceholder: some View {
@@ -132,6 +166,15 @@ struct AudioPlayerView: View {
                 .foregroundColor(.secondary)
                 .lineLimit(1)
         }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(trackInfoAccessibilityLabel)
+    }
+
+    private var trackInfoAccessibilityLabel: String {
+        guard let item = playbackService.currentItem else {
+            return "Not playing"
+        }
+        return "\(item.title) by \(item.displayAuthor)"
     }
 
     private var progressView: some View {
@@ -156,6 +199,9 @@ struct AudioPlayerView: View {
                 }
             )
             .tint(.primary)
+            .accessibilityLabel("Playback position")
+            .accessibilityValue(progressAccessibilityValue)
+            .accessibilityHint("Adjust to seek through the audio")
 
             // Time labels
             HStack {
@@ -163,6 +209,7 @@ struct AudioPlayerView: View {
                     .font(.caption)
                     .foregroundColor(.secondary)
                     .monospacedDigit()
+                    .accessibilityHidden(true)
 
                 Spacer()
 
@@ -170,8 +217,16 @@ struct AudioPlayerView: View {
                     .font(.caption)
                     .foregroundColor(.secondary)
                     .monospacedDigit()
+                    .accessibilityHidden(true)
             }
         }
+    }
+
+    private var progressAccessibilityValue: String {
+        let current = playbackService.progress.currentTime.accessibleDuration
+        let total = playbackService.progress.duration.accessibleDuration
+        let percent = Int(playbackService.progress.progress * 100)
+        return "\(current) of \(total), \(percent) percent complete"
     }
 
     private var currentTimeString: String {
@@ -201,6 +256,8 @@ struct AudioPlayerView: View {
                     .font(.system(size: 32))
             }
             .buttonStyle(PlayerButtonStyle())
+            .accessibilityLabel("Skip back 15 seconds")
+            .accessibilityHint("Double tap to go back")
 
             // Play/Pause
             Button {
@@ -209,7 +266,9 @@ struct AudioPlayerView: View {
                 Image(systemName: playbackService.state.isPlaying ? "pause.fill" : "play.fill")
                     .font(.system(size: 44))
             }
-            .buttonStyle(PlayPauseButtonStyle())
+            .buttonStyle(PlayPauseButtonStyle(contrast: contrast))
+            .accessibilityLabel(playbackService.state.isPlaying ? "Pause" : "Play")
+            .accessibilityHint(playbackService.state.isPlaying ? "Double tap to pause" : "Double tap to play")
 
             // Skip forward
             Button {
@@ -219,6 +278,8 @@ struct AudioPlayerView: View {
                     .font(.system(size: 32))
             }
             .buttonStyle(PlayerButtonStyle())
+            .accessibilityLabel("Skip forward 15 seconds")
+            .accessibilityHint("Double tap to skip ahead")
         }
     }
 
@@ -235,8 +296,14 @@ struct AudioPlayerView: View {
                     .padding(.vertical, 8)
                     .background(Color(.systemGray5))
                     .clipShape(Capsule())
+                    .overlay(
+                        Capsule()
+                            .stroke(contrast == .increased ? Color.primary : Color.clear, lineWidth: 1)
+                    )
             }
             .buttonStyle(.plain)
+            .accessibilityLabel("Playback speed: \(playbackService.playbackSpeed.displayName)")
+            .accessibilityHint("Double tap to change speed")
 
             Spacer()
 
@@ -248,6 +315,8 @@ struct AudioPlayerView: View {
                     .font(.title3)
             }
             .buttonStyle(SecondaryButtonStyle())
+            .accessibilityLabel(playbackService.sleepTimer == .off ? "Sleep timer off" : "Sleep timer on")
+            .accessibilityHint("Double tap to set sleep timer")
 
             // Repeat mode
             Button {
@@ -258,6 +327,9 @@ struct AudioPlayerView: View {
                     .foregroundColor(playbackService.repeatMode == .off ? .secondary : .primary)
             }
             .buttonStyle(SecondaryButtonStyle())
+            .accessibilityLabel("Repeat: \(playbackService.repeatMode.displayName)")
+            .accessibilityHint("Double tap to change repeat mode")
+            .accessibilityAddTraits(playbackService.repeatMode != .off ? .isSelected : [])
 
             // Queue
             Button {
@@ -267,6 +339,8 @@ struct AudioPlayerView: View {
                     .font(.title3)
             }
             .buttonStyle(SecondaryButtonStyle())
+            .accessibilityLabel("Queue")
+            .accessibilityHint("Double tap to view and manage queue")
         }
         .padding(.horizontal, 32)
     }
@@ -288,12 +362,18 @@ struct PlayerButtonStyle: ButtonStyle {
 }
 
 struct PlayPauseButtonStyle: ButtonStyle {
+    var contrast: ColorSchemeContrast = .standard
+
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .foregroundColor(.white)
             .frame(width: 80, height: 80)
             .background(Color.primary)
             .clipShape(Circle())
+            .overlay(
+                Circle()
+                    .stroke(contrast == .increased ? Color.white : Color.clear, lineWidth: 3)
+            )
             .scaleEffect(configuration.isPressed ? 0.95 : 1.0)
             .animation(.easeInOut(duration: 0.1), value: configuration.isPressed)
     }
@@ -395,7 +475,7 @@ struct QueueView: View {
                 // Now Playing
                 if let current = playbackService.currentItem {
                     Section("Now Playing") {
-                        QueueItemRow(
+                        PlaybackQueueItemRow(
                             title: current.title,
                             author: current.displayAuthor,
                             duration: current.duration,
@@ -408,7 +488,7 @@ struct QueueView: View {
                 if !playbackService.queue.isEmpty {
                     Section("Up Next") {
                         ForEach(playbackService.queue) { item in
-                            QueueItemRow(
+                            PlaybackQueueItemRow(
                                 title: item.title,
                                 author: item.author ?? "",
                                 duration: item.duration,
@@ -428,7 +508,7 @@ struct QueueView: View {
                 if !playbackService.history.isEmpty {
                     Section("Recently Played") {
                         ForEach(playbackService.history.prefix(5)) { item in
-                            QueueItemRow(
+                            PlaybackQueueItemRow(
                                 title: item.title,
                                 author: item.author ?? "",
                                 duration: item.duration,
@@ -458,18 +538,21 @@ struct QueueView: View {
 
 // MARK: - Queue Item Row
 
-struct QueueItemRow: View {
+struct PlaybackQueueItemRow: View {
     let title: String
     let author: String
     let duration: TimeInterval
     let isPlaying: Bool
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         HStack(spacing: 12) {
             if isPlaying {
                 Image(systemName: "waveform")
                     .foregroundColor(.accentColor)
-                    .symbolEffect(.variableColor)
+                    .symbolEffect(reduceMotion ? .pulse : .variableColor)
+                    .accessibilityHidden(true)
             }
 
             VStack(alignment: .leading, spacing: 2) {
@@ -490,6 +573,20 @@ struct QueueItemRow: View {
                 .foregroundColor(.secondary)
         }
         .padding(.vertical, 4)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(accessibilityLabel)
+    }
+
+    private var accessibilityLabel: String {
+        var label = title
+        if !author.isEmpty {
+            label += " by \(author)"
+        }
+        label += ". Duration: \(duration.accessibleDuration)"
+        if isPlaying {
+            label += ". Now playing"
+        }
+        return label
     }
 }
 

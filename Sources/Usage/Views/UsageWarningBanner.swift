@@ -7,17 +7,27 @@ struct UsageWarningBanner: View {
     @StateObject private var usageTracker = UsageTrackerService.shared
     @State private var isExpanded = false
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.colorSchemeContrast) private var contrast
+    @Environment(\.sizeCategory) private var sizeCategory
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         if usageTracker.showWarningBanner {
             VStack(spacing: 0) {
                 // Main banner
-                Button(action: { withAnimation { isExpanded.toggle() } }) {
+                Button(action: {
+                    if reduceMotion {
+                        isExpanded.toggle()
+                    } else {
+                        withAnimation { isExpanded.toggle() }
+                    }
+                }) {
                     HStack(spacing: 12) {
                         // Warning icon
                         Image(systemName: usageTracker.quota.warningLevel.iconName)
                             .font(.title3)
                             .foregroundStyle(warningColor)
+                            .accessibilityHidden(true)
 
                         // Message
                         VStack(alignment: .leading, spacing: 2) {
@@ -30,6 +40,7 @@ struct UsageWarningBanner: View {
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                                     .lineLimit(isExpanded ? nil : 1)
+                                    .fixedSize(horizontal: false, vertical: true)
                             }
                         }
 
@@ -39,6 +50,7 @@ struct UsageWarningBanner: View {
                         Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
                             .font(.caption)
                             .foregroundStyle(.secondary)
+                            .accessibilityHidden(true)
 
                         // Dismiss button
                         Button(action: { usageTracker.dismissWarning() }) {
@@ -46,25 +58,48 @@ struct UsageWarningBanner: View {
                                 .font(.caption.bold())
                                 .foregroundStyle(.secondary)
                                 .padding(6)
-                                .background(Color.secondary.opacity(0.15))
+                                .background(Color.secondary.opacity(contrast == .increased ? 0.25 : 0.15))
                                 .clipShape(Circle())
+                                .overlay(
+                                    Circle()
+                                        .stroke(contrast == .increased ? Color.secondary : Color.clear, lineWidth: 1)
+                                )
                         }
+                        .accessibilityLabel("Dismiss warning")
+                        .accessibilityHint("Double tap to hide this warning banner")
                     }
                     .padding()
                     .background(bannerBackground)
                 }
                 .buttonStyle(.plain)
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel(bannerAccessibilityLabel)
+                .accessibilityHint(isExpanded ? "Double tap to collapse" : "Double tap to expand for more details")
+                .accessibilityAddTraits(.isButton)
 
                 // Expanded content
                 if isExpanded {
                     expandedContent
-                        .transition(.opacity.combined(with: .move(edge: .top)))
+                        .transition(reduceMotion ? .opacity : .opacity.combined(with: .move(edge: .top)))
                 }
             }
             .clipShape(RoundedRectangle(cornerRadius: 12))
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(contrast == .increased ? warningColor : Color.clear, lineWidth: 2)
+            )
             .shadow(color: .black.opacity(0.1), radius: 4, y: 2)
             .padding(.horizontal)
+            .accessibilityAddTraits(.updatesFrequently)
         }
+    }
+
+    private var bannerAccessibilityLabel: String {
+        var label = "\(bannerTitle) warning"
+        if let message = usageTracker.warningMessage {
+            label += ". \(message)"
+        }
+        return label
     }
 
     // MARK: - Expanded Content
@@ -166,6 +201,8 @@ struct UsageProgressBar: View {
     let limit: Int
     let percentage: Float
 
+    @Environment(\.colorSchemeContrast) private var contrast
+
     private var isUnlimited: Bool {
         limit == Int.max
     }
@@ -180,6 +217,10 @@ struct UsageProgressBar: View {
         } else {
             return .green
         }
+    }
+
+    private var barHeight: CGFloat {
+        contrast == .increased ? 8 : 6
     }
 
     var body: some View {
@@ -205,7 +246,7 @@ struct UsageProgressBar: View {
                 ZStack(alignment: .leading) {
                     // Background
                     Capsule()
-                        .fill(Color.secondary.opacity(0.2))
+                        .fill(Color.secondary.opacity(contrast == .increased ? 0.4 : 0.2))
 
                     // Progress
                     Capsule()
@@ -213,7 +254,34 @@ struct UsageProgressBar: View {
                         .frame(width: geometry.size.width * CGFloat(min(percentage, 1.0)))
                 }
             }
-            .frame(height: 6)
+            .frame(height: barHeight)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(title) usage")
+        .accessibilityValue(accessibilityValue)
+    }
+
+    private var accessibilityValue: String {
+        if isUnlimited {
+            return "\(used.accessibleCharacterCount) used. Unlimited."
+        }
+        let percentInt = Int(percentage * 100)
+        return "\(percentInt) percent. \(used.accessibleCharacterCount) of \(limit.accessibleCharacterCount)"
+    }
+}
+
+// MARK: - Accessibility Extension
+
+private extension Int {
+    var accessibleCharacterCount: String {
+        if self >= 1_000_000 {
+            let millions = Double(self) / 1_000_000
+            return String(format: "%.1f million characters", millions)
+        } else if self >= 1_000 {
+            let thousands = Double(self) / 1_000
+            return String(format: "%.1f thousand characters", thousands)
+        } else {
+            return self == 1 ? "1 character" : "\(self) characters"
         }
     }
 }

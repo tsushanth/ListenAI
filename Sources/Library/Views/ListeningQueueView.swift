@@ -1,5 +1,35 @@
 import SwiftUI
 
+// MARK: - Accessibility Extensions
+
+extension TimeInterval {
+    /// Returns a VoiceOver-friendly duration string.
+    var accessibleDuration: String {
+        let totalSeconds = Int(self)
+        let hours = totalSeconds / 3600
+        let minutes = (totalSeconds % 3600) / 60
+        let seconds = totalSeconds % 60
+
+        var components: [String] = []
+
+        if hours > 0 {
+            components.append(hours == 1 ? "1 hour" : "\(hours) hours")
+        }
+        if minutes > 0 {
+            components.append(minutes == 1 ? "1 minute" : "\(minutes) minutes")
+        }
+        if seconds > 0 && hours == 0 {
+            components.append(seconds == 1 ? "1 second" : "\(seconds) seconds")
+        }
+
+        if components.isEmpty {
+            return "0 seconds"
+        }
+
+        return components.joined(separator: " ")
+    }
+}
+
 // MARK: - Listening Queue View
 
 /// Main view for displaying and managing the listening queue.
@@ -8,6 +38,8 @@ struct ListeningQueueView: View {
     @State private var editMode: EditMode = .inactive
     @State private var showingClearConfirmation = false
     @State private var selectedItem: QueueItem?
+    @Environment(\.sizeCategory) private var sizeCategory
+    @Environment(\.colorSchemeContrast) private var contrast
 
     var body: some View {
         NavigationStack {
@@ -168,6 +200,7 @@ struct ListeningQueueView: View {
 
 struct NowPlayingRow: View {
     let item: QueueItem
+    @Environment(\.colorSchemeContrast) private var contrast
 
     var body: some View {
         HStack(spacing: 12) {
@@ -187,6 +220,7 @@ struct NowPlayingRow: View {
                     .foregroundStyle(.white)
                     .offset(y: 20)
             }
+            .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(item.title)
@@ -201,15 +235,19 @@ struct NowPlayingRow: View {
                 GeometryReader { geometry in
                     ZStack(alignment: .leading) {
                         Capsule()
-                            .fill(Color.secondary.opacity(0.2))
-                            .frame(height: 4)
+                            .fill(Color.secondary.opacity(contrast == .increased ? 0.4 : 0.2))
+                            .frame(height: contrast == .increased ? 6 : 4)
 
                         Capsule()
                             .fill(Color.blue)
-                            .frame(width: geometry.size.width * CGFloat(item.progress), height: 4)
+                            .frame(
+                                width: geometry.size.width * CGFloat(item.progress),
+                                height: contrast == .increased ? 6 : 4
+                            )
                     }
                 }
-                .frame(height: 4)
+                .frame(height: contrast == .increased ? 6 : 4)
+                .accessibilityHidden(true)
 
                 Text(item.remainingFormatted)
                     .font(.caption)
@@ -219,6 +257,17 @@ struct NowPlayingRow: View {
             Spacer()
         }
         .padding(.vertical, 4)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(nowPlayingAccessibilityLabel)
+        .accessibilityValue("\(Int(item.progress * 100)) percent complete")
+        .accessibilityHint("Currently playing")
+    }
+
+    private var nowPlayingAccessibilityLabel: String {
+        var label = "Now playing: \(item.title)"
+        label += " by \(item.displayAuthor)"
+        label += ". \(item.remainingFormatted) remaining"
+        return label
     }
 }
 
@@ -241,6 +290,7 @@ struct QueueItemRow: View {
                         .font(.body)
                         .foregroundStyle(.white)
                 }
+                .accessibilityHidden(true)
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(item.title)
@@ -256,6 +306,7 @@ struct QueueItemRow: View {
 
                         Text("•")
                             .foregroundStyle(.secondary)
+                            .accessibilityHidden(true)
 
                         Text(item.durationFormatted)
                             .font(.caption)
@@ -268,10 +319,25 @@ struct QueueItemRow: View {
                 if item.isCompleted {
                     Image(systemName: "checkmark.circle.fill")
                         .foregroundStyle(.green)
+                        .accessibilityHidden(true)
                 }
             }
         }
         .buttonStyle(.plain)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(queueItemAccessibilityLabel)
+        .accessibilityHint("Double tap to play")
+        .accessibilityAddTraits(.isButton)
+    }
+
+    private var queueItemAccessibilityLabel: String {
+        var label = item.title
+        label += " by \(item.displayAuthor)"
+        label += ". Duration: \(item.estimatedDuration.accessibleDuration)"
+        if item.isCompleted {
+            label += ". Completed"
+        }
+        return label
     }
 }
 
@@ -288,12 +354,18 @@ struct QueueControlsView: View {
                     .font(.title3)
                     .foregroundStyle(queueManager.shuffleMode.isEnabled ? .blue : .secondary)
             }
+            .accessibilityLabel(queueManager.shuffleMode.isEnabled ? "Shuffle on" : "Shuffle off")
+            .accessibilityHint("Double tap to toggle shuffle")
+            .accessibilityAddTraits(queueManager.shuffleMode.isEnabled ? .isSelected : [])
 
             Button(action: { queueManager.toggleRepeatMode() }) {
                 Image(systemName: queueManager.repeatMode.iconName)
                     .font(.title3)
                     .foregroundStyle(queueManager.repeatMode != .off ? .blue : .secondary)
             }
+            .accessibilityLabel("Repeat: \(queueManager.repeatMode.displayName)")
+            .accessibilityHint("Double tap to change repeat mode")
+            .accessibilityAddTraits(queueManager.repeatMode != .off ? .isSelected : [])
         }
     }
 }

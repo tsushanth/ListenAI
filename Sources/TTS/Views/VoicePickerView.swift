@@ -1,6 +1,24 @@
 import SwiftUI
 import AVFoundation
 
+// MARK: - Accessibility Extensions
+
+extension ContentSizeCategory {
+    /// Returns true if the current size category is an accessibility size.
+    var isAccessibilityCategory: Bool {
+        switch self {
+        case .accessibilityMedium,
+             .accessibilityLarge,
+             .accessibilityExtraLarge,
+             .accessibilityExtraExtraLarge,
+             .accessibilityExtraExtraExtraLarge:
+            return true
+        default:
+            return false
+        }
+    }
+}
+
 // MARK: - Voice Picker View
 
 /// Main view for selecting and customizing voice presets.
@@ -12,6 +30,13 @@ struct VoicePickerView: View {
     @State private var previewingPreset: VoicePreset?
     @State private var isPlayingPreview = false
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.sizeCategory) private var sizeCategory
+    @Environment(\.colorSchemeContrast) private var contrast
+
+    /// Whether to use single column layout for accessibility sizes
+    private var useSingleColumnLayout: Bool {
+        sizeCategory.isAccessibilityCategory
+    }
 
     private var filteredPresets: [VoicePreset] {
         var presets = presetManager.availablePresets()
@@ -167,7 +192,11 @@ struct VoicePickerView: View {
     // MARK: - Voice Grid
 
     private var voiceGrid: some View {
-        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 16) {
+        let columns = useSingleColumnLayout
+            ? [GridItem(.flexible())]
+            : [GridItem(.flexible()), GridItem(.flexible())]
+
+        return LazyVGrid(columns: columns, spacing: 16) {
             ForEach(filteredPresets) { preset in
                 VoicePresetCard(
                     preset: preset,
@@ -207,11 +236,14 @@ struct CategoryChip: View {
     let isSelected: Bool
     let action: () -> Void
 
+    @Environment(\.colorSchemeContrast) private var contrast
+
     var body: some View {
         Button(action: action) {
             HStack(spacing: 6) {
                 Image(systemName: icon)
                     .font(.caption)
+                    .accessibilityHidden(true)
                 Text(title)
                     .font(.subheadline)
             }
@@ -220,8 +252,18 @@ struct CategoryChip: View {
             .background(isSelected ? Color.blue : Color(.tertiarySystemBackground))
             .foregroundStyle(isSelected ? .white : .primary)
             .clipShape(Capsule())
+            .overlay(
+                Capsule()
+                    .stroke(
+                        contrast == .increased && isSelected ? Color.white : Color.clear,
+                        lineWidth: 2
+                    )
+            )
         }
         .buttonStyle(.plain)
+        .accessibilityLabel("\(title) category")
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+        .accessibilityHint(isSelected ? "Currently selected" : "Double tap to filter by this category")
     }
 }
 
@@ -234,8 +276,15 @@ struct VoicePresetCard: View {
     let onSelect: () -> Void
     let onPreview: () -> Void
 
+    @Environment(\.colorSchemeContrast) private var contrast
+    @Environment(\.sizeCategory) private var sizeCategory
+
     private var accentColor: Color {
         Color(hex: preset.accentColorHex ?? "#3B82F6")
+    }
+
+    private var cardHeight: CGFloat {
+        sizeCategory.isAccessibilityCategory ? 260 : 200
     }
 
     var body: some View {
@@ -251,6 +300,7 @@ struct VoicePresetCard: View {
                         .font(.body)
                         .foregroundStyle(.white)
                 }
+                .accessibilityHidden(true)
 
                 Spacer()
 
@@ -263,6 +313,7 @@ struct VoicePresetCard: View {
                         .background(Color.yellow)
                         .foregroundStyle(.black)
                         .clipShape(Capsule())
+                        .accessibilityLabel("Premium voice")
                 }
 
                 // Preview button
@@ -271,6 +322,8 @@ struct VoicePresetCard: View {
                         .font(.title2)
                         .foregroundStyle(isPreviewing ? .red : .secondary)
                 }
+                .accessibilityLabel(isPreviewing ? "Stop preview" : "Preview voice")
+                .accessibilityHint(isPreviewing ? "Double tap to stop" : "Double tap to hear a sample")
             }
 
             // Name
@@ -282,7 +335,8 @@ struct VoicePresetCard: View {
             Text(preset.voiceDescription)
                 .font(.caption)
                 .foregroundStyle(.secondary)
-                .lineLimit(2)
+                .lineLimit(sizeCategory.isAccessibilityCategory ? 4 : 2)
+                .fixedSize(horizontal: false, vertical: true)
 
             // Style indicators
             HStack(spacing: 8) {
@@ -298,6 +352,7 @@ struct VoicePresetCard: View {
                     label: "Expression"
                 )
             }
+            .accessibilityHidden(true)
 
             Spacer()
 
@@ -305,20 +360,41 @@ struct VoicePresetCard: View {
             HStack {
                 Image(systemName: preset.provider.iconName)
                     .font(.caption2)
+                    .accessibilityHidden(true)
                 Text(preset.hasOnDeviceFallback ? "On-device available" : preset.provider.displayName)
                     .font(.caption2)
             }
             .foregroundStyle(.secondary)
         }
         .padding()
-        .frame(height: 200)
+        .frame(height: cardHeight)
         .background(Color(.secondarySystemBackground))
         .clipShape(RoundedRectangle(cornerRadius: 16))
         .overlay(
             RoundedRectangle(cornerRadius: 16)
-                .stroke(isSelected ? accentColor : Color.clear, lineWidth: 3)
+                .stroke(isSelected ? accentColor : Color.clear, lineWidth: contrast == .increased ? 4 : 3)
         )
         .onTapGesture(perform: onSelect)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(cardAccessibilityLabel)
+        .accessibilityHint("Double tap to select this voice")
+        .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
+    }
+
+    private var cardAccessibilityLabel: String {
+        var label = preset.name
+        if preset.tier == .premium {
+            label += ", Premium"
+        }
+        label += ". \(preset.voiceDescription)"
+        label += ". Speed: \(String(format: "%.1f", preset.styleParameters.speakingRate))"
+        if preset.hasOnDeviceFallback {
+            label += ". On-device available"
+        }
+        if isSelected {
+            label += ". Selected"
+        }
+        return label
     }
 }
 
@@ -525,23 +601,30 @@ struct SliderRow: View {
     let format: String
     var multiplier: Float = 1
 
+    private var formattedValue: String {
+        String(format: format, value * multiplier)
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Image(systemName: icon)
                     .foregroundStyle(.secondary)
                     .frame(width: 24)
+                    .accessibilityHidden(true)
 
                 Text(title)
 
                 Spacer()
 
-                Text(String(format: format, value * multiplier))
+                Text(formattedValue)
                     .font(.subheadline.monospacedDigit())
                     .foregroundStyle(.secondary)
             }
 
             Slider(value: $value, in: range)
+                .accessibilityLabel(title)
+                .accessibilityValue(formattedValue)
         }
     }
 }
