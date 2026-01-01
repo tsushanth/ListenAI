@@ -20,14 +20,27 @@ A text-to-speech iOS app that converts articles, PDFs, websites, and documents i
 Sources/
 ├── TTS/
 │   ├── Models/
-│   │   ├── VoicePreset.swift      # Voice configuration models
-│   │   └── TTSModels.swift        # Synthesis options, results, errors
+│   │   ├── VoicePreset.swift         # Voice configuration models
+│   │   └── TTSModels.swift           # Synthesis options, results, errors
 │   ├── Protocols/
-│   │   └── TTSService.swift       # Core TTS protocol & manager
+│   │   └── TTSService.swift          # Core TTS protocol & manager
 │   ├── Services/
 │   │   ├── OnDeviceTTSService.swift  # Apple AVSpeechSynthesizer
 │   │   └── CloudTTSService.swift     # Cloud API providers
-│   └── TTSCoordinator.swift       # High-level coordinator
+│   └── TTSCoordinator.swift          # High-level coordinator
+│
+├── Playback/
+│   ├── Models/
+│   │   └── PlaybackModels.swift      # Playback state, progress, queue models
+│   ├── Services/
+│   │   ├── AudioPlaybackService.swift    # Main playback service
+│   │   ├── AudioSessionManager.swift     # AVAudioSession handling
+│   │   ├── NowPlayingManager.swift       # Lock screen & Control Center
+│   │   └── PlaybackPositionStore.swift   # Position persistence
+│   ├── Views/
+│   │   ├── AudioPlayerView.swift     # Full-screen player UI
+│   │   └── MiniPlayerView.swift      # Compact player bar
+│   └── BackgroundAudioConfiguration.swift  # Setup guide
 ```
 
 ## Requirements
@@ -149,6 +162,117 @@ let customVoice = VoicePreset(
     )
 )
 ```
+
+## Audio Playback
+
+### Basic Playback
+
+```swift
+let playbackService = AudioPlaybackService.shared
+
+// Create a now playing item
+let item = NowPlayingItem(
+    id: UUID(),
+    articleID: article.id,
+    title: article.title,
+    author: article.author,
+    siteName: article.siteName,
+    audioURL: audioFileURL,
+    duration: 300,
+    artworkURL: article.imageURL,
+    artworkColor: .blue
+)
+
+// Start playback (resumes from last position automatically)
+try await playbackService.play(item: item)
+
+// Or start from a specific position
+try await playbackService.play(item: item, from: 60.0)
+```
+
+### Playback Controls
+
+```swift
+// Play/Pause
+playbackService.togglePlayPause()
+playbackService.pause()
+playbackService.resume()
+
+// Seeking
+playbackService.seek(to: 120.0)  // Seek to 2 minutes
+playbackService.skipForward()    // +15 seconds
+playbackService.skipBackward()   // -15 seconds
+
+// Speed control
+playbackService.setPlaybackSpeed(PlaybackSpeed(rate: 1.5))
+playbackService.cyclePlaybackSpeed()  // Cycle through presets
+```
+
+### Queue Management
+
+```swift
+// Add to queue
+let queueItem = QueueItem(
+    articleID: article.id,
+    title: article.title,
+    duration: 300
+)
+playbackService.addToQueue(queueItem, position: .next)  // Play next
+playbackService.addToQueue(queueItem, position: .last)  // Add to end
+
+// Navigate queue
+await playbackService.playNext()
+await playbackService.playPrevious()
+
+// Clear queue
+playbackService.clearQueue()
+```
+
+### Sleep Timer
+
+```swift
+playbackService.setSleepTimer(.minutes(30))
+playbackService.setSleepTimer(.endOfArticle)
+playbackService.cancelSleepTimer()
+```
+
+### SwiftUI Integration
+
+```swift
+struct ContentView: View {
+    @StateObject var playbackService = AudioPlaybackService.shared
+
+    var body: some View {
+        ZStack(alignment: .bottom) {
+            // Your main content
+            NavigationStack {
+                LibraryView()
+            }
+
+            // Mini player at bottom
+            MiniPlayerView(playbackService: playbackService)
+        }
+    }
+}
+```
+
+## Background Playback Setup
+
+For background audio to work, configure your Xcode project:
+
+1. **Enable Background Modes Capability**
+   - Target → Signing & Capabilities → + Capability → Background Modes
+   - Check "Audio, AirPlay, and Picture in Picture"
+
+2. **Info.plist** (auto-added by Xcode):
+   ```xml
+   <key>UIBackgroundModes</key>
+   <array>
+       <string>audio</string>
+   </array>
+   ```
+
+See `BackgroundAudioConfiguration.swift` for detailed setup and testing guide.
 
 ## License
 
