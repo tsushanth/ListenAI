@@ -32,8 +32,8 @@ const RETRYABLE_ERRORS = [
   'fetch failed',
 ];
 
-const MAX_RETRIES = 3;
-const BASE_DELAY_MS = 1000;
+const MAX_RETRIES = 5;
+const BASE_DELAY_MS = 500;
 
 // Connection diagnostics
 let connectionErrors: { timestamp: number; error: string; url: string }[] = [];
