@@ -164,6 +164,7 @@ function selectPreviewSentences(sentences: string[], speed: number = 1.0): {
 async function convertWavToMp3(wavBuffer: Buffer): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = [];
+    let stderrOutput = '';
 
     const ffmpeg = spawn('ffmpeg', [
       '-i', 'pipe:0',
@@ -181,6 +182,7 @@ async function convertWavToMp3(wavBuffer: Buffer): Promise<Buffer> {
     });
 
     ffmpeg.stderr.on('data', (data: Buffer) => {
+      stderrOutput += data.toString();
       workerLogger.debug({ ffmpeg: data.toString() }, 'ffmpeg output');
     });
 
@@ -188,12 +190,20 @@ async function convertWavToMp3(wavBuffer: Buffer): Promise<Buffer> {
       if (code === 0) {
         resolve(Buffer.concat(chunks));
       } else {
-        reject(new Error(`ffmpeg exited with code ${code}`));
+        workerLogger.error({ code, stderr: stderrOutput.slice(-500) }, 'ffmpeg conversion failed');
+        reject(new Error(`ffmpeg exited with code ${code}: ${stderrOutput.slice(-200)}`));
       }
     });
 
     ffmpeg.on('error', (err) => {
+      workerLogger.error({ error: err.message }, 'ffmpeg spawn error');
       reject(new Error(`ffmpeg spawn error: ${err.message}`));
+    });
+
+    // Handle stdin errors (EPIPE)
+    ffmpeg.stdin.on('error', (err) => {
+      workerLogger.error({ error: err.message, code: (err as NodeJS.ErrnoException).code }, 'ffmpeg stdin error');
+      // Don't reject here - ffmpeg may have already closed due to an error
     });
 
     const inputStream = Readable.from(wavBuffer);
