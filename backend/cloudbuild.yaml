@@ -1,0 +1,47 @@
+steps:
+  # Build the container image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'gcr.io/$PROJECT_ID/listenai-backend:$COMMIT_SHA', '-t', 'gcr.io/$PROJECT_ID/listenai-backend:latest', '.']
+
+  # Push the container images to Container Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/listenai-backend:$COMMIT_SHA']
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/listenai-backend:latest']
+
+  # Deploy to Cloud Run with all environment variables
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'listenai-backend'
+      - '--image=gcr.io/$PROJECT_ID/listenai-backend:$COMMIT_SHA'
+      - '--region=us-central1'
+      - '--platform=managed'
+      - '--allow-unauthenticated'
+      - '--memory=1Gi'
+      - '--cpu=1'
+      - '--timeout=300'
+      - '--min-instances=0'
+      - '--max-instances=10'
+      - '--concurrency=80'
+      - '--set-env-vars=NODE_ENV=production,TTS_WORKER_ENABLED=true,JOB_API_ROLLOUT_PERCENT=100,JOB_API_KILL_SWITCH=false,RATE_LIMIT_WINDOW_MS=60000,RATE_LIMIT_MAX_REQUESTS=60,GPU_TTS_ENABLED=true,SUPABASE_URL=${_SUPABASE_URL},SUPABASE_SERVICE_ROLE_KEY=${_SUPABASE_SERVICE_ROLE_KEY},SUPABASE_JWT_SECRET=${_SUPABASE_JWT_SECRET},SELFHOSTED_TTS_URL=${_SELFHOSTED_TTS_URL},GPU_TTS_URL=${_GPU_TTS_URL},OPENAI_API_KEY=${_OPENAI_API_KEY}'
+
+images:
+  - 'gcr.io/$PROJECT_ID/listenai-backend:$COMMIT_SHA'
+  - 'gcr.io/$PROJECT_ID/listenai-backend:latest'
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+
+timeout: '1200s'  # 20 minutes
+
+# Substitution variables - set these in the Cloud Build trigger
+substitutions:
+  _SUPABASE_URL: ''
+  _SUPABASE_SERVICE_ROLE_KEY: ''
+  _SUPABASE_JWT_SECRET: ''
+  _SELFHOSTED_TTS_URL: ''
+  _GPU_TTS_URL: ''
+  _OPENAI_API_KEY: ''
