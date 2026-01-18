@@ -726,7 +726,9 @@ async function processWithPreview(
   // 9. Convert full audio to MP3
   workerLogger.info({ jobId, fullWavSize: fullWav.length }, 'Converting full audio to MP3');
   const fullMp3 = await convertWavToMp3(fullWav);
+  workerLogger.info({ jobId, mp3Size: fullMp3.length }, 'Full audio MP3 conversion complete');
   const fullDurationSec = await getAudioDuration(fullMp3);
+  workerLogger.info({ jobId, fullDurationSec }, 'Full audio duration calculated');
 
   // 10. Upload full audio
   const fullPath = `audio/jobs/${jobId}/full.mp3`;
