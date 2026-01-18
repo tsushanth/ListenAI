@@ -1,23 +1,15 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
 # Xcode
-#
-# gitignore contributors: remember to update Global Business Analyst/Xcode.gitignore, Gitignore.io/Xcode.gitignore, and Global/Xcode.gitignore
-
-## User settings
-xcuserdata/
-
-## compatibility with Xcode 8 and earlier (Xcode 10 can resolve)
-*.xcscmblueprint
-*.xccheckout
-
-## Xcode 10 workspace files
-.swiftpm/
-.build/
-
-## Build generated
-build/
+*.xcodeproj/xcuserdata/
+*.xcodeproj/project.xcworkspace/xcuserdata/
+*.xcworkspace/xcuserdata/
 DerivedData/
-
-## Various settings
+build/
 *.pbxuser
 !default.pbxuser
 *.mode1v3
@@ -26,59 +18,71 @@ DerivedData/
 !default.mode2v3
 *.perspectivev3
 !default.perspectivev3
-*.xcworkspace
-!default.xcworkspace
-
-## Other
+xcuserdata/
 *.moved-aside
-*.xcuserstate
 *.hmap
-*.ipa
-*.dSYM.zip
-*.dSYM
-
-## Obj-C/Swift specific
-*.hmap
-
-## App packaging
 *.ipa
 *.dSYM.zip
 *.dSYM
 
 # Swift Package Manager
-Packages/
-Package.pins
+.build/
+.swiftpm/
 Package.resolved
-*.xcodeproj
 
-# CocoaPods
+# iOS
 Pods/
 Podfile.lock
 
-# Carthage
-Carthage/Build/
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm
+.yarn
 
-# Fastlane
-fastlane/report.xml
-fastlane/Preview.html
-fastlane/screenshots/**/*.png
-fastlane/test_output
+# Backend build artifacts
+backend/dist/
+backend/*.log
 
-# Code Injection
-iOSInjectionProject/
+# TTS Service
+tts-service/__pycache__/
+tts-service/*.pyc
+tts-service/.venv/
+tts-service/venv/
+tts-service/*.egg-info/
 
-# Playgrounds
-timeline.xctimeline
-playground.xcworkspace
-
-# MacOS
-.DS_Store
-
-# Secrets
-*.xcconfig
-!*.example.xcconfig
-Secrets/
-
-# Environment
+# Environment files
 .env
 .env.local
+.env.*.local
+*.env
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Logs
+logs/
+*.log
+
+# Coverage
+coverage/
+.nyc_output/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Android
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+*.apk
+*.aab

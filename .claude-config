@@ -1,0 +1,46 @@
+# Claude Code Configuration
+# This file documents environment-specific paths and configurations
+
+# CLI Tool Paths (macOS Homebrew)
+NPM_PATH=/opt/homebrew/bin/npm
+NODE_PATH=/opt/homebrew/bin/node
+GCLOUD_PATH=/opt/homebrew/share/google-cloud-sdk/bin/gcloud
+SUPABASE_PATH=/opt/homebrew/bin/supabase
+
+# GCP Project
+GCP_PROJECT=summarizerproxy
+GCP_REGION=us-central1
+
+# =============================================================================
+# Backend Services
+# =============================================================================
+
+# 1. ListenAI Backend (Express.js API)
+#    - Handles: Auth, TTS routing, usage tracking, subscriptions
+#    - Directory: backend/
+#    - Service: listenai-backend
+#    - URL: https://listenai-backend-917362189743.us-central1.run.app
+BACKEND_SERVICE=listenai-backend
+BACKEND_DIR=backend
+BACKEND_URL=https://listenai-backend-917362189743.us-central1.run.app
+
+# Deploy Backend:
+#   cd backend && /opt/homebrew/share/google-cloud-sdk/bin/gcloud run deploy listenai-backend --source . --region us-central1 --project summarizerproxy
+
+# 2. TTS Service (FastAPI - Kokoro/XTTS)
+#    - Handles: Actual TTS synthesis (self-hosted voices)
+#    - Directory: tts-service/
+#    - Service: readaloud-tts
+#    - URL: https://readaloud-tts-917362189743.us-central1.run.app
+TTS_SERVICE=readaloud-tts
+TTS_SERVICE_DIR=tts-service
+TTS_SERVICE_URL=https://readaloud-tts-917362189743.us-central1.run.app
+
+# Deploy TTS Service:
+#   cd tts-service && /opt/homebrew/share/google-cloud-sdk/bin/gcloud run deploy readaloud-tts --source . --region us-central1 --project summarizerproxy
+
+# =============================================================================
+# Common Commands
+# =============================================================================
+# Build: /opt/homebrew/bin/npm run build
+# Install: /opt/homebrew/bin/npm install

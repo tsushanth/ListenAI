@@ -1,0 +1,42 @@
+steps:
+  # Build the GPU container image using Dockerfile.gpu
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-f', 'Dockerfile.gpu', '-t', 'us-central1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/readaloud-tts-gpu:$BUILD_ID', '-t', 'us-central1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/readaloud-tts-gpu:latest', '.']
+
+  # Push the container image to Artifact Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'us-central1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/readaloud-tts-gpu:$BUILD_ID']
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'us-central1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/readaloud-tts-gpu:latest']
+
+  # Deploy to Cloud Run with L4 GPU
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'readaloud-tts-gpu'
+      - '--image=us-central1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/readaloud-tts-gpu:$BUILD_ID'
+      - '--region=us-central1'
+      - '--platform=managed'
+      - '--allow-unauthenticated'
+      - '--memory=16Gi'
+      - '--cpu=4'
+      - '--gpu=1'
+      - '--gpu-type=nvidia-l4'
+      - '--timeout=300'
+      - '--min-instances=0'
+      - '--max-instances=2'
+      - '--concurrency=10'
+      - '--set-env-vars=CACHE_ENABLED=true,LOG_LEVEL=INFO,DEFAULT_TTS_MODEL=kokoro'
+      - '--cpu-boost'
+
+images:
+  - 'us-central1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/readaloud-tts-gpu:$BUILD_ID'
+  - 'us-central1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/readaloud-tts-gpu:latest'
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+  machineType: 'E2_HIGHCPU_8'
+
+timeout: '3600s'  # 1 hour timeout for large model download

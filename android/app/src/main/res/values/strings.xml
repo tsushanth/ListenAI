@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">ReadAloud AI</string>
+
+    <!-- Tab Labels -->
+    <string name="tab_home">Home</string>
+    <string name="tab_library">My Library</string>
+    <string name="tab_settings">Settings</string>
+
+    <!-- Home Screen -->
+    <string name="promo_title">Download and listen anytime, anywhere</string>
+    <string name="promo_button">Try for free</string>
+    <string name="quick_actions_title">What do you want to listen today?</string>
+    <string name="action_document">Document</string>
+    <string name="action_document_subtitle">Upload files from Drive or device</string>
+    <string name="action_scan">Scan Text</string>
+    <string name="action_scan_subtitle">Scanned documents or images</string>
+    <string name="action_web_link">Web Link</string>
+    <string name="action_web_link_subtitle">Convert URLs to audio</string>
+    <string name="action_text">Type or Paste Text</string>
+    <string name="action_text_subtitle">Input or paste text to listen</string>
+    <string name="action_mail">Mail</string>
+    <string name="action_mail_subtitle">Listen to e-mails easily</string>
+
+    <!-- Library Screen -->
+    <string name="library_title">My Library</string>
+    <string name="filter_all">All</string>
+    <string name="filter_in_progress">In Progress</string>
+    <string name="filter_continue">Continue</string>
+    <string name="filter_finished">Finished</string>
+    <string name="filter_favorites">Favorites</string>
+    <string name="filter_archived">Archived</string>
+    <string name="filter_folders">Folders</string>
+    <string name="filter_downloaded">Downloaded</string>
+    <string name="empty_library">No Articles Yet</string>
+    <string name="empty_library_description">Add articles from web links, documents, or paste text.</string>
+    <string name="more_options">More options</string>
+
+    <!-- Settings Screen -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_preferences">Preferences</string>
+    <string name="settings_voice">Voice</string>
+    <string name="settings_voice_subtitle">Choose your preferred voice</string>
+    <string name="settings_speed">Playback Speed</string>
+    <string name="settings_speed_subtitle">Default 1.0x</string>
+    <string name="settings_appearance">Appearance</string>
+    <string name="settings_appearance_subtitle">Light, Dark, or System</string>
+    <string name="settings_voice_cloning">Voice Cloning</string>
+    <string name="settings_change_voice">Change Voice</string>
+    <string name="settings_app_language">App Language</string>
+    <string name="settings_request_feature">Request Feature</string>
+    <string name="settings_linked_accounts">Linked Accounts</string>
+    <string name="settings_google">Google</string>
+    <string name="settings_google_subtitle">Sync articles across devices</string>
+    <string name="settings_google_connected">Connected</string>
+    <string name="settings_connect">Connect</string>
+    <string name="settings_disconnect">Disconnect</string>
+    <string name="settings_share">Share</string>
+    <string name="settings_share_app">Share ReadAloud AI</string>
+    <string name="settings_share_app_subtitle">Tell friends about ReadAloud AI</string>
+    <string name="settings_rate_app">Rate App</string>
+    <string name="settings_rate_app_subtitle">Help us with a 5-star rating</string>
+    <string name="settings_playback">Playback</string>
+    <string name="settings_audio_quality">Audio Quality</string>
+    <string name="settings_audio_quality_subtitle">High quality synthesis</string>
+    <string name="settings_skip_interval">Skip Interval</string>
+    <string name="settings_skip_interval_subtitle">10s back, 30s forward</string>
+    <string name="settings_sleep_timer">Sleep Timer</string>
+    <string name="settings_sleep_timer_subtitle">Auto-pause after duration</string>
+    <string name="settings_default_speed">Default Speed</string>
+    <string name="settings_skip_silences">Skip Silences</string>
+    <string name="settings_auto_play">Auto-Play Next</string>
+    <string name="settings_support">Support</string>
+    <string name="settings_usage">Usage &amp; Quota</string>
+    <string name="settings_usage_subtitle">View usage and limits</string>
+    <string name="settings_help">Help Center</string>
+    <string name="settings_help_subtitle">FAQs and guides</string>
+    <string name="settings_feedback">Send Feedback</string>
+    <string name="settings_feedback_subtitle">Report issues or suggestions</string>
+    <string name="settings_rate_us">Like us, Rate us</string>
+    <string name="settings_contact">Contact Support</string>
+    <string name="settings_about">About</string>
+    <string name="settings_version">Version</string>
+    <string name="settings_privacy">Privacy Policy</string>
+    <string name="settings_privacy_subtitle">View our privacy policy</string>
+    <string name="settings_terms">Terms of Service</string>
+    <string name="settings_terms_subtitle">View terms and conditions</string>
+
+    <!-- Playback -->
+    <string name="now_playing">Now Playing</string>
+    <string name="up_next">Up Next</string>
+    <string name="minutes_left">%d m left</string>
+    <string name="speed_format">%sx</string>
+    <string name="skip_backward">Skip backward</string>
+    <string name="skip_forward">Skip forward</string>
+    <string name="sleep_timer">Sleep timer</string>
+
+    <!-- Import Screen -->
+    <string name="import_title">Add Content</string>
+    <string name="import_mode_url">URL</string>
+    <string name="import_mode_document">Doc</string>
+    <string name="import_mode_text">Text</string>
+    <string name="import_mode_scan">Scan</string>
+    <string name="import_url_title">Import from URL</string>
+    <string name="import_url_description">Paste a web link to extract and convert the article to audio.</string>
+    <string name="import_url_placeholder">https://example.com/article</string>
+    <string name="import_document_title">Import Document</string>
+    <string name="import_document_description">Upload PDF, DOCX, or TXT files to convert to audio.</string>
+    <string name="import_document_tap">Tap to select file</string>
+    <string name="import_document_formats">PDF, DOCX, TXT supported</string>
+    <string name="import_text_title">Enter Text</string>
+    <string name="import_text_title_placeholder">Title (optional)</string>
+    <string name="import_text_content_placeholder">Paste or type your text here...</string>
+    <string name="import_scan_title">Scan Document</string>
+    <string name="import_scan_description">Use your camera to scan printed text and convert to audio.</string>
+    <string name="import_scan_tap">Tap to scan</string>
+    <string name="import_button">Import</string>
+
+    <!-- General -->
+    <string name="pro">PRO</string>
+    <string name="connect">Connect</string>
+    <string name="disconnect">Disconnect</string>
+    <string name="cancel">Cancel</string>
+    <string name="done">Done</string>
+    <string name="delete">Delete</string>
+    <string name="play">Play</string>
+    <string name="pause">Pause</string>
+    <string name="close">Close</string>
+    <string name="add_to_queue">Add to Queue</string>
+    <string name="favorite">Favorite</string>
+    <string name="share">Share</string>
+</resources>

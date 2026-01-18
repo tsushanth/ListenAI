@@ -1,0 +1,28 @@
+# Ignore node_modules - will be installed fresh during build
+node_modules/
+
+# Ignore dist - will be built fresh
+dist/
+
+# Ignore environment files
+.env
+.env.local
+.env.*.local
+.env.production
+
+# Ignore IDE
+.idea/
+.vscode/
+
+# Ignore git
+.git/
+.gitignore
+
+# Ignore test and coverage
+coverage/
+*.test.ts
+*.spec.ts
+
+# Ignore OS files
+.DS_Store
+Thumbs.db

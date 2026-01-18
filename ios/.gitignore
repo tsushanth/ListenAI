@@ -1,0 +1,84 @@
+# Xcode
+#
+# gitignore contributors: remember to update Global Business Analyst/Xcode.gitignore, Gitignore.io/Xcode.gitignore, and Global/Xcode.gitignore
+
+## User settings
+xcuserdata/
+
+## compatibility with Xcode 8 and earlier (Xcode 10 can resolve)
+*.xcscmblueprint
+*.xccheckout
+
+## Xcode 10 workspace files
+.swiftpm/
+.build/
+
+## Build generated
+build/
+DerivedData/
+
+## Various settings
+*.pbxuser
+!default.pbxuser
+*.mode1v3
+!default.mode1v3
+*.mode2v3
+!default.mode2v3
+*.perspectivev3
+!default.perspectivev3
+*.xcworkspace
+!default.xcworkspace
+
+## Other
+*.moved-aside
+*.xcuserstate
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+## Obj-C/Swift specific
+*.hmap
+
+## App packaging
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Swift Package Manager
+Packages/
+Package.pins
+Package.resolved
+*.xcodeproj
+
+# CocoaPods
+Pods/
+Podfile.lock
+
+# Carthage
+Carthage/Build/
+
+# Fastlane
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/**/*.png
+fastlane/test_output
+
+# Code Injection
+iOSInjectionProject/
+
+# Playgrounds
+timeline.xctimeline
+playground.xcworkspace
+
+# MacOS
+.DS_Store
+
+# Secrets
+*.xcconfig
+!*.example.xcconfig
+Secrets/
+
+# Environment
+.env
+.env.local

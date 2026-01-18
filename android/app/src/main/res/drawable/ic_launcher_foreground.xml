@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- ReadAloud AI icon: Open book with sound waves -->
+    <group android:translateX="24" android:translateY="24">
+        <!-- Open book base -->
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M30,18c-3.3,0 -6.3,0.6 -9,1.8V45c2.7,-1.2 5.7,-1.8 9,-1.8s6.3,0.6 9,1.8V19.8C36.3,18.6 33.3,18 30,18z" />
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M30,18c3.3,0 6.3,0.6 9,1.8V45c-2.7,-1.2 -5.7,-1.8 -9,-1.8s-6.3,0.6 -9,1.8V19.8C23.7,18.6 26.7,18 30,18z" />
+        <!-- Book spine -->
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M30,18v25"
+            android:strokeWidth="2"
+            android:strokeColor="#3B82F6"/>
+        <!-- Sound waves (right side) -->
+        <path
+            android:fillColor="@android:color/transparent"
+            android:strokeColor="#FFFFFF"
+            android:strokeWidth="2.5"
+            android:strokeLineCap="round"
+            android:pathData="M42,27c2,2 3,5 3,8s-1,6 -3,8" />
+        <path
+            android:fillColor="@android:color/transparent"
+            android:strokeColor="#FFFFFF"
+            android:strokeWidth="2.5"
+            android:strokeLineCap="round"
+            android:pathData="M48,22c3.5,4 5.5,9 5.5,13s-2,9 -5.5,13" />
+    </group>
+</vector>

@@ -1,0 +1,30 @@
+# ReadAloud AI TTS Service Dependencies
+# Supports multiple TTS models: XTTS v2 and Kokoro-82M
+
+# FastAPI + Uvicorn
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
+pydantic==2.5.3
+
+# Coqui TTS (XTTS v2) - High quality, voice cloning, non-commercial license
+TTS==0.22.0
+# Pin transformers to compatible version (newer versions break TTS)
+transformers==4.42.4
+
+# Kokoro-82M - Fast, lightweight, Apache 2.0 license (commercial OK)
+kokoro>=0.9.2
+
+# Audio processing
+soundfile==0.12.1
+# Note: numpy version is handled by TTS dependency
+
+# PyTorch (CUDA version for GPU)
+# Note: Install the appropriate version for your CUDA version
+# For CUDA 11.8: pip install torch==2.1.2+cu118 -f https://download.pytorch.org/whl/torch_stable.html
+# For CUDA 12.1: pip install torch==2.1.2+cu121 -f https://download.pytorch.org/whl/torch_stable.html
+# Pin torch 2.5.x - 2.6+ has weights_only=True default which breaks TTS model loading
+torch==2.5.1
+
+# Utilities
+python-multipart==0.0.6
+aiofiles==23.2.1

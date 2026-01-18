@@ -1,0 +1,81 @@
+# ReadAloud AI TTS Service - GPU Version
+# Supports: XTTS v2 (high quality) and Kokoro-82M (fast, Apache licensed)
+# For Cloud Run with NVIDIA L4 GPU
+
+FROM nvidia/cuda:11.8.0-cudnn8-runtime-ubuntu22.04
+
+# Prevent interactive prompts
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install system dependencies
+# espeak-ng is required for Kokoro phoneme processing
+RUN apt-get update && apt-get install -y \
+    python3.10 \
+    python3-pip \
+    python3.10-venv \
+    python3.10-dev \
+    ffmpeg \
+    libsndfile1 \
+    git \
+    curl \
+    espeak-ng \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set Python aliases (use Python 3.10 which is better supported by Ubuntu 22.04)
+RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.10 1
+RUN update-alternatives --install /usr/bin/pip pip /usr/bin/pip3 1
+
+# Create app directory
+WORKDIR /app
+
+# Create directories for voice samples and cache
+RUN mkdir -p /app/voice_samples /app/audio_cache
+
+# Copy requirements first for better caching
+COPY requirements.txt .
+
+# Install Python dependencies with CUDA support
+# Pin torch 2.5.x (2.6+ has weights_only=True by default which breaks TTS loading)
+# Use CUDA 11.8 compatible torch
+# IMPORTANT: Install requirements first without deps, then reinstall torch to ensure CUDA version
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir torch==2.5.1 torchaudio==2.5.1 --index-url https://download.pytorch.org/whl/cu118 && \
+    pip install --no-cache-dir transformers==4.42.4 && \
+    pip install --no-cache-dir -r requirements.txt && \
+    pip install --no-cache-dir --force-reinstall torch==2.5.1 torchaudio==2.5.1 --index-url https://download.pytorch.org/whl/cu118
+
+# Accept Coqui TOS for XTTS model
+ENV COQUI_TOS_AGREED=1
+
+# Set HuggingFace cache directory to persist in image
+ENV HF_HOME=/app/.cache/huggingface
+ENV HUGGINGFACE_HUB_CACHE=/app/.cache/huggingface/hub
+RUN mkdir -p /app/.cache/huggingface/hub
+
+# Copy model download script
+COPY download_models.py .
+
+# Pre-download all models and voices (baked into image for fast cold starts)
+# This downloads XTTS v2 (~1.8GB) and Kokoro-82M with all voice packs (~500MB)
+RUN python download_models.py
+
+# Copy application code
+COPY main.py .
+
+# Environment variables
+ENV PORT=8080
+ENV DEFAULT_TTS_MODEL=kokoro
+ENV VOICE_SAMPLES_DIR=/app/voice_samples
+ENV AUDIO_CACHE_DIR=/app/audio_cache
+ENV CACHE_ENABLED=true
+ENV LOG_LEVEL=INFO
+
+# Expose port
+EXPOSE 8080
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=3 \
+    CMD curl -f http://localhost:8080/health || exit 1
+
+# Run the service
+CMD ["python", "main.py"]
