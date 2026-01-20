@@ -58,6 +58,11 @@ const MICRO_MAX_SENTENCES = 1;           // Max 1 sentence for micro (fastest TT
 const PREVIEW_TARGET_CHARS = 1000;       // Target ~1000 characters for preview (~10-15 seconds)
 const PREVIEW_MAX_CHARS_NEW = 1500;      // Hard cap for preview text
 
+// Kokoro (selfhosted) character limit - CPU-only TTS is too slow for long texts
+// At ~5 chars/sec on CPU, 2000 chars = ~400 seconds = ~7 minutes
+// For longer texts, fall back to ElevenLabs to avoid Cloud Run timeouts
+const KOKORO_MAX_CHARS = 2000;
+
 /**
  * Get the configured TTS provider.
  * Priority:
@@ -1096,12 +1101,20 @@ async function processJob(message: TTSJobMessage): Promise<void> {
 
     // 5. Choose synthesis provider based on model_id from client request
     // - model_id 'eleven_multilingual_v2' -> ElevenLabs (Premium)
-    // - model_id 'kokoro-82m' -> selfhosted/Kokoro (Standard)
+    // - model_id 'kokoro-82m' -> selfhosted/Kokoro (Standard) - but only for short texts!
     // - Otherwise, fall back to server-configured provider
     const isElevenLabsModel = modelId === 'eleven_multilingual_v2' || modelId === 'elevenlabs';
     const isKokoroModel = modelId === 'kokoro-82m' || modelId === 'kokoro';
-    const effectiveProvider = isElevenLabsModel ? 'elevenlabs' : (isKokoroModel ? 'selfhosted' : getConfiguredProvider());
-    workerLogger.info({ jobId, charCount, modelId, provider: effectiveProvider, isElevenLabsModel, isKokoroModel }, 'Selected TTS provider');
+
+    // Kokoro (selfhosted) on CPU is too slow for long texts - fall back to ElevenLabs
+    // This avoids Cloud Run timeouts when generating audio for articles > 2000 chars
+    const kokoroTooLong = isKokoroModel && charCount > KOKORO_MAX_CHARS;
+    if (kokoroTooLong) {
+      workerLogger.warn({ jobId, charCount, maxChars: KOKORO_MAX_CHARS }, 'Text too long for Kokoro (CPU), falling back to ElevenLabs');
+    }
+
+    const effectiveProvider = isElevenLabsModel ? 'elevenlabs' : (isKokoroModel && !kokoroTooLong ? 'selfhosted' : 'elevenlabs');
+    workerLogger.info({ jobId, charCount, modelId, provider: effectiveProvider, isElevenLabsModel, isKokoroModel, kokoroTooLong }, 'Selected TTS provider');
 
     if (effectiveProvider === 'elevenlabs') {
       await processJobWithElevenLabs(jobId, text, voiceId, modelId, speed, cacheKey, charCount);
