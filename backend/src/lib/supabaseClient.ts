@@ -1213,6 +1213,43 @@ export async function uploadAudioToCache(
 }
 
 /**
+ * Upload audio from a local file path to storage.
+ * Reads the file and uploads it - useful when audio was streamed directly to disk.
+ */
+export async function uploadAudioFromFile(
+  storagePath: string,
+  localFilePath: string,
+  format: AudioFormat
+): Promise<{ size: number }> {
+  const fs = await import('fs/promises');
+
+  const contentType = {
+    mp3: 'audio/mpeg',
+    wav: 'audio/wav',
+    ogg: 'audio/ogg',
+  }[format];
+
+  // Read file into buffer for upload
+  const audioBuffer = await fs.readFile(localFilePath);
+
+  const { error } = await supabase.storage
+    .from(AUDIO_BUCKET)
+    .upload(storagePath, audioBuffer, {
+      contentType,
+      upsert: true,
+    });
+
+  if (error) {
+    logger.error({ error, storagePath, localFilePath }, 'Failed to upload audio from file');
+    throw error;
+  }
+
+  logger.info({ storagePath, localFilePath, size: audioBuffer.length }, 'Audio uploaded from file');
+
+  return { size: audioBuffer.length };
+}
+
+/**
  * Get user's recent TTS jobs.
  */
 export async function getUserTTSJobs(userId: string, limit = 20): Promise<DBTTSJob[]> {

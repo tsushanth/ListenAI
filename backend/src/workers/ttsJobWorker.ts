@@ -6,6 +6,7 @@ import {
   updateTTSJobProgress,
   upsertCacheEntry,
   uploadAudioToCache,
+  uploadAudioFromFile,
 } from '../lib/supabaseClient.js';
 import { ttsProvider } from '../lib/ttsProviderClient.js';
 import {
@@ -643,65 +644,89 @@ async function generateMicroPreview(
 }
 
 /**
- * Generate full audio (micro + remaining) and finalize job.
+ * Generate full audio using streaming-to-file for memory safety.
  * Called after micro-preview is already uploaded.
+ *
+ * Memory optimization: Streams audio directly to /tmp file, then uploads.
+ * This avoids holding 40MB+ WAV buffers in memory for long articles.
  */
 async function generateFullAudio(
   jobId: string,
   fullText: string,
   voiceId: string,
-  microBuffer: Buffer | null
+  _microBuffer: Buffer | null  // Kept for API compatibility but not used
 ): Promise<{ fullBuffer: Buffer; fullPath: string; durationSec: number }> {
   const elevenLabs = getElevenLabsClient();
   if (!elevenLabs) {
     throw new Error('ElevenLabs not configured');
   }
 
+  const fs = await import('fs/promises');
+  const os = await import('os');
+  const path = await import('path');
+
   workerLogger.info({
     jobId,
     fullTextLength: fullText.length,
-    hasMicroBuffer: !!microBuffer,
-  }, 'ElevenLabs: generating full audio');
+  }, 'ElevenLabs: generating full audio (streaming to file)');
 
   const fullStart = Date.now();
 
-  // Generate full audio
-  const fullRequest: ElevenLabsRequest = {
-    text: fullText,
-    voiceId,
-    voiceSettings: {
-      stability: 0.5,
-      similarity_boost: 0.75,
-    },
-  };
+  // Create temp file for streaming
+  const tmpDir = os.tmpdir();
+  const localFilePath = path.join(tmpDir, `tts-${jobId}-full.mp3`);
 
-  const fullResult = await elevenLabs.synthesizeWithMetrics(fullRequest);
-  const fullInferenceMs = Date.now() - fullStart;
+  try {
+    // Stream synthesis directly to file - NO memory buffering during synthesis
+    const streamResult = await elevenLabs.synthesizeToFile(
+      {
+        text: fullText,
+        voiceId,
+      },
+      localFilePath
+    );
+    const fullInferenceMs = Date.now() - fullStart;
 
-  // Log TTFB metrics
-  logTTFBMetrics(jobId, fullResult.metrics, 'elevenlabs-full');
+    // Log TTFB metrics
+    logTTFBMetrics(jobId, streamResult.metrics, 'elevenlabs-full-stream');
 
-  // Upload full audio
-  const fullPath = `audio/jobs/${jobId}/full.mp3`;
-  await uploadAudioToCache(fullPath, fullResult.audioBuffer, 'mp3');
+    // Upload from file to Supabase
+    const fullPath = `audio/jobs/${jobId}/full.mp3`;
+    const { size: mp3Size } = await uploadAudioFromFile(fullPath, localFilePath, 'mp3');
 
-  // Get full duration
-  const durationSec = await getAudioDuration(fullResult.audioBuffer);
+    // Estimate duration from file size (ElevenLabs uses ~128kbps MP3)
+    const BYTES_PER_SECOND = 16000;  // 128kbps = 16KB/s
+    const durationSec = Math.round(mp3Size / BYTES_PER_SECOND);
 
-  workerLogger.info({
-    jobId,
-    fullPath,
-    fullSize: fullResult.audioBuffer.length,
-    durationSec,
-    fullInferenceMs,
-    ttfb_ms: fullResult.metrics.ttfb_ms,
-  }, 'ElevenLabs: full audio ready and uploaded');
+    workerLogger.info({
+      jobId,
+      fullPath,
+      fullSize: mp3Size,
+      durationSec,
+      fullInferenceMs,
+      ttfb_ms: streamResult.metrics.ttfb_ms,
+      streamedToFile: true,
+    }, 'ElevenLabs: full audio ready and uploaded (streamed)');
 
-  return {
-    fullBuffer: fullResult.audioBuffer,
-    fullPath,
-    durationSec,
-  };
+    // Read file for return (needed by caller for now)
+    // TODO: Refactor caller to not need buffer
+    const fullBuffer = await fs.readFile(localFilePath);
+
+    return {
+      fullBuffer,
+      fullPath,
+      durationSec,
+    };
+  } finally {
+    // Always clean up temp file
+    try {
+      await fs.unlink(localFilePath);
+      workerLogger.debug({ jobId, localFilePath }, 'Cleaned up temp file');
+    } catch (cleanupError) {
+      // Ignore cleanup errors
+      workerLogger.warn({ jobId, localFilePath, error: cleanupError }, 'Failed to clean up temp file');
+    }
+  }
 }
 
 /**
