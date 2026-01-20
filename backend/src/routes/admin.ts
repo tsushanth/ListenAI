@@ -1,7 +1,11 @@
 import { Router, Request, Response, NextFunction, RequestHandler } from 'express';
 import { createWriteStream, existsSync, statSync, unlinkSync } from 'fs';
+import { v4 as uuidv4 } from 'uuid';
 import { logger } from '../lib/logger.js';
 import { requireAuth } from '../middleware/auth.js';
+import { supabase } from '../lib/supabaseClient.js';
+import { processJobById } from '../workers/ttsJobWorker.js';
+import { generateCacheKey } from '../lib/cacheKey.js';
 import {
   getRolloutStatus,
   setRolloutPercent,
@@ -393,3 +397,223 @@ adminRouter.get('/test-tts-elevenlabs/status', (_req: Request, res: Response) =>
     tts_provider_setting: process.env.TTS_PROVIDER || 'auto',
   });
 });
+
+// ============================================================================
+// POST /admin/test-micro-first - Test Micro-First TTS Flow End-to-End
+// ============================================================================
+
+interface TestMicroFirstRequest {
+  text?: string;
+  voice_id?: string;
+}
+
+interface TestMicroFirstResponse {
+  success: boolean;
+  job_id: string;
+  stages: {
+    job_created: boolean;
+    partial_ready: boolean;
+    ready: boolean;
+  };
+  timing: {
+    job_create_ms: number;
+    partial_ready_ms: number | null;
+    total_ms: number;
+  };
+  job_data: {
+    status: string;
+    preview_audio_path: string | null;
+    full_audio_path: string | null;
+    preview_duration_sec: number | null;
+    duration_sec: number | null;
+  } | null;
+  preview_url: string | null;
+  full_url: string | null;
+  error?: string;
+}
+
+adminRouter.post(
+  '/test-micro-first',
+  asyncHandler(async (req: Request, res: Response) => {
+    const startTime = Date.now();
+    const body = req.body as TestMicroFirstRequest;
+
+    // Default long test text to trigger micro-first flow
+    const testText = body.text || `This is a comprehensive test of the micro-first text-to-speech strategy. The system should generate a small audio preview within seconds, allowing you to start listening immediately. After the preview is ready, the full audio will be generated in the background. This approach dramatically reduces the time-to-first-audio for longer content, making the listening experience much more responsive. The micro-preview contains just the first couple of sentences, while the full audio contains the complete text. Both are uploaded to cloud storage and made available via signed URLs.`;
+    const voiceId = body.voice_id || 'Rachel'; // Default ElevenLabs voice
+
+    const jobId = uuidv4();
+    const testUserId = 'admin-test-user';
+    const cacheKey = generateCacheKey(testText, voiceId, 'elevenlabs', 1.0);
+
+    adminLogger.info({
+      jobId,
+      textLength: testText.length,
+      voiceId,
+    }, 'Starting micro-first test');
+
+    const response: TestMicroFirstResponse = {
+      success: false,
+      job_id: jobId,
+      stages: {
+        job_created: false,
+        partial_ready: false,
+        ready: false,
+      },
+      timing: {
+        job_create_ms: 0,
+        partial_ready_ms: null,
+        total_ms: 0,
+      },
+      job_data: null,
+      preview_url: null,
+      full_url: null,
+    };
+
+    try {
+      // Stage 1: Create job in database
+      const createStart = Date.now();
+
+      const { error: jobError } = await supabase
+        .from('tts_jobs')
+        .insert({
+          id: jobId,
+          user_id: testUserId,
+          status: 'queued',
+          voice_id: voiceId,
+          model_id: 'elevenlabs',
+          speed: 1.0,
+          cache_key: cacheKey,
+          input_char_count: testText.length,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        });
+
+      if (jobError) {
+        throw new Error(`Failed to create job: ${jobError.message}`);
+      }
+
+      // Store text separately
+      const { error: textError } = await supabase
+        .from('tts_job_texts')
+        .insert({
+          job_id: jobId,
+          text: testText,
+        });
+
+      if (textError) {
+        throw new Error(`Failed to store job text: ${textError.message}`);
+      }
+
+      response.timing.job_create_ms = Date.now() - createStart;
+      response.stages.job_created = true;
+
+      adminLogger.info({ jobId, createMs: response.timing.job_create_ms }, 'Test job created');
+
+      // Stage 2: Process the job (this triggers micro-first flow)
+      // We'll poll for partial_ready status while processing
+      const processPromise = processJobById(jobId);
+
+      // Poll for partial_ready status
+      let partialReadyDetected = false;
+      const pollStart = Date.now();
+      const maxPollTime = 30000; // 30 seconds max
+
+      while (!partialReadyDetected && (Date.now() - pollStart) < maxPollTime) {
+        await new Promise(resolve => setTimeout(resolve, 200)); // Poll every 200ms
+
+        const { data: jobStatus } = await supabase
+          .from('tts_jobs')
+          .select('status, preview_audio_path, preview_duration_sec')
+          .eq('id', jobId)
+          .single();
+
+        if (jobStatus?.status === 'partial_ready' || jobStatus?.status === 'ready') {
+          partialReadyDetected = true;
+          response.timing.partial_ready_ms = Date.now() - startTime;
+          response.stages.partial_ready = true;
+          adminLogger.info({
+            jobId,
+            partialReadyMs: response.timing.partial_ready_ms,
+            previewPath: jobStatus.preview_audio_path,
+          }, 'Partial ready detected!');
+        }
+
+        if (jobStatus?.status === 'failed') {
+          throw new Error('Job failed during processing');
+        }
+      }
+
+      // Wait for full completion
+      await processPromise;
+
+      response.timing.total_ms = Date.now() - startTime;
+
+      // Stage 3: Get final job data
+      const { data: finalJob } = await supabase
+        .from('tts_jobs')
+        .select('status, preview_audio_path, full_audio_path, preview_duration_sec, duration_sec, audio_path')
+        .eq('id', jobId)
+        .single();
+
+      if (finalJob) {
+        response.stages.ready = finalJob.status === 'ready';
+        response.job_data = {
+          status: finalJob.status,
+          preview_audio_path: finalJob.preview_audio_path,
+          full_audio_path: finalJob.full_audio_path || finalJob.audio_path,
+          preview_duration_sec: finalJob.preview_duration_sec,
+          duration_sec: finalJob.duration_sec,
+        };
+
+        // Generate signed URLs
+        if (finalJob.preview_audio_path) {
+          const { data: previewUrl } = await supabase.storage
+            .from('audio-cache')
+            .createSignedUrl(finalJob.preview_audio_path, 3600);
+          response.preview_url = previewUrl?.signedUrl || null;
+        }
+
+        const fullPath = finalJob.full_audio_path || finalJob.audio_path;
+        if (fullPath) {
+          const { data: fullUrl } = await supabase.storage
+            .from('audio-cache')
+            .createSignedUrl(fullPath, 3600);
+          response.full_url = fullUrl?.signedUrl || null;
+        }
+      }
+
+      response.success = response.stages.ready;
+
+      adminLogger.info({
+        jobId,
+        success: response.success,
+        partialReadyMs: response.timing.partial_ready_ms,
+        totalMs: response.timing.total_ms,
+        previewUrl: response.preview_url ? 'generated' : 'none',
+        fullUrl: response.full_url ? 'generated' : 'none',
+      }, 'Micro-first test completed');
+
+      // Clean up test job
+      await supabase.from('tts_jobs').delete().eq('id', jobId);
+      await supabase.from('tts_job_texts').delete().eq('job_id', jobId);
+
+      res.json(response);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      response.error = errorMessage;
+      response.timing.total_ms = Date.now() - startTime;
+
+      adminLogger.error({
+        jobId,
+        error: errorMessage,
+      }, 'Micro-first test failed');
+
+      // Clean up on error
+      await supabase.from('tts_jobs').delete().eq('id', jobId);
+      await supabase.from('tts_job_texts').delete().eq('job_id', jobId);
+
+      res.status(500).json(response);
+    }
+  })
+);
