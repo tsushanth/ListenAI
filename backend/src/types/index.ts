@@ -14,6 +14,7 @@ export interface EnvConfig {
   SELFHOSTED_TTS_URL?: string;
   SELFHOSTED_TTS_API_KEY?: string;
   ELEVENLABS_API_KEY?: string;
+  TTS_PROVIDER?: 'elevenlabs' | 'selfhosted' | 'mock';
   GPU_TTS_URL?: string;
   GPU_TTS_ENABLED: boolean;
   RATE_LIMIT_WINDOW_MS: number;

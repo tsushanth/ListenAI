@@ -22,6 +22,10 @@ const envSchema = z.object({
   // ElevenLabs TTS (V1 Production)
   ELEVENLABS_API_KEY: z.string().optional(),
 
+  // TTS Provider Selection: 'elevenlabs' | 'selfhosted' | 'mock'
+  // Default: 'elevenlabs' if ELEVENLABS_API_KEY is set, otherwise 'selfhosted'
+  TTS_PROVIDER: z.enum(['elevenlabs', 'selfhosted', 'mock']).optional(),
+
   // GPU TTS (primary, with CPU fallback) - legacy, not used when ElevenLabs configured
   GPU_TTS_URL: z.string().url().optional(),
   GPU_TTS_ENABLED: z.string().transform(v => v === 'true').default('false'),

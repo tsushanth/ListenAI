@@ -12,6 +12,7 @@ import {
   getElevenLabsClient,
   isElevenLabsConfigured,
   type ElevenLabsRequest,
+  type TTFBMetrics,
 } from '../lib/elevenLabsClient.js';
 import { generateAudioPath } from '../lib/cacheKey.js';
 import {
@@ -31,7 +32,7 @@ import {
   startMetricsReporting,
   stopMetricsReporting,
 } from '../lib/metrics.js';
-import type { AudioFormat, DBVoice } from '../types/index.js';
+import type { AudioFormat, DBVoice, TTSProvider } from '../types/index.js';
 
 // ============================================================================
 // TTS Job Worker (Pub/Sub-based) with Preview-First Support
@@ -44,6 +45,46 @@ const PREVIEW_TARGET_DURATION_SEC = 15;  // Target ~15 seconds for preview
 const PREVIEW_MIN_CHARS = 200;           // Minimum characters for preview
 const PREVIEW_MAX_CHARS = 2000;          // Maximum characters for preview
 const SHORT_TEXT_THRESHOLD = 500;        // Below this, skip preview (just generate full)
+
+/**
+ * Get the configured TTS provider.
+ * Priority:
+ * 1. TTS_PROVIDER env var (explicit override)
+ * 2. If ELEVENLABS_API_KEY is set, use elevenlabs
+ * 3. Otherwise, use selfhosted
+ */
+function getConfiguredProvider(): TTSProvider {
+  const explicitProvider = process.env.TTS_PROVIDER as TTSProvider | undefined;
+
+  if (explicitProvider) {
+    workerLogger.info({ provider: explicitProvider }, 'Using explicitly configured TTS provider');
+    return explicitProvider;
+  }
+
+  if (isElevenLabsConfigured()) {
+    workerLogger.info({ provider: 'elevenlabs' }, 'Using ElevenLabs (ELEVENLABS_API_KEY configured)');
+    return 'elevenlabs';
+  }
+
+  workerLogger.info({ provider: 'selfhosted' }, 'Using self-hosted TTS (fallback)');
+  return 'selfhosted';
+}
+
+/**
+ * Log TTFB metrics for monitoring.
+ */
+function logTTFBMetrics(jobId: string, metrics: TTFBMetrics, provider: string): void {
+  workerLogger.info({
+    jobId,
+    provider,
+    t_start: metrics.t_start,
+    t_first_byte: metrics.t_first_byte,
+    t_done: metrics.t_done,
+    ttfb_ms: metrics.ttfb_ms,
+    total_ms: metrics.total_ms,
+    bytes_received: metrics.bytes_received,
+  }, 'TTS synthesis TTFB metrics');
+}
 
 /**
  * Worker configuration
@@ -698,13 +739,14 @@ async function processJob(message: TTSJobMessage): Promise<void> {
       updated_at: new Date().toISOString(),
     };
 
-    // 5. Choose synthesis provider
-    // V1 Production: Use ElevenLabs if configured
-    if (isElevenLabsConfigured()) {
-      workerLogger.info({ jobId, charCount, provider: 'elevenlabs' }, 'Using ElevenLabs for synthesis');
+    // 5. Choose synthesis provider based on TTS_PROVIDER env var
+    const configuredProvider = getConfiguredProvider();
+    workerLogger.info({ jobId, charCount, provider: configuredProvider }, 'Selected TTS provider');
+
+    if (configuredProvider === 'elevenlabs') {
       await processJobWithElevenLabs(jobId, text, voiceId, modelId, speed, cacheKey, charCount);
     } else if (charCount < SHORT_TEXT_THRESHOLD) {
-      // Fallback: Self-hosted for short text
+      // Self-hosted for short text
       workerLogger.info({ jobId, charCount }, 'Short text, skipping preview and generating full audio');
       await processShortText(jobId, text, voice, speed, cacheKey, modelId);
     } else {
