@@ -735,13 +735,30 @@ async function synthesizeWithElevenLabs(
 
   workerLogger.info({ jobId, textLength: text.length }, 'ElevenLabs: using micro-first strategy');
 
-  // Step 1: Generate micro-preview
-  const microResult = await generateMicroPreview(jobId, text, voiceId);
+  let microResult: Awaited<ReturnType<typeof generateMicroPreview>> = null;
+  let fullResult: Awaited<ReturnType<typeof generateFullAudio>>;
 
-  // Step 2: Generate full audio
-  // We generate the FULL text (not just remaining) to avoid audio discontinuity
-  // The micro was just for fast preview - full is the complete audio
-  const fullResult = await generateFullAudio(jobId, text, voiceId, microResult?.microBuffer ?? null);
+  try {
+    // Step 1: Generate micro-preview
+    workerLogger.info({ jobId }, 'ElevenLabs: starting micro-preview generation');
+    microResult = await generateMicroPreview(jobId, text, voiceId);
+    workerLogger.info({ jobId, microPath: microResult?.microPath }, 'ElevenLabs: micro-preview complete');
+  } catch (microError) {
+    workerLogger.error({ jobId, error: microError instanceof Error ? microError.message : 'Unknown' }, 'ElevenLabs: micro-preview failed');
+    throw microError;
+  }
+
+  try {
+    // Step 2: Generate full audio
+    // We generate the FULL text (not just remaining) to avoid audio discontinuity
+    // The micro was just for fast preview - full is the complete audio
+    workerLogger.info({ jobId }, 'ElevenLabs: starting full audio generation');
+    fullResult = await generateFullAudio(jobId, text, voiceId, microResult?.microBuffer ?? null);
+    workerLogger.info({ jobId, fullPath: fullResult.fullPath }, 'ElevenLabs: full audio complete');
+  } catch (fullError) {
+    workerLogger.error({ jobId, error: fullError instanceof Error ? fullError.message : 'Unknown' }, 'ElevenLabs: full audio failed');
+    throw fullError;
+  }
 
   return {
     previewPath: microResult?.microPath,
