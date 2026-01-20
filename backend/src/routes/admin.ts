@@ -5,7 +5,7 @@ import { logger } from '../lib/logger.js';
 import { requireAuth } from '../middleware/auth.js';
 import { supabase } from '../lib/supabaseClient.js';
 import { processJobById } from '../workers/ttsJobWorker.js';
-import { generateCacheKey } from '../lib/cacheKey.js';
+import { computeCacheKey } from '../lib/cacheKey.js';
 import {
   getRolloutStatus,
   setRolloutPercent,
@@ -444,7 +444,7 @@ adminRouter.post(
 
     const jobId = uuidv4();
     const testUserId = 'admin-test-user';
-    const cacheKey = generateCacheKey(testText, voiceId, 'elevenlabs', 1.0);
+    const cacheKey = computeCacheKey({ text: testText, voiceId, modelId: 'elevenlabs', speed: 1.0 });
 
     adminLogger.info({
       jobId,
