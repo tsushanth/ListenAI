@@ -48,10 +48,11 @@ const PREVIEW_MAX_CHARS = 2000;          // Maximum characters for preview
 const SHORT_TEXT_THRESHOLD = 500;        // Below this, skip preview (just generate full)
 
 // Micro-preview configuration (for instant playback - target 1-3 seconds audio)
-const MICRO_TARGET_CHARS = 150;          // Target ~120-150 characters for micro-preview (~1-2 seconds audio)
-const MICRO_MAX_CHARS = 200;             // Hard cap at 200 chars
-const MICRO_MIN_CHARS = 50;              // Minimum chars for micro (at least something to play)
-const MICRO_MAX_SENTENCES = 1;           // Max 1 sentence for micro (faster TTFB)
+// At ~150 chars/second speaking rate, 120-200 chars = ~1-1.5 seconds
+const MICRO_TARGET_CHARS = 120;          // Target ~120 characters for micro-preview (~1 second audio)
+const MICRO_MAX_CHARS = 180;             // Hard cap at 180 chars (~1.2 seconds)
+const MICRO_MIN_CHARS = 40;              // Minimum chars for micro (at least something meaningful)
+const MICRO_MAX_SENTENCES = 1;           // Max 1 sentence for micro (fastest TTFB)
 
 // Preview configuration (intermediate, for 10-30 seconds audio)
 const PREVIEW_TARGET_CHARS = 1000;       // Target ~1000 characters for preview (~10-15 seconds)
@@ -262,13 +263,17 @@ function extractMicroText(text: string): { microText: string; remainingText: str
   const microLength = microText?.length ?? 0;
   const remainingText = cleanText.slice(microLength).trim();
 
-  workerLogger.debug({
+  const finalMicroText = microText.trim();
+
+  workerLogger.info({
     totalLength: cleanText.length,
-    microLength: microText.length,
+    microLength: finalMicroText.length,
     remainingLength: remainingText.length,
+    microTextPreview: finalMicroText.slice(0, 100) + (finalMicroText.length > 100 ? '...' : ''),
+    estimatedDurationSec: Math.round(finalMicroText.length / 150 * 10) / 10,  // ~150 chars/sec speaking rate
   }, 'Extracted micro-preview text');
 
-  return { microText: microText.trim(), remainingText };
+  return { microText: finalMicroText, remainingText };
 }
 
 /**
