@@ -1094,12 +1094,14 @@ async function processJob(message: TTSJobMessage): Promise<void> {
       updated_at: new Date().toISOString(),
     };
 
-    // 5. Choose synthesis provider based on model_id first, then TTS_PROVIDER env var
-    // - If model_id is 'eleven_multilingual_v2', use ElevenLabs (requested from client)
-    // - Otherwise, use the server-configured provider
+    // 5. Choose synthesis provider based on model_id from client request
+    // - model_id 'eleven_multilingual_v2' -> ElevenLabs (Premium)
+    // - model_id 'kokoro-82m' -> selfhosted/Kokoro (Standard)
+    // - Otherwise, fall back to server-configured provider
     const isElevenLabsModel = modelId === 'eleven_multilingual_v2' || modelId === 'elevenlabs';
-    const effectiveProvider = isElevenLabsModel ? 'elevenlabs' : getConfiguredProvider();
-    workerLogger.info({ jobId, charCount, modelId, provider: effectiveProvider, isElevenLabsModel }, 'Selected TTS provider');
+    const isKokoroModel = modelId === 'kokoro-82m' || modelId === 'kokoro';
+    const effectiveProvider = isElevenLabsModel ? 'elevenlabs' : (isKokoroModel ? 'selfhosted' : getConfiguredProvider());
+    workerLogger.info({ jobId, charCount, modelId, provider: effectiveProvider, isElevenLabsModel, isKokoroModel }, 'Selected TTS provider');
 
     if (effectiveProvider === 'elevenlabs') {
       await processJobWithElevenLabs(jobId, text, voiceId, modelId, speed, cacheKey, charCount);
