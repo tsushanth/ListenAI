@@ -1,6 +1,6 @@
 import { Router, Request, Response, NextFunction, RequestHandler } from 'express';
 import { createWriteStream, existsSync, statSync, unlinkSync } from 'fs';
-import { v4 as uuidv4 } from 'uuid';
+import crypto from 'crypto';
 import { logger } from '../lib/logger.js';
 import { requireAuth } from '../middleware/auth.js';
 import { supabase } from '../lib/supabaseClient.js';
@@ -442,7 +442,7 @@ adminRouter.post(
     const testText = body.text || `This is a comprehensive test of the micro-first text-to-speech strategy. The system should generate a small audio preview within seconds, allowing you to start listening immediately. After the preview is ready, the full audio will be generated in the background. This approach dramatically reduces the time-to-first-audio for longer content, making the listening experience much more responsive. The micro-preview contains just the first couple of sentences, while the full audio contains the complete text. Both are uploaded to cloud storage and made available via signed URLs.`;
     const voiceId = body.voice_id || 'Rachel'; // Default ElevenLabs voice
 
-    const jobId = uuidv4();
+    const jobId = crypto.randomUUID();
     const testUserId = 'admin-test-user';
     const cacheKey = computeCacheKey({ text: testText, voiceId, modelId: 'elevenlabs', speed: 1.0 });
 
