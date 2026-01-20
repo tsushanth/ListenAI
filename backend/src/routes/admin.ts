@@ -399,6 +399,69 @@ adminRouter.get('/test-tts-elevenlabs/status', (_req: Request, res: Response) =>
 });
 
 // ============================================================================
+// POST /admin/test-micro-extract - Test micro text extraction (no TTS)
+// ============================================================================
+
+adminRouter.post(
+  '/test-micro-extract',
+  asyncHandler(async (req: Request, res: Response) => {
+    const body = req.body as { text?: string };
+    const testText = body.text || `This is a comprehensive test of the micro-first text-to-speech strategy. The system should generate a small audio preview within seconds, allowing you to start listening immediately. After the preview is ready, the full audio will be generated in the background. This approach dramatically reduces the time-to-first-audio for longer content, making the listening experience much more responsive. The micro-preview contains just the first couple of sentences, while the full audio contains the complete text. Both are uploaded to cloud storage and made available via signed URLs.`;
+
+    // Import the extraction function (note: it's not exported, so we'll inline the logic)
+    const MICRO_TARGET_CHARS = 200;
+    const MICRO_MAX_SENTENCES = 2;
+    const SHORT_TEXT_THRESHOLD = 500;
+
+    // Split into sentences
+    const sentencePattern = /[.!?]+[\s]+|[.!?]+$/g;
+    const sentences: string[] = [];
+    let lastIndex = 0;
+    let match;
+    const cleanText = testText.trim();
+
+    while ((match = sentencePattern.exec(cleanText)) !== null) {
+      const sentence = cleanText.slice(lastIndex, match.index + match[0].length).trim();
+      if (sentence) sentences.push(sentence);
+      lastIndex = match.index + match[0].length;
+    }
+    const remaining = cleanText.slice(lastIndex).trim();
+    if (remaining) sentences.push(remaining);
+
+    // Extract micro text
+    let microText = '';
+    let sentenceCount = 0;
+    for (const sentence of sentences) {
+      if (sentenceCount === 0) {
+        microText = sentence;
+        sentenceCount++;
+        continue;
+      }
+      if ((microText + ' ' + sentence).trim().length > MICRO_TARGET_CHARS || sentenceCount >= MICRO_MAX_SENTENCES) {
+        break;
+      }
+      microText = microText + ' ' + sentence;
+      sentenceCount++;
+    }
+
+    const isShortText = cleanText.length < SHORT_TEXT_THRESHOLD;
+    const microLength = microText.length;
+    const remainingText = cleanText.slice(microLength).trim();
+
+    res.json({
+      input_length: cleanText.length,
+      is_short_text: isShortText,
+      would_use_micro_first: !isShortText,
+      sentence_count: sentences.length,
+      micro_text: microText,
+      micro_length: microLength,
+      micro_sentences: sentenceCount,
+      remaining_length: remainingText.length,
+    });
+  })
+);
+
+// ============================================================================
 // POST /admin/test-micro-first - Test Micro-First TTS Flow End-to-End
 // ============================================================================
 
