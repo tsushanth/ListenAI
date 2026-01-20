@@ -1,4 +1,5 @@
 import { Router, Request, Response, NextFunction, RequestHandler } from 'express';
+import { createWriteStream, existsSync, statSync, unlinkSync } from 'fs';
 import { logger } from '../lib/logger.js';
 import { requireAuth } from '../middleware/auth.js';
 import {
@@ -16,6 +17,11 @@ import {
   getFailureStats,
   getInferenceLatencyStats,
 } from '../lib/metrics.js';
+import {
+  getElevenLabsClient,
+  isElevenLabsConfigured,
+  type TTFBMetrics,
+} from '../lib/elevenLabsClient.js';
 import type { AuthenticatedRequest } from '../types/index.js';
 
 // ============================================================================
@@ -229,4 +235,161 @@ adminRouter.get('/metrics/failures', (_req: Request, res: Response) => {
 adminRouter.get('/metrics/latency', (_req: Request, res: Response) => {
   const latencyStats = getInferenceLatencyStats();
   res.json(latencyStats);
+});
+
+// ============================================================================
+// POST /admin/test-tts-elevenlabs - Test ElevenLabs TTS Integration
+// ============================================================================
+
+interface TestTTSRequest {
+  text?: string;
+  voice_id?: string;
+}
+
+interface TestTTSResponse {
+  success: boolean;
+  provider: string;
+  configured: boolean;
+  duration_ms: number;
+  bytes_written: number;
+  file_path: string;
+  metrics: TTFBMetrics | null;
+  error?: string;
+}
+
+adminRouter.post(
+  '/test-tts-elevenlabs',
+  asyncHandler(async (req: Request, res: Response) => {
+    const startTime = Date.now();
+    const body = req.body as TestTTSRequest;
+
+    // Default test text and voice
+    const testText = body.text || 'Hello, this is a test of the ElevenLabs text to speech integration. The audio should sound natural and clear.';
+    const voiceId = body.voice_id || 'af_sarah'; // Sarah - clear female voice
+
+    adminLogger.info({
+      textLength: testText.length,
+      voiceId,
+    }, 'Starting ElevenLabs TTS test');
+
+    // Check if ElevenLabs is configured
+    if (!isElevenLabsConfigured()) {
+      const response: TestTTSResponse = {
+        success: false,
+        provider: 'elevenlabs',
+        configured: false,
+        duration_ms: Date.now() - startTime,
+        bytes_written: 0,
+        file_path: '',
+        metrics: null,
+        error: 'ELEVENLABS_API_KEY not configured',
+      };
+      res.status(400).json(response);
+      return;
+    }
+
+    const client = getElevenLabsClient();
+    if (!client) {
+      const response: TestTTSResponse = {
+        success: false,
+        provider: 'elevenlabs',
+        configured: true,
+        duration_ms: Date.now() - startTime,
+        bytes_written: 0,
+        file_path: '',
+        metrics: null,
+        error: 'Failed to initialize ElevenLabs client',
+      };
+      res.status(500).json(response);
+      return;
+    }
+
+    // Test file path
+    const testFilePath = '/tmp/test-elevenlabs.mp3';
+
+    try {
+      // Clean up any existing test file
+      if (existsSync(testFilePath)) {
+        unlinkSync(testFilePath);
+      }
+
+      // Use synthesizeToFile which streams directly without buffering
+      const result = await client.synthesizeToFile(
+        {
+          text: testText,
+          voiceId,
+        },
+        testFilePath
+      );
+
+      // Verify file was written
+      const fileStats = existsSync(testFilePath) ? statSync(testFilePath) : null;
+      const bytesWritten = fileStats?.size || result.bytesWritten;
+
+      adminLogger.info({
+        bytesWritten,
+        metrics: result.metrics,
+        filePath: testFilePath,
+      }, 'ElevenLabs TTS test completed');
+
+      const response: TestTTSResponse = {
+        success: true,
+        provider: 'elevenlabs',
+        configured: true,
+        duration_ms: Date.now() - startTime,
+        bytes_written: bytesWritten,
+        file_path: testFilePath,
+        metrics: result.metrics,
+      };
+
+      // Log TTFB details for verification
+      adminLogger.info({
+        t_start: result.metrics.t_start,
+        t_first_byte: result.metrics.t_first_byte,
+        t_done: result.metrics.t_done,
+        ttfb_ms: result.metrics.ttfb_ms,
+        total_ms: result.metrics.total_ms,
+      }, 'ElevenLabs TTFB metrics');
+
+      res.json(response);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
+      adminLogger.error({
+        error: errorMessage,
+        voiceId,
+        textLength: testText.length,
+      }, 'ElevenLabs TTS test failed');
+
+      const response: TestTTSResponse = {
+        success: false,
+        provider: 'elevenlabs',
+        configured: true,
+        duration_ms: Date.now() - startTime,
+        bytes_written: 0,
+        file_path: testFilePath,
+        metrics: null,
+        error: errorMessage,
+      };
+
+      res.status(500).json(response);
+    }
+  })
+);
+
+// ============================================================================
+// GET /admin/test-tts-elevenlabs/status - Check ElevenLabs configuration status
+// ============================================================================
+
+adminRouter.get('/test-tts-elevenlabs/status', (_req: Request, res: Response) => {
+  const configured = isElevenLabsConfigured();
+  const client = configured ? getElevenLabsClient() : null;
+
+  res.json({
+    configured,
+    available: client?.isAvailable() ?? false,
+    provider: 'elevenlabs',
+    env_var_set: !!process.env.ELEVENLABS_API_KEY,
+    tts_provider_setting: process.env.TTS_PROVIDER || 'auto',
+  });
 });
