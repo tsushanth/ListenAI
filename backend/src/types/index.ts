@@ -13,6 +13,7 @@ export interface EnvConfig {
   OPENAI_API_KEY?: string;
   SELFHOSTED_TTS_URL?: string;
   SELFHOSTED_TTS_API_KEY?: string;
+  ELEVENLABS_API_KEY?: string;
   GPU_TTS_URL?: string;
   GPU_TTS_ENABLED: boolean;
   RATE_LIMIT_WINDOW_MS: number;
@@ -55,7 +56,7 @@ export interface AuthenticatedRequest extends Request {
 
 export type SubscriptionTier = 'free' | 'basic' | 'pro' | 'unlimited';
 export type SubscriptionStatus = 'active' | 'trialing' | 'past_due' | 'canceled' | 'expired';
-export type TTSProvider = 'selfhosted' | 'mock';
+export type TTSProvider = 'selfhosted' | 'elevenlabs' | 'mock';
 
 export interface DBUser {
   id: string;

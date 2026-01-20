@@ -8,6 +8,11 @@ import {
   uploadAudioToCache,
 } from '../lib/supabaseClient.js';
 import { ttsProvider } from '../lib/ttsProviderClient.js';
+import {
+  getElevenLabsClient,
+  isElevenLabsConfigured,
+  type ElevenLabsRequest,
+} from '../lib/elevenLabsClient.js';
 import { generateAudioPath } from '../lib/cacheKey.js';
 import {
   startSubscription,
@@ -365,6 +370,236 @@ async function getAudioDuration(audioBuffer: Buffer): Promise<number> {
 }
 
 // ============================================================================
+// ElevenLabs Synthesis (V1 Production)
+// ============================================================================
+
+/**
+ * Synthesize using ElevenLabs with micro-preview strategy.
+ *
+ * Key optimizations for v1:
+ * 1. ElevenLabs returns MP3 directly - no WAV conversion needed
+ * 2. Streaming API for micro-preview - audio starts playing immediately
+ * 3. Short Supabase connections - upload preview, then full audio separately
+ * 4. No large buffers - streaming means low memory usage
+ */
+async function synthesizeWithElevenLabs(
+  jobId: string,
+  text: string,
+  voiceId: string,
+  speed: number,
+  cacheKey: string,
+  isShortText: boolean
+): Promise<{ previewPath?: string; fullPath: string; durationSec: number; mp3Size: number }> {
+  const elevenLabs = getElevenLabsClient();
+  if (!elevenLabs) {
+    throw new Error('ElevenLabs not configured');
+  }
+
+  const request: ElevenLabsRequest = {
+    text,
+    voiceId,
+    // Note: ElevenLabs doesn't have a direct speed parameter in the same way
+    // Speed can be adjusted via voice settings or model selection
+    voiceSettings: {
+      stability: 0.5,
+      similarity_boost: 0.75,
+    },
+  };
+
+  if (isShortText) {
+    // For short text, just synthesize directly (no preview needed)
+    workerLogger.info({ jobId, textLength: text.length }, 'ElevenLabs: synthesizing short text');
+
+    const inferenceStart = Date.now();
+    const result = await elevenLabs.synthesize(request);
+    const inferenceMs = Date.now() - inferenceStart;
+
+    workerLogger.info({
+      jobId,
+      inferenceMs,
+      mp3Size: result.audioBuffer.length,
+    }, 'ElevenLabs: short text synthesis complete');
+
+    // Upload directly to final path
+    const fullPath = `audio/jobs/${jobId}/full.mp3`;
+    await uploadAudioToCache(fullPath, result.audioBuffer, 'mp3');
+
+    // Get duration from MP3
+    const durationSec = await getAudioDuration(result.audioBuffer);
+
+    return {
+      fullPath,
+      durationSec,
+      mp3Size: result.audioBuffer.length,
+    };
+  }
+
+  // For longer text, use streaming for micro-preview
+  workerLogger.info({ jobId, textLength: text.length }, 'ElevenLabs: synthesizing with micro-preview');
+
+  const inferenceStart = Date.now();
+
+  // Stream the audio and collect it
+  const chunks: Buffer[] = [];
+  let previewBuffer: Buffer | null = null;
+  let previewUploaded = false;
+  const previewTargetBytes = 24000; // ~3 seconds at 64kbps
+
+  for await (const chunk of elevenLabs.synthesizeStream(request)) {
+    if (chunk.audio.length > 0) {
+      chunks.push(chunk.audio);
+
+      // Upload micro-preview as soon as we have enough audio
+      if (!previewUploaded) {
+        const totalBytes = chunks.reduce((sum, c) => sum + c.length, 0);
+        if (totalBytes >= previewTargetBytes) {
+          previewBuffer = Buffer.concat(chunks);
+          const previewPath = `audio/jobs/${jobId}/preview.mp3`;
+
+          workerLogger.info({
+            jobId,
+            previewSize: previewBuffer.length,
+            latencyMs: Date.now() - inferenceStart,
+          }, 'ElevenLabs: uploading micro-preview');
+
+          // Upload preview immediately (short Supabase connection)
+          await uploadAudioToCache(previewPath, previewBuffer, 'mp3');
+
+          // Get preview duration
+          const previewDurationSec = await getAudioDuration(previewBuffer);
+
+          // Update job to partial_ready so iOS can start playing
+          await supabase
+            .from('tts_jobs')
+            .update({
+              status: 'partial_ready',
+              preview_audio_path: previewPath,
+              preview_duration_sec: previewDurationSec,
+              progress_sec: previewDurationSec,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', jobId);
+
+          recordPartialReady(jobId, previewDurationSec);
+          previewUploaded = true;
+
+          workerLogger.info({
+            jobId,
+            previewDurationSec,
+            latencyMs: Date.now() - inferenceStart,
+          }, 'ElevenLabs: micro-preview ready');
+        }
+      }
+    }
+  }
+
+  const inferenceMs = Date.now() - inferenceStart;
+  const fullBuffer = Buffer.concat(chunks);
+
+  workerLogger.info({
+    jobId,
+    inferenceMs,
+    mp3Size: fullBuffer.length,
+    previewUploaded,
+  }, 'ElevenLabs: full synthesis complete');
+
+  // Upload full audio
+  const fullPath = `audio/jobs/${jobId}/full.mp3`;
+  await uploadAudioToCache(fullPath, fullBuffer, 'mp3');
+
+  // Get full duration
+  const durationSec = await getAudioDuration(fullBuffer);
+
+  // If preview wasn't uploaded (text was shorter than expected), use full as preview
+  const previewPath = previewUploaded ? `audio/jobs/${jobId}/preview.mp3` : undefined;
+
+  return {
+    previewPath,
+    fullPath,
+    durationSec,
+    mp3Size: fullBuffer.length,
+  };
+}
+
+/**
+ * Process job using ElevenLabs (v1 production).
+ */
+async function processJobWithElevenLabs(
+  jobId: string,
+  text: string,
+  voiceId: string,
+  modelId: string,
+  speed: number,
+  cacheKey: string,
+  charCount: number
+): Promise<void> {
+  const isShortText = charCount < SHORT_TEXT_THRESHOLD;
+
+  workerLogger.info({
+    jobId,
+    voiceId,
+    charCount,
+    isShortText,
+    provider: 'elevenlabs',
+  }, 'Processing job with ElevenLabs');
+
+  const inferenceStart = Date.now();
+
+  const result = await synthesizeWithElevenLabs(
+    jobId,
+    text,
+    voiceId,
+    speed,
+    cacheKey,
+    isShortText
+  );
+
+  const inferenceMs = Date.now() - inferenceStart;
+
+  // Record metrics
+  recordSegmentInference(jobId, 0, inferenceMs, false);
+  recordInferenceLatency('elevenlabs', inferenceMs, false);
+
+  // Update cache entry
+  await upsertCacheEntry({
+    cacheKey,
+    audioPath: result.fullPath,
+    format: 'mp3',
+    durationSec: result.durationSec,
+    fileSizeBytes: result.mp3Size,
+    voiceId,
+    modelId: 'elevenlabs',
+    speed,
+    textHash: cacheKey,
+  });
+
+  // Update job to ready
+  await updateTTSJobProgress({
+    jobId,
+    status: 'ready',
+    audioPath: result.fullPath,
+    durationSec: result.durationSec,
+  });
+
+  // Also update full_audio_path
+  await supabase
+    .from('tts_jobs')
+    .update({
+      full_audio_path: result.fullPath,
+    })
+    .eq('id', jobId);
+
+  recordJobReady(jobId, result.durationSec, result.mp3Size, 1);
+
+  workerLogger.info({
+    jobId,
+    durationSec: result.durationSec,
+    mp3Size: result.mp3Size,
+    inferenceMs,
+  }, 'ElevenLabs job completed');
+}
+
+// ============================================================================
 // Job Processing
 // ============================================================================
 
@@ -463,12 +698,17 @@ async function processJob(message: TTSJobMessage): Promise<void> {
       updated_at: new Date().toISOString(),
     };
 
-    // 5. Check if text is short enough to skip preview
-    if (charCount < SHORT_TEXT_THRESHOLD) {
+    // 5. Choose synthesis provider
+    // V1 Production: Use ElevenLabs if configured
+    if (isElevenLabsConfigured()) {
+      workerLogger.info({ jobId, charCount, provider: 'elevenlabs' }, 'Using ElevenLabs for synthesis');
+      await processJobWithElevenLabs(jobId, text, voiceId, modelId, speed, cacheKey, charCount);
+    } else if (charCount < SHORT_TEXT_THRESHOLD) {
+      // Fallback: Self-hosted for short text
       workerLogger.info({ jobId, charCount }, 'Short text, skipping preview and generating full audio');
       await processShortText(jobId, text, voice, speed, cacheKey, modelId);
     } else {
-      // 6. Use preview-first approach for longer text
+      // Fallback: Self-hosted preview-first for longer text
       workerLogger.info({ jobId, charCount }, 'Long text, using preview-first approach');
       await processWithPreview(jobId, text, voice, speed, cacheKey, modelId);
     }

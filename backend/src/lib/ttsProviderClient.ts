@@ -1075,6 +1075,7 @@ export const ttsProvider = new TTSProviderManager();
 export function estimateCost(provider: TTSProvider, characters: number): number {
   const ratesPerMillion: Record<TTSProvider, number> = {
     selfhosted: 1,     // ~$0.001 per 1000 chars (infrastructure cost only)
+    elevenlabs: 300,   // ~$0.30 per 1000 chars (ElevenLabs pricing)
     mock: 0,           // Free (testing only)
   };
 
