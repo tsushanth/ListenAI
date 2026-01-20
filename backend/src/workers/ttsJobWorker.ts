@@ -673,10 +673,9 @@ async function synthesizeWithElevenLabs(
     throw new Error('ElevenLabs not configured');
   }
 
-  // V1: Direct synthesis for stability
-  // Micro-first disabled - causes crashes even with 4Gi memory
-  // Will debug separately; direct synthesis is still fast with ElevenLabs
-  const MICRO_FIRST_ENABLED = false;
+  // V1: Micro-first enabled for faster time-to-first-audio
+  // Fixed EPIPE crash by using duration estimation instead of ffprobe
+  const MICRO_FIRST_ENABLED = true;
 
   if (!MICRO_FIRST_ENABLED || isShortText) {
     // Direct synthesis for all text (micro-first disabled)
