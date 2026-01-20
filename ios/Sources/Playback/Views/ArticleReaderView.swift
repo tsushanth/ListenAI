@@ -321,6 +321,9 @@ struct ArticleReaderView: View {
             // Check and reset daily quota if new day
             quotaErrorState.checkAndResetDailyQuota()
 
+            // Setup TTSJobManager callbacks for immediate playback
+            setupTTSJobManagerCallbacks()
+
             // Check for persisted job and resume polling if needed
             checkAndResumePersistedJob()
         }
@@ -931,7 +934,10 @@ struct ArticleReaderView: View {
         let maxTime = urlPlayer.maxSeekableTime
         let totalDuration = urlPlayer.duration
         guard totalDuration > 0 else { return 1.0 }
-        return min(1.0, maxTime / totalDuration)
+        let result = maxTime / totalDuration
+        // Guard against NaN/Inf from division
+        guard result.isFinite else { return 1.0 }
+        return min(1.0, result)
     }
 
     private var seekSlider: some View {
@@ -992,12 +998,22 @@ struct ArticleReaderView: View {
                             newPosition = min(newPosition, maxSeekableProgress)
                         }
 
-                        // Use appropriate player for seeking
+                        // Use appropriate player for seeking (guard against zero duration)
                         if urlPlayer.currentArticleID == article.id && urlPlayer.state.isActive {
-                            let newTime = newPosition * urlPlayer.duration
+                            let duration = urlPlayer.duration
+                            guard duration > 0 else {
+                                isSeeking = false
+                                return
+                            }
+                            let newTime = newPosition * duration
                             urlPlayer.seek(to: newTime)
                         } else {
-                            let newTime = newPosition * playbackService.progress.duration
+                            let duration = playbackService.progress.duration
+                            guard duration > 0 else {
+                                isSeeking = false
+                                return
+                            }
+                            let newTime = newPosition * duration
                             playbackService.seek(to: newTime)
                         }
                         isSeeking = false
@@ -2164,6 +2180,94 @@ struct ArticleReaderView: View {
                 print("[ArticleReader] Failed to swap audio: \(error)")
                 // Fallback: stop and play fresh
                 playAudioWithMode(url: url, mode: .full)
+            }
+        }
+    }
+
+    /// Setup TTSJobManager callbacks for immediate playback from remote URLs.
+    /// This enables:
+    /// 1. Immediate playback when partial_ready (no download wait)
+    /// 2. Seamless swap to full audio preserving playback position
+    private func setupTTSJobManagerCallbacks() {
+        let articleId = article.id
+
+        // Called when preview is ready - start playback immediately from remote URL
+        TTSJobManager.shared.onPreviewReady = { [weak urlPlayer, weak streamingTTS] receivedArticleId, previewURL, previewDuration in
+            guard receivedArticleId == articleId else { return }
+
+            print("[ArticleReader] Preview ready callback - starting immediate playback from: \(previewURL)")
+
+            Task { @MainActor in
+                // Stop any streaming playback first
+                streamingTTS?.stopStreaming()
+
+                // Set player mode to preview with duration restriction
+                urlPlayer?.setPlayerMode(.preview, previewDuration: previewDuration)
+
+                do {
+                    try await urlPlayer?.play(
+                        url: previewURL,
+                        articleID: articleId,
+                        title: self.article.displayTitle,
+                        artist: self.article.author ?? self.article.siteName,
+                        startPosition: nil,
+                        onComplete: nil  // Don't mark as finished for preview
+                    )
+                    print("[ArticleReader] Preview playback started from remote URL")
+                } catch {
+                    print("[ArticleReader] Failed to start preview playback: \(error)")
+                }
+            }
+        }
+
+        // Called when full audio is ready - swap to full audio preserving position
+        TTSJobManager.shared.onFullAudioReady = { [weak urlPlayer] receivedArticleId, fullURL in
+            guard receivedArticleId == articleId else { return }
+
+            print("[ArticleReader] Full audio ready callback - swapping to: \(fullURL)")
+
+            Task { @MainActor in
+                // Check if we're currently playing preview for this article
+                if urlPlayer?.currentArticleID == articleId && urlPlayer?.playerMode == .preview {
+                    // Seamless swap preserving playback position
+                    do {
+                        try await urlPlayer?.swapAudioURL(to: fullURL, mode: .full, preservePosition: true)
+                        print("[ArticleReader] Swapped to full audio, position preserved")
+                    } catch {
+                        print("[ArticleReader] Failed to swap audio: \(error)")
+                        // Fallback: play fresh from full URL
+                        urlPlayer?.setPlayerMode(.full, previewDuration: nil)
+                        try? await urlPlayer?.play(
+                            url: fullURL,
+                            articleID: articleId,
+                            title: self.article.displayTitle,
+                            artist: self.article.author ?? self.article.siteName,
+                            startPosition: nil,
+                            onComplete: {
+                                Task { @MainActor in
+                                    ArticleStore.shared.markAsFinished(self.article)
+                                }
+                            }
+                        )
+                    }
+                } else if urlPlayer?.currentArticleID != articleId {
+                    // Not playing this article yet - full audio is ready, can start from full
+                    print("[ArticleReader] Full audio ready but not playing preview, ready for full playback")
+                    // Don't auto-start - user will press play when ready
+                }
+            }
+        }
+
+        // Called when job fails
+        TTSJobManager.shared.onJobFailed = { receivedArticleId, errorMessage in
+            guard receivedArticleId == articleId else { return }
+
+            print("[ArticleReader] Job failed callback: \(errorMessage)")
+
+            Task { @MainActor in
+                self.isSynthesizing = false
+                self.synthesisError = errorMessage
+                self.ttsJobError = errorMessage
             }
         }
     }

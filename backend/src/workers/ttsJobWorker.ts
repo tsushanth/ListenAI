@@ -46,10 +46,15 @@ const PREVIEW_MIN_CHARS = 200;           // Minimum characters for preview
 const PREVIEW_MAX_CHARS = 2000;          // Maximum characters for preview
 const SHORT_TEXT_THRESHOLD = 500;        // Below this, skip preview (just generate full)
 
-// Micro-preview configuration (for instant playback)
-const MICRO_TARGET_CHARS = 200;          // Target ~200 characters for micro-preview (~2-3 seconds)
+// Micro-preview configuration (for instant playback - target 1-3 seconds audio)
+const MICRO_TARGET_CHARS = 150;          // Target ~120-150 characters for micro-preview (~1-2 seconds audio)
+const MICRO_MAX_CHARS = 200;             // Hard cap at 200 chars
 const MICRO_MIN_CHARS = 50;              // Minimum chars for micro (at least something to play)
-const MICRO_MAX_SENTENCES = 2;           // Max 1-2 sentences for micro
+const MICRO_MAX_SENTENCES = 1;           // Max 1 sentence for micro (faster TTFB)
+
+// Preview configuration (intermediate, for 10-30 seconds audio)
+const PREVIEW_TARGET_CHARS = 1000;       // Target ~1000 characters for preview (~10-15 seconds)
+const PREVIEW_MAX_CHARS_NEW = 1500;      // Hard cap for preview text
 
 /**
  * Get the configured TTS provider.
@@ -228,51 +233,100 @@ function extractMicroText(text: string): { microText: string; remainingText: str
   const sentences = splitIntoSentences(cleanText);
 
   if (sentences.length === 0) {
-    // Fallback: just take first 200 chars
+    // Fallback: just take first MICRO_TARGET_CHARS, ending at word boundary
+    const cutPoint = findWordBoundary(cleanText, MICRO_TARGET_CHARS);
     return {
-      microText: cleanText.slice(0, MICRO_TARGET_CHARS),
-      remainingText: cleanText.slice(MICRO_TARGET_CHARS),
+      microText: cleanText.slice(0, cutPoint),
+      remainingText: cleanText.slice(cutPoint).trim(),
     };
   }
 
-  // Try to get 1-2 complete sentences up to target chars
-  let microText = '';
-  let sentenceCount = 0;
+  // Take ONLY the first sentence for micro (fastest TTFB)
+  // But cap it at MICRO_MAX_CHARS
+  let microText: string = sentences[0] ?? '';
 
-  for (const sentence of sentences) {
-    // Check if adding this sentence would exceed limits
-    const wouldExceedChars = (microText + ' ' + sentence).trim().length > MICRO_TARGET_CHARS;
-    const wouldExceedSentences = sentenceCount >= MICRO_MAX_SENTENCES;
-
-    // Always include at least one sentence
-    if (sentenceCount === 0) {
-      microText = sentence;
-      sentenceCount++;
-      continue;
+  // If first sentence is too long, truncate at clause boundary or word boundary
+  if (microText && microText.length > MICRO_MAX_CHARS) {
+    // Try to find a clause boundary (comma, semicolon, etc.)
+    const clauseMatch = microText.slice(0, MICRO_MAX_CHARS).match(/^(.+?[,;:—–-])\s/);
+    if (clauseMatch && clauseMatch[1] && clauseMatch[1].length >= MICRO_MIN_CHARS) {
+      microText = clauseMatch[1].trim();
+    } else {
+      // Fall back to word boundary
+      microText = microText.slice(0, findWordBoundary(microText, MICRO_TARGET_CHARS));
     }
-
-    // Stop if we've hit limits
-    if (wouldExceedChars || wouldExceedSentences) {
-      break;
-    }
-
-    // Add this sentence
-    microText = microText + ' ' + sentence;
-    sentenceCount++;
   }
 
   // Get remaining text
-  const microLength = microText.length;
+  const microLength = microText?.length ?? 0;
   const remainingText = cleanText.slice(microLength).trim();
 
   workerLogger.debug({
     totalLength: cleanText.length,
     microLength: microText.length,
-    microSentences: sentenceCount,
     remainingLength: remainingText.length,
   }, 'Extracted micro-preview text');
 
   return { microText: microText.trim(), remainingText };
+}
+
+/**
+ * Extract preview text (intermediate, ~10-30 seconds audio).
+ * Used after micro for a better listening experience while full generates.
+ */
+function extractPreviewText(text: string): { previewText: string; remainingText: string } {
+  const cleanText = text.trim();
+
+  if (cleanText.length <= PREVIEW_TARGET_CHARS) {
+    return { previewText: cleanText, remainingText: '' };
+  }
+
+  const sentences = splitIntoSentences(cleanText);
+
+  if (sentences.length === 0) {
+    const cutPoint = findWordBoundary(cleanText, PREVIEW_TARGET_CHARS);
+    return {
+      previewText: cleanText.slice(0, cutPoint),
+      remainingText: cleanText.slice(cutPoint).trim(),
+    };
+  }
+
+  // Accumulate sentences up to PREVIEW_TARGET_CHARS, max PREVIEW_MAX_CHARS_NEW
+  let previewText = '';
+  for (const sentence of sentences) {
+    const wouldExceed = (previewText + ' ' + sentence).trim().length > PREVIEW_MAX_CHARS_NEW;
+    if (wouldExceed && previewText.length >= PREVIEW_TARGET_CHARS / 2) {
+      break;
+    }
+    previewText = (previewText + ' ' + sentence).trim();
+    if (previewText.length >= PREVIEW_TARGET_CHARS) {
+      break;
+    }
+  }
+
+  const remainingText = cleanText.slice(previewText.length).trim();
+  return { previewText, remainingText };
+}
+
+/**
+ * Find a word boundary near the target position.
+ */
+function findWordBoundary(text: string, target: number): number {
+  if (target >= text.length) return text.length;
+
+  // Look for space before target
+  const spaceIndex = text.lastIndexOf(' ', target);
+  if (spaceIndex > target * 0.7) {
+    return spaceIndex;
+  }
+
+  // Look for space after target
+  const nextSpace = text.indexOf(' ', target);
+  if (nextSpace !== -1 && nextSpace < target * 1.3) {
+    return nextSpace;
+  }
+
+  return target;
 }
 
 /**

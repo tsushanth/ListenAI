@@ -332,12 +332,15 @@ final class URLAudioPlayer: NSObject, ObservableObject {
         mode: URLPlayerMode,
         preservePosition: Bool = true
     ) async throws {
-        print("[URLAudioPlayer] Swapping audio to: \(url.lastPathComponent), mode: \(mode)")
+        print("[URLAudioPlayer] Swapping audio to: \(url.lastPathComponent), mode: \(mode), preservePosition: \(preservePosition)")
 
-        // Capture current playback state
+        // Capture current playback state BEFORE any changes
         let wasPlaying = isPlaying
         let currentPosition = currentTime
         let currentRate = rate
+        let oldDuration = duration
+
+        print("[URLAudioPlayer] Swap capture - wasPlaying: \(wasPlaying), position: \(String(format: "%.2f", currentPosition))s, rate: \(currentRate), oldDuration: \(String(format: "%.2f", oldDuration))s")
 
         // Pause current playback
         player?.pause()
@@ -415,17 +418,24 @@ final class URLAudioPlayer: NSObject, ObservableObject {
             .store(in: &cancellables)
 
         // Seek to preserved position if requested and within bounds
-        if preservePosition && currentPosition > 0 {
-            let maxSeek = min(currentPosition, duration - 0.5)
+        if preservePosition && currentPosition > 0 && duration > 0 {
+            // Clamp position to be within the new duration (with 0.5s buffer from end)
+            let maxSeek = min(currentPosition, max(0, duration - 0.5))
             if maxSeek > 0 {
                 let time = CMTime(seconds: maxSeek, preferredTimescale: 600)
+                print("[URLAudioPlayer] Seeking to preserved position: \(String(format: "%.2f", maxSeek))s (original: \(String(format: "%.2f", currentPosition))s, newDuration: \(String(format: "%.2f", duration))s)")
                 await player?.seek(to: time, toleranceBefore: .zero, toleranceAfter: .zero)
                 currentTime = maxSeek
+            } else {
+                print("[URLAudioPlayer] Skipping seek - maxSeek is \(maxSeek)")
             }
+        } else {
+            print("[URLAudioPlayer] Skipping seek - preservePosition: \(preservePosition), position: \(String(format: "%.2f", currentPosition))s, duration: \(String(format: "%.2f", duration))s")
         }
 
         // Resume playback if was playing
         if wasPlaying {
+            print("[URLAudioPlayer] Resuming playback at rate: \(currentRate)")
             player?.rate = currentRate
             isPlaying = true
             state = .playing
@@ -434,7 +444,7 @@ final class URLAudioPlayer: NSObject, ObservableObject {
         // Update now playing info
         updateNowPlayingPlaybackState()
 
-        print("[URLAudioPlayer] Audio swapped successfully, mode: \(mode), position: \(currentTime)s, duration: \(duration)s")
+        print("[URLAudioPlayer] Audio swapped successfully - mode: \(mode), finalPosition: \(String(format: "%.2f", currentTime))s, newDuration: \(String(format: "%.2f", duration))s, playing: \(isPlaying)")
     }
 
     /// Set the player mode (for external state management)

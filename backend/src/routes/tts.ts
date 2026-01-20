@@ -14,6 +14,7 @@ import {
   upsertCacheEntry,
   uploadAudioToCache,
   updateTTSJobProgress,
+  supabase,
 } from '../lib/supabaseClient.js';
 import {
   computeCacheKey,
@@ -30,6 +31,7 @@ import {
   getDefaultVoiceId,
 } from '../lib/voiceMapping.js';
 import { publishTTSJob } from '../lib/pubsub.js';
+import { getElevenLabsClient, isElevenLabsConfigured } from '../lib/elevenLabsClient.js';
 import type {
   AuthenticatedRequest,
   TTSProvider,
@@ -43,6 +45,130 @@ import {
   QuotaExceededError,
   NotFoundError,
 } from '../types/index.js';
+
+// ============================================================================
+// Fast Lane Micro Generation (Inline)
+// ============================================================================
+
+// Micro-preview configuration (must match ttsJobWorker.ts)
+const MICRO_TARGET_CHARS = 150;
+const MICRO_MAX_CHARS = 200;
+const MICRO_MIN_CHARS = 50;
+const INLINE_MICRO_TIMEOUT_MS = 2500;  // 2.5 second timeout for inline micro
+
+/**
+ * Extract micro text (first sentence or first ~150 chars).
+ * Simplified version for inline use.
+ */
+function extractMicroTextInline(text: string): string {
+  const cleanText = text.trim();
+
+  if (cleanText.length <= MICRO_TARGET_CHARS) {
+    return cleanText;
+  }
+
+  // Try to find first sentence
+  const sentenceMatch = cleanText.match(/^[^.!?]+[.!?]/);
+  if (sentenceMatch && sentenceMatch[0].length <= MICRO_MAX_CHARS && sentenceMatch[0].length >= MICRO_MIN_CHARS) {
+    return sentenceMatch[0].trim();
+  }
+
+  // Try to find a clause boundary
+  const clauseMatch = cleanText.slice(0, MICRO_MAX_CHARS).match(/^(.+?[,;:—–-])\s/);
+  if (clauseMatch && clauseMatch[1] && clauseMatch[1].length >= MICRO_MIN_CHARS) {
+    return clauseMatch[1].trim();
+  }
+
+  // Fall back to word boundary
+  const spaceIndex = cleanText.lastIndexOf(' ', MICRO_TARGET_CHARS);
+  if (spaceIndex > MICRO_TARGET_CHARS * 0.7) {
+    return cleanText.slice(0, spaceIndex);
+  }
+
+  return cleanText.slice(0, MICRO_TARGET_CHARS);
+}
+
+/**
+ * Generate micro audio inline with timeout.
+ * Returns null if generation fails or times out.
+ */
+async function generateMicroInline(
+  jobId: string,
+  text: string,
+  voiceId: string,
+  timeoutMs: number = INLINE_MICRO_TIMEOUT_MS
+): Promise<{ microUrl: string; microDurationSec: number } | null> {
+  if (!isElevenLabsConfigured()) {
+    return null;
+  }
+
+  const elevenLabs = getElevenLabsClient();
+  if (!elevenLabs) {
+    return null;
+  }
+
+  const microText = extractMicroTextInline(text);
+  ttsLogger.info({ jobId, microTextLength: microText.length }, 'Fast lane: generating micro inline');
+
+  const startTime = Date.now();
+
+  try {
+    // Race between synthesis and timeout
+    const microPromise = elevenLabs.synthesizeWithMetrics({
+      text: microText,
+      voiceId,
+      voiceSettings: {
+        stability: 0.5,
+        similarity_boost: 0.75,
+      },
+    });
+
+    const timeoutPromise = new Promise<null>((resolve) => {
+      setTimeout(() => resolve(null), timeoutMs);
+    });
+
+    const result = await Promise.race([microPromise, timeoutPromise]);
+
+    if (!result) {
+      ttsLogger.warn({ jobId, elapsedMs: Date.now() - startTime }, 'Fast lane: micro generation timed out');
+      return null;
+    }
+
+    // Upload micro.mp3
+    const microPath = `audio/jobs/${jobId}/micro.mp3`;
+    await uploadAudioToCache(microPath, result.audioBuffer, 'mp3');
+
+    // Estimate duration (128kbps = 16KB/sec)
+    const microDurationSec = Math.round(result.audioBuffer.length / 16000);
+
+    // Update job to partial_ready with micro URL
+    await supabase
+      .from('tts_jobs')
+      .update({
+        status: 'partial_ready',
+        preview_audio_path: microPath,
+        preview_duration_sec: microDurationSec,
+        progress_sec: microDurationSec,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', jobId);
+
+    // Get signed URL for micro
+    const microUrl = await getSignedAudioUrl(microPath);
+    if (!microUrl) {
+      ttsLogger.error({ jobId, microPath }, 'Fast lane: failed to get signed URL for micro');
+      return null;
+    }
+
+    const elapsedMs = Date.now() - startTime;
+    ttsLogger.info({ jobId, microDurationSec, microSize: result.audioBuffer.length, elapsedMs }, 'Fast lane: micro ready');
+
+    return { microUrl, microDurationSec };
+  } catch (error) {
+    ttsLogger.error({ jobId, error }, 'Fast lane: micro generation failed');
+    return null;
+  }
+}
 
 // ============================================================================
 // Async Handler Wrapper
@@ -606,7 +732,17 @@ ttsRouter.post('/job', asyncHandler(async (req: AuthenticatedRequest, res: Respo
     articleTitle: article_title,
   });
 
-  // 9. Publish job to Pub/Sub queue for async processing
+  // 9. FAST LANE: For "play" purpose with ElevenLabs, generate micro inline
+  // This reduces TTFS by avoiding Pub/Sub worker pickup latency
+  let microResult: { microUrl: string; microDurationSec: number } | null = null;
+
+  if (purpose === 'play' && isElevenLabsConfigured() && characterCount > 200) {
+    // Only use fast lane for longer texts (short texts will be fully synthesized by worker quickly)
+    ttsLogger.info({ jobId: job.id, purpose }, 'Attempting fast lane micro generation');
+    microResult = await generateMicroInline(job.id, text, providerVoiceId);
+  }
+
+  // 10. Publish job to Pub/Sub queue for async processing (preview + full)
   try {
     await publishTTSJob(job.id);
     ttsLogger.info({ jobId: job.id }, 'Published job to Pub/Sub queue');
@@ -615,20 +751,36 @@ ttsRouter.post('/job', asyncHandler(async (req: AuthenticatedRequest, res: Respo
     ttsLogger.error({ error: pubsubError, jobId: job.id }, 'Failed to publish to Pub/Sub, will rely on DB polling');
   }
 
-  // 10. Estimate wait time based on character count
+  // 11. Estimate wait time based on character count
   const estimatedWaitSec = Math.ceil(characterCount / 500); // ~500 chars/sec processing
 
-  ttsLogger.info({ jobId: job.id, cacheKey, estimatedWaitSec }, 'TTS job created');
+  ttsLogger.info({ jobId: job.id, cacheKey, estimatedWaitSec, hasMicro: !!microResult }, 'TTS job created');
 
-  // 10. Return processing status with job ID
-  const response: CreateTTSJobResponse = {
-    job_id: job.id,
-    status: 'processing', // Will be 'queued' but we return 'processing' for simplicity
-    cache_hit: false,
-    estimated_wait_sec: estimatedWaitSec,
-  };
+  // 12. Return response - partial_ready if micro was generated, otherwise processing
+  if (microResult) {
+    // Fast lane success - return partial_ready with micro URL immediately
+    const response: CreateTTSJobResponse = {
+      job_id: job.id,
+      status: 'partial_ready',
+      cache_hit: false,
+      estimated_wait_sec: estimatedWaitSec,
+      preview_url: microResult.microUrl,
+      preview_duration_sec: microResult.microDurationSec,
+    };
 
-  res.status(202).json(response);
+    ttsLogger.info({ jobId: job.id, microUrl: microResult.microUrl }, 'Fast lane: returning partial_ready with micro URL');
+    res.status(202).json(response);
+  } else {
+    // No fast lane - return processing status
+    const response: CreateTTSJobResponse = {
+      job_id: job.id,
+      status: 'processing',
+      cache_hit: false,
+      estimated_wait_sec: estimatedWaitSec,
+    };
+
+    res.status(202).json(response);
+  }
 }));
 
 // ============================================================================

@@ -450,6 +450,9 @@ struct TTSJobStatusResponse: Codable, Sendable {
     /// Total audio duration in seconds (available when status is ready)
     let durationSec: Double?
 
+    /// Preview audio duration in seconds (available when status is partial_ready)
+    let previewDurationSec: Double?
+
     /// Error message (when status is failed)
     let error: String?
 
@@ -476,6 +479,7 @@ struct TTSJobStatusResponse: Codable, Sendable {
         case fullUrl = "full_url"
         case audioUrl = "audio_url"
         case durationSec = "duration_sec"
+        case previewDurationSec = "preview_duration_sec"
         case error
         case errorCode = "error_code"
         case estimatedWaitSec = "estimated_wait_sec"

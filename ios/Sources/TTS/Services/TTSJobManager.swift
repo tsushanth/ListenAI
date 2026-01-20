@@ -7,10 +7,15 @@ import Foundation
 ///
 /// Polling Strategy for Fast TTFS (Time-To-First-Sound):
 /// 1. Immediate first poll after job starts (no initial delay)
-/// 2. Fast polling (0.5-1.0s) until playable audio is available
-/// 3. Slow polling (1.5-2.0s) once preview/full audio exists
-/// 4. Jitter of ±200ms to avoid thundering herd
+/// 2. Fast polling (0.7-1.0s) while queued/processing - for responsiveness
+/// 3. Slow polling (1.5-2.0s) once partial_ready and playing - less aggressive
+/// 4. Jitter of ±150ms to avoid thundering herd
 /// 5. Max polling duration of 10 minutes per job
+///
+/// Playback Strategy:
+/// - When partial_ready with preview URL: start AVPlayer immediately from remote URL
+/// - Background download continues while streaming (optional caching)
+/// - When ready with full URL: swap audio preserving playback position
 @MainActor
 final class TTSJobManager: ObservableObject {
 
@@ -28,41 +33,80 @@ final class TTSJobManager: ObservableObject {
         let jobId: String
         let voiceId: String
         var status: TTSJobStatus
-        var previewURL: URL?
-        var audioURL: URL?
+        var previewURL: URL?          // Remote preview URL from backend
+        var audioURL: URL?            // Remote full audio URL from backend
         var progress: Double
         var error: String?
-        var localAudioPath: URL?
-        var localPreviewPath: URL?
+        var localAudioPath: URL?      // Downloaded full audio (optional cache)
+        var localPreviewPath: URL?    // Downloaded preview (optional cache)
+        var previewDurationSec: Double?  // Preview duration from backend
 
         // Timing metrics
         let jobStartTime: Date
         var firstAudioAvailableTime: Date?
 
-        /// Whether any playable audio is available (preview or full)
+        /// Whether any playable audio is available (remote URL or local)
         var hasPlayableAudio: Bool {
-            localAudioPath != nil || localPreviewPath != nil
+            previewURL != nil || audioURL != nil || localAudioPath != nil || localPreviewPath != nil
         }
+
+        /// Best available playback URL (full preferred, then preview)
+        var playableURL: URL? {
+            // Prefer local cache if available
+            if let local = localAudioPath { return local }
+            if let local = localPreviewPath { return local }
+            // Fall back to remote URLs
+            if let remote = audioURL { return remote }
+            if let remote = previewURL { return remote }
+            return nil
+        }
+
+        /// Remote preview URL for immediate streaming (before download completes)
+        var remotePreviewURL: URL? { previewURL }
+
+        /// Remote full audio URL for streaming
+        var remoteFullURL: URL? { audioURL }
     }
 
     // MARK: - Polling Configuration
 
-    /// Fast polling interval when waiting for audio (milliseconds)
-    private let fastPollingIntervalMs: UInt64 = 1500  // 1.5 seconds
+    /// Fast polling interval while waiting for audio (queued/processing) - milliseconds
+    private let fastPollingIntervalMs: UInt64 = 850  // 0.7-1.0s range with jitter
 
-    /// Slow polling interval once audio is available (milliseconds)
-    private let slowPollingIntervalMs: UInt64 = 3000  // 3 seconds
+    /// Slow polling interval once partial_ready and playing - milliseconds
+    private let slowPollingIntervalMs: UInt64 = 1750  // 1.5-2.0s range with jitter
 
-    /// Jitter range (milliseconds) - ±300ms
-    private let jitterRangeMs: UInt64 = 300
+    /// Jitter range (milliseconds) - ±150ms
+    private let jitterRangeMs: UInt64 = 150
 
     /// Maximum polling duration before marking job as failed (seconds)
     private let maxPollingDurationSeconds: TimeInterval = 600  // 10 minutes
 
+    // MARK: - Callbacks
+
+    /// Called when partial_ready is detected with a playable remote preview URL.
+    /// The view should start playback immediately from this URL.
+    var onPreviewReady: ((UUID, URL, Double?) -> Void)?
+
+    /// Called when full audio is ready with the full URL.
+    /// The view should swap to full audio preserving playback position.
+    var onFullAudioReady: ((UUID, URL) -> Void)?
+
+    /// Called when job fails
+    var onJobFailed: ((UUID, String) -> Void)?
+
     // MARK: - Private Properties
 
     private var pollingTasks: [UUID: Task<Void, Never>] = [:]
+    private var downloadTasks: [UUID: Task<Void, Never>] = [:]  // Background download tasks
     private var cloudService: ListenAICloudService?
+
+    /// Single-start guard: tracks which jobs have already triggered playback callbacks
+    /// Prevents duplicate play calls during rapid polling
+    private var didStartPlayback: Set<UUID> = []
+
+    /// Tracks which jobs have already triggered full audio swap
+    private var didSwapToFull: Set<UUID> = []
 
     // Local cache directory for downloaded audio
     private let cacheDirectory: URL
@@ -122,7 +166,13 @@ final class TTSJobManager: ObservableObject {
     func stopTracking(articleId: UUID) {
         pollingTasks[articleId]?.cancel()
         pollingTasks.removeValue(forKey: articleId)
+        downloadTasks[articleId]?.cancel()
+        downloadTasks.removeValue(forKey: articleId)
         activeJobs.removeValue(forKey: articleId)
+
+        // Clear single-start guards
+        didStartPlayback.remove(articleId)
+        didSwapToFull.remove(articleId)
 
         print("[TTSJobManager] Stopped tracking article \(articleId)")
     }
@@ -180,9 +230,29 @@ final class TTSJobManager: ObservableObject {
         return jobInfo.localAudioPath != nil && jobInfo.status == .ready
     }
 
-    /// Check if any playable audio is available (preview or full)
+    /// Check if any playable audio is available (preview or full, local or remote)
     func hasPlayableAudio(articleId: UUID) -> Bool {
         activeJobs[articleId]?.hasPlayableAudio ?? false
+    }
+
+    /// Get the best available playable URL (prefers local cache, falls back to remote)
+    func getPlayableURL(articleId: UUID) -> URL? {
+        activeJobs[articleId]?.playableURL
+    }
+
+    /// Get remote preview URL for immediate streaming (no download wait)
+    func getRemotePreviewURL(articleId: UUID) -> URL? {
+        activeJobs[articleId]?.remotePreviewURL
+    }
+
+    /// Get remote full audio URL for streaming
+    func getRemoteFullURL(articleId: UUID) -> URL? {
+        activeJobs[articleId]?.remoteFullURL
+    }
+
+    /// Get preview duration if known (from backend)
+    func getPreviewDuration(articleId: UUID) -> Double? {
+        activeJobs[articleId]?.previewDurationSec
     }
 
     // MARK: - Private Methods
@@ -219,7 +289,8 @@ final class TTSJobManager: ObservableObject {
 
         let pollStartTime = Date()
         var pollCount = 0
-        var hasLoggedFirstAudio = false
+        var hasNotifiedPreview = false
+        var hasNotifiedFull = false
 
         // Immediate first poll - no delay
         while !Task.isCancelled {
@@ -231,6 +302,7 @@ final class TTSJobManager: ObservableObject {
                 print("[TTSJobManager] Max polling duration (\(Int(maxPollingDurationSeconds))s) exceeded for job \(jobId)")
                 await MainActor.run {
                     self.activeJobs[articleId]?.error = "Synthesis timed out"
+                    self.onJobFailed?(articleId, "Audio generation timed out after \(Int(maxPollingDurationSeconds / 60)) minutes")
                     ArticleStore.shared.updateSynthesisStatus(
                         for: articleId,
                         status: .failed(message: "Audio generation timed out after \(Int(maxPollingDurationSeconds / 60)) minutes")
@@ -251,22 +323,49 @@ final class TTSJobManager: ObservableObject {
                 // Check if job is complete or failed
                 switch statusResponse.status {
                 case .ready:
-                    // Download the full audio
-                    await downloadAudio(articleId: articleId, from: statusResponse)
+                    // Full audio ready - notify for playback swap (only once via guard)
+                    if !didSwapToFull.contains(articleId),
+                       let fullUrlString = statusResponse.fullUrl ?? statusResponse.audioUrl,
+                       let fullURL = URL(string: fullUrlString) {
+                        // Mark guards BEFORE calling callback to prevent duplicates
+                        didSwapToFull.insert(articleId)
+                        // Also mark playback started (for short texts that skip partialReady)
+                        didStartPlayback.insert(articleId)
+                        hasNotifiedFull = true
 
-                    // Log TTFS metric
-                    if let jobInfo = activeJobs[articleId] {
-                        let ttfs = Date().timeIntervalSince(jobInfo.jobStartTime)
-                        print("[TTSJobManager] TTFS: \(String(format: "%.2f", ttfs))s for job \(jobId) (full audio ready, \(pollCount) polls)")
+                        // Record first audio time if not already set (for short texts that skip preview)
+                        if activeJobs[articleId]?.firstAudioAvailableTime == nil {
+                            activeJobs[articleId]?.firstAudioAvailableTime = Date()
+                        }
+
+                        let ttfs = Date().timeIntervalSince(activeJobs[articleId]?.jobStartTime ?? pollStartTime)
+                        print("[TTSJobManager] Full audio ready in \(String(format: "%.2f", ttfs))s for job \(jobId) (\(pollCount) polls)")
+
+                        // Notify for swap to full audio (streaming from remote URL)
+                        // Single-start guard ensures this only fires once per job
+                        onFullAudioReady?(articleId, fullURL)
+
+                        // Update ArticleStore
+                        ArticleStore.shared.updateSynthesisStatus(
+                            for: articleId,
+                            status: .completed,
+                            audioURL: fullURL
+                        )
                     }
+
+                    // Start background download of full audio to cache (non-blocking)
+                    startBackgroundDownload(articleId: articleId, from: statusResponse, isPreview: false)
+
                     return // Stop polling
 
                 case .failed:
+                    let errorMsg = statusResponse.error ?? "Job failed"
                     await MainActor.run {
-                        self.activeJobs[articleId]?.error = statusResponse.error ?? "Job failed"
+                        self.activeJobs[articleId]?.error = errorMsg
+                        self.onJobFailed?(articleId, errorMsg)
                         ArticleStore.shared.updateSynthesisStatus(
                             for: articleId,
-                            status: .failed(message: statusResponse.error ?? "TTS job failed")
+                            status: .failed(message: errorMsg)
                         )
                     }
                     return // Stop polling
@@ -279,30 +378,41 @@ final class TTSJobManager: ObservableObject {
                     return // Stop polling
 
                 case .partialReady:
-                    // Download preview if available and not already downloaded
-                    if let previewUrlString = statusResponse.previewUrl,
-                       activeJobs[articleId]?.localPreviewPath == nil {
-                        await downloadPreview(articleId: articleId, previewURL: previewUrlString)
+                    // Preview ready - notify for IMMEDIATE playback from remote URL (only once via guard)
+                    if !didStartPlayback.contains(articleId),
+                       let previewUrlString = statusResponse.previewUrl,
+                       let previewURL = URL(string: previewUrlString) {
+                        // Mark as started BEFORE calling callback to prevent duplicates
+                        didStartPlayback.insert(articleId)
+                        hasNotifiedPreview = true
 
-                        // Log first audio availability
-                        if !hasLoggedFirstAudio {
-                            hasLoggedFirstAudio = true
-                            if let jobInfo = activeJobs[articleId] {
-                                let ttfs = Date().timeIntervalSince(jobInfo.jobStartTime)
-                                print("[TTSJobManager] TTFS (preview): \(String(format: "%.2f", ttfs))s for job \(jobId) (\(pollCount) polls)")
-                            }
-                        }
+                        // Record first audio time
+                        activeJobs[articleId]?.firstAudioAvailableTime = Date()
+                        let ttfs = Date().timeIntervalSince(activeJobs[articleId]?.jobStartTime ?? pollStartTime)
+                        print("[TTSJobManager] Preview ready in \(String(format: "%.2f", ttfs))s for job \(jobId) (\(pollCount) polls)")
+
+                        // Get preview duration from response
+                        let previewDuration = statusResponse.previewDurationSec
+
+                        // Notify immediately - view should start AVPlayer from remote URL
+                        // Single-start guard ensures this only fires once per job
+                        onPreviewReady?(articleId, previewURL, previewDuration)
+
+                        // Start background download of preview to cache (non-blocking)
+                        startBackgroundDownload(articleId: articleId, from: statusResponse, isPreview: true)
                     }
-                    // Continue polling for full audio
+                    // Continue polling for full audio (with slower cadence)
 
                 case .processing, .queued:
-                    // Continue polling
+                    // Continue polling (with fast cadence)
                     break
                 }
 
-                // Determine if we have playable audio for polling cadence
-                let hasPlayable = activeJobs[articleId]?.hasPlayableAudio ?? false
-                let pollingInterval = getPollingInterval(hasAudio: hasPlayable)
+                // Determine polling cadence:
+                // - Fast (0.7-1.0s) while queued/processing
+                // - Slow (1.5-2.0s) once partial_ready (already playing preview)
+                let isPlayingPreview = hasNotifiedPreview && statusResponse.status == .partialReady
+                let pollingInterval = getPollingInterval(hasAudio: isPlayingPreview)
 
                 // Wait before next poll
                 try await Task.sleep(nanoseconds: pollingInterval)
@@ -357,6 +467,11 @@ final class TTSJobManager: ObservableObject {
             jobInfo.previewURL = URL(string: previewUrlString)
         }
 
+        // Store preview duration from backend
+        if let previewDuration = response.previewDurationSec {
+            jobInfo.previewDurationSec = previewDuration
+        }
+
         activeJobs[articleId] = jobInfo
 
         // Update ArticleStore progress
@@ -368,76 +483,92 @@ final class TTSJobManager: ObservableObject {
         }
     }
 
-    private func downloadAudio(articleId: UUID, from response: TTSJobStatusResponse) async {
+    /// Start a background download task that doesn't block playback.
+    /// Audio is streamed from remote URL for immediate playback; download caches for offline use.
+    private func startBackgroundDownload(articleId: UUID, from response: TTSJobStatusResponse, isPreview: Bool) {
+        // Cancel any existing download for this article
+        downloadTasks[articleId]?.cancel()
+
+        let task = Task { [weak self] in
+            guard let self = self else { return }
+
+            if isPreview {
+                await self.downloadPreviewInBackground(articleId: articleId, response: response)
+            } else {
+                await self.downloadFullAudioInBackground(articleId: articleId, response: response)
+            }
+        }
+
+        downloadTasks[articleId] = task
+    }
+
+    private func downloadFullAudioInBackground(articleId: UUID, response: TTSJobStatusResponse) async {
         guard let audioURLString = response.fullUrl ?? response.audioUrl,
               let audioURL = URL(string: audioURLString) else {
-            print("[TTSJobManager] No audio URL in response")
+            print("[TTSJobManager] No audio URL in response for background download")
             return
         }
 
         let downloadStart = Date()
 
         do {
-            // Download audio
+            // Download audio in background (doesn't block playback)
             let (data, _) = try await URLSession.shared.data(from: audioURL)
+
+            guard !Task.isCancelled else { return }
 
             // Save to local cache
             let localPath = cacheDirectory.appendingPathComponent("\(articleId.uuidString).mp3")
             try data.write(to: localPath)
 
             let downloadTime = Date().timeIntervalSince(downloadStart)
-            print("[TTSJobManager] Downloaded audio to \(localPath.lastPathComponent) in \(String(format: "%.2f", downloadTime))s")
+            print("[TTSJobManager] Background download complete: \(localPath.lastPathComponent) in \(String(format: "%.2f", downloadTime))s")
 
             await MainActor.run {
-                // Update job info
+                // Update job info with local path (for offline playback)
                 self.activeJobs[articleId]?.localAudioPath = localPath
                 self.activeJobs[articleId]?.status = .ready
 
-                // Record first audio time if not already set
-                if self.activeJobs[articleId]?.firstAudioAvailableTime == nil {
-                    self.activeJobs[articleId]?.firstAudioAvailableTime = Date()
-                }
-
-                // Update ArticleStore
-                ArticleStore.shared.updateSynthesisStatus(
-                    for: articleId,
-                    status: .completed,
-                    audioURL: localPath
-                )
+                // Cleanup download task
+                self.downloadTasks.removeValue(forKey: articleId)
             }
 
+        } catch is CancellationError {
+            print("[TTSJobManager] Background download cancelled for \(articleId)")
         } catch {
-            print("[TTSJobManager] Failed to download audio: \(error.localizedDescription)")
+            print("[TTSJobManager] Background download failed: \(error.localizedDescription)")
+            await MainActor.run {
+                self.downloadTasks.removeValue(forKey: articleId)
+            }
         }
     }
 
-    private func downloadPreview(articleId: UUID, previewURL: String) async {
-        guard let url = URL(string: previewURL) else { return }
+    private func downloadPreviewInBackground(articleId: UUID, response: TTSJobStatusResponse) async {
+        guard let previewUrlString = response.previewUrl,
+              let url = URL(string: previewUrlString) else { return }
 
         let downloadStart = Date()
 
         do {
             let (data, _) = try await URLSession.shared.data(from: url)
 
+            guard !Task.isCancelled else { return }
+
             // Save preview to local cache
             let localPath = cacheDirectory.appendingPathComponent("\(articleId.uuidString)_preview.mp3")
             try data.write(to: localPath)
 
             let downloadTime = Date().timeIntervalSince(downloadStart)
-            print("[TTSJobManager] Downloaded preview to \(localPath.lastPathComponent) in \(String(format: "%.2f", downloadTime))s")
+            print("[TTSJobManager] Background preview download complete: \(localPath.lastPathComponent) in \(String(format: "%.2f", downloadTime))s")
 
             await MainActor.run {
-                self.activeJobs[articleId]?.previewURL = url
                 self.activeJobs[articleId]?.localPreviewPath = localPath
-
-                // Record first audio time
-                if self.activeJobs[articleId]?.firstAudioAvailableTime == nil {
-                    self.activeJobs[articleId]?.firstAudioAvailableTime = Date()
-                }
             }
 
+        } catch is CancellationError {
+            print("[TTSJobManager] Background preview download cancelled for \(articleId)")
         } catch {
-            print("[TTSJobManager] Failed to download preview: \(error.localizedDescription)")
+            print("[TTSJobManager] Background preview download failed: \(error.localizedDescription)")
         }
     }
 

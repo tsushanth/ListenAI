@@ -501,6 +501,8 @@ export interface CreateTTSJobResponse {
   cache_hit: boolean;
   audio_url?: string;          // Present if cache hit or status is 'ready'
   estimated_wait_sec?: number; // Estimated time if queued
+  preview_url?: string;        // Present if fast lane micro was generated (status is 'partial_ready')
+  preview_duration_sec?: number; // Duration of preview in seconds
 }
 
 /**
