@@ -574,41 +574,20 @@ adminRouter.post(
       adminLogger.info({ jobId, createMs: response.timing.job_create_ms }, 'Test job created');
 
       // Stage 2: Process the job (this triggers micro-first flow)
-      // We'll poll for partial_ready status while processing
-      const processPromise = processJobById(jobId);
+      // Run synchronously without concurrent polling to avoid potential issues
+      adminLogger.info({ jobId }, 'Starting job processing');
 
-      // Poll for partial_ready status
-      let partialReadyDetected = false;
-      const pollStart = Date.now();
-      const maxPollTime = 30000; // 30 seconds max
-
-      while (!partialReadyDetected && (Date.now() - pollStart) < maxPollTime) {
-        await new Promise(resolve => setTimeout(resolve, 200)); // Poll every 200ms
-
-        const { data: jobStatus } = await supabase
-          .from('tts_jobs')
-          .select('status, preview_audio_path, preview_duration_sec')
-          .eq('id', jobId)
-          .single();
-
-        if (jobStatus?.status === 'partial_ready' || jobStatus?.status === 'ready') {
-          partialReadyDetected = true;
-          response.timing.partial_ready_ms = Date.now() - startTime;
-          response.stages.partial_ready = true;
-          adminLogger.info({
-            jobId,
-            partialReadyMs: response.timing.partial_ready_ms,
-            previewPath: jobStatus.preview_audio_path,
-          }, 'Partial ready detected!');
-        }
-
-        if (jobStatus?.status === 'failed') {
-          throw new Error('Job failed during processing');
-        }
+      try {
+        await processJobById(jobId);
+        adminLogger.info({ jobId }, 'Job processing completed');
+      } catch (processError) {
+        adminLogger.error({
+          jobId,
+          error: processError instanceof Error ? processError.message : 'Unknown',
+          stack: processError instanceof Error ? processError.stack : undefined,
+        }, 'Job processing failed');
+        throw processError;
       }
-
-      // Wait for full completion
-      await processPromise;
 
       response.timing.total_ms = Date.now() - startTime;
 
