@@ -704,9 +704,10 @@ async function synthesizeWithElevenLabs(
     throw new Error('ElevenLabs not configured');
   }
 
-  // V1: Micro-first strategy for instant playback
-  // Re-enabled after increasing Cloud Run memory to 4Gi
-  const MICRO_FIRST_ENABLED = true;
+  // V1: Direct synthesis for stability
+  // Micro-first disabled - causes crashes even with 4Gi memory
+  // Will debug separately; direct synthesis is still fast with ElevenLabs
+  const MICRO_FIRST_ENABLED = false;
 
   if (!MICRO_FIRST_ENABLED || isShortText) {
     // Direct synthesis for all text (micro-first disabled)
