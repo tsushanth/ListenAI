@@ -253,9 +253,17 @@ export class ElevenLabsClient implements TTSProviderInterface {
   }
 
   /**
+   * Synthesize text to speech with full metrics (TTFB, total time, etc).
+   * Use this when you need timing metrics for logging/monitoring.
+   */
+  async synthesizeWithMetrics(request: ElevenLabsRequest): Promise<ElevenLabsResponse> {
+    return this.synthesizeInternal(request);
+  }
+
+  /**
    * Internal synthesize with full metrics.
    */
-  async synthesizeInternal(request: ElevenLabsRequest): Promise<ElevenLabsResponse> {
+  private async synthesizeInternal(request: ElevenLabsRequest): Promise<ElevenLabsResponse> {
     const voiceId = this.mapVoiceId(request.voiceId);
     const modelId = request.modelId ?? DEFAULT_MODEL;
     const outputFormat = request.outputFormat ?? 'mp3_44100_128';

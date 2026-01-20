@@ -46,6 +46,11 @@ const PREVIEW_MIN_CHARS = 200;           // Minimum characters for preview
 const PREVIEW_MAX_CHARS = 2000;          // Maximum characters for preview
 const SHORT_TEXT_THRESHOLD = 500;        // Below this, skip preview (just generate full)
 
+// Micro-preview configuration (for instant playback)
+const MICRO_TARGET_CHARS = 200;          // Target ~200 characters for micro-preview (~2-3 seconds)
+const MICRO_MIN_CHARS = 50;              // Minimum chars for micro (at least something to play)
+const MICRO_MAX_SENTENCES = 2;           // Max 1-2 sentences for micro
+
 /**
  * Get the configured TTS provider.
  * Priority:
@@ -198,6 +203,96 @@ function selectPreviewSentences(sentences: string[], speed: number = 1.0): {
     previewSentences,
     remainingSentences: [],
   };
+}
+
+/**
+ * Extract micro-preview text (first 1-2 sentences or ~200 chars).
+ * This is the smallest playable chunk to minimize time-to-first-audio.
+ *
+ * Rules:
+ * - Target ~200 characters (roughly 2-3 seconds of audio)
+ * - At most 2 sentences
+ * - Must end at a sentence boundary if possible
+ * - At minimum 50 characters (to have something meaningful)
+ */
+function extractMicroText(text: string): { microText: string; remainingText: string } {
+  // Clean the text first
+  const cleanText = text.trim();
+
+  if (cleanText.length <= MICRO_TARGET_CHARS) {
+    // Text is small enough to be the entire micro
+    return { microText: cleanText, remainingText: '' };
+  }
+
+  // Split into sentences
+  const sentences = splitIntoSentences(cleanText);
+
+  if (sentences.length === 0) {
+    // Fallback: just take first 200 chars
+    return {
+      microText: cleanText.slice(0, MICRO_TARGET_CHARS),
+      remainingText: cleanText.slice(MICRO_TARGET_CHARS),
+    };
+  }
+
+  // Try to get 1-2 complete sentences up to target chars
+  let microText = '';
+  let sentenceCount = 0;
+
+  for (const sentence of sentences) {
+    // Check if adding this sentence would exceed limits
+    const wouldExceedChars = (microText + ' ' + sentence).trim().length > MICRO_TARGET_CHARS;
+    const wouldExceedSentences = sentenceCount >= MICRO_MAX_SENTENCES;
+
+    // Always include at least one sentence
+    if (sentenceCount === 0) {
+      microText = sentence;
+      sentenceCount++;
+      continue;
+    }
+
+    // Stop if we've hit limits
+    if (wouldExceedChars || wouldExceedSentences) {
+      break;
+    }
+
+    // Add this sentence
+    microText = microText + ' ' + sentence;
+    sentenceCount++;
+  }
+
+  // Get remaining text
+  const microLength = microText.length;
+  const remainingText = cleanText.slice(microLength).trim();
+
+  workerLogger.debug({
+    totalLength: cleanText.length,
+    microLength: microText.length,
+    microSentences: sentenceCount,
+    remainingLength: remainingText.length,
+  }, 'Extracted micro-preview text');
+
+  return { microText: microText.trim(), remainingText };
+}
+
+/**
+ * Check if micro-preview already exists for a job (idempotency).
+ */
+async function microPreviewExists(jobId: string): Promise<boolean> {
+  const { data: job } = await supabase
+    .from('tts_jobs')
+    .select('preview_audio_path, status')
+    .eq('id', jobId)
+    .single();
+
+  if (!job) return false;
+
+  // If job already has a preview path and is partial_ready or ready, micro exists
+  if (job.preview_audio_path && (job.status === 'partial_ready' || job.status === 'ready')) {
+    return true;
+  }
+
+  return false;
 }
 
 // ============================================================================
@@ -411,17 +506,173 @@ async function getAudioDuration(audioBuffer: Buffer): Promise<number> {
 }
 
 // ============================================================================
-// ElevenLabs Synthesis (V1 Production)
+// ElevenLabs Synthesis (V1 Production) - Micro-First Strategy
 // ============================================================================
 
 /**
- * Synthesize using ElevenLabs with micro-preview strategy.
+ * Generate micro-preview audio (first 1-2 sentences).
+ * This is a separate, fast request to minimize time-to-first-audio.
+ *
+ * Strategy:
+ * 1. Extract micro-text (first ~200 chars / 1-2 sentences)
+ * 2. Generate micro.mp3 via ElevenLabs (fast, small request)
+ * 3. Upload to Supabase Storage: tts/{jobId}/micro.mp3
+ * 4. Update DB status to partial_ready with preview_url
+ * 5. Return micro buffer and remaining text for full synthesis
+ */
+async function generateMicroPreview(
+  jobId: string,
+  text: string,
+  voiceId: string
+): Promise<{ microBuffer: Buffer; microPath: string; microDurationSec: number; remainingText: string } | null> {
+  const elevenLabs = getElevenLabsClient();
+  if (!elevenLabs) {
+    throw new Error('ElevenLabs not configured');
+  }
+
+  // Check idempotency - skip if micro already exists
+  const exists = await microPreviewExists(jobId);
+  if (exists) {
+    workerLogger.info({ jobId }, 'Micro-preview already exists, skipping generation');
+    return null;
+  }
+
+  // Extract micro-text
+  const { microText, remainingText } = extractMicroText(text);
+
+  workerLogger.info({
+    jobId,
+    microTextLength: microText.length,
+    remainingTextLength: remainingText.length,
+  }, 'ElevenLabs: generating micro-preview');
+
+  const microStart = Date.now();
+
+  // Generate micro audio (non-streaming for simplicity - it's small)
+  const microRequest: ElevenLabsRequest = {
+    text: microText,
+    voiceId,
+    voiceSettings: {
+      stability: 0.5,
+      similarity_boost: 0.75,
+    },
+  };
+
+  const microResult = await elevenLabs.synthesizeWithMetrics(microRequest);
+  const microInferenceMs = Date.now() - microStart;
+
+  // Log TTFB metrics
+  logTTFBMetrics(jobId, microResult.metrics, 'elevenlabs-micro');
+
+  // Upload micro immediately
+  const microPath = `audio/jobs/${jobId}/micro.mp3`;
+  await uploadAudioToCache(microPath, microResult.audioBuffer, 'mp3');
+
+  // Get micro duration
+  const microDurationSec = await getAudioDuration(microResult.audioBuffer);
+
+  // Update job to partial_ready so iOS can start playing ASAP
+  await supabase
+    .from('tts_jobs')
+    .update({
+      status: 'partial_ready',
+      preview_audio_path: microPath,
+      preview_duration_sec: microDurationSec,
+      progress_sec: microDurationSec,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', jobId);
+
+  recordPartialReady(jobId, microDurationSec);
+
+  workerLogger.info({
+    jobId,
+    microPath,
+    microSize: microResult.audioBuffer.length,
+    microDurationSec,
+    microInferenceMs,
+    ttfb_ms: microResult.metrics.ttfb_ms,
+  }, 'ElevenLabs: micro-preview ready and uploaded');
+
+  return {
+    microBuffer: microResult.audioBuffer,
+    microPath,
+    microDurationSec,
+    remainingText,
+  };
+}
+
+/**
+ * Generate full audio (micro + remaining) and finalize job.
+ * Called after micro-preview is already uploaded.
+ */
+async function generateFullAudio(
+  jobId: string,
+  fullText: string,
+  voiceId: string,
+  microBuffer: Buffer | null
+): Promise<{ fullBuffer: Buffer; fullPath: string; durationSec: number }> {
+  const elevenLabs = getElevenLabsClient();
+  if (!elevenLabs) {
+    throw new Error('ElevenLabs not configured');
+  }
+
+  workerLogger.info({
+    jobId,
+    fullTextLength: fullText.length,
+    hasMicroBuffer: !!microBuffer,
+  }, 'ElevenLabs: generating full audio');
+
+  const fullStart = Date.now();
+
+  // Generate full audio
+  const fullRequest: ElevenLabsRequest = {
+    text: fullText,
+    voiceId,
+    voiceSettings: {
+      stability: 0.5,
+      similarity_boost: 0.75,
+    },
+  };
+
+  const fullResult = await elevenLabs.synthesizeWithMetrics(fullRequest);
+  const fullInferenceMs = Date.now() - fullStart;
+
+  // Log TTFB metrics
+  logTTFBMetrics(jobId, fullResult.metrics, 'elevenlabs-full');
+
+  // Upload full audio
+  const fullPath = `audio/jobs/${jobId}/full.mp3`;
+  await uploadAudioToCache(fullPath, fullResult.audioBuffer, 'mp3');
+
+  // Get full duration
+  const durationSec = await getAudioDuration(fullResult.audioBuffer);
+
+  workerLogger.info({
+    jobId,
+    fullPath,
+    fullSize: fullResult.audioBuffer.length,
+    durationSec,
+    fullInferenceMs,
+    ttfb_ms: fullResult.metrics.ttfb_ms,
+  }, 'ElevenLabs: full audio ready and uploaded');
+
+  return {
+    fullBuffer: fullResult.audioBuffer,
+    fullPath,
+    durationSec,
+  };
+}
+
+/**
+ * Synthesize using ElevenLabs with micro-first strategy.
  *
  * Key optimizations for v1:
- * 1. ElevenLabs returns MP3 directly - no WAV conversion needed
- * 2. Streaming API for micro-preview - audio starts playing immediately
- * 3. Short Supabase connections - upload preview, then full audio separately
- * 4. No large buffers - streaming means low memory usage
+ * 1. Generate micro-preview FIRST (small, fast) → partial_ready
+ * 2. Then generate full audio in background → ready
+ * 3. ElevenLabs returns MP3 directly - no WAV conversion needed
+ * 4. Short Supabase connections - upload micro, then full separately
+ * 5. Idempotency - skip micro if already exists
  */
 async function synthesizeWithElevenLabs(
   jobId: string,
@@ -436,29 +687,30 @@ async function synthesizeWithElevenLabs(
     throw new Error('ElevenLabs not configured');
   }
 
-  const request: ElevenLabsRequest = {
-    text,
-    voiceId,
-    // Note: ElevenLabs doesn't have a direct speed parameter in the same way
-    // Speed can be adjusted via voice settings or model selection
-    voiceSettings: {
-      stability: 0.5,
-      similarity_boost: 0.75,
-    },
-  };
-
   if (isShortText) {
-    // For short text, just synthesize directly (no preview needed)
-    workerLogger.info({ jobId, textLength: text.length }, 'ElevenLabs: synthesizing short text');
+    // For short text (<500 chars), just synthesize directly (no micro needed)
+    // The full audio IS the preview since it's so short
+    workerLogger.info({ jobId, textLength: text.length }, 'ElevenLabs: synthesizing short text directly');
 
     const inferenceStart = Date.now();
-    const result = await elevenLabs.synthesize(request);
+    const result = await elevenLabs.synthesizeWithMetrics({
+      text,
+      voiceId,
+      voiceSettings: {
+        stability: 0.5,
+        similarity_boost: 0.75,
+      },
+    });
     const inferenceMs = Date.now() - inferenceStart;
+
+    // Log TTFB metrics
+    logTTFBMetrics(jobId, result.metrics, 'elevenlabs-short');
 
     workerLogger.info({
       jobId,
       inferenceMs,
       mp3Size: result.audioBuffer.length,
+      ttfb_ms: result.metrics.ttfb_ms,
     }, 'ElevenLabs: short text synthesis complete');
 
     // Upload directly to final path
@@ -475,90 +727,27 @@ async function synthesizeWithElevenLabs(
     };
   }
 
-  // For longer text, use streaming for micro-preview
-  workerLogger.info({ jobId, textLength: text.length }, 'ElevenLabs: synthesizing with micro-preview');
+  // For longer text, use MICRO-FIRST strategy:
+  // 1. Generate micro-preview (fast, ~200 chars)
+  // 2. Upload micro and update to partial_ready
+  // 3. Generate full audio
+  // 4. Upload full and update to ready
 
-  const inferenceStart = Date.now();
+  workerLogger.info({ jobId, textLength: text.length }, 'ElevenLabs: using micro-first strategy');
 
-  // Stream the audio and collect it
-  const chunks: Buffer[] = [];
-  let previewBuffer: Buffer | null = null;
-  let previewUploaded = false;
-  const previewTargetBytes = 24000; // ~3 seconds at 64kbps
+  // Step 1: Generate micro-preview
+  const microResult = await generateMicroPreview(jobId, text, voiceId);
 
-  for await (const chunk of elevenLabs.synthesizeStream(request)) {
-    if (chunk.audio.length > 0) {
-      chunks.push(chunk.audio);
-
-      // Upload micro-preview as soon as we have enough audio
-      if (!previewUploaded) {
-        const totalBytes = chunks.reduce((sum, c) => sum + c.length, 0);
-        if (totalBytes >= previewTargetBytes) {
-          previewBuffer = Buffer.concat(chunks);
-          const previewPath = `audio/jobs/${jobId}/preview.mp3`;
-
-          workerLogger.info({
-            jobId,
-            previewSize: previewBuffer.length,
-            latencyMs: Date.now() - inferenceStart,
-          }, 'ElevenLabs: uploading micro-preview');
-
-          // Upload preview immediately (short Supabase connection)
-          await uploadAudioToCache(previewPath, previewBuffer, 'mp3');
-
-          // Get preview duration
-          const previewDurationSec = await getAudioDuration(previewBuffer);
-
-          // Update job to partial_ready so iOS can start playing
-          await supabase
-            .from('tts_jobs')
-            .update({
-              status: 'partial_ready',
-              preview_audio_path: previewPath,
-              preview_duration_sec: previewDurationSec,
-              progress_sec: previewDurationSec,
-              updated_at: new Date().toISOString(),
-            })
-            .eq('id', jobId);
-
-          recordPartialReady(jobId, previewDurationSec);
-          previewUploaded = true;
-
-          workerLogger.info({
-            jobId,
-            previewDurationSec,
-            latencyMs: Date.now() - inferenceStart,
-          }, 'ElevenLabs: micro-preview ready');
-        }
-      }
-    }
-  }
-
-  const inferenceMs = Date.now() - inferenceStart;
-  const fullBuffer = Buffer.concat(chunks);
-
-  workerLogger.info({
-    jobId,
-    inferenceMs,
-    mp3Size: fullBuffer.length,
-    previewUploaded,
-  }, 'ElevenLabs: full synthesis complete');
-
-  // Upload full audio
-  const fullPath = `audio/jobs/${jobId}/full.mp3`;
-  await uploadAudioToCache(fullPath, fullBuffer, 'mp3');
-
-  // Get full duration
-  const durationSec = await getAudioDuration(fullBuffer);
-
-  // If preview wasn't uploaded (text was shorter than expected), use full as preview
-  const previewPath = previewUploaded ? `audio/jobs/${jobId}/preview.mp3` : undefined;
+  // Step 2: Generate full audio
+  // We generate the FULL text (not just remaining) to avoid audio discontinuity
+  // The micro was just for fast preview - full is the complete audio
+  const fullResult = await generateFullAudio(jobId, text, voiceId, microResult?.microBuffer ?? null);
 
   return {
-    previewPath,
-    fullPath,
-    durationSec,
-    mp3Size: fullBuffer.length,
+    previewPath: microResult?.microPath,
+    fullPath: fullResult.fullPath,
+    durationSec: fullResult.durationSec,
+    mp3Size: fullResult.fullBuffer.length,
   };
 }
 
