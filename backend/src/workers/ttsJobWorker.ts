@@ -704,13 +704,13 @@ async function synthesizeWithElevenLabs(
     throw new Error('ElevenLabs not configured');
   }
 
-  // TEMP: Always use short text path to debug micro-first issues
-  const TEMP_SKIP_MICRO_FIRST = true;
+  // V1: Always use direct synthesis (micro-first disabled for stability)
+  // TODO: Re-enable micro-first after debugging Cloud Run crashes
+  const MICRO_FIRST_ENABLED = false;
 
-  if (isShortText || TEMP_SKIP_MICRO_FIRST) {
-    // For short text (<500 chars), just synthesize directly (no micro needed)
-    // The full audio IS the preview since it's so short
-    workerLogger.info({ jobId, textLength: text.length, skipMicroFirst: TEMP_SKIP_MICRO_FIRST }, 'ElevenLabs: synthesizing text directly');
+  if (!MICRO_FIRST_ENABLED || isShortText) {
+    // Direct synthesis for all text (micro-first disabled)
+    workerLogger.info({ jobId, textLength: text.length, microFirstEnabled: MICRO_FIRST_ENABLED }, 'ElevenLabs: synthesizing text directly');
 
     const inferenceStart = Date.now();
     const result = await elevenLabs.synthesizeWithMetrics({
