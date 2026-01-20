@@ -443,7 +443,7 @@ adminRouter.post(
     const voiceId = body.voice_id || 'Rachel'; // Default ElevenLabs voice
 
     const jobId = crypto.randomUUID();
-    const testUserId = 'admin-test-user';
+    const testUserId = '00000000-0000-0000-0000-000000000000'; // Test user UUID
     const cacheKey = computeCacheKey({ text: testText, voiceId, modelId: 'elevenlabs', speed: 1.0 });
 
     adminLogger.info({
