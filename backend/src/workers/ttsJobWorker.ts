@@ -714,6 +714,8 @@ async function synthesizeWithElevenLabs(
     workerLogger.info({ jobId, textLength: text.length, microFirstEnabled: MICRO_FIRST_ENABLED }, 'ElevenLabs: synthesizing text directly');
 
     const inferenceStart = Date.now();
+    workerLogger.info({ jobId }, 'ElevenLabs: [STEP 1] calling synthesizeWithMetrics');
+
     const result = await elevenLabs.synthesizeWithMetrics({
       text,
       voiceId,
@@ -723,6 +725,8 @@ async function synthesizeWithElevenLabs(
       },
     });
     const inferenceMs = Date.now() - inferenceStart;
+
+    workerLogger.info({ jobId }, 'ElevenLabs: [STEP 2] synthesis returned successfully');
 
     // Log TTFB metrics
     logTTFBMetrics(jobId, result.metrics, 'elevenlabs-short');
@@ -736,10 +740,16 @@ async function synthesizeWithElevenLabs(
 
     // Upload directly to final path
     const fullPath = `audio/jobs/${jobId}/full.mp3`;
+    workerLogger.info({ jobId, fullPath, bufferSize: result.audioBuffer.length }, 'ElevenLabs: [STEP 3] uploading to storage');
+
     await uploadAudioToCache(fullPath, result.audioBuffer, 'mp3');
+
+    workerLogger.info({ jobId }, 'ElevenLabs: [STEP 4] upload complete, getting duration');
 
     // Get duration from MP3
     const durationSec = await getAudioDuration(result.audioBuffer);
+
+    workerLogger.info({ jobId, durationSec }, 'ElevenLabs: [STEP 5] duration calculated');
 
     return {
       fullPath,
