@@ -571,6 +571,8 @@ async function generateMicroPreview(
   text: string,
   voiceId: string
 ): Promise<{ microBuffer: Buffer; microPath: string; microDurationSec: number; remainingText: string } | null> {
+  const microFlowStart = Date.now();
+
   const elevenLabs = getElevenLabsClient();
   if (!elevenLabs) {
     throw new Error('ElevenLabs not configured');
@@ -590,7 +592,10 @@ async function generateMicroPreview(
     jobId,
     microTextLength: microText.length,
     remainingTextLength: remainingText.length,
-  }, 'ElevenLabs: generating micro-preview');
+    microTextPreview: microText.slice(0, 80) + '...',
+    estimatedMicroDurationSec: Math.round(microText.length / 150 * 10) / 10,
+    event: 'MICRO_EXTRACT',
+  }, '🎯 [MICRO] Text extracted');
 
   const microStart = Date.now();
 
@@ -607,17 +612,35 @@ async function generateMicroPreview(
   const microResult = await elevenLabs.synthesizeWithMetrics(microRequest);
   const microInferenceMs = Date.now() - microStart;
 
+  workerLogger.info({
+    jobId,
+    microInferenceMs,
+    ttfb_ms: microResult.metrics.ttfb_ms,
+    audioSize: microResult.audioBuffer.length,
+    event: 'MICRO_SYNTHESIZED',
+  }, '🎯 [MICRO] ElevenLabs synthesis complete');
+
   // Log TTFB metrics
   logTTFBMetrics(jobId, microResult.metrics, 'elevenlabs-micro');
 
   // Upload micro immediately
+  const uploadStart = Date.now();
   const microPath = `audio/jobs/${jobId}/micro.mp3`;
   await uploadAudioToCache(microPath, microResult.audioBuffer, 'mp3');
+  const uploadMs = Date.now() - uploadStart;
+
+  workerLogger.info({
+    jobId,
+    microPath,
+    uploadMs,
+    event: 'MICRO_UPLOADED',
+  }, '🎯 [MICRO] Uploaded to storage');
 
   // Get micro duration
   const microDurationSec = await getAudioDuration(microResult.audioBuffer);
 
   // Update job to partial_ready so iOS can start playing ASAP
+  const dbUpdateStart = Date.now();
   await supabase
     .from('tts_jobs')
     .update({
@@ -628,8 +651,11 @@ async function generateMicroPreview(
       updated_at: new Date().toISOString(),
     })
     .eq('id', jobId);
+  const dbUpdateMs = Date.now() - dbUpdateStart;
 
   recordPartialReady(jobId, microDurationSec);
+
+  const totalMicroFlowMs = Date.now() - microFlowStart;
 
   workerLogger.info({
     jobId,
@@ -637,8 +663,12 @@ async function generateMicroPreview(
     microSize: microResult.audioBuffer.length,
     microDurationSec,
     microInferenceMs,
+    uploadMs,
+    dbUpdateMs,
+    totalMicroFlowMs,
     ttfb_ms: microResult.metrics.ttfb_ms,
-  }, 'ElevenLabs: micro-preview ready and uploaded');
+    event: 'MICRO_PARTIAL_READY',
+  }, '🎯 [MICRO] ✅ partial_ready - iOS can start playback now');
 
   return {
     microBuffer: microResult.audioBuffer,
@@ -661,6 +691,8 @@ async function generateFullAudio(
   voiceId: string,
   _microBuffer: Buffer | null  // Kept for API compatibility but not used
 ): Promise<{ fullBuffer: Buffer; fullPath: string; durationSec: number }> {
+  const fullFlowStart = Date.now();
+
   const elevenLabs = getElevenLabsClient();
   if (!elevenLabs) {
     throw new Error('ElevenLabs not configured');
@@ -673,7 +705,9 @@ async function generateFullAudio(
   workerLogger.info({
     jobId,
     fullTextLength: fullText.length,
-  }, 'ElevenLabs: generating full audio (streaming to file)');
+    estimatedFullDurationSec: Math.round(fullText.length / 150 * 10) / 10,
+    event: 'FULL_START',
+  }, '📦 [FULL] Starting full audio generation (streaming to file)');
 
   const fullStart = Date.now();
 
@@ -692,16 +726,36 @@ async function generateFullAudio(
     );
     const fullInferenceMs = Date.now() - fullStart;
 
+    workerLogger.info({
+      jobId,
+      fullInferenceMs,
+      ttfb_ms: streamResult.metrics.ttfb_ms,
+      bytesStreamed: streamResult.metrics.bytes_received,
+      event: 'FULL_SYNTHESIZED',
+    }, '📦 [FULL] ElevenLabs synthesis complete (streamed to temp file)');
+
     // Log TTFB metrics
     logTTFBMetrics(jobId, streamResult.metrics, 'elevenlabs-full-stream');
 
     // Upload from file to Supabase
+    const uploadStart = Date.now();
     const fullPath = `audio/jobs/${jobId}/full.mp3`;
     const { size: mp3Size } = await uploadAudioFromFile(fullPath, localFilePath, 'mp3');
+    const uploadMs = Date.now() - uploadStart;
+
+    workerLogger.info({
+      jobId,
+      fullPath,
+      mp3Size,
+      uploadMs,
+      event: 'FULL_UPLOADED',
+    }, '📦 [FULL] Uploaded to storage');
 
     // Estimate duration from file size (ElevenLabs uses ~128kbps MP3)
     const BYTES_PER_SECOND = 16000;  // 128kbps = 16KB/s
     const durationSec = Math.round(mp3Size / BYTES_PER_SECOND);
+
+    const totalFullFlowMs = Date.now() - fullFlowStart;
 
     workerLogger.info({
       jobId,
@@ -709,9 +763,12 @@ async function generateFullAudio(
       fullSize: mp3Size,
       durationSec,
       fullInferenceMs,
+      uploadMs,
+      totalFullFlowMs,
       ttfb_ms: streamResult.metrics.ttfb_ms,
       streamedToFile: true,
-    }, 'ElevenLabs: full audio ready and uploaded (streamed)');
+      event: 'FULL_COMPLETE',
+    }, '📦 [FULL] ✅ Full audio ready');
 
     // Read file for return (needed by caller for now)
     // TODO: Refactor caller to not need buffer
@@ -926,7 +983,10 @@ async function processJobWithElevenLabs(
     durationSec: result.durationSec,
     mp3Size: result.mp3Size,
     inferenceMs,
-  }, 'ElevenLabs job completed');
+    previewPath: result.previewPath,
+    fullPath: result.fullPath,
+    event: 'JOB_READY',
+  }, '🚀 [JOB] ✅ Job completed - status: ready');
 }
 
 // ============================================================================
@@ -938,8 +998,14 @@ async function processJobWithElevenLabs(
  */
 async function processJob(message: TTSJobMessage): Promise<void> {
   const { jobId, attempt } = message;
+  const jobFlowStart = Date.now();
 
-  workerLogger.info({ jobId, attempt }, 'Processing job from queue');
+  workerLogger.info({
+    jobId,
+    attempt,
+    publishedAt: message.publishedAt,
+    event: 'JOB_RECEIVED',
+  }, '🚀 [JOB] Processing job from queue');
 
   // 1. Get job details from database
   const { data: jobData, error: jobError } = await supabase
