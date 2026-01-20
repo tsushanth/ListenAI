@@ -57,6 +57,10 @@ final class URLAudioPlayer: NSObject, ObservableObject {
     // Completion handler
     private var onPlaybackComplete: (() -> Void)?
 
+    /// Tracks if playback reached the end naturally (not paused/stopped by user)
+    /// Used to detect when preview finished so we can auto-resume with full audio
+    private var didReachEndOfPlayback: Bool = false
+
     // MARK: - Singleton
 
     static let shared = URLAudioPlayer()
@@ -77,6 +81,8 @@ final class URLAudioPlayer: NSObject, ObservableObject {
     ///   - title: Title for Now Playing info
     ///   - artist: Artist/author for Now Playing info
     ///   - startPosition: Optional position to start from (for resume)
+    ///   - mode: Player mode (.preview or .full) - set after stop() to persist
+    ///   - previewDuration: Duration of preview audio (for seek restrictions in preview mode)
     ///   - onComplete: Optional callback when playback completes
     func play(
         url: URL,
@@ -84,12 +90,18 @@ final class URLAudioPlayer: NSObject, ObservableObject {
         title: String = "Audio",
         artist: String? = nil,
         startPosition: TimeInterval? = nil,
+        mode: URLPlayerMode = .none,
+        previewDuration: TimeInterval? = nil,
         onComplete: (() -> Void)? = nil
     ) async throws {
-        print("[URLAudioPlayer] Playing: \(url.lastPathComponent)")
+        print("[URLAudioPlayer] Playing: \(url.lastPathComponent), mode: \(mode)")
 
         // Stop any current playback
         stop()
+
+        // Set player mode AFTER stop() so it's not reset
+        playerMode = mode
+        self.previewDuration = previewDuration
 
         // Store article ID
         currentArticleID = articleID
@@ -244,6 +256,7 @@ final class URLAudioPlayer: NSObject, ObservableObject {
         onPlaybackComplete = nil
         playerMode = .none
         previewDuration = nil
+        didReachEndOfPlayback = false
 
         // Clear now playing
         MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
@@ -327,20 +340,25 @@ final class URLAudioPlayer: NSObject, ObservableObject {
     ///   - url: The new audio URL to swap to
     ///   - mode: The new player mode (.full for swapping from preview to full)
     ///   - preservePosition: Whether to seek to the same position after swap (default: true)
+    ///   - forcePlay: Force playback to start even if not currently playing (e.g., preview ended before full was ready)
     func swapAudioURL(
         to url: URL,
         mode: URLPlayerMode,
-        preservePosition: Bool = true
+        preservePosition: Bool = true,
+        forcePlay: Bool = false
     ) async throws {
-        print("[URLAudioPlayer] Swapping audio to: \(url.lastPathComponent), mode: \(mode), preservePosition: \(preservePosition)")
+        print("[URLAudioPlayer] Swapping audio to: \(url.lastPathComponent), mode: \(mode), preservePosition: \(preservePosition), forcePlay: \(forcePlay)")
 
         // Capture current playback state BEFORE any changes
         let wasPlaying = isPlaying
+        // Use didReachEndOfPlayback flag instead of state == .completed
+        // because handleTimeControlStatus can overwrite .completed to .paused
+        let previewReachedEnd = (didReachEndOfPlayback && playerMode == .preview)
         let currentPosition = currentTime
         let currentRate = rate
         let oldDuration = duration
 
-        print("[URLAudioPlayer] Swap capture - wasPlaying: \(wasPlaying), position: \(String(format: "%.2f", currentPosition))s, rate: \(currentRate), oldDuration: \(String(format: "%.2f", oldDuration))s")
+        print("[URLAudioPlayer] Swap capture - wasPlaying: \(wasPlaying), previewReachedEnd: \(previewReachedEnd), didReachEndOfPlayback: \(didReachEndOfPlayback), position: \(String(format: "%.2f", currentPosition))s, rate: \(currentRate), oldDuration: \(String(format: "%.2f", oldDuration))s")
 
         // Pause current playback
         player?.pause()
@@ -433,13 +451,20 @@ final class URLAudioPlayer: NSObject, ObservableObject {
             print("[URLAudioPlayer] Skipping seek - preservePosition: \(preservePosition), position: \(String(format: "%.2f", currentPosition))s, duration: \(String(format: "%.2f", duration))s")
         }
 
-        // Resume playback if was playing
-        if wasPlaying {
-            print("[URLAudioPlayer] Resuming playback at rate: \(currentRate)")
+        // Resume playback if:
+        // 1. Was actively playing when swap started, OR
+        // 2. forcePlay is true (caller wants playback to start), OR
+        // 3. Preview reached end naturally (user was listening, ran out of preview, now full is ready)
+        let shouldPlay = wasPlaying || forcePlay || previewReachedEnd
+        if shouldPlay {
+            print("[URLAudioPlayer] Starting playback at rate: \(currentRate) (wasPlaying: \(wasPlaying), forcePlay: \(forcePlay), previewReachedEnd: \(previewReachedEnd))")
             player?.rate = currentRate
             isPlaying = true
             state = .playing
         }
+
+        // Reset the end-of-playback flag after swap
+        didReachEndOfPlayback = false
 
         // Update now playing info
         updateNowPlayingPlaybackState()
@@ -527,10 +552,11 @@ final class URLAudioPlayer: NSObject, ObservableObject {
     }
 
     @objc private func playerDidFinishPlaying() {
-        print("[URLAudioPlayer] Playback finished")
+        print("[URLAudioPlayer] Playback finished naturally (reached end)")
         isPlaying = false
         state = .completed
         currentTime = duration
+        didReachEndOfPlayback = true  // Mark that playback ended naturally
 
         // Call completion handler
         onPlaybackComplete?()

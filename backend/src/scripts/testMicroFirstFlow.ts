@@ -7,7 +7,9 @@
  * 3. Verifies the flow matches expected timing and state transitions
  *
  * Usage:
- *   cd backend && npx tsx src/scripts/testMicroFirstFlow.ts
+ *   cd backend && source .env.production && npx tsx src/scripts/testMicroFirstFlow.ts
+ *   OR
+ *   cd backend && npx tsx src/scripts/testMicroFirstFlow.ts  (if env vars already set)
  *
  * Environment:
  *   Requires SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, ELEVENLABS_API_KEY
@@ -16,16 +18,15 @@
 import { createClient } from '@supabase/supabase-js';
 import { randomUUID } from 'crypto';
 
-// Load environment from .env.production if available
-import * as dotenv from 'dotenv';
-dotenv.config({ path: '.env.production' });
-dotenv.config(); // Also try .env
+// Environment vars should be set before running:
+// source .env.production && npx tsx src/scripts/testMicroFirstFlow.ts
 
 // Configuration
 const SUPABASE_URL = process.env.SUPABASE_URL!;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 const TEST_VOICE_ID = process.env.TEST_VOICE_ID || 'JBFqnCBsd6RMkjVDRZzb'; // George
-const TEST_USER_ID = process.env.TEST_USER_ID || 'test-user-' + randomUUID().slice(0, 8);
+// User ID must be a valid UUID
+const TEST_USER_ID = process.env.TEST_USER_ID || randomUUID();
 
 if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
   console.error('Missing required environment variables: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY');
@@ -273,22 +274,24 @@ async function runTest(testCase: TestCase): Promise<TestResult> {
   }
 }
 
-async function cleanupTestJobs(): Promise<void> {
+async function cleanupTestJobs(createdJobIds: string[]): Promise<void> {
   console.log('\nCleaning up test jobs...');
 
-  // Delete test jobs older than 1 hour
-  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+  if (createdJobIds.length === 0) {
+    console.log('  No jobs to clean up.');
+    return;
+  }
 
+  // Delete jobs we created in this test run
   const { error } = await supabase
     .from('tts_jobs')
     .delete()
-    .like('user_id', 'test-user-%')
-    .lt('created_at', oneHourAgo);
+    .in('id', createdJobIds);
 
   if (error) {
     console.log(`  Warning: Cleanup failed: ${error.message}`);
   } else {
-    console.log('  Done.');
+    console.log(`  Cleaned up ${createdJobIds.length} test jobs.`);
   }
 }
 
@@ -302,10 +305,14 @@ async function main(): Promise<void> {
   console.log(`  Test User: ${TEST_USER_ID}`);
 
   const results: TestResult[] = [];
+  const createdJobIds: string[] = [];
 
   for (const testCase of TEST_CASES) {
     const result = await runTest(testCase);
     results.push(result);
+    if (result.jobId) {
+      createdJobIds.push(result.jobId);
+    }
   }
 
   // Print final summary
@@ -330,7 +337,7 @@ async function main(): Promise<void> {
   });
 
   // Cleanup
-  await cleanupTestJobs();
+  await cleanupTestJobs(createdJobIds);
 
   // Exit with appropriate code
   process.exit(failed > 0 ? 1 : 0);

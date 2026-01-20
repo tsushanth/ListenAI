@@ -600,6 +600,10 @@ ttsRouter.post('/estimate', asyncHandler(async (req: AuthenticatedRequest, res: 
 const jobRequestSchema = z.object({
   text: z.string().min(1).max(MAX_TEXT_LENGTH),
   voice_id: z.string().min(1).max(100),
+  // Provider selection:
+  // - "selfhosted": Kokoro TTS (default, fast, unlimited)
+  // - "elevenlabs": ElevenLabs TTS (premium, higher quality)
+  provider: z.enum(['selfhosted', 'elevenlabs']).default('selfhosted'),
   options: z
     .object({
       speed: z.number().min(0.5).max(3.0).optional(),
@@ -630,17 +634,20 @@ ttsRouter.post('/job', asyncHandler(async (req: AuthenticatedRequest, res: Respo
     });
   }
 
-  const { text, voice_id, options, article_id, article_title, purpose } = parseResult.data;
+  const { text, voice_id, provider, options, article_id, article_title, purpose } = parseResult.data;
   const characterCount = text.length;
   const speed = options?.speed ?? 1.0;
   const format: AudioFormat = options?.format ?? 'mp3';
-  const modelId = 'kokoro-82m';
+  // Model ID depends on provider
+  const modelId = provider === 'elevenlabs' ? 'eleven_multilingual_v2' : 'kokoro-82m';
 
-  ttsLogger.info({ userId, characterCount, voiceId: voice_id, purpose }, 'TTS job request received');
+  ttsLogger.info({ userId, characterCount, voiceId: voice_id, provider, purpose }, 'TTS job request received');
 
   // 3. Build voice configuration
   const voiceInfo = getVoiceInfo(voice_id);
-  const providerVoiceId = normalizeVoiceId(voice_id);
+  // For ElevenLabs, use the voice_id as-is (it's already an ElevenLabs ID)
+  // For Kokoro/selfhosted, normalize to Kokoro format
+  const providerVoiceId = provider === 'elevenlabs' ? voice_id : normalizeVoiceId(voice_id);
 
   // 4. Check user tier (all Kokoro voices are free tier)
   const userTier = await getUserTier(userId);

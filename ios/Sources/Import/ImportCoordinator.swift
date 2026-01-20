@@ -91,15 +91,25 @@ final class ImportCoordinator: ObservableObject {
         // Get current voice preset
         let voice = VoicePresetManager.shared.selectedPreset
 
-        // Use Kokoro voice ID for job API (backend uses Kokoro for all cloud synthesis)
-        guard let kokoroVoiceId = voice.kokoroVoiceID else {
-            print("[Import] Voice \(voice.name) has no Kokoro ID, skipping pre-synthesis")
-            articleStore.updateSynthesisStatus(for: article.id, status: .notStarted)
-            isSynthesizing = false
-            return
+        // Get provider from settings (standard=Kokoro, premium=ElevenLabs)
+        let ttsQualityRaw = UserDefaults.standard.string(forKey: "ttsQuality") ?? "standard"
+        let provider: ListenAICloudService.TTSProvider = ttsQualityRaw == "premium" ? .elevenlabs : .selfhosted
+
+        // Select voice ID based on provider
+        let voiceIdForJob: String
+        if provider == .elevenlabs {
+            voiceIdForJob = voice.providerVoiceID
+        } else {
+            guard let kokoroVoiceId = voice.kokoroVoiceID else {
+                print("[Import] Voice \(voice.name) has no Kokoro ID, skipping pre-synthesis")
+                articleStore.updateSynthesisStatus(for: article.id, status: .notStarted)
+                isSynthesizing = false
+                return
+            }
+            voiceIdForJob = kokoroVoiceId
         }
 
-        print("[Import] Selected voice for synthesis: \(voice.name), kokoroID: \(kokoroVoiceId)")
+        print("[Import] Selected voice for synthesis: \(voice.name), voiceID: \(voiceIdForJob), provider: \(provider.rawValue)")
 
         // Update status to queued
         articleStore.updateSynthesisStatus(for: article.id, status: .queued(position: 1))
@@ -116,7 +126,8 @@ final class ImportCoordinator: ObservableObject {
             // Submit job via backend API with prewarm purpose
             let response = try await cloudService.requestTTS(
                 text: article.rawText,
-                voiceId: kokoroVoiceId,
+                voiceId: voiceIdForJob,
+                provider: provider,
                 speed: 1.0,
                 purpose: .prewarm
             )
@@ -144,13 +155,13 @@ final class ImportCoordinator: ObservableObject {
             case .queued, .processing, .partialReady:
                 // Job is processing - hand off to TTSJobManager for background polling
                 articleStore.updateSynthesisStatus(for: article.id, status: .inProgress(progress: 0))
-                articleStore.updatePendingTTSJob(for: article.id, jobId: response.jobId, voiceId: kokoroVoiceId)
+                articleStore.updatePendingTTSJob(for: article.id, jobId: response.jobId, voiceId: voiceIdForJob)
 
                 // Let TTSJobManager handle background polling
                 TTSJobManager.shared.trackJob(
                     articleId: article.id,
                     jobId: response.jobId,
-                    voiceId: kokoroVoiceId,
+                    voiceId: voiceIdForJob,
                     initialStatus: response.status
                 )
 

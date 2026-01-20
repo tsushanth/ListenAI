@@ -1,5 +1,35 @@
 import SwiftUI
 
+// MARK: - TTS Quality Setting
+
+/// TTS quality/provider setting - determines which TTS backend to use
+enum TTSQuality: String, CaseIterable {
+    case standard = "standard"    // Kokoro (selfhosted) - faster, free
+    case premium = "premium"      // ElevenLabs - higher quality, uses quota
+
+    var displayName: String {
+        switch self {
+        case .standard: return "Standard"
+        case .premium: return "Premium"
+        }
+    }
+
+    var description: String {
+        switch self {
+        case .standard: return "Kokoro - Fast, unlimited"
+        case .premium: return "ElevenLabs - Higher quality"
+        }
+    }
+
+    /// Maps to ListenAICloudService.TTSProvider
+    var providerRawValue: String {
+        switch self {
+        case .standard: return "selfhosted"
+        case .premium: return "elevenlabs"
+        }
+    }
+}
+
 // MARK: - Settings View
 
 /// Enhanced settings view with voice cloning, linked accounts, and support sections.
@@ -9,6 +39,12 @@ struct SettingsView: View {
     @AppStorage("skipSilences") private var skipSilences = false
     @AppStorage("autoPlayNext") private var autoPlayNext = true
     @AppStorage("appLanguage") private var appLanguage = "en-US"
+    @AppStorage("ttsQuality") private var ttsQualityRaw: String = TTSQuality.standard.rawValue
+
+    private var ttsQuality: TTSQuality {
+        get { TTSQuality(rawValue: ttsQualityRaw) ?? .standard }
+        set { ttsQualityRaw = newValue.rawValue }
+    }
 
     @State private var showingVoiceCloning = false
     @State private var showingVoicePicker = false
@@ -96,6 +132,19 @@ struct SettingsView: View {
                 )
             }
             .buttonStyle(.plain)
+
+            // TTS Quality
+            HStack {
+                SettingsIconView(icon: "sparkles", color: .orange)
+                Text("Voice Quality")
+                Spacer()
+                Picker("", selection: $ttsQualityRaw) {
+                    ForEach(TTSQuality.allCases, id: \.rawValue) { quality in
+                        Text(quality.displayName).tag(quality.rawValue)
+                    }
+                }
+                .pickerStyle(.menu)
+            }
 
             // App Language
             Button {

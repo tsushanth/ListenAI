@@ -90,6 +90,12 @@ struct ArticleReaderView: View {
     @AppStorage("useStreamingTTS") private var useStreamingTTS: Bool = false
     @StateObject private var streamingTTS = StreamingTTSService.shared
 
+    // TTS quality/provider setting (standard=Kokoro, premium=ElevenLabs)
+    @AppStorage("ttsQuality") private var ttsQualityRaw: String = "standard"
+    private var ttsProvider: ListenAICloudService.TTSProvider {
+        ttsQualityRaw == "premium" ? .elevenlabs : .selfhosted
+    }
+
     // URL-based audio player for job-based TTS
     @StateObject private var urlPlayer = URLAudioPlayer.shared
 
@@ -1500,6 +1506,8 @@ struct ArticleReaderView: View {
                     title: article.displayTitle,
                     artist: article.author ?? article.siteName,
                     startPosition: nil,
+                    mode: .full,  // Cached audio is always full
+                    previewDuration: nil,
                     onComplete: {
                         // Mark as completed when playback finishes
                         Task { @MainActor in
@@ -1585,12 +1593,18 @@ struct ArticleReaderView: View {
 
         Task {
             do {
-                // Job-based API only supports selfhosted (Kokoro) provider
-                // All cloud voices go through the selfhosted backend
-                let provider: ListenAICloudService.TTSProvider = .selfhosted
+                // Use provider from settings (standard=Kokoro/selfhosted, premium=ElevenLabs)
+                let provider = ttsProvider
 
-                // Use Kokoro voice ID for job API
-                let voiceIdForJob = currentVoice.kokoroVoiceID ?? currentVoice.providerVoiceID
+                // Select voice ID based on provider:
+                // - For selfhosted (Kokoro): use kokoroVoiceID
+                // - For elevenlabs: use the ElevenLabs providerVoiceID
+                let voiceIdForJob: String
+                if provider == .elevenlabs {
+                    voiceIdForJob = currentVoice.providerVoiceID
+                } else {
+                    voiceIdForJob = currentVoice.kokoroVoiceID ?? currentVoice.providerVoiceID
+                }
 
                 print("[ArticleReader] Requesting TTS job for \(article.rawText.count) chars, voice: \(voiceIdForJob), provider: \(provider.rawValue)")
 
@@ -2144,14 +2158,16 @@ struct ArticleReaderView: View {
                 streamingTTS.stopStreaming()
 
                 let articleToMark = article
-                urlPlayer.setPlayerMode(mode, previewDuration: previewDuration)
 
+                // Pass mode directly to play() - this sets it AFTER stop() so it persists
                 try await urlPlayer.play(
                     url: url,
                     articleID: article.id,
                     title: article.displayTitle,
                     artist: article.author ?? article.siteName,
                     startPosition: nil,
+                    mode: mode,
+                    previewDuration: previewDuration,
                     onComplete: {
                         // Mark as completed when playback finishes (only for full mode)
                         Task { @MainActor in
@@ -2201,19 +2217,19 @@ struct ArticleReaderView: View {
                 // Stop any streaming playback first
                 streamingTTS?.stopStreaming()
 
-                // Set player mode to preview with duration restriction
-                urlPlayer?.setPlayerMode(.preview, previewDuration: previewDuration)
-
                 do {
+                    // Pass mode directly to play() - this sets it AFTER stop() so it persists
                     try await urlPlayer?.play(
                         url: previewURL,
                         articleID: articleId,
                         title: self.article.displayTitle,
                         artist: self.article.author ?? self.article.siteName,
                         startPosition: nil,
+                        mode: .preview,
+                        previewDuration: previewDuration,
                         onComplete: nil  // Don't mark as finished for preview
                     )
-                    print("[ArticleReader] Preview playback started from remote URL")
+                    print("[ArticleReader] Preview playback started from remote URL, mode: \(String(describing: urlPlayer?.playerMode))")
                 } catch {
                     print("[ArticleReader] Failed to start preview playback: \(error)")
                 }
@@ -2227,22 +2243,29 @@ struct ArticleReaderView: View {
             print("[ArticleReader] Full audio ready callback - swapping to: \(fullURL)")
 
             Task { @MainActor in
-                // Check if we're currently playing preview for this article
-                if urlPlayer?.currentArticleID == articleId && urlPlayer?.playerMode == .preview {
+                let currentID = urlPlayer?.currentArticleID
+                let currentMode = urlPlayer?.playerMode
+                let currentState = urlPlayer?.state
+                print("[ArticleReader] Full audio swap check - currentArticleID: \(String(describing: currentID)), playerMode: \(String(describing: currentMode)), state: \(String(describing: currentState))")
+
+                // Check if we were playing preview for this article (or just finished preview)
+                if currentID == articleId && currentMode == .preview {
                     // Seamless swap preserving playback position
+                    // The swapAudioURL will auto-resume if preview was playing or had completed
                     do {
                         try await urlPlayer?.swapAudioURL(to: fullURL, mode: .full, preservePosition: true)
                         print("[ArticleReader] Swapped to full audio, position preserved")
                     } catch {
                         print("[ArticleReader] Failed to swap audio: \(error)")
                         // Fallback: play fresh from full URL
-                        urlPlayer?.setPlayerMode(.full, previewDuration: nil)
                         try? await urlPlayer?.play(
                             url: fullURL,
                             articleID: articleId,
                             title: self.article.displayTitle,
                             artist: self.article.author ?? self.article.siteName,
                             startPosition: nil,
+                            mode: .full,
+                            previewDuration: nil,
                             onComplete: {
                                 Task { @MainActor in
                                     ArticleStore.shared.markAsFinished(self.article)
@@ -2250,10 +2273,13 @@ struct ArticleReaderView: View {
                             }
                         )
                     }
-                } else if urlPlayer?.currentArticleID != articleId {
+                } else if currentID != articleId {
                     // Not playing this article yet - full audio is ready, can start from full
-                    print("[ArticleReader] Full audio ready but not playing preview, ready for full playback")
+                    print("[ArticleReader] Full audio ready but different article playing (current: \(String(describing: currentID))), ready for full playback")
                     // Don't auto-start - user will press play when ready
+                } else {
+                    // Same article but not in preview mode (e.g., already swapped, or mode is .none/.full)
+                    print("[ArticleReader] Full audio ready but playerMode is \(String(describing: currentMode)), not swapping")
                 }
             }
         }

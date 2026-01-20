@@ -1122,25 +1122,29 @@ struct TextCleaningService {
             ("\\ba\\.k\\.a\\.?\\b", "also known as"),
             ("\\bapprox\\.?\\b", "approximately"),
             ("\\basap\\b", "as soon as possible"),
-            ("\\bdept\\.?\\b", "department"),
-            ("\\best\\.?\\b", "established"),
-            ("\\bgovt\\.?\\b", "government"),
-            ("\\bincl\\.?\\b", "including"),
-            ("\\bmax\\.?\\b", "maximum"),
-            ("\\bmin\\.?\\b", "minimum"),
-            ("\\bmisc\\.?\\b", "miscellaneous"),
+            // These require a period to avoid false positives (e.g., "est" in "best")
+            ("\\bdept\\.\\b", "department"),
+            ("\\best\\.\\b", "established"),
+            ("\\bgovt\\.\\b", "government"),
+            ("\\bincl\\.\\b", "including"),
+            ("\\bmax\\.\\b", "maximum"),
+            ("\\bmin\\.\\b", "minimum"),
+            ("\\bmisc\\.\\b", "miscellaneous"),
 
             // Units and measurements
             ("\\bNo\\.\\s*(\\d)", "Number $1"),
             ("\\bvol\\.\\s*(\\d)", "volume $1"),
             ("\\bpp\\.\\s*(\\d)", "pages $1"),
             ("\\bca\\.\\s*(\\d)", "circa $1"),
-            ("\\bft\\.?\\b", "feet"),
-            ("\\bin\\.?\\b", "inches"),
+            // Only expand "ft" and "in" when preceded by a number (e.g., "6 ft" → "6 feet")
+            // This prevents "in the" from becoming "inches the"
+            ("(\\d)\\s*ft\\.?\\b", "$1 feet"),
+            ("(\\d)\\s*in\\.?\\b", "$1 inches"),
             ("\\blb\\.?\\b", "pounds"),
             ("\\boz\\.?\\b", "ounces"),
             ("\\byd\\.?\\b", "yards"),
-            ("\\bmi\\.?\\b", "miles"),
+            // Only expand "mi" when preceded by a number to avoid matching words like "Miami"
+            ("(\\d)\\s*mi\\.?\\b", "$1 miles"),
             ("\\bkm\\.?\\b", "kilometers"),
             ("\\bcm\\.?\\b", "centimeters"),
             ("\\bmm\\.?\\b", "millimeters"),
@@ -1151,18 +1155,20 @@ struct TextCleaningService {
             ("\\bsq\\.?\\s*mi\\.?\\b", "square miles"),
             ("\\bcu\\.?\\s*ft\\.?\\b", "cubic feet"),
 
-            // Time-related
-            ("\\bhr\\.?\\b", "hour"),
-            ("\\bhrs\\.?\\b", "hours"),
-            ("\\bsec\\.?\\b", "second"),
-            ("\\bsecs\\.?\\b", "seconds"),
-            ("\\bmon\\.?\\b", "Monday"),
-            ("\\btue\\.?\\b", "Tuesday"),
-            ("\\bwed\\.?\\b", "Wednesday"),
-            ("\\bthu\\.?\\b", "Thursday"),
-            ("\\bfri\\.?\\b", "Friday"),
-            ("\\bsat\\.?\\b", "Saturday"),
-            ("\\bsun\\.?\\b", "Sunday"),
+            // Time-related - require period to avoid false positives
+            // (e.g., "sec" in "section", "sat" in "satellite", "sun" as the star)
+            ("(\\d)\\s*hr\\.?\\b", "$1 hour"),
+            ("(\\d)\\s*hrs\\.?\\b", "$1 hours"),
+            ("(\\d)\\s*sec\\.?\\b", "$1 seconds"),
+            ("(\\d)\\s*secs\\.?\\b", "$1 seconds"),
+            // Day abbreviations require period
+            ("\\bMon\\.\\b", "Monday"),
+            ("\\bTue\\.\\b", "Tuesday"),
+            ("\\bWed\\.\\b", "Wednesday"),
+            ("\\bThu\\.\\b", "Thursday"),
+            ("\\bFri\\.\\b", "Friday"),
+            ("\\bSat\\.\\b", "Saturday"),
+            ("\\bSun\\.\\b", "Sunday"),
 
             // Symbols and shorthand
             ("\\b&\\b", " and "),
