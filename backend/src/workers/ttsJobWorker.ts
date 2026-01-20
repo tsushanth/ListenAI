@@ -472,36 +472,53 @@ function simpleWavConcat(wavBuffers: Buffer[]): Buffer {
  */
 async function getAudioDuration(audioBuffer: Buffer): Promise<number> {
   return new Promise((resolve) => {
-    const ffprobe = spawn('ffprobe', [
-      '-i', 'pipe:0',
-      '-show_entries', 'format=duration',
-      '-v', 'quiet',
-      '-of', 'csv=p=0',
-    ], {
-      stdio: ['pipe', 'pipe', 'pipe'],
-    });
+    // Set a timeout to prevent hanging
+    const timeoutId = setTimeout(() => {
+      workerLogger.warn({ bufferSize: audioBuffer.length }, 'ffprobe timed out, estimating duration');
+      // Estimate duration: ~128kbps MP3 = 16KB per second
+      const estimatedDuration = Math.round(audioBuffer.length / 16000);
+      resolve(estimatedDuration);
+    }, 5000); // 5 second timeout
 
-    let output = '';
+    try {
+      const ffprobe = spawn('ffprobe', [
+        '-i', 'pipe:0',
+        '-show_entries', 'format=duration',
+        '-v', 'quiet',
+        '-of', 'csv=p=0',
+      ], {
+        stdio: ['pipe', 'pipe', 'pipe'],
+      });
 
-    ffprobe.stdout.on('data', (data: Buffer) => {
-      output += data.toString();
-    });
+      let output = '';
 
-    ffprobe.on('close', (code) => {
-      if (code === 0) {
-        const duration = parseFloat(output.trim());
-        resolve(isNaN(duration) ? 0 : Math.round(duration));
-      } else {
+      ffprobe.stdout.on('data', (data: Buffer) => {
+        output += data.toString();
+      });
+
+      ffprobe.on('close', (code) => {
+        clearTimeout(timeoutId);
+        if (code === 0) {
+          const duration = parseFloat(output.trim());
+          resolve(isNaN(duration) ? 0 : Math.round(duration));
+        } else {
+          resolve(0);
+        }
+      });
+
+      ffprobe.on('error', (err) => {
+        clearTimeout(timeoutId);
+        workerLogger.error({ error: err.message }, 'ffprobe error');
         resolve(0);
-      }
-    });
+      });
 
-    ffprobe.on('error', () => {
+      const inputStream = Readable.from(audioBuffer);
+      inputStream.pipe(ffprobe.stdin);
+    } catch (err) {
+      clearTimeout(timeoutId);
+      workerLogger.error({ error: err instanceof Error ? err.message : 'Unknown' }, 'ffprobe spawn failed');
       resolve(0);
-    });
-
-    const inputStream = Readable.from(audioBuffer);
-    inputStream.pipe(ffprobe.stdin);
+    }
   });
 }
 
