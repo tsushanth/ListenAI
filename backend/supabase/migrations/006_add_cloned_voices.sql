@@ -11,8 +11,8 @@
 CREATE TABLE cloned_voices (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
 
-    -- User association
-    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    -- User association (device ID, not Supabase auth user)
+    user_id TEXT NOT NULL,  -- Device ID from X-Device-ID header
 
     -- Voice metadata
     name TEXT NOT NULL,                      -- User-given name for the voice
@@ -69,27 +69,8 @@ CREATE INDEX idx_cloned_voices_last_used ON cloned_voices(last_used_at DESC NULL
 
 ALTER TABLE cloned_voices ENABLE ROW LEVEL SECURITY;
 
--- Users can view their own voices
-CREATE POLICY "Users can view own voices" ON cloned_voices
-    FOR SELECT
-    USING (auth.uid() = user_id);
-
--- Users can insert their own voices
-CREATE POLICY "Users can insert own voices" ON cloned_voices
-    FOR INSERT
-    WITH CHECK (auth.uid() = user_id);
-
--- Users can update their own voices
-CREATE POLICY "Users can update own voices" ON cloned_voices
-    FOR UPDATE
-    USING (auth.uid() = user_id);
-
--- Users can delete their own voices
-CREATE POLICY "Users can delete own voices" ON cloned_voices
-    FOR DELETE
-    USING (auth.uid() = user_id);
-
--- Service role has full access (for backend operations)
+-- Service role has full access (backend handles authorization via device ID)
+-- No user-level RLS policies since we use device IDs, not Supabase auth
 CREATE POLICY "Service role full access on cloned_voices" ON cloned_voices
     FOR ALL
     USING (true);
@@ -99,7 +80,7 @@ CREATE POLICY "Service role full access on cloned_voices" ON cloned_voices
 -- ============================================================================
 
 -- Function: Get user's active cloned voices
-CREATE OR REPLACE FUNCTION get_user_cloned_voices(p_user_id UUID)
+CREATE OR REPLACE FUNCTION get_user_cloned_voices(p_user_id TEXT)
 RETURNS TABLE (
     id UUID,
     name TEXT,
@@ -134,7 +115,7 @@ $$ LANGUAGE plpgsql;
 
 -- Function: Set a voice as user's default (unset others)
 CREATE OR REPLACE FUNCTION set_default_cloned_voice(
-    p_user_id UUID,
+    p_user_id TEXT,
     p_voice_id UUID
 )
 RETURNS BOOLEAN AS $$
@@ -168,7 +149,7 @@ $$ LANGUAGE plpgsql;
 -- Function: Get voice details with fresh signed URL
 CREATE OR REPLACE FUNCTION get_cloned_voice_for_synthesis(
     p_voice_id UUID,
-    p_user_id UUID
+    p_user_id TEXT
 )
 RETURNS TABLE (
     id UUID,
