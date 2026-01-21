@@ -1270,6 +1270,14 @@ class VoiceCloningViewModel: NSObject, ObservableObject, AVAudioPlayerDelegate {
     /// Sample text for cloned voice preview synthesis
     private let sampleText = "Hello, this is a preview of your cloned voice. I can read your articles with this unique sound."
 
+    /// Local cache directory for cloned voice previews
+    private var previewCacheDirectory: URL {
+        let cacheDir = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
+        let previewDir = cacheDir.appendingPathComponent("cloned_voice_previews", isDirectory: true)
+        try? FileManager.default.createDirectory(at: previewDir, withIntermediateDirectories: true)
+        return previewDir
+    }
+
     override init() {
         super.init()
     }
@@ -1291,7 +1299,7 @@ class VoiceCloningViewModel: NSObject, ObservableObject, AVAudioPlayerDelegate {
         }
     }
 
-    /// Preview a cloned voice by synthesizing sample text (not playing the reference recording)
+    /// Preview a cloned voice - uses cached audio if available, otherwise synthesizes and caches
     func previewVoice(_ voice: VoiceCloningService.ClonedVoice) async {
         if playingVoiceId == voice.id {
             stopPreview()
@@ -1300,6 +1308,27 @@ class VoiceCloningViewModel: NSObject, ObservableObject, AVAudioPlayerDelegate {
 
         stopPreview()
         playingVoiceId = voice.id
+
+        // Check for cached preview first
+        let cachedURL = getCachedPreviewURL(for: voice.id)
+        if FileManager.default.fileExists(atPath: cachedURL.path) {
+            // Play from cache - no loading needed
+            do {
+                try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .spokenAudio)
+                try? AVAudioSession.sharedInstance().setActive(true)
+
+                audioPlayer = try AVAudioPlayer(contentsOf: cachedURL)
+                audioPlayer?.delegate = self
+                audioPlayer?.prepareToPlay()
+                audioPlayer?.play()
+                return
+            } catch {
+                // Cache file might be corrupted, delete and re-synthesize
+                try? FileManager.default.removeItem(at: cachedURL)
+            }
+        }
+
+        // No cached preview - synthesize and cache
         isPreviewLoading = true
 
         previewTask = Task {
@@ -1312,6 +1341,9 @@ class VoiceCloningViewModel: NSObject, ObservableObject, AVAudioPlayerDelegate {
                 let audioURL = try await synthesizeClonedVoicePreview(voiceId: voice.id)
 
                 if Task.isCancelled { return }
+
+                // Copy to cache for future use
+                try? FileManager.default.copyItem(at: audioURL, to: cachedURL)
 
                 audioPlayer = try AVAudioPlayer(contentsOf: audioURL)
                 audioPlayer?.delegate = self
@@ -1330,6 +1362,17 @@ class VoiceCloningViewModel: NSObject, ObservableObject, AVAudioPlayerDelegate {
                 }
             }
         }
+    }
+
+    /// Get the cached preview URL for a voice ID
+    private func getCachedPreviewURL(for voiceId: String) -> URL {
+        previewCacheDirectory.appendingPathComponent("preview_\(voiceId).mp3")
+    }
+
+    /// Clear cached preview for a voice (call when voice is deleted or updated)
+    func clearCachedPreview(for voiceId: String) {
+        let cachedURL = getCachedPreviewURL(for: voiceId)
+        try? FileManager.default.removeItem(at: cachedURL)
     }
 
     /// Synthesize sample text using a cloned voice
