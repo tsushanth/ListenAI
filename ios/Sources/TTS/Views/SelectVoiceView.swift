@@ -64,7 +64,8 @@ struct SelectVoiceView: View {
                                 ClonedVoiceRow(
                                     voice: clonedVoice,
                                     isSelected: tempSelectedClonedVoice?.id == clonedVoice.id,
-                                    isPreviewing: previewingClonedVoiceId == clonedVoice.id,
+                                    isPreviewing: previewingClonedVoiceId == clonedVoice.id && !viewModel.isPreviewLoading,
+                                    isLoading: previewingClonedVoiceId == clonedVoice.id && viewModel.isPreviewLoading,
                                     onSelect: {
                                         tempSelectedClonedVoice = clonedVoice
                                         tempSelectedVoice = nil
@@ -222,6 +223,7 @@ struct SelectVoiceView: View {
 
     private func previewVoice(_ voice: VoicePreset) {
         previewingClonedVoiceId = nil
+        viewModel.stopPreview()
 
         if previewingVoiceId == voice.id {
             previewingVoiceId = nil
@@ -230,9 +232,16 @@ struct SelectVoiceView: View {
 
         previewingVoiceId = voice.id
 
-        // Simulate preview playback
-        DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-            if previewingVoiceId == voice.id {
+        Task {
+            // Play bundled audio sample for this voice
+            if let duration = await viewModel.previewBuiltInVoice(voice) {
+                // Wait for playback to complete, then reset state
+                try? await Task.sleep(for: .seconds(duration))
+                if previewingVoiceId == voice.id {
+                    previewingVoiceId = nil
+                }
+            } else {
+                // No bundled sample found, reset immediately
                 previewingVoiceId = nil
             }
         }
@@ -240,10 +249,10 @@ struct SelectVoiceView: View {
 
     private func previewClonedVoice(_ voice: VoiceCloningService.ClonedVoice) {
         previewingVoiceId = nil
+        viewModel.stopPreview()
 
         if previewingClonedVoiceId == voice.id {
             previewingClonedVoiceId = nil
-            viewModel.stopPreview()
             return
         }
 
@@ -462,6 +471,7 @@ private struct ClonedVoiceRow: View {
     let voice: VoiceCloningService.ClonedVoice
     let isSelected: Bool
     let isPreviewing: Bool
+    let isLoading: Bool
     let onSelect: () -> Void
     let onPreview: () -> Void
 
@@ -490,15 +500,15 @@ private struct ClonedVoiceRow: View {
                             .foregroundStyle(.secondary)
                     }
 
-                    Text("Cloned Voice • Multilingual")
+                    Text(isLoading ? "Generating preview..." : "Cloned Voice • Multilingual")
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(isLoading ? .orange : .secondary)
                 }
 
                 Spacer()
 
                 // Waveform visualization
-                WaveformView(isAnimating: isPreviewing)
+                WaveformView(isAnimating: isPreviewing || isLoading)
                     .frame(width: 60, height: 24)
 
                 // Play button
@@ -508,13 +518,20 @@ private struct ClonedVoiceRow: View {
                             .fill(Color.yellow)
                             .frame(width: 40, height: 40)
 
-                        Image(systemName: isPreviewing ? "stop.fill" : "play.fill")
-                            .font(.system(size: 14, weight: .bold))
-                            .foregroundStyle(.black)
-                            .offset(x: isPreviewing ? 0 : 2)
+                        if isLoading {
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle(tint: .black))
+                                .scaleEffect(0.7)
+                        } else {
+                            Image(systemName: isPreviewing ? "stop.fill" : "play.fill")
+                                .font(.system(size: 14, weight: .bold))
+                                .foregroundStyle(.black)
+                                .offset(x: isPreviewing ? 0 : 2)
+                        }
                     }
                 }
                 .buttonStyle(.plain)
+                .disabled(isLoading)
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 12)
@@ -616,11 +633,38 @@ struct WaveformView: View {
 // MARK: - Select Voice View Model
 
 @MainActor
-class SelectVoiceViewModel: ObservableObject {
+class SelectVoiceViewModel: NSObject, ObservableObject, AVAudioPlayerDelegate {
     @Published var clonedVoices: [VoiceCloningService.ClonedVoice] = []
     @Published var isLoadingClonedVoices = false
+    @Published var isPreviewPlaying = false
+    @Published var isPreviewLoading = false
 
     private var audioPlayer: AVAudioPlayer?
+    private var previewTask: Task<Void, Never>?
+
+    /// Mapping from ElevenLabs voice IDs to bundled sample filenames
+    private let voiceSampleFiles: [String: String] = [
+        "21m00Tcm4TlvDq8ikWAM": "voice_sample_rachel",     // Rachel
+        "pNInz6obpgDQGcFmaJgB": "voice_sample_adam",       // Adam
+        "nPczCjzI2devNBz1zQrb": "voice_sample_brian",      // Brian
+        "EXAVITQu4vr4xnSDxMaL": "voice_sample_bella",      // Bella
+        "TxGEqnHWrfWFTfGW9XjX": "voice_sample_josh",       // Josh
+        "XB0fDUnXU5powFXDhCwa": "voice_sample_charlotte",  // Charlotte
+        "MF3mGyEYCl7XYWbV9V6O": "voice_sample_bella",      // Elli (uses Bella sample)
+        "XrExE9yKIg1WjnnlVkGX": "voice_sample_adam",       // Matilda (uses Adam sample)
+        "pqHfZKP75CvOlQylNhV4": "voice_sample_brian",      // Bill (uses Brian sample)
+        "ThT5KcBeYPX3keUQqHPh": "voice_sample_bella",      // Dorothy (uses Bella sample)
+        "VR6AewLTigWG4xSOukaG": "voice_sample_adam",       // Arnold (uses Adam sample)
+        "JBFqnCBsd6RMkjVDRZzb": "voice_sample_brian",      // George (uses Brian sample)
+        "pFZP5JQG7iQjIQuC4Bku": "voice_sample_charlotte",  // Lily (uses Charlotte sample)
+    ]
+
+    /// Sample text for cloned voice preview synthesis
+    private let clonedVoiceSampleText = "Hello, this is a preview of your cloned voice. I can read your articles with this unique sound."
+
+    override init() {
+        super.init()
+    }
 
     func loadClonedVoices() async {
         isLoadingClonedVoices = true
@@ -634,22 +678,140 @@ class SelectVoiceViewModel: ObservableObject {
         }
     }
 
-    func previewClonedVoice(_ voice: VoiceCloningService.ClonedVoice) async {
-        do {
-            let audioURL = try await VoiceCloningService.shared.previewClonedVoice(voice.id)
-            audioPlayer = try AVAudioPlayer(contentsOf: audioURL)
-            audioPlayer?.play()
+    /// Preview a built-in voice using bundled audio samples
+    func previewBuiltInVoice(_ voice: VoicePreset) async -> TimeInterval? {
+        stopPreview()
 
-            // Wait for playback to complete
-            try await Task.sleep(for: .seconds(audioPlayer?.duration ?? 3))
+        // Configure audio session
+        configureAudioSession()
+
+        // Look up the bundled sample file for this voice
+        guard let sampleFilename = voiceSampleFiles[voice.providerVoiceID] else {
+            print("SelectVoiceViewModel: No bundled sample for voice: \(voice.name) (\(voice.providerVoiceID))")
+            return nil
+        }
+
+        // Try to load the bundled WAV file
+        guard let sampleURL = Bundle.main.url(forResource: sampleFilename, withExtension: "wav") else {
+            print("SelectVoiceViewModel: Bundled file not found: \(sampleFilename).wav")
+            return nil
+        }
+
+        do {
+            audioPlayer = try AVAudioPlayer(contentsOf: sampleURL)
+            audioPlayer?.delegate = self
+            audioPlayer?.prepareToPlay()
+            audioPlayer?.play()
+            isPreviewPlaying = true
+
+            return audioPlayer?.duration
         } catch {
-            // Silently fail
+            print("SelectVoiceViewModel: Error playing bundled file: \(error)")
+            return nil
         }
     }
 
+    /// Preview a cloned voice by synthesizing sample text
+    func previewClonedVoice(_ voice: VoiceCloningService.ClonedVoice) async {
+        stopPreview()
+        isPreviewLoading = true
+
+        previewTask = Task {
+            do {
+                // Configure audio session
+                configureAudioSession()
+
+                // Synthesize sample text using the cloned voice via TTS
+                let audioURL = try await synthesizeClonedVoicePreview(voiceId: voice.id)
+
+                if Task.isCancelled { return }
+
+                audioPlayer = try AVAudioPlayer(contentsOf: audioURL)
+                audioPlayer?.delegate = self
+                audioPlayer?.prepareToPlay()
+                audioPlayer?.play()
+
+                await MainActor.run {
+                    isPreviewLoading = false
+                    isPreviewPlaying = true
+                }
+
+                // Wait for playback to complete
+                try await Task.sleep(for: .seconds(audioPlayer?.duration ?? 5))
+            } catch {
+                await MainActor.run {
+                    isPreviewLoading = false
+                    isPreviewPlaying = false
+                }
+                print("SelectVoiceViewModel: Error previewing cloned voice: \(error)")
+            }
+        }
+    }
+
+    /// Synthesize sample text using a cloned voice
+    private func synthesizeClonedVoicePreview(voiceId: String) async throws -> URL {
+        // Use TTSCoordinator to synthesize with the cloned voice
+        let coordinator = TTSCoordinator.shared
+
+        // Create a temporary voice preset for the cloned voice
+        let tempPreset = VoicePreset(
+            name: "Preview",
+            isBuiltIn: false,
+            isCharacterVoice: false,
+            provider: .elevenLabs,
+            providerVoiceID: voiceId,
+            providerModelID: "eleven_multilingual_v2",
+            language: "en-US",
+            supportedLanguages: ["en-US"],
+            gender: .neutral,
+            age: .adult,
+            style: .conversational,
+            category: .custom,
+            voiceDescription: "Cloned voice preview",
+            tier: .premium,
+            sampleText: clonedVoiceSampleText
+        )
+
+        // Synthesize the sample text using premium quality (ElevenLabs) since it's a cloned voice
+        let audioURL = try await coordinator.synthesizeWithQuality(
+            text: clonedVoiceSampleText,
+            voice: tempPreset,
+            quality: .premium
+        )
+
+        return audioURL
+    }
+
     func stopPreview() {
+        previewTask?.cancel()
+        previewTask = nil
         audioPlayer?.stop()
         audioPlayer = nil
+        isPreviewPlaying = false
+        isPreviewLoading = false
+    }
+
+    private func configureAudioSession() {
+        do {
+            try AVAudioSession.sharedInstance().setCategory(.playback, mode: .spokenAudio)
+            try AVAudioSession.sharedInstance().setActive(true)
+        } catch {
+            print("SelectVoiceViewModel: Failed to configure audio session: \(error)")
+        }
+    }
+
+    // MARK: - AVAudioPlayerDelegate
+
+    nonisolated func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
+        Task { @MainActor in
+            self.isPreviewPlaying = false
+        }
+    }
+
+    nonisolated func audioPlayerDecodeErrorDidOccur(_ player: AVAudioPlayer, error: Error?) {
+        Task { @MainActor in
+            self.isPreviewPlaying = false
+        }
     }
 }
 

@@ -138,7 +138,8 @@ struct VoiceCloningView: View {
                 ForEach(viewModel.clonedVoices) { voice in
                     ClonedVoiceCard(
                         voice: voice,
-                        isPlaying: viewModel.playingVoiceId == voice.id,
+                        isPlaying: viewModel.playingVoiceId == voice.id && !viewModel.isPreviewLoading,
+                        isLoading: viewModel.playingVoiceId == voice.id && viewModel.isPreviewLoading,
                         isEditing: isEditing,
                         onPreview: {
                             Task {
@@ -182,6 +183,7 @@ struct VoiceCloningView: View {
 private struct ClonedVoiceCard: View {
     let voice: VoiceCloningService.ClonedVoice
     let isPlaying: Bool
+    let isLoading: Bool
     let isEditing: Bool
     let onPreview: () -> Void
     let onDelete: () -> Void
@@ -212,19 +214,20 @@ private struct ClonedVoiceCard: View {
                         .foregroundStyle(.secondary)
                 }
 
-                Text("Cloned Voice • Multilingual")
+                Text(isLoading ? "Generating preview..." : "Cloned Voice • Multilingual")
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(isLoading ? .orange : .secondary)
 
                 // Waveform visualization
                 HStack(spacing: 1) {
                     ForEach(0..<24, id: \.self) { index in
                         RoundedRectangle(cornerRadius: 0.5)
-                            .fill(Color(.systemGray4))
-                            .frame(width: 2, height: waveformHeight(for: index))
+                            .fill(isLoading ? Color.orange : (isPlaying ? Color.yellow : Color(.systemGray4)))
+                            .frame(width: 2, height: waveformHeight(for: index, isAnimating: isPlaying || isLoading))
                     }
                 }
                 .frame(height: 16)
+                .animation(isPlaying || isLoading ? .easeInOut(duration: 0.3).repeatForever(autoreverses: true) : .default, value: isPlaying || isLoading)
             }
 
             Spacer()
@@ -246,13 +249,20 @@ private struct ClonedVoiceCard: View {
                             .fill(Color.yellow)
                             .frame(width: 44, height: 44)
 
-                        Image(systemName: isPlaying ? "stop.fill" : "play.fill")
-                            .font(.system(size: 16, weight: .bold))
-                            .foregroundStyle(.black)
-                            .offset(x: isPlaying ? 0 : 2)
+                        if isLoading {
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle(tint: .black))
+                                .scaleEffect(0.8)
+                        } else {
+                            Image(systemName: isPlaying ? "stop.fill" : "play.fill")
+                                .font(.system(size: 16, weight: .bold))
+                                .foregroundStyle(.black)
+                                .offset(x: isPlaying ? 0 : 2)
+                        }
                     }
                 }
                 .buttonStyle(.plain)
+                .disabled(isLoading)
             }
         }
         .padding(16)
@@ -268,9 +278,13 @@ private struct ClonedVoiceCard: View {
         }
     }
 
-    private func waveformHeight(for index: Int) -> CGFloat {
+    private func waveformHeight(for index: Int, isAnimating: Bool = false) -> CGFloat {
         let heights: [CGFloat] = [6, 10, 14, 10, 8, 12, 16, 12, 8, 14, 10, 6, 8, 12, 10, 14, 8, 10, 12, 8, 6, 10, 8, 6]
-        return heights[index % heights.count]
+        let baseHeight = heights[index % heights.count]
+        if isAnimating {
+            return baseHeight * CGFloat.random(in: 0.7...1.3)
+        }
+        return baseHeight
     }
 }
 
@@ -1242,14 +1256,23 @@ private struct ImagePicker: UIViewControllerRepresentable {
 // MARK: - View Models
 
 @MainActor
-class VoiceCloningViewModel: ObservableObject {
+class VoiceCloningViewModel: NSObject, ObservableObject, AVAudioPlayerDelegate {
     @Published var clonedVoices: [VoiceCloningService.ClonedVoice] = []
     @Published var isLoading = false
     @Published var showError = false
     @Published var errorMessage = ""
     @Published var playingVoiceId: String?
+    @Published var isPreviewLoading = false
 
     private var audioPlayer: AVAudioPlayer?
+    private var previewTask: Task<Void, Never>?
+
+    /// Sample text for cloned voice preview synthesis
+    private let sampleText = "Hello, this is a preview of your cloned voice. I can read your articles with this unique sound."
+
+    override init() {
+        super.init()
+    }
 
     func loadVoices() async {
         isLoading = true
@@ -1268,25 +1291,100 @@ class VoiceCloningViewModel: ObservableObject {
         }
     }
 
+    /// Preview a cloned voice by synthesizing sample text (not playing the reference recording)
     func previewVoice(_ voice: VoiceCloningService.ClonedVoice) async {
         if playingVoiceId == voice.id {
-            audioPlayer?.stop()
-            playingVoiceId = nil
+            stopPreview()
             return
         }
 
-        do {
-            let audioURL = try await VoiceCloningService.shared.previewClonedVoice(voice.id)
-            audioPlayer = try AVAudioPlayer(contentsOf: audioURL)
-            audioPlayer?.play()
-            playingVoiceId = voice.id
+        stopPreview()
+        playingVoiceId = voice.id
+        isPreviewLoading = true
 
-            DispatchQueue.main.asyncAfter(deadline: .now() + (audioPlayer?.duration ?? 5)) {
-                self.playingVoiceId = nil
+        previewTask = Task {
+            do {
+                // Configure audio session
+                try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .spokenAudio)
+                try? AVAudioSession.sharedInstance().setActive(true)
+
+                // Synthesize sample text using the cloned voice
+                let audioURL = try await synthesizeClonedVoicePreview(voiceId: voice.id)
+
+                if Task.isCancelled { return }
+
+                audioPlayer = try AVAudioPlayer(contentsOf: audioURL)
+                audioPlayer?.delegate = self
+                audioPlayer?.prepareToPlay()
+                audioPlayer?.play()
+
+                await MainActor.run {
+                    isPreviewLoading = false
+                }
+            } catch {
+                await MainActor.run {
+                    isPreviewLoading = false
+                    playingVoiceId = nil
+                    errorMessage = "Failed to preview voice: \(error.localizedDescription)"
+                    showError = true
+                }
             }
-        } catch {
-            errorMessage = error.localizedDescription
-            showError = true
+        }
+    }
+
+    /// Synthesize sample text using a cloned voice
+    private func synthesizeClonedVoicePreview(voiceId: String) async throws -> URL {
+        let coordinator = TTSCoordinator.shared
+
+        // Create a temporary voice preset for the cloned voice
+        let tempPreset = VoicePreset(
+            name: "Preview",
+            isBuiltIn: false,
+            isCharacterVoice: false,
+            provider: .elevenLabs,
+            providerVoiceID: voiceId,
+            providerModelID: "eleven_multilingual_v2",
+            language: "en-US",
+            supportedLanguages: ["en-US"],
+            gender: .neutral,
+            age: .adult,
+            style: .conversational,
+            category: .custom,
+            voiceDescription: "Cloned voice preview",
+            tier: .premium,
+            sampleText: sampleText
+        )
+
+        // Synthesize the sample text using premium quality (ElevenLabs) since it's a cloned voice
+        let audioURL = try await coordinator.synthesizeWithQuality(
+            text: sampleText,
+            voice: tempPreset,
+            quality: .premium
+        )
+
+        return audioURL
+    }
+
+    func stopPreview() {
+        previewTask?.cancel()
+        previewTask = nil
+        audioPlayer?.stop()
+        audioPlayer = nil
+        playingVoiceId = nil
+        isPreviewLoading = false
+    }
+
+    // MARK: - AVAudioPlayerDelegate
+
+    nonisolated func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
+        Task { @MainActor in
+            self.playingVoiceId = nil
+        }
+    }
+
+    nonisolated func audioPlayerDecodeErrorDidOccur(_ player: AVAudioPlayer, error: Error?) {
+        Task { @MainActor in
+            self.playingVoiceId = nil
         }
     }
 
