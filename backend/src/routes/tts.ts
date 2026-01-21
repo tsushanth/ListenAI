@@ -1006,7 +1006,7 @@ const clonedVoiceSynthSchema = z.object({
   text: z.string().min(1).max(MAX_TEXT_LENGTH),
   voice_id: z.string().min(1).describe('Cloned voice ID (UUID from cloned_voices table)'),
   voice_url: z.string().url().describe('URL to reference audio file (from Supabase Storage)'),
-  speed: z.number().min(0.5).max(2.0).default(1.0),
+  speed: z.number().min(0.5).max(3.0).default(1.0),  // Allow up to 3x speed to match iOS playback options
 });
 
 ttsRouter.post('/cloned', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
@@ -1031,11 +1031,17 @@ ttsRouter.post('/cloned', asyncHandler(async (req: AuthenticatedRequest, res: Re
   // 2. Get GPU TTS service URL from config
   const gpuTtsUrl = process.env.GPU_TTS_URL;
   if (!gpuTtsUrl) {
+    ttsLogger.error('GPU_TTS_URL not configured');
     throw new Error('GPU TTS service not configured');
   }
 
   // 3. Forward request to tts-service /synthesize-cloned endpoint
   const ttsServiceUrl = `${gpuTtsUrl}/synthesize-cloned`;
+
+  ttsLogger.info(
+    { ttsServiceUrl, voiceId, voiceUrl: voiceUrl.substring(0, 50) + '...', textLen: characterCount },
+    'Forwarding to GPU TTS service'
+  );
 
   try {
     const response = await fetch(ttsServiceUrl, {
@@ -1055,11 +1061,16 @@ ttsRouter.post('/cloned', asyncHandler(async (req: AuthenticatedRequest, res: Re
       }),
     });
 
+    ttsLogger.info(
+      { status: response.status, voiceId },
+      'GPU TTS service response received'
+    );
+
     if (!response.ok) {
       const errorText = await response.text();
       ttsLogger.error(
-        { statusCode: response.status, error: errorText, voiceId },
-        'Cloned voice synthesis failed'
+        { statusCode: response.status, error: errorText, voiceId, ttsServiceUrl },
+        'Cloned voice synthesis failed from GPU service'
       );
       throw new Error(`TTS service error: ${response.status} - ${errorText}`);
     }
