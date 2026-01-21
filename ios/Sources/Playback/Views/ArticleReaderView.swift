@@ -1685,6 +1685,17 @@ struct ArticleReaderView: View {
 
         let currentVoice = voicePresetManager.selectedPreset
 
+        // Check if this is a cloned voice - route to direct synthesis instead of job API
+        let isClonedVoice = !currentVoice.isBuiltIn &&
+                           currentVoice.category == .custom &&
+                           currentVoice.kokoroVoiceID == nil
+
+        if isClonedVoice {
+            print("[ArticleReader] Cloned voice detected, using direct synthesis")
+            requestClonedVoiceSynthesis(cloudService: cloudService, voice: currentVoice)
+            return
+        }
+
         // Reset job state
         ttsJobId = nil
         ttsJobStatus = nil
@@ -2593,6 +2604,101 @@ struct ArticleReaderView: View {
             print("[ArticleReader] Switched to on-device voice: \(appleVoice.name)")
         }
         performLegacySynthesis()
+    }
+
+    /// Synthesize using a cloned voice via Chatterbox TTS
+    /// This uses the direct /api/tts/cloned endpoint instead of the job-based API
+    private func requestClonedVoiceSynthesis(cloudService: ListenAICloudService, voice: VoicePreset) {
+        // Reset state
+        ttsJobId = nil
+        ttsJobStatus = nil
+        ttsJobError = nil
+        isSynthesizing = true
+        synthesisError = nil
+        synthesisStartTime = Date()
+
+        // Stop any currently playing audio
+        if playbackService.state.isPlaying {
+            playbackService.pause()
+        }
+        if urlPlayer.state.isActive {
+            urlPlayer.stop()
+        }
+        streamingTTS.stopStreaming()
+
+        // Update article status
+        ArticleStore.shared.updateSynthesisStatus(for: article.id, status: .inProgress(progress: 0))
+
+        Task {
+            do {
+                let voiceId = voice.providerVoiceID
+
+                // Fetch cloned voice details to get the audio URL
+                let clonedVoices = try await VoiceCloningService.shared.listClonedVoices()
+                guard let clonedVoice = clonedVoices.first(where: { $0.id == voiceId }),
+                      let voiceUrl = clonedVoice.audioUrl else {
+                    print("[ArticleReader] Cloned voice not found or no audio URL: \(voiceId)")
+                    await MainActor.run {
+                        self.isSynthesizing = false
+                        self.synthesisError = "Cloned voice not found"
+                        ArticleStore.shared.updateSynthesisStatus(
+                            for: article.id,
+                            status: .failed(message: "Cloned voice not found")
+                        )
+                    }
+                    return
+                }
+
+                print("[ArticleReader] Synthesizing with cloned voice: \(voiceId), text: \(article.rawText.count) chars")
+
+                // Call direct cloned voice synthesis endpoint
+                let audioResult = try await cloudService.synthesizeCloned(
+                    text: article.rawText,
+                    voiceId: voiceId,
+                    voiceUrl: voiceUrl,
+                    speed: Double(playbackService.playbackSpeed.rate)
+                )
+
+                await MainActor.run {
+                    self.isSynthesizing = false
+
+                    // Record usage
+                    UsageTrackerService.shared.recordUsage(
+                        characterCount: article.rawText.count,
+                        provider: voice.provider,
+                        voiceID: voice.providerVoiceID,
+                        articleID: article.id,
+                        articleTitle: article.displayTitle,
+                        wasSuccessful: true
+                    )
+
+                    // Update article status
+                    if let audioURL = audioResult.fileURL {
+                        ArticleStore.shared.updateSynthesisStatus(
+                            for: article.id,
+                            status: .completed,
+                            audioURL: audioURL
+                        )
+
+                        // Play the audio
+                        self.playAudio(url: audioURL)
+                    }
+
+                    print("[ArticleReader] Cloned voice synthesis complete, playing audio")
+                }
+
+            } catch {
+                print("[ArticleReader] Cloned voice synthesis failed: \(error)")
+                await MainActor.run {
+                    self.isSynthesizing = false
+                    self.synthesisError = error.localizedDescription
+                    ArticleStore.shared.updateSynthesisStatus(
+                        for: article.id,
+                        status: .failed(message: error.localizedDescription)
+                    )
+                }
+            }
+        }
     }
 
     /// Legacy synthesis using TTSCoordinator (for on-device Apple voices)
