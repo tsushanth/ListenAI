@@ -179,14 +179,22 @@ final class VoicePresetManager: ObservableObject {
 
     /// Select a preset.
     func select(_ preset: VoicePreset) {
-        // Only allow voices with Kokoro support (premium-only voices disabled)
-        guard preset.kokoroVoiceID != nil else {
-            print("[VoicePresetManager] Cannot select '\(preset.name)' - no Kokoro ID available")
+        // Allow voices with Kokoro support OR cloned voices (selfhosted Chatterbox voices)
+        // Cloned voices: not built-in, category is .custom, no kokoroVoiceID
+        let isClonedVoice = !preset.isBuiltIn && preset.category == .custom && preset.kokoroVoiceID == nil
+
+        guard preset.kokoroVoiceID != nil || isClonedVoice else {
+            print("[VoicePresetManager] Cannot select '\(preset.name)' - no Kokoro ID and not a cloned voice")
             return
         }
         selectedPreset = preset
         saveSelectedPreset()
-        print("[VoicePresetManager] Selected voice: \(preset.name) with Kokoro ID: \(preset.kokoroVoiceID ?? "nil")")
+
+        if isClonedVoice {
+            print("[VoicePresetManager] Selected cloned voice: \(preset.name) with ID: \(preset.providerVoiceID)")
+        } else {
+            print("[VoicePresetManager] Selected voice: \(preset.name) with Kokoro ID: \(preset.kokoroVoiceID ?? "nil")")
+        }
     }
 
     /// Select preset by ID.
@@ -443,12 +451,17 @@ final class VoicePresetManager: ObservableObject {
             let loadedPreset = try JSONDecoder().decode(VoicePreset.self, from: data)
 
             // Validate that the loaded preset has a kokoroVoiceID (required for Kokoro TTS)
-            // If not, fall back to default preset (premium-only voices are no longer supported)
+            // OR is a cloned voice (custom category, no kokoroVoiceID - uses Chatterbox)
+            let isClonedVoice = !loadedPreset.isBuiltIn && loadedPreset.category == .custom && loadedPreset.kokoroVoiceID == nil
+
             if loadedPreset.kokoroVoiceID != nil {
                 selectedPreset = loadedPreset
                 print("[VoicePresetManager] Loaded saved voice: \(loadedPreset.name) with Kokoro ID: \(loadedPreset.kokoroVoiceID ?? "nil"), provider: \(loadedPreset.provider)")
+            } else if isClonedVoice {
+                selectedPreset = loadedPreset
+                print("[VoicePresetManager] Loaded cloned voice: \(loadedPreset.name) with ID: \(loadedPreset.providerVoiceID)")
             } else {
-                print("[VoicePresetManager] Saved voice '\(loadedPreset.name)' has no Kokoro ID, using default: \(VoicePreset.defaultPreset.name)")
+                print("[VoicePresetManager] Saved voice '\(loadedPreset.name)' has no Kokoro ID and is not a cloned voice, using default: \(VoicePreset.defaultPreset.name)")
                 selectedPreset = .defaultPreset
                 saveSelectedPreset() // Persist the change
             }

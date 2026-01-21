@@ -269,24 +269,24 @@ struct SelectVoiceView: View {
     private func saveSelection() {
         if let clonedVoice = tempSelectedClonedVoice {
             // Create a VoicePreset from the cloned voice
-            // Use a deterministic ID based on the ElevenLabs voice ID for consistency
+            // Use a deterministic ID based on the voice ID for consistency
             let stableId = stableUUID(from: clonedVoice.id)
             let preset = VoicePreset(
                 id: stableId,
                 name: clonedVoice.name,
                 isBuiltIn: false,
                 isCharacterVoice: false,
-                provider: .elevenLabs,
+                provider: .selfhosted,  // Cloned voices use selfhosted Chatterbox TTS
                 providerVoiceID: clonedVoice.id,
-                providerModelID: "eleven_multilingual_v2",
+                providerModelID: "chatterbox",
                 language: "en-US",
-                supportedLanguages: ["en-US", "es", "fr", "de", "it", "pt", "pl", "hi", "ar", "zh"],
+                supportedLanguages: ["en-US"],
                 gender: .neutral,
                 age: .adult,
                 style: .conversational,
                 category: .custom,
                 voiceDescription: "Your cloned voice",
-                tier: .premium,
+                tier: .free,  // Selfhosted is free tier
                 sampleText: "Hello, this is your cloned voice."
             )
             presetManager.select(preset)

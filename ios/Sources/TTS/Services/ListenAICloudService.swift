@@ -1410,3 +1410,80 @@ extension ListenAICloudService {
         }
     }
 }
+
+// MARK: - Cloned Voice Synthesis (Chatterbox)
+
+extension ListenAICloudService {
+
+    /// Synthesize text using a cloned voice via Chatterbox TTS.
+    ///
+    /// This uses the selfhosted TTS service's /synthesize-cloned endpoint
+    /// which performs voice cloning synthesis using Chatterbox.
+    ///
+    /// - Parameters:
+    ///   - text: The text to synthesize
+    ///   - voiceId: The cloned voice ID (UUID from cloned_voices table)
+    ///   - voiceUrl: The URL to the reference audio file (from Supabase Storage)
+    ///   - speed: Playback speed multiplier (0.5 - 2.0, default 1.0)
+    /// - Returns: AudioData containing the synthesized audio
+    /// - Throws: ListenAICloudError if synthesis fails
+    func synthesizeCloned(
+        text: String,
+        voiceId: String,
+        voiceUrl: String,
+        speed: Double = 1.0
+    ) async throws -> AudioData {
+        let token = try await getAuthToken()
+
+        // Use the backend endpoint that proxies to tts-service /synthesize-cloned
+        let url = configuration.baseURL
+            .appendingPathComponent("api")
+            .appendingPathComponent("tts")
+            .appendingPathComponent("cloned")
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("audio/wav", forHTTPHeaderField: "Accept")
+        request.timeoutInterval = 120  // Cloned voice synthesis can take longer
+
+        let body: [String: Any] = [
+            "text": text,
+            "voice_id": voiceId,
+            "voice_url": voiceUrl,
+            "speed": speed
+        ]
+
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        print("[ListenAI] Synthesizing with cloned voice: \(voiceId), text: \(text.count) chars")
+
+        return try await executeWithRetry(request: request) { data, response in
+            guard let httpResponse = response as? HTTPURLResponse else {
+                throw ListenAICloudError.invalidResponse
+            }
+
+            // Parse usage headers
+            let charactersUsed = Int(httpResponse.value(forHTTPHeaderField: "X-Characters-Used") ?? "0") ?? text.count
+            let durationMs = Int(httpResponse.value(forHTTPHeaderField: "X-Audio-Duration-Ms") ?? "0")
+
+            // Detect actual audio format from Content-Type header
+            let contentType = httpResponse.value(forHTTPHeaderField: "Content-Type")
+            let audioFormat = self.detectAudioFormat(from: contentType)
+
+            print("[ListenAI] Cloned voice audio received: \(data.count) bytes, format: \(audioFormat)")
+
+            // Save to temp file with correct extension
+            let tempURL = try self.saveTempAudio(data: data, format: audioFormat)
+
+            return AudioData(
+                data: data,
+                format: audioFormat,
+                durationMs: durationMs,
+                charactersUsed: charactersUsed,
+                fileURL: tempURL
+            )
+        }
+    }
+}

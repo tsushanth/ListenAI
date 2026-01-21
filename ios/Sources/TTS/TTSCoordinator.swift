@@ -592,33 +592,60 @@ final class TTSCoordinator: ObservableObject {
         do {
             var audioResult: AudioData
 
-            switch effectiveQuality {
-            case .standard:
-                // Use backend with selfhosted (Kokoro) provider
-                guard let kokoroVoiceID = voiceToUse.kokoroVoiceID else {
+            // Check if this is a cloned voice (custom category, selfhosted provider, no kokoroVoiceID)
+            let isClonedVoice = !voiceToUse.isBuiltIn &&
+                                voiceToUse.category == .custom &&
+                                voiceToUse.kokoroVoiceID == nil
+
+            if isClonedVoice {
+                // Synthesize using cloned voice via Chatterbox
+                let voiceId = voiceToUse.providerVoiceID
+
+                // Fetch the cloned voice details to get the audio URL
+                let clonedVoices = try await VoiceCloningService.shared.listClonedVoices()
+                guard let clonedVoice = clonedVoices.first(where: { $0.id == voiceId }),
+                      let voiceUrl = clonedVoice.audioUrl else {
+                    print("[TTS] Cloned voice not found or no audio URL: \(voiceId)")
                     throw TTSError.voiceNotAvailable(voiceName: voiceToUse.name)
                 }
-                print("[TTS] Synthesizing via backend with Kokoro voice: \(kokoroVoiceID)")
-                audioResult = try await service.synthesize(
+
+                print("[TTS] Synthesizing via Chatterbox with cloned voice: \(voiceId)")
+                audioResult = try await service.synthesizeCloned(
                     text: text,
-                    voiceId: kokoroVoiceID,
-                    provider: ListenAICloudService.TTSProvider.selfhosted,
+                    voiceId: voiceId,
+                    voiceUrl: voiceUrl,
                     speed: Double(defaultSpeed)
                 )
+            } else {
+                // Standard or premium voice synthesis
+                switch effectiveQuality {
+                case .standard:
+                    // Use backend with selfhosted (Kokoro) provider
+                    guard let kokoroVoiceID = voiceToUse.kokoroVoiceID else {
+                        throw TTSError.voiceNotAvailable(voiceName: voiceToUse.name)
+                    }
+                    print("[TTS] Synthesizing via backend with Kokoro voice: \(kokoroVoiceID)")
+                    audioResult = try await service.synthesize(
+                        text: text,
+                        voiceId: kokoroVoiceID,
+                        provider: ListenAICloudService.TTSProvider.selfhosted,
+                        speed: Double(defaultSpeed)
+                    )
 
-            case .premium:
-                // Use backend with elevenlabs provider
-                // Backend handles fallback to Kokoro if ElevenLabs throttled
-                print("[TTS] Synthesizing via backend with ElevenLabs voice: \(voiceToUse.providerVoiceID)")
-                audioResult = try await service.synthesize(
-                    text: text,
-                    voiceId: voiceToUse.providerVoiceID,
-                    provider: ListenAICloudService.TTSProvider.elevenlabs,
-                    speed: Double(defaultSpeed)
-                )
+                case .premium:
+                    // Use backend with elevenlabs provider
+                    // Backend handles fallback to Kokoro if ElevenLabs throttled
+                    print("[TTS] Synthesizing via backend with ElevenLabs voice: \(voiceToUse.providerVoiceID)")
+                    audioResult = try await service.synthesize(
+                        text: text,
+                        voiceId: voiceToUse.providerVoiceID,
+                        provider: ListenAICloudService.TTSProvider.elevenlabs,
+                        speed: Double(defaultSpeed)
+                    )
 
-                // Increment premium sample count
-                incrementPremiumSampleCount()
+                    // Increment premium sample count
+                    incrementPremiumSampleCount()
+                }
             }
 
             // Use the fileURL from result, or save to temp if not present

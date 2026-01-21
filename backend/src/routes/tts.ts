@@ -997,3 +997,96 @@ ttsRouter.post('/job/:jobId/cancel', asyncHandler(async (req: AuthenticatedReque
     status: 'canceled',
   });
 }));
+
+// ============================================================================
+// POST /tts/cloned - Synthesize with cloned voice via Chatterbox
+// ============================================================================
+
+const clonedVoiceSynthSchema = z.object({
+  text: z.string().min(1).max(MAX_TEXT_LENGTH),
+  voice_id: z.string().min(1).describe('Cloned voice ID (UUID from cloned_voices table)'),
+  voice_url: z.string().url().describe('URL to reference audio file (from Supabase Storage)'),
+  speed: z.number().min(0.5).max(2.0).default(1.0),
+});
+
+ttsRouter.post('/cloned', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+  const userId = req.user.id;
+
+  // 1. Validate request body
+  const parseResult = clonedVoiceSynthSchema.safeParse(req.body);
+  if (!parseResult.success) {
+    throw new ValidationError(
+      parseResult.error.errors.map((e) => `${e.path.join('.')}: ${e.message}`).join(', ')
+    );
+  }
+
+  const { text, voice_id: voiceId, voice_url: voiceUrl, speed } = parseResult.data;
+  const characterCount = text.length;
+
+  ttsLogger.info(
+    { userId, voiceId, characterCount },
+    'Cloned voice synthesis request'
+  );
+
+  // 2. Get GPU TTS service URL from config
+  const gpuTtsUrl = process.env.GPU_TTS_URL;
+  if (!gpuTtsUrl) {
+    throw new Error('GPU TTS service not configured');
+  }
+
+  // 3. Forward request to tts-service /synthesize-cloned endpoint
+  const ttsServiceUrl = `${gpuTtsUrl}/synthesize-cloned`;
+
+  try {
+    const response = await fetch(ttsServiceUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'audio/wav',
+        ...(process.env.SELFHOSTED_TTS_API_KEY
+          ? { 'X-API-Key': process.env.SELFHOSTED_TTS_API_KEY }
+          : {}),
+      },
+      body: JSON.stringify({
+        text,
+        voice_id: voiceId,
+        voice_url: voiceUrl,
+        speed,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      ttsLogger.error(
+        { statusCode: response.status, error: errorText, voiceId },
+        'Cloned voice synthesis failed'
+      );
+      throw new Error(`TTS service error: ${response.status} - ${errorText}`);
+    }
+
+    // 4. Stream audio response back to client
+    const contentType = response.headers.get('Content-Type') || 'audio/wav';
+    const synthesisTimeMs = response.headers.get('X-Synthesis-Time-Ms');
+
+    // Set response headers
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('X-Voice-ID', voiceId);
+    res.setHeader('X-Model', 'chatterbox');
+    res.setHeader('X-Characters-Used', characterCount.toString());
+    if (synthesisTimeMs) {
+      res.setHeader('X-Synthesis-Time-Ms', synthesisTimeMs);
+    }
+
+    // Get array buffer and send
+    const audioBuffer = Buffer.from(await response.arrayBuffer());
+    res.send(audioBuffer);
+
+    ttsLogger.info(
+      { userId, voiceId, characterCount, synthesisTimeMs },
+      'Cloned voice synthesis completed'
+    );
+  } catch (error) {
+    ttsLogger.error({ error, voiceId }, 'Cloned voice synthesis error');
+    throw error;
+  }
+}));
