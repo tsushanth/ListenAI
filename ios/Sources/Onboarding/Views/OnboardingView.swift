@@ -81,19 +81,12 @@ struct OnboardingFooterView: View {
             .padding(.horizontal, 24)
 
             if showTerms {
-                HStack(spacing: 4) {
-                    Text("By continuing, you agree to our")
-                        .foregroundStyle(.secondary)
-                    Link("Privacy Policy", destination: privacyURL)
-                        .foregroundStyle(.blue)
-                    Text("and")
-                        .foregroundStyle(.secondary)
-                    Link("Terms of Use", destination: termsURL)
-                        .foregroundStyle(.blue)
-                    Text(".")
-                        .foregroundStyle(.secondary)
-                }
-                .font(.caption)
+                Text("By continuing, you agree to our [Privacy Policy](\(privacyURL)) and [Terms of Use](\(termsURL)).")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .tint(.blue)
+                    .padding(.horizontal, 24)
             }
         }
         .padding(.bottom, 24)
