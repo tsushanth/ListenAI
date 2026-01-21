@@ -90,10 +90,9 @@ struct ArticleReaderView: View {
     @AppStorage("useStreamingTTS") private var useStreamingTTS: Bool = false
     @StateObject private var streamingTTS = StreamingTTSService.shared
 
-    // TTS quality/provider setting (standard=Kokoro, premium=ElevenLabs)
-    @AppStorage("ttsQuality") private var ttsQualityRaw: String = "standard"
+    // TTS provider - always use Kokoro (selfhosted) with GPU acceleration
     private var ttsProvider: ListenAICloudService.TTSProvider {
-        ttsQualityRaw == "premium" ? .elevenlabs : .selfhosted
+        .selfhosted  // GPU-accelerated Kokoro TTS
     }
 
     // URL-based audio player for job-based TTS
@@ -104,8 +103,15 @@ struct ArticleReaderView: View {
     @State private var ttsJobStatus: TTSJobStatus?
     @State private var ttsJobError: String?
     @State private var ttsJobProgressSec: Double = 0
+    @State private var ttsJobTotalDurationSec: Double = 0
+    @State private var ttsJobEstimatedRemainingSec: Int?  // Backend-calculated synthesis time remaining
     @State private var ttsJobEstimatedWaitSec: Int?
     @State private var pollingTask: Task<Void, Never>?
+
+    // Client-side progress interpolation for smooth progress display
+    @State private var interpolatedProgressSec: Double = 0
+    @State private var progressInterpolationTimer: Timer?
+    @State private var lastProgressUpdateTime: Date?
 
     // Quota limit error state
     @State private var showingQuotaLimitSheet = false
@@ -129,12 +135,35 @@ struct ArticleReaderView: View {
         return quotaErrorState.isPlayDisabledDueToQuota
     }
 
-    /// Progress string for job-based TTS (e.g., "12.3s generated")
+    /// Progress percentage for job-based TTS (0.0 to 1.0)
+    /// Uses interpolated progress for smooth animation between backend updates
+    private var ttsJobProgressPercentage: Double {
+        guard ttsJobTotalDurationSec > 0 else { return 0 }
+        // Use interpolated progress for smoother display
+        let effectiveProgress = max(ttsJobProgressSec, interpolatedProgressSec)
+        return min(effectiveProgress / ttsJobTotalDurationSec, 1.0)
+    }
+
+    /// Progress string for job-based TTS showing percentage and time
     private var ttsJobProgressString: String {
+        let percentage = Int(ttsJobProgressPercentage * 100)
+
+        // Use backend-calculated remaining time if available (most accurate)
+        if let remainingSec = ttsJobEstimatedRemainingSec, remainingSec >= 0 {
+            if remainingSec < 5 {
+                return "\(percentage)% • finishing up..."
+            } else if remainingSec < 60 {
+                return "\(percentage)% • ~\(remainingSec)s left"
+            } else {
+                return "\(percentage)% • ~\(remainingSec / 60)m left"
+            }
+        }
+
+        // Fallback if no backend estimate
         if ttsJobProgressSec > 0 {
-            return String(format: "%.1fs generated", ttsJobProgressSec)
+            return String(format: "\(percentage)%% • %.0fs generated", ttsJobProgressSec)
         } else if let waitSec = ttsJobEstimatedWaitSec {
-            return "~\(waitSec)s remaining"
+            return "starting in ~\(waitSec)s"
         }
         return estimatedTimeString
     }
@@ -506,64 +535,101 @@ struct ArticleReaderView: View {
         // Determine if this is a job-based TTS in progress
         let isJobBased = ttsJobId != nil && isGeneratingTTS
 
-        return HStack(spacing: 12) {
-            // Show progress indicator
-            if let progress = progressValue, progress > 0 {
-                // Circular progress when we have actual progress
-                ZStack {
-                    Circle()
-                        .stroke(Color.blue.opacity(0.2), lineWidth: 3)
-                        .frame(width: 24, height: 24)
-                    Circle()
-                        .trim(from: 0, to: CGFloat(progress))
-                        .stroke(Color.blue, style: StrokeStyle(lineWidth: 3, lineCap: .round))
-                        .frame(width: 24, height: 24)
-                        .rotationEffect(.degrees(-90))
+        // Calculate effective progress for progress bar
+        let effectiveProgress: Double = {
+            if isJobBased && ttsJobProgressPercentage > 0 {
+                return ttsJobProgressPercentage
+            } else if let progress = progressValue {
+                return Double(progress)
+            }
+            return 0
+        }()
+
+        return VStack(spacing: 8) {
+            HStack(spacing: 12) {
+                // Show progress indicator
+                if effectiveProgress > 0 {
+                    // Circular progress when we have actual progress
+                    ZStack {
+                        Circle()
+                            .stroke(Color.blue.opacity(0.2), lineWidth: 3)
+                            .frame(width: 28, height: 28)
+                        Circle()
+                            .trim(from: 0, to: CGFloat(effectiveProgress))
+                            .stroke(Color.blue, style: StrokeStyle(lineWidth: 3, lineCap: .round))
+                            .frame(width: 28, height: 28)
+                            .rotationEffect(.degrees(-90))
+                            .animation(.easeInOut(duration: 0.3), value: effectiveProgress)
+
+                        // Percentage in center
+                        Text("\(Int(effectiveProgress * 100))")
+                            .font(.system(size: 9, weight: .semibold))
+                            .foregroundStyle(.blue)
+                    }
+                } else {
+                    // Indeterminate spinner
+                    ProgressView()
+                        .scaleEffect(0.9)
                 }
-            } else {
-                // Indeterminate spinner
-                ProgressView()
-                    .scaleEffect(0.8)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    // Show job status if available
+                    if isJobBased {
+                        Text(jobStatusDisplayText)
+                            .font(.subheadline.weight(.medium))
+                    } else {
+                        Text("Preparing audio...")
+                            .font(.subheadline.weight(.medium))
+                    }
+
+                    // Show progress from job API or legacy progress
+                    if isJobBased {
+                        Text("\(voicePresetManager.selectedPreset.name) • \(ttsJobProgressString)")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    } else if let progress = progressValue, progress > 0 {
+                        Text("\(voicePresetManager.selectedPreset.name) • \(Int(progress * 100))% complete")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    } else {
+                        Text("\(voicePresetManager.selectedPreset.name) • \(estimatedTimeString)")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                Spacer()
+
+                // Cancel button for job-based TTS
+                if isJobBased {
+                    Button {
+                        cancelTTSJob()
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundStyle(.secondary)
+                            .font(.title3)
+                    }
+                    .buttonStyle(.plain)
+                }
             }
 
-            VStack(alignment: .leading, spacing: 2) {
-                // Show job status if available
-                if isJobBased {
-                    Text(jobStatusDisplayText)
-                        .font(.subheadline.weight(.medium))
-                } else {
-                    Text("Preparing audio...")
-                        .font(.subheadline.weight(.medium))
-                }
+            // Linear progress bar for better visual feedback
+            if effectiveProgress > 0 {
+                GeometryReader { geometry in
+                    ZStack(alignment: .leading) {
+                        // Background track
+                        RoundedRectangle(cornerRadius: 2)
+                            .fill(Color.blue.opacity(0.2))
+                            .frame(height: 4)
 
-                // Show progress from job API or legacy progress
-                if isJobBased {
-                    Text("Using \(voicePresetManager.selectedPreset.name) • \(ttsJobProgressString)")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                } else if let progress = progressValue, progress > 0 {
-                    Text("Using \(voicePresetManager.selectedPreset.name) • \(Int(progress * 100))% complete")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                } else {
-                    Text("Using \(voicePresetManager.selectedPreset.name) • \(estimatedTimeString)")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                        // Progress fill
+                        RoundedRectangle(cornerRadius: 2)
+                            .fill(Color.blue)
+                            .frame(width: geometry.size.width * CGFloat(effectiveProgress), height: 4)
+                            .animation(.easeInOut(duration: 0.3), value: effectiveProgress)
+                    }
                 }
-            }
-
-            Spacer()
-
-            // Cancel button for job-based TTS
-            if isJobBased {
-                Button {
-                    cancelTTSJob()
-                } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .foregroundStyle(.secondary)
-                        .font(.title3)
-                }
-                .buttonStyle(.plain)
+                .frame(height: 4)
             }
         }
         .padding()
@@ -592,24 +658,26 @@ struct ArticleReaderView: View {
     }
 
     /// Estimate synthesis time based on character count.
-    /// Kokoro TTS typically processes ~500-800 chars/second on cloud infrastructure.
+    /// GPU-accelerated Kokoro TTS processes at ~8x realtime speed.
     private func estimatedSynthesisTime(for characterCount: Int) -> String {
-        // Estimate: ~600 chars/second average for Kokoro on Cloud Run
-        // Add network overhead of ~2 seconds
-        let estimatedSeconds = Double(characterCount) / 600.0 + 2.0
+        // Average speaking rate: ~150 words/minute = 2.5 words/second
+        // Average word length: ~5 characters, so ~12.5 chars/second for speech
+        // GPU TTS runs at ~8x realtime, so synthesis takes audioDuration/8
+        // Formula: (characterCount / 12.5) / 8 = characterCount / 100
+        // Add network overhead of ~3 seconds for micro-first preview
+        let estimatedAudioDuration = Double(characterCount) / 12.5
+        let estimatedSynthesisSeconds = (estimatedAudioDuration / 8.0) + 3.0
 
-        if estimatedSeconds < 5 {
-            return "~5 seconds"
-        } else if estimatedSeconds < 10 {
-            return "~10 seconds"
-        } else if estimatedSeconds < 30 {
-            return "~\(Int(estimatedSeconds / 5) * 5) seconds"
-        } else if estimatedSeconds < 60 {
-            return "~\(Int(estimatedSeconds / 10) * 10) seconds"
-        } else if estimatedSeconds < 120 {
+        if estimatedSynthesisSeconds < 10 {
+            return "~5-10 seconds"
+        } else if estimatedSynthesisSeconds < 30 {
+            return "~\(Int(estimatedSynthesisSeconds / 5) * 5) seconds"
+        } else if estimatedSynthesisSeconds < 60 {
+            return "~\(Int(estimatedSynthesisSeconds / 10) * 10) seconds"
+        } else if estimatedSynthesisSeconds < 120 {
             return "~1 minute"
         } else {
-            let minutes = Int(estimatedSeconds / 60)
+            let minutes = Int(estimatedSynthesisSeconds / 60)
             return "~\(minutes) minutes"
         }
     }
@@ -767,7 +835,7 @@ struct ArticleReaderView: View {
 
                 // Skip backward
                 Button {
-                    playbackService.skipBackward()
+                    handleSkipBackward()
                 } label: {
                     ZStack {
                         Image(systemName: "gobackward")
@@ -823,7 +891,7 @@ struct ArticleReaderView: View {
 
                 // Skip forward
                 Button {
-                    playbackService.skipForward()
+                    handleSkipForward()
                 } label: {
                     ZStack {
                         Image(systemName: "goforward")
@@ -922,8 +990,14 @@ struct ArticleReaderView: View {
         urlPlayer.currentArticleID == article.id && urlPlayer.isSeekRestricted
     }
 
-    /// Current slider progress (handles both streaming and regular playback)
+    /// Current slider progress (handles URL player, streaming, and regular playback)
     private var sliderProgress: Double {
+        // Check URL player first (new job-based playback)
+        if urlPlayer.currentArticleID == article.id && urlPlayer.state.isActive {
+            guard urlPlayer.duration > 0 else { return 0 }
+            let progress = urlPlayer.currentTime / urlPlayer.duration
+            return progress.isNaN || progress.isInfinite ? 0 : min(1, progress)
+        }
         // During streaming, calculate progress from streaming service
         if streamingTTS.currentArticleID == article.id && (streamingTTS.isPlaying || streamingTTS.isStreaming) {
             let totalDuration = streamingTTS.isStreaming ? streamingTTS.estimatedDuration : streamingTTS.duration
@@ -1193,7 +1267,16 @@ struct ArticleReaderView: View {
 
     /// Returns true if this article is the current playback item (regardless of playing/paused state)
     private var isCurrentArticle: Bool {
-        playbackService.currentItem?.articleID == article.id
+        // Check URL player first (new job-based playback)
+        if urlPlayer.currentArticleID == article.id && urlPlayer.state.isActive {
+            return true
+        }
+        // Check streaming TTS (legacy)
+        if streamingTTS.currentArticleID == article.id && (streamingTTS.isPlaying || streamingTTS.isStreaming) {
+            return true
+        }
+        // Check standard playback service
+        return playbackService.currentItem?.articleID == article.id
     }
 
     /// Returns true if this article is actively playing audio (not paused)
@@ -1233,6 +1316,12 @@ struct ArticleReaderView: View {
     private var currentHighlightIndex: Int? {
         // Check URL player first (new job-based playback)
         if urlPlayer.currentArticleID == article.id && urlPlayer.state.isActive {
+            // In preview mode, only highlight the first paragraph since preview
+            // audio only covers the beginning of the article (~150 chars)
+            if urlPlayer.playerMode == .preview {
+                return 0  // Always highlight first paragraph during preview
+            }
+
             return calculateHighlightIndex(
                 currentTime: urlPlayer.currentTime,
                 totalDuration: urlPlayer.duration
@@ -1349,6 +1438,28 @@ struct ArticleReaderView: View {
             // Need to load and play this article
             startPlayback()
         }
+    }
+
+    private func handleSkipBackward() {
+        // Check if URL player is active for this article (new job-based playback)
+        if urlPlayer.currentArticleID == article.id && urlPlayer.state.isActive {
+            urlPlayer.seek(by: -10)
+            return
+        }
+
+        // Fall back to standard playback service (streaming TTS doesn't support seeking)
+        playbackService.skipBackward()
+    }
+
+    private func handleSkipForward() {
+        // Check if URL player is active for this article (new job-based playback)
+        if urlPlayer.currentArticleID == article.id && urlPlayer.state.isActive {
+            urlPlayer.seek(by: 10)
+            return
+        }
+
+        // Fall back to standard playback service (streaming TTS doesn't support seeking)
+        playbackService.skipForward()
     }
 
     /// Check if pre-synthesis completed and auto-play if waiting
@@ -1515,6 +1626,9 @@ struct ArticleReaderView: View {
                         }
                     }
                 )
+
+                // Apply the user's preferred playback speed
+                urlPlayer.setRate(playbackService.playbackSpeed.rate)
             } catch {
                 synthesisError = error.localizedDescription
             }
@@ -2014,19 +2128,32 @@ struct ArticleReaderView: View {
         // Update state
         ttsJobStatus = response.status
 
-        // Update progress
-        if let progressSec = response.progressSec {
-            ttsJobProgressSec = progressSec
+        // Update progress tracking from nested progress object
+        ttsJobProgressSec = response.progress.progressSec
+        if let durationSec = response.progress.durationSec {
+            ttsJobTotalDurationSec = durationSec
         }
+        // Use backend-calculated remaining synthesis time (based on measured rate from preview)
+        ttsJobEstimatedRemainingSec = response.progress.estimatedRemainingSec
         if let estimatedWait = response.estimatedWaitSec {
             ttsJobEstimatedWaitSec = estimatedWait
         }
+
+        // Start/update progress interpolation for smooth animation
+        updateProgressInterpolation(
+            currentProgressSec: response.progress.progressSec,
+            totalDurationSec: response.progress.durationSec ?? ttsJobTotalDurationSec,
+            estimatedRemainingSec: response.progress.estimatedRemainingSec
+        )
 
         // Persist updated status
         persistJobStatus(response.status, for: article.id, voiceId: currentVoice.providerVoiceID)
 
         switch response.status {
         case .ready:
+            // Job complete - stop progress interpolation
+            stopProgressInterpolation()
+
             // Job complete - check if we need to swap from preview to full audio
             if let audioUrlString = response.bestAudioUrl, let audioUrl = URL(string: audioUrlString) {
                 print("[ArticleReader] Job ready, audio URL: \(audioUrlString)")
@@ -2109,43 +2236,44 @@ struct ArticleReaderView: View {
                     playAudioWithMode(
                         url: previewUrl,
                         mode: .preview,
-                        previewDuration: response.progressSec
+                        previewDuration: response.progress.progressSec
                     )
 
                     // Update banner to show we're now playing
                     isSynthesizing = false
                 } else {
-                    // Already playing preview - just update progress
-                    let progress = response.progressSec.map { Float($0 / (response.durationSec ?? 60.0)) } ?? 0
+                    // Already playing preview - just update progress using backend percentage
+                    let progress = Float(response.percentage) / 100.0
                     ArticleStore.shared.updateSynthesisStatus(for: article.id, status: .inProgress(progress: progress))
 
                     // Update preview duration as more audio becomes available
-                    if let newPreviewDuration = response.progressSec {
-                        urlPlayer.setPlayerMode(.preview, previewDuration: newPreviewDuration)
-                    }
+                    let newPreviewDuration = response.progress.progressSec
+                    urlPlayer.setPlayerMode(.preview, previewDuration: newPreviewDuration)
                 }
             } else {
-                // No preview URL yet - just update progress
-                let progress = response.progressSec.map { Float($0 / (response.durationSec ?? 60.0)) } ?? 0
+                // No preview URL yet - just update progress using backend percentage
+                let progress = Float(response.percentage) / 100.0
                 ArticleStore.shared.updateSynthesisStatus(for: article.id, status: .inProgress(progress: progress))
             }
 
         case .failed:
-            // Job failed
-            let error = TTSJobError.fromJobStatus(response) ?? TTSJobError.jobFailed(jobId: response.jobId, reason: response.error ?? "Unknown error")
+            // Job failed - stop progress interpolation
+            stopProgressInterpolation()
+            let error = TTSJobError.fromJobStatus(response) ?? TTSJobError.jobFailed(jobId: response.jobId, reason: response.error?.message ?? "Unknown error")
             handleTTSJobError(error)
             clearAllPersistedJobData(for: article.id, voiceId: currentVoice.providerVoiceID)
 
         case .cancelled:
-            // Job was cancelled
+            // Job was cancelled - stop progress interpolation
+            stopProgressInterpolation()
             isSynthesizing = false
             ttsJobError = "Generation was cancelled"
             synthesisError = "Generation was cancelled"
             clearAllPersistedJobData(for: article.id, voiceId: currentVoice.providerVoiceID)
 
         case .queued, .processing:
-            // Still in progress - update article status with progress
-            let progress = response.progressSec.map { Float($0 / (response.durationSec ?? 60.0)) } ?? 0
+            // Still in progress - update article status with progress using backend percentage
+            let progress = Float(response.percentage) / 100.0
             ArticleStore.shared.updateSynthesisStatus(for: article.id, status: .inProgress(progress: progress))
         }
     }
@@ -2177,6 +2305,9 @@ struct ArticleReaderView: View {
                         }
                     }
                 )
+
+                // Apply the user's preferred playback speed
+                urlPlayer.setRate(playbackService.playbackSpeed.rate)
 
                 print("[ArticleReader] Started playback in \(mode.rawValue) mode")
             } catch {
@@ -2336,9 +2467,12 @@ struct ArticleReaderView: View {
         ttsJobStatus = nil
         ttsJobError = nil
         ttsJobProgressSec = 0
+        ttsJobTotalDurationSec = 0
+        ttsJobEstimatedRemainingSec = nil
         ttsJobEstimatedWaitSec = nil
         isSynthesizing = false
         synthesisError = nil
+        stopProgressInterpolation()
     }
 
     /// Cancel polling (but don't cancel the job on the server)
@@ -2346,6 +2480,61 @@ struct ArticleReaderView: View {
         pollingTask?.cancel()
         pollingTask = nil
         print("[ArticleReader] Polling cancelled")
+    }
+
+    /// Update progress interpolation for smooth animation between backend updates
+    /// This simulates incremental progress while the backend synthesizes remaining audio
+    private func updateProgressInterpolation(
+        currentProgressSec: Double,
+        totalDurationSec: Double,
+        estimatedRemainingSec: Int?
+    ) {
+        // Stop any existing interpolation timer
+        progressInterpolationTimer?.invalidate()
+        progressInterpolationTimer = nil
+
+        // Update the base progress from backend
+        interpolatedProgressSec = currentProgressSec
+        lastProgressUpdateTime = Date()
+
+        // Only interpolate if we have remaining time and there's more audio to synthesize
+        guard let remainingSec = estimatedRemainingSec,
+              remainingSec > 0,
+              totalDurationSec > 0,
+              currentProgressSec < totalDurationSec else {
+            return
+        }
+
+        let remainingAudioSec = totalDurationSec - currentProgressSec
+        let synthesisRateMultiplier = remainingAudioSec / Double(remainingSec)
+        let startTime = Date()
+
+        // Create timer to increment interpolated progress smoothly
+        // Update every 0.1 seconds for smooth animation
+        progressInterpolationTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { timer in
+            // Calculate time elapsed since interpolation started
+            let elapsedSec = Date().timeIntervalSince(startTime)
+
+            // Estimate how much audio would have been synthesized
+            // Use the synthesis rate calculated from remaining time estimate
+            let additionalProgressSec = elapsedSec * synthesisRateMultiplier
+
+            // Calculate new progress (cap at 98% to avoid overshooting)
+            let newProgress = min(currentProgressSec + additionalProgressSec, totalDurationSec * 0.98)
+
+            // Update on main thread
+            DispatchQueue.main.async {
+                self.interpolatedProgressSec = newProgress
+            }
+        }
+    }
+
+    /// Stop progress interpolation and reset state
+    private func stopProgressInterpolation() {
+        progressInterpolationTimer?.invalidate()
+        progressInterpolationTimer = nil
+        interpolatedProgressSec = 0
+        lastProgressUpdateTime = nil
     }
 
     /// Cancel the TTS job entirely (user pressed cancel)
@@ -2378,7 +2567,10 @@ struct ArticleReaderView: View {
         ttsJobId = nil
         ttsJobStatus = nil
         ttsJobProgressSec = 0
+        ttsJobTotalDurationSec = 0
+        ttsJobEstimatedRemainingSec = nil
         ttsJobEstimatedWaitSec = nil
+        stopProgressInterpolation()
 
         // Clear persisted data
         clearAllPersistedJobData(for: article.id, voiceId: currentVoice.providerVoiceID)
@@ -2663,7 +2855,15 @@ struct ArticleReaderView: View {
         let speeds: [PlaybackSpeed] = PlaybackSpeed.speeds
         guard let currentIndex = speeds.firstIndex(of: playbackService.playbackSpeed) else { return }
         let nextIndex = (currentIndex + 1) % speeds.count
-        playbackService.setPlaybackSpeed(speeds[nextIndex])
+        let newSpeed = speeds[nextIndex]
+
+        // Update playback service (for legacy playback and state tracking)
+        playbackService.setPlaybackSpeed(newSpeed)
+
+        // Update URL player if it's active (new job-based playback)
+        if urlPlayer.currentArticleID == article.id && urlPlayer.state.isActive {
+            urlPlayer.setRate(newSpeed.rate)
+        }
     }
 
     private func toggleFavorite() {

@@ -1,9 +1,11 @@
 import Foundation
 import AVFoundation
+import UIKit
 
 // MARK: - Voice Cloning Service
 
-/// Service for creating and managing cloned voices using ElevenLabs instant voice cloning.
+/// Service for creating and managing cloned voices using Chatterbox TTS.
+/// Voices are stored in Supabase Storage and can be used with the GPU TTS service.
 actor VoiceCloningService {
 
     // MARK: - Types
@@ -29,12 +31,34 @@ actor VoiceCloningService {
     struct ClonedVoice: Codable, Sendable, Identifiable {
         let id: String
         let name: String
-        let status: CloningStatus
-        let createdAt: Date
+        let description: String?
+        let durationSec: Double?
+        let exaggeration: Double?
+        let isDefault: Bool?
+        let usageCount: Int?
+        let createdAt: Date?
+        let audioUrl: String?
+
+        // Legacy fields from old ElevenLabs-based implementation
+        let status: CloningStatus?
         let labels: [String: String]?
 
         var isReady: Bool {
-            status == .completed
+            durationSec != nil && durationSec! > 0
+        }
+
+        enum CodingKeys: String, CodingKey {
+            case id
+            case name
+            case description
+            case durationSec = "duration_sec"
+            case exaggeration
+            case isDefault = "is_default"
+            case usageCount = "usage_count"
+            case createdAt = "created_at"
+            case audioUrl = "audio_url"
+            case status
+            case labels
         }
     }
 
@@ -77,7 +101,8 @@ actor VoiceCloningService {
     // MARK: - Configuration
 
     /// Minimum audio duration for cloning (in seconds)
-    static let minimumAudioDuration: TimeInterval = 30
+    /// Chatterbox can work with shorter samples than ElevenLabs
+    static let minimumAudioDuration: TimeInterval = 5
 
     /// Maximum audio duration for cloning (in seconds)
     static let maximumAudioDuration: TimeInterval = 300 // 5 minutes
@@ -119,9 +144,8 @@ actor VoiceCloningService {
     // MARK: - Properties
 
     private var baseURL: URL?
-    private var userId: String?
 
-    /// Key for storing cloned voices in UserDefaults
+    /// Key for storing cloned voices in UserDefaults (local cache)
     private let clonedVoicesKey = "com.listenai.clonedVoices"
 
     // MARK: - Initialization
@@ -131,9 +155,9 @@ actor VoiceCloningService {
     // MARK: - Configuration
 
     /// Configure the voice cloning service with backend URL.
-    func configure(baseURL: URL, userId: String? = nil) {
+    /// Authentication uses device ID header instead of user auth tokens.
+    func configure(baseURL: URL) {
         self.baseURL = baseURL
-        self.userId = userId
     }
 
     /// Check if the service is configured
@@ -145,48 +169,117 @@ actor VoiceCloningService {
 
     /// Create an instant voice clone from an audio sample.
     ///
+    /// Flow:
+    /// 1. Create voice record in backend, get signed upload URL
+    /// 2. Upload audio directly to Supabase Storage
+    /// 3. Confirm upload with audio metadata
+    ///
     /// - Parameters:
     ///   - name: The name for the cloned voice
     ///   - audioSampleURL: URL to the audio file containing the voice sample
+    ///   - description: Optional description for the voice
+    ///   - exaggeration: Emotion/style exaggeration (0.0-1.0, default 0.5)
     /// - Returns: The created cloned voice result
-    func createInstantClone(name: String, audioSampleURL: URL) async throws -> ClonedVoiceResult {
+    func createInstantClone(
+        name: String,
+        audioSampleURL: URL,
+        description: String? = nil,
+        exaggeration: Double = 0.5
+    ) async throws -> ClonedVoiceResult {
         guard isConfigured else {
             throw VoiceCloningError.notConfigured
         }
 
         // Validate audio file
-        try await validateAudioFile(at: audioSampleURL)
+        let (durationSec, fileSizeBytes) = try await validateAudioFile(at: audioSampleURL)
 
         // Read audio data
         let audioData = try Data(contentsOf: audioSampleURL)
 
-        // Get file extension
-        let fileExtension = audioSampleURL.pathExtension.lowercased()
-
-        // Upload and create clone via backend
-        let result = try await uploadAndClone(
+        // Step 1: Create voice record and get upload URL
+        let createResponse = try await createVoiceRecord(
             name: name,
+            description: description,
+            exaggeration: exaggeration
+        )
+
+        // Step 2: Upload audio to Supabase Storage
+        try await uploadAudioToStorage(
             audioData: audioData,
-            fileExtension: fileExtension
+            uploadUrl: createResponse.uploadUrl
         )
 
-        // Save to local storage
-        let clonedVoice = ClonedVoice(
-            id: result.voiceId,
-            name: result.name,
+        // Step 3: Confirm upload with metadata
+        let voice = try await confirmVoiceUpload(
+            voiceId: createResponse.id,
+            durationSec: durationSec,
+            fileSizeBytes: fileSizeBytes
+        )
+
+        // Save to local cache
+        saveClonedVoiceLocally(voice)
+
+        return ClonedVoiceResult(
+            voiceId: voice.id,
+            name: voice.name,
             status: .completed,
-            createdAt: Date(),
-            labels: nil
+            createdAt: voice.createdAt,
+            previewUrl: voice.audioUrl
         )
-        saveClonedVoiceLocally(clonedVoice)
-
-        return result
     }
 
-    /// List all cloned voices for the current user (from local storage).
+    /// List all cloned voices for the current user.
+    /// Fetches from backend and updates local cache.
     func listClonedVoices(forceRefresh: Bool = false) async throws -> [ClonedVoice] {
-        // Load from local storage - no network call needed
-        return loadClonedVoicesFromLocal()
+        guard isConfigured else {
+            // Return local cache if not configured
+            return loadClonedVoicesFromLocal()
+        }
+
+        if !forceRefresh {
+            // Return local cache first, refresh in background
+            let cached = loadClonedVoicesFromLocal()
+            if !cached.isEmpty {
+                // Refresh in background
+                Task {
+                    try? await fetchAndCacheVoices()
+                }
+                return cached
+            }
+        }
+
+        return try await fetchAndCacheVoices()
+    }
+
+    /// Fetch voices from backend and update local cache
+    private func fetchAndCacheVoices() async throws -> [ClonedVoice] {
+        var request = try await createRequest(
+            endpoint: "/api/cloned-voices?include_audio_urls=true",
+            method: "GET"
+        )
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw VoiceCloningError.networkError("Invalid response")
+        }
+
+        guard httpResponse.statusCode == 200 else {
+            if httpResponse.statusCode == 401 {
+                throw VoiceCloningError.unauthorized
+            }
+            throw VoiceCloningError.networkError("Status code: \(httpResponse.statusCode)")
+        }
+
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+
+        let listResponse = try decoder.decode(VoicesListResponse.self, from: data)
+
+        // Update local cache
+        saveClonedVoicesToLocal(listResponse.voices)
+
+        return listResponse.voices
     }
 
     /// Delete a cloned voice.
@@ -195,206 +288,8 @@ actor VoiceCloningService {
             throw VoiceCloningError.notConfigured
         }
 
-        // Delete from ElevenLabs
-        try await deleteVoice(voiceId: voiceId)
-
-        // Remove from local storage
-        removeClonedVoiceLocally(voiceId)
-    }
-
-    /// Preview a cloned voice by synthesizing a short sample.
-    func previewClonedVoice(_ voiceId: String, text: String = "Hello, this is a preview of your cloned voice.") async throws -> URL {
-        guard isConfigured else {
-            throw VoiceCloningError.notConfigured
-        }
-
-        return try await synthesizePreview(voiceId: voiceId, text: text)
-    }
-
-    /// Get a random sample text for voice recording.
-    func getRandomSampleText() -> String {
-        Self.sampleTexts.randomElement() ?? Self.sampleTexts[0]
-    }
-
-    // MARK: - Private Methods
-
-    private func validateAudioFile(at url: URL) async throws {
-        // Check file extension
-        let ext = url.pathExtension.lowercased()
-        guard Self.supportedFormats.contains(ext) else {
-            throw VoiceCloningError.invalidAudioFormat
-        }
-
-        // Check file exists
-        guard FileManager.default.fileExists(atPath: url.path) else {
-            throw VoiceCloningError.uploadFailed("Audio file not found")
-        }
-
-        // Get audio duration
-        let asset = AVURLAsset(url: url)
-        let duration = try await asset.load(.duration)
-        let durationSeconds = CMTimeGetSeconds(duration)
-
-        if durationSeconds < Self.minimumAudioDuration {
-            throw VoiceCloningError.audioFileTooShort(minimumSeconds: Int(Self.minimumAudioDuration))
-        }
-
-        if durationSeconds > Self.maximumAudioDuration {
-            throw VoiceCloningError.audioFileTooLong(maximumSeconds: Int(Self.maximumAudioDuration))
-        }
-    }
-
-    private func uploadAndClone(
-        name: String,
-        audioData: Data,
-        fileExtension: String
-    ) async throws -> ClonedVoiceResult {
-        // Create multipart form data request to backend
-        let boundary = UUID().uuidString
-
-        var request = try createRequest(
-            endpoint: "/api/voice-clone",
-            method: "POST"
-        )
-
-        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
-
-        // Build multipart body
-        var body = Data()
-
-        // Add name field
-        body.append("--\(boundary)\r\n".data(using: .utf8)!)
-        body.append("Content-Disposition: form-data; name=\"name\"\r\n\r\n".data(using: .utf8)!)
-        body.append("\(name)\r\n".data(using: .utf8)!)
-
-        // Add user_id field if available
-        if let userId = userId {
-            body.append("--\(boundary)\r\n".data(using: .utf8)!)
-            body.append("Content-Disposition: form-data; name=\"user_id\"\r\n\r\n".data(using: .utf8)!)
-            body.append("\(userId)\r\n".data(using: .utf8)!)
-        }
-
-        // Add audio file
-        let mimeType = mimeTypeForExtension(fileExtension)
-        body.append("--\(boundary)\r\n".data(using: .utf8)!)
-        body.append("Content-Disposition: form-data; name=\"audio\"; filename=\"sample.\(fileExtension)\"\r\n".data(using: .utf8)!)
-        body.append("Content-Type: \(mimeType)\r\n\r\n".data(using: .utf8)!)
-        body.append(audioData)
-        body.append("\r\n".data(using: .utf8)!)
-
-        // Close boundary
-        body.append("--\(boundary)--\r\n".data(using: .utf8)!)
-
-        request.httpBody = body
-
-        // Send request
-        let (data, response) = try await URLSession.shared.data(for: request)
-
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw VoiceCloningError.networkError("Invalid response")
-        }
-
-        switch httpResponse.statusCode {
-        case 200, 201:
-            // Debug: print raw response
-            if let jsonString = String(data: data, encoding: .utf8) {
-                print("Voice clone response: \(jsonString)")
-            }
-
-            do {
-                let result = try JSONDecoder().decode(CloneResponse.self, from: data)
-                return ClonedVoiceResult(
-                    voiceId: result.voiceId,
-                    name: result.name,
-                    status: .completed,
-                    createdAt: Date(),
-                    previewUrl: result.previewUrl
-                )
-            } catch {
-                print("JSON decode error: \(error)")
-                // Try to provide more detail
-                if let jsonString = String(data: data, encoding: .utf8) {
-                    print("Raw response was: \(jsonString)")
-                }
-                throw VoiceCloningError.cloningFailed("Failed to parse response: \(error.localizedDescription)")
-            }
-
-        case 401:
-            throw VoiceCloningError.unauthorized
-
-        case 400:
-            if let errorResponse = try? JSONDecoder().decode(ErrorResponse.self, from: data) {
-                throw VoiceCloningError.cloningFailed(errorResponse.error)
-            }
-            throw VoiceCloningError.cloningFailed("Invalid request")
-
-        default:
-            if let errorResponse = try? JSONDecoder().decode(ErrorResponse.self, from: data) {
-                throw VoiceCloningError.cloningFailed(errorResponse.error)
-            }
-            throw VoiceCloningError.networkError("Status code: \(httpResponse.statusCode)")
-        }
-    }
-
-    // MARK: - Local Storage
-
-    /// Load cloned voices from local storage
-    private func loadClonedVoicesFromLocal() -> [ClonedVoice] {
-        guard let data = UserDefaults.standard.data(forKey: clonedVoicesKey) else {
-            return []
-        }
-
-        do {
-            let decoder = JSONDecoder()
-            decoder.dateDecodingStrategy = .iso8601
-            return try decoder.decode([ClonedVoice].self, from: data)
-        } catch {
-            print("Failed to decode cloned voices: \(error)")
-            return []
-        }
-    }
-
-    /// Save a cloned voice to local storage
-    private func saveClonedVoiceLocally(_ voice: ClonedVoice) {
-        var voices = loadClonedVoicesFromLocal()
-        // Remove existing voice with same ID if any
-        voices.removeAll { $0.id == voice.id }
-        voices.insert(voice, at: 0) // Add new voice at the beginning
-
-        do {
-            let encoder = JSONEncoder()
-            encoder.dateEncodingStrategy = .iso8601
-            let data = try encoder.encode(voices)
-            UserDefaults.standard.set(data, forKey: clonedVoicesKey)
-        } catch {
-            print("Failed to save cloned voice: \(error)")
-        }
-    }
-
-    /// Remove a cloned voice from local storage
-    private func removeClonedVoiceLocally(_ voiceId: String) {
-        var voices = loadClonedVoicesFromLocal()
-        voices.removeAll { $0.id == voiceId }
-
-        do {
-            let encoder = JSONEncoder()
-            encoder.dateEncodingStrategy = .iso8601
-            let data = try encoder.encode(voices)
-            UserDefaults.standard.set(data, forKey: clonedVoicesKey)
-        } catch {
-            print("Failed to remove cloned voice: \(error)")
-        }
-    }
-
-    // MARK: - Network Helpers
-
-    private func deleteVoice(voiceId: String) async throws {
-        var endpoint = "/api/voice-clone/\(voiceId)"
-        if let userId = userId {
-            endpoint += "?user_id=\(userId)"
-        }
-        let request = try createRequest(
-            endpoint: endpoint,
+        let request = try await createRequest(
+            endpoint: "/api/cloned-voices/\(voiceId)",
             method: "DELETE"
         )
 
@@ -406,6 +301,8 @@ actor VoiceCloningService {
 
         switch httpResponse.statusCode {
         case 200, 204:
+            // Remove from local cache
+            removeClonedVoiceLocally(voiceId)
             return
 
         case 401:
@@ -422,15 +319,32 @@ actor VoiceCloningService {
         }
     }
 
-    private func synthesizePreview(voiceId: String, text: String) async throws -> URL {
-        var request = try createRequest(
-            endpoint: "/api/voice-clone/\(voiceId)/preview",
-            method: "POST"
+    /// Update a cloned voice (name, description, exaggeration, or set as default)
+    func updateClonedVoice(
+        _ voiceId: String,
+        name: String? = nil,
+        description: String? = nil,
+        exaggeration: Double? = nil,
+        isDefault: Bool? = nil
+    ) async throws -> ClonedVoice {
+        guard isConfigured else {
+            throw VoiceCloningError.notConfigured
+        }
+
+        var request = try await createRequest(
+            endpoint: "/api/cloned-voices/\(voiceId)",
+            method: "PATCH"
         )
 
-        let body = PreviewRequestBody(text: text, userId: userId)
-        request.httpBody = try JSONEncoder().encode(body)
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        var updates: [String: Any] = [:]
+        if let name = name { updates["name"] = name }
+        if let description = description { updates["description"] = description }
+        if let exaggeration = exaggeration { updates["exaggeration"] = exaggeration }
+        if let isDefault = isDefault { updates["is_default"] = isDefault }
+
+        request.httpBody = try JSONSerialization.data(withJSONObject: updates)
 
         let (data, response) = try await URLSession.shared.data(for: request)
 
@@ -442,40 +356,309 @@ actor VoiceCloningService {
             if httpResponse.statusCode == 401 {
                 throw VoiceCloningError.unauthorized
             }
+            if httpResponse.statusCode == 404 {
+                throw VoiceCloningError.voiceNotFound
+            }
             throw VoiceCloningError.networkError("Status code: \(httpResponse.statusCode)")
         }
 
-        // Save audio data to temp file
-        let tempURL = FileManager.default.temporaryDirectory
-            .appendingPathComponent("preview_\(voiceId)_\(UUID().uuidString).mp3")
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
 
-        try data.write(to: tempURL)
+        let voice = try decoder.decode(ClonedVoice.self, from: data)
+
+        // Update local cache
+        updateClonedVoiceLocally(voice)
+
+        return voice
+    }
+
+    /// Get a random sample text for voice recording.
+    func getRandomSampleText() -> String {
+        Self.sampleTexts.randomElement() ?? Self.sampleTexts[0]
+    }
+
+    /// Preview a cloned voice by playing its reference audio.
+    /// Returns the URL to the audio file (downloaded to temp directory).
+    func previewClonedVoice(_ voiceId: String) async throws -> URL {
+        guard isConfigured else {
+            throw VoiceCloningError.notConfigured
+        }
+
+        // Get the voice details with audio URL
+        let request = try await createRequest(
+            endpoint: "/api/cloned-voices/\(voiceId)",
+            method: "GET"
+        )
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw VoiceCloningError.networkError("Invalid response")
+        }
+
+        guard httpResponse.statusCode == 200 else {
+            if httpResponse.statusCode == 401 {
+                throw VoiceCloningError.unauthorized
+            }
+            if httpResponse.statusCode == 404 {
+                throw VoiceCloningError.voiceNotFound
+            }
+            throw VoiceCloningError.networkError("Status code: \(httpResponse.statusCode)")
+        }
+
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+
+        let voice = try decoder.decode(ClonedVoice.self, from: data)
+
+        guard let audioUrlString = voice.audioUrl, let audioUrl = URL(string: audioUrlString) else {
+            throw VoiceCloningError.voiceNotFound
+        }
+
+        // Download the audio to a temp file
+        let (audioData, _) = try await URLSession.shared.data(from: audioUrl)
+
+        let tempURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("preview_\(voiceId)_\(UUID().uuidString).wav")
+
+        try audioData.write(to: tempURL)
 
         return tempURL
     }
 
-    private func mimeTypeForExtension(_ ext: String) -> String {
-        switch ext.lowercased() {
-        case "mp3":
-            return "audio/mpeg"
-        case "m4a", "aac":
-            return "audio/mp4"
-        case "wav":
-            return "audio/wav"
-        case "mp4":
-            return "audio/mp4"
+    // MARK: - Private Methods - API Calls
+
+    /// Step 1: Create voice record in backend
+    private func createVoiceRecord(
+        name: String,
+        description: String?,
+        exaggeration: Double
+    ) async throws -> CreateVoiceResponse {
+        var request = try await createRequest(
+            endpoint: "/api/cloned-voices",
+            method: "POST"
+        )
+
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        var body: [String: Any] = [
+            "name": name,
+            "exaggeration": exaggeration
+        ]
+        if let description = description {
+            body["description"] = description
+        }
+
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw VoiceCloningError.networkError("Invalid response")
+        }
+
+        switch httpResponse.statusCode {
+        case 200, 201:
+            return try JSONDecoder().decode(CreateVoiceResponse.self, from: data)
+
+        case 401:
+            throw VoiceCloningError.unauthorized
+
         default:
-            return "application/octet-stream"
+            if let errorResponse = try? JSONDecoder().decode(ErrorResponse.self, from: data) {
+                throw VoiceCloningError.cloningFailed(errorResponse.error)
+            }
+            throw VoiceCloningError.networkError("Status code: \(httpResponse.statusCode)")
         }
     }
 
-    /// Create a request for voice cloning endpoints.
-    private func createRequest(endpoint: String, method: String) throws -> URLRequest {
+    /// Step 2: Upload audio directly to Supabase Storage via signed URL
+    private func uploadAudioToStorage(audioData: Data, uploadUrl: String) async throws {
+        guard let url = URL(string: uploadUrl) else {
+            throw VoiceCloningError.uploadFailed("Invalid upload URL")
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "PUT"
+        request.setValue("audio/wav", forHTTPHeaderField: "Content-Type")
+        request.httpBody = audioData
+        request.timeoutInterval = 120 // 2 minutes for upload
+
+        let (_, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw VoiceCloningError.uploadFailed("Invalid response")
+        }
+
+        guard (200...299).contains(httpResponse.statusCode) else {
+            throw VoiceCloningError.uploadFailed("Status code: \(httpResponse.statusCode)")
+        }
+    }
+
+    /// Step 3: Confirm upload with metadata
+    private func confirmVoiceUpload(
+        voiceId: String,
+        durationSec: Double,
+        fileSizeBytes: Int
+    ) async throws -> ClonedVoice {
+        var request = try await createRequest(
+            endpoint: "/api/cloned-voices/\(voiceId)/confirm",
+            method: "POST"
+        )
+
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        let body: [String: Any] = [
+            "duration_sec": durationSec,
+            "file_size_bytes": fileSizeBytes
+        ]
+
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw VoiceCloningError.networkError("Invalid response")
+        }
+
+        guard httpResponse.statusCode == 200 else {
+            if httpResponse.statusCode == 401 {
+                throw VoiceCloningError.unauthorized
+            }
+            throw VoiceCloningError.uploadFailed("Status code: \(httpResponse.statusCode)")
+        }
+
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+
+        return try decoder.decode(ClonedVoice.self, from: data)
+    }
+
+    // MARK: - Private Methods - Validation
+
+    private func validateAudioFile(at url: URL) async throws -> (durationSec: Double, fileSizeBytes: Int) {
+        // Check file extension
+        let ext = url.pathExtension.lowercased()
+        guard Self.supportedFormats.contains(ext) else {
+            throw VoiceCloningError.invalidAudioFormat
+        }
+
+        // Check file exists
+        guard FileManager.default.fileExists(atPath: url.path) else {
+            throw VoiceCloningError.uploadFailed("Audio file not found")
+        }
+
+        // Get file size
+        let attributes = try FileManager.default.attributesOfItem(atPath: url.path)
+        let fileSizeBytes = (attributes[.size] as? Int) ?? 0
+
+        // Get audio duration
+        let asset = AVURLAsset(url: url)
+        let duration = try await asset.load(.duration)
+        let durationSeconds = CMTimeGetSeconds(duration)
+
+        if durationSeconds < Self.minimumAudioDuration {
+            throw VoiceCloningError.audioFileTooShort(minimumSeconds: Int(Self.minimumAudioDuration))
+        }
+
+        if durationSeconds > Self.maximumAudioDuration {
+            throw VoiceCloningError.audioFileTooLong(maximumSeconds: Int(Self.maximumAudioDuration))
+        }
+
+        return (durationSec: durationSeconds, fileSizeBytes: fileSizeBytes)
+    }
+
+    // MARK: - Local Storage
+
+    /// Load cloned voices from local cache
+    private func loadClonedVoicesFromLocal() -> [ClonedVoice] {
+        guard let data = UserDefaults.standard.data(forKey: clonedVoicesKey) else {
+            return []
+        }
+
+        do {
+            let decoder = JSONDecoder()
+            decoder.dateDecodingStrategy = .iso8601
+            return try decoder.decode([ClonedVoice].self, from: data)
+        } catch {
+            print("Failed to decode cloned voices: \(error). Clearing cache.")
+            // Clear corrupted cache data
+            UserDefaults.standard.removeObject(forKey: clonedVoicesKey)
+            return []
+        }
+    }
+
+    /// Save cloned voices to local cache
+    private func saveClonedVoicesToLocal(_ voices: [ClonedVoice]) {
+        do {
+            let encoder = JSONEncoder()
+            encoder.dateEncodingStrategy = .iso8601
+            let data = try encoder.encode(voices)
+            UserDefaults.standard.set(data, forKey: clonedVoicesKey)
+        } catch {
+            print("Failed to save cloned voices: \(error)")
+        }
+    }
+
+    /// Save a single cloned voice to local cache
+    private func saveClonedVoiceLocally(_ voice: ClonedVoice) {
+        var voices = loadClonedVoicesFromLocal()
+        // Remove existing voice with same ID if any
+        voices.removeAll { $0.id == voice.id }
+        voices.insert(voice, at: 0) // Add new voice at the beginning
+        saveClonedVoicesToLocal(voices)
+    }
+
+    /// Update a cloned voice in local cache
+    private func updateClonedVoiceLocally(_ voice: ClonedVoice) {
+        var voices = loadClonedVoicesFromLocal()
+        if let index = voices.firstIndex(where: { $0.id == voice.id }) {
+            voices[index] = voice
+        } else {
+            voices.insert(voice, at: 0)
+        }
+        saveClonedVoicesToLocal(voices)
+    }
+
+    /// Remove a cloned voice from local cache
+    private func removeClonedVoiceLocally(_ voiceId: String) {
+        var voices = loadClonedVoicesFromLocal()
+        voices.removeAll { $0.id == voiceId }
+        saveClonedVoicesToLocal(voices)
+    }
+
+    // MARK: - Network Helpers
+
+    /// Get a stable device identifier for this device.
+    /// Uses identifierForVendor which persists across app reinstalls on the same device.
+    private func getDeviceId() -> String {
+        // Try to get cached device ID first
+        if let cachedId = UserDefaults.standard.string(forKey: "com.listenai.deviceId"), !cachedId.isEmpty {
+            return cachedId
+        }
+
+        // Generate or retrieve device ID
+        let deviceId: String
+        if let vendorId = UIDevice.current.identifierForVendor?.uuidString {
+            deviceId = vendorId
+        } else {
+            // Fallback: generate a UUID and persist it
+            deviceId = UUID().uuidString
+        }
+
+        // Cache the device ID
+        UserDefaults.standard.set(deviceId, forKey: "com.listenai.deviceId")
+        return deviceId
+    }
+
+    /// Create a request for the backend with device ID header.
+    private func createRequest(endpoint: String, method: String) async throws -> URLRequest {
         guard let baseURL = baseURL else {
             throw VoiceCloningError.notConfigured
         }
 
-        // Build URL string properly to avoid encoding issues with appendingPathComponent
+        // Build URL string properly to avoid encoding issues
         var urlString = baseURL.absoluteString
         if urlString.hasSuffix("/") {
             urlString.removeLast()
@@ -493,35 +676,33 @@ actor VoiceCloningService {
         request.httpMethod = method
         request.timeoutInterval = 60
 
+        // Add device ID header (required by backend)
+        request.setValue(getDeviceId(), forHTTPHeaderField: "X-Device-ID")
+
         return request
     }
 
     // MARK: - Response Types
 
-    private struct CloneResponse: Codable {
-        let voiceId: String
+    private struct CreateVoiceResponse: Codable {
+        let id: String
         let name: String
-        let previewUrl: String?
+        let uploadUrl: String
+        let expiresAt: String
 
         enum CodingKeys: String, CodingKey {
-            case voiceId = "voice_id"
+            case id
             case name
-            case previewUrl = "preview_url"
+            case uploadUrl = "upload_url"
+            case expiresAt = "expires_at"
         }
+    }
+
+    private struct VoicesListResponse: Codable {
+        let voices: [ClonedVoice]
     }
 
     private struct ErrorResponse: Codable {
         let error: String
     }
-
-    private struct PreviewRequestBody: Codable {
-        let text: String
-        let userId: String?
-
-        enum CodingKeys: String, CodingKey {
-            case text
-            case userId = "user_id"
-        }
-    }
 }
-

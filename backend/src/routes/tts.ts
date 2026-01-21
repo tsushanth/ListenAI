@@ -834,17 +834,70 @@ ttsRouter.get('/job/:jobId', asyncHandler(async (req: AuthenticatedRequest, res:
     throw new NotFoundError('Job');
   }
 
-  // 5. Calculate progress percentage
-  let percentage = 0;
-  if (job.status === 'ready' || job.status === 'failed' || job.status === 'canceled') {
-    percentage = 100;
-  } else if (job.chunks_total && job.chunks_total > 0) {
-    percentage = Math.round((job.chunks_completed / job.chunks_total) * 100);
-  } else if (job.duration_sec && job.duration_sec > 0 && job.progress_sec > 0) {
-    percentage = Math.round((job.progress_sec / job.duration_sec) * 100);
+  // 5. Estimate total duration if not yet known
+  // Use actual duration if available, otherwise estimate from preview or character count
+  let estimatedDurationSec: number | null = job.duration_sec;
+
+  if (!estimatedDurationSec && job.input_char_count) {
+    // If we have preview_duration_sec, use it to calculate actual speech rate
+    // Preview is ~150-200 chars (MICRO_TARGET_CHARS), so we can extrapolate
+    if (job.preview_duration_sec && job.preview_duration_sec > 0) {
+      // Use measured rate from preview: audio_sec_per_char = preview_duration / preview_chars
+      // Preview is approximately MICRO_TARGET_CHARS (150) characters
+      const previewChars = MICRO_TARGET_CHARS;  // ~150 chars
+      const audioSecPerChar = job.preview_duration_sec / previewChars;
+      estimatedDurationSec = Math.round(job.input_char_count * audioSecPerChar);
+      ttsLogger.debug({
+        jobId,
+        previewDurationSec: job.preview_duration_sec,
+        previewChars,
+        audioSecPerChar,
+        inputChars: job.input_char_count,
+        estimatedDurationSec,
+      }, 'Estimated duration from preview');
+    } else {
+      // Fallback: average speech rate ~150 words/min = 2.5 words/sec, ~5 chars/word = 12.5 chars/sec
+      estimatedDurationSec = Math.round(job.input_char_count / 12.5);
+    }
   }
 
-  // 6. Get audio URLs based on status
+  // 6. Calculate progress percentage and estimated remaining synthesis time
+  let percentage = 0;
+  let estimatedRemainingSec: number | undefined;
+
+  if (job.status === 'ready' || job.status === 'failed' || job.status === 'canceled') {
+    percentage = 100;
+    estimatedRemainingSec = 0;
+  } else if (job.chunks_total && job.chunks_total > 0) {
+    percentage = Math.round((job.chunks_completed / job.chunks_total) * 100);
+  } else if (estimatedDurationSec && estimatedDurationSec > 0 && job.progress_sec > 0) {
+    percentage = Math.round((job.progress_sec / estimatedDurationSec) * 100);
+  }
+
+  // Calculate estimated remaining synthesis time based on measured rate from preview
+  if (job.preview_generation_ms && job.preview_duration_sec && job.preview_duration_sec > 0 && estimatedDurationSec) {
+    // Synthesis rate = preview_audio_duration / preview_generation_time
+    // e.g., 10 sec audio generated in 1.25 sec = 8x realtime
+    const synthesisRate = job.preview_duration_sec / (job.preview_generation_ms / 1000);
+    const remainingAudioSec = estimatedDurationSec - job.progress_sec;
+    // Remaining synthesis time = remaining audio / synthesis rate
+    estimatedRemainingSec = Math.max(0, Math.round(remainingAudioSec / synthesisRate));
+
+    ttsLogger.debug({
+      jobId,
+      previewDurationSec: job.preview_duration_sec,
+      previewGenerationMs: job.preview_generation_ms,
+      synthesisRate: synthesisRate.toFixed(1) + 'x',
+      remainingAudioSec,
+      estimatedRemainingSec,
+    }, 'Calculated synthesis time remaining from measured rate');
+  } else if (estimatedDurationSec && job.progress_sec >= 0) {
+    // Fallback: assume 8x realtime for GPU
+    const remainingAudioSec = estimatedDurationSec - job.progress_sec;
+    estimatedRemainingSec = Math.max(0, Math.round(remainingAudioSec / 8));
+  }
+
+  // 7. Get audio URLs based on status
   let audioUrl: string | undefined;
   let previewUrl: string | undefined;
   let previewDurationSec: number | undefined;
@@ -864,16 +917,17 @@ ttsRouter.get('/job/:jobId', asyncHandler(async (req: AuthenticatedRequest, res:
     }
   }
 
-  // 7. Build response
+  // 8. Build response
   const response: TTSJobStatusResponse = {
     job_id: job.id,
     status: job.status,
     progress: {
-      duration_sec: job.duration_sec,
+      duration_sec: estimatedDurationSec,  // Use estimated if actual not yet known
       progress_sec: job.progress_sec,
       chunks_total: job.chunks_total,
       chunks_completed: job.chunks_completed,
       percentage,
+      estimated_remaining_sec: estimatedRemainingSec,  // Estimated synthesis time remaining
     },
     audio_url: audioUrl,
     preview_url: previewUrl,

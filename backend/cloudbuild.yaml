@@ -48,4 +48,3 @@ substitutions:
   _GPU_TTS_URL: ''
   _OPENAI_API_KEY: ''
   _ELEVENLABS_API_KEY: ''
-  _TTS_PROVIDER: 'selfhosted'  # Options: elevenlabs, selfhosted, mock

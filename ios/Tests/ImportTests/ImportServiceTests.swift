@@ -285,13 +285,15 @@ final class TextCleaningServiceTests: XCTestCase {
         XCTAssertFalse(output.contains("https://"))
     }
 
-    func testExpandAbbreviations() {
+    func testPreservesText() {
+        // Text cleaning now does minimal processing - let TTS handle normalization
         let service = TextCleaningService(options: .default)
         let input = "Dr. Smith said etc."
         let output = service.clean(input)
 
-        XCTAssertTrue(output.contains("Doctor"))
-        XCTAssertTrue(output.contains("et cetera"))
+        // Text should be preserved as-is (no abbreviation expansion)
+        XCTAssertTrue(output.contains("Dr."))
+        XCTAssertTrue(output.contains("etc."))
     }
 
     func testPreserveContentWithMinimalOptions() {

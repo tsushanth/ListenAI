@@ -91,23 +91,18 @@ final class ImportCoordinator: ObservableObject {
         // Get current voice preset
         let voice = VoicePresetManager.shared.selectedPreset
 
-        // Get provider from settings (standard=Kokoro, premium=ElevenLabs)
-        let ttsQualityRaw = UserDefaults.standard.string(forKey: "ttsQuality") ?? "standard"
-        let provider: ListenAICloudService.TTSProvider = ttsQualityRaw == "premium" ? .elevenlabs : .selfhosted
+        // Always use GPU-accelerated Kokoro (selfhosted)
+        let provider: ListenAICloudService.TTSProvider = .selfhosted
 
-        // Select voice ID based on provider
+        // Select Kokoro voice ID
         let voiceIdForJob: String
-        if provider == .elevenlabs {
-            voiceIdForJob = voice.providerVoiceID
-        } else {
-            guard let kokoroVoiceId = voice.kokoroVoiceID else {
-                print("[Import] Voice \(voice.name) has no Kokoro ID, skipping pre-synthesis")
-                articleStore.updateSynthesisStatus(for: article.id, status: .notStarted)
-                isSynthesizing = false
-                return
-            }
-            voiceIdForJob = kokoroVoiceId
+        guard let kokoroVoiceId = voice.kokoroVoiceID else {
+            print("[Import] Voice \(voice.name) has no Kokoro ID, skipping pre-synthesis")
+            articleStore.updateSynthesisStatus(for: article.id, status: .notStarted)
+            isSynthesizing = false
+            return
         }
+        voiceIdForJob = kokoroVoiceId
 
         print("[Import] Selected voice for synthesis: \(voice.name), voiceID: \(voiceIdForJob), provider: \(provider.rawValue)")
 

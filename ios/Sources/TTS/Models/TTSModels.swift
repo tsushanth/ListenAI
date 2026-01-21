@@ -427,6 +427,42 @@ struct TTSJobStartResponse: Codable, Sendable {
     }
 }
 
+/// Progress information nested in job status response
+struct TTSJobProgress: Codable, Sendable {
+    /// Total expected audio duration in seconds
+    let durationSec: Double?
+
+    /// Progress in seconds of audio generated
+    let progressSec: Double
+
+    /// Total number of chunks (if chunked processing)
+    let chunksTotal: Int?
+
+    /// Number of completed chunks
+    let chunksCompleted: Int
+
+    /// Progress percentage (0-100)
+    let percentage: Int
+
+    /// Estimated remaining synthesis time in seconds (calculated by backend from measured rate)
+    let estimatedRemainingSec: Int?
+
+    enum CodingKeys: String, CodingKey {
+        case durationSec = "duration_sec"
+        case progressSec = "progress_sec"
+        case chunksTotal = "chunks_total"
+        case chunksCompleted = "chunks_completed"
+        case percentage
+        case estimatedRemainingSec = "estimated_remaining_sec"
+    }
+}
+
+/// Error information in job status response
+struct TTSJobErrorInfo: Codable, Sendable {
+    let code: String
+    let message: String
+}
+
 /// Response from GET /api/tts/job/:jobId for polling job status
 struct TTSJobStatusResponse: Codable, Sendable {
     /// Current job status
@@ -435,62 +471,67 @@ struct TTSJobStatusResponse: Codable, Sendable {
     /// Job identifier
     let jobId: String
 
-    /// Progress in seconds of audio generated (for partial_ready and ready)
-    let progressSec: Double?
+    /// Progress information (nested object from backend)
+    let progress: TTSJobProgress
 
     /// URL to preview audio (available when status is partial_ready or ready)
     let previewUrl: String?
 
     /// URL to full audio (available when status is ready)
-    let fullUrl: String?
-
-    /// Alias for fullUrl for API compatibility
     let audioUrl: String?
-
-    /// Total audio duration in seconds (available when status is ready)
-    let durationSec: Double?
 
     /// Preview audio duration in seconds (available when status is partial_ready)
     let previewDurationSec: Double?
 
-    /// Error message (when status is failed)
-    let error: String?
-
-    /// Error code for categorization (when status is failed)
-    let errorCode: String?
-
-    /// Estimated remaining wait time in seconds
-    let estimatedWaitSec: Int?
-
-    /// Queue position if still queued
-    let queuePosition: Int?
+    /// Error info (when status is failed)
+    let error: TTSJobErrorInfo?
 
     /// Timestamp when job was created
     let createdAt: String?
 
-    /// Timestamp when job completed or failed
-    let completedAt: String?
+    /// Timestamp when job was last updated
+    let updatedAt: String?
 
     enum CodingKeys: String, CodingKey {
         case status
         case jobId = "job_id"
-        case progressSec = "progress_sec"
+        case progress
         case previewUrl = "preview_url"
-        case fullUrl = "full_url"
         case audioUrl = "audio_url"
-        case durationSec = "duration_sec"
         case previewDurationSec = "preview_duration_sec"
         case error
-        case errorCode = "error_code"
-        case estimatedWaitSec = "estimated_wait_sec"
-        case queuePosition = "queue_position"
         case createdAt = "created_at"
-        case completedAt = "completed_at"
+        case updatedAt = "updated_at"
+    }
+
+    // MARK: - Convenience accessors for backwards compatibility
+
+    /// Progress in seconds of audio generated
+    var progressSec: Double? {
+        progress.progressSec
+    }
+
+    /// Total audio duration in seconds
+    var durationSec: Double? {
+        progress.durationSec
+    }
+
+    /// Progress percentage (0-100)
+    var percentage: Int {
+        progress.percentage
     }
 
     /// Best available audio URL (full if ready, preview if partial)
     var bestAudioUrl: String? {
-        fullUrl ?? audioUrl ?? previewUrl
+        audioUrl ?? previewUrl
+    }
+
+    /// Estimated remaining wait time in seconds (calculated from progress)
+    var estimatedWaitSec: Int? {
+        guard let totalDuration = progress.durationSec, totalDuration > 0 else { return nil }
+        let remainingAudio = totalDuration - progress.progressSec
+        // GPU processes at ~8x realtime
+        return Int(remainingAudio / 8.0)
     }
 }
 
@@ -747,8 +788,8 @@ enum TTSJobError: LocalizedError, Sendable {
     static func fromJobStatus(_ response: TTSJobStatusResponse) -> TTSJobError? {
         guard response.status == .failed else { return nil }
 
-        let reason = response.error ?? "Unknown error"
-        let errorCode = response.errorCode
+        let reason = response.error?.message ?? "Unknown error"
+        let errorCode = response.error?.code
 
         // Map known error codes
         switch errorCode {

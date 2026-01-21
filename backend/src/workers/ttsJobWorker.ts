@@ -640,6 +640,7 @@ async function generateMicroPreview(
   const microDurationSec = await getAudioDuration(microResult.audioBuffer);
 
   // Update job to partial_ready so iOS can start playing ASAP
+  // Include preview_char_count and preview_generation_ms for accurate progress estimation
   const dbUpdateStart = Date.now();
   await supabase
     .from('tts_jobs')
@@ -647,6 +648,8 @@ async function generateMicroPreview(
       status: 'partial_ready',
       preview_audio_path: microPath,
       preview_duration_sec: microDurationSec,
+      preview_char_count: microText.length,  // Track chars for rate calculation
+      preview_generation_ms: microInferenceMs,  // Track synthesis time for rate calculation
       progress_sec: microDurationSec,
       updated_at: new Date().toISOString(),
     })

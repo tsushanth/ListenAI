@@ -78,10 +78,8 @@ struct RootView: View {
         )
 
         // Configure VoiceCloningService for voice cloning
-        await VoiceCloningService.shared.configure(
-            baseURL: backendURL,
-            userId: UIDevice.current.identifierForVendor?.uuidString
-        )
+        // Uses device ID for user identification (no auth required)
+        await VoiceCloningService.shared.configure(baseURL: backendURL)
 
         // Configure StreamingTTSService for progressive audio playback
         StreamingTTSService.shared.configure(

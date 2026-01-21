@@ -18,6 +18,7 @@ struct TextCleaningService {
     // MARK: - Public Methods
 
     /// Clean text for TTS synthesis
+    /// Note: We now do minimal client-side processing and let the TTS engine handle text normalization
     func clean(_ text: String) -> String {
         var result = text
 
@@ -26,57 +27,22 @@ struct TextCleaningService {
             result = stripHTML(result)
         }
 
+        // Basic whitespace normalization only
         if options.normalizeWhitespace {
             result = normalizeWhitespace(result)
         }
 
+        // Remove URLs to avoid reading them aloud
         if options.removeURLs {
             result = removeURLs(result)
         }
 
-        if options.removeEmailHeaders {
-            result = removeEmailHeaders(result)
-        }
-
-        if options.removeEmailSignatures {
-            result = removeEmailSignatures(result)
-        }
-
-        if options.removeBoilerplate {
-            result = removeBoilerplate(result)
-        }
-
-        if options.removeNavigationText {
-            result = removeNavigationText(result)
-        }
-
-        // TTS-specific formatting (always apply for best audio quality)
-        result = removeImageCaptions(result)
-        result = removeCitations(result)
-        result = formatDates(result)
-        result = formatTimes(result)
-        result = formatOrdinals(result)
-        result = formatAcronyms(result)
-        result = formatPhoneNumbers(result)
-        result = formatSymbols(result)
-        result = formatMathNotation(result)
-        result = formatCurrency(result)
-
-        if options.expandAbbreviations {
-            result = expandAbbreviations(result)
-        }
-
-        if options.simplifyNumbers {
-            result = simplifyNumbers(result)
-        }
-
+        // Remove emojis if requested
         if options.removeEmojis {
             result = removeEmojis(result)
         }
 
-        // Final cleanup
-        result = normalizeWhitespace(result)
-        result = normalizePunctuation(result)
+        // Final cleanup - just whitespace, no text transformations
         result = removeEmptyLines(result)
 
         return result.trimmingCharacters(in: .whitespacesAndNewlines)

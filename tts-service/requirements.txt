@@ -1,5 +1,5 @@
 # ReadAloud AI TTS Service Dependencies
-# Supports multiple TTS models: XTTS v2 and Kokoro-82M
+# Supports multiple TTS models: XTTS v2, Kokoro-82M, and Chatterbox
 
 # FastAPI + Uvicorn
 fastapi==0.109.0
@@ -14,8 +14,13 @@ transformers==4.42.4
 # Kokoro-82M - Fast, lightweight, Apache 2.0 license (commercial OK)
 kokoro>=0.9.2
 
+# Chatterbox TTS - Voice cloning, MIT license (commercial OK)
+# https://github.com/resemble-ai/chatterbox
+chatterbox-tts>=0.1.0
+
 # Audio processing
 soundfile==0.12.1
+librosa>=0.10.0
 # Note: numpy version is handled by TTS dependency
 
 # PyTorch (CUDA version for GPU)
@@ -28,3 +33,6 @@ torch==2.5.1
 # Utilities
 python-multipart==0.0.6
 aiofiles==23.2.1
+
+# HTTP client for downloading voice files from Supabase
+httpx>=0.25.0

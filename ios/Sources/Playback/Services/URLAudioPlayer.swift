@@ -61,6 +61,10 @@ final class URLAudioPlayer: NSObject, ObservableObject {
     /// Used to detect when preview finished so we can auto-resume with full audio
     private var didReachEndOfPlayback: Bool = false
 
+    /// Temporarily suppresses time observer updates during seek operations
+    /// This prevents the observer from overwriting the seek target position
+    private var isSeeking: Bool = false
+
     // MARK: - Singleton
 
     static let shared = URLAudioPlayer()
@@ -257,6 +261,7 @@ final class URLAudioPlayer: NSObject, ObservableObject {
         playerMode = .none
         previewDuration = nil
         didReachEndOfPlayback = false
+        isSeeking = false
 
         // Clear now playing
         MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
@@ -270,10 +275,20 @@ final class URLAudioPlayer: NSObject, ObservableObject {
         let clampedTime = max(0, min(time, maxSeekableTime))
         let cmTime = CMTime(seconds: clampedTime, preferredTimescale: 600)
 
-        player.seek(to: cmTime, toleranceBefore: .zero, toleranceAfter: .zero) { [weak self] _ in
+        // Set seeking flag to prevent time observer from overwriting
+        isSeeking = true
+        // Update currentTime immediately for responsive UI
+        currentTime = clampedTime
+
+        player.seek(to: cmTime, toleranceBefore: .zero, toleranceAfter: .zero) { [weak self] finished in
             Task { @MainActor in
-                self?.currentTime = clampedTime
-                self?.updateNowPlayingPlaybackState()
+                guard let self = self else { return }
+                // Only clear seeking flag if the seek completed successfully
+                if finished {
+                    self.currentTime = clampedTime
+                }
+                self.isSeeking = false
+                self.updateNowPlayingPlaybackState()
             }
         }
     }
@@ -490,6 +505,8 @@ final class URLAudioPlayer: NSObject, ObservableObject {
         timeObserver = player?.addPeriodicTimeObserver(forInterval: interval, queue: .main) { [weak self] time in
             Task { @MainActor in
                 guard let self = self else { return }
+                // Don't update currentTime during seek - let the seek completion handler do it
+                guard !self.isSeeking else { return }
                 let seconds = CMTimeGetSeconds(time)
                 if seconds.isFinite {
                     self.currentTime = seconds

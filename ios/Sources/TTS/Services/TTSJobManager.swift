@@ -325,7 +325,7 @@ final class TTSJobManager: ObservableObject {
                 case .ready:
                     // Full audio ready - notify for playback swap (only once via guard)
                     if !didSwapToFull.contains(articleId),
-                       let fullUrlString = statusResponse.fullUrl ?? statusResponse.audioUrl,
+                       let fullUrlString = statusResponse.audioUrl,
                        let fullURL = URL(string: fullUrlString) {
                         // Mark guards BEFORE calling callback to prevent duplicates
                         didSwapToFull.insert(articleId)
@@ -359,7 +359,7 @@ final class TTSJobManager: ObservableObject {
                     return // Stop polling
 
                 case .failed:
-                    let errorMsg = statusResponse.error ?? "Job failed"
+                    let errorMsg = statusResponse.error?.message ?? "Job failed"
                     await MainActor.run {
                         self.activeJobs[articleId]?.error = errorMsg
                         self.onJobFailed?(articleId, errorMsg)
@@ -453,14 +453,10 @@ final class TTSJobManager: ObservableObject {
 
         jobInfo.status = response.status
 
-        // Use progressSec if available, otherwise estimate from duration
-        if let progressSec = response.progressSec, let durationSec = response.durationSec, durationSec > 0 {
-            jobInfo.progress = progressSec / durationSec
-        } else {
-            jobInfo.progress = 0
-        }
+        // Use backend-calculated percentage
+        jobInfo.progress = Double(response.percentage) / 100.0
 
-        if let audioUrlString = response.fullUrl ?? response.audioUrl {
+        if let audioUrlString = response.audioUrl {
             jobInfo.audioURL = URL(string: audioUrlString)
         }
         if let previewUrlString = response.previewUrl {
@@ -503,7 +499,7 @@ final class TTSJobManager: ObservableObject {
     }
 
     private func downloadFullAudioInBackground(articleId: UUID, response: TTSJobStatusResponse) async {
-        guard let audioURLString = response.fullUrl ?? response.audioUrl,
+        guard let audioURLString = response.audioUrl,
               let audioURL = URL(string: audioURLString) else {
             print("[TTSJobManager] No audio URL in response for background download")
             return

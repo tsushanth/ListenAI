@@ -3,6 +3,7 @@ ReadAloud AI - Self-Hosted TTS Service
 Multi-model TTS service supporting:
 - Coqui XTTS v2: High-quality voice cloning (non-commercial license)
 - Kokoro-82M: Fast, lightweight, commercially licensed (Apache 2.0)
+- Chatterbox: Voice cloning with reference audio, MIT license (commercial OK)
 
 This service runs on Cloud Run and provides an HTTP API
 compatible with the ReadAloud AI backend.
@@ -14,18 +15,23 @@ import re
 import time
 import hashlib
 import logging
+import tempfile
+import shutil
 from typing import Optional, List
+from pathlib import Path
 
 import torch
 import numpy as np
-from fastapi import FastAPI, HTTPException, BackgroundTasks
-from fastapi.responses import StreamingResponse
+from fastapi import FastAPI, HTTPException, BackgroundTasks, UploadFile, File, Form
+from fastapi.responses import StreamingResponse, JSONResponse
 from pydantic import BaseModel, Field
 import soundfile as sf
+import httpx
 
 # Conditional imports - models loaded on demand
 TTS = None  # Coqui TTS
 KPipeline = None  # Kokoro
+ChatterboxModel = None  # Chatterbox
 
 # ============================================================================
 # Configuration
@@ -48,6 +54,10 @@ CACHE_ENABLED = os.getenv("CACHE_ENABLED", "true").lower() == "true"
 XTTS_MODEL_NAME = "tts_models/multilingual/multi-dataset/xtts_v2"
 KOKORO_SAMPLE_RATE = 24000
 XTTS_SAMPLE_RATE = 24000
+CHATTERBOX_SAMPLE_RATE = 24000
+
+# Cloned voices cache directory (downloaded from Supabase)
+CLONED_VOICES_CACHE_DIR = os.getenv("CLONED_VOICES_CACHE_DIR", "/app/cloned_voices_cache")
 
 # ============================================================================
 # Logging
@@ -65,8 +75,8 @@ logger = logging.getLogger("tts-service")
 
 app = FastAPI(
     title="ReadAloud AI TTS Service",
-    description="Self-hosted TTS using Coqui XTTS v2",
-    version="1.0.0"
+    description="Self-hosted TTS with voice cloning (Kokoro, Chatterbox, XTTS)",
+    version="2.0.0"
 )
 
 # ============================================================================
@@ -76,6 +86,7 @@ app = FastAPI(
 # Model instances (loaded on demand)
 xtts_model = None
 kokoro_pipeline = None
+chatterbox_model = None
 
 def load_xtts():
     """Load XTTS v2 model."""
@@ -113,10 +124,35 @@ def load_kokoro():
 
     return kokoro_pipeline
 
+def load_chatterbox():
+    """Load Chatterbox model for voice cloning."""
+    global chatterbox_model
+    if chatterbox_model is not None:
+        return chatterbox_model
+
+    logger.info("Loading Chatterbox model...")
+    start_time = time.time()
+
+    try:
+        from chatterbox.tts import ChatterboxTTS
+        chatterbox_model = ChatterboxTTS.from_pretrained(device=DEVICE)
+        load_time = time.time() - start_time
+        logger.info(f"Chatterbox model loaded in {load_time:.2f}s on {DEVICE}")
+    except ImportError as e:
+        logger.error(f"Failed to import Chatterbox: {e}. Voice cloning will be unavailable.")
+        return None
+    except Exception as e:
+        logger.error(f"Failed to load Chatterbox model: {e}")
+        return None
+
+    return chatterbox_model
+
 def get_model(model_type: str):
     """Get the requested model, loading if necessary."""
     if model_type == "kokoro":
         return load_kokoro()
+    elif model_type == "chatterbox":
+        return load_chatterbox()
     else:
         return load_xtts()
 
@@ -126,12 +162,15 @@ async def startup_event():
     # Load default model
     if DEFAULT_MODEL == "kokoro":
         load_kokoro()
+    elif DEFAULT_MODEL == "chatterbox":
+        load_chatterbox()
     else:
         load_xtts()
 
     # Create directories
     os.makedirs(VOICE_SAMPLES_DIR, exist_ok=True)
     os.makedirs(AUDIO_CACHE_DIR, exist_ok=True)
+    os.makedirs(CLONED_VOICES_CACHE_DIR, exist_ok=True)
 
 # ============================================================================
 # Request/Response Models
@@ -458,15 +497,18 @@ async def health_check():
         models_loaded.append("xtts")
     if kokoro_pipeline is not None:
         models_loaded.append("kokoro")
+    if chatterbox_model is not None:
+        models_loaded.append("chatterbox")
 
     return {
         "status": "ok" if models_loaded else "loading",
         "default_model": DEFAULT_MODEL,
         "models_loaded": models_loaded,
-        "models_available": ["xtts", "kokoro"],
+        "models_available": ["xtts", "kokoro", "chatterbox"],
         "device": DEVICE,
         "gpu_available": torch.cuda.is_available(),
-        "gpu_name": gpu_name
+        "gpu_name": gpu_name,
+        "voice_cloning_available": chatterbox_model is not None
     }
 
 @app.get("/voices")
@@ -968,33 +1010,272 @@ async def chunk_preview(request: SynthesizeLongRequest):
         "chunks": chunk_infos
     }
 
-@app.post("/clone-voice")
-async def clone_voice(
-    voice_id: str,
-    name: str,
-    audio_file: bytes  # In practice, use UploadFile
+# ============================================================================
+# Voice Cloning with Chatterbox
+# ============================================================================
+
+# In-memory cache of recently used cloned voices (reference audio paths)
+_cloned_voice_cache: dict[str, str] = {}
+MAX_CLONED_VOICE_CACHE = 50  # Max number of voice files to keep cached
+
+async def download_voice_file(voice_url: str, voice_id: str) -> str:
+    """
+    Download a cloned voice reference file from Supabase Storage.
+    Caches the file locally for repeated use.
+    Returns the local file path.
+    """
+    cache_path = os.path.join(CLONED_VOICES_CACHE_DIR, f"{voice_id}.wav")
+
+    # Check if already cached
+    if os.path.exists(cache_path):
+        logger.info(f"Voice file cache hit: {voice_id}")
+        return cache_path
+
+    logger.info(f"Downloading voice file for {voice_id} from {voice_url[:50]}...")
+
+    try:
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            response = await client.get(voice_url)
+            response.raise_for_status()
+
+            with open(cache_path, "wb") as f:
+                f.write(response.content)
+
+            logger.info(f"Voice file downloaded: {voice_id} ({len(response.content)} bytes)")
+
+            # Update cache tracking
+            _cloned_voice_cache[voice_id] = cache_path
+
+            # Cleanup old cache entries if needed
+            if len(_cloned_voice_cache) > MAX_CLONED_VOICE_CACHE:
+                oldest_id = next(iter(_cloned_voice_cache))
+                oldest_path = _cloned_voice_cache.pop(oldest_id)
+                if os.path.exists(oldest_path):
+                    os.remove(oldest_path)
+                    logger.info(f"Removed old cached voice: {oldest_id}")
+
+            return cache_path
+
+    except Exception as e:
+        logger.error(f"Failed to download voice file {voice_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to download voice file: {str(e)}")
+
+
+def synthesize_with_chatterbox(
+    text: str,
+    reference_audio_path: str,
+    speed: float = 1.0,
+    exaggeration: float = 0.5
+) -> tuple:
+    """
+    Synthesize speech using Chatterbox with a cloned voice.
+
+    Args:
+        text: Text to synthesize
+        reference_audio_path: Path to the reference audio file for voice cloning
+        speed: Speech speed multiplier (0.5-2.0)
+        exaggeration: Emotion exaggeration (0.0-1.0)
+
+    Returns:
+        tuple: (wav_array, sample_rate)
+    """
+    model = load_chatterbox()
+    if model is None:
+        raise HTTPException(status_code=503, detail="Chatterbox model not available")
+
+    logger.info(f"Chatterbox synthesis: text_len={len(text)}, ref_audio={reference_audio_path}")
+
+    start_time = time.time()
+
+    try:
+        # Generate audio with Chatterbox
+        wav = model.generate(
+            text=text,
+            audio_prompt_path=reference_audio_path,
+            exaggeration=exaggeration,
+        )
+
+        # Apply speed adjustment if not 1.0
+        if speed != 1.0:
+            import librosa
+            wav_array = wav.cpu().numpy().squeeze()
+            wav_array = librosa.effects.time_stretch(wav_array, rate=speed)
+        else:
+            wav_array = wav.cpu().numpy().squeeze()
+
+        synthesis_time = time.time() - start_time
+        logger.info(f"Chatterbox synthesis complete in {synthesis_time:.2f}s")
+
+        return wav_array, CHATTERBOX_SAMPLE_RATE
+
+    except Exception as e:
+        logger.error(f"Chatterbox synthesis failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Voice cloning synthesis failed: {str(e)}")
+
+
+class SynthesizeWithClonedVoiceRequest(BaseModel):
+    """Request for synthesizing with a cloned voice."""
+    text: str = Field(..., min_length=1, max_length=10000)
+    voice_url: str = Field(..., description="URL to the reference audio file (from Supabase Storage)")
+    voice_id: str = Field(..., description="Unique ID for caching the voice file")
+    speed: float = Field(default=1.0, ge=0.5, le=2.0)
+    exaggeration: float = Field(default=0.5, ge=0.0, le=1.0, description="Emotion exaggeration level")
+
+
+@app.post("/synthesize-cloned")
+async def synthesize_with_cloned_voice(request: SynthesizeWithClonedVoiceRequest, background_tasks: BackgroundTasks):
+    """
+    Synthesize text using a cloned voice.
+
+    Uses Chatterbox TTS with a reference audio file for voice cloning.
+    The reference audio is downloaded from the provided URL (Supabase Storage)
+    and cached locally for repeated use.
+
+    Returns audio/wav stream.
+    """
+    # Download/retrieve cached voice file
+    voice_path = await download_voice_file(request.voice_url, request.voice_id)
+
+    # Check cache (include voice_id in cache key for cloned voices)
+    cache_key = get_cache_key(f"chatterbox|{request.text}", request.voice_id, "en", request.speed)
+    cached = get_cached_audio(cache_key)
+    if cached:
+        return StreamingResponse(
+            io.BytesIO(cached),
+            media_type="audio/wav",
+            headers={
+                "X-Cache": "HIT",
+                "X-Voice-ID": request.voice_id,
+                "X-Model": "chatterbox",
+            }
+        )
+
+    logger.info(f"Synthesizing with cloned voice: voice_id={request.voice_id}, chars={len(request.text)}")
+
+    start_time = time.time()
+
+    # Synthesize with Chatterbox
+    wav_array, sample_rate = synthesize_with_chatterbox(
+        text=request.text,
+        reference_audio_path=voice_path,
+        speed=request.speed,
+        exaggeration=request.exaggeration
+    )
+
+    # Write to buffer
+    audio_buffer = io.BytesIO()
+    sf.write(audio_buffer, wav_array, sample_rate, format='WAV')
+    audio_buffer.seek(0)
+    audio_data = audio_buffer.read()
+
+    synthesis_time = time.time() - start_time
+    logger.info(f"Cloned voice synthesis completed in {synthesis_time:.2f}s, size={len(audio_data)} bytes")
+
+    # Cache in background
+    background_tasks.add_task(save_to_cache, cache_key, audio_data)
+
+    return StreamingResponse(
+        io.BytesIO(audio_data),
+        media_type="audio/wav",
+        headers={
+            "X-Cache": "MISS",
+            "X-Voice-ID": request.voice_id,
+            "X-Model": "chatterbox",
+            "X-Synthesis-Time-Ms": str(int(synthesis_time * 1000)),
+            "X-Character-Count": str(len(request.text)),
+        }
+    )
+
+
+@app.post("/upload-voice")
+async def upload_voice_sample(
+    voice_id: str = Form(...),
+    name: str = Form(...),
+    audio_file: UploadFile = File(...)
 ):
     """
-    Clone a voice from an audio sample.
+    Upload a voice sample for cloning.
 
-    The audio sample is saved and can be used for future synthesis.
+    The audio sample is saved locally and can be used for future synthesis.
+    This is primarily for testing - in production, voices are stored in Supabase.
     """
-    # Save the audio sample
+    # Validate file type
+    if not audio_file.content_type or not audio_file.content_type.startswith("audio/"):
+        raise HTTPException(status_code=400, detail="File must be an audio file")
+
+    # Read and save the audio sample
+    content = await audio_file.read()
     sample_path = os.path.join(VOICE_SAMPLES_DIR, f"{voice_id}.wav")
 
     with open(sample_path, "wb") as f:
-        f.write(audio_file)
+        f.write(content)
 
-    # Add to voices registry
-    BUILTIN_VOICES[voice_id] = {
+    logger.info(f"Voice sample uploaded: {voice_id} ({len(content)} bytes)")
+
+    return {
+        "status": "ok",
+        "voice_id": voice_id,
         "name": name,
-        "description": f"Cloned voice: {name}",
-        "language": "en",
-        "gender": "unknown",
-        "sample_file": f"{voice_id}.wav"
+        "file_size": len(content),
+        "local_path": sample_path
     }
 
-    return {"status": "ok", "voice_id": voice_id}
+
+@app.post("/preview-cloned-voice")
+async def preview_cloned_voice(
+    voice_id: str = Form(...),
+    voice_url: str = Form(...),
+    text: str = Form(default="Hello, this is a preview of your cloned voice. How does it sound?")
+):
+    """
+    Generate a short preview of a cloned voice.
+
+    Used during voice cloning setup to let users hear how their voice sounds.
+    """
+    # Download voice file
+    voice_path = await download_voice_file(voice_url, voice_id)
+
+    # Synthesize preview
+    wav_array, sample_rate = synthesize_with_chatterbox(
+        text=text,
+        reference_audio_path=voice_path,
+        speed=1.0,
+        exaggeration=0.5
+    )
+
+    # Write to buffer
+    audio_buffer = io.BytesIO()
+    sf.write(audio_buffer, wav_array, sample_rate, format='WAV')
+    audio_buffer.seek(0)
+
+    return StreamingResponse(
+        audio_buffer,
+        media_type="audio/wav",
+        headers={
+            "X-Voice-ID": voice_id,
+            "X-Model": "chatterbox",
+        }
+    )
+
+
+@app.delete("/cached-voice/{voice_id}")
+async def delete_cached_voice(voice_id: str):
+    """
+    Delete a cached voice file.
+
+    Called when a user deletes their cloned voice.
+    """
+    cache_path = os.path.join(CLONED_VOICES_CACHE_DIR, f"{voice_id}.wav")
+
+    if os.path.exists(cache_path):
+        os.remove(cache_path)
+        if voice_id in _cloned_voice_cache:
+            del _cloned_voice_cache[voice_id]
+        logger.info(f"Deleted cached voice: {voice_id}")
+        return {"status": "ok", "voice_id": voice_id}
+
+    return {"status": "not_found", "voice_id": voice_id}
+
 
 # ============================================================================
 # Main

@@ -20,6 +20,7 @@ import { subscriptionRouter } from './routes/subscription.js';
 import { latencyRouter } from './routes/latency.js';
 import { aiRouter } from './routes/ai.js';
 import { adminRouter } from './routes/admin.js';
+import { clonedVoicesRouter } from './routes/clonedVoices.js';
 import { aggregateLatencyMetrics, checkSupabaseHealth, checkStorageHealth } from './lib/supabaseClient.js';
 import { startWorker, stopWorker } from './workers/ttsJobWorker.js';
 import { checkPubSubHealth } from './lib/pubsub.js';
@@ -175,6 +176,9 @@ app.use('/api/ai', requireAuth, aiRouter);
 
 // Admin routes (requires admin API key) - for rollout control and metrics
 app.use('/api/admin', adminRouter);
+
+// Cloned voices routes (requires auth) - for voice cloning with Chatterbox
+app.use('/api/cloned-voices', clonedVoicesRouter);
 
 // ============================================================================
 // Error Handling

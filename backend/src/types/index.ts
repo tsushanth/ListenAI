@@ -437,6 +437,8 @@ export interface DBTTSJob {
   // Preview-first audio (Phase 5)
   preview_audio_path: string | null;
   preview_duration_sec: number | null;
+  preview_char_count: number | null;  // Character count of preview text
+  preview_generation_ms: number | null;  // Time to generate preview (for rate calculation)
   full_audio_path: string | null;
 
   // Progress tracking
@@ -512,11 +514,12 @@ export interface TTSJobStatusResponse {
   job_id: string;
   status: TTSJobStatus;
   progress: {
-    duration_sec: number | null;
-    progress_sec: number;
+    duration_sec: number | null;  // Total estimated audio duration
+    progress_sec: number;  // Audio generated so far
     chunks_total: number | null;
     chunks_completed: number;
     percentage: number;
+    estimated_remaining_sec?: number;  // Estimated synthesis time remaining (based on measured rate)
   };
   audio_url?: string;        // Full audio URL (when status is 'ready')
   preview_url?: string;      // Preview audio URL (when status is 'partial_ready' or 'ready')
@@ -527,4 +530,77 @@ export interface TTSJobStatusResponse {
   };
   created_at: string;
   updated_at: string;
+}
+
+// ============================================================================
+// Cloned Voice Types
+// ============================================================================
+
+/**
+ * Cloned voice record (matches cloned_voices table)
+ */
+export interface DBClonedVoice {
+  id: string;
+  user_id: string;
+  name: string;
+  description: string | null;
+  audio_path: string;
+  audio_url: string | null;
+  audio_url_expires_at: string | null;
+  duration_sec: number | null;
+  file_size_bytes: number | null;
+  sample_rate: number;
+  exaggeration: number;
+  is_active: boolean;
+  is_default: boolean;
+  usage_count: number;
+  last_used_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * Request to create a cloned voice
+ */
+export interface CreateClonedVoiceRequest {
+  name: string;
+  description?: string;
+  exaggeration?: number;  // 0.0-1.0, default 0.5
+}
+
+/**
+ * Response when creating a cloned voice
+ */
+export interface CreateClonedVoiceResponse {
+  id: string;
+  name: string;
+  upload_url: string;  // Signed URL for uploading reference audio
+  expires_at: string;  // When the upload URL expires
+}
+
+/**
+ * Cloned voice info returned to client
+ */
+export interface ClonedVoiceInfo {
+  id: string;
+  name: string;
+  description: string | null;
+  duration_sec: number | null;
+  exaggeration: number;
+  is_default: boolean;
+  usage_count: number;
+  created_at: string;
+  audio_url?: string;  // Signed URL for playback (if requested)
+}
+
+/**
+ * Request to synthesize with a cloned voice
+ */
+export interface SynthesizeWithClonedVoiceRequest {
+  text: string;
+  cloned_voice_id: string;
+  speed?: number;
+  format?: AudioFormat;
+  article_id?: string;
+  article_title?: string;
 }

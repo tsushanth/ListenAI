@@ -1317,6 +1317,232 @@ export async function checkSupabaseHealth(): Promise<{
   }
 }
 
+// ============================================================================
+// Cloned Voices Operations
+// ============================================================================
+
+import type { DBClonedVoice } from '../types/index.js';
+
+const CLONED_VOICES_BUCKET = 'cloned-voices';
+
+/**
+ * Create a new cloned voice record.
+ * Returns the created voice and a signed upload URL for the reference audio.
+ */
+export async function createClonedVoice(params: {
+  userId: string;
+  name: string;
+  description?: string;
+  exaggeration?: number;
+}): Promise<{ voice: DBClonedVoice; uploadUrl: string; expiresAt: Date }> {
+  // Generate a unique ID for the voice
+  const voiceId = crypto.randomUUID();
+  const audioPath = `${params.userId}/${voiceId}.wav`;
+
+  // Insert the voice record
+  const { data, error } = await supabase
+    .from('cloned_voices')
+    .insert({
+      id: voiceId,
+      user_id: params.userId,
+      name: params.name,
+      description: params.description ?? null,
+      audio_path: audioPath,
+      exaggeration: params.exaggeration ?? 0.5,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    logger.error({ error, userId: params.userId }, 'Failed to create cloned voice');
+    throw error;
+  }
+
+  // Create a signed upload URL (valid for 10 minutes)
+  const { data: uploadData, error: uploadError } = await supabase.storage
+    .from(CLONED_VOICES_BUCKET)
+    .createSignedUploadUrl(audioPath);
+
+  if (uploadError) {
+    // Rollback the voice record
+    await supabase.from('cloned_voices').delete().eq('id', voiceId);
+    logger.error({ error: uploadError, userId: params.userId }, 'Failed to create upload URL');
+    throw uploadError;
+  }
+
+  const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+  logger.info({ voiceId, userId: params.userId, name: params.name }, 'Cloned voice created');
+
+  return {
+    voice: data as DBClonedVoice,
+    uploadUrl: uploadData.signedUrl,
+    expiresAt,
+  };
+}
+
+/**
+ * Confirm that a cloned voice's audio has been uploaded.
+ * Updates the voice record with audio metadata.
+ */
+export async function confirmClonedVoiceUpload(params: {
+  voiceId: string;
+  userId: string;
+  durationSec: number;
+  fileSizeBytes: number;
+}): Promise<DBClonedVoice> {
+  const { data, error } = await supabase
+    .from('cloned_voices')
+    .update({
+      duration_sec: params.durationSec,
+      file_size_bytes: params.fileSizeBytes,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', params.voiceId)
+    .eq('user_id', params.userId)
+    .select()
+    .single();
+
+  if (error) {
+    logger.error({ error, voiceId: params.voiceId }, 'Failed to confirm voice upload');
+    throw error;
+  }
+
+  logger.info({ voiceId: params.voiceId, durationSec: params.durationSec }, 'Cloned voice upload confirmed');
+
+  return data as DBClonedVoice;
+}
+
+/**
+ * Get user's cloned voices.
+ */
+export async function getUserClonedVoices(userId: string): Promise<DBClonedVoice[]> {
+  const { data, error } = await supabase
+    .from('cloned_voices')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('is_active', true)
+    .order('is_default', { ascending: false })
+    .order('usage_count', { ascending: false })
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    logger.error({ error, userId }, 'Failed to get user cloned voices');
+    throw error;
+  }
+
+  return data ?? [];
+}
+
+/**
+ * Get a specific cloned voice by ID.
+ */
+export async function getClonedVoice(voiceId: string, userId: string): Promise<DBClonedVoice | null> {
+  const { data, error } = await supabase
+    .from('cloned_voices')
+    .select('*')
+    .eq('id', voiceId)
+    .eq('user_id', userId)
+    .eq('is_active', true)
+    .single();
+
+  if (error) {
+    if (error.code === 'PGRST116') return null;
+    logger.error({ error, voiceId }, 'Failed to get cloned voice');
+    throw error;
+  }
+
+  return data as DBClonedVoice;
+}
+
+/**
+ * Get a signed URL for a cloned voice's reference audio.
+ */
+export async function getClonedVoiceAudioUrl(audioPath: string): Promise<string | null> {
+  const { data, error } = await supabase.storage
+    .from(CLONED_VOICES_BUCKET)
+    .createSignedUrl(audioPath, 3600); // 1 hour
+
+  if (error) {
+    logger.error({ error, audioPath }, 'Failed to create signed URL for cloned voice');
+    return null;
+  }
+
+  return data?.signedUrl ?? null;
+}
+
+/**
+ * Update a cloned voice.
+ */
+export async function updateClonedVoice(
+  voiceId: string,
+  userId: string,
+  updates: Partial<Pick<DBClonedVoice, 'name' | 'description' | 'exaggeration' | 'is_default'>>
+): Promise<DBClonedVoice> {
+  // If setting as default, first unset other defaults
+  if (updates.is_default) {
+    await supabase
+      .from('cloned_voices')
+      .update({ is_default: false, updated_at: new Date().toISOString() })
+      .eq('user_id', userId)
+      .eq('is_default', true);
+  }
+
+  const { data, error } = await supabase
+    .from('cloned_voices')
+    .update({
+      ...updates,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', voiceId)
+    .eq('user_id', userId)
+    .select()
+    .single();
+
+  if (error) {
+    logger.error({ error, voiceId }, 'Failed to update cloned voice');
+    throw error;
+  }
+
+  return data as DBClonedVoice;
+}
+
+/**
+ * Delete a cloned voice (soft delete).
+ */
+export async function deleteClonedVoice(voiceId: string, userId: string): Promise<void> {
+  // Soft delete - mark as inactive
+  const { error } = await supabase
+    .from('cloned_voices')
+    .update({ is_active: false, updated_at: new Date().toISOString() })
+    .eq('id', voiceId)
+    .eq('user_id', userId);
+
+  if (error) {
+    logger.error({ error, voiceId }, 'Failed to delete cloned voice');
+    throw error;
+  }
+
+  // Note: We don't delete the audio file immediately - could be used for recovery
+  // or cleaned up by a background job later
+
+  logger.info({ voiceId, userId }, 'Cloned voice deleted (soft)');
+}
+
+/**
+ * Record usage of a cloned voice.
+ */
+export async function recordClonedVoiceUsage(voiceId: string): Promise<void> {
+  const { error } = await supabase.rpc('record_cloned_voice_usage', {
+    p_voice_id: voiceId,
+  });
+
+  if (error) {
+    // Non-critical - log but don't throw
+    logger.warn({ error, voiceId }, 'Failed to record cloned voice usage');
+  }
+}
+
 /**
  * Check Supabase Storage connectivity.
  */

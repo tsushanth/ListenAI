@@ -365,6 +365,7 @@ struct VoiceCloningFlowView: View {
 
     @Environment(\.dismiss) private var dismiss
     @StateObject private var flowViewModel = VoiceCloningFlowViewModel()
+    @State private var showingImagePicker = false
 
     var body: some View {
         NavigationStack {
@@ -381,6 +382,7 @@ struct VoiceCloningFlowView: View {
                     VoiceProfileSetupView(
                         voiceName: $flowViewModel.voiceName,
                         selectedImage: $flowViewModel.profileImage,
+                        showingImagePicker: $showingImagePicker,
                         onContinue: {
                             withAnimation {
                                 flowViewModel.currentStep = .recording
@@ -478,6 +480,9 @@ struct VoiceCloningFlowView: View {
                         flowViewModel.currentStep = .processing
                     }
                 }
+            }
+            .sheet(isPresented: $showingImagePicker) {
+                ImagePicker(image: $flowViewModel.profileImage)
             }
         }
     }
@@ -604,9 +609,8 @@ private struct FeatureRow: View {
 private struct VoiceProfileSetupView: View {
     @Binding var voiceName: String
     @Binding var selectedImage: UIImage?
+    @Binding var showingImagePicker: Bool
     let onContinue: () -> Void
-
-    @State private var showingImagePicker = false
 
     private var canContinue: Bool {
         !voiceName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -699,9 +703,6 @@ private struct VoiceProfileSetupView: View {
             .padding(.vertical, 16)
         }
         .background(Color(.systemBackground))
-        .sheet(isPresented: $showingImagePicker) {
-            ImagePicker(image: $selectedImage)
-        }
     }
 }
 
