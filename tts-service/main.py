@@ -70,6 +70,173 @@ logging.basicConfig(
 logger = logging.getLogger("tts-service")
 
 # ============================================================================
+# Metrics Tracking
+# ============================================================================
+
+class SynthesisMetrics:
+    """Track synthesis metrics for monitoring and alerting."""
+
+    def __init__(self):
+        self.reset()
+
+    def reset(self):
+        """Reset all metrics."""
+        self.total_requests = 0
+        self.successful_requests = 0
+        self.failed_requests = 0
+        self.cuda_errors = 0
+        self.audio_validation_errors = 0
+        self.model_load_errors = 0
+        self.download_errors = 0
+        self.last_cuda_error_time = None
+        self.cuda_error_count_since_restart = 0
+        self.service_start_time = time.time()
+
+    def record_success(self, model: str, synthesis_time_ms: int, char_count: int):
+        """Record a successful synthesis."""
+        self.total_requests += 1
+        self.successful_requests += 1
+        logger.info(f"METRIC: synthesis_success model={model} time_ms={synthesis_time_ms} chars={char_count}")
+
+    def record_failure(self, model: str, error_type: str, error_message: str):
+        """Record a failed synthesis."""
+        self.total_requests += 1
+        self.failed_requests += 1
+        logger.error(f"METRIC: synthesis_failure model={model} error_type={error_type} error={error_message}")
+
+        if error_type == "cuda_error":
+            self.cuda_errors += 1
+            self.cuda_error_count_since_restart += 1
+            self.last_cuda_error_time = time.time()
+        elif error_type == "audio_validation":
+            self.audio_validation_errors += 1
+        elif error_type == "model_load":
+            self.model_load_errors += 1
+        elif error_type == "download":
+            self.download_errors += 1
+
+    def get_stats(self) -> dict:
+        """Get current metrics."""
+        uptime_seconds = time.time() - self.service_start_time
+        return {
+            "uptime_seconds": int(uptime_seconds),
+            "total_requests": self.total_requests,
+            "successful_requests": self.successful_requests,
+            "failed_requests": self.failed_requests,
+            "success_rate": self.successful_requests / max(1, self.total_requests),
+            "cuda_errors": self.cuda_errors,
+            "cuda_errors_since_restart": self.cuda_error_count_since_restart,
+            "audio_validation_errors": self.audio_validation_errors,
+            "model_load_errors": self.model_load_errors,
+            "download_errors": self.download_errors,
+            "last_cuda_error_time": self.last_cuda_error_time,
+        }
+
+    def is_cuda_healthy(self) -> bool:
+        """Check if CUDA appears healthy based on recent errors."""
+        # If we've had CUDA errors recently, consider it unhealthy
+        if self.cuda_error_count_since_restart > 0:
+            return False
+        return True
+
+
+# Global metrics instance
+metrics = SynthesisMetrics()
+
+
+# ============================================================================
+# Audio Validation
+# ============================================================================
+
+def validate_audio_file(file_path: str, min_duration_sec: float = 1.0, max_duration_sec: float = 300.0) -> tuple[bool, str]:
+    """
+    Validate an audio file before using it for synthesis.
+
+    Checks:
+    - File exists and is readable
+    - Valid audio format (can be decoded)
+    - Sample rate is reasonable (8kHz - 48kHz)
+    - Duration is within bounds
+    - No NaN/Inf values in audio data
+
+    Returns:
+        tuple: (is_valid, message)
+    """
+    if not os.path.exists(file_path):
+        return False, f"File not found: {file_path}"
+
+    file_size = os.path.getsize(file_path)
+    if file_size < 1000:  # Less than 1KB is suspicious
+        return False, f"File too small ({file_size} bytes), likely corrupted"
+
+    try:
+        # Try reading with soundfile (handles WAV, FLAC, OGG)
+        info = sf.info(file_path)
+
+        # Check sample rate
+        if info.samplerate < 8000 or info.samplerate > 48000:
+            return False, f"Invalid sample rate: {info.samplerate}Hz (expected 8000-48000Hz)"
+
+        # Check duration
+        if info.duration < min_duration_sec:
+            return False, f"Audio too short: {info.duration:.2f}s (minimum {min_duration_sec}s)"
+
+        if info.duration > max_duration_sec:
+            return False, f"Audio too long: {info.duration:.2f}s (maximum {max_duration_sec}s)"
+
+        # Check channels (Chatterbox expects mono)
+        if info.channels > 2:
+            return False, f"Too many channels: {info.channels} (expected 1-2)"
+
+        # Read a small sample to check for corruption
+        try:
+            audio_data, sr = sf.read(file_path, frames=int(info.samplerate * 1))  # Read 1 second
+            if np.any(np.isnan(audio_data)) or np.any(np.isinf(audio_data)):
+                return False, "Audio contains NaN or Inf values"
+        except Exception as e:
+            return False, f"Failed to read audio data: {e}"
+
+        logger.info(f"Audio validation passed: {file_path} - {info.samplerate}Hz, {info.channels}ch, {info.duration:.2f}s")
+        return True, f"Valid: {info.duration:.2f}s, {info.samplerate}Hz, {info.channels}ch"
+
+    except Exception as e:
+        # soundfile failed, try with librosa as fallback
+        try:
+            import librosa
+            audio, sr = librosa.load(file_path, sr=None, mono=True, duration=10)  # Load up to 10s
+            duration = len(audio) / sr
+
+            if duration < min_duration_sec:
+                return False, f"Audio too short: {duration:.2f}s (minimum {min_duration_sec}s)"
+
+            if np.any(np.isnan(audio)) or np.any(np.isinf(audio)):
+                return False, "Audio contains NaN or Inf values"
+
+            logger.info(f"Audio validation passed (via librosa): {file_path} - {sr}Hz, {duration:.2f}s")
+            return True, f"Valid (librosa): {duration:.2f}s, {sr}Hz"
+
+        except Exception as e2:
+            return False, f"Cannot read audio file: {e} / {e2}"
+
+
+def check_cuda_health() -> tuple[bool, str]:
+    """Check if CUDA is healthy and can be used."""
+    if not torch.cuda.is_available():
+        return True, "CUDA not available (using CPU)"
+
+    try:
+        # Try a simple CUDA operation
+        test_tensor = torch.zeros(10, device='cuda')
+        result = test_tensor.sum().item()
+        del test_tensor
+        torch.cuda.empty_cache()
+        return True, "CUDA healthy"
+    except Exception as e:
+        error_str = str(e)
+        logger.error(f"CUDA health check failed: {error_str}")
+        return False, f"CUDA unhealthy: {error_str}"
+
+# ============================================================================
 # FastAPI App
 # ============================================================================
 
@@ -487,7 +654,7 @@ def save_to_cache(cache_key: str, audio_data: bytes):
 
 @app.get("/health")
 async def health_check():
-    """Health check endpoint."""
+    """Health check endpoint with metrics and CUDA health status."""
     gpu_name = None
     if torch.cuda.is_available():
         gpu_name = torch.cuda.get_device_name(0)
@@ -500,15 +667,46 @@ async def health_check():
     if chatterbox_model is not None:
         models_loaded.append("chatterbox")
 
+    # Check CUDA health
+    cuda_healthy, cuda_status = check_cuda_health()
+
+    # Get metrics
+    stats = metrics.get_stats()
+
+    # Determine overall status
+    if not cuda_healthy:
+        status = "degraded"
+    elif models_loaded:
+        status = "ok"
+    else:
+        status = "loading"
+
     return {
-        "status": "ok" if models_loaded else "loading",
+        "status": status,
         "default_model": DEFAULT_MODEL,
         "models_loaded": models_loaded,
         "models_available": ["xtts", "kokoro", "chatterbox"],
         "device": DEVICE,
         "gpu_available": torch.cuda.is_available(),
         "gpu_name": gpu_name,
-        "voice_cloning_available": chatterbox_model is not None
+        "voice_cloning_available": chatterbox_model is not None,
+        "cuda_healthy": cuda_healthy,
+        "cuda_status": cuda_status,
+        "metrics": stats
+    }
+
+
+@app.get("/metrics")
+async def get_metrics():
+    """Get detailed synthesis metrics for monitoring."""
+    stats = metrics.get_stats()
+    cuda_healthy, cuda_status = check_cuda_health()
+
+    return {
+        "cuda_healthy": cuda_healthy,
+        "cuda_status": cuda_status,
+        "needs_restart": not cuda_healthy or stats["cuda_errors_since_restart"] > 0,
+        **stats
     }
 
 @app.get("/voices")
@@ -558,6 +756,104 @@ def synthesize_with_xtts(text: str, voice_info: dict, language: str, speed: floa
     sample_rate = model.synthesizer.output_sample_rate if hasattr(model, 'synthesizer') else XTTS_SAMPLE_RATE
 
     return wav_array, sample_rate
+
+
+def synthesize_with_xtts_cloned(
+    text: str,
+    reference_audio_path: str,
+    language: str = "en",
+    speed: float = 1.0
+) -> tuple:
+    """
+    Synthesize speech using XTTS v2 with voice cloning from a reference audio file.
+
+    XTTS v2 natively supports voice cloning via the speaker_wav parameter.
+    This provides an alternative to Chatterbox with different voice characteristics.
+
+    Args:
+        text: Text to synthesize
+        reference_audio_path: Path to the reference audio file for voice cloning
+        language: Language code (default: "en")
+        speed: Speech speed multiplier (0.5-2.0)
+
+    Returns:
+        tuple: (wav_array, sample_rate)
+    """
+    # Validate the reference audio file
+    is_valid, validation_msg = validate_audio_file(reference_audio_path, min_duration_sec=1.0)
+    if not is_valid:
+        metrics.record_failure("xtts", "audio_validation", validation_msg)
+        logger.error(f"Audio validation failed for XTTS: {reference_audio_path}: {validation_msg}")
+        raise HTTPException(
+            status_code=400,
+            detail=f"Reference audio file is invalid: {validation_msg}. Please re-record your voice clone."
+        )
+
+    # Load XTTS model
+    model = load_xtts()
+    if model is None:
+        metrics.record_failure("xtts", "model_load", "XTTS model not available")
+        raise HTTPException(status_code=503, detail="XTTS model not available")
+
+    logger.info(f"XTTS cloned synthesis: text_len={len(text)}, ref_audio={reference_audio_path}, lang={language}")
+
+    start_time = time.time()
+
+    try:
+        # Clear CUDA cache before synthesis
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+
+        # Generate audio with XTTS using the reference audio for voice cloning
+        wav = model.tts(
+            text=text,
+            speaker_wav=reference_audio_path,
+            language=language,
+            speed=speed
+        )
+
+        wav_array = np.array(wav)
+        sample_rate = model.synthesizer.output_sample_rate if hasattr(model, 'synthesizer') else XTTS_SAMPLE_RATE
+
+        synthesis_time = time.time() - start_time
+        logger.info(f"XTTS cloned synthesis complete in {synthesis_time:.2f}s")
+
+        # Record success metric
+        metrics.record_success("xtts", int(synthesis_time * 1000), len(text))
+
+        return wav_array, sample_rate
+
+    except RuntimeError as e:
+        error_str = str(e)
+        synthesis_time = time.time() - start_time
+
+        # Check for CUDA errors
+        if "CUDA" in error_str or "device-side assert" in error_str:
+            metrics.record_failure("xtts", "cuda_error", error_str)
+            logger.critical(f"CUDA ERROR in XTTS cloned synthesis: {error_str}")
+
+            try:
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+                    torch.cuda.synchronize()
+            except Exception as recovery_error:
+                logger.error(f"Failed to recover from CUDA error: {recovery_error}")
+
+            raise HTTPException(
+                status_code=503,
+                detail="GPU synthesis failed with CUDA error. The service may need restart."
+            )
+
+        metrics.record_failure("xtts", "runtime_error", error_str)
+        logger.error(f"XTTS cloned synthesis RuntimeError: {error_str}")
+        raise HTTPException(status_code=500, detail=f"XTTS voice cloning synthesis failed: {error_str}")
+
+    except Exception as e:
+        error_str = str(e)
+        metrics.record_failure("xtts", "unknown_error", error_str)
+        logger.error(f"XTTS cloned synthesis failed: {error_str}")
+        raise HTTPException(status_code=500, detail=f"XTTS voice cloning synthesis failed: {error_str}")
+
 
 def preprocess_text_for_kokoro(text: str) -> str:
     """
@@ -1061,6 +1357,11 @@ async def download_voice_file(voice_url: str, voice_id: str) -> str:
         raise HTTPException(status_code=500, detail=f"Failed to download voice file: {str(e)}")
 
 
+# Maximum characters Chatterbox can process in one call
+# Longer texts are chunked and results concatenated
+CHATTERBOX_MAX_CHUNK_CHARS = 500
+
+
 def synthesize_with_chatterbox(
     text: str,
     reference_audio_path: str,
@@ -1069,6 +1370,9 @@ def synthesize_with_chatterbox(
 ) -> tuple:
     """
     Synthesize speech using Chatterbox with a cloned voice.
+
+    For long texts, this function automatically chunks the text into smaller
+    segments, synthesizes each, and concatenates the audio.
 
     Args:
         text: Text to synthesize
@@ -1079,8 +1383,41 @@ def synthesize_with_chatterbox(
     Returns:
         tuple: (wav_array, sample_rate)
     """
+    global chatterbox_model
+
+    # Step 1: Check CUDA health before proceeding
+    cuda_healthy, cuda_msg = check_cuda_health()
+    if not cuda_healthy:
+        metrics.record_failure("chatterbox", "cuda_error", cuda_msg)
+        raise HTTPException(
+            status_code=503,
+            detail=f"GPU is in an unhealthy state. Service needs restart. {cuda_msg}"
+        )
+
+    # Step 2: Validate the reference audio file BEFORE passing to model
+    is_valid, validation_msg = validate_audio_file(reference_audio_path, min_duration_sec=1.0)
+    if not is_valid:
+        metrics.record_failure("chatterbox", "audio_validation", validation_msg)
+        logger.error(f"Audio validation failed for {reference_audio_path}: {validation_msg}")
+        raise HTTPException(
+            status_code=400,
+            detail=f"Reference audio file is invalid: {validation_msg}. Please re-record your voice clone."
+        )
+
+    # Step 3: Check if we need to chunk the text
+    if len(text) > CHATTERBOX_MAX_CHUNK_CHARS:
+        logger.info(f"Text too long ({len(text)} chars), chunking for Chatterbox synthesis")
+        return synthesize_with_chatterbox_chunked(
+            text=text,
+            reference_audio_path=reference_audio_path,
+            speed=speed,
+            exaggeration=exaggeration
+        )
+
+    # Step 3: Load model
     model = load_chatterbox()
     if model is None:
+        metrics.record_failure("chatterbox", "model_load", "Chatterbox model not available")
         raise HTTPException(status_code=503, detail="Chatterbox model not available")
 
     logger.info(f"Chatterbox synthesis: text_len={len(text)}, ref_audio={reference_audio_path}")
@@ -1088,6 +1425,10 @@ def synthesize_with_chatterbox(
     start_time = time.time()
 
     try:
+        # Clear CUDA cache before synthesis
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+
         # Generate audio with Chatterbox
         wav = model.generate(
             text=text,
@@ -1106,11 +1447,169 @@ def synthesize_with_chatterbox(
         synthesis_time = time.time() - start_time
         logger.info(f"Chatterbox synthesis complete in {synthesis_time:.2f}s")
 
+        # Record success metric
+        metrics.record_success("chatterbox", int(synthesis_time * 1000), len(text))
+
         return wav_array, CHATTERBOX_SAMPLE_RATE
 
+    except RuntimeError as e:
+        error_str = str(e)
+        synthesis_time = time.time() - start_time
+
+        # Check for CUDA errors specifically
+        if "CUDA" in error_str or "device-side assert" in error_str:
+            metrics.record_failure("chatterbox", "cuda_error", error_str)
+            logger.critical(f"CUDA ERROR in Chatterbox synthesis: {error_str}")
+
+            # Try to recover CUDA state
+            try:
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+                    torch.cuda.synchronize()
+                # Mark the model for reload on next request
+                chatterbox_model = None
+                logger.info("Cleared Chatterbox model for reload")
+            except Exception as recovery_error:
+                logger.error(f"Failed to recover from CUDA error: {recovery_error}")
+
+            raise HTTPException(
+                status_code=503,
+                detail="GPU synthesis failed with CUDA error. The service may need restart. Please try again or contact support."
+            )
+
+        # Other runtime errors
+        metrics.record_failure("chatterbox", "runtime_error", error_str)
+        logger.error(f"Chatterbox synthesis RuntimeError: {error_str}")
+        raise HTTPException(status_code=500, detail=f"Voice cloning synthesis failed: {error_str}")
+
     except Exception as e:
-        logger.error(f"Chatterbox synthesis failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Voice cloning synthesis failed: {str(e)}")
+        error_str = str(e)
+        metrics.record_failure("chatterbox", "unknown_error", error_str)
+        logger.error(f"Chatterbox synthesis failed: {error_str}")
+        raise HTTPException(status_code=500, detail=f"Voice cloning synthesis failed: {error_str}")
+
+
+def synthesize_with_chatterbox_chunked(
+    text: str,
+    reference_audio_path: str,
+    speed: float = 1.0,
+    exaggeration: float = 0.5
+) -> tuple:
+    """
+    Synthesize long text by chunking and concatenating audio.
+
+    This function:
+    1. Splits text into chunks that Chatterbox can handle
+    2. Synthesizes each chunk
+    3. Concatenates the audio with small pauses between chunks
+    4. Returns the combined audio
+
+    Args:
+        text: Long text to synthesize
+        reference_audio_path: Path to the reference audio file
+        speed: Speech speed multiplier
+        exaggeration: Emotion exaggeration level
+
+    Returns:
+        tuple: (wav_array, sample_rate)
+    """
+    global chatterbox_model
+
+    # Load model first
+    model = load_chatterbox()
+    if model is None:
+        metrics.record_failure("chatterbox", "model_load", "Chatterbox model not available")
+        raise HTTPException(status_code=503, detail="Chatterbox model not available")
+
+    # Chunk the text
+    chunks = chunk_text(text, max_chunk_chars=CHATTERBOX_MAX_CHUNK_CHARS)
+    total_chunks = len(chunks)
+
+    logger.info(f"Chatterbox chunked synthesis: {total_chunks} chunks, total {len(text)} chars")
+
+    start_time = time.time()
+    audio_segments = []
+
+    # Small pause between chunks (0.3 seconds of silence)
+    pause_samples = int(0.3 * CHATTERBOX_SAMPLE_RATE)
+    silence = np.zeros(pause_samples, dtype=np.float32)
+
+    try:
+        for i, chunk in enumerate(chunks):
+            chunk_start = time.time()
+
+            # Clear CUDA cache before each chunk
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+
+            logger.info(f"Synthesizing chunk {i+1}/{total_chunks}: {len(chunk)} chars")
+
+            # Generate audio for this chunk
+            wav = model.generate(
+                text=chunk,
+                audio_prompt_path=reference_audio_path,
+                exaggeration=exaggeration,
+            )
+
+            wav_array = wav.cpu().numpy().squeeze()
+
+            # Apply speed adjustment if needed
+            if speed != 1.0:
+                import librosa
+                wav_array = librosa.effects.time_stretch(wav_array, rate=speed)
+
+            audio_segments.append(wav_array)
+
+            # Add pause between chunks (except after last chunk)
+            if i < total_chunks - 1:
+                audio_segments.append(silence)
+
+            chunk_time = time.time() - chunk_start
+            logger.info(f"Chunk {i+1}/{total_chunks} completed in {chunk_time:.2f}s")
+
+        # Concatenate all audio segments
+        final_audio = np.concatenate(audio_segments)
+
+        synthesis_time = time.time() - start_time
+        logger.info(f"Chatterbox chunked synthesis complete: {total_chunks} chunks in {synthesis_time:.2f}s")
+
+        # Record success metric
+        metrics.record_success("chatterbox", int(synthesis_time * 1000), len(text))
+
+        return final_audio, CHATTERBOX_SAMPLE_RATE
+
+    except RuntimeError as e:
+        error_str = str(e)
+        synthesis_time = time.time() - start_time
+
+        # Check for CUDA errors
+        if "CUDA" in error_str or "device-side assert" in error_str:
+            metrics.record_failure("chatterbox", "cuda_error", error_str)
+            logger.critical(f"CUDA ERROR in Chatterbox chunked synthesis: {error_str}")
+
+            # Try to recover
+            try:
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+                    torch.cuda.synchronize()
+                chatterbox_model = None
+            except Exception as recovery_error:
+                logger.error(f"Failed to recover from CUDA error: {recovery_error}")
+
+            raise HTTPException(
+                status_code=503,
+                detail="GPU synthesis failed with CUDA error. The service may need restart."
+            )
+
+        metrics.record_failure("chatterbox", "runtime_error", error_str)
+        logger.error(f"Chatterbox chunked synthesis RuntimeError: {error_str}")
+        raise HTTPException(status_code=500, detail=f"Voice cloning synthesis failed: {error_str}")
+
+    except Exception as e:
+        error_str = str(e)
+        metrics.record_failure("chatterbox", "unknown_error", error_str)
+        logger.error(f"Chatterbox chunked synthesis failed: {error_str}")
+        raise HTTPException(status_code=500, detail=f"Voice cloning synthesis failed: {error_str}")
 
 
 class SynthesizeWithClonedVoiceRequest(BaseModel):
@@ -1119,7 +1618,8 @@ class SynthesizeWithClonedVoiceRequest(BaseModel):
     voice_url: str = Field(..., description="URL to the reference audio file (from Supabase Storage)")
     voice_id: str = Field(..., description="Unique ID for caching the voice file")
     speed: float = Field(default=1.0, ge=0.5, le=2.0)
-    exaggeration: float = Field(default=0.5, ge=0.0, le=1.0, description="Emotion exaggeration level")
+    exaggeration: float = Field(default=0.5, ge=0.0, le=1.0, description="Emotion exaggeration level (Chatterbox only)")
+    model: str = Field(default="chatterbox", description="Voice cloning model: 'chatterbox' (default) or 'xtts'")
 
 
 @app.post("/synthesize-cloned")
@@ -1127,17 +1627,28 @@ async def synthesize_with_cloned_voice(request: SynthesizeWithClonedVoiceRequest
     """
     Synthesize text using a cloned voice.
 
-    Uses Chatterbox TTS with a reference audio file for voice cloning.
+    Supports two voice cloning models:
+    - chatterbox (default): MIT licensed, great for expressive voices
+    - xtts: XTTS v2, multilingual support, different voice characteristics
+
     The reference audio is downloaded from the provided URL (Supabase Storage)
     and cached locally for repeated use.
 
     Returns audio/wav stream.
     """
+    # Validate model selection
+    model_type = request.model.lower()
+    if model_type not in ["chatterbox", "xtts"]:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unknown cloning model: {model_type}. Use 'chatterbox' or 'xtts'"
+        )
+
     # Download/retrieve cached voice file
     voice_path = await download_voice_file(request.voice_url, request.voice_id)
 
-    # Check cache (include voice_id in cache key for cloned voices)
-    cache_key = get_cache_key(f"chatterbox|{request.text}", request.voice_id, "en", request.speed)
+    # Check cache (include model and voice_id in cache key)
+    cache_key = get_cache_key(f"{model_type}|{request.text}", request.voice_id, "en", request.speed)
     cached = get_cached_audio(cache_key)
     if cached:
         return StreamingResponse(
@@ -1146,21 +1657,30 @@ async def synthesize_with_cloned_voice(request: SynthesizeWithClonedVoiceRequest
             headers={
                 "X-Cache": "HIT",
                 "X-Voice-ID": request.voice_id,
-                "X-Model": "chatterbox",
+                "X-Model": model_type,
             }
         )
 
-    logger.info(f"Synthesizing with cloned voice: voice_id={request.voice_id}, chars={len(request.text)}")
+    logger.info(f"Synthesizing with cloned voice: model={model_type}, voice_id={request.voice_id}, chars={len(request.text)}")
 
     start_time = time.time()
 
-    # Synthesize with Chatterbox
-    wav_array, sample_rate = synthesize_with_chatterbox(
-        text=request.text,
-        reference_audio_path=voice_path,
-        speed=request.speed,
-        exaggeration=request.exaggeration
-    )
+    # Synthesize with the selected model
+    if model_type == "xtts":
+        wav_array, sample_rate = synthesize_with_xtts_cloned(
+            text=request.text,
+            reference_audio_path=voice_path,
+            language="en",
+            speed=request.speed
+        )
+    else:
+        # Default to Chatterbox
+        wav_array, sample_rate = synthesize_with_chatterbox(
+            text=request.text,
+            reference_audio_path=voice_path,
+            speed=request.speed,
+            exaggeration=request.exaggeration
+        )
 
     # Write to buffer
     audio_buffer = io.BytesIO()
@@ -1169,7 +1689,7 @@ async def synthesize_with_cloned_voice(request: SynthesizeWithClonedVoiceRequest
     audio_data = audio_buffer.read()
 
     synthesis_time = time.time() - start_time
-    logger.info(f"Cloned voice synthesis completed in {synthesis_time:.2f}s, size={len(audio_data)} bytes")
+    logger.info(f"Cloned voice synthesis ({model_type}) completed in {synthesis_time:.2f}s, size={len(audio_data)} bytes")
 
     # Cache in background
     background_tasks.add_task(save_to_cache, cache_key, audio_data)
@@ -1180,7 +1700,7 @@ async def synthesize_with_cloned_voice(request: SynthesizeWithClonedVoiceRequest
         headers={
             "X-Cache": "MISS",
             "X-Voice-ID": request.voice_id,
-            "X-Model": "chatterbox",
+            "X-Model": model_type,
             "X-Synthesis-Time-Ms": str(int(synthesis_time * 1000)),
             "X-Character-Count": str(len(request.text)),
         }
@@ -1225,23 +1745,41 @@ async def upload_voice_sample(
 async def preview_cloned_voice(
     voice_id: str = Form(...),
     voice_url: str = Form(...),
-    text: str = Form(default="Hello, this is a preview of your cloned voice. How does it sound?")
+    text: str = Form(default="Hello, this is a preview of your cloned voice. How does it sound?"),
+    model: str = Form(default="chatterbox")
 ):
     """
     Generate a short preview of a cloned voice.
 
     Used during voice cloning setup to let users hear how their voice sounds.
+    Supports both 'chatterbox' (default) and 'xtts' models.
     """
+    # Validate model
+    model_type = model.lower()
+    if model_type not in ["chatterbox", "xtts"]:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unknown cloning model: {model_type}. Use 'chatterbox' or 'xtts'"
+        )
+
     # Download voice file
     voice_path = await download_voice_file(voice_url, voice_id)
 
-    # Synthesize preview
-    wav_array, sample_rate = synthesize_with_chatterbox(
-        text=text,
-        reference_audio_path=voice_path,
-        speed=1.0,
-        exaggeration=0.5
-    )
+    # Synthesize preview with selected model
+    if model_type == "xtts":
+        wav_array, sample_rate = synthesize_with_xtts_cloned(
+            text=text,
+            reference_audio_path=voice_path,
+            language="en",
+            speed=1.0
+        )
+    else:
+        wav_array, sample_rate = synthesize_with_chatterbox(
+            text=text,
+            reference_audio_path=voice_path,
+            speed=1.0,
+            exaggeration=0.5
+        )
 
     # Write to buffer
     audio_buffer = io.BytesIO()
@@ -1253,7 +1791,7 @@ async def preview_cloned_voice(
         media_type="audio/wav",
         headers={
             "X-Voice-ID": voice_id,
-            "X-Model": "chatterbox",
+            "X-Model": model_type,
         }
     )
 
