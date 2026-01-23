@@ -266,6 +266,15 @@ def load_xtts():
 
     start_time = time.time()
 
+    # Add safe globals for PyTorch 2.6+ (stricter weights_only=True default)
+    import torch
+    try:
+        from TTS.tts.configs.xtts_config import XttsConfig
+        from TTS.tts.models.xtts import XttsAudioConfig, XttsArgs
+        torch.serialization.add_safe_globals([XttsConfig, XttsAudioConfig, XttsArgs])
+    except ImportError:
+        logger.warning("Could not add XTTS safe globals - may need manual weights_only=False")
+
     from TTS.api import TTS
     xtts_model = TTS(XTTS_MODEL_NAME).to(DEVICE)
 
