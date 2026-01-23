@@ -1,34 +1,27 @@
 # ReadAloud AI TTS Service Dependencies
-# Supports multiple TTS models: XTTS v2, Kokoro-82M, and Chatterbox
+# Supports: Kokoro-82M (regular TTS) and Chatterbox (voice cloning)
 
 # FastAPI + Uvicorn
 fastapi==0.109.0
 uvicorn[standard]==0.27.0
 pydantic==2.5.3
 
-# Coqui TTS (XTTS v2) - High quality, voice cloning, non-commercial license
-TTS==0.22.0
-# Pin transformers to compatible version (newer versions break TTS)
-transformers==4.42.4
-
 # Kokoro-82M - Fast, lightweight, Apache 2.0 license (commercial OK)
 kokoro>=0.9.2
 
-# Chatterbox TTS - Voice cloning, MIT license (commercial OK)
-# https://github.com/resemble-ai/chatterbox
-chatterbox-tts>=0.1.0
+# NOTE: Chatterbox TTS is installed separately in Dockerfile with --no-build-isolation
+# to avoid pkuseg build issues
 
 # Audio processing
 soundfile==0.12.1
 librosa>=0.10.0
-# Note: numpy version is handled by TTS dependency
 
 # PyTorch (CUDA version for GPU)
-# Note: Install the appropriate version for your CUDA version
-# For CUDA 11.8: pip install torch==2.1.2+cu118 -f https://download.pytorch.org/whl/torch_stable.html
-# For CUDA 12.1: pip install torch==2.1.2+cu121 -f https://download.pytorch.org/whl/torch_stable.html
-# Pin torch 2.5.x - 2.6+ has weights_only=True default which breaks TTS model loading
-torch==2.5.1
+# Use torch 2.6.0 for Chatterbox compatibility
+torch==2.6.0
+
+# Transformers for Chatterbox model loading
+transformers>=4.40.0
 
 # Utilities
 python-multipart==0.0.6
@@ -36,3 +29,7 @@ aiofiles==23.2.1
 
 # HTTP client for downloading voice files from Supabase
 httpx>=0.25.0
+
+# XTTS v2 for voice cloning (Coqui TTS)
+# Note: This is a large package (~2GB with models)
+TTS>=0.22.0
