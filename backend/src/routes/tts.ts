@@ -276,8 +276,15 @@ ttsRouter.post('/', asyncHandler(async (req: AuthenticatedRequest, res: Response
   }
 
   // 4. Check quota
+  // DEBUG: Allow bypassing quota for testing via header
+  // TODO: Remove this before production or gate behind environment variable
+  const debugBypassQuota = req.headers['x-debug-bypass-quota'] === 'true';
+  if (debugBypassQuota) {
+    ttsLogger.warn({ userId }, 'DEBUG: Quota bypass enabled via header (main TTS route)');
+  }
+
   const quotaCheck = await canSynthesize(userId, characterCount);
-  if (!quotaCheck.allowed) {
+  if (!debugBypassQuota && !quotaCheck.allowed) {
     throw new QuotaExceededError(quotaCheck.reason ?? 'Quota exceeded', quotaCheck);
   }
 
