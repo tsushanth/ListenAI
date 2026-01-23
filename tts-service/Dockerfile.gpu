@@ -1,5 +1,5 @@
 # ReadAloud AI TTS Service - GPU Version
-# Supports: XTTS v2 (high quality) and Kokoro-82M (fast, Apache licensed)
+# Supports: Kokoro-82M (fast TTS) and Chatterbox (voice cloning)
 # For Cloud Run with NVIDIA L4 GPU
 
 FROM nvidia/cuda:11.8.0-cudnn8-runtime-ubuntu22.04
@@ -35,28 +35,27 @@ RUN mkdir -p /app/voice_samples /app/audio_cache
 COPY requirements.txt .
 
 # Install Python dependencies with CUDA support
-# Pin torch 2.5.x (2.6+ has weights_only=True by default which breaks TTS loading)
-# Use CUDA 11.8 compatible torch
-# IMPORTANT: Install requirements first without deps, then reinstall torch to ensure CUDA version
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir torch==2.5.1 torchaudio==2.5.1 --index-url https://download.pytorch.org/whl/cu118 && \
-    pip install --no-cache-dir transformers==4.42.4 && \
-    pip install --no-cache-dir -r requirements.txt && \
-    pip install --no-cache-dir --force-reinstall torch==2.5.1 torchaudio==2.5.1 --index-url https://download.pytorch.org/whl/cu118
-
-# Accept Coqui TOS for XTTS model
-ENV COQUI_TOS_AGREED=1
+# Use CUDA 11.8 compatible torch 2.6.0 for Chatterbox compatibility
+# Install numpy and build tools first (required by pkuseg build which is a Chatterbox dependency)
+# Use --no-build-isolation for chatterbox-tts to use the system numpy for pkuseg build
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel cython && \
+    pip install --no-cache-dir "numpy>=1.24.0,<1.26.0" && \
+    pip install --no-cache-dir torch==2.6.0 torchaudio==2.6.0 --index-url https://download.pytorch.org/whl/cu118 && \
+    pip install --no-cache-dir --no-build-isolation "chatterbox-tts>=0.1.4,<0.2.0" && \
+    pip install --no-cache-dir -r requirements.txt
 
 # Set HuggingFace cache directory to persist in image
 ENV HF_HOME=/app/.cache/huggingface
 ENV HUGGINGFACE_HUB_CACHE=/app/.cache/huggingface/hub
+# Auto-accept Coqui TTS license (required for non-interactive XTTS usage)
+ENV COQUI_TOS_AGREED=1
 RUN mkdir -p /app/.cache/huggingface/hub
 
 # Copy model download script
 COPY download_models.py .
 
 # Pre-download all models and voices (baked into image for fast cold starts)
-# This downloads XTTS v2 (~1.8GB) and Kokoro-82M with all voice packs (~500MB)
+# Downloads Kokoro-82M with voice packs and Chatterbox model
 RUN python download_models.py
 
 # Copy application code
@@ -69,6 +68,8 @@ ENV VOICE_SAMPLES_DIR=/app/voice_samples
 ENV AUDIO_CACHE_DIR=/app/audio_cache
 ENV CACHE_ENABLED=true
 ENV LOG_LEVEL=INFO
+# Auto-accept Coqui TTS license for XTTS at runtime
+ENV COQUI_TOS_AGREED=1
 
 # Expose port
 EXPOSE 8080
