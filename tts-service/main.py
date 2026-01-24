@@ -690,6 +690,14 @@ async def health_check():
     # Get metrics
     stats = metrics.get_stats()
 
+    # Check if Chatterbox module is importable (critical for voice cloning)
+    chatterbox_importable = False
+    try:
+        from chatterbox.tts import ChatterboxTTS
+        chatterbox_importable = True
+    except ImportError:
+        pass
+
     # Determine overall status
     if not cuda_healthy:
         status = "degraded"
@@ -707,9 +715,88 @@ async def health_check():
         "gpu_available": torch.cuda.is_available(),
         "gpu_name": gpu_name,
         "voice_cloning_available": chatterbox_model is not None,
+        "voice_cloning_module_installed": chatterbox_importable,
         "cuda_healthy": cuda_healthy,
         "cuda_status": cuda_status,
         "metrics": stats
+    }
+
+
+@app.get("/capabilities")
+async def get_capabilities():
+    """
+    Report which capabilities are available on this service instance.
+
+    This endpoint is used for:
+    1. Pre-deployment validation (smoke tests)
+    2. Canary deployment health checks
+    3. Client feature detection
+
+    Returns detailed information about what features are available.
+    """
+    # Check module availability
+    chatterbox_importable = False
+    chatterbox_import_error = None
+    try:
+        from chatterbox.tts import ChatterboxTTS
+        chatterbox_importable = True
+    except ImportError as e:
+        chatterbox_import_error = str(e)
+
+    xtts_importable = False
+    xtts_import_error = None
+    try:
+        from TTS.api import TTS as XTTS_TTS
+        xtts_importable = True
+    except ImportError as e:
+        xtts_import_error = str(e)
+
+    kokoro_importable = False
+    kokoro_import_error = None
+    try:
+        from kokoro import KPipeline
+        kokoro_importable = True
+    except ImportError as e:
+        kokoro_import_error = str(e)
+
+    # Check CUDA
+    cuda_available = torch.cuda.is_available()
+    cuda_device_name = torch.cuda.get_device_name(0) if cuda_available else None
+
+    # Model load status
+    models_loaded = {
+        "kokoro": kokoro_pipeline is not None,
+        "xtts": xtts_model is not None,
+        "chatterbox": chatterbox_model is not None,
+    }
+
+    return {
+        "service_version": "2.0.0",
+        "capabilities": {
+            "standard_tts": {
+                "available": kokoro_importable,
+                "models": ["kokoro"] if kokoro_importable else [],
+                "error": kokoro_import_error,
+            },
+            "voice_cloning": {
+                "available": chatterbox_importable or xtts_importable,
+                "models": [
+                    m for m, available in [
+                        ("chatterbox", chatterbox_importable),
+                        ("xtts", xtts_importable)
+                    ] if available
+                ],
+                "chatterbox_error": chatterbox_import_error,
+                "xtts_error": xtts_import_error,
+            },
+        },
+        "hardware": {
+            "device": DEVICE,
+            "cuda_available": cuda_available,
+            "gpu_name": cuda_device_name,
+        },
+        "models_loaded": models_loaded,
+        "ready_for_voice_cloning": chatterbox_importable and (chatterbox_model is not None or cuda_available),
     }
 
 

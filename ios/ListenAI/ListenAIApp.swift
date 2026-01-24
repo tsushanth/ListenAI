@@ -1,4 +1,5 @@
 import SwiftUI
+import UserNotifications
 
 @main
 struct ListenAIApp: App {
@@ -90,6 +91,9 @@ struct RootView: View {
             backendURL: backendURL,
             authTokenProvider: authTokenProvider
         )
+
+        // Initialize NotificationManager (requests permission on first use)
+        _ = NotificationManager.shared
 
         print("[App] Services configured")
     }

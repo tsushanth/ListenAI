@@ -116,6 +116,10 @@ struct ArticleReaderView: View {
     @StateObject private var quotaErrorState = QuotaErrorState.shared
     @State private var showingUpgradePrompt = false
 
+    // Background synthesis with notification
+    @State private var showNotifyWhenReadyOption = false
+    @State private var isGeneratingInBackground = false
+
     /// Check if TTS job is currently generating
     private var isGeneratingTTS: Bool {
         guard let status = ttsJobStatus else { return false }
@@ -594,7 +598,7 @@ struct ArticleReaderView: View {
                 Spacer()
 
                 // Cancel button for job-based TTS
-                if isJobBased {
+                if isJobBased && !isGeneratingInBackground {
                     Button {
                         cancelTTSJob()
                     } label: {
@@ -604,10 +608,17 @@ struct ArticleReaderView: View {
                     }
                     .buttonStyle(.plain)
                 }
+
+                // Background indicator
+                if isGeneratingInBackground {
+                    Image(systemName: "bell.badge.fill")
+                        .foregroundStyle(.blue)
+                        .font(.title3)
+                }
             }
 
             // Linear progress bar for better visual feedback
-            if effectiveProgress > 0 {
+            if effectiveProgress > 0 && !isGeneratingInBackground {
                 GeometryReader { geometry in
                     ZStack(alignment: .leading) {
                         // Background track
@@ -624,9 +635,30 @@ struct ArticleReaderView: View {
                 }
                 .frame(height: 4)
             }
+
+            // "Notify when ready" option - shown after synthesis takes a while
+            if showNotifyWhenReadyOption && isJobBased && !isGeneratingInBackground {
+                Divider()
+
+                Button {
+                    Task {
+                        await enableBackgroundNotification()
+                    }
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "bell.fill")
+                            .font(.subheadline)
+                        Text("Notify me when ready")
+                            .font(.subheadline.weight(.medium))
+                    }
+                    .foregroundStyle(.blue)
+                    .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.plain)
+            }
         }
         .padding()
-        .background(Color.blue.opacity(0.1))
+        .background(isGeneratingInBackground ? Color.blue.opacity(0.05) : Color.blue.opacity(0.1))
         .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 
@@ -1694,6 +1726,15 @@ struct ArticleReaderView: View {
                     // Persist job status for resume
                     persistJobStatus(response.status, for: article.id, voiceId: currentVoice.providerVoiceID)
 
+                    // Start timer to show "Notify when ready" option after 5 seconds
+                    showNotifyWhenReadyOption = false
+                                        Task { @MainActor in
+                        try? await Task.sleep(nanoseconds: 5_000_000_000)
+                        if self.isSynthesizing {
+                            self.showNotifyWhenReadyOption = true
+                        }
+                    }
+
                     // Start polling for job completion
                     startPollingJobStatus(jobId: response.jobId)
 
@@ -2138,12 +2179,22 @@ struct ArticleReaderView: View {
                 // Clear persisted job data (but keep fullUrl for instant replay)
                 clearAllPersistedJobData(for: article.id, voiceId: currentVoice.providerVoiceID)
 
+                // Send notification if generating in background
+                if isGeneratingInBackground {
+                    Task {
+                        await sendSynthesisCompleteNotification(audioURL: audioUrl)
+                    }
+                }
+
+                // Clear notify option state
+                showNotifyWhenReadyOption = false
+                
                 // Check if we're currently playing preview - swap to full audio
                 if urlPlayer.currentArticleID == article.id && urlPlayer.playerMode == .preview {
                     // Seamlessly swap from preview to full audio
                     swapToFullAudio(url: audioUrl)
-                } else {
-                    // Not currently playing preview - just play the full audio
+                } else if !isGeneratingInBackground {
+                    // Not currently playing preview - just play the full audio (unless in background mode)
                     playAudioWithMode(url: audioUrl, mode: .full)
                 }
 
@@ -2530,7 +2581,47 @@ struct ArticleReaderView: View {
         // Update article status
         ArticleStore.shared.updateSynthesisStatus(for: article.id, status: .cancelled)
 
+        // Clear notify option state
+        showNotifyWhenReadyOption = false
+        isGeneratingInBackground = false
+        
         print("[ArticleReader] TTS job cancelled by user")
+    }
+
+    /// Enable background notification for when synthesis completes
+    private func enableBackgroundNotification() async {
+        // Request notification permission if needed
+        let authorized = await NotificationManager.shared.requestAuthorization()
+
+        guard authorized else {
+            synthesisError = "Please enable notifications in Settings to use this feature."
+            return
+        }
+
+        // Mark as generating in background
+        isGeneratingInBackground = true
+        showNotifyWhenReadyOption = false
+
+        // The polling continues in the background
+        // We'll send a notification when synthesis completes
+
+        print("[ArticleReader] Background notification enabled for article: \(article.id)")
+    }
+
+    /// Send notification when synthesis is complete (called from polling completion)
+    private func sendSynthesisCompleteNotification(audioURL: URL?) async {
+        guard isGeneratingInBackground else { return }
+
+        await NotificationManager.shared.notifySynthesisComplete(
+            articleId: article.id.uuidString,
+            articleTitle: article.displayTitle,
+            audioURL: audioURL
+        )
+
+        // Reset background state
+        isGeneratingInBackground = false
+
+        print("[ArticleReader] Sent synthesis complete notification for: \(article.displayTitle)")
     }
 
     // Client-side quota checks removed - server handles all quota enforcement
@@ -2667,6 +2758,16 @@ struct ArticleReaderView: View {
 
                     // Persist job status for resume
                     persistJobStatus(response.status, for: article.id, voiceId: voice.providerVoiceID)
+
+                    // Start timer to show "Notify when ready" option after 5 seconds
+                    // (cloned voice synthesis takes longer so this is especially useful)
+                    showNotifyWhenReadyOption = false
+                                        Task { @MainActor in
+                        try? await Task.sleep(nanoseconds: 5_000_000_000)
+                        if self.isSynthesizing {
+                            self.showNotifyWhenReadyOption = true
+                        }
+                    }
 
                     // Start polling for job completion
                     startPollingJobStatus(jobId: response.jobId)

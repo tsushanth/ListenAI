@@ -153,9 +153,16 @@ struct VoiceCloningView: View {
                         isPlaying: viewModel.playingVoiceId == voice.id && !viewModel.isPreviewLoading,
                         isLoading: viewModel.playingVoiceId == voice.id && viewModel.isPreviewLoading,
                         isEditing: isEditing,
+                        showNotifyOption: viewModel.showNotifyOption && viewModel.playingVoiceId == voice.id,
+                        isGeneratingInBackground: viewModel.backgroundGeneratingVoiceId == voice.id,
                         onPreview: {
                             Task {
                                 await viewModel.previewVoice(voice)
+                            }
+                        },
+                        onNotifyWhenReady: {
+                            Task {
+                                await viewModel.notifyWhenPreviewReady(voice)
                             }
                         },
                         onDelete: {
@@ -212,87 +219,122 @@ private struct ClonedVoiceCard: View {
     let isPlaying: Bool
     let isLoading: Bool
     let isEditing: Bool
+    let showNotifyOption: Bool
+    let isGeneratingInBackground: Bool
     let onPreview: () -> Void
+    let onNotifyWhenReady: () -> Void
     let onDelete: () -> Void
 
     @State private var showDeleteConfirmation = false
 
     var body: some View {
-        HStack(spacing: 16) {
-            // Avatar placeholder
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Color(.systemGray5))
-                .frame(width: 64, height: 64)
-                .overlay {
-                    Image(systemName: "person.fill")
-                        .font(.title)
-                        .foregroundStyle(Color(.systemGray3))
-                }
-
-            // Voice info
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 6) {
-                    Text(voice.name)
-                        .font(.body.weight(.semibold))
-                        .foregroundStyle(.primary)
-
-                    Image(systemName: "mic.fill")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-
-                Text(isLoading ? "Generating preview..." : "Cloned Voice • Multilingual")
-                    .font(.caption)
-                    .foregroundStyle(isLoading ? .orange : .secondary)
-
-                // Waveform visualization
-                HStack(spacing: 1) {
-                    ForEach(0..<24, id: \.self) { index in
-                        RoundedRectangle(cornerRadius: 0.5)
-                            .fill(isLoading ? Color.orange : (isPlaying ? Color.yellow : Color(.systemGray4)))
-                            .frame(width: 2, height: waveformHeight(for: index, isAnimating: isPlaying || isLoading))
+        VStack(spacing: 0) {
+            HStack(spacing: 16) {
+                // Avatar placeholder
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(Color(.systemGray5))
+                    .frame(width: 64, height: 64)
+                    .overlay {
+                        Image(systemName: "person.fill")
+                            .font(.title)
+                            .foregroundStyle(Color(.systemGray3))
                     }
-                }
-                .frame(height: 16)
-                .animation(isPlaying || isLoading ? .easeInOut(duration: 0.3).repeatForever(autoreverses: true) : .default, value: isPlaying || isLoading)
-            }
 
-            Spacer()
+                // Voice info
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 6) {
+                        Text(voice.name)
+                            .font(.body.weight(.semibold))
+                            .foregroundStyle(.primary)
 
-            if isEditing {
-                // Delete button when editing
-                Button {
-                    showDeleteConfirmation = true
-                } label: {
-                    Image(systemName: "trash.fill")
-                        .font(.title3)
-                        .foregroundStyle(.red)
-                }
-            } else {
-                // Play button
-                Button(action: onPreview) {
-                    ZStack {
-                        Circle()
-                            .fill(Color.yellow)
-                            .frame(width: 44, height: 44)
+                        Image(systemName: "mic.fill")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
 
-                        if isLoading {
-                            ProgressView()
-                                .progressViewStyle(CircularProgressViewStyle(tint: .black))
-                                .scaleEffect(0.8)
-                        } else {
-                            Image(systemName: isPlaying ? "stop.fill" : "play.fill")
-                                .font(.system(size: 16, weight: .bold))
-                                .foregroundStyle(.black)
-                                .offset(x: isPlaying ? 0 : 2)
+                    if isGeneratingInBackground {
+                        Text("Generating in background...")
+                            .font(.caption)
+                            .foregroundStyle(.blue)
+                    } else {
+                        Text(isLoading ? "Generating preview..." : "Cloned Voice • Multilingual")
+                            .font(.caption)
+                            .foregroundStyle(isLoading ? .orange : .secondary)
+                    }
+
+                    // Waveform visualization
+                    HStack(spacing: 1) {
+                        ForEach(0..<24, id: \.self) { index in
+                            RoundedRectangle(cornerRadius: 0.5)
+                                .fill(isLoading ? Color.orange : (isPlaying ? Color.yellow : (isGeneratingInBackground ? Color.blue.opacity(0.5) : Color(.systemGray4))))
+                                .frame(width: 2, height: waveformHeight(for: index, isAnimating: isPlaying || isLoading || isGeneratingInBackground))
                         }
                     }
+                    .frame(height: 16)
+                    .animation(isPlaying || isLoading || isGeneratingInBackground ? .easeInOut(duration: 0.3).repeatForever(autoreverses: true) : .default, value: isPlaying || isLoading || isGeneratingInBackground)
+                }
+
+                Spacer()
+
+                if isEditing {
+                    // Delete button when editing
+                    Button {
+                        showDeleteConfirmation = true
+                    } label: {
+                        Image(systemName: "trash.fill")
+                            .font(.title3)
+                            .foregroundStyle(.red)
+                    }
+                } else if isGeneratingInBackground {
+                    // Background indicator
+                    Image(systemName: "bell.badge.fill")
+                        .font(.title2)
+                        .foregroundStyle(.blue)
+                } else {
+                    // Play button
+                    Button(action: onPreview) {
+                        ZStack {
+                            Circle()
+                                .fill(Color.yellow)
+                                .frame(width: 44, height: 44)
+
+                            if isLoading {
+                                ProgressView()
+                                    .progressViewStyle(CircularProgressViewStyle(tint: .black))
+                                    .scaleEffect(0.8)
+                            } else {
+                                Image(systemName: isPlaying ? "stop.fill" : "play.fill")
+                                    .font(.system(size: 16, weight: .bold))
+                                    .foregroundStyle(.black)
+                                    .offset(x: isPlaying ? 0 : 2)
+                            }
+                        }
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(isLoading)
+                }
+            }
+            .padding(16)
+
+            // "Notify when ready" option - shown after loading for a while
+            if showNotifyOption && isLoading && !isGeneratingInBackground {
+                Divider()
+                    .padding(.horizontal, 16)
+
+                Button(action: onNotifyWhenReady) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "bell.fill")
+                            .font(.subheadline)
+                        Text("Notify me when ready")
+                            .font(.subheadline.weight(.medium))
+                    }
+                    .foregroundStyle(.blue)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
                 }
                 .buttonStyle(.plain)
-                .disabled(isLoading)
             }
         }
-        .padding(16)
         .background(Color(.secondarySystemBackground))
         .clipShape(RoundedRectangle(cornerRadius: 16))
         .confirmationDialog("Delete Voice Clone?", isPresented: $showDeleteConfirmation, titleVisibility: .visible) {
@@ -1489,11 +1531,20 @@ class VoiceCloningViewModel: NSObject, ObservableObject, AVAudioPlayerDelegate {
     @Published var playingVoiceId: String?
     @Published var isPreviewLoading = false
 
+    /// Show the "Notify when ready" option when preview is taking long
+    @Published var showNotifyOption = false
+    /// Voice ID currently being generated in background
+    @Published var backgroundGeneratingVoiceId: String?
+
     private var audioPlayer: AVAudioPlayer?
     private var previewTask: Task<Void, Never>?
+    private var showNotifyTimer: Timer?
 
     /// Sample text for cloned voice preview synthesis
     private let sampleText = "Hello, this is a preview of your cloned voice. I can read your articles with this unique sound."
+
+    /// Estimated time for preview generation (show notify option after this)
+    private let notifyOptionDelay: TimeInterval = 5.0
 
     /// Local cache directory for cloned voice previews
     private var previewCacheDirectory: URL {
@@ -1555,6 +1606,16 @@ class VoiceCloningViewModel: NSObject, ObservableObject, AVAudioPlayerDelegate {
 
         // No cached preview - synthesize and cache
         isPreviewLoading = true
+        showNotifyOption = false
+
+        // Start timer to show "Notify when ready" option after delay
+        showNotifyTimer?.invalidate()
+        showNotifyTimer = Timer.scheduledTimer(withTimeInterval: notifyOptionDelay, repeats: false) { [weak self] _ in
+            Task { @MainActor in
+                guard let self = self, self.isPreviewLoading else { return }
+                self.showNotifyOption = true
+            }
+        }
 
         previewTask = Task {
             do {
@@ -1577,14 +1638,75 @@ class VoiceCloningViewModel: NSObject, ObservableObject, AVAudioPlayerDelegate {
 
                 await MainActor.run {
                     isPreviewLoading = false
+                    showNotifyOption = false
+                    showNotifyTimer?.invalidate()
+                    backgroundGeneratingVoiceId = nil
                 }
             } catch {
                 await MainActor.run {
                     isPreviewLoading = false
+                    showNotifyOption = false
+                    showNotifyTimer?.invalidate()
+                    backgroundGeneratingVoiceId = nil
                     playingVoiceId = nil
                     errorMessage = "Failed to preview voice: \(error.localizedDescription)"
                     showError = true
                 }
+            }
+        }
+    }
+
+    /// Continue preview generation in background and notify when ready
+    func notifyWhenPreviewReady(_ voice: VoiceCloningService.ClonedVoice) async {
+        // Request notification permission if needed
+        let authorized = await NotificationManager.shared.requestAuthorization()
+
+        guard authorized else {
+            errorMessage = "Please enable notifications in Settings to use this feature."
+            showError = true
+            return
+        }
+
+        // Mark as generating in background
+        backgroundGeneratingVoiceId = voice.id
+        isPreviewLoading = false
+        showNotifyOption = false
+        playingVoiceId = nil
+
+        // The existing task continues in background
+        // When it completes, we need to send the notification
+        // We'll modify the task to check for background mode
+
+        let cachedURL = getCachedPreviewURL(for: voice.id)
+
+        // Create a background task that monitors for completion
+        Task {
+            // Wait for the preview to be available (poll the cache)
+            let maxWaitTime: TimeInterval = 120 // 2 minutes max
+            let pollInterval: TimeInterval = 1.0
+            var elapsed: TimeInterval = 0
+
+            while elapsed < maxWaitTime {
+                if FileManager.default.fileExists(atPath: cachedURL.path) {
+                    // Preview is ready - send notification
+                    await NotificationManager.shared.notifyVoiceCloneReady(
+                        voiceId: voice.id,
+                        voiceName: voice.name
+                    )
+
+                    await MainActor.run {
+                        backgroundGeneratingVoiceId = nil
+                    }
+                    return
+                }
+
+                try? await Task.sleep(nanoseconds: UInt64(pollInterval * 1_000_000_000))
+                elapsed += pollInterval
+            }
+
+            // Timeout - clear background state
+            await MainActor.run {
+                backgroundGeneratingVoiceId = nil
             }
         }
     }
@@ -1642,6 +1764,8 @@ class VoiceCloningViewModel: NSObject, ObservableObject, AVAudioPlayerDelegate {
         audioPlayer = nil
         playingVoiceId = nil
         isPreviewLoading = false
+        showNotifyOption = false
+        showNotifyTimer?.invalidate()
     }
 
     // MARK: - AVAudioPlayerDelegate
