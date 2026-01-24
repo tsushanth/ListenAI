@@ -899,9 +899,23 @@ ttsRouter.get('/job/:jobId', asyncHandler(async (req: AuthenticatedRequest, res:
       estimatedRemainingSec,
     }, 'Calculated synthesis time remaining from measured rate');
   } else if (estimatedDurationSec && job.progress_sec >= 0) {
-    // Fallback: assume 8x realtime for GPU
+    // Fallback: estimate based on synthesis type
     const remainingAudioSec = estimatedDurationSec - job.progress_sec;
-    estimatedRemainingSec = Math.max(0, Math.round(remainingAudioSec / 8));
+
+    // Cloned voices are much slower than Kokoro
+    // XTTS: ~0.5x realtime (synthesis takes 2x audio duration)
+    // Chatterbox: ~0.3x realtime (synthesis takes 3.3x audio duration)
+    // Kokoro GPU: ~8x realtime
+    let synthesisRate: number;
+    if (job.cloning_model === 'chatterbox') {
+      synthesisRate = 0.3;  // 3.3x slower than realtime
+    } else if (job.cloning_model === 'xtts') {
+      synthesisRate = 0.5;  // 2x slower than realtime
+    } else {
+      synthesisRate = 8;  // Kokoro GPU is fast
+    }
+
+    estimatedRemainingSec = Math.max(0, Math.round(remainingAudioSec / synthesisRate));
   }
 
   // 7. Get audio URLs based on status

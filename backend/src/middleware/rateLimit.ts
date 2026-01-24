@@ -28,6 +28,7 @@ function getTierRateLimit(tier: SubscriptionTier): number {
 /**
  * Standard rate limiter for most endpoints.
  * 60 requests per minute.
+ * Skips job polling routes (handled by jobPollingRateLimit).
  */
 export const standardRateLimit = rateLimit({
   windowMs: config.RATE_LIMIT_WINDOW_MS,
@@ -35,6 +36,11 @@ export const standardRateLimit = rateLimit({
   keyGenerator,
   standardHeaders: true,
   legacyHeaders: false,
+  skip: (req) => {
+    // Skip rate limiting for job polling routes - they have their own limiter
+    // This prevents polling from consuming the user's standard API quota
+    return req.path.match(/^\/tts\/job\/[^/]+$/) !== null && req.method === 'GET';
+  },
   message: {
     error: 'RATE_LIMITED',
     message: 'Too many requests, please try again later',
