@@ -956,8 +956,29 @@ async function processClonedVoiceJob(
 
   const synthesisStart = Date.now();
 
+  // Calculate timeout based on text length and model
+  // Chatterbox: ~0.3x realtime, XTTS: ~0.5x realtime
+  // Audio duration ≈ charCount / 12.5 chars per second
+  // Add generous margin for model loading and processing
+  const estimatedAudioDurationSec = charCount / 12.5;
+  const synthesisMultiplier = cloningModel === 'chatterbox' ? 4.0 : 2.5;  // Inverse of realtime factor with margin
+  const timeoutMs = Math.max(
+    5 * 60 * 1000,  // Minimum 5 minutes
+    Math.ceil(estimatedAudioDurationSec * synthesisMultiplier * 1000) + 60_000  // +1 min overhead
+  );
+
+  workerLogger.info({
+    jobId,
+    estimatedAudioDurationSec: Math.round(estimatedAudioDurationSec),
+    timeoutMs,
+  }, 'Cloned voice synthesis timeout calculated');
+
+  // Create AbortController for timeout
+  const abortController = new AbortController();
+  const timeoutId = setTimeout(() => abortController.abort(), timeoutMs);
+
   try {
-    // Call GPU TTS service
+    // Call GPU TTS service with timeout
     const response = await fetch(ttsServiceUrl, {
       method: 'POST',
       headers: {
@@ -974,6 +995,7 @@ async function processClonedVoiceJob(
         speed,
         model: cloningModel,
       }),
+      signal: abortController.signal,
     });
 
     if (!response.ok) {
@@ -1048,12 +1070,24 @@ async function processClonedVoiceJob(
 
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
+    // Check if this was a timeout
+    const isTimeout = error instanceof Error && error.name === 'AbortError';
+
     workerLogger.error({
       jobId,
       error: errorMessage,
+      isTimeout,
       synthesisTimeMs: Date.now() - synthesisStart,
     }, 'Cloned voice synthesis failed');
+
+    if (isTimeout) {
+      throw new Error(`Cloned voice synthesis timed out after ${timeoutMs / 1000}s`);
+    }
     throw error;
+  } finally {
+    // Always clear the timeout
+    clearTimeout(timeoutId);
   }
 }
 
