@@ -266,17 +266,22 @@ def load_xtts():
 
     start_time = time.time()
 
-    # Add safe globals for PyTorch 2.6+ (stricter weights_only=True default)
+    # PyTorch 2.6+ changed weights_only default to True, breaking TTS model loading.
+    # Monkey-patch torch.load to use weights_only=False for TTS compatibility.
+    # This is safe since we trust the TTS model checkpoints from HuggingFace.
     import torch
-    try:
-        from TTS.tts.configs.xtts_config import XttsConfig
-        from TTS.tts.models.xtts import XttsAudioConfig, XttsArgs
-        torch.serialization.add_safe_globals([XttsConfig, XttsAudioConfig, XttsArgs])
-    except ImportError:
-        logger.warning("Could not add XTTS safe globals - may need manual weights_only=False")
+    _original_torch_load = torch.load
+    def _patched_torch_load(*args, **kwargs):
+        if 'weights_only' not in kwargs:
+            kwargs['weights_only'] = False
+        return _original_torch_load(*args, **kwargs)
+    torch.load = _patched_torch_load
 
     from TTS.api import TTS
     xtts_model = TTS(XTTS_MODEL_NAME).to(DEVICE)
+
+    # Restore original torch.load
+    torch.load = _original_torch_load
 
     load_time = time.time() - start_time
     logger.info(f"XTTS model loaded in {load_time:.2f}s")
