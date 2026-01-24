@@ -70,6 +70,9 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Function: Get TTS job by ID (extended with cloned voice fields)
+-- Drop existing function first to allow return type change
+DROP FUNCTION IF EXISTS get_tts_job(UUID, UUID);
+
 CREATE OR REPLACE FUNCTION get_tts_job(
     p_job_id UUID,
     p_user_id UUID DEFAULT NULL
@@ -152,6 +155,9 @@ $$ LANGUAGE plpgsql;
 -- ============================================================================
 -- Update claim_next_tts_job to include cloned voice fields
 -- ============================================================================
+
+-- Drop existing function first to allow return type change
+DROP FUNCTION IF EXISTS claim_next_tts_job();
 
 CREATE OR REPLACE FUNCTION claim_next_tts_job()
 RETURNS TABLE (
