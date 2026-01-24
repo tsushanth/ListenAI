@@ -1,12 +1,8 @@
 package com.listenai.service.tts
 
 import android.content.Context
-import com.listenai.data.models.VoiceGender
 import com.listenai.data.models.VoicePreset
 import com.listenai.data.models.VoiceProvider
-import com.listenai.data.models.VoiceStyle
-import com.listenai.data.models.VoiceCategory
-import com.listenai.data.models.VoiceTier
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -22,11 +18,11 @@ import java.util.concurrent.TimeUnit
 
 /**
  * Cloud TTS service that connects to the ListenAI backend for synthesis.
- * Supports multiple providers through the backend: ElevenLabs, OpenAI, Google Cloud.
+ * Uses self-hosted Kokoro TTS (GPU-accelerated) for all synthesis.
  */
 class CloudTTSService(private val context: Context) : TTSService {
 
-    override val provider = VoiceProvider.ELEVENLABS
+    override val provider = VoiceProvider.SELF_HOSTED
     override val maxTextLength = 5000
     override val supportsStreaming = false
     override val supportsSSML = false
@@ -40,7 +36,7 @@ class CloudTTSService(private val context: Context) : TTSService {
         .build()
 
     // Backend URL - should be configured from settings
-    private var baseUrl: String = "https://listenai-backend-517355381306.us-central1.run.app"
+    private var baseUrl: String = "https://listenai-backend-917362189743.us-central1.run.app"
 
     fun configure(baseUrl: String) {
         this.baseUrl = baseUrl
@@ -103,12 +99,12 @@ class CloudTTSService(private val context: Context) : TTSService {
                 totalCharacters = totalText.length
             ))
 
-            // Build request body
+            // Build request body - always use selfhosted (Kokoro) provider
             val requestBody = JSONObject().apply {
                 put("text", totalText)
                 put("voice_id", voice.providerVoiceId)
-                put("provider", mapProviderToBackend(voice.provider))
-                put("model_id", voice.providerModelId ?: getDefaultModel(voice.provider))
+                put("provider", "selfhosted")
+                put("model_id", "kokoro")
                 put("speed", options.speed)
                 put("pitch", options.pitch)
             }
@@ -177,14 +173,14 @@ class CloudTTSService(private val context: Context) : TTSService {
                 fileSizeBytes = outputFile.length(),
                 cost = SynthesisCost(
                     charactersUsed = totalText.length,
-                    costUSD = estimateCost(totalText.length, voice.provider),
+                    costUSD = 0.0,  // Self-hosted is free
                     quotaUsed = totalText.length,
-                    provider = voice.provider.displayName
+                    provider = "ReadAloud AI"
                 ),
                 metadata = SynthesisMetadata(
                     voiceId = voice.id,
                     voiceName = voice.name,
-                    provider = voice.provider.displayName,
+                    provider = "ReadAloud AI",
                     startedAt = startTime,
                     completedAt = endTime,
                     inputCharacterCount = totalText.length,
@@ -227,37 +223,6 @@ class CloudTTSService(private val context: Context) : TTSService {
         }
     }
 
-    private fun mapProviderToBackend(provider: VoiceProvider): String {
-        return when (provider) {
-            VoiceProvider.ELEVENLABS -> "elevenlabs"
-            VoiceProvider.OPENAI -> "openai"
-            VoiceProvider.GOOGLE_CLOUD -> "google"
-            VoiceProvider.AMAZON_POLLY -> "polly"
-            VoiceProvider.ANDROID -> "android"
-            VoiceProvider.APPLE -> "apple"
-            VoiceProvider.SELF_HOSTED -> "selfhosted"
-        }
-    }
-
-    private fun getDefaultModel(provider: VoiceProvider): String {
-        return when (provider) {
-            VoiceProvider.ELEVENLABS -> "eleven_multilingual_v2"
-            VoiceProvider.OPENAI -> "tts-1-hd"
-            VoiceProvider.GOOGLE_CLOUD -> "en-US-Wavenet-D"
-            else -> ""
-        }
-    }
-
-    private fun estimateCost(characterCount: Int, provider: VoiceProvider): Double {
-        val costPer1000 = when (provider) {
-            VoiceProvider.ELEVENLABS -> 0.30
-            VoiceProvider.OPENAI -> 0.015
-            VoiceProvider.GOOGLE_CLOUD -> 0.016
-            else -> 0.0
-        }
-        return (characterCount / 1000.0) * costPer1000
-    }
-
     private fun buildSectionTimestamps(sections: List<TextSection>, totalDuration: Double): List<SectionTimestamp> {
         val totalChars = sections.sumOf { it.text.length }
         var currentTime = 0.0
@@ -291,83 +256,12 @@ class CloudTTSService(private val context: Context) : TTSService {
     }
 
     override suspend fun isVoiceAvailable(voice: VoicePreset): Boolean {
-        return voice.provider.isCloud
+        return voice.provider == VoiceProvider.SELF_HOSTED
     }
 
     override suspend fun availableVoices(): List<VoicePreset> {
-        // Return a curated list of cloud voices
-        return listOf(
-            // ElevenLabs voices
-            VoicePreset(
-                id = "rachel",
-                name = "Rachel",
-                isBuiltIn = true,
-                provider = VoiceProvider.ELEVENLABS,
-                providerVoiceId = "21m00Tcm4TlvDq8ikWAM",
-                gender = VoiceGender.FEMALE,
-                style = VoiceStyle.NARRATIVE,
-                category = VoiceCategory.NARRATOR,
-                tier = VoiceTier.PREMIUM,
-                languageCode = "en-US",
-                supportedLanguages = listOf("en-US")
-            ),
-            VoicePreset(
-                id = "adam",
-                name = "Adam",
-                isBuiltIn = true,
-                provider = VoiceProvider.ELEVENLABS,
-                providerVoiceId = "pNInz6obpgDQGcFmaJgB",
-                gender = VoiceGender.MALE,
-                style = VoiceStyle.NARRATIVE,
-                category = VoiceCategory.NARRATOR,
-                tier = VoiceTier.PREMIUM,
-                languageCode = "en-US",
-                supportedLanguages = listOf("en-US")
-            ),
-            // OpenAI voices
-            VoicePreset(
-                id = "nova",
-                name = "Nova",
-                isBuiltIn = true,
-                provider = VoiceProvider.OPENAI,
-                providerVoiceId = "nova",
-                providerModelId = "tts-1-hd",
-                gender = VoiceGender.FEMALE,
-                style = VoiceStyle.CONVERSATIONAL,
-                category = VoiceCategory.NARRATOR,
-                tier = VoiceTier.PREMIUM,
-                languageCode = "en-US",
-                supportedLanguages = listOf("en-US")
-            ),
-            VoicePreset(
-                id = "echo",
-                name = "Echo",
-                isBuiltIn = true,
-                provider = VoiceProvider.OPENAI,
-                providerVoiceId = "echo",
-                providerModelId = "tts-1-hd",
-                gender = VoiceGender.MALE,
-                style = VoiceStyle.CONVERSATIONAL,
-                category = VoiceCategory.NARRATOR,
-                tier = VoiceTier.PREMIUM,
-                languageCode = "en-US",
-                supportedLanguages = listOf("en-US")
-            ),
-            VoicePreset(
-                id = "alloy",
-                name = "Alloy",
-                isBuiltIn = true,
-                provider = VoiceProvider.OPENAI,
-                providerVoiceId = "alloy",
-                providerModelId = "tts-1-hd",
-                gender = VoiceGender.NEUTRAL,
-                style = VoiceStyle.NEUTRAL,
-                category = VoiceCategory.NARRATOR,
-                tier = VoiceTier.PREMIUM,
-                languageCode = "en-US",
-                supportedLanguages = listOf("en-US")
-            )
-        )
+        // Return all built-in Kokoro voices
+        return VoicePreset.builtInVoices
     }
 
     override suspend fun downloadVoice(voice: VoicePreset) {
@@ -383,7 +277,7 @@ class CloudTTSService(private val context: Context) : TTSService {
             estimatedDuration = estimatedDuration,
             estimatedProcessingTime = estimatedProcessingTime,
             characterCount = text.length,
-            estimatedCostUSD = estimateCost(text.length, voice.provider),
+            estimatedCostUSD = 0.0,  // Self-hosted is free
             quotaImpact = null
         )
     }

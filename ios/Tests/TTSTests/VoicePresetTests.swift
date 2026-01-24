@@ -207,7 +207,7 @@ final class VoicePresetTests: XCTestCase {
     func testVoiceProviderDisplayNames() {
         XCTAssertEqual(VoiceProvider.apple.displayName, "Apple")
         XCTAssertEqual(VoiceProvider.elevenLabs.displayName, "ElevenLabs")
-        XCTAssertEqual(VoiceProvider.openAI.displayName, "OpenAI")
+        XCTAssertEqual(VoiceProvider.openAI.displayName, "Premium AI")
     }
 
     func testVoiceProviderIsCloudBased() {

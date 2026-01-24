@@ -272,7 +272,7 @@ actor VoiceCloningService {
         }
 
         let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
+        decoder.dateDecodingStrategy = Self.supabaseDateDecodingStrategy
 
         let listResponse = try decoder.decode(VoicesListResponse.self, from: data)
 
@@ -363,7 +363,7 @@ actor VoiceCloningService {
         }
 
         let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
+        decoder.dateDecodingStrategy = Self.supabaseDateDecodingStrategy
 
         let voice = try decoder.decode(ClonedVoice.self, from: data)
 
@@ -408,7 +408,7 @@ actor VoiceCloningService {
         }
 
         let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
+        decoder.dateDecodingStrategy = Self.supabaseDateDecodingStrategy
 
         let voice = try decoder.decode(ClonedVoice.self, from: data)
 
@@ -530,7 +530,7 @@ actor VoiceCloningService {
         }
 
         let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
+        decoder.dateDecodingStrategy = Self.supabaseDateDecodingStrategy
 
         return try decoder.decode(ClonedVoice.self, from: data)
     }
@@ -579,7 +579,7 @@ actor VoiceCloningService {
 
         do {
             let decoder = JSONDecoder()
-            decoder.dateDecodingStrategy = .iso8601
+            decoder.dateDecodingStrategy = Self.supabaseDateDecodingStrategy
             return try decoder.decode([ClonedVoice].self, from: data)
         } catch {
             print("Failed to decode cloned voices: \(error). Clearing cache.")
@@ -626,6 +626,45 @@ actor VoiceCloningService {
         var voices = loadClonedVoicesFromLocal()
         voices.removeAll { $0.id == voiceId }
         saveClonedVoicesToLocal(voices)
+    }
+
+    // MARK: - Date Formatting
+
+    /// ISO 8601 date formatter that handles fractional seconds from Supabase
+    private static let iso8601DateFormatter: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter
+    }()
+
+    /// Fallback formatter without fractional seconds
+    private static let iso8601DateFormatterNoFraction: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime]
+        return formatter
+    }()
+
+    /// Custom date decoding strategy that handles Supabase timestamps with fractional seconds
+    private static var supabaseDateDecodingStrategy: JSONDecoder.DateDecodingStrategy {
+        .custom { decoder in
+            let container = try decoder.singleValueContainer()
+            let dateString = try container.decode(String.self)
+
+            // Try with fractional seconds first (Supabase default)
+            if let date = iso8601DateFormatter.date(from: dateString) {
+                return date
+            }
+
+            // Fallback to without fractional seconds
+            if let date = iso8601DateFormatterNoFraction.date(from: dateString) {
+                return date
+            }
+
+            throw DecodingError.dataCorruptedError(
+                in: container,
+                debugDescription: "Cannot decode date string: \(dateString)"
+            )
+        }
     }
 
     // MARK: - Network Helpers

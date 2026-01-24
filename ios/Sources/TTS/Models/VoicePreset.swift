@@ -15,7 +15,7 @@ enum VoiceProvider: String, Codable, CaseIterable, Sendable {
         switch self {
         case .apple: return "Apple"
         case .elevenLabs: return "ElevenLabs"
-        case .openAI: return "OpenAI"
+        case .openAI: return "Premium AI"  // Renamed for China App Store compliance
         case .googleCloud: return "Google Cloud"
         case .amazonPolly: return "Amazon Polly"
         case .selfhosted: return "ReadAloud AI"

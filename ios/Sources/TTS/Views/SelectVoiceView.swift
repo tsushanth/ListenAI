@@ -679,7 +679,9 @@ class SelectVoiceViewModel: NSObject, ObservableObject, AVAudioPlayerDelegate {
         defer { isLoadingClonedVoices = false }
 
         do {
-            clonedVoices = try await VoiceCloningService.shared.listClonedVoices()
+            // Force refresh to ensure we have the latest voices from server
+            // This prevents showing stale/deleted voices that no longer exist
+            clonedVoices = try await VoiceCloningService.shared.listClonedVoices(forceRefresh: true)
         } catch {
             // Silently fail - cloned voices just won't show
             clonedVoices = []
@@ -784,8 +786,9 @@ class SelectVoiceViewModel: NSObject, ObservableObject, AVAudioPlayerDelegate {
     }
 
     /// Get the cached preview URL for a voice ID
+    /// Cloned voices return WAV format, so use .wav extension
     private func getCachedPreviewURL(for voiceId: String) -> URL {
-        previewCacheDirectory.appendingPathComponent("preview_\(voiceId).mp3")
+        previewCacheDirectory.appendingPathComponent("preview_\(voiceId).wav")
     }
 
     /// Synthesize sample text using a cloned voice
@@ -794,29 +797,30 @@ class SelectVoiceViewModel: NSObject, ObservableObject, AVAudioPlayerDelegate {
         let coordinator = TTSCoordinator.shared
 
         // Create a temporary voice preset for the cloned voice
+        // Use selfhosted provider with custom category so TTSCoordinator routes to Chatterbox
         let tempPreset = VoicePreset(
             name: "Preview",
             isBuiltIn: false,
             isCharacterVoice: false,
-            provider: .elevenLabs,
+            provider: .selfhosted,
             providerVoiceID: voiceId,
-            providerModelID: "eleven_multilingual_v2",
+            providerModelID: nil,  // No model ID - uses Chatterbox for cloned voices
             language: "en-US",
             supportedLanguages: ["en-US"],
             gender: .neutral,
             age: .adult,
             style: .conversational,
-            category: .custom,
+            category: .custom,  // Custom category triggers cloned voice path
             voiceDescription: "Cloned voice preview",
-            tier: .premium,
+            tier: .free,  // Cloned voices don't count against premium quota
             sampleText: clonedVoiceSampleText
         )
 
-        // Synthesize the sample text using premium quality (ElevenLabs) since it's a cloned voice
+        // Synthesize using standard quality - TTSCoordinator will route to Chatterbox
         let audioURL = try await coordinator.synthesizeWithQuality(
             text: clonedVoiceSampleText,
             voice: tempPreset,
-            quality: .premium
+            quality: .standard
         )
 
         return audioURL

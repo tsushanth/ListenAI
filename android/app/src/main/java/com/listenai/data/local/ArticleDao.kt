@@ -8,7 +8,16 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface ArticleDao {
 
-    @Query("SELECT * FROM articles ORDER BY createdAt DESC")
+    // Use explicit columns with empty rawText to avoid SQLiteBlobTooBigException
+    // The full rawText is loaded only when viewing a specific article via getArticleById
+    @Query("""
+        SELECT id, title, author, siteName, publishDate, '' as rawText, wordCount, language,
+        heroImageUrl, senderEmail, emailDate, sourceType, sourceUrl, sourceFileName,
+        audioFileUrl, selectedVoiceId, playbackSpeed, synthesisStatus,
+        listenedDuration, totalDuration, lastPosition, isCompleted,
+        isFavorite, isArchived, tags, notes, createdAt, updatedAt
+        FROM articles ORDER BY createdAt DESC
+    """)
     fun getAllArticles(): Flow<List<Article>>
 
     @Query("SELECT * FROM articles WHERE id = :id")
@@ -65,12 +74,13 @@ interface ArticleDao {
         updatedAt: Long = System.currentTimeMillis()
     )
 
-    @Query("UPDATE articles SET synthesisStatus = :status, audioFileUrl = :audioUrl, totalDuration = :duration, updatedAt = :updatedAt WHERE id = :id")
+    @Query("UPDATE articles SET synthesisStatus = :status, audioFileUrl = :audioUrl, totalDuration = :duration, selectedVoiceId = :voiceId, updatedAt = :updatedAt WHERE id = :id")
     suspend fun updateSynthesisStatus(
         id: String,
         status: String,
         audioUrl: String?,
         duration: Long,
+        voiceId: String? = null,
         updatedAt: Long = System.currentTimeMillis()
     )
 

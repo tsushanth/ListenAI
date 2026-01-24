@@ -70,9 +70,10 @@ class ArticleRepository(
         id: String,
         status: String,
         audioUrl: String?,
-        duration: Long
+        duration: Long,
+        voiceId: String? = null
     ) {
-        articleDao.updateSynthesisStatus(id, status, audioUrl, duration)
+        articleDao.updateSynthesisStatus(id, status, audioUrl, duration, voiceId)
     }
 
     suspend fun getArticleCount(): Int {

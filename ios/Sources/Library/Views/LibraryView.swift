@@ -37,6 +37,8 @@ struct LibraryView: View {
     @State private var showingSort = false
     @State private var sortOrder: SortOrder = .dateAdded
     @State private var selectedArticle: Article?
+    @State private var showingUsageQuota = false
+    @State private var showingUpgrade = false
 
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
@@ -61,26 +63,14 @@ struct LibraryView: View {
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 HStack(spacing: 8) {
-                    // AI Summary badge (blue circle with sparkles icon)
+                    // Usage quota badge
                     Button {
-                        // TODO: AI Summary action
-                    } label: {
-                        Image(systemName: "sparkle.magnifyingglass")
-                            .font(.body)
-                            .foregroundStyle(.white)
-                            .frame(width: 32, height: 32)
-                            .background(Color.blue)
-                            .clipShape(Circle())
-                    }
-
-                    // AI counter badge
-                    Button {
-                        // TODO: AI credits action
+                        showingUsageQuota = true
                     } label: {
                         HStack(spacing: 4) {
-                            Image(systemName: "sparkles")
+                            Image(systemName: "chart.bar.fill")
                                 .font(.caption2)
-                            Text("3")
+                            Text("Usage")
                                 .font(.caption.bold())
                         }
                         .padding(.horizontal, 10)
@@ -88,16 +78,30 @@ struct LibraryView: View {
                         .background(Color.blue.opacity(0.15))
                         .foregroundStyle(.blue)
                         .clipShape(Capsule())
-                        .overlay(
-                            Capsule()
-                                .stroke(Color.blue.opacity(0.3), lineWidth: 1)
-                        )
                     }
 
                     // PRO Badge
-                    ProBadgeButton()
+                    Button {
+                        showingUpgrade = true
+                    } label: {
+                        Text("PRO")
+                            .font(.caption.bold())
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .background(Color.green)
+                            .clipShape(Capsule())
+                    }
                 }
             }
+        }
+        .sheet(isPresented: $showingUsageQuota) {
+            NavigationStack {
+                UsageQuotaView()
+            }
+        }
+        .sheet(isPresented: $showingUpgrade) {
+            UpgradePromptView()
         }
         .searchable(text: $searchText, prompt: "Search articles")
         .sheet(isPresented: $showingImportPicker) {

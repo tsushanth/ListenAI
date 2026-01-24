@@ -1847,8 +1847,34 @@ struct ArticleReaderView: View {
             ttsJobId = jobInfo.jobId
             ttsJobStatus = jobInfo.status
             isSynthesizing = true
+
+            // Restore progress state from job info for proper display
+            // This ensures we show percentage progress instead of "~5 seconds"
+            if jobInfo.progress > 0 {
+                // TTSJobManager tracks progress as 0-1, we need to estimate duration
+                // For cloned voices, estimate based on character count
+                let currentVoice = voicePresetManager.selectedPreset
+                let isClonedVoice = !currentVoice.isBuiltIn && currentVoice.category == .custom && currentVoice.kokoroVoiceID == nil
+
+                if isClonedVoice {
+                    // Set estimated time string for cloned voice
+                    let cloningModel = VoicePresetManager.shared.voiceCloningModel
+                    estimatedTimeString = estimatedClonedVoiceSynthesisTime(
+                        characterCount: article.rawText.count,
+                        model: cloningModel
+                    )
+                }
+
+                // Estimate total duration based on character count (~12.5 chars/sec)
+                let estimatedAudioDuration = Double(article.rawText.count) / 12.5
+                ttsJobTotalDurationSec = estimatedAudioDuration
+                ttsJobProgressSec = estimatedAudioDuration * jobInfo.progress
+            }
+
             // Note: No longer stopping TTSJobManager here - let it continue background polling
             // The UI will observe ArticleStore updates from TTSJobManager
+            // Also start local polling to get real-time progress updates
+            startPollingJobStatus(jobId: jobInfo.jobId)
             return
         }
 
@@ -1868,6 +1894,19 @@ struct ArticleReaderView: View {
             ttsJobId = pendingJobId
             ttsJobStatus = .processing
             isSynthesizing = true
+
+            // Set estimated time string for cloned voices
+            let isClonedVoice = !currentVoice.isBuiltIn && currentVoice.category == .custom && currentVoice.kokoroVoiceID == nil
+            if isClonedVoice {
+                let cloningModel = VoicePresetManager.shared.voiceCloningModel
+                estimatedTimeString = estimatedClonedVoiceSynthesisTime(
+                    characterCount: article.rawText.count,
+                    model: cloningModel
+                )
+            }
+
+            // Start polling for progress updates
+            startPollingJobStatus(jobId: pendingJobId)
             return
         }
 
@@ -2508,8 +2547,8 @@ struct ArticleReaderView: View {
         performLegacySynthesis()
     }
 
-    /// Synthesize using a cloned voice via Chatterbox TTS
-    /// This uses the direct /api/tts/cloned endpoint instead of the job-based API
+    /// Synthesize using a cloned voice via job-based API with progress tracking.
+    /// This uses the /api/tts/job-cloned endpoint for async synthesis with polling.
     private func requestClonedVoiceSynthesis(cloudService: ListenAICloudService, voice: VoicePreset) {
         // Reset state
         ttsJobId = nil
@@ -2560,48 +2599,89 @@ struct ArticleReaderView: View {
                 }
 
                 // Get user's preferred cloning model
-                let cloningModel = VoicePresetManager.shared.voiceCloningModel.rawValue
-                print("[ArticleReader] Synthesizing with cloned voice: \(voiceId), model: \(cloningModel), text: \(article.rawText.count) chars")
+                let cloningModelRaw = VoicePresetManager.shared.voiceCloningModel.rawValue
+                print("[ArticleReader] Requesting cloned voice job: \(voiceId), model: \(cloningModelRaw), text: \(article.rawText.count) chars")
 
-                // Call direct cloned voice synthesis endpoint
-                let audioResult = try await cloudService.synthesizeCloned(
+                // Call job-based cloned voice synthesis endpoint
+                let response = try await cloudService.requestClonedVoiceTTS(
                     text: article.rawText,
                     voiceId: voiceId,
                     voiceUrl: voiceUrl,
                     speed: Double(playbackService.playbackSpeed.rate),
-                    model: cloningModel
+                    model: cloningModelRaw,
+                    articleId: article.id.uuidString,
+                    articleTitle: article.displayTitle
                 )
 
-                await MainActor.run {
-                    self.isSynthesizing = false
+                // Store job ID for tracking
+                ttsJobId = response.jobId
+                ttsJobStatus = response.status
 
-                    // Record usage
-                    UsageTrackerService.shared.recordUsage(
-                        characterCount: article.rawText.count,
-                        provider: voice.provider,
-                        voiceID: voice.providerVoiceID,
-                        articleID: article.id,
-                        articleTitle: article.displayTitle,
-                        wasSuccessful: true
-                    )
+                // Persist job ID for this article+voice combo
+                persistJobId(response.jobId, for: article.id, voiceId: voiceId)
 
-                    // Update article status
-                    if let audioURL = audioResult.fileURL {
+                print("[ArticleReader] Cloned voice job response: status=\(response.status.rawValue), jobId=\(response.jobId)")
+
+                switch response.status {
+                case .ready:
+                    // Audio is immediately available (cache hit) - play it
+                    if let audioUrlString = response.audioUrl, let audioUrl = URL(string: audioUrlString) {
+                        print("[ArticleReader] Cloned voice audio ready immediately (cache hit), playing from: \(audioUrlString)")
+
+                        isSynthesizing = false
+
+                        // Record usage
+                        UsageTrackerService.shared.recordUsage(
+                            characterCount: article.rawText.count,
+                            provider: voice.provider,
+                            voiceID: voice.providerVoiceID,
+                            articleID: article.id,
+                            articleTitle: article.displayTitle,
+                            wasSuccessful: true
+                        )
+
+                        // Update article status
                         ArticleStore.shared.updateSynthesisStatus(
                             for: article.id,
                             status: .completed,
-                            audioURL: audioURL
+                            audioURL: audioUrl
                         )
 
-                        // Play the audio
-                        self.playAudio(url: audioURL)
+                        // Persist the full audio URL for instant replay
+                        persistFullAudioUrl(audioUrlString, for: article.id, voiceId: voice.providerVoiceID)
+
+                        // Play the audio with full mode
+                        playAudioWithMode(url: audioUrl, mode: .full)
+                    } else {
+                        throw TTSJobError.unknown(message: "Status is ready but no audio URL provided")
                     }
 
-                    print("[ArticleReader] Cloned voice synthesis complete, playing audio")
+                case .queued, .processing, .partialReady:
+                    // Job is processing - start polling for status
+                    print("[ArticleReader] Cloned voice job is processing (status: \(response.status.rawValue)), starting polling")
+
+                    // Update estimated wait time
+                    if let waitTime = response.estimatedWaitSec {
+                        ttsJobEstimatedWaitSec = waitTime
+                    }
+
+                    // Persist job status for resume
+                    persistJobStatus(response.status, for: article.id, voiceId: voice.providerVoiceID)
+
+                    // Start polling for job completion
+                    startPollingJobStatus(jobId: response.jobId)
+
+                case .failed:
+                    throw TTSJobError.jobFailed(jobId: response.jobId, reason: "Job failed during request")
+
+                case .cancelled:
+                    throw TTSJobError.jobCancelled(jobId: response.jobId)
                 }
 
+            } catch let error as TTSJobError {
+                handleTTSJobError(error)
             } catch {
-                print("[ArticleReader] Cloned voice synthesis failed: \(error)")
+                print("[ArticleReader] Cloned voice job request failed: \(error)")
                 await MainActor.run {
                     self.isSynthesizing = false
                     self.synthesisError = error.localizedDescription

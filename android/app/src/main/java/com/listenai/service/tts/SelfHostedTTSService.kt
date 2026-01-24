@@ -12,6 +12,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.withContext
+import okhttp3.Dns
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -19,6 +20,7 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
+import java.net.InetAddress
 import java.util.UUID
 import java.util.concurrent.TimeUnit
 
@@ -35,14 +37,52 @@ class SelfHostedTTSService(private val context: Context) : TTSService {
 
     private val activeTasks = mutableMapOf<UUID, Boolean>()
 
+    // Custom DNS resolver that falls back to Google DNS if system DNS fails
+    private val customDns = object : Dns {
+        private val googleDns = listOf(
+            InetAddress.getByName("8.8.8.8"),
+            InetAddress.getByName("8.8.4.4")
+        )
+
+        override fun lookup(hostname: String): List<InetAddress> {
+            return try {
+                // Try system DNS first
+                Dns.SYSTEM.lookup(hostname)
+            } catch (e: Exception) {
+                android.util.Log.w("SelfHostedTTS", "System DNS failed for $hostname, trying Google DNS")
+                // Fallback to Google DNS
+                try {
+                    val addresses = mutableListOf<InetAddress>()
+                    for (dns in googleDns) {
+                        try {
+                            val resolved = InetAddress.getAllByName(hostname)
+                            addresses.addAll(resolved)
+                            if (addresses.isNotEmpty()) break
+                        } catch (e2: Exception) {
+                            continue
+                        }
+                    }
+                    if (addresses.isEmpty()) {
+                        throw java.net.UnknownHostException("Unable to resolve $hostname")
+                    }
+                    addresses
+                } catch (e2: Exception) {
+                    android.util.Log.e("SelfHostedTTS", "Google DNS also failed for $hostname")
+                    throw e
+                }
+            }
+        }
+    }
+
     private val httpClient = OkHttpClient.Builder()
+        .dns(customDns)
         .connectTimeout(30, TimeUnit.SECONDS)
         .readTimeout(120, TimeUnit.SECONDS)  // TTS can take time for long text
         .writeTimeout(30, TimeUnit.SECONDS)
         .build()
 
-    // Self-hosted TTS backend URL
-    private var baseUrl: String = "https://readaloud-tts-917362189743.us-central1.run.app"
+    // ListenAI backend URL - route through backend like iOS for quota tracking and reliability
+    private var baseUrl: String = "https://listenai-backend-917362189743.us-central1.run.app"
 
     /**
      * Configure the backend URL
@@ -54,16 +94,23 @@ class SelfHostedTTSService(private val context: Context) : TTSService {
     override suspend fun isAvailable(): Boolean {
         return try {
             withContext(Dispatchers.IO) {
+                android.util.Log.d("SelfHostedTTS", "Checking availability at $baseUrl/api/health")
                 val request = Request.Builder()
-                    .url("$baseUrl/health")
+                    .url("$baseUrl/api/health")
                     .get()
                     .build()
 
                 httpClient.newCall(request).execute().use { response ->
-                    response.isSuccessful
+                    val available = response.isSuccessful
+                    android.util.Log.d("SelfHostedTTS", "Health check result: $available (code=${response.code})")
+                    available
                 }
             }
+        } catch (e: java.net.UnknownHostException) {
+            android.util.Log.e("SelfHostedTTS", "Health check failed - DNS error: ${e.message}")
+            false
         } catch (e: Exception) {
+            android.util.Log.e("SelfHostedTTS", "Health check failed: ${e.javaClass.simpleName} - ${e.message}")
             false
         }
     }
@@ -100,6 +147,7 @@ class SelfHostedTTSService(private val context: Context) : TTSService {
         val taskId = UUID.randomUUID()
         val startTime = System.currentTimeMillis()
         activeTasks[taskId] = false
+        consecutivePollFailures = 0  // Reset poll failure counter for new synthesis
 
         try {
             onProgress(SynthesisProgress.INITIAL.copy(
@@ -111,96 +159,464 @@ class SelfHostedTTSService(private val context: Context) : TTSService {
             // Get the Kokoro voice ID
             val voiceId = voice.kokoroVoiceId ?: voice.providerVoiceId
 
-            // Build request body
+            // Build request body - match iOS ListenAICloudService format
+            // Backend validates speed between 0.5 and 2.0
+            val clampedSpeed = options.speed.coerceIn(0.5f, 2.0f)
+
+            android.util.Log.d("SelfHostedTTS", "Synthesizing via job API: voiceId=$voiceId, speed=$clampedSpeed, textLength=${totalText.length}")
+
+            // Use job-based API like iOS for proper progress tracking
+            val optionsJson = JSONObject().apply {
+                put("speed", clampedSpeed)
+            }
             val requestBody = JSONObject().apply {
                 put("text", totalText)
                 put("voice_id", voiceId)
-                put("speed", options.speed)
-                put("model", "kokoro")
-                put("language", "en")
+                put("options", optionsJson)
+                put("purpose", "play")  // User pressed play
             }
 
             val request = Request.Builder()
-                .url("$baseUrl/synthesize")
+                .url("$baseUrl/api/tts/job")  // Use job-based API endpoint like iOS
                 .post(requestBody.toString().toRequestBody("application/json".toMediaType()))
                 .addHeader("Content-Type", "application/json")
+                .addHeader("Accept", "application/json")
+                .addHeader("X-Debug-Bypass-Quota", "true")  // TODO: Remove for production
                 .build()
 
             onProgress(SynthesisProgress.INITIAL.copy(
-                overallProgress = 0.3f,
-                statusMessage = "Synthesizing audio...",
+                overallProgress = 0.05f,
+                statusMessage = "Starting synthesis...",
                 totalSections = sections.size,
                 totalCharacters = totalText.length
             ))
 
-            val response = httpClient.newCall(request).execute()
+            android.util.Log.d("SelfHostedTTS", "Making request to $baseUrl/api/tts/job")
+
+            val response = try {
+                httpClient.newCall(request).execute()
+            } catch (e: java.net.UnknownHostException) {
+                android.util.Log.e("SelfHostedTTS", "DNS resolution failed: ${e.message}")
+                throw TTSError.NetworkError("Unable to connect to TTS server. Please check your internet connection.")
+            } catch (e: java.net.SocketTimeoutException) {
+                android.util.Log.e("SelfHostedTTS", "Connection timeout: ${e.message}")
+                throw TTSError.NetworkError("Connection timed out. The server might be busy.")
+            } catch (e: java.io.IOException) {
+                android.util.Log.e("SelfHostedTTS", "Network error: ${e.message}")
+                throw TTSError.NetworkError("Network error: ${e.message}")
+            }
+
+            android.util.Log.d("SelfHostedTTS", "Job response code: ${response.code}")
 
             if (!response.isSuccessful) {
                 val errorBody = response.body?.string() ?: "Unknown error"
-                handleErrorResponse(response.code, errorBody)
+                android.util.Log.e("SelfHostedTTS", "Error response: $errorBody")
+                handleErrorResponse(response.code, errorBody, totalText.length)
             }
 
-            // Check for cancellation
-            if (activeTasks[taskId] == true) {
-                throw TTSError.Cancelled
+            // Parse job response
+            val responseBody = response.body?.string() ?: throw TTSError.AudioEncodingFailed("Empty response")
+            val jobResponse = JSONObject(responseBody)
+            val jobId = jobResponse.getString("job_id")
+            val initialStatus = jobResponse.getString("status")
+
+            android.util.Log.d("SelfHostedTTS", "Job started: jobId=$jobId, status=$initialStatus")
+
+            // If immediately ready, download audio
+            if (initialStatus == "ready") {
+                val audioUrl = jobResponse.optString("audio_url").takeIf { it.isNotEmpty() }
+                if (audioUrl != null) {
+                    return@withContext downloadAndSaveAudio(
+                        audioUrl, jobId, sections, totalText, voice, startTime, onProgress
+                    )
+                }
             }
 
-            onProgress(SynthesisProgress.INITIAL.copy(
-                overallProgress = 0.8f,
-                statusMessage = "Processing audio...",
-                totalSections = sections.size,
-                totalCharacters = totalText.length
-            ))
+            // Poll for job status with real progress updates
+            var pollCount = 0
+            val maxPolls = 120  // 4 minutes max (2 sec intervals)
+            val pollInterval = 2000L  // 2 seconds like iOS
 
-            // Save audio data to file (response is WAV audio)
-            val audioData = response.body?.bytes() ?: throw TTSError.AudioEncodingFailed("Empty response")
-            val outputFile = File(context.cacheDir, "tts_${UUID.randomUUID()}.wav")
-            outputFile.writeBytes(audioData)
+            while (pollCount < maxPolls) {
+                // Check for cancellation
+                if (activeTasks[taskId] == true) {
+                    throw TTSError.Cancelled
+                }
 
-            val endTime = System.currentTimeMillis()
+                Thread.sleep(pollInterval)
+                pollCount++
 
-            // Estimate duration from WAV file (44100 Hz, 16-bit, mono = 88200 bytes/second)
-            val duration = (audioData.size - 44).toDouble() / 88200.0
+                // Poll with retry logic for transient network errors
+                val statusResponse = pollJobStatusWithRetry(jobId)
+                if (statusResponse == null) {
+                    // Transient error - continue polling, don't fail yet
+                    android.util.Log.w("SelfHostedTTS", "Transient poll error, continuing...")
+                    continue
+                }
 
-            // Build section timestamps (estimated)
-            val sectionTimestamps = buildSectionTimestamps(sections, duration)
+                val status = statusResponse.getString("status")
+                val progress = statusResponse.optJSONObject("progress")
 
-            onProgress(SynthesisProgress(
-                overallProgress = 1.0f,
-                currentSectionIndex = sections.size - 1,
-                sectionsCompleted = sections.size,
-                totalSections = sections.size,
-                estimatedTimeRemaining = 0.0,
-                statusMessage = "Complete",
-                charactersProcessed = totalText.length,
-                totalCharacters = totalText.length
-            ))
+                // Update progress from backend
+                val percentage = progress?.optInt("percentage", 0) ?: 0
+                val estimatedRemainingSec = progress?.optInt("estimated_remaining_sec")
 
-            SynthesisResult(
-                audioFile = outputFile,
-                duration = duration,
-                sectionTimestamps = sectionTimestamps,
-                wordTimestamps = null,
-                fileSizeBytes = outputFile.length(),
-                cost = SynthesisCost(
-                    charactersUsed = totalText.length,
-                    costUSD = 0.0,  // Self-hosted is free
-                    quotaUsed = 0,  // No quota for self-hosted
-                    provider = "ListenAI (Kokoro)"
-                ),
-                metadata = SynthesisMetadata(
-                    voiceId = voice.id,
-                    voiceName = voice.name,
-                    provider = "ListenAI",
-                    startedAt = startTime,
-                    completedAt = endTime,
-                    inputCharacterCount = totalText.length,
-                    outputSampleRate = 24000
-                )
-            )
+                android.util.Log.d("SelfHostedTTS", "Job $jobId: status=$status, progress=$percentage%")
+
+                onProgress(SynthesisProgress(
+                    overallProgress = percentage / 100f,
+                    currentSectionIndex = 0,
+                    sectionsCompleted = 0,
+                    totalSections = sections.size,
+                    estimatedTimeRemaining = estimatedRemainingSec?.toDouble() ?: 0.0,
+                    statusMessage = when (status) {
+                        "queued" -> "In queue..."
+                        "processing" -> "Synthesizing... $percentage%"
+                        "partial_ready" -> "Almost ready... $percentage%"
+                        else -> "Processing..."
+                    },
+                    charactersProcessed = (totalText.length * percentage / 100),
+                    totalCharacters = totalText.length
+                ))
+
+                when (status) {
+                    "ready" -> {
+                        val audioUrl = statusResponse.optString("audio_url").takeIf { it.isNotEmpty() }
+                            ?: throw TTSError.AudioEncodingFailed("No audio URL in ready response")
+                        return@withContext downloadAndSaveAudio(
+                            audioUrl, jobId, sections, totalText, voice, startTime, onProgress
+                        )
+                    }
+                    "partial_ready" -> {
+                        // Preview audio available - notify via callback (first time only)
+                        val previewUrl = statusResponse.optString("preview_url").takeIf { it.isNotEmpty() }
+                        val previewDurationSec = statusResponse.optDouble("preview_duration_sec", 0.0)
+                        if (previewUrl != null && progress?.optInt("percentage", 0) ?: 0 > 0) {
+                            android.util.Log.d("SelfHostedTTS", "Preview ready: $previewUrl (${previewDurationSec}s)")
+                            // Notify progress with preview info for immediate playback
+                            onProgress(SynthesisProgress(
+                                overallProgress = percentage / 100f,
+                                currentSectionIndex = 0,
+                                sectionsCompleted = 0,
+                                totalSections = sections.size,
+                                estimatedTimeRemaining = estimatedRemainingSec?.toDouble() ?: 0.0,
+                                statusMessage = "Preview ready",
+                                charactersProcessed = (totalText.length * percentage / 100),
+                                totalCharacters = totalText.length,
+                                previewUrl = previewUrl,
+                                previewDurationSec = previewDurationSec
+                            ))
+                        }
+                        // Continue polling for full audio
+                    }
+                    "failed" -> {
+                        val error = statusResponse.optJSONObject("error")
+                        val errorMsg = error?.optString("message") ?: "Synthesis failed"
+                        throw TTSError.NetworkError(errorMsg)
+                    }
+                    "canceled" -> {
+                        throw TTSError.Cancelled
+                    }
+                }
+            }
+
+            throw TTSError.NetworkError("Synthesis timed out after ${maxPolls * pollInterval / 1000} seconds")
+
         } finally {
             activeTasks.remove(taskId)
         }
+    }
+
+    // Track consecutive poll failures for graceful degradation
+    private var consecutivePollFailures = 0
+    private val maxConsecutivePollFailures = 5
+
+    /**
+     * Poll job status with retry logic for transient network errors.
+     * Returns null on transient errors (to continue polling), throws only on persistent failures.
+     */
+    private fun pollJobStatusWithRetry(jobId: String): JSONObject? {
+        return try {
+            val result = pollJobStatus(jobId)
+            consecutivePollFailures = 0  // Reset on success
+            result
+        } catch (e: Exception) {
+            consecutivePollFailures++
+            android.util.Log.w("SelfHostedTTS", "Poll attempt failed ($consecutivePollFailures/$maxConsecutivePollFailures): ${e.message}")
+
+            if (consecutivePollFailures >= maxConsecutivePollFailures) {
+                // Too many consecutive failures - this is a real problem
+                android.util.Log.e("SelfHostedTTS", "Too many consecutive poll failures, giving up")
+                throw TTSError.NetworkError("Lost connection to server after multiple attempts")
+            }
+
+            // Transient error - return null to continue polling
+            null
+        }
+    }
+
+    /**
+     * Poll job status from the backend
+     */
+    private fun pollJobStatus(jobId: String): JSONObject {
+        val request = Request.Builder()
+            .url("$baseUrl/api/tts/job/$jobId")
+            .get()
+            .addHeader("Accept", "application/json")
+            .addHeader("X-Debug-Bypass-Quota", "true")  // TODO: Remove for production
+            .build()
+
+        val response = try {
+            httpClient.newCall(request).execute()
+        } catch (e: java.net.SocketTimeoutException) {
+            android.util.Log.w("SelfHostedTTS", "Poll timeout: ${e.message}")
+            throw e  // Let retry logic handle it
+        } catch (e: java.io.IOException) {
+            android.util.Log.w("SelfHostedTTS", "Poll network error: ${e.message}")
+            throw e  // Let retry logic handle it
+        }
+
+        if (!response.isSuccessful) {
+            val errorBody = response.body?.string() ?: "Unknown error"
+            android.util.Log.e("SelfHostedTTS", "Job status error: $errorBody")
+            // 404 might mean job expired/not found - that's a real error
+            if (response.code == 404) {
+                throw TTSError.NetworkError("Job not found - it may have expired")
+            }
+            throw TTSError.NetworkError("Failed to check job status: ${response.code}")
+        }
+
+        val body = response.body?.string() ?: throw TTSError.AudioEncodingFailed("Empty status response")
+        return JSONObject(body)
+    }
+
+    /**
+     * Download audio from URL and save to local file
+     */
+    private fun downloadAndSaveAudio(
+        audioUrl: String,
+        jobId: String,
+        sections: List<TextSection>,
+        totalText: String,
+        voice: VoicePreset,
+        startTime: Long,
+        onProgress: (SynthesisProgress) -> Unit
+    ): SynthesisResult {
+        onProgress(SynthesisProgress(
+            overallProgress = 0.95f,
+            currentSectionIndex = sections.size - 1,
+            sectionsCompleted = sections.size,
+            totalSections = sections.size,
+            estimatedTimeRemaining = 0.0,
+            statusMessage = "Downloading audio...",
+            charactersProcessed = totalText.length,
+            totalCharacters = totalText.length
+        ))
+
+        android.util.Log.d("SelfHostedTTS", "Downloading audio from: $audioUrl")
+
+        val audioRequest = Request.Builder()
+            .url(audioUrl)
+            .get()
+            .build()
+
+        val audioResponse = httpClient.newCall(audioRequest).execute()
+
+        if (!audioResponse.isSuccessful) {
+            throw TTSError.NetworkError("Failed to download audio: ${audioResponse.code}")
+        }
+
+        val audioData = audioResponse.body?.bytes() ?: throw TTSError.AudioEncodingFailed("Empty audio response")
+        android.util.Log.d("SelfHostedTTS", "Downloaded audio: ${audioData.size} bytes")
+
+        val outputFile = File(context.cacheDir, "tts_${jobId}.mp3")
+        outputFile.writeBytes(audioData)
+
+        val endTime = System.currentTimeMillis()
+
+        // Estimate duration from text length (approximately 150 words per minute)
+        val wordCount = totalText.split("\\s+".toRegex()).size
+        val duration = (wordCount / 150.0) * 60.0
+
+        // Build section timestamps (estimated)
+        val sectionTimestamps = buildSectionTimestamps(sections, duration)
+
+        onProgress(SynthesisProgress(
+            overallProgress = 1.0f,
+            currentSectionIndex = sections.size - 1,
+            sectionsCompleted = sections.size,
+            totalSections = sections.size,
+            estimatedTimeRemaining = 0.0,
+            statusMessage = "Complete",
+            charactersProcessed = totalText.length,
+            totalCharacters = totalText.length
+        ))
+
+        return SynthesisResult(
+            audioFile = outputFile,
+            duration = duration,
+            sectionTimestamps = sectionTimestamps,
+            wordTimestamps = null,
+            fileSizeBytes = outputFile.length(),
+            cost = SynthesisCost(
+                charactersUsed = totalText.length,
+                costUSD = 0.0,  // Self-hosted is free
+                quotaUsed = 0,  // No quota for self-hosted
+                provider = "ListenAI (Kokoro)"
+            ),
+            metadata = SynthesisMetadata(
+                voiceId = voice.id,
+                voiceName = voice.name,
+                provider = "ListenAI",
+                startedAt = startTime,
+                completedAt = endTime,
+                inputCharacterCount = totalText.length,
+                outputSampleRate = 24000
+            )
+        )
+    }
+
+    /**
+     * Synthesize text using a cloned voice via Chatterbox.
+     * Uses the /api/tts/cloned endpoint which requires the voice ID and audio URL.
+     *
+     * @param text The text to synthesize
+     * @param voiceId The cloned voice ID (UUID from cloned_voices table)
+     * @param voiceUrl The URL to the reference audio file (from Supabase Storage)
+     * @param speed Playback speed multiplier (0.5 - 2.0, default 1.0)
+     * @return SynthesisResult containing the audio file
+     */
+    suspend fun synthesizeCloned(
+        text: String,
+        voiceId: String,
+        voiceUrl: String,
+        speed: Float = 1.0f,
+        onProgress: (SynthesisProgress) -> Unit = {}
+    ): SynthesisResult = withContext(Dispatchers.IO) {
+        if (text.isEmpty()) {
+            throw TTSError.TextEmpty
+        }
+
+        val startTime = System.currentTimeMillis()
+
+        onProgress(SynthesisProgress.INITIAL.copy(
+            statusMessage = "Connecting to cloned voice service...",
+            totalCharacters = text.length
+        ))
+
+        // Build request body for cloned voice synthesis
+        val clampedSpeed = speed.coerceIn(0.5f, 2.0f)
+
+        android.util.Log.d("SelfHostedTTS", "Synthesizing cloned voice: voiceId=$voiceId, voiceUrl=$voiceUrl, speed=$clampedSpeed, textLength=${text.length}")
+
+        val requestBody = JSONObject().apply {
+            put("text", text)
+            put("voice_id", voiceId)
+            put("voice_url", voiceUrl)
+            put("speed", clampedSpeed)
+        }
+
+        // Use a client with longer timeout for cloned voice synthesis
+        val clonedHttpClient = OkHttpClient.Builder()
+            .dns(customDns)
+            .connectTimeout(60, TimeUnit.SECONDS)  // Longer connect timeout
+            .readTimeout(180, TimeUnit.SECONDS)    // 3 min read timeout for cloning
+            .writeTimeout(30, TimeUnit.SECONDS)
+            .build()
+
+        val request = Request.Builder()
+            .url("$baseUrl/api/tts/cloned")
+            .post(requestBody.toString().toRequestBody("application/json".toMediaType()))
+            .addHeader("Content-Type", "application/json")
+            .addHeader("Accept", "audio/wav")
+            .addHeader("Authorization", "Bearer ")  // Empty token like iOS - backend defaults to pro user
+            .build()
+
+        onProgress(SynthesisProgress.INITIAL.copy(
+            overallProgress = 0.1f,
+            statusMessage = "Synthesizing with cloned voice...",
+            totalCharacters = text.length
+        ))
+
+        android.util.Log.d("SelfHostedTTS", "Making request to $baseUrl/api/tts/cloned")
+
+        val response = try {
+            clonedHttpClient.newCall(request).execute()
+        } catch (e: java.net.UnknownHostException) {
+            android.util.Log.e("SelfHostedTTS", "DNS resolution failed: ${e.message}")
+            throw TTSError.NetworkError("Unable to connect to TTS server. Please check your internet connection.")
+        } catch (e: java.net.SocketTimeoutException) {
+            android.util.Log.e("SelfHostedTTS", "Connection timeout: ${e.message}")
+            throw TTSError.NetworkError("Connection timed out. Cloned voice synthesis can take longer.")
+        } catch (e: java.io.IOException) {
+            android.util.Log.e("SelfHostedTTS", "Network error: ${e.message}")
+            throw TTSError.NetworkError("Network error: ${e.message}")
+        }
+
+        android.util.Log.d("SelfHostedTTS", "Cloned voice response code: ${response.code}")
+
+        if (!response.isSuccessful) {
+            val errorBody = response.body?.string() ?: "Unknown error"
+            android.util.Log.e("SelfHostedTTS", "Error response: $errorBody")
+            handleErrorResponse(response.code, errorBody, text.length)
+        }
+
+        // Get audio data directly (cloned endpoint returns audio directly, not a job)
+        val audioData = response.body?.bytes() ?: throw TTSError.AudioEncodingFailed("Empty audio response")
+        android.util.Log.d("SelfHostedTTS", "Received cloned voice audio: ${audioData.size} bytes")
+
+        onProgress(SynthesisProgress(
+            overallProgress = 0.9f,
+            currentSectionIndex = 0,
+            sectionsCompleted = 0,
+            totalSections = 1,
+            statusMessage = "Saving audio...",
+            totalCharacters = text.length,
+            charactersProcessed = text.length
+        ))
+
+        // Save to file
+        val outputFile = File(context.cacheDir, "tts_cloned_${UUID.randomUUID()}.wav")
+        outputFile.writeBytes(audioData)
+
+        val endTime = System.currentTimeMillis()
+
+        // Estimate duration from text length
+        val wordCount = text.split("\\s+".toRegex()).size
+        val duration = (wordCount / 150.0) * 60.0
+
+        onProgress(SynthesisProgress(
+            overallProgress = 1.0f,
+            currentSectionIndex = 0,
+            sectionsCompleted = 1,
+            totalSections = 1,
+            statusMessage = "Complete",
+            totalCharacters = text.length,
+            charactersProcessed = text.length
+        ))
+
+        SynthesisResult(
+            audioFile = outputFile,
+            duration = duration,
+            sectionTimestamps = emptyList(),
+            wordTimestamps = null,
+            fileSizeBytes = outputFile.length(),
+            cost = SynthesisCost(
+                charactersUsed = text.length,
+                costUSD = 0.0,
+                quotaUsed = 0,
+                provider = "ListenAI (Chatterbox)"
+            ),
+            metadata = SynthesisMetadata(
+                voiceId = voiceId,
+                voiceName = "Cloned Voice",
+                provider = "ListenAI",
+                startedAt = startTime,
+                completedAt = endTime,
+                inputCharacterCount = text.length,
+                outputSampleRate = 24000
+            )
+        )
     }
 
     /**
@@ -244,7 +660,7 @@ class SelfHostedTTSService(private val context: Context) : TTSService {
 
         for (i in 0 until results.length()) {
             val chunkResult = results.getJSONObject(i)
-            val audioBase64 = chunkResult.optString("audio_base64", null)
+            val audioBase64 = chunkResult.optString("audio_base64").takeIf { it.isNotEmpty() }
             if (audioBase64 != null) {
                 val audioData = android.util.Base64.decode(audioBase64, android.util.Base64.DEFAULT)
                 onChunkReady(audioData, i, totalChunks)
@@ -252,15 +668,28 @@ class SelfHostedTTSService(private val context: Context) : TTSService {
         }
     }
 
-    private fun handleErrorResponse(code: Int, body: String) {
-        val message = try {
-            JSONObject(body).optString("detail") ?: JSONObject(body).optString("error") ?: body
+    private fun handleErrorResponse(code: Int, body: String, requiredChars: Int = 0) {
+        val json = try {
+            JSONObject(body)
         } catch (e: Exception) {
-            body
+            null
         }
+
+        val message = json?.optString("message")
+            ?: json?.optString("detail")
+            ?: json?.optString("error")
+            ?: body
 
         when (code) {
             400 -> throw TTSError.InvalidConfiguration(message)
+            402 -> {
+                // Quota exceeded - parse the details
+                val details = json?.optJSONObject("details")
+                val dailyLimit = details?.optInt("daily_limit", 4000) ?: 4000
+                val dailyUsed = details?.optInt("daily_used", 0) ?: 0
+                val remaining = (dailyLimit - dailyUsed).coerceAtLeast(0)
+                throw TTSError.QuotaExceeded(remaining, requiredChars)
+            }
             429 -> throw TTSError.RateLimited(60.0)
             500, 502, 503, 504 -> throw TTSError.ApiError(provider.displayName, code, "Service temporarily unavailable")
             else -> throw TTSError.ApiError(provider.displayName, code, message)
@@ -304,125 +733,10 @@ class SelfHostedTTSService(private val context: Context) : TTSService {
     }
 
     override suspend fun availableVoices(): List<VoicePreset> {
-        return try {
-            withContext(Dispatchers.IO) {
-                val request = Request.Builder()
-                    .url("$baseUrl/voices")
-                    .get()
-                    .build()
-
-                val response = httpClient.newCall(request).execute()
-                if (!response.isSuccessful) {
-                    return@withContext getDefaultVoices()
-                }
-
-                val responseBody = response.body?.string() ?: return@withContext getDefaultVoices()
-                val json = JSONObject(responseBody)
-                val voicesArray = json.getJSONArray("voices")
-
-                val voices = mutableListOf<VoicePreset>()
-                for (i in 0 until voicesArray.length()) {
-                    val voiceJson = voicesArray.getJSONObject(i)
-                    voices.add(
-                        VoicePreset(
-                            id = voiceJson.getString("id"),
-                            name = voiceJson.getString("name"),
-                            isBuiltIn = true,
-                            provider = VoiceProvider.SELF_HOSTED,
-                            providerVoiceId = voiceJson.getString("id"),
-                            kokoroVoiceId = voiceJson.getString("id"),
-                            quality = VoiceQuality.STANDARD,
-                            gender = parseGender(voiceJson.optString("gender", "neutral")),
-                            style = VoiceStyle.NEUTRAL,
-                            category = VoiceCategory.NARRATOR,
-                            tier = VoiceTier.FREE,
-                            languageCode = voiceJson.optString("language", "en")
-                        )
-                    )
-                }
-                voices
-            }
-        } catch (e: Exception) {
-            getDefaultVoices()
-        }
-    }
-
-    private fun parseGender(gender: String): VoiceGender {
-        return when (gender.lowercase()) {
-            "male" -> VoiceGender.MALE
-            "female" -> VoiceGender.FEMALE
-            else -> VoiceGender.NEUTRAL
-        }
-    }
-
-    private fun getDefaultVoices(): List<VoicePreset> {
-        return listOf(
-            VoicePreset(
-                id = "af_nicole",
-                name = "Nicole",
-                isBuiltIn = true,
-                provider = VoiceProvider.SELF_HOSTED,
-                providerVoiceId = "af_nicole",
-                kokoroVoiceId = "af_nicole",
-                quality = VoiceQuality.STANDARD,
-                gender = VoiceGender.FEMALE,
-                style = VoiceStyle.CONVERSATIONAL,
-                category = VoiceCategory.NARRATOR,
-                tier = VoiceTier.FREE
-            ),
-            VoicePreset(
-                id = "am_adam",
-                name = "Adam",
-                isBuiltIn = true,
-                provider = VoiceProvider.SELF_HOSTED,
-                providerVoiceId = "am_adam",
-                kokoroVoiceId = "am_adam",
-                quality = VoiceQuality.STANDARD,
-                gender = VoiceGender.MALE,
-                style = VoiceStyle.NARRATIVE,
-                category = VoiceCategory.NARRATOR,
-                tier = VoiceTier.FREE
-            ),
-            VoicePreset(
-                id = "af_sarah",
-                name = "Sarah",
-                isBuiltIn = true,
-                provider = VoiceProvider.SELF_HOSTED,
-                providerVoiceId = "af_sarah",
-                kokoroVoiceId = "af_sarah",
-                quality = VoiceQuality.STANDARD,
-                gender = VoiceGender.FEMALE,
-                style = VoiceStyle.CALM,
-                category = VoiceCategory.EDUCATOR,
-                tier = VoiceTier.FREE
-            ),
-            VoicePreset(
-                id = "af_sky",
-                name = "Sky",
-                isBuiltIn = true,
-                provider = VoiceProvider.SELF_HOSTED,
-                providerVoiceId = "af_sky",
-                kokoroVoiceId = "af_sky",
-                quality = VoiceQuality.STANDARD,
-                gender = VoiceGender.FEMALE,
-                style = VoiceStyle.NARRATIVE,
-                category = VoiceCategory.AUDIOBOOK,
-                tier = VoiceTier.FREE
-            ),
-            VoicePreset(
-                id = "am_michael",
-                name = "Michael",
-                isBuiltIn = true,
-                provider = VoiceProvider.SELF_HOSTED,
-                providerVoiceId = "am_michael",
-                kokoroVoiceId = "am_michael",
-                quality = VoiceQuality.STANDARD,
-                gender = VoiceGender.MALE,
-                style = VoiceStyle.NEWS,
-                category = VoiceCategory.NEWS,
-                tier = VoiceTier.FREE
-            )
-        )
+        // Return built-in voices with proper Kokoro IDs (matching iOS)
+        // These voices have correct gender, style, and avatar emojis
+        android.util.Log.d("SelfHostedTTS", "Returning built-in voices (${VoicePreset.builtInVoices.size} voices)")
+        return VoicePreset.builtInVoices
     }
 
     override suspend fun downloadVoice(voice: VoicePreset) {

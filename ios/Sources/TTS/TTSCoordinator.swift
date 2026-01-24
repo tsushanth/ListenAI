@@ -334,11 +334,11 @@ final class TTSCoordinator: ObservableObject {
         // Default mapping for common providers
         switch provider {
         case .openAI:
-            // Map to OpenAI voices
+            // Map to Premium AI voices (OpenAI backend, renamed for China compliance)
             switch voice.gender {
             case .male:
                 return VoicePreset(
-                    name: "OpenAI Echo",
+                    name: "Echo",
                     provider: .openAI,
                     providerVoiceID: "echo",
                     providerModelID: "tts-1-hd",
@@ -348,7 +348,7 @@ final class TTSCoordinator: ObservableObject {
                 )
             case .female:
                 return VoicePreset(
-                    name: "OpenAI Nova",
+                    name: "Nova",
                     provider: .openAI,
                     providerVoiceID: "nova",
                     providerModelID: "tts-1-hd",
@@ -358,7 +358,7 @@ final class TTSCoordinator: ObservableObject {
                 )
             case .neutral:
                 return VoicePreset(
-                    name: "OpenAI Alloy",
+                    name: "Alloy",
                     provider: .openAI,
                     providerVoiceID: "alloy",
                     providerModelID: "tts-1-hd",
@@ -598,8 +598,9 @@ final class TTSCoordinator: ObservableObject {
                                 voiceToUse.kokoroVoiceID == nil
 
             if isClonedVoice {
-                // Synthesize using cloned voice via Chatterbox
+                // Synthesize using cloned voice via the selected cloning model (Chatterbox or XTTS)
                 let voiceId = voiceToUse.providerVoiceID
+                let cloningModel = presetManager.voiceCloningModel.rawValue
 
                 // Fetch the cloned voice details to get the audio URL
                 let clonedVoices = try await VoiceCloningService.shared.listClonedVoices()
@@ -609,12 +610,13 @@ final class TTSCoordinator: ObservableObject {
                     throw TTSError.voiceNotAvailable(voiceName: voiceToUse.name)
                 }
 
-                print("[TTS] Synthesizing via Chatterbox with cloned voice: \(voiceId)")
+                print("[TTS] Synthesizing via \(cloningModel) with cloned voice: \(voiceId)")
                 audioResult = try await service.synthesizeCloned(
                     text: text,
                     voiceId: voiceId,
                     voiceUrl: voiceUrl,
-                    speed: Double(defaultSpeed)
+                    speed: Double(defaultSpeed),
+                    model: cloningModel
                 )
             } else {
                 // Standard or premium voice synthesis

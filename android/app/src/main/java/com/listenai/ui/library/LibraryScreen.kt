@@ -24,80 +24,22 @@ import com.listenai.R
 import com.listenai.data.models.Article
 import com.listenai.data.models.SourceType
 import com.listenai.ui.theme.*
-import java.util.Date
+import org.koin.androidx.compose.koinViewModel
 
 enum class LibraryFilter {
-    ALL, IN_PROGRESS, FAVORITES, ARCHIVED
+    ALL, IN_PROGRESS, FAVORITES, EMAIL, ARCHIVED
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LibraryScreen(
-    onArticleClick: (String) -> Unit = {}
+    viewModel: LibraryViewModel = koinViewModel(),
+    onArticleClick: (String) -> Unit = {},
+    onAddContent: () -> Unit = {}
 ) {
-    var selectedFilter by remember { mutableStateOf(LibraryFilter.ALL) }
-
-    // Sample data - in real app would come from ViewModel
-    val articles = remember {
-        listOf(
-            Article(
-                id = "1",
-                title = "Understanding Machine Learning Fundamentals",
-                author = "Tech Insights",
-                siteName = "techinsights.com",
-                publishDate = Date(),
-                rawText = "Machine learning is a subset of artificial intelligence...",
-                wordCount = 1500,
-                language = "en",
-                heroImageUrl = null,
-                sourceType = SourceType.WEB,
-                sourceUrl = "https://example.com/ml-fundamentals",
-                sourceFileName = null,
-                audioFileUrl = null,
-                selectedVoiceId = null,
-                listenedDuration = 180000,
-                totalDuration = 600000
-            ),
-            Article(
-                id = "2",
-                title = "The Future of Renewable Energy",
-                author = "Green Planet",
-                siteName = null,
-                publishDate = null,
-                rawText = "Renewable energy sources are becoming increasingly important...",
-                wordCount = 2000,
-                language = "en",
-                heroImageUrl = null,
-                sourceType = SourceType.PDF,
-                sourceUrl = null,
-                sourceFileName = "renewable_energy.pdf",
-                audioFileUrl = null,
-                selectedVoiceId = null,
-                listenedDuration = 0,
-                totalDuration = 900000
-            ),
-            Article(
-                id = "3",
-                title = "Introduction to Quantum Computing",
-                author = "Science Daily",
-                siteName = "sciencedaily.com",
-                publishDate = Date(),
-                rawText = "Quantum computing represents a fundamental shift...",
-                wordCount = 1000,
-                language = "en",
-                heroImageUrl = null,
-                sourceType = SourceType.WEB,
-                sourceUrl = "https://example.com/quantum",
-                sourceFileName = null,
-                audioFileUrl = "/path/to/audio.mp3",
-                selectedVoiceId = "alloy",
-                isFavorite = true,
-                listenedDuration = 450000,
-                totalDuration = 450000,
-                isCompleted = true
-            )
-        )
-    }
+    val articles by viewModel.articles.collectAsState()
+    val articleCount by viewModel.articleCount.collectAsState()
+    val selectedFilter by viewModel.selectedFilter.collectAsState()
 
     Scaffold(
         topBar = {
@@ -116,13 +58,26 @@ fun LibraryScreen(
                         AIBadge()
 
                         // Counter Badge
-                        CounterBadge(count = articles.size)
+                        CounterBadge(count = articleCount)
                     }
                 },
                 actions = {
                     ProBadge()
                 }
             )
+        },
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = onAddContent,
+                containerColor = Blue,
+                contentColor = Color.White,
+                modifier = Modifier.padding(16.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = "Add content"
+                )
+            }
         }
     ) { paddingValues ->
         Column(
@@ -133,20 +88,112 @@ fun LibraryScreen(
             // Filter Chips
             FilterChipsRow(
                 selectedFilter = selectedFilter,
-                onFilterSelected = { selectedFilter = it }
+                onFilterSelected = { viewModel.setFilter(it) }
             )
 
-            // Articles List
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                items(articles) { article ->
-                    ArticleCard(
-                        article = article,
-                        onClick = { onArticleClick(article.id) }
+            // Articles List or Empty State
+            if (articles.isEmpty()) {
+                EmptyLibraryState(
+                    selectedFilter = selectedFilter,
+                    onAddContent = onAddContent
+                )
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 88.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(articles, key = { it.id }) { article ->
+                        ArticleCard(
+                            article = article,
+                            onClick = { onArticleClick(article.id) },
+                            onFavorite = { viewModel.toggleFavorite(article) },
+                            onArchive = { viewModel.toggleArchive(article) },
+                            onDelete = { viewModel.deleteArticle(article) }
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun EmptyLibraryState(
+    selectedFilter: LibraryFilter,
+    onAddContent: () -> Unit = {}
+) {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            modifier = Modifier.padding(32.dp)
+        ) {
+            val (icon, title, description) = when (selectedFilter) {
+                LibraryFilter.ALL -> Triple(
+                    Icons.Default.Article,
+                    "No Articles Yet",
+                    "Add articles from web links, documents, or paste text"
+                )
+                LibraryFilter.IN_PROGRESS -> Triple(
+                    Icons.Default.PlayCircle,
+                    "Nothing in Progress",
+                    "Start listening to see your in-progress items here"
+                )
+                LibraryFilter.FAVORITES -> Triple(
+                    Icons.Default.Favorite,
+                    "No Favorites",
+                    "Mark articles as favorites to find them quickly"
+                )
+                LibraryFilter.EMAIL -> Triple(
+                    Icons.Default.Email,
+                    "No Emails",
+                    "Import emails from Gmail to listen to them"
+                )
+                LibraryFilter.ARCHIVED -> Triple(
+                    Icons.Default.Archive,
+                    "No Archived Articles",
+                    "Archive articles you've finished to keep your library clean"
+                )
+            }
+
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                modifier = Modifier.size(64.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+            )
+
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            Text(
+                text = description,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            )
+
+            // Add Content button (only for ALL filter)
+            if (selectedFilter == LibraryFilter.ALL) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Button(
+                    onClick = onAddContent,
+                    colors = ButtonDefaults.buttonColors(containerColor = Blue)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
                     )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Add Content")
                 }
             }
         }
@@ -254,6 +301,16 @@ private fun FilterChipsRow(
         }
         item {
             FilterChip(
+                selected = selectedFilter == LibraryFilter.EMAIL,
+                onClick = { onFilterSelected(LibraryFilter.EMAIL) },
+                label = { Text("Emails") },
+                leadingIcon = if (selectedFilter == LibraryFilter.EMAIL) {
+                    { Icon(Icons.Default.Email, contentDescription = null, modifier = Modifier.size(18.dp)) }
+                } else null
+            )
+        }
+        item {
+            FilterChip(
                 selected = selectedFilter == LibraryFilter.ARCHIVED,
                 onClick = { onFilterSelected(LibraryFilter.ARCHIVED) },
                 label = { Text(stringResource(R.string.filter_archived)) }
@@ -267,8 +324,13 @@ private fun FilterChipsRow(
 @Composable
 private fun ArticleCard(
     article: Article,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onFavorite: () -> Unit,
+    onArchive: () -> Unit,
+    onDelete: () -> Unit
 ) {
+    var showMenu by remember { mutableStateOf(false) }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -305,7 +367,7 @@ private fun ArticleCard(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                // Title with dots prefix
+                // Title with dots prefix and favorite indicator
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                     verticalAlignment = Alignment.CenterVertically
@@ -320,8 +382,17 @@ private fun ArticleCard(
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Medium,
                         maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f)
                     )
+                    if (article.isFavorite) {
+                        Icon(
+                            imageVector = Icons.Default.Favorite,
+                            contentDescription = "Favorite",
+                            modifier = Modifier.size(16.dp),
+                            tint = Red
+                        )
+                    }
                 }
 
                 // Author/Source
@@ -341,7 +412,7 @@ private fun ArticleCard(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         LinearProgressIndicator(
-                            progress = progress,
+                            progress = { progress },
                             modifier = Modifier
                                 .weight(1f)
                                 .height(4.dp)
@@ -357,16 +428,69 @@ private fun ArticleCard(
                 }
             }
 
-            // Menu button
-            IconButton(
-                onClick = { /* Show menu */ },
-                modifier = Modifier.size(32.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.MoreVert,
-                    contentDescription = stringResource(R.string.more_options),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+            // Menu button with dropdown
+            Box {
+                IconButton(
+                    onClick = { showMenu = true },
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.MoreVert,
+                        contentDescription = stringResource(R.string.more_options),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                DropdownMenu(
+                    expanded = showMenu,
+                    onDismissRequest = { showMenu = false }
+                ) {
+                    DropdownMenuItem(
+                        text = {
+                            Text(if (article.isFavorite) "Remove from Favorites" else "Add to Favorites")
+                        },
+                        onClick = {
+                            onFavorite()
+                            showMenu = false
+                        },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = if (article.isFavorite) Icons.Default.HeartBroken else Icons.Default.Favorite,
+                                contentDescription = null
+                            )
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = {
+                            Text(if (article.isArchived) "Unarchive" else "Archive")
+                        },
+                        onClick = {
+                            onArchive()
+                            showMenu = false
+                        },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = if (article.isArchived) Icons.Default.Unarchive else Icons.Default.Archive,
+                                contentDescription = null
+                            )
+                        }
+                    )
+                    Divider()
+                    DropdownMenuItem(
+                        text = { Text("Delete") },
+                        onClick = {
+                            onDelete()
+                            showMenu = false
+                        },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.Delete,
+                                contentDescription = null,
+                                tint = Red
+                            )
+                        }
+                    )
+                }
             }
         }
     }
@@ -378,6 +502,7 @@ private fun getSourceTypeIcon(sourceType: SourceType) = when (sourceType) {
     SourceType.CLIPBOARD -> Icons.Default.ContentPaste
     SourceType.FILE -> Icons.Default.Folder
     SourceType.MANUAL -> Icons.Default.EditNote
+    SourceType.EMAIL -> Icons.Default.Email
 }
 
 private fun getSourceTypeColor(sourceType: SourceType) = when (sourceType) {
@@ -386,6 +511,7 @@ private fun getSourceTypeColor(sourceType: SourceType) = when (sourceType) {
     SourceType.CLIPBOARD -> Purple
     SourceType.FILE -> Blue
     SourceType.MANUAL -> Green
+    SourceType.EMAIL -> Coral
 }
 
 private fun formatDuration(millis: Long): String {

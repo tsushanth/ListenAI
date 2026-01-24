@@ -5,22 +5,21 @@ import com.listenai.data.models.VoicePreset
 import com.listenai.data.models.VoiceProvider
 import com.listenai.data.models.VoiceQuality
 import com.listenai.service.usage.UsageTrackerService
+import com.listenai.service.voice.VoiceCloningService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.withContext
-import java.io.File
-import java.util.UUID
 
 /**
- * Coordinates TTS synthesis across different quality levels.
- * Routes to Kokoro (standard) or ElevenLabs (premium) based on selected quality.
+ * Coordinates TTS synthesis using self-hosted Kokoro TTS (GPU-accelerated).
+ * All voices use the same high-quality backend for unlimited usage.
  */
 class TTSCoordinator(
     private val context: Context,
     private val usageTracker: UsageTrackerService
 ) {
-    // Quality preference
+    // Quality preference (now single quality level)
     private val _selectedQuality = MutableStateFlow(VoiceQuality.STANDARD)
     val selectedQuality: StateFlow<VoiceQuality> = _selectedQuality
 
@@ -28,19 +27,18 @@ class TTSCoordinator(
     var defaultSpeed: Float = 1.0f
     var defaultPitch: Float = 1.0f
 
-    // Services
+    // Services - using self-hosted Kokoro TTS
     private val selfHostedService by lazy { SelfHostedTTSService.getInstance(context) }
-    private val cloudService by lazy { CloudTTSService(context) }
 
     /**
-     * Set the preferred quality level
+     * Set the preferred quality level (kept for API compatibility)
      */
     fun setQuality(quality: VoiceQuality) {
         _selectedQuality.value = quality
     }
 
     /**
-     * Synthesize text with the selected quality
+     * Synthesize text using Kokoro TTS
      */
     suspend fun synthesize(
         text: String,
@@ -55,25 +53,81 @@ class TTSCoordinator(
             pitch = if (options.pitch == SynthesisOptions.DEFAULT.pitch) defaultPitch else options.pitch
         )
 
-        when (quality) {
-            VoiceQuality.STANDARD -> synthesizeStandard(text, voice, adjustedOptions, onProgress)
-            VoiceQuality.PREMIUM -> synthesizePremium(text, voice, adjustedOptions, onProgress)
-        }
+        // All synthesis uses self-hosted Kokoro
+        synthesizeWithKokoro(text, voice, adjustedOptions, onProgress)
     }
 
     /**
-     * Synthesize using standard quality (Kokoro)
+     * Synthesize using Kokoro TTS (GPU-accelerated, unlimited)
+     * Routes cloned voices to the dedicated Chatterbox endpoint.
      */
-    private suspend fun synthesizeStandard(
+    private suspend fun synthesizeWithKokoro(
         text: String,
         voice: VoicePreset,
         options: SynthesisOptions,
         onProgress: (SynthesisProgress) -> Unit
     ): SynthesisResult {
-        // Get the Kokoro voice ID for this voice
-        val kokoroVoice = voice.copy(
+        // Check if this is a cloned voice (ID starts with "cloned_" or uses Chatterbox model)
+        val isClonedVoice = voice.id.startsWith("cloned_") || voice.providerModelId == "chatterbox"
+
+        android.util.Log.d("TTSCoordinator", "Synthesizing: voice=${voice.name}, voiceId=${voice.providerVoiceId}, isCloned=$isClonedVoice, textLength=${text.length}")
+
+        // Route cloned voices to the dedicated cloned voice synthesis endpoint
+        if (isClonedVoice) {
+            val voiceId = voice.providerVoiceId
+
+            if (voiceId.isNullOrEmpty()) {
+                android.util.Log.e("TTSCoordinator", "Cloned voice missing voiceId: voiceId=$voiceId")
+                throw TTSError.InvalidConfiguration("Cloned voice configuration is incomplete")
+            }
+
+            // Fetch fresh cloned voice details from server (like iOS does)
+            // This ensures we have the correct audio URL
+            val voiceCloningService = VoiceCloningService.getInstance(context)
+            val clonedVoices = try {
+                voiceCloningService.listClonedVoices()
+            } catch (e: Exception) {
+                android.util.Log.e("TTSCoordinator", "Failed to fetch cloned voices: ${e.message}")
+                emptyList()
+            }
+
+            val clonedVoice = clonedVoices.find { it.id == voiceId }
+            val voiceUrl = clonedVoice?.audioUrl ?: voice.sampleAudioUrl
+
+            if (voiceUrl.isNullOrEmpty()) {
+                android.util.Log.e("TTSCoordinator", "Cloned voice missing voiceUrl: voiceId=$voiceId, clonedVoice=$clonedVoice")
+                throw TTSError.InvalidConfiguration("Cloned voice audio URL not found")
+            }
+
+            android.util.Log.d("TTSCoordinator", "Using cloned voice synthesis: voiceId=$voiceId, voiceUrl=$voiceUrl")
+
+            val result = selfHostedService.synthesizeCloned(
+                text = text,
+                voiceId = voiceId,
+                voiceUrl = voiceUrl,
+                speed = options.speed,
+                onProgress = onProgress
+            )
+
+            // Track usage
+            usageTracker.trackStandardUsage(
+                charactersUsed = text.length,
+                voiceId = voiceId,
+                articleId = null,
+                articleTitle = null
+            )
+
+            return result
+        }
+
+        // For built-in voices, use Kokoro
+        val voiceId = voice.kokoroVoiceId ?: voice.getVoiceIdForQuality(VoiceQuality.STANDARD)
+
+        android.util.Log.d("TTSCoordinator", "Using Kokoro synthesis: voiceId=$voiceId")
+
+        val synthVoice = voice.copy(
             provider = VoiceProvider.SELF_HOSTED,
-            providerVoiceId = voice.kokoroVoiceId ?: voice.getVoiceIdForQuality(VoiceQuality.STANDARD)
+            providerVoiceId = voiceId
         )
 
         val section = TextSection(
@@ -85,51 +139,15 @@ class TTSCoordinator(
 
         val result = selfHostedService.synthesize(
             sections = listOf(section),
-            voice = kokoroVoice,
+            voice = synthVoice,
             options = options,
             onProgress = onProgress
         )
 
-        // Track standard usage (no quota impact)
+        // Track usage (no quota impact - unlimited)
         usageTracker.trackStandardUsage(
             charactersUsed = text.length,
-            voiceId = kokoroVoice.providerVoiceId,
-            articleId = null,
-            articleTitle = null
-        )
-
-        return result
-    }
-
-    /**
-     * Synthesize using premium quality (ElevenLabs)
-     * Note: Server handles all quota enforcement - client no longer checks quota
-     */
-    private suspend fun synthesizePremium(
-        text: String,
-        voice: VoicePreset,
-        options: SynthesisOptions,
-        onProgress: (SynthesisProgress) -> Unit
-    ): SynthesisResult {
-        // Server handles all quota enforcement - just proceed with synthesis
-        val result = cloudService.synthesize(
-            sections = listOf(
-                TextSection(
-                    index = 0,
-                    type = SectionType.PARAGRAPH,
-                    text = text,
-                    characterRange = 0 until text.length
-                )
-            ),
-            voice = voice,
-            options = options,
-            onProgress = onProgress
-        )
-
-        // Track premium usage for analytics (not for blocking)
-        usageTracker.trackPremiumUsage(
-            charactersUsed = text.length,
-            voiceId = voice.providerVoiceId,
+            voiceId = voiceId,
             articleId = null,
             articleTitle = null
         )
@@ -146,83 +164,45 @@ class TTSCoordinator(
         quality: VoiceQuality = _selectedQuality.value,
         onChunkReady: suspend (audioData: ByteArray, chunkIndex: Int, totalChunks: Int) -> Unit
     ) {
-        when (quality) {
-            VoiceQuality.STANDARD -> {
-                selfHostedService.synthesizeLong(
-                    text = text,
-                    voice = voice,
-                    speed = defaultSpeed,
-                    onChunkReady = onChunkReady
-                )
+        selfHostedService.synthesizeLong(
+            text = text,
+            voice = voice,
+            speed = defaultSpeed,
+            onChunkReady = onChunkReady
+        )
 
-                // Track usage
-                usageTracker.trackStandardUsage(
-                    charactersUsed = text.length,
-                    voiceId = voice.kokoroVoiceId ?: voice.providerVoiceId,
-                    articleId = null,
-                    articleTitle = null
-                )
-            }
-            VoiceQuality.PREMIUM -> {
-                // For premium, synthesize as single request
-                val result = synthesizePremium(
-                    text = text,
-                    voice = voice,
-                    options = SynthesisOptions.DEFAULT.copy(speed = defaultSpeed),
-                    onProgress = {}
-                )
-
-                // Return as single chunk
-                val audioData = result.audioFile.readBytes()
-                onChunkReady(audioData, 0, 1)
-            }
-        }
+        // Track usage
+        usageTracker.trackStandardUsage(
+            charactersUsed = text.length,
+            voiceId = voice.kokoroVoiceId ?: voice.providerVoiceId,
+            articleId = null,
+            articleTitle = null
+        )
     }
 
     /**
      * Estimate synthesis before processing
-     * Note: Server handles quota enforcement - estimates are for display only
      */
     fun estimate(
         text: String,
         voice: VoicePreset,
         quality: VoiceQuality = _selectedQuality.value
     ): SynthesisEstimate {
-        return when (quality) {
-            VoiceQuality.STANDARD -> selfHostedService.estimate(text, voice)
-            VoiceQuality.PREMIUM -> {
-                val cloudEstimate = cloudService.estimate(text, voice)
-                // Server handles quota - always report as allowed
-                cloudEstimate.copy(
-                    quotaImpact = QuotaImpact(
-                        charactersToUse = text.length,
-                        remainingAfter = Int.MAX_VALUE,
-                        willExceedQuota = false  // Server handles enforcement
-                    )
-                )
-            }
-        }
+        return selfHostedService.estimate(text, voice)
     }
 
     /**
-     * Get available voices for the current quality level
+     * Get available voices
      */
     suspend fun getAvailableVoices(quality: VoiceQuality = _selectedQuality.value): List<VoicePreset> {
-        return when (quality) {
-            VoiceQuality.STANDARD -> selfHostedService.availableVoices()
-            VoiceQuality.PREMIUM -> cloudService.availableVoices()
-        }
+        return selfHostedService.availableVoices()
     }
 
     /**
-     * Check if a quality level is available
-     * Note: Server handles quota enforcement - just check if service is reachable
+     * Check if synthesis is available
      */
     suspend fun isQualityAvailable(quality: VoiceQuality): Boolean {
-        return when (quality) {
-            VoiceQuality.STANDARD -> selfHostedService.isAvailable()
-            VoiceQuality.PREMIUM -> cloudService.isAvailable()  // Server handles quota
-        }
+        return selfHostedService.isAvailable()
     }
 
     /**

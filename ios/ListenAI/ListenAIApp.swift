@@ -24,12 +24,11 @@ struct ListenAIApp: App {
 struct RootView: View {
     // State to track initialization - starts false, set to true in task
     @State private var isReady = false
-    @State private var hasCompletedOnboarding = false
 
     var body: some View {
         Group {
             if isReady {
-                MainContentView(hasCompletedOnboarding: hasCompletedOnboarding)
+                MainContentView()
             } else {
                 // Launch screen while initializing
                 LaunchScreenView()
@@ -44,9 +43,8 @@ struct RootView: View {
 
             // Now safe to access MainActor singletons
             await MainActor.run {
-                hasCompletedOnboarding = OnboardingManager.shared.hasCompletedOnboarding
                 isReady = true
-                print("[App] RootView ready, onboarding completed: \(hasCompletedOnboarding)")
+                print("[App] RootView ready, onboarding completed: \(OnboardingManager.shared.hasCompletedOnboarding)")
             }
         }
     }
@@ -111,7 +109,7 @@ struct LaunchScreenView: View {
                     .font(.system(size: 60))
                     .foregroundStyle(.blue)
 
-                Text("ListenAI")
+                Text("ReadAloud AI")
                     .font(.title.bold())
             }
         }
@@ -122,7 +120,7 @@ struct LaunchScreenView: View {
 
 /// Container that holds the main app content with environment objects
 struct MainContentView: View {
-    let hasCompletedOnboarding: Bool
+    @ObservedObject private var onboarding = OnboardingManager.shared
 
     var body: some View {
         // Access singletons directly in body - this is safe because body
@@ -130,7 +128,6 @@ struct MainContentView: View {
         let playback = AudioPlaybackService.shared
         let queue = QueueManager.shared
         let usage = UsageTrackerService.shared
-        let onboarding = OnboardingManager.shared
 
         Group {
             if onboarding.hasCompletedOnboarding {

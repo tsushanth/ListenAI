@@ -1,6 +1,9 @@
 import SwiftUI
 import AVFoundation
 import PhotosUI
+import os.log
+
+private let logger = Logger(subsystem: "com.listenai", category: "VoiceCloning")
 
 // MARK: - Voice Cloning View
 
@@ -9,12 +12,17 @@ import PhotosUI
 struct VoiceCloningView: View {
     @Environment(\.dismiss) private var dismiss
     @StateObject private var viewModel = VoiceCloningViewModel()
-    @StateObject private var storeManager = StoreKitManager.shared
     @State private var showingCloneFlow = false
     @State private var showingUpgradePrompt = false
     @State private var isEditing = false
 
+    // Check premium status without observing to prevent re-renders
+    private var isPremium: Bool {
+        StoreKitManager.shared.isPremium
+    }
+
     var body: some View {
+        let _ = logger.debug("VoiceCloningView body evaluated, showingCloneFlow=\(showingCloneFlow)")
         NavigationStack {
             VStack(spacing: 0) {
                 if viewModel.isLoading {
@@ -84,11 +92,15 @@ struct VoiceCloningView: View {
                 Text(viewModel.errorMessage)
             }
             .fullScreenCover(isPresented: $showingCloneFlow) {
-                VoiceCloningFlowView(onComplete: {
-                    Task {
-                        await viewModel.loadVoices()
-                    }
-                })
+                // Container view that uses the singleton coordinator
+                // The coordinator preserves state even if SwiftUI recreates this view
+                VoiceCloningFlowContainerView()
+            }
+            .onChange(of: showingCloneFlow) { _, isShowing in
+                if !isShowing {
+                    // Clean up the coordinator when the sheet is dismissed
+                    VoiceCloningFlowCoordinator.shared.endFlow()
+                }
             }
             .sheet(isPresented: $showingUpgradePrompt) {
                 VoiceCloningLimitView()
@@ -167,12 +179,27 @@ struct VoiceCloningView: View {
         let maxFreeClones = 0 // Free users get 0 clones
         let maxProClones = 10
 
-        if !storeManager.isPremium && clonedCount >= maxFreeClones {
+        if !isPremium && clonedCount >= maxFreeClones {
             showingUpgradePrompt = true
-        } else if storeManager.isPremium && clonedCount >= maxProClones {
+        } else if isPremium && clonedCount >= maxProClones {
             viewModel.errorMessage = "You've reached the maximum number of voice clones (\(maxProClones))."
             viewModel.showError = true
         } else {
+            logger.info("Starting clone flow")
+            // Initialize the coordinator before showing the sheet
+            // This ensures the view model is ready before the view appears
+            VoiceCloningFlowCoordinator.shared.startFlow(
+                onComplete: { [weak viewModel] in
+                    logger.info("Clone flow completed via coordinator")
+                    showingCloneFlow = false
+                    Task {
+                        await viewModel?.loadVoices()
+                    }
+                },
+                onDismiss: {
+                    showingCloneFlow = false
+                }
+            )
             showingCloneFlow = true
         }
     }
@@ -370,134 +397,292 @@ private struct VoiceCloningLimitView: View {
     }
 }
 
-// MARK: - Voice Cloning Flow View
+// MARK: - Voice Cloning Flow Coordinator (Singleton)
 
-/// Full-screen flow for creating a voice clone.
+/// Singleton coordinator that manages voice cloning flow state.
+/// By holding state in a singleton, we ensure it survives SwiftUI view recreations.
+/// This is the long-term solution to SwiftUI's fullScreenCover recreation issues.
+@MainActor
+final class VoiceCloningFlowCoordinator: ObservableObject {
+    static let shared = VoiceCloningFlowCoordinator()
+
+    /// The view model for the current flow session
+    /// This is created fresh when starting a new flow and preserved until completion
+    @Published private(set) var flowViewModel: VoiceCloningFlowViewModel?
+
+    /// Whether a flow session is currently active
+    var isFlowActive: Bool { flowViewModel != nil }
+
+    /// Callbacks for flow completion
+    var onComplete: (() -> Void)?
+    var onDismiss: (() -> Void)?
+
+    private init() {
+        logger.info("VoiceCloningFlowCoordinator initialized")
+    }
+
+    /// Start a new voice cloning flow
+    func startFlow(onComplete: @escaping () -> Void, onDismiss: @escaping () -> Void) {
+        logger.info("VoiceCloningFlowCoordinator: startFlow called")
+
+        // Create a fresh view model for this flow session
+        let vm = VoiceCloningFlowViewModel()
+        self.flowViewModel = vm
+        self.onComplete = onComplete
+        self.onDismiss = onDismiss
+
+        logger.info("VoiceCloningFlowCoordinator: created flowViewModel with id=\(vm.viewModelId)")
+    }
+
+    /// End the current flow (cleanup)
+    func endFlow() {
+        logger.info("VoiceCloningFlowCoordinator: endFlow called")
+        flowViewModel?.cleanup()
+        flowViewModel = nil
+        onComplete = nil
+        onDismiss = nil
+    }
+
+    /// Complete the flow successfully
+    func completeFlow() {
+        logger.info("VoiceCloningFlowCoordinator: completeFlow called")
+        let completion = onComplete
+        endFlow()
+        completion?()
+    }
+
+    /// Dismiss the flow
+    func dismissFlow() {
+        logger.info("VoiceCloningFlowCoordinator: dismissFlow called")
+        let dismiss = onDismiss
+        endFlow()
+        dismiss?()
+    }
+}
+
+// MARK: - Voice Cloning Flow Container
+
+/// Container view that uses the singleton coordinator for state management.
+/// Even if SwiftUI recreates this view, the coordinator preserves the flow state.
+/// This solves the SwiftUI fullScreenCover recreation issue by keeping state external to the view.
+private struct VoiceCloningFlowContainerView: View {
+    // Observe the singleton coordinator - this is the key to surviving view recreation
+    @ObservedObject private var coordinator = VoiceCloningFlowCoordinator.shared
+
+    var body: some View {
+        let _ = logger.info("VoiceCloningFlowContainerView body, hasVM=\(coordinator.flowViewModel != nil)")
+
+        NavigationStack {
+            if let flowViewModel = coordinator.flowViewModel {
+                let _ = logger.info("VoiceCloningFlowContainerView rendering content, vmId=\(flowViewModel.viewModelId), step=\(String(describing: flowViewModel.currentStep))")
+                VoiceCloningFlowContent(
+                    flowViewModel: flowViewModel,
+                    onComplete: { coordinator.completeFlow() },
+                    onDismiss: { coordinator.dismissFlow() }
+                )
+            } else {
+                // Fallback - show loading while coordinator initializes
+                // This can happen briefly if the view appears before startFlow completes
+                ProgressView()
+                    .onAppear {
+                        logger.warning("VoiceCloningFlowContainerView: no flowViewModel yet, waiting for coordinator")
+                    }
+            }
+        }
+        .onAppear {
+            logger.info("VoiceCloningFlowContainerView onAppear, hasVM=\(coordinator.flowViewModel != nil)")
+        }
+        .onDisappear {
+            logger.info("VoiceCloningFlowContainerView onDisappear")
+            // Note: We don't end the flow here because onDisappear can be called
+            // when the view is recreated, not just when it's truly dismissed.
+            // The parent view handles cleanup via onChange(of: showingCloneFlow)
+        }
+    }
+}
+
+/// Full-screen flow for creating a voice clone (standalone version).
 /// Steps: Intro -> Profile Setup -> Recording -> Processing -> Success
 struct VoiceCloningFlowView: View {
     let onComplete: () -> Void
 
     @Environment(\.dismiss) private var dismiss
     @StateObject private var flowViewModel = VoiceCloningFlowViewModel()
-    @State private var showingImagePicker = false
 
     var body: some View {
         NavigationStack {
-            Group {
-                switch flowViewModel.currentStep {
-                case .intro:
-                    VoiceCloningIntroView(onContinue: {
+            VoiceCloningFlowContent(
+                flowViewModel: flowViewModel,
+                onComplete: onComplete,
+                onDismiss: { dismiss() }
+            )
+        }
+    }
+}
+
+/// Separate content view to prevent @StateObject recreation when sheet is presented
+private struct VoiceCloningFlowContent: View {
+    @ObservedObject var flowViewModel: VoiceCloningFlowViewModel
+    let onComplete: () -> Void
+    let onDismiss: () -> Void
+
+    @State private var showingImagePicker = false
+
+    var body: some View {
+        let _ = logger.debug("VoiceCloningFlowContent body, step=\(String(describing: flowViewModel.currentStep)), isRecording=\(flowViewModel.isRecording), duration=\(flowViewModel.recordingDuration)")
+
+        ZStack {
+            // Use ZStack with id to prevent view recreation
+            switch flowViewModel.currentStep {
+            case .intro:
+                VoiceCloningIntroView(onContinue: {
+                    logger.info("Intro: onContinue tapped, requesting mic permission")
+                    // Request microphone permission on the intro screen
+                    // This prevents the permission dialog from interrupting later screens
+                    Task {
+                        let granted = await flowViewModel.requestMicrophonePermission()
+                        logger.info("Mic permission result: \(granted)")
+                        if granted {
+                            withAnimation {
+                                flowViewModel.currentStep = .profile
+                            }
+                        } else {
+                            flowViewModel.errorMessage = "Microphone access is required for voice cloning. Please enable it in Settings."
+                            withAnimation {
+                                flowViewModel.currentStep = .error
+                            }
+                        }
+                    }
+                })
+
+            case .profile:
+                VoiceProfileSetupView(
+                    voiceName: $flowViewModel.voiceName,
+                    selectedImage: $flowViewModel.profileImage,
+                    showingImagePicker: $showingImagePicker,
+                    onContinue: {
+                        logger.info("Profile: onContinue tapped, moving to recording")
                         withAnimation {
-                            flowViewModel.currentStep = .profile
+                            flowViewModel.currentStep = .recording
                         }
-                    })
+                    }
+                )
 
-                case .profile:
-                    VoiceProfileSetupView(
-                        voiceName: $flowViewModel.voiceName,
-                        selectedImage: $flowViewModel.profileImage,
-                        showingImagePicker: $showingImagePicker,
-                        onContinue: {
+            case .recording:
+                VoiceRecordingView(
+                    recordingDuration: $flowViewModel.recordingDuration,
+                    isRecording: $flowViewModel.isRecording,
+                    recordedAudioURL: $flowViewModel.recordedAudioURL,
+                    isPaused: flowViewModel.isPaused,
+                    onStartRecording: {
+                        logger.info("Recording: onStartRecording tapped")
+                        flowViewModel.startRecording()
+                    },
+                    onStopRecording: {
+                        logger.info("Recording: onStopRecording tapped")
+                        flowViewModel.stopRecording()
+                    },
+                    onPauseRecording: {
+                        logger.info("Recording: onPauseRecording tapped")
+                        flowViewModel.pauseRecording()
+                    },
+                    onResumeRecording: {
+                        logger.info("Recording: onResumeRecording tapped")
+                        flowViewModel.resumeRecording()
+                    },
+                    onContinue: {
+                        logger.info("Recording: onContinue tapped, creating clone")
+                        Task {
+                            await flowViewModel.createClone()
+                        }
+                    }
+                )
+
+            case .processing:
+                VoiceCloningProgressView()
+
+            case .success:
+                VoiceCloningSuccessView(
+                    voiceName: flowViewModel.voiceName,
+                    voiceId: flowViewModel.createdVoiceId,
+                    onDone: {
+                        logger.info("Success: onDone tapped")
+                        onComplete()
+                        onDismiss()
+                    }
+                )
+
+            case .error:
+                VoiceCloningErrorView(
+                    errorMessage: flowViewModel.errorMessage,
+                    onRetry: {
+                        logger.info("Error: onRetry tapped")
+                        withAnimation {
+                            flowViewModel.currentStep = .recording
+                        }
+                    },
+                    onCancel: {
+                        logger.info("Error: onCancel tapped")
+                        onDismiss()
+                    }
+                )
+            }
+        }
+        .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                if flowViewModel.currentStep != .processing && flowViewModel.currentStep != .success {
+                    Button {
+                        if flowViewModel.currentStep == .intro {
+                            logger.info("Toolbar: dismiss from intro")
+                            onDismiss()
+                        } else {
+                            logger.info("Toolbar: goBack from \(String(describing: flowViewModel.currentStep))")
                             withAnimation {
-                                flowViewModel.currentStep = .recording
+                                flowViewModel.goBack()
                             }
                         }
-                    )
-
-                case .recording:
-                    VoiceRecordingView(
-                        recordingDuration: $flowViewModel.recordingDuration,
-                        isRecording: $flowViewModel.isRecording,
-                        recordedAudioURL: $flowViewModel.recordedAudioURL,
-                        isPaused: flowViewModel.isPaused,
-                        onStartRecording: { flowViewModel.startRecording() },
-                        onStopRecording: { flowViewModel.stopRecording() },
-                        onPauseRecording: { flowViewModel.pauseRecording() },
-                        onResumeRecording: { flowViewModel.resumeRecording() },
-                        onContinue: {
-                            Task {
-                                await flowViewModel.createClone()
-                            }
-                        }
-                    )
-
-                case .processing:
-                    VoiceCloningProgressView()
-
-                case .success:
-                    VoiceCloningSuccessView(
-                        voiceName: flowViewModel.voiceName,
-                        onDone: {
-                            onComplete()
-                            dismiss()
-                        }
-                    )
-
-                case .error:
-                    VoiceCloningErrorView(
-                        errorMessage: flowViewModel.errorMessage,
-                        onRetry: {
-                            withAnimation {
-                                flowViewModel.currentStep = .recording
-                            }
-                        },
-                        onCancel: {
-                            dismiss()
-                        }
-                    )
-                }
-            }
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    if flowViewModel.currentStep != .processing && flowViewModel.currentStep != .success {
-                        Button {
-                            if flowViewModel.currentStep == .intro {
-                                dismiss()
-                            } else {
-                                withAnimation {
-                                    flowViewModel.goBack()
-                                }
-                            }
-                        } label: {
-                            Image(systemName: "chevron.left")
-                                .font(.body.weight(.medium))
-                                .foregroundStyle(.primary)
-                                .padding(8)
-                                .background(Color(.systemGray5))
-                                .clipShape(Circle())
-                        }
-                    }
-                }
-
-                ToolbarItem(placement: .topBarTrailing) {
-                    if flowViewModel.currentStep != .processing && flowViewModel.currentStep != .success {
-                        Button {
-                            dismiss()
-                        } label: {
-                            Image(systemName: "xmark")
-                                .font(.body.weight(.medium))
-                                .foregroundStyle(.secondary)
-                        }
+                    } label: {
+                        Image(systemName: "chevron.left")
+                            .font(.body.weight(.medium))
+                            .foregroundStyle(.primary)
+                            .padding(8)
+                            .background(Color(.systemGray5))
+                            .clipShape(Circle())
                     }
                 }
             }
-            .onChange(of: flowViewModel.cloneCreated) { _, created in
-                if created {
-                    withAnimation {
-                        flowViewModel.currentStep = .success
+
+            ToolbarItem(placement: .topBarTrailing) {
+                if flowViewModel.currentStep != .processing && flowViewModel.currentStep != .success {
+                    Button {
+                        logger.info("Toolbar: X button tapped")
+                        onDismiss()
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.body.weight(.medium))
+                            .foregroundStyle(.secondary)
                     }
                 }
             }
-            .onChange(of: flowViewModel.isCreating) { _, isCreating in
-                if isCreating {
-                    withAnimation {
-                        flowViewModel.currentStep = .processing
-                    }
+        }
+        .onChange(of: flowViewModel.cloneCreated) { _, created in
+            logger.info("onChange cloneCreated: \(created)")
+            if created {
+                withAnimation {
+                    flowViewModel.currentStep = .success
                 }
             }
-            .sheet(isPresented: $showingImagePicker) {
-                ImagePicker(image: $flowViewModel.profileImage)
+        }
+        .onChange(of: flowViewModel.isCreating) { _, isCreating in
+            logger.info("onChange isCreating: \(isCreating)")
+            if isCreating {
+                withAnimation {
+                    flowViewModel.currentStep = .processing
+                }
             }
+        }
+        .sheet(isPresented: $showingImagePicker) {
+            ImagePicker(image: $flowViewModel.profileImage)
         }
     }
 }
@@ -508,6 +693,7 @@ private struct VoiceCloningIntroView: View {
     let onContinue: () -> Void
 
     var body: some View {
+        let _ = logger.debug("VoiceCloningIntroView body")
         VStack(spacing: 0) {
             // Header illustration
             ZStack {
@@ -631,6 +817,7 @@ private struct VoiceProfileSetupView: View {
     }
 
     var body: some View {
+        let _ = logger.debug("VoiceProfileSetupView body, voiceName=\(voiceName)")
         VStack(spacing: 0) {
             // Progress bar
             ProgressBar(progress: 0.33)
@@ -789,6 +976,7 @@ private struct VoiceRecordingView: View {
     }
 
     var body: some View {
+        let _ = logger.debug("VoiceRecordingView body, isRecording=\(isRecording), duration=\(recordingDuration)")
         VStack(spacing: 0) {
             // Progress bar
             ProgressBar(progress: 0.66)
@@ -1075,9 +1263,11 @@ private struct VoiceCloningProgressView: View {
 
 private struct VoiceCloningSuccessView: View {
     let voiceName: String
+    let voiceId: String?
     let onDone: () -> Void
 
     var body: some View {
+        let _ = logger.debug("VoiceCloningSuccessView body, voiceId=\(voiceId ?? "nil")")
         VStack(spacing: 24) {
             Spacer()
 
@@ -1103,9 +1293,20 @@ private struct VoiceCloningSuccessView: View {
                     .multilineTextAlignment(.center)
             }
 
+            // Info text instead of preview button
+            // Preview was causing view recreation issues with TTSCoordinator
+            Text("You can preview your cloned voice from the voice list.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 32)
+
             Spacer()
 
-            Button(action: onDone) {
+            Button(action: {
+                logger.info("VoiceCloningSuccessView: Done button tapped")
+                onDone()
+            }) {
                 Text("Done")
                     .font(.headline)
                     .foregroundStyle(.white)
@@ -1128,6 +1329,13 @@ private struct VoiceCloningErrorView: View {
     let onRetry: () -> Void
     let onCancel: () -> Void
 
+    /// Check if this is a permission-related error
+    private var isPermissionError: Bool {
+        errorMessage.lowercased().contains("permission") ||
+        errorMessage.lowercased().contains("microphone") ||
+        errorMessage.lowercased().contains("settings")
+    }
+
     var body: some View {
         VStack(spacing: 24) {
             Spacer()
@@ -1138,13 +1346,13 @@ private struct VoiceCloningErrorView: View {
                     .fill(Color.red.opacity(0.15))
                     .frame(width: 100, height: 100)
 
-                Image(systemName: "exclamationmark.triangle.fill")
+                Image(systemName: isPermissionError ? "mic.slash.fill" : "exclamationmark.triangle.fill")
                     .font(.system(size: 50))
                     .foregroundStyle(.red)
             }
 
             VStack(spacing: 8) {
-                Text("Cloning Failed")
+                Text(isPermissionError ? "Microphone Access Required" : "Cloning Failed")
                     .font(.title2.bold())
                     .foregroundStyle(.primary)
 
@@ -1158,14 +1366,31 @@ private struct VoiceCloningErrorView: View {
             Spacer()
 
             VStack(spacing: 12) {
-                Button(action: onRetry) {
-                    Text("Try Again")
-                        .font(.headline)
-                        .foregroundStyle(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 16)
-                        .background(Color.black)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                if isPermissionError {
+                    // Open Settings button for permission errors
+                    Button {
+                        if let settingsURL = URL(string: UIApplication.openSettingsURLString) {
+                            UIApplication.shared.open(settingsURL)
+                        }
+                    } label: {
+                        Text("Open Settings")
+                            .font(.headline)
+                            .foregroundStyle(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 16)
+                            .background(Color.black)
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                    }
+                } else {
+                    Button(action: onRetry) {
+                        Text("Try Again")
+                            .font(.headline)
+                            .foregroundStyle(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 16)
+                            .background(Color.black)
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                    }
                 }
 
                 Button(action: onCancel) {
@@ -1365,8 +1590,9 @@ class VoiceCloningViewModel: NSObject, ObservableObject, AVAudioPlayerDelegate {
     }
 
     /// Get the cached preview URL for a voice ID
+    /// Cloned voices return WAV format, so use .wav extension
     private func getCachedPreviewURL(for voiceId: String) -> URL {
-        previewCacheDirectory.appendingPathComponent("preview_\(voiceId).mp3")
+        previewCacheDirectory.appendingPathComponent("preview_\(voiceId).wav")
     }
 
     /// Clear cached preview for a voice (call when voice is deleted or updated)
@@ -1380,29 +1606,30 @@ class VoiceCloningViewModel: NSObject, ObservableObject, AVAudioPlayerDelegate {
         let coordinator = TTSCoordinator.shared
 
         // Create a temporary voice preset for the cloned voice
+        // Use selfhosted provider with custom category so TTSCoordinator routes to Chatterbox
         let tempPreset = VoicePreset(
             name: "Preview",
             isBuiltIn: false,
             isCharacterVoice: false,
-            provider: .elevenLabs,
+            provider: .selfhosted,
             providerVoiceID: voiceId,
-            providerModelID: "eleven_multilingual_v2",
+            providerModelID: nil,  // No model ID - uses Chatterbox for cloned voices
             language: "en-US",
             supportedLanguages: ["en-US"],
             gender: .neutral,
             age: .adult,
             style: .conversational,
-            category: .custom,
+            category: .custom,  // Custom category triggers cloned voice path
             voiceDescription: "Cloned voice preview",
-            tier: .premium,
+            tier: .free,  // Cloned voices don't count against premium quota
             sampleText: sampleText
         )
 
-        // Synthesize the sample text using premium quality (ElevenLabs) since it's a cloned voice
+        // Synthesize using standard quality - TTSCoordinator will route to Chatterbox
         let audioURL = try await coordinator.synthesizeWithQuality(
             text: sampleText,
             voice: tempPreset,
-            quality: .premium
+            quality: .standard
         )
 
         return audioURL
@@ -1453,21 +1680,71 @@ enum VoiceCloningStep {
 
 @MainActor
 class VoiceCloningFlowViewModel: ObservableObject {
-    @Published var currentStep: VoiceCloningStep = .intro
+    @Published var currentStep: VoiceCloningStep = .intro {
+        didSet {
+            logger.info("VoiceCloningFlowViewModel: currentStep changed from \(String(describing: oldValue)) to \(String(describing: self.currentStep))")
+        }
+    }
     @Published var voiceName = ""
     @Published var profileImage: UIImage?
-    @Published var isRecording = false
+    @Published var isRecording = false {
+        didSet {
+            logger.info("VoiceCloningFlowViewModel: isRecording changed to \(self.isRecording)")
+        }
+    }
     @Published var isPaused = false
     @Published var recordingDuration: TimeInterval = 0
     @Published var recordedAudioURL: URL?
     @Published var isCreating = false
     @Published var cloneCreated = false
+    @Published var createdVoiceId: String?
     @Published var errorMessage = ""
+    @Published var microphonePermissionGranted = false
 
     private var audioRecorder: AVAudioRecorder?
     private var recordingTimer: Timer?
 
+    let viewModelId = UUID()
+
+    init() {
+        logger.info("VoiceCloningFlowViewModel INIT: id=\(self.viewModelId)")
+    }
+
+    deinit {
+        logger.info("VoiceCloningFlowViewModel DEINIT: id=\(self.viewModelId)")
+    }
+
+    /// Reset the flow to initial state (called when reopening the flow)
+    func reset() {
+        logger.info("VoiceCloningFlowViewModel reset() called, id=\(self.viewModelId)")
+
+        // Stop any ongoing recording
+        audioRecorder?.stop()
+        recordingTimer?.invalidate()
+        recordingTimer = nil
+
+        // Clean up recorded file
+        if let url = recordedAudioURL {
+            try? FileManager.default.removeItem(at: url)
+        }
+
+        // Reset all state
+        currentStep = .intro
+        voiceName = ""
+        profileImage = nil
+        isRecording = false
+        isPaused = false
+        recordingDuration = 0
+        recordedAudioURL = nil
+        isCreating = false
+        cloneCreated = false
+        createdVoiceId = nil
+        errorMessage = ""
+        // Keep microphonePermissionGranted - no need to re-check
+    }
+
     func goBack() {
+        logger.info("goBack() from \(String(describing: self.currentStep))")
         switch currentStep {
         case .profile:
             currentStep = .intro
@@ -1480,39 +1757,90 @@ class VoiceCloningFlowViewModel: ObservableObject {
         }
     }
 
+    /// Request microphone permission before entering the recording flow
+    /// Call this when user taps "Agree & Continue" on intro screen
+    func requestMicrophonePermission() async -> Bool {
+        logger.info("requestMicrophonePermission() called")
+        let status = AVAudioSession.sharedInstance().recordPermission
+        logger.info("Current permission status: \(String(describing: status))")
+
+        switch status {
+        case .granted:
+            logger.info("Permission already granted")
+            microphonePermissionGranted = true
+            return true
+        case .denied:
+            logger.info("Permission denied")
+            microphonePermissionGranted = false
+            return false
+        case .undetermined:
+            logger.info("Permission undetermined, requesting...")
+            // Request permission - this shows the system dialog
+            let granted = await AVAudioApplication.requestRecordPermission()
+            logger.info("Permission request result: \(granted)")
+            microphonePermissionGranted = granted
+            return granted
+        @unknown default:
+            logger.warning("Unknown permission status")
+            return false
+        }
+    }
+
     func startRecording() {
+        logger.info("startRecording() called, micPermission=\(self.microphonePermissionGranted)")
+
+        // Permission should already be granted at this point
+        guard microphonePermissionGranted else {
+            logger.error("startRecording failed: no mic permission")
+            errorMessage = "Microphone permission is required to record your voice."
+            currentStep = .error
+            return
+        }
+
         let audioSession = AVAudioSession.sharedInstance()
 
         do {
+            logger.info("Setting audio session category...")
             try audioSession.setCategory(.playAndRecord, mode: .default)
             try audioSession.setActive(true)
+            logger.info("Audio session configured successfully")
 
             let tempURL = FileManager.default.temporaryDirectory
-                .appendingPathComponent("voice_clone_\(UUID().uuidString).m4a")
+                .appendingPathComponent("voice_clone_\(UUID().uuidString).wav")
 
+            // Record as WAV (Linear PCM) for direct compatibility with Chatterbox TTS
+            // Using 24kHz sample rate to match Chatterbox's expected input format
             let settings: [String: Any] = [
-                AVFormatIDKey: Int(kAudioFormatMPEG4AAC),
-                AVSampleRateKey: 44100.0,
+                AVFormatIDKey: Int(kAudioFormatLinearPCM),
+                AVSampleRateKey: 24000.0,
                 AVNumberOfChannelsKey: 1,
-                AVEncoderAudioQualityKey: AVAudioQuality.high.rawValue
+                AVLinearPCMBitDepthKey: 16,
+                AVLinearPCMIsFloatKey: false,
+                AVLinearPCMIsBigEndianKey: false
             ]
 
+            logger.info("Creating audio recorder at: \(tempURL.path)")
             audioRecorder = try AVAudioRecorder(url: tempURL, settings: settings)
             audioRecorder?.record()
+            logger.info("Recording started successfully")
+
             isRecording = true
             isPaused = false
             recordingDuration = 0
             recordedAudioURL = tempURL
 
             startTimer()
+            logger.info("Timer started, isRecording=\(self.isRecording)")
 
         } catch {
+            logger.error("Failed to start recording: \(error.localizedDescription)")
             errorMessage = "Failed to start recording: \(error.localizedDescription)"
             currentStep = .error
         }
     }
 
     func pauseRecording() {
+        logger.info("pauseRecording() called")
         audioRecorder?.pause()
         isPaused = true
         recordingTimer?.invalidate()
@@ -1520,12 +1848,14 @@ class VoiceCloningFlowViewModel: ObservableObject {
     }
 
     func resumeRecording() {
+        logger.info("resumeRecording() called")
         audioRecorder?.record()
         isPaused = false
         startTimer()
     }
 
     func stopRecording() {
+        logger.info("stopRecording() called, duration=\(self.recordingDuration)")
         audioRecorder?.stop()
         isRecording = false
         isPaused = false
@@ -1534,25 +1864,38 @@ class VoiceCloningFlowViewModel: ObservableObject {
     }
 
     private func startTimer() {
+        logger.info("startTimer() called")
         recordingTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
             Task { @MainActor in
                 self?.recordingDuration += 0.1
             }
         }
+        // Add timer to common run loop mode so it continues during scroll/touch interactions
+        if let timer = recordingTimer {
+            RunLoop.main.add(timer, forMode: .common)
+        }
     }
 
     func createClone() async {
-        guard let audioURL = recordedAudioURL else { return }
+        logger.info("createClone() called")
+        guard let audioURL = recordedAudioURL else {
+            logger.error("createClone failed: no audio URL")
+            return
+        }
 
         isCreating = true
 
         do {
-            _ = try await VoiceCloningService.shared.createInstantClone(
+            logger.info("Calling VoiceCloningService.createInstantClone...")
+            let clonedVoice = try await VoiceCloningService.shared.createInstantClone(
                 name: voiceName.trimmingCharacters(in: .whitespacesAndNewlines),
                 audioSampleURL: audioURL
             )
+            logger.info("Clone created successfully: \(clonedVoice.voiceId)")
+            createdVoiceId = clonedVoice.voiceId
             cloneCreated = true
         } catch {
+            logger.error("Clone creation failed: \(error.localizedDescription)")
             isCreating = false
             errorMessage = error.localizedDescription
             currentStep = .error
@@ -1560,16 +1903,13 @@ class VoiceCloningFlowViewModel: ObservableObject {
     }
 
     func cleanup() {
+        logger.info("cleanup() called")
         audioRecorder?.stop()
         recordingTimer?.invalidate()
 
         if let url = recordedAudioURL {
             try? FileManager.default.removeItem(at: url)
         }
-    }
-
-    deinit {
-        recordingTimer?.invalidate()
     }
 }
 

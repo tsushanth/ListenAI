@@ -116,8 +116,8 @@ enum class Plan(val displayName: String) {
  * Features that require specific plans
  */
 enum class PlanFeature(val displayName: String, val description: String) {
-    BASIC_VOICES("Basic Cloud Voices", "Access to standard quality cloud voices"),
-    PREMIUM_VOICES("Premium Voices", "Access to premium ElevenLabs and OpenAI voices"),
+    BASIC_VOICES("Cloud Voices", "Access to high-quality cloud voices"),
+    PREMIUM_VOICES("Premium Voices", "Access to all premium AI voices"),
     CHARACTER_VOICES("Character Voices", "Fun character voices like Santa and celebrities"),
     ON_DEVICE_TTS("On-Device TTS", "Offline text-to-speech using system voices"),
     EXTENDED_ARTICLES("Extended Articles", "Import and listen to longer articles"),

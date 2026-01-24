@@ -11,12 +11,11 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import org.json.JSONObject
 import java.io.File
 import java.util.concurrent.TimeUnit
 
@@ -54,9 +53,6 @@ class StreamingTTSService(
         .readTimeout(15, TimeUnit.MINUTES)
         .writeTimeout(30, TimeUnit.SECONDS)
         .build()
-
-    // JSON parser
-    private val json = Json { ignoreUnknownKeys = true }
 
     // ExoPlayer for playback
     private var player: ExoPlayer? = null
@@ -105,16 +101,14 @@ class StreamingTTSService(
         speed: Float,
         authToken: String?
     ) {
-        // Build request body
-        val requestBody = """
-            {
-                "text": ${json.encodeToString(kotlinx.serialization.serializer<String>(), text)},
-                "voice_preset_id": "$voicePresetId",
-                "options": {
-                    "speed": $speed
-                }
-            }
-        """.trimIndent()
+        // Build request body using JSONObject
+        val requestBody = JSONObject().apply {
+            put("text", text)
+            put("voice_preset_id", voicePresetId)
+            put("options", JSONObject().apply {
+                put("speed", speed)
+            })
+        }.toString()
 
         val requestBuilder = Request.Builder()
             .url("$baseUrl/api/tts/stream")
@@ -154,24 +148,29 @@ class StreamingTTSService(
 
     private suspend fun processChunk(line: String) {
         try {
-            val chunk = json.decodeFromString<TTSStreamChunk>(line)
+            val chunkJson = JSONObject(line)
+            val index = chunkJson.optInt("index", 0)
+            val total = chunkJson.optInt("total", 0)
+            val audio = chunkJson.optString("audio", "")
+            val durationMs = chunkJson.optInt("duration_ms", 0)
+            val errorMsg = chunkJson.optString("error", null)
 
             // Update state
-            _chunksReceived.value = chunk.index + 1
-            if (chunk.total > 0) {
-                _totalChunks.value = chunk.total
-                _progress.value = (chunk.index + 1).toFloat() / chunk.total
+            _chunksReceived.value = index + 1
+            if (total > 0) {
+                _totalChunks.value = total
+                _progress.value = (index + 1).toFloat() / total
             }
 
             // Check for error
-            chunk.error?.let {
-                _error.value = it
+            if (!errorMsg.isNullOrEmpty()) {
+                _error.value = errorMsg
                 return
             }
 
             // Decode base64 audio and save to temp file
-            val audioData = Base64.decode(chunk.audio, Base64.DEFAULT)
-            val tempFile = File.createTempFile("chunk_${chunk.index}_", ".wav", context.cacheDir)
+            val audioData = Base64.decode(audio, Base64.DEFAULT)
+            val tempFile = File.createTempFile("chunk_${index}_", ".wav", context.cacheDir)
             tempFile.writeBytes(audioData)
             tempFiles.add(tempFile)
 
@@ -182,14 +181,14 @@ class StreamingTTSService(
                     exoPlayer.addMediaItem(mediaItem)
 
                     // Start playback on first chunk
-                    if (chunk.index == 0) {
+                    if (index == 0) {
                         exoPlayer.prepare()
                         exoPlayer.play()
                     }
                 }
             }
 
-            Log.d(TAG, "Chunk ${chunk.index + 1}/${chunk.total} processed, duration: ${chunk.duration_ms}ms")
+            Log.d(TAG, "Chunk ${index + 1}/$total processed, duration: ${durationMs}ms")
 
         } catch (e: Exception) {
             Log.e(TAG, "Failed to process chunk: $line", e)
@@ -232,17 +231,3 @@ class StreamingTTSService(
      */
     fun getPlayer(): Player? = player
 }
-
-/**
- * Chunk response from streaming TTS endpoint
- */
-@Serializable
-data class TTSStreamChunk(
-    val index: Int,
-    val total: Int,
-    val audio: String,
-    val duration_ms: Int,
-    val synthesis_time_ms: Int? = null,
-    val final: Boolean = false,
-    val error: String? = null
-)

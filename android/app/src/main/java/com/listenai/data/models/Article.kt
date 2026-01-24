@@ -15,7 +15,8 @@ enum class SourceType {
     PDF,
     CLIPBOARD,
     FILE,
-    MANUAL;
+    MANUAL,
+    EMAIL;
 
     val displayName: String
         get() = when (this) {
@@ -24,6 +25,7 @@ enum class SourceType {
             CLIPBOARD -> "Clipboard"
             FILE -> "File"
             MANUAL -> "Text"
+            EMAIL -> "Email"
         }
 
     val iconName: String
@@ -33,6 +35,7 @@ enum class SourceType {
             CLIPBOARD -> "content_paste"
             FILE -> "folder"
             MANUAL -> "edit_note"
+            EMAIL -> "email"
         }
 }
 
@@ -67,6 +70,10 @@ data class Article(
     val wordCount: Int,
     val language: String?,
     val heroImageUrl: String?,
+
+    // Email-specific metadata (only populated for SourceType.EMAIL)
+    val senderEmail: String? = null,  // e.g., "john@example.com"
+    val emailDate: Date? = null,      // When the email was sent/received
 
     // Source tracking
     val sourceType: SourceType,

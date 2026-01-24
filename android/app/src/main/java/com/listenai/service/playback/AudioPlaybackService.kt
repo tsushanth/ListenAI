@@ -32,6 +32,26 @@ enum class AudioPlaybackStatus {
 }
 
 /**
+ * Player mode indicating whether playing preview or full audio.
+ * Used for job-based TTS where partial_ready provides a preview URL
+ * before the full audio is ready (like iOS URLPlayerMode).
+ */
+enum class PlayerMode {
+    /** Not playing any audio */
+    NONE,
+
+    /** Playing preview audio (partial_ready state) - seeking may be restricted */
+    PREVIEW,
+
+    /** Playing full audio (ready state) - full seeking enabled */
+    FULL;
+
+    /** Whether the player is actively playing in a mode (preview or full) */
+    val isActive: Boolean
+        get() = this != NONE
+}
+
+/**
  * Internal playback state data class for AudioPlaybackService
  */
 data class AudioPlaybackState(
@@ -42,7 +62,13 @@ data class AudioPlaybackState(
     val progress: Float = 0f,
     val speed: Float = 1.0f,
     val sleepTimerRemaining: Int? = null,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    /** Current player mode (preview/full/none) */
+    val playerMode: PlayerMode = PlayerMode.NONE,
+    /** Preview audio duration in seconds (used for seek restrictions) */
+    val previewDuration: Double? = null,
+    /** Whether we're waiting for full audio after preview ended */
+    val isAwaitingFullAudio: Boolean = false
 )
 
 /**
@@ -74,18 +100,7 @@ class AudioPlaybackService(private val context: Context) {
     private var sleepTimerJob: kotlinx.coroutines.Job? = null
     private var sleepTimerEndTime: Long? = null
 
-    init {
-        initializePlayer()
-    }
-
-    private fun initializePlayer() {
-        player = ExoPlayer.Builder(context)
-            .build()
-            .apply {
-                addListener(playerListener)
-            }
-    }
-
+    // Player listener - must be defined before initializePlayer() is called
     private val playerListener = object : Player.Listener {
         override fun onPlaybackStateChanged(playbackState: Int) {
             updatePlaybackState(playbackState)
@@ -109,6 +124,18 @@ class AudioPlaybackService(private val context: Context) {
                 errorMessage = error.message
             )
         }
+    }
+
+    init {
+        initializePlayer()
+    }
+
+    private fun initializePlayer() {
+        player = ExoPlayer.Builder(context)
+            .build()
+            .apply {
+                addListener(playerListener)
+            }
     }
 
     private fun updatePlaybackState(state: Int) {
@@ -162,7 +189,10 @@ class AudioPlaybackService(private val context: Context) {
         _currentArticle.value = article
         _playbackState.value = _playbackState.value.copy(
             status = AudioPlaybackStatus.LOADING,
-            articleId = article.id
+            articleId = article.id,
+            playerMode = PlayerMode.FULL,
+            previewDuration = null,
+            isAwaitingFullAudio = false
         )
 
         val mediaItem = MediaItem.fromUri(audioFile.toURI().toString())
@@ -178,11 +208,27 @@ class AudioPlaybackService(private val context: Context) {
      * Play from a URL
      */
     fun play(article: Article, audioUrl: String) {
+        play(article, audioUrl, PlayerMode.FULL, null)
+    }
+
+    /**
+     * Play from a URL with specific player mode (preview or full)
+     * @param article The article being played
+     * @param audioUrl The URL to play
+     * @param mode Whether this is preview or full audio
+     * @param previewDuration Duration of preview audio (for seek restrictions)
+     */
+    fun play(article: Article, audioUrl: String, mode: PlayerMode, previewDuration: Double?) {
         _currentArticle.value = article
         _playbackState.value = _playbackState.value.copy(
             status = AudioPlaybackStatus.LOADING,
-            articleId = article.id
+            articleId = article.id,
+            playerMode = mode,
+            previewDuration = previewDuration,
+            isAwaitingFullAudio = false
         )
+
+        android.util.Log.d("AudioPlaybackService", "Playing ${mode.name} audio: $audioUrl, previewDuration=$previewDuration")
 
         val mediaItem = MediaItem.fromUri(audioUrl)
         player?.apply {
@@ -230,19 +276,26 @@ class AudioPlaybackService(private val context: Context) {
     }
 
     /**
-     * Seek to a specific position (in seconds)
+     * Seek to a specific position (in seconds).
+     * In preview mode, seeking is restricted to preview duration.
      */
     fun seekTo(positionSeconds: Double) {
-        player?.seekTo((positionSeconds * 1000).toLong())
+        val maxPosition = getMaxSeekPosition()
+        val clampedPosition = positionSeconds.coerceIn(0.0, maxPosition)
+        player?.seekTo((clampedPosition * 1000).toLong())
     }
 
     /**
-     * Seek forward by a number of seconds
+     * Seek forward by a number of seconds.
+     * In preview mode, seeking is restricted to preview duration.
      */
     fun seekForward(seconds: Double = 15.0) {
         val currentPosition = player?.currentPosition ?: 0L
+        val maxPositionMs = (getMaxSeekPosition() * 1000).toLong()
         val newPosition = currentPosition + (seconds * 1000).toLong()
-        player?.seekTo(newPosition.coerceAtMost(player?.duration ?: Long.MAX_VALUE))
+        val clampedPosition = newPosition.coerceAtMost(maxPositionMs)
+        android.util.Log.d("AudioPlaybackService", "seekForward: current=${currentPosition}ms, target=${newPosition}ms, max=${maxPositionMs}ms, clamped=${clampedPosition}ms")
+        player?.seekTo(clampedPosition)
     }
 
     /**
@@ -251,16 +304,88 @@ class AudioPlaybackService(private val context: Context) {
     fun seekBackward(seconds: Double = 15.0) {
         val currentPosition = player?.currentPosition ?: 0L
         val newPosition = currentPosition - (seconds * 1000).toLong()
-        player?.seekTo(newPosition.coerceAtLeast(0))
+        val clampedPosition = newPosition.coerceAtLeast(0)
+        android.util.Log.d("AudioPlaybackService", "seekBackward: current=${currentPosition}ms, target=${newPosition}ms, clamped=${clampedPosition}ms")
+        player?.seekTo(clampedPosition)
+    }
+
+    // MARK: - Preview/Full Mode Management
+
+    /**
+     * Seamlessly swap from preview to full audio while preserving playback position.
+     * Used when full audio becomes available while playing preview.
+     */
+    fun swapToFullAudio(fullAudioUrl: String) {
+        val currentPosition = player?.currentPosition ?: 0L
+        val wasPlaying = player?.isPlaying == true
+
+        android.util.Log.d("AudioPlaybackService", "Swapping to full audio at position ${currentPosition}ms, wasPlaying=$wasPlaying")
+
+        val mediaItem = MediaItem.fromUri(fullAudioUrl)
+        player?.apply {
+            setMediaItem(mediaItem)
+            prepare()
+            // Seek to preserved position after preparing
+            seekTo(currentPosition)
+            if (wasPlaying) {
+                playWhenReady = true
+            }
+        }
+
+        _playbackState.value = _playbackState.value.copy(
+            playerMode = PlayerMode.FULL,
+            previewDuration = null,
+            isAwaitingFullAudio = false
+        )
+    }
+
+    /**
+     * Set the player mode (for external state management)
+     */
+    fun setPlayerMode(mode: PlayerMode, previewDuration: Double? = null) {
+        _playbackState.value = _playbackState.value.copy(
+            playerMode = mode,
+            previewDuration = previewDuration
+        )
+    }
+
+    /**
+     * Mark that preview audio has ended and we're waiting for full audio
+     */
+    fun setAwaitingFullAudio(awaiting: Boolean) {
+        _playbackState.value = _playbackState.value.copy(
+            isAwaitingFullAudio = awaiting
+        )
+    }
+
+    /**
+     * Get maximum seek position based on current mode.
+     * In preview mode, seeking is restricted to preview duration.
+     */
+    fun getMaxSeekPosition(): Double {
+        val state = _playbackState.value
+        return when {
+            state.playerMode == PlayerMode.PREVIEW && state.previewDuration != null -> state.previewDuration
+            else -> state.duration
+        }
+    }
+
+    /**
+     * Check if seeking is restricted (in preview mode with known duration)
+     */
+    fun isSeekRestricted(): Boolean {
+        val state = _playbackState.value
+        return state.playerMode == PlayerMode.PREVIEW && state.previewDuration != null
     }
 
     // MARK: - Speed Control
 
     /**
-     * Set playback speed (0.5x to 3.0x)
+     * Set playback speed (0.5x to 2.0x)
+     * Note: Backend TTS supports 0.5-2.0x, playback can use higher speeds
      */
     fun setSpeed(speed: Float) {
-        currentSpeed = speed.coerceIn(0.5f, 3.0f)
+        currentSpeed = speed.coerceIn(0.5f, 2.0f)
         player?.setPlaybackSpeed(currentSpeed)
         _playbackState.value = _playbackState.value.copy(speed = currentSpeed)
     }

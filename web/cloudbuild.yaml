@@ -1,0 +1,42 @@
+steps:
+  # Build the container image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'gcr.io/$PROJECT_ID/readaloud-web:$COMMIT_SHA', '-t', 'gcr.io/$PROJECT_ID/readaloud-web:latest', '.']
+    dir: 'web'
+
+  # Push the container images to Container Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/readaloud-web:$COMMIT_SHA']
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/readaloud-web:latest']
+
+  # Deploy to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'readaloud-web'
+      - '--image=gcr.io/$PROJECT_ID/readaloud-web:$COMMIT_SHA'
+      - '--region=us-central1'
+      - '--platform=managed'
+      - '--allow-unauthenticated'
+      - '--memory=512Mi'
+      - '--cpu=1'
+      - '--min-instances=0'
+      - '--max-instances=10'
+      - '--set-env-vars=NODE_ENV=production,NEXT_PUBLIC_APP_URL=${_NEXT_PUBLIC_APP_URL}'
+      - '--set-secrets=STRIPE_SECRET_KEY=stripe-secret-key:latest,STRIPE_WEBHOOK_SECRET=stripe-webhook-secret:latest,STRIPE_PRICE_PRO_MONTHLY=stripe-price-pro-monthly:latest,STRIPE_PRICE_PRO_YEARLY=stripe-price-pro-yearly:latest,STRIPE_PRICE_LIFETIME=stripe-price-lifetime:latest'
+
+images:
+  - 'gcr.io/$PROJECT_ID/readaloud-web:$COMMIT_SHA'
+  - 'gcr.io/$PROJECT_ID/readaloud-web:latest'
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+
+timeout: '1200s'
+
+# Substitution variables - set these in the Cloud Build trigger
+substitutions:
+  _NEXT_PUBLIC_APP_URL: 'https://readaloudai.org'

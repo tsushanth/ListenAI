@@ -25,7 +25,8 @@ import com.listenai.ui.theme.*
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
-    onNavigateToImport: () -> Unit = {}
+    onNavigateToImport: () -> Unit = {},
+    onNavigateToSubscription: () -> Unit = {}
 ) {
     val scrollState = rememberScrollState()
 
@@ -48,7 +49,7 @@ fun HomeScreen(
             verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
             // Promotional Banner
-            PromoBanner()
+            PromoBanner(onNavigateToSubscription = onNavigateToSubscription)
 
             // Quick Actions Section
             QuickActionsSection(onActionClick = { onNavigateToImport() })
@@ -57,7 +58,7 @@ fun HomeScreen(
 }
 
 @Composable
-private fun PromoBanner() {
+private fun PromoBanner(onNavigateToSubscription: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -99,7 +100,7 @@ private fun PromoBanner() {
                 )
 
                 TextButton(
-                    onClick = { /* TODO: Navigate to subscription */ },
+                    onClick = onNavigateToSubscription,
                     contentPadding = PaddingValues(0.dp)
                 ) {
                     Text(

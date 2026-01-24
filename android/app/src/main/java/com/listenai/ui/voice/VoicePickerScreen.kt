@@ -1,11 +1,7 @@
 package com.listenai.ui.voice
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -41,13 +37,8 @@ fun VoicePickerScreen(
     onPreviewVoice: (VoicePreset, VoiceQuality) -> Unit = { _, _ -> },
     onNavigateBack: () -> Unit = {}
 ) {
-    val standardVoices = remember(voices) { voices.filter { it.quality == VoiceQuality.STANDARD } }
-    val premiumVoices = remember(voices) { voices.filter { it.quality == VoiceQuality.PREMIUM || it.supportsPremium } }
-
-    val displayedVoices = when (selectedQuality) {
-        VoiceQuality.STANDARD -> standardVoices.ifEmpty { VoicePreset.standardVoices }
-        VoiceQuality.PREMIUM -> premiumVoices.ifEmpty { VoicePreset.premiumVoices }
-    }
+    // All voices are now standard quality (Kokoro GPU-accelerated)
+    val displayedVoices = voices.ifEmpty { VoicePreset.builtInVoices }
 
     Scaffold(
         topBar = {
@@ -71,22 +62,10 @@ fun VoicePickerScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            // Quality Toggle
-            QualityToggle(
-                selectedQuality = selectedQuality,
-                premiumSummary = premiumSummary,
-                onQualityChanged = onQualityChanged,
+            // Quality info card (simplified - all voices are high quality now)
+            QualityInfoCard(
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
             )
-
-            // Premium exhausted banner
-            AnimatedVisibility(
-                visible = selectedQuality == VoiceQuality.PREMIUM && premiumSummary?.isExhausted == true
-            ) {
-                PremiumExhaustedBanner(
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                )
-            }
 
             // Voice list
             LazyColumn(
@@ -98,9 +77,8 @@ fun VoicePickerScreen(
                     VoiceCard(
                         voice = voice,
                         isSelected = selectedVoice?.id == voice.id,
-                        quality = selectedQuality,
                         onSelect = { onVoiceSelected(voice) },
-                        onPreview = { onPreviewVoice(voice, selectedQuality) }
+                        onPreview = { onPreviewVoice(voice, VoiceQuality.STANDARD) }
                     )
                 }
             }
@@ -109,160 +87,12 @@ fun VoicePickerScreen(
 }
 
 @Composable
-private fun QualityToggle(
-    selectedQuality: VoiceQuality,
-    premiumSummary: PremiumUsageSummary?,
-    onQualityChanged: (VoiceQuality) -> Unit,
-    modifier: Modifier = Modifier
-) {
+private fun QualityInfoCard(modifier: Modifier = Modifier) {
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant
-        )
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Text(
-                text = "Voice Quality",
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold
-            )
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                // Standard Quality Button
-                QualityButton(
-                    quality = VoiceQuality.STANDARD,
-                    isSelected = selectedQuality == VoiceQuality.STANDARD,
-                    onClick = { onQualityChanged(VoiceQuality.STANDARD) },
-                    modifier = Modifier.weight(1f)
-                )
-
-                // Premium Quality Button
-                QualityButton(
-                    quality = VoiceQuality.PREMIUM,
-                    isSelected = selectedQuality == VoiceQuality.PREMIUM,
-                    onClick = { onQualityChanged(VoiceQuality.PREMIUM) },
-                    modifier = Modifier.weight(1f),
-                    badge = premiumSummary?.let { "${it.samplesRemaining}" }
-                )
-            }
-
-            // Description
-            Text(
-                text = selectedQuality.description,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-
-            // Premium samples remaining
-            if (selectedQuality == VoiceQuality.PREMIUM && premiumSummary != null) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    LinearProgressIndicator(
-                        progress = premiumSummary.usagePercentage,
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(6.dp)
-                            .clip(RoundedCornerShape(3.dp)),
-                        color = if (premiumSummary.isExhausted) Red else Purple
-                    )
-                    Text(
-                        text = premiumSummary.formattedSamplesRemaining,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun QualityButton(
-    quality: VoiceQuality,
-    isSelected: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    badge: String? = null
-) {
-    val backgroundColor = if (isSelected) {
-        when (quality) {
-            VoiceQuality.STANDARD -> Blue
-            VoiceQuality.PREMIUM -> Purple
-        }
-    } else {
-        MaterialTheme.colorScheme.surface
-    }
-
-    val contentColor = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface
-
-    Surface(
-        modifier = modifier
-            .height(48.dp)
-            .then(
-                if (!isSelected) {
-                    Modifier.border(
-                        width = 1.dp,
-                        color = MaterialTheme.colorScheme.outline,
-                        shape = RoundedCornerShape(8.dp)
-                    )
-                } else {
-                    Modifier
-                }
-            ),
-        shape = RoundedCornerShape(8.dp),
-        color = backgroundColor,
-        onClick = onClick
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 12.dp),
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = quality.displayName,
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.SemiBold,
-                color = contentColor
-            )
-
-            if (badge != null) {
-                Spacer(modifier = Modifier.width(6.dp))
-                Surface(
-                    shape = CircleShape,
-                    color = if (isSelected) Color.White.copy(alpha = 0.2f) else Purple.copy(alpha = 0.15f)
-                ) {
-                    Text(
-                        text = badge,
-                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = if (isSelected) Color.White else Purple
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun PremiumExhaustedBanner(modifier: Modifier = Modifier) {
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = Orange.copy(alpha = 0.15f)
         )
     ) {
         Row(
@@ -273,25 +103,33 @@ private fun PremiumExhaustedBanner(modifier: Modifier = Modifier) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
-                imageVector = Icons.Default.Warning,
+                imageVector = Icons.Default.GraphicEq,
                 contentDescription = null,
-                tint = Orange
+                tint = Blue
             )
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "Premium samples used for today",
+                    text = "High Quality Voices",
                     style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = Orange
+                    fontWeight = FontWeight.SemiBold
                 )
                 Text(
-                    text = "Resets at midnight. Upgrade for more.",
+                    text = "GPU-accelerated, natural voices - unlimited usage",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            TextButton(onClick = { /* Navigate to upgrade */ }) {
-                Text("Upgrade", color = Orange)
+            Surface(
+                shape = RoundedCornerShape(4.dp),
+                color = Green.copy(alpha = 0.15f)
+            ) {
+                Text(
+                    text = "FREE",
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = Green
+                )
             }
         }
     }
@@ -302,18 +140,10 @@ private fun PremiumExhaustedBanner(modifier: Modifier = Modifier) {
 private fun VoiceCard(
     voice: VoicePreset,
     isSelected: Boolean,
-    quality: VoiceQuality,
     onSelect: () -> Unit,
     onPreview: () -> Unit
 ) {
-    val borderColor = if (isSelected) {
-        when (quality) {
-            VoiceQuality.STANDARD -> Blue
-            VoiceQuality.PREMIUM -> Purple
-        }
-    } else {
-        Color.Transparent
-    }
+    val borderColor = if (isSelected) Blue else Color.Transparent
 
     Card(
         modifier = Modifier
@@ -364,23 +194,7 @@ private fun VoiceCard(
                     )
 
                     // Quality badge
-                    QualityBadge(quality = voice.quality)
-
-                    // Tier badge
-                    if (voice.tier == VoiceTier.PREMIUM) {
-                        Surface(
-                            shape = RoundedCornerShape(4.dp),
-                            color = Purple.copy(alpha = 0.15f)
-                        ) {
-                            Text(
-                                text = "PRO",
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = Purple
-                            )
-                        }
-                    }
+                    QualityBadge()
                 }
 
                 Text(
@@ -415,48 +229,65 @@ private fun VoiceCard(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun VoiceAvatar(voice: VoicePreset) {
-    val avatarColor = when (voice.gender) {
-        VoiceGender.FEMALE -> Pink
-        VoiceGender.MALE -> Blue
-        VoiceGender.NEUTRAL -> Green
-    }
+    // Use accent color from voice if available, otherwise fall back to gender-based color
+    val accentColor = voice.accentColorHex?.let { parseHexColor(it) }
+        ?: when (voice.gender) {
+            VoiceGender.FEMALE -> Pink
+            VoiceGender.MALE -> Blue
+            VoiceGender.NEUTRAL -> Green
+        }
 
     Box(
         modifier = Modifier
             .size(48.dp)
             .clip(CircleShape)
-            .background(avatarColor.copy(alpha = 0.2f)),
+            .background(accentColor.copy(alpha = 0.2f)),
         contentAlignment = Alignment.Center
     ) {
-        Text(
-            text = voice.name.take(2).uppercase(),
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            color = avatarColor
-        )
+        // Show avatar emoji if available, otherwise show initials
+        if (voice.avatarEmoji != null) {
+            Text(
+                text = voice.avatarEmoji,
+                style = MaterialTheme.typography.titleLarge
+            )
+        } else {
+            Text(
+                text = voice.name.take(2).uppercase(),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = accentColor
+            )
+        }
+    }
+}
+
+/**
+ * Parse hex color string to Color
+ */
+private fun parseHexColor(hex: String): Color {
+    return try {
+        val cleanHex = hex.removePrefix("#")
+        val colorInt = android.graphics.Color.parseColor("#$cleanHex")
+        Color(colorInt)
+    } catch (e: Exception) {
+        Blue // Default fallback
     }
 }
 
 @Composable
-private fun QualityBadge(quality: VoiceQuality) {
-    val (text, color) = when (quality) {
-        VoiceQuality.STANDARD -> "STD" to Blue
-        VoiceQuality.PREMIUM -> "PRO" to Purple
-    }
-
+private fun QualityBadge() {
     Surface(
         shape = RoundedCornerShape(4.dp),
-        color = color.copy(alpha = 0.15f)
+        color = Blue.copy(alpha = 0.15f)
     ) {
         Text(
-            text = text,
+            text = "HD",
             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
             style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.Bold,
-            color = color
+            color = Blue
         )
     }
 }

@@ -1,4 +1,4 @@
-# ListenAI
+# ReadAloud AI
 
 A text-to-speech iOS app that converts articles, PDFs, websites, and documents into natural-sounding audio.
 

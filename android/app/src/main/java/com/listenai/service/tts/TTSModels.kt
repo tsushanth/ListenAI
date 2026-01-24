@@ -7,7 +7,7 @@ import java.util.UUID
  * Options for text-to-speech synthesis
  */
 data class SynthesisOptions(
-    /** Playback speed multiplier (0.5 - 3.0, where 1.0 is normal) */
+    /** Playback speed multiplier (0.5 - 2.0, where 1.0 is normal) */
     val speed: Float = 1.0f,
 
     /** Pitch multiplier (0.5 - 2.0, where 1.0 is normal) */
@@ -161,8 +161,18 @@ data class SynthesisProgress(
     val charactersProcessed: Int,
 
     /** Total characters to process */
-    val totalCharacters: Int
+    val totalCharacters: Int,
+
+    /** Preview audio URL when partial_ready (for immediate playback) */
+    val previewUrl: String? = null,
+
+    /** Preview audio duration in seconds */
+    val previewDurationSec: Double? = null
 ) {
+    /** Whether preview audio is available for immediate playback */
+    val hasPreviewReady: Boolean
+        get() = previewUrl != null
+
     companion object {
         val INITIAL = SynthesisProgress(
             overallProgress = 0f,

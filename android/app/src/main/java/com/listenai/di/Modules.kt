@@ -1,9 +1,12 @@
 package com.listenai.di
 
 import androidx.room.Room
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import com.listenai.data.local.ListenAIDatabase
 import com.listenai.data.repository.ArticleRepository
 import com.listenai.data.repository.UsageRepository
+import com.listenai.service.import_content.GmailService
 import com.listenai.service.import_content.PDFImportService
 import com.listenai.service.import_content.TextCleaningService
 import com.listenai.service.import_content.WebImportService
@@ -15,8 +18,26 @@ import com.listenai.service.tts.SelfHostedTTSService
 import com.listenai.service.tts.TTSCoordinator
 import com.listenai.service.auth.GoogleAuthService
 import com.listenai.service.usage.UsageTrackerService
+import com.listenai.service.settings.SettingsManager
+import com.listenai.service.voice.VoiceCloningService
+import com.listenai.ui.import_content.ImportViewModel
+import com.listenai.ui.library.LibraryViewModel
 import org.koin.android.ext.koin.androidContext
+import org.koin.androidx.viewmodel.dsl.viewModel
 import org.koin.dsl.module
+
+/**
+ * Database migration from version 1 to 2
+ * Adds email-specific metadata columns to articles table
+ */
+private val MIGRATION_1_2 = object : Migration(1, 2) {
+    override fun migrate(database: SupportSQLiteDatabase) {
+        // Add senderEmail column (nullable TEXT)
+        database.execSQL("ALTER TABLE articles ADD COLUMN senderEmail TEXT DEFAULT NULL")
+        // Add emailDate column (nullable INTEGER for timestamp)
+        database.execSQL("ALTER TABLE articles ADD COLUMN emailDate INTEGER DEFAULT NULL")
+    }
+}
 
 /**
  * Koin module for data layer dependencies
@@ -28,7 +49,9 @@ val dataModule = module {
             androidContext(),
             ListenAIDatabase::class.java,
             "listenai_database"
-        ).build()
+        )
+            .addMigrations(MIGRATION_1_2)
+            .build()
     }
 
     // DAOs
@@ -39,6 +62,10 @@ val dataModule = module {
     // Repositories
     single { ArticleRepository(get()) }
     single { UsageRepository(get()) }
+
+    // ViewModels
+    viewModel { LibraryViewModel(get()) }
+    viewModel { ImportViewModel(get(), get(), get()) }
 }
 
 /**
@@ -65,6 +92,19 @@ val serviceModule = module {
 
     // Auth Services
     single { GoogleAuthService(androidContext()) }
+
+    // Gmail Service
+    single { GmailService(get()) }
+
+    // Voice Cloning Service (configured with backend URL)
+    single {
+        VoiceCloningService.getInstance(androidContext()).apply {
+            configure("https://listenai-backend-917362189743.us-central1.run.app")
+        }
+    }
+
+    // Settings Manager
+    single { SettingsManager.getInstance(androidContext()) }
 }
 
 /**

@@ -27,6 +27,35 @@ enum VoiceMode: String, Codable, CaseIterable, Sendable {
     }
 }
 
+// MARK: - Voice Cloning Model
+
+/// The model used for voice cloning synthesis.
+enum VoiceCloningModel: String, Codable, CaseIterable, Sendable {
+    case chatterbox // MIT licensed, expressive, default
+    case xtts       // XTTS v2, multilingual support, faster
+
+    var displayName: String {
+        switch self {
+        case .chatterbox: return "Quality"
+        case .xtts: return "Fast"
+        }
+    }
+
+    var description: String {
+        switch self {
+        case .chatterbox: return "Best quality, slower (~5 min for long articles)"
+        case .xtts: return "Faster synthesis, good quality (~1 min)"
+        }
+    }
+
+    var iconName: String {
+        switch self {
+        case .chatterbox: return "sparkles"
+        case .xtts: return "bolt.fill"
+        }
+    }
+}
+
 // MARK: - Resolved Voice
 
 /// Represents a voice ready for synthesis with all parameters resolved.
@@ -57,6 +86,7 @@ final class VoicePresetManager: ObservableObject {
     @Published private(set) var customPresets: [VoicePreset] = []
     @Published var selectedPreset: VoicePreset
     @Published var voiceMode: VoiceMode = .automatic
+    @Published var voiceCloningModel: VoiceCloningModel = .chatterbox
     @Published var userStyleOverrides: StyleParameters?
 
     // Cloud configuration
@@ -72,6 +102,7 @@ final class VoicePresetManager: ObservableObject {
     private let presetsKey = "ReadAloudAI.CustomPresets"
     private let selectedPresetKey = "ReadAloudAI.SelectedPreset"
     private let voiceModeKey = "ReadAloudAI.VoiceMode"
+    private let voiceCloningModelKey = "ReadAloudAI.VoiceCloningModel"
     private let styleOverridesKey = "ReadAloudAI.StyleOverrides"
 
     private var cancellables = Set<AnyCancellable>()
@@ -107,6 +138,7 @@ final class VoicePresetManager: ObservableObject {
         loadCustomPresets()
         loadSelectedPreset()
         loadVoiceMode()
+        loadVoiceCloningModel()
         loadStyleOverrides()
 
         // Discover available Apple voices
@@ -480,6 +512,24 @@ final class VoicePresetManager: ObservableObject {
            let mode = VoiceMode(rawValue: raw) {
             voiceMode = mode
         }
+    }
+
+    private func saveVoiceCloningModel() {
+        UserDefaults.standard.set(voiceCloningModel.rawValue, forKey: voiceCloningModelKey)
+    }
+
+    private func loadVoiceCloningModel() {
+        if let raw = UserDefaults.standard.string(forKey: voiceCloningModelKey),
+           let model = VoiceCloningModel(rawValue: raw) {
+            voiceCloningModel = model
+        }
+    }
+
+    /// Set the voice cloning model preference.
+    func setVoiceCloningModel(_ model: VoiceCloningModel) {
+        voiceCloningModel = model
+        saveVoiceCloningModel()
+        print("[VoicePresetManager] Voice cloning model set to: \(model.displayName)")
     }
 
     private func saveStyleOverrides() {

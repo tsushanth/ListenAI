@@ -1,7 +1,10 @@
 package com.listenai.service.auth
 
+import android.app.Activity
 import android.content.Context
+import android.content.Intent
 import android.util.Log
+import androidx.activity.result.ActivityResultLauncher
 import androidx.credentials.ClearCredentialStateRequest
 import androidx.credentials.CredentialManager
 import androidx.credentials.CustomCredential
@@ -12,15 +15,24 @@ import androidx.credentials.exceptions.GetCredentialException
 import androidx.credentials.exceptions.NoCredentialException
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInAccount
+import com.google.android.gms.auth.api.signin.GoogleSignInClient
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.android.gms.common.api.ApiException
+import com.google.android.gms.common.api.Scope
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.android.libraries.identity.googleid.GoogleIdTokenParsingException
 import com.listenai.data.models.Plan
 import com.listenai.data.models.SubscriptionStatus
 import com.listenai.data.models.UserProfile
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.withContext
+import okhttp3.FormBody
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -40,8 +52,11 @@ class GoogleAuthService(private val context: Context) {
     companion object {
         private const val TAG = "GoogleAuthService"
 
-        // OAuth configuration - same as iOS
-        private const val WEB_CLIENT_ID = "517355381306-iiuf6umqhie29ii0rnrd0shtb4e1ou5i.apps.googleusercontent.com"
+        // OAuth configuration - Web Client ID for Android Credential Manager
+        private const val WEB_CLIENT_ID = "517355381306-tdssnaf01h8nd69vd6rlu9l6chijmod6.apps.googleusercontent.com"
+
+        // Gmail scope for reading emails
+        private const val GMAIL_SCOPE = "https://www.googleapis.com/auth/gmail.modify"
 
         // Preferences keys
         private const val PREFS_NAME = "listenai_auth_prefs"
@@ -50,7 +65,11 @@ class GoogleAuthService(private val context: Context) {
         private const val KEY_DISPLAY_NAME = "display_name"
         private const val KEY_AVATAR_URL = "avatar_url"
         private const val KEY_ID_TOKEN = "id_token"
+        private const val KEY_ACCESS_TOKEN = "access_token"
         private const val KEY_IS_AUTHENTICATED = "is_authenticated"
+
+        // Request code for Gmail sign-in
+        const val RC_GMAIL_SIGN_IN = 9002
     }
 
     // State
@@ -68,6 +87,19 @@ class GoogleAuthService(private val context: Context) {
 
     // Credential manager
     private val credentialManager = CredentialManager.create(context)
+
+    // Google Sign-In client for Gmail access
+    private val googleSignInClient: GoogleSignInClient by lazy {
+        val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+            .requestEmail()
+            .requestIdToken(WEB_CLIENT_ID)
+            .requestScopes(Scope(GMAIL_SCOPE))
+            .build()
+        GoogleSignIn.getClient(context, gso)
+    }
+
+    // Callback for Gmail sign-in result
+    private var gmailSignInCallback: ((Result<String>) -> Unit)? = null
 
     // Encrypted preferences for secure storage
     private val encryptedPrefs by lazy {
@@ -90,7 +122,7 @@ class GoogleAuthService(private val context: Context) {
         .readTimeout(30, TimeUnit.SECONDS)
         .build()
 
-    private var baseUrl: String = "https://listenai-backend-517355381306.us-central1.run.app"
+    private var baseUrl: String = "https://listenai-backend-917362189743.us-central1.run.app"
 
     init {
         loadStoredCredentials()
@@ -249,6 +281,123 @@ class GoogleAuthService(private val context: Context) {
     }
 
     /**
+     * Get the stored access token for Gmail API
+     */
+    fun getAccessToken(): String? {
+        return encryptedPrefs.getString(KEY_ACCESS_TOKEN, null)
+    }
+
+    /**
+     * Get the sign-in intent for Gmail access (requires activity result handling)
+     */
+    fun getGmailSignInIntent(): Intent {
+        return googleSignInClient.signInIntent
+    }
+
+    /**
+     * Handle Gmail sign-in result from activity
+     */
+    suspend fun handleGmailSignInResult(data: Intent?): Result<String> = withContext(Dispatchers.IO) {
+        try {
+            val task = GoogleSignIn.getSignedInAccountFromIntent(data)
+            val account = task.getResult(ApiException::class.java)
+
+            if (account != null) {
+                // Get access token using the account
+                val accessToken = getAccessTokenFromAccount(account)
+                if (accessToken != null) {
+                    // Store the access token
+                    encryptedPrefs.edit().apply {
+                        putString(KEY_ACCESS_TOKEN, accessToken)
+                        putString(KEY_USER_ID, account.id)
+                        putString(KEY_EMAIL, account.email)
+                        putString(KEY_DISPLAY_NAME, account.displayName)
+                        putString(KEY_AVATAR_URL, account.photoUrl?.toString())
+                        putString(KEY_ID_TOKEN, account.idToken)
+                        putBoolean(KEY_IS_AUTHENTICATED, true)
+                        apply()
+                    }
+
+                    // Update state
+                    _userProfile.value = UserProfile(
+                        id = account.id ?: "",
+                        email = account.email ?: "",
+                        displayName = account.displayName,
+                        avatarUrl = account.photoUrl?.toString()
+                    )
+                    _isAuthenticated.value = true
+
+                    Log.d(TAG, "Gmail sign-in successful for: ${account.email}")
+                    Result.success(accessToken)
+                } else {
+                    Log.e(TAG, "Failed to get access token")
+                    Result.failure(IllegalStateException("Failed to get access token"))
+                }
+            } else {
+                Log.e(TAG, "Account is null")
+                Result.failure(IllegalStateException("Account is null"))
+            }
+        } catch (e: ApiException) {
+            Log.e(TAG, "Gmail sign-in failed: ${e.statusCode}", e)
+            _error.value = GoogleAuthError.AuthenticationFailed("Sign-in failed: ${e.statusCode}")
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Get OAuth access token from signed-in account
+     */
+    private fun getAccessTokenFromAccount(account: GoogleSignInAccount): String? {
+        return try {
+            val scope = "oauth2:$GMAIL_SCOPE"
+            com.google.android.gms.auth.GoogleAuthUtil.getToken(
+                context,
+                account.account!!,
+                scope
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to get access token", e)
+            null
+        }
+    }
+
+    /**
+     * Check if we have Gmail access (valid access token)
+     */
+    fun hasGmailAccess(): Boolean {
+        return getAccessToken() != null
+    }
+
+    /**
+     * Refresh Gmail access token if needed
+     */
+    suspend fun refreshGmailToken(): String? = withContext(Dispatchers.IO) {
+        val account = GoogleSignIn.getLastSignedInAccount(context)
+        if (account?.account != null) {
+            try {
+                // Clear the cached token and get a fresh one
+                val scope = "oauth2:$GMAIL_SCOPE"
+                val currentToken = getAccessToken()
+                if (currentToken != null) {
+                    com.google.android.gms.auth.GoogleAuthUtil.clearToken(context, currentToken)
+                }
+                val newToken = com.google.android.gms.auth.GoogleAuthUtil.getToken(
+                    context,
+                    account.account!!,
+                    scope
+                )
+                encryptedPrefs.edit().putString(KEY_ACCESS_TOKEN, newToken).apply()
+                newToken
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to refresh token", e)
+                null
+            }
+        } else {
+            null
+        }
+    }
+
+    /**
      * Sync subscription status with backend
      */
     suspend fun syncSubscription(): Result<UserProfile> {
@@ -309,14 +458,18 @@ class GoogleAuthService(private val context: Context) {
      * Load stored credentials on startup
      */
     private fun loadStoredCredentials() {
+        android.util.Log.i("ListenAI-Auth", "loadStoredCredentials called")
         val isAuth = encryptedPrefs.getBoolean(KEY_IS_AUTHENTICATED, false)
+        android.util.Log.i("ListenAI-Auth", "isAuth from prefs: $isAuth")
 
         if (isAuth) {
             val userId = encryptedPrefs.getString(KEY_USER_ID, null)
             val email = encryptedPrefs.getString(KEY_EMAIL, null)
             val displayName = encryptedPrefs.getString(KEY_DISPLAY_NAME, null)
             val avatarUrl = encryptedPrefs.getString(KEY_AVATAR_URL, null)
+            val accessToken = encryptedPrefs.getString(KEY_ACCESS_TOKEN, null)
 
+            android.util.Log.i("ListenAI-Auth", "userId: $userId, email: $email, hasAccessToken: ${accessToken != null}")
             if (userId != null && email != null) {
                 _userProfile.value = UserProfile(
                     id = userId,
@@ -325,8 +478,10 @@ class GoogleAuthService(private val context: Context) {
                     avatarUrl = avatarUrl
                 )
                 _isAuthenticated.value = true
-                Log.d(TAG, "Loaded stored credentials for: $email")
+                android.util.Log.i("ListenAI-Auth", "Loaded stored credentials for: $email, hasAccessToken: ${accessToken != null}")
             }
+        } else {
+            android.util.Log.i("ListenAI-Auth", "No stored credentials found")
         }
     }
 

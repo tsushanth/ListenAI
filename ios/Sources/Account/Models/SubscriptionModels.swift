@@ -181,7 +181,7 @@ enum PlanFeature: String, CaseIterable, Sendable {
     var description: String {
         switch self {
         case .basicVoices: return "Access to standard quality cloud voices"
-        case .premiumVoices: return "Access to premium ElevenLabs and OpenAI voices"
+        case .premiumVoices: return "Access to premium AI voices"
         case .characterVoices: return "Fun character voices like Santa and celebrities"
         case .onDeviceTTS: return "Offline text-to-speech using Apple voices"
         case .extendedArticles: return "Import and listen to longer articles"

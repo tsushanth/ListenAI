@@ -13,6 +13,7 @@ val Red = Color(0xFFFF3B30)
 val Coral = Color(0xFFFF6666)
 val Yellow = Color(0xFFFFCC00)
 val Teal = Color(0xFF5AC8FA)
+val Pink = Color(0xFFEC4899)
 
 // Neutral colors - Light mode
 val BackgroundLight = Color(0xFFF2F2F7)

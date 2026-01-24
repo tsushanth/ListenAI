@@ -1,8 +1,8 @@
-# ListenAI TTS API Contract v1
+# ReadAloud AI TTS API Contract v1
 
 ## Overview
 
-The ListenAI TTS system follows a three-layer architecture:
+The ReadAloud AI TTS system follows a three-layer architecture:
 
 ```
 iOS Client → Backend (Node.js/Express) → TTS Service (Python/FastAPI) → Kokoro-82M

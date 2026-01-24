@@ -22,6 +22,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -33,12 +34,23 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.foundation.text.ClickableText
+import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.foundation.isSystemInDarkTheme
 import com.listenai.data.models.VoicePreset
 import com.listenai.ui.theme.*
 
-// Theme colors for onboarding
-private val WarmBackground = Color(0xFFFFF8E7)
-private val WarmBackgroundLight = Color(0xFFFFF5E0)
+// Theme colors for onboarding - Light mode
+private val WarmBackgroundLight = Color(0xFFFFF8E7)
+private val WarmBackgroundLightEnd = Color(0xFFFFF5E0)
+
+// Theme colors for onboarding - Dark mode
+private val WarmBackgroundDark = Color(0xFF1C1C1E)
+private val WarmBackgroundDarkEnd = Color(0xFF2C2C2E)
 
 @Composable
 fun OnboardingScreen(
@@ -46,13 +58,20 @@ fun OnboardingScreen(
     onComplete: () -> Unit
 ) {
     val currentPage by onboardingManager.currentPage.collectAsState()
+    val isDarkTheme = isSystemInDarkTheme()
+
+    // Theme-aware colors
+    val backgroundColor = if (isDarkTheme) WarmBackgroundDark else WarmBackgroundLight
+    val backgroundEndColor = if (isDarkTheme) WarmBackgroundDarkEnd else WarmBackgroundLightEnd
+    val surfaceEndColor = if (isDarkTheme) Color(0xFF000000) else Color.White
+    val contentColor = if (isDarkTheme) Color.White else Color.Black
 
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(
                 Brush.verticalGradient(
-                    colors = listOf(WarmBackground, WarmBackgroundLight, Color.White)
+                    colors = listOf(backgroundColor, backgroundEndColor, surfaceEndColor)
                 )
             )
     ) {
@@ -117,6 +136,9 @@ private fun OnboardingTopBar(
     onBack: () -> Unit,
     onSkip: () -> Unit
 ) {
+    val isDarkTheme = isSystemInDarkTheme()
+    val contentColor = if (isDarkTheme) Color.White else Color.Black
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -131,7 +153,7 @@ private fun OnboardingTopBar(
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = "Back",
-                    tint = Color.Black
+                    tint = contentColor
                 )
             }
         } else {
@@ -148,8 +170,8 @@ private fun OnboardingTopBar(
                         .size(if (page == currentPage) 10.dp else 8.dp)
                         .clip(CircleShape)
                         .background(
-                            if (page == currentPage) Color.Black
-                            else Color.Black.copy(alpha = 0.2f)
+                            if (page == currentPage) contentColor
+                            else contentColor.copy(alpha = 0.2f)
                         )
                 )
             }
@@ -158,7 +180,7 @@ private fun OnboardingTopBar(
         // Skip button
         if (currentPage.showsSkipButton) {
             TextButton(onClick = onSkip) {
-                Text("Skip", color = Color.Black.copy(alpha = 0.6f))
+                Text("Skip", color = contentColor.copy(alpha = 0.6f))
             }
         } else {
             Spacer(modifier = Modifier.size(48.dp))
@@ -171,6 +193,14 @@ private fun OnboardingFooter(
     currentPage: OnboardingPage,
     onContinue: () -> Unit
 ) {
+    val uriHandler = LocalUriHandler.current
+    val privacyUrl = "https://kreativekoala.llc/privacy"
+    val termsUrl = "https://kreativekoala.llc/terms"
+    val isDarkTheme = isSystemInDarkTheme()
+    val contentColor = if (isDarkTheme) Color.White else Color.Black
+    val buttonColor = if (isDarkTheme) Color.White else Color.Black
+    val buttonTextColor = if (isDarkTheme) Color.Black else Color.White
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -185,23 +215,52 @@ private fun OnboardingFooter(
                 .height(56.dp),
             shape = RoundedCornerShape(16.dp),
             colors = ButtonDefaults.buttonColors(
-                containerColor = Color.Black
+                containerColor = buttonColor,
+                contentColor = buttonTextColor
             )
         ) {
             Text(
                 text = if (currentPage == OnboardingPage.VOICE_SELECTION) "Continue" else "Next",
                 fontSize = 16.sp,
-                fontWeight = FontWeight.SemiBold
+                fontWeight = FontWeight.SemiBold,
+                color = buttonTextColor
             )
         }
 
-        // Terms text
+        // Terms text with clickable links
         if (currentPage == OnboardingPage.WELCOME) {
-            Text(
-                text = "By continuing, you agree to our Privacy Policy and Terms of Use.",
-                style = MaterialTheme.typography.bodySmall,
-                color = Color.Black.copy(alpha = 0.5f),
-                textAlign = TextAlign.Center
+            val annotatedText = buildAnnotatedString {
+                append("By continuing, you agree to our ")
+
+                pushStringAnnotation(tag = "privacy", annotation = privacyUrl)
+                withStyle(style = SpanStyle(color = Blue, textDecoration = TextDecoration.Underline)) {
+                    append("Privacy Policy")
+                }
+                pop()
+
+                append(" and ")
+
+                pushStringAnnotation(tag = "terms", annotation = termsUrl)
+                withStyle(style = SpanStyle(color = Blue, textDecoration = TextDecoration.Underline)) {
+                    append("Terms of Use")
+                }
+                pop()
+
+                append(".")
+            }
+
+            ClickableText(
+                text = annotatedText,
+                style = MaterialTheme.typography.bodySmall.copy(
+                    color = contentColor.copy(alpha = 0.5f),
+                    textAlign = TextAlign.Center
+                ),
+                onClick = { offset ->
+                    annotatedText.getStringAnnotations(tag = "privacy", start = offset, end = offset)
+                        .firstOrNull()?.let { uriHandler.openUri(it.item) }
+                    annotatedText.getStringAnnotations(tag = "terms", start = offset, end = offset)
+                        .firstOrNull()?.let { uriHandler.openUri(it.item) }
+                }
             )
         }
     }
@@ -211,6 +270,11 @@ private fun OnboardingFooter(
 
 @Composable
 private fun WelcomePage() {
+    val isDarkTheme = isSystemInDarkTheme()
+    val contentColor = if (isDarkTheme) Color.White else Color.Black
+    val iconBgColor = if (isDarkTheme) Color.White else Color.Black
+    val iconTintColor = if (isDarkTheme) Color.Black else Color.White
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -223,14 +287,14 @@ private fun WelcomePage() {
             modifier = Modifier
                 .size(120.dp)
                 .clip(RoundedCornerShape(24.dp))
-                .background(Color.Black),
+                .background(iconBgColor),
             contentAlignment = Alignment.Center
         ) {
             Icon(
                 imageVector = Icons.Default.Headphones,
                 contentDescription = null,
                 modifier = Modifier.size(60.dp),
-                tint = Color.White
+                tint = iconTintColor
             )
         }
 
@@ -239,14 +303,14 @@ private fun WelcomePage() {
         Text(
             text = "Welcome to",
             style = MaterialTheme.typography.headlineMedium,
-            color = Color.Black.copy(alpha = 0.6f)
+            color = contentColor.copy(alpha = 0.6f)
         )
 
         Text(
-            text = "ListenAI",
+            text = "ReadAloud AI",
             style = MaterialTheme.typography.displayMedium,
             fontWeight = FontWeight.Bold,
-            color = Color.Black
+            color = contentColor
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -254,7 +318,7 @@ private fun WelcomePage() {
         Text(
             text = "Transform any document into natural-sounding audio. Listen to articles, PDFs, and more on the go.",
             style = MaterialTheme.typography.bodyLarge,
-            color = Color.Black.copy(alpha = 0.7f),
+            color = contentColor.copy(alpha = 0.7f),
             textAlign = TextAlign.Center
         )
 
@@ -274,16 +338,19 @@ private fun WelcomePage() {
 
 @Composable
 private fun FeaturePill(text: String) {
+    val isDarkTheme = isSystemInDarkTheme()
+    val contentColor = if (isDarkTheme) Color.White else Color.Black
+
     Surface(
         shape = RoundedCornerShape(20.dp),
-        color = Color.Black.copy(alpha = 0.08f)
+        color = contentColor.copy(alpha = 0.08f)
     ) {
         Text(
             text = text,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
             style = MaterialTheme.typography.labelMedium,
             fontWeight = FontWeight.Medium,
-            color = Color.Black
+            color = contentColor
         )
     }
 }
@@ -292,6 +359,9 @@ private fun FeaturePill(text: String) {
 
 @Composable
 private fun DocumentToAudioPage() {
+    val isDarkTheme = isSystemInDarkTheme()
+    val contentColor = if (isDarkTheme) Color.White else Color.Black
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -303,7 +373,7 @@ private fun DocumentToAudioPage() {
             text = "Import from Anywhere",
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold,
-            color = Color.Black,
+            color = contentColor,
             textAlign = TextAlign.Center
         )
 
@@ -312,7 +382,7 @@ private fun DocumentToAudioPage() {
         Text(
             text = "Paste a link, upload a PDF, or type text directly",
             style = MaterialTheme.typography.bodyLarge,
-            color = Color.Black.copy(alpha = 0.7f),
+            color = contentColor.copy(alpha = 0.7f),
             textAlign = TextAlign.Center
         )
 
@@ -352,11 +422,15 @@ private fun ImportMethodCard(
     title: String,
     subtitle: String
 ) {
+    val isDarkTheme = isSystemInDarkTheme()
+    val cardBgColor = if (isDarkTheme) CardDark else Color.White
+    val contentColor = if (isDarkTheme) Color.White else Color.Black
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(Color.White)
+            .background(cardBgColor)
             .padding(16.dp),
         horizontalArrangement = Arrangement.spacedBy(16.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -380,12 +454,12 @@ private fun ImportMethodCard(
                 text = title,
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.SemiBold,
-                color = Color.Black
+                color = contentColor
             )
             Text(
                 text = subtitle,
                 style = MaterialTheme.typography.bodySmall,
-                color = Color.Black.copy(alpha = 0.6f)
+                color = contentColor.copy(alpha = 0.6f)
             )
         }
     }
@@ -395,6 +469,12 @@ private fun ImportMethodCard(
 
 @Composable
 private fun TakeNotesPage() {
+    val isDarkTheme = isSystemInDarkTheme()
+    val contentColor = if (isDarkTheme) Color.White else Color.Black
+    val cardBgColor = if (isDarkTheme) CardDark else Color.White
+    val buttonBgColor = if (isDarkTheme) Color.White else Color.Black
+    val buttonTintColor = if (isDarkTheme) Color.Black else Color.White
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -406,7 +486,7 @@ private fun TakeNotesPage() {
             text = "Take Notes While Listening",
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold,
-            color = Color.Black,
+            color = contentColor,
             textAlign = TextAlign.Center
         )
 
@@ -415,7 +495,7 @@ private fun TakeNotesPage() {
         Text(
             text = "Capture key insights without interrupting playback",
             style = MaterialTheme.typography.bodyLarge,
-            color = Color.Black.copy(alpha = 0.7f),
+            color = contentColor.copy(alpha = 0.7f),
             textAlign = TextAlign.Center
         )
 
@@ -425,7 +505,7 @@ private fun TakeNotesPage() {
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White)
+            colors = CardDefaults.cardColors(containerColor = cardBgColor)
         ) {
             Column(
                 modifier = Modifier.padding(20.dp),
@@ -437,17 +517,17 @@ private fun TakeNotesPage() {
                     horizontalArrangement = Arrangement.SpaceEvenly,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(Icons.Default.SkipPrevious, contentDescription = null, modifier = Modifier.size(32.dp))
+                    Icon(Icons.Default.SkipPrevious, contentDescription = null, modifier = Modifier.size(32.dp), tint = contentColor)
                     Box(
                         modifier = Modifier
                             .size(64.dp)
                             .clip(CircleShape)
-                            .background(Color.Black),
+                            .background(buttonBgColor),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(Icons.Default.Pause, contentDescription = null, tint = Color.White, modifier = Modifier.size(32.dp))
+                        Icon(Icons.Default.Pause, contentDescription = null, tint = buttonTintColor, modifier = Modifier.size(32.dp))
                     }
-                    Icon(Icons.Default.SkipNext, contentDescription = null, modifier = Modifier.size(32.dp))
+                    Icon(Icons.Default.SkipNext, contentDescription = null, modifier = Modifier.size(32.dp), tint = contentColor)
                 }
 
                 // Progress bar
@@ -465,7 +545,7 @@ private fun TakeNotesPage() {
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(12.dp))
-                        .background(Color.Black.copy(alpha = 0.05f))
+                        .background(contentColor.copy(alpha = 0.05f))
                         .padding(12.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically
@@ -473,12 +553,12 @@ private fun TakeNotesPage() {
                     Icon(
                         Icons.Default.Edit,
                         contentDescription = null,
-                        tint = Color.Black.copy(alpha = 0.5f)
+                        tint = contentColor.copy(alpha = 0.5f)
                     )
                     Text(
                         text = "Add a note at 2:34...",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = Color.Black.copy(alpha = 0.5f)
+                        color = contentColor.copy(alpha = 0.5f)
                     )
                 }
             }
@@ -490,6 +570,10 @@ private fun TakeNotesPage() {
 
 @Composable
 private fun ProductivityPage() {
+    val isDarkTheme = isSystemInDarkTheme()
+    val contentColor = if (isDarkTheme) Color.White else Color.Black
+    val cardBgColor = if (isDarkTheme) CardDark else Color.White
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -501,7 +585,7 @@ private fun ProductivityPage() {
             text = "Boost Your Productivity",
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold,
-            color = Color.Black,
+            color = contentColor,
             textAlign = TextAlign.Center
         )
 
@@ -510,7 +594,7 @@ private fun ProductivityPage() {
         Text(
             text = "Natural voices and adjustable speed for efficient learning",
             style = MaterialTheme.typography.bodyLarge,
-            color = Color.Black.copy(alpha = 0.7f),
+            color = contentColor.copy(alpha = 0.7f),
             textAlign = TextAlign.Center
         )
 
@@ -520,7 +604,7 @@ private fun ProductivityPage() {
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White)
+            colors = CardDefaults.cardColors(containerColor = cardBgColor)
         ) {
             Column(
                 modifier = Modifier.padding(20.dp),
@@ -529,7 +613,8 @@ private fun ProductivityPage() {
                 Text(
                     text = "Playback Speed",
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold
+                    fontWeight = FontWeight.SemiBold,
+                    color = contentColor
                 )
 
                 Row(
@@ -559,22 +644,31 @@ private fun ProductivityPage() {
 
 @Composable
 private fun SpeedChip(speed: String, isSelected: Boolean) {
+    val isDarkTheme = isSystemInDarkTheme()
+    val selectedBgColor = if (isDarkTheme) Color.White else Color.Black
+    val selectedTextColor = if (isDarkTheme) Color.Black else Color.White
+    val unselectedBgColor = if (isDarkTheme) Color.White.copy(alpha = 0.1f) else Color.Black.copy(alpha = 0.05f)
+    val unselectedTextColor = if (isDarkTheme) Color.White else Color.Black
+
     Surface(
         shape = RoundedCornerShape(12.dp),
-        color = if (isSelected) Color.Black else Color.Black.copy(alpha = 0.05f)
+        color = if (isSelected) selectedBgColor else unselectedBgColor
     ) {
         Text(
             text = speed,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
             style = MaterialTheme.typography.labelLarge,
             fontWeight = FontWeight.SemiBold,
-            color = if (isSelected) Color.White else Color.Black
+            color = if (isSelected) selectedTextColor else unselectedTextColor
         )
     }
 }
 
 @Composable
 private fun FeatureRow(icon: ImageVector, text: String) {
+    val isDarkTheme = isSystemInDarkTheme()
+    val contentColor = if (isDarkTheme) Color.White else Color.Black
+
     Row(
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -587,7 +681,7 @@ private fun FeatureRow(icon: ImageVector, text: String) {
         Text(
             text = text,
             style = MaterialTheme.typography.bodyLarge,
-            color = Color.Black
+            color = contentColor
         )
     }
 }
@@ -598,7 +692,22 @@ private fun FeatureRow(icon: ImageVector, text: String) {
 private fun VoiceSelectionPage(
     onVoiceSelected: (String) -> Unit
 ) {
+    val context = LocalContext.current
+    val isDarkTheme = isSystemInDarkTheme()
+    val contentColor = if (isDarkTheme) Color.White else Color.Black
     var selectedVoiceId by remember { mutableStateOf<String?>(null) }
+
+    // Create audio player
+    val audioPlayer = remember { OnboardingAudioPlayer(context) }
+    val isPlaying by audioPlayer.isPlaying.collectAsState()
+    val currentPlayingVoiceId by audioPlayer.currentVoiceId.collectAsState()
+
+    // Clean up when leaving the page
+    DisposableEffect(Unit) {
+        onDispose {
+            audioPlayer.release()
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -612,7 +721,7 @@ private fun VoiceSelectionPage(
             text = "Choose Your Voice",
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold,
-            color = Color.Black,
+            color = contentColor,
             textAlign = TextAlign.Center
         )
 
@@ -621,7 +730,7 @@ private fun VoiceSelectionPage(
         Text(
             text = "Pick a voice that suits your listening style",
             style = MaterialTheme.typography.bodyLarge,
-            color = Color.Black.copy(alpha = 0.7f),
+            color = contentColor.copy(alpha = 0.7f),
             textAlign = TextAlign.Center
         )
 
@@ -638,9 +747,13 @@ private fun VoiceSelectionPage(
                 VoiceOptionCard(
                     voice = voice,
                     isSelected = selectedVoiceId == voice.id,
+                    isPlaying = currentPlayingVoiceId == voice.id && isPlaying,
                     onSelect = {
                         selectedVoiceId = voice.id
                         onVoiceSelected(voice.id)
+                    },
+                    onPlayPreview = {
+                        audioPlayer.toggle(voice.id)
                     }
                 )
             }
@@ -652,9 +765,17 @@ private fun VoiceSelectionPage(
 private fun VoiceOptionCard(
     voice: VoicePreset,
     isSelected: Boolean,
-    onSelect: () -> Unit
+    isPlaying: Boolean = false,
+    onSelect: () -> Unit,
+    onPlayPreview: () -> Unit = {}
 ) {
+    val isDarkTheme = isSystemInDarkTheme()
+    val contentColor = if (isDarkTheme) Color.White else Color.Black
+    val cardBgColor = if (isDarkTheme) CardDark else Color.White
     val borderColor = if (isSelected) Blue else Color.Transparent
+
+    // Use accent color from voice if available
+    val accentColor = voice.accentColorHex?.let { parseHexColor(it) } ?: Blue
 
     Card(
         modifier = Modifier
@@ -667,7 +788,7 @@ private fun VoiceOptionCard(
             .clickable { onSelect() },
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (isSelected) Blue.copy(alpha = 0.1f) else Color.White
+            containerColor = if (isSelected) accentColor.copy(alpha = 0.1f) else cardBgColor
         )
     ) {
         Row(
@@ -677,41 +798,49 @@ private fun VoiceOptionCard(
             horizontalArrangement = Arrangement.spacedBy(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Avatar
+            // Avatar with emoji or initials
             Box(
                 modifier = Modifier
                     .size(48.dp)
                     .clip(CircleShape)
-                    .background(Blue.copy(alpha = 0.2f)),
+                    .background(accentColor.copy(alpha = 0.2f)),
                 contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = voice.name.take(2).uppercase(),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = Blue
-                )
+                if (voice.avatarEmoji != null) {
+                    Text(
+                        text = voice.avatarEmoji,
+                        style = MaterialTheme.typography.titleLarge
+                    )
+                } else {
+                    Text(
+                        text = voice.name.take(2).uppercase(),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = accentColor
+                    )
+                }
             }
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = voice.name,
                     style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.SemiBold
+                    fontWeight = FontWeight.SemiBold,
+                    color = contentColor
                 )
                 Text(
                     text = "${voice.style.name.lowercase().replaceFirstChar { it.uppercase() }} - ${voice.gender.name.lowercase().replaceFirstChar { it.uppercase() }}",
                     style = MaterialTheme.typography.bodySmall,
-                    color = Color.Black.copy(alpha = 0.6f)
+                    color = contentColor.copy(alpha = 0.6f)
                 )
             }
 
             // Play preview button
-            IconButton(onClick = { /* TODO: Play voice sample */ }) {
+            IconButton(onClick = onPlayPreview) {
                 Icon(
-                    imageVector = Icons.Default.PlayCircle,
-                    contentDescription = "Preview voice",
-                    tint = if (isSelected) Blue else Color.Black.copy(alpha = 0.5f)
+                    imageVector = if (isPlaying) Icons.Default.StopCircle else Icons.Default.PlayCircle,
+                    contentDescription = if (isPlaying) "Stop preview" else "Preview voice",
+                    tint = if (isPlaying) Orange else if (isSelected) accentColor else contentColor.copy(alpha = 0.5f)
                 )
             }
 
@@ -719,10 +848,23 @@ private fun VoiceOptionCard(
                 Icon(
                     imageVector = Icons.Default.CheckCircle,
                     contentDescription = "Selected",
-                    tint = Blue
+                    tint = accentColor
                 )
             }
         }
+    }
+}
+
+/**
+ * Parse hex color string to Color
+ */
+private fun parseHexColor(hex: String): Color {
+    return try {
+        val cleanHex = hex.removePrefix("#")
+        val colorInt = android.graphics.Color.parseColor("#$cleanHex")
+        Color(colorInt)
+    } catch (e: Exception) {
+        Blue // Default fallback
     }
 }
 
@@ -732,6 +874,10 @@ private fun VoiceOptionCard(
 private fun PaywallPage(
     onComplete: () -> Unit
 ) {
+    val isDarkTheme = isSystemInDarkTheme()
+    val contentColor = if (isDarkTheme) Color.White else Color.Black
+    val cardBgColor = if (isDarkTheme) CardDark else Color.White
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -757,10 +903,10 @@ private fun PaywallPage(
         Spacer(modifier = Modifier.height(16.dp))
 
         Text(
-            text = "Unlock ListenAI Pro",
+            text = "Unlock ReadAloud AI Pro",
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold,
-            color = Color.Black,
+            color = contentColor,
             textAlign = TextAlign.Center
         )
 
@@ -769,7 +915,7 @@ private fun PaywallPage(
         Text(
             text = "Get unlimited access to all premium features",
             style = MaterialTheme.typography.bodyLarge,
-            color = Color.Black.copy(alpha = 0.7f),
+            color = contentColor.copy(alpha = 0.7f),
             textAlign = TextAlign.Center
         )
 
@@ -779,7 +925,7 @@ private fun PaywallPage(
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White)
+            colors = CardDefaults.cardColors(containerColor = cardBgColor)
         ) {
             Column(
                 modifier = Modifier.padding(20.dp),
@@ -816,7 +962,7 @@ private fun PaywallPage(
                 Text(
                     text = "7-day free trial, then $9.99/week",
                     style = MaterialTheme.typography.bodySmall,
-                    color = Color.Black.copy(alpha = 0.6f)
+                    color = contentColor.copy(alpha = 0.6f)
                 )
             }
         }
@@ -825,17 +971,25 @@ private fun PaywallPage(
 
         // Subscribe button
         Button(
-            onClick = { /* TODO: Start subscription */ },
+            onClick = {
+                // TODO: Implement Google Play Billing subscription flow
+                // For now, complete onboarding - user can subscribe later from settings
+                onComplete()
+            },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(56.dp),
             shape = RoundedCornerShape(16.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Purple)
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Purple,
+                contentColor = Color.White
+            )
         ) {
             Text(
                 text = "Start Free Trial",
                 fontSize = 16.sp,
-                fontWeight = FontWeight.SemiBold
+                fontWeight = FontWeight.SemiBold,
+                color = Color.White
             )
         }
 
@@ -845,24 +999,58 @@ private fun PaywallPage(
         TextButton(onClick = onComplete) {
             Text(
                 text = "Maybe Later",
-                color = Color.Black.copy(alpha = 0.5f)
+                color = contentColor.copy(alpha = 0.5f)
             )
         }
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Terms
-        Text(
-            text = "By subscribing, you agree to our Terms of Use and Privacy Policy. Subscription auto-renews weekly until cancelled.",
-            style = MaterialTheme.typography.labelSmall,
-            color = Color.Black.copy(alpha = 0.4f),
-            textAlign = TextAlign.Center
+        // Terms with clickable links
+        val uriHandler = LocalUriHandler.current
+        val privacyUrl = "https://kreativekoala.llc/privacy"
+        val termsUrl = "https://kreativekoala.llc/terms"
+
+        val annotatedTermsText = buildAnnotatedString {
+            append("By subscribing, you agree to our ")
+
+            pushStringAnnotation(tag = "terms", annotation = termsUrl)
+            withStyle(style = SpanStyle(color = Blue, textDecoration = TextDecoration.Underline)) {
+                append("Terms of Use")
+            }
+            pop()
+
+            append(" and ")
+
+            pushStringAnnotation(tag = "privacy", annotation = privacyUrl)
+            withStyle(style = SpanStyle(color = Blue, textDecoration = TextDecoration.Underline)) {
+                append("Privacy Policy")
+            }
+            pop()
+
+            append(". Subscription auto-renews weekly until cancelled.")
+        }
+
+        ClickableText(
+            text = annotatedTermsText,
+            style = MaterialTheme.typography.labelSmall.copy(
+                color = contentColor.copy(alpha = 0.4f),
+                textAlign = TextAlign.Center
+            ),
+            onClick = { offset ->
+                annotatedTermsText.getStringAnnotations(tag = "terms", start = offset, end = offset)
+                    .firstOrNull()?.let { uriHandler.openUri(it.item) }
+                annotatedTermsText.getStringAnnotations(tag = "privacy", start = offset, end = offset)
+                    .firstOrNull()?.let { uriHandler.openUri(it.item) }
+            }
         )
     }
 }
 
 @Composable
 private fun ProFeatureRow(text: String) {
+    val isDarkTheme = isSystemInDarkTheme()
+    val contentColor = if (isDarkTheme) Color.White else Color.Black
+
     Row(
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -876,7 +1064,7 @@ private fun ProFeatureRow(text: String) {
         Text(
             text = text,
             style = MaterialTheme.typography.bodyMedium,
-            color = Color.Black
+            color = contentColor
         )
     }
 }

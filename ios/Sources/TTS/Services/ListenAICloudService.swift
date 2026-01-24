@@ -1418,20 +1418,22 @@ extension ListenAICloudService {
     /// Synthesize text using a cloned voice via Chatterbox TTS.
     ///
     /// This uses the selfhosted TTS service's /synthesize-cloned endpoint
-    /// which performs voice cloning synthesis using Chatterbox.
+    /// which performs voice cloning synthesis using Chatterbox or XTTS.
     ///
     /// - Parameters:
     ///   - text: The text to synthesize
     ///   - voiceId: The cloned voice ID (UUID from cloned_voices table)
     ///   - voiceUrl: The URL to the reference audio file (from Supabase Storage)
     ///   - speed: Playback speed multiplier (0.5 - 2.0, default 1.0)
+    ///   - model: The voice cloning model to use ("chatterbox" or "xtts", default "chatterbox")
     /// - Returns: AudioData containing the synthesized audio
     /// - Throws: ListenAICloudError if synthesis fails
     func synthesizeCloned(
         text: String,
         voiceId: String,
         voiceUrl: String,
-        speed: Double = 1.0
+        speed: Double = 1.0,
+        model: String = "chatterbox"
     ) async throws -> AudioData {
         let token = try await getAuthToken()
 
@@ -1452,12 +1454,13 @@ extension ListenAICloudService {
             "text": text,
             "voice_id": voiceId,
             "voice_url": voiceUrl,
-            "speed": speed
+            "speed": speed,
+            "model": model
         ]
 
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
 
-        print("[ListenAI] Synthesizing with cloned voice: \(voiceId), text: \(text.count) chars")
+        print("[ListenAI] Synthesizing with cloned voice: \(voiceId), model: \(model), text: \(text.count) chars")
 
         return try await executeWithRetry(request: request) { data, response in
             guard let httpResponse = response as? HTTPURLResponse else {
@@ -1484,6 +1487,118 @@ extension ListenAICloudService {
                 charactersUsed: charactersUsed,
                 fileURL: tempURL
             )
+        }
+    }
+
+    /// Request cloned voice TTS synthesis via job-based API.
+    ///
+    /// This is the async job-based API for cloned voices that supports:
+    /// - Progress tracking during long synthesis jobs
+    /// - Preview audio while full synthesis completes
+    /// - Background processing via Pub/Sub workers
+    ///
+    /// - Parameters:
+    ///   - text: The text to synthesize
+    ///   - voiceId: The cloned voice ID (UUID from cloned_voices table)
+    ///   - voiceUrl: The URL to the reference audio file (from Supabase Storage)
+    ///   - speed: Playback speed multiplier (0.5 - 2.0, default 1.0)
+    ///   - model: The voice cloning model to use ("chatterbox" or "xtts", default "chatterbox")
+    ///   - articleId: Optional article ID for tracking
+    ///   - articleTitle: Optional article title for display
+    /// - Returns: TTSJobStartResponse with job ID and initial status
+    /// - Throws: TTSJobError for quota, rate limit, or other errors
+    func requestClonedVoiceTTS(
+        text: String,
+        voiceId: String,
+        voiceUrl: String,
+        speed: Double = 1.0,
+        model: String = "chatterbox",
+        articleId: String? = nil,
+        articleTitle: String? = nil
+    ) async throws -> TTSJobStartResponse {
+        let token = try await getAuthToken()
+
+        // Use the job-based cloned voice endpoint
+        let url = configuration.baseURL
+            .appendingPathComponent("api")
+            .appendingPathComponent("tts")
+            .appendingPathComponent("job-cloned")
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.timeoutInterval = 30  // Just for initial job creation
+
+        // Debug: Add quota bypass header for testing (TODO: Remove before production)
+        if ListenAIDebugConfig.bypassQuotaForTesting {
+            request.setValue("true", forHTTPHeaderField: "X-Debug-Bypass-Quota")
+            print("[TTS Job Cloned] DEBUG: Quota bypass header added")
+        }
+
+        var body: [String: Any] = [
+            "text": text,
+            "voice_id": voiceId,
+            "voice_url": voiceUrl,
+            "speed": speed,
+            "model": model
+        ]
+
+        if let articleId = articleId {
+            body["article_id"] = articleId
+        }
+        if let articleTitle = articleTitle {
+            body["article_title"] = articleTitle
+        }
+
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        print("[TTS Job Cloned] POST /api/tts/job-cloned - \(text.count) chars, voice: \(voiceId), model: \(model)")
+
+        do {
+            let (data, response) = try await urlSession.data(for: request)
+
+            guard let httpResponse = response as? HTTPURLResponse else {
+                throw TTSJobError.unknown(message: "Invalid response type")
+            }
+
+            // Check for error responses
+            guard (200...299).contains(httpResponse.statusCode) else {
+                var headers: [String: String] = [:]
+                for (key, value) in httpResponse.allHeaderFields {
+                    if let keyStr = key as? String, let valueStr = value as? String {
+                        headers[keyStr] = valueStr
+                    }
+                }
+
+                // Log error response for debugging
+                if let errorBody = String(data: data, encoding: .utf8) {
+                    print("[TTS Job Cloned] Error response (\(httpResponse.statusCode)): \(errorBody)")
+                }
+
+                throw TTSJobError.fromHTTPResponse(
+                    statusCode: httpResponse.statusCode,
+                    body: data,
+                    headers: headers
+                )
+            }
+
+            // Decode successful response
+            let jobResponse = try JSONDecoder().decode(TTSJobStartResponse.self, from: data)
+
+            print("[TTS Job Cloned] Response: status=\(jobResponse.status.rawValue), jobId=\(jobResponse.jobId)")
+
+            return jobResponse
+
+        } catch let error as TTSJobError {
+            throw error
+        } catch let error as DecodingError {
+            print("[TTS Job Cloned] Decoding error: \(error)")
+            throw TTSJobError.unknown(message: "Failed to parse response: \(error.localizedDescription)")
+        } catch {
+            print("[TTS Job Cloned] Network error: \(error)")
+            throw TTSJobError.networkError(underlying: error.localizedDescription)
         }
     }
 }

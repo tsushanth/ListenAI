@@ -37,8 +37,8 @@ struct SettingsView: View {
     @State private var showingLinkedAccounts = false
     @State private var showingUsageDetails = false
 
-    // Current voice name - TODO: Connect to actual voice selection
-    @State private var currentVoiceName = "Narrator"
+    // Current voice from preset manager
+    @StateObject private var voicePresetManager = VoicePresetManager.shared
 
     var body: some View {
         List {
@@ -104,6 +104,28 @@ struct SettingsView: View {
             }
             .buttonStyle(.plain)
 
+            // Voice Cloning Model
+            VStack(alignment: .leading, spacing: 4) {
+                HStack {
+                    SettingsIconView(icon: voicePresetManager.voiceCloningModel.iconName, color: .indigo)
+                    Text("Cloning Speed")
+                    Spacer()
+                    Picker("", selection: Binding(
+                        get: { voicePresetManager.voiceCloningModel },
+                        set: { voicePresetManager.setVoiceCloningModel($0) }
+                    )) {
+                        ForEach(VoiceCloningModel.allCases, id: \.self) { model in
+                            Text(model.displayName).tag(model)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                }
+                Text(voicePresetManager.voiceCloningModel.description)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .padding(.leading, 36)
+            }
+
             // Change Voice
             Button {
                 showingVoicePicker = true
@@ -112,7 +134,7 @@ struct SettingsView: View {
                     icon: "waveform",
                     iconColor: .blue,
                     title: "Change Voice",
-                    value: currentVoiceName
+                    value: voicePresetManager.selectedPreset.name
                 )
             }
             .buttonStyle(.plain)
@@ -389,7 +411,8 @@ struct SettingsView: View {
     }
 
     private func shareApp() {
-        let url = URL(string: "https://apps.apple.com/app/listenai")!
+        // TODO: Replace with actual App Store URL after app is published
+        let url = URL(string: "https://apps.apple.com/app/readaloud-ai")!
         let activityVC = UIActivityViewController(activityItems: [url], applicationActivities: nil)
 
         if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
@@ -400,7 +423,8 @@ struct SettingsView: View {
     }
 
     private func rateApp() {
-        if let url = URL(string: "https://apps.apple.com/app/listenai?action=write-review") {
+        // TODO: Replace with actual App Store URL after app is published
+        if let url = URL(string: "https://apps.apple.com/app/readaloud-ai?action=write-review") {
             UIApplication.shared.open(url)
         }
     }
@@ -558,7 +582,14 @@ struct FeatureRequestView: View {
     }
 
     private func submitFeature() {
-        // TODO: Submit feature request to backend
+        // Send feature request via email
+        let subject = "Feature Request - ReadAloud AI"
+        let body = featureText.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+        let encodedSubject = subject.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+
+        if let url = URL(string: "mailto:support@kreativekoala.llc?subject=\(encodedSubject)&body=\(body)") {
+            UIApplication.shared.open(url)
+        }
         dismiss()
     }
 }

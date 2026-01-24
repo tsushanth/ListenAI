@@ -3,14 +3,25 @@ import SwiftUI
 // MARK: - Mini Player View
 
 /// Compact player bar that appears at the bottom of the screen.
-/// Tapping expands to the full AudioPlayerView.
+/// Supports both traditional AudioPlaybackService and URLAudioPlayer.
 struct MiniPlayerView: View {
 
     @ObservedObject var playbackService: AudioPlaybackService
+    @ObservedObject var urlPlayer = URLAudioPlayer.shared
     @State private var showFullPlayer = false
 
+    /// Whether any playback is active (from either player)
+    private var hasActivePlayback: Bool {
+        playbackService.currentItem != nil || urlPlayer.currentArticleID != nil
+    }
+
+    /// Whether using URL player (job-based) vs traditional playback
+    private var isUsingURLPlayer: Bool {
+        urlPlayer.currentArticleID != nil && urlPlayer.state.isActive
+    }
+
     var body: some View {
-        if playbackService.currentItem != nil {
+        if hasActivePlayback {
             VStack(spacing: 0) {
                 // Progress bar at top (like reference)
                 progressBar
@@ -54,13 +65,21 @@ struct MiniPlayerView: View {
                 Rectangle()
                     .fill(Color(.systemGray5))
 
-                // Progress
+                // Progress - use URL player if active, otherwise traditional
                 Rectangle()
                     .fill(Color.accentColor)
-                    .frame(width: geometry.size.width * playbackService.progress.progress)
+                    .frame(width: geometry.size.width * currentProgress)
             }
         }
         .frame(height: 2)
+    }
+
+    private var currentProgress: Double {
+        if isUsingURLPlayer {
+            guard urlPlayer.duration > 0 else { return 0 }
+            return urlPlayer.currentTime / urlPlayer.duration
+        }
+        return playbackService.progress.progress
     }
 
     private var artworkView: some View {
@@ -94,7 +113,7 @@ struct MiniPlayerView: View {
 
     private var trackInfoView: some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(playbackService.currentItem?.title ?? "")
+            Text(currentTitle)
                 .font(.subheadline)
                 .fontWeight(.medium)
                 .lineLimit(1)
@@ -107,8 +126,25 @@ struct MiniPlayerView: View {
         }
     }
 
+    private var currentTitle: String {
+        if isUsingURLPlayer {
+            // Get article title from ArticleStore using the current article ID
+            if let articleId = urlPlayer.currentArticleID,
+               let article = ArticleStore.shared.article(withID: articleId) {
+                return article.displayTitle
+            }
+            return "Playing..."
+        }
+        return playbackService.currentItem?.title ?? ""
+    }
+
     private var remainingTimeText: String {
-        let remaining = playbackService.progress.duration - playbackService.progress.currentTime
+        let remaining: TimeInterval
+        if isUsingURLPlayer {
+            remaining = urlPlayer.duration - urlPlayer.currentTime
+        } else {
+            remaining = playbackService.progress.duration - playbackService.progress.currentTime
+        }
         let minutes = Int(remaining / 60)
         if minutes < 1 {
             return "< 1 m left"
@@ -121,9 +157,13 @@ struct MiniPlayerView: View {
         HStack(spacing: 16) {
             // Play/Pause button
             Button {
-                playbackService.togglePlayPause()
+                if isUsingURLPlayer {
+                    urlPlayer.togglePlayPause()
+                } else {
+                    playbackService.togglePlayPause()
+                }
             } label: {
-                Image(systemName: playbackService.state.isPlaying ? "pause.fill" : "play.fill")
+                Image(systemName: isPlaying ? "pause.fill" : "play.fill")
                     .font(.title2)
                     .frame(width: 44, height: 44)
             }
@@ -131,8 +171,12 @@ struct MiniPlayerView: View {
 
             // Close button (X) like reference
             Button {
-                Task {
-                    await playbackService.stop()
+                if isUsingURLPlayer {
+                    urlPlayer.stop()
+                } else {
+                    Task {
+                        await playbackService.stop()
+                    }
                 }
             } label: {
                 Image(systemName: "xmark")
@@ -144,6 +188,13 @@ struct MiniPlayerView: View {
             }
             .buttonStyle(.plain)
         }
+    }
+
+    private var isPlaying: Bool {
+        if isUsingURLPlayer {
+            return urlPlayer.isPlaying
+        }
+        return playbackService.state.isPlaying
     }
 }
 

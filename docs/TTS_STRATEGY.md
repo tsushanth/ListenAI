@@ -2,7 +2,7 @@
 
 ## Overview
 
-ListenAI uses a multi-provider TTS strategy to balance quality, cost, and user experience.
+ReadAloud AI uses a multi-provider TTS strategy to balance quality, cost, and user experience.
 
 ## Provider Stack
 
@@ -47,7 +47,7 @@ Apple's AVSpeechSynthesis produces robotic-sounding voices that don't match our 
 
 ### Competitive Positioning
 
-| Feature | ListenAI Free | Competitor Free |
+| Feature | ReadAloud AI Free | Competitor Free |
 |---------|---------------|-----------------|
 | Daily listening | **Unlimited** | 5 minutes |
 | Voice quality | **Natural AI** | Basic TTS |

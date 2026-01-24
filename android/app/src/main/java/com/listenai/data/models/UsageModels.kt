@@ -174,7 +174,7 @@ private fun maxOf(a: WarningLevel, b: WarningLevel): WarningLevel {
 }
 
 /**
- * Summary of premium quality (ElevenLabs) usage for the day
+ * Summary of premium quality usage for the day (kept for API compatibility)
  */
 data class PremiumUsageSummary(
     val samplesUsed: Int,

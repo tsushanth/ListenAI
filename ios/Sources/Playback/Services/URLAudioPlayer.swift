@@ -41,6 +41,9 @@ final class URLAudioPlayer: NSObject, ObservableObject {
     /// Preview audio duration (if known) - used for seek restrictions
     @Published private(set) var previewDuration: TimeInterval?
 
+    /// Indicates preview ended and waiting for full audio to be ready
+    @Published private(set) var isAwaitingFullAudio: Bool = false
+
     // MARK: - Properties
 
     private var player: AVPlayer?
@@ -262,6 +265,7 @@ final class URLAudioPlayer: NSObject, ObservableObject {
         previewDuration = nil
         didReachEndOfPlayback = false
         isSeeking = false
+        isAwaitingFullAudio = false
 
         // Clear now playing
         MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
@@ -481,6 +485,11 @@ final class URLAudioPlayer: NSObject, ObservableObject {
         // Reset the end-of-playback flag after swap
         didReachEndOfPlayback = false
 
+        // Clear waiting state since full audio is now available
+        if mode == .full {
+            isAwaitingFullAudio = false
+        }
+
         // Update now playing info
         updateNowPlayingPlaybackState()
 
@@ -569,11 +578,17 @@ final class URLAudioPlayer: NSObject, ObservableObject {
     }
 
     @objc private func playerDidFinishPlaying() {
-        print("[URLAudioPlayer] Playback finished naturally (reached end)")
+        print("[URLAudioPlayer] Playback finished naturally (reached end), mode: \(playerMode)")
         isPlaying = false
         state = .completed
         currentTime = duration
         didReachEndOfPlayback = true  // Mark that playback ended naturally
+
+        // If preview ended, show waiting indicator until full audio arrives
+        if playerMode == .preview {
+            isAwaitingFullAudio = true
+            print("[URLAudioPlayer] Preview ended - waiting for full audio")
+        }
 
         // Call completion handler
         onPlaybackComplete?()

@@ -12,7 +12,7 @@ import com.listenai.data.models.UsageRecord
         PlaylistEntity::class,
         UsageRecord::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 @TypeConverters(Converters::class)

@@ -33,17 +33,28 @@ struct PaywallPageView: View {
                     manager.completeOnboarding()
                 } label: {
                     Image(systemName: "xmark")
-                        .font(.body)
+                        .font(.title3)
                         .foregroundStyle(.secondary)
+                        .frame(width: 44, height: 44)
+                        .background(Color(.secondarySystemBackground))
+                        .clipShape(Circle())
+                        .contentShape(Circle())
                 }
 
                 Spacer()
 
-                Button("Restore") {
+                Button {
                     // Restore purchases
+                } label: {
+                    Text("Restore")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 10)
+                        .background(Color(.secondarySystemBackground))
+                        .clipShape(Capsule())
+                        .contentShape(Capsule())
                 }
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
             }
             .padding(.horizontal, 20)
             .padding(.top, 12)
@@ -87,8 +98,14 @@ struct PaywallPageView: View {
                     manager.completeOnboarding()
                 } label: {
                     Text(freeTrialEnabled ? "Try for Free" : "Subscribe Now")
+                        .font(.headline)
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 56)
+                        .background(Color.black)
+                        .clipShape(RoundedRectangle(cornerRadius: 16))
+                        .contentShape(RoundedRectangle(cornerRadius: 16))
                 }
-                .buttonStyle(OnboardingPrimaryButtonStyle())
 
                 // Subscription terms (required by App Store)
                 Text("Auto-renewable \(subscriptionLength) subscription. \(weeklyPrice)/week after \(trialDays)-day free trial. Cancel anytime.")
@@ -123,6 +140,8 @@ struct PaywallPageView: View {
             .padding(.horizontal, 24)
             .padding(.bottom, 24)
         }
+        .frame(maxWidth: 500)  // Constrain width on iPad for better UX
+        .frame(maxWidth: .infinity)  // Center within parent
     }
 
     // MARK: - Hero Illustration

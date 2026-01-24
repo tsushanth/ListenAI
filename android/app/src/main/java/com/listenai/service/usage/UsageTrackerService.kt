@@ -97,7 +97,7 @@ class UsageTrackerService(
     }
 
     /**
-     * Track premium quality usage (ElevenLabs)
+     * Track premium quality usage (kept for API compatibility, uses same backend)
      */
     suspend fun trackPremiumUsage(
         charactersUsed: Int,
@@ -117,7 +117,7 @@ class UsageTrackerService(
             articleId = articleId,
             articleTitle = articleTitle,
             voiceId = voiceId,
-            provider = "elevenlabs"
+            provider = "selfhosted"
         )
     }
 

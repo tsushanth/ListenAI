@@ -435,7 +435,7 @@ Users can optionally share their cloned voices with the community. This creates 
 |-------|-------------|-------------|
 | **Private** | Only you | Just the creator |
 | **Friends** | Share with approved users | Invited users only |
-| **Community** | Anyone on ListenAI | All ListenAI users |
+| **Community** | Anyone on ReadAloud AI | All ReadAloud AI users |
 | **Featured** | Curated, high-quality | All users + promoted |
 
 ### Consent Flow for Sharing
@@ -444,14 +444,14 @@ Users can optionally share their cloned voices with the community. This creates 
 ┌─────────────────────────────────────────┐
 │ 🌐 Share Your Voice                     │
 │                                         │
-│ Let other ListenAI users enjoy your    │
+│ Let other ReadAloud AI users enjoy your    │
 │ voice! You'll be credited as creator.   │
 │                                         │
 │ Choose sharing level:                   │
 │                                         │
 │ ○ Private (only you can use)           │
 │ ○ Friends Only (invite specific users) │
-│ ○ Community (any ListenAI user)        │
+│ ○ Community (any ReadAloud AI user)        │
 │                                         │
 │ ☐ Allow use in commercial content      │
 │                                         │
@@ -490,7 +490,7 @@ Users can optionally share their cloned voices with the community. This creates 
 ```
 VOICE SHARING LICENSE AGREEMENT
 
-By sharing your voice on ListenAI, you grant:
+By sharing your voice on ReadAloud AI, you grant:
 
 1. LICENSE TO LISTENAI
    - Host and distribute your voice clone

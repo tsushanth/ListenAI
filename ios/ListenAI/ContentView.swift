@@ -7,9 +7,21 @@ struct ContentView: View {
     @EnvironmentObject var playbackService: AudioPlaybackService
     @EnvironmentObject var queueManager: QueueManager
     @EnvironmentObject var usageTracker: UsageTrackerService
+    @ObservedObject private var urlPlayer = URLAudioPlayer.shared
 
     @State private var selectedTab = 0
     @State private var showingPlayer = false
+    @State private var articleToOpen: Article?
+
+    /// Whether any playback is active (from either player)
+    private var hasActivePlayback: Bool {
+        playbackService.currentItem != nil || urlPlayer.currentArticleID != nil
+    }
+
+    /// Whether using URL player (job-based) vs traditional playback
+    private var isUsingURLPlayer: Bool {
+        urlPlayer.currentArticleID != nil && urlPlayer.state.isActive
+    }
 
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -45,14 +57,20 @@ struct ContentView: View {
             // Mini Player Overlay - hidden when ArticleReaderView is showing its own player
             VStack(spacing: 0) {
                 Spacer()
-                if playbackService.currentItem != nil && !playbackService.isArticleReaderActive {
+                if hasActivePlayback && !playbackService.isArticleReaderActive {
                     MiniPlayerView(playbackService: playbackService)
                         .onTapGesture {
-                            showingPlayer = true
+                            handleMiniPlayerTap()
                         }
                         .padding(.bottom, 49) // Tab bar height
                         .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
+            }
+        }
+        .fullScreenCover(item: $articleToOpen) { article in
+            // Open ArticleReaderView when tapping mini player during URL playback
+            NavigationStack {
+                ArticleReaderView(article: article)
             }
         }
         .onChange(of: playbackService.isArticleReaderActive) { _, newValue in
@@ -61,10 +79,33 @@ struct ContentView: View {
         .onChange(of: playbackService.currentItem?.id) { _, newValue in
             print("[ContentView] currentItem changed to: \(newValue?.uuidString ?? "nil")")
         }
+        .onChange(of: urlPlayer.currentArticleID) { _, newValue in
+            print("[ContentView] urlPlayer.currentArticleID changed to: \(newValue?.uuidString ?? "nil")")
+        }
         .animation(.easeInOut(duration: 0.25), value: playbackService.isArticleReaderActive)
         .animation(.easeInOut(duration: 0.25), value: playbackService.currentItem?.id)
+        .animation(.easeInOut(duration: 0.25), value: urlPlayer.currentArticleID)
         .sheet(isPresented: $showingPlayer) {
             AudioPlayerView(playbackService: playbackService)
+        }
+    }
+
+    // MARK: - Actions
+
+    /// Handle mini player tap - opens ArticleReaderView for URL player, or AudioPlayerView for traditional playback
+    private func handleMiniPlayerTap() {
+        if isUsingURLPlayer {
+            // URL player is active - open the article in ArticleReaderView
+            if let articleId = urlPlayer.currentArticleID,
+               let article = ArticleStore.shared.article(withID: articleId) {
+                articleToOpen = article
+            } else {
+                // Fallback to AudioPlayerView if we can't find the article
+                showingPlayer = true
+            }
+        } else {
+            // Traditional playback - show AudioPlayerView
+            showingPlayer = true
         }
     }
 }

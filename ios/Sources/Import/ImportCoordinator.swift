@@ -91,6 +91,15 @@ final class ImportCoordinator: ObservableObject {
         // Get current voice preset
         let voice = VoicePresetManager.shared.selectedPreset
 
+        // Check if this is a cloned voice (custom category, not built-in, no kokoroVoiceID)
+        let isClonedVoice = !voice.isBuiltIn && voice.category == .custom && voice.kokoroVoiceID == nil
+
+        // Handle cloned voices separately - they use direct synthesis, not the job API
+        if isClonedVoice {
+            await performClonedVoiceSynthesis(for: article, voice: voice)
+            return
+        }
+
         // Always use GPU-accelerated Kokoro (selfhosted)
         let provider: ListenAICloudService.TTSProvider = .selfhosted
 
@@ -184,6 +193,112 @@ final class ImportCoordinator: ObservableObject {
             if !Task.isCancelled {
                 articleStore.updateSynthesisStatus(for: article.id, status: .failed(message: error.localizedDescription))
                 print("[Import] Pre-synthesis failed for '\(article.title.prefix(30))': \(error.localizedDescription)")
+            }
+        }
+
+        isSynthesizing = false
+    }
+
+    /// Perform synthesis for cloned voices using job-based API with progress tracking
+    private func performClonedVoiceSynthesis(for article: Article, voice: VoicePreset) async {
+        let voiceId = voice.providerVoiceID
+        print("[Import] Starting cloned voice job for '\(article.title.prefix(50))' with voice: \(voice.name), id: \(voiceId)")
+
+        // Update status to queued
+        articleStore.updateSynthesisStatus(for: article.id, status: .queued(position: 1))
+
+        // Get cloud service
+        guard let cloudService = TTSServiceFactory.listenAICloudService else {
+            print("[Import] Cloud service not configured, skipping cloned voice synthesis")
+            articleStore.updateSynthesisStatus(for: article.id, status: .failed(message: "Cloud service not configured"))
+            isSynthesizing = false
+            return
+        }
+
+        // Get the voice URL from cloned voices
+        do {
+            let clonedVoices = try await VoiceCloningService.shared.listClonedVoices()
+            guard let clonedVoice = clonedVoices.first(where: { $0.id == voiceId }),
+                  let voiceUrl = clonedVoice.audioUrl else {
+                print("[Import] Cloned voice not found: \(voiceId)")
+                articleStore.updateSynthesisStatus(for: article.id, status: .failed(message: "Cloned voice not found"))
+                isSynthesizing = false
+                return
+            }
+
+            // Get user's preferred cloning model
+            let cloningModel = VoicePresetManager.shared.voiceCloningModel.rawValue
+
+            print("[Import] Requesting cloned voice job: \(voiceId), model: \(cloningModel), text: \(article.rawText.count) chars")
+
+            // Submit job via job-based cloned voice API
+            let response = try await cloudService.requestClonedVoiceTTS(
+                text: article.rawText,
+                voiceId: voiceId,
+                voiceUrl: voiceUrl,
+                speed: 1.0,
+                model: cloningModel,
+                articleId: article.id.uuidString,
+                articleTitle: article.displayTitle
+            )
+
+            // Check if cancelled
+            if Task.isCancelled { return }
+
+            // Handle response based on status
+            switch response.status {
+            case .ready:
+                // Cache hit! Audio is immediately available
+                if let audioUrlString = response.audioUrl, let audioUrl = URL(string: audioUrlString) {
+                    // Download audio to local cache
+                    let localPath = await downloadAudioToCache(articleId: article.id, from: audioUrl)
+                    if let localPath = localPath {
+                        articleStore.updateSynthesisStatus(for: article.id, status: .completed, audioURL: localPath)
+                        print("[Import] Cloned voice synthesis completed (cache hit) for '\(article.title.prefix(30))'")
+                    } else {
+                        // Store remote URL if download fails
+                        articleStore.updateSynthesisStatus(for: article.id, status: .completed, audioURL: audioUrl)
+                    }
+                }
+                synthesisProgress = 1.0
+
+            case .queued, .processing, .partialReady:
+                // Job is processing - hand off to TTSJobManager for background polling
+                articleStore.updateSynthesisStatus(for: article.id, status: .inProgress(progress: 0))
+                articleStore.updatePendingTTSJob(for: article.id, jobId: response.jobId, voiceId: voiceId)
+
+                // Let TTSJobManager handle background polling
+                TTSJobManager.shared.trackJob(
+                    articleId: article.id,
+                    jobId: response.jobId,
+                    voiceId: voiceId,
+                    initialStatus: response.status
+                )
+
+                print("[Import] Cloned voice job started: \(response.jobId) for '\(article.title.prefix(30))'")
+
+            case .failed, .cancelled:
+                // Initial POST should not return failed/cancelled, but handle gracefully
+                articleStore.updateSynthesisStatus(for: article.id, status: .failed(message: "Synthesis failed"))
+                print("[Import] Cloned voice job failed for '\(article.title.prefix(30))'")
+            }
+
+        } catch let error as TTSJobError {
+            if !Task.isCancelled {
+                // Handle quota errors gracefully - don't mark as failed, just skip
+                switch error {
+                case .dailyQuotaExceeded, .monthlyQuotaExceeded:
+                    print("[Import] Cloned voice synthesis skipped (quota exceeded) for '\(article.title.prefix(30))'")
+                    articleStore.updateSynthesisStatus(for: article.id, status: .notStarted)
+                default:
+                    articleStore.updateSynthesisStatus(for: article.id, status: .failed(message: error.localizedDescription))
+                    print("[Import] Cloned voice job failed for '\(article.title.prefix(30))': \(error.localizedDescription)")
+                }
+            }
+        } catch {
+            if !Task.isCancelled {
+                articleStore.updateSynthesisStatus(for: article.id, status: .failed(message: error.localizedDescription))
+                print("[Import] Cloned voice job failed for '\(article.title.prefix(30))': \(error.localizedDescription)")
             }
         }
 
