@@ -1,4 +1,5 @@
 import SwiftUI
+import AVFoundation
 
 // MARK: - Article Reader View
 
@@ -81,10 +82,6 @@ struct ArticleReaderView: View {
 
     // AI Chat state
     @State private var showingAIChat = false
-    @State private var aiChatText: String = ""
-    @State private var aiResponse: String?
-    @State private var isAILoading = false
-    @State private var showingAISummary = false
 
     // Streaming TTS settings (experimental) - DEPRECATED: now using URL-based playback
     @AppStorage("useStreamingTTS") private var useStreamingTTS: Bool = false
@@ -185,7 +182,7 @@ struct ArticleReaderView: View {
                         articleContent
                             .padding(.horizontal)
                             .padding(.top, 16)
-                            .padding(.bottom, showingAIChat ? 200 : 120) // Extra space for AI chat
+                            .padding(.bottom, 120) // Space for player bar
                     }
                 }
                 .onChange(of: currentHighlightIndex) { _, newIndex in
@@ -196,11 +193,6 @@ struct ArticleReaderView: View {
                         }
                     }
                 }
-            }
-
-            // AI Chat input bar (above player)
-            if showingAIChat {
-                aiChatInputBar
             }
 
             // Bottom player bar
@@ -220,13 +212,11 @@ struct ArticleReaderView: View {
 
                     // AI/Summarize (sparkle icon)
                     Button {
-                        withAnimation(.spring(response: 0.3)) {
-                            showingAIChat.toggle()
-                        }
+                        showingAIChat = true
                     } label: {
-                        Image(systemName: showingAIChat ? "sparkles" : "sparkles")
+                        Image(systemName: "sparkles")
                             .font(.body)
-                            .foregroundStyle(showingAIChat ? .yellow : .primary)
+                            .foregroundStyle(.primary)
                     }
 
                     // Voice picker (head icon)
@@ -265,6 +255,9 @@ struct ArticleReaderView: View {
         }
         .sheet(isPresented: $showingVoicePicker) {
             SelectVoiceView()
+        }
+        .fullScreenCover(isPresented: $showingAIChat) {
+            AIChatView(article: article)
         }
         .sheet(isPresented: $showingTextSettings) {
             TextSettingsSheet(fontSize: $fontSize, lineSpacing: $lineSpacing)
@@ -682,6 +675,40 @@ struct ArticleReaderView: View {
         }
     }
 
+    /// Estimate synthesis time for cloned voice synthesis.
+    /// Cloned voices are much slower than Kokoro - they run at sub-realtime speeds.
+    private func estimatedClonedVoiceSynthesisTime(characterCount: Int, model: VoiceCloningModel) -> String {
+        // Average speaking rate: ~12.5 chars/second for audio
+        let estimatedAudioDuration = Double(characterCount) / 12.5
+
+        // Cloned voice synthesis speeds (relative to realtime):
+        // - XTTS: ~0.5x realtime (synthesis takes 2x the audio duration)
+        // - Chatterbox: ~0.3x realtime (synthesis takes 3.3x the audio duration)
+        let synthesisMultiplier: Double
+        switch model {
+        case .xtts:
+            synthesisMultiplier = 2.0  // XTTS is faster
+        case .chatterbox:
+            synthesisMultiplier = 3.3  // Chatterbox is slower but higher quality
+        }
+
+        let estimatedSynthesisSeconds = estimatedAudioDuration * synthesisMultiplier + 5.0  // +5s overhead
+
+        if estimatedSynthesisSeconds < 30 {
+            return "~30 seconds"
+        } else if estimatedSynthesisSeconds < 60 {
+            return "~1 minute"
+        } else if estimatedSynthesisSeconds < 120 {
+            return "~2 minutes"
+        } else if estimatedSynthesisSeconds < 300 {
+            let minutes = Int(estimatedSynthesisSeconds / 60)
+            return "~\(minutes) minutes"
+        } else {
+            let minutes = Int(estimatedSynthesisSeconds / 60)
+            return "~\(minutes) min (long article)"
+        }
+    }
+
     // MARK: - Appearance Helpers
 
     /// Get the appropriate font based on user's fontType setting
@@ -955,23 +982,42 @@ struct ArticleReaderView: View {
 
     // MARK: - Player Mode Badge
 
-    /// Badge showing Preview vs Full audio mode
+    /// Badge showing Preview vs Full audio mode, or loading state
     private var playerModeBadge: some View {
-        HStack(spacing: 4) {
-            // Icon indicating mode
-            Image(systemName: urlPlayer.playerMode == .preview ? "waveform.badge.exclamationmark" : "waveform")
-                .font(.system(size: 10))
+        Group {
+            if urlPlayer.isAwaitingFullAudio {
+                // Show loading indicator when preview ended but full isn't ready
+                HStack(spacing: 4) {
+                    ProgressView()
+                        .scaleEffect(0.6)
+                    Text("Loading full audio...")
+                        .font(.caption2.weight(.medium))
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(
+                    Capsule()
+                        .fill(Color.blue.opacity(0.2))
+                )
+                .foregroundStyle(.blue)
+            } else {
+                HStack(spacing: 4) {
+                    // Icon indicating mode
+                    Image(systemName: urlPlayer.playerMode == .preview ? "waveform.badge.exclamationmark" : "waveform")
+                        .font(.system(size: 10))
 
-            Text(urlPlayer.playerMode.displayName)
-                .font(.caption2.weight(.medium))
+                    Text(urlPlayer.playerMode.displayName)
+                        .font(.caption2.weight(.medium))
+                }
+                .padding(.horizontal, 6)
+                .padding(.vertical, 2)
+                .background(
+                    Capsule()
+                        .fill(urlPlayer.playerMode == .preview ? Color.orange.opacity(0.2) : Color.green.opacity(0.2))
+                )
+                .foregroundStyle(urlPlayer.playerMode == .preview ? .orange : .green)
+            }
         }
-        .padding(.horizontal, 6)
-        .padding(.vertical, 2)
-        .background(
-            Capsule()
-                .fill(urlPlayer.playerMode == .preview ? Color.orange.opacity(0.2) : Color.green.opacity(0.2))
-        )
-        .foregroundStyle(urlPlayer.playerMode == .preview ? .orange : .green)
     }
 
     // MARK: - Seek Slider
@@ -1102,165 +1148,6 @@ struct ArticleReaderView: View {
             .allowsHitTesting(!isSeekDisabled)
         }
         .frame(height: 14)
-    }
-
-    // MARK: - AI Chat Input Bar
-
-    private var aiChatInputBar: some View {
-        VStack(spacing: 0) {
-            Divider()
-
-            // AI Response area (if we have a response)
-            if let response = aiResponse {
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack {
-                            Image(systemName: "sparkles")
-                                .foregroundStyle(.yellow)
-                            Text("AI Summary")
-                                .font(.subheadline.weight(.semibold))
-                            Spacer()
-                            Button {
-                                withAnimation {
-                                    aiResponse = nil
-                                }
-                            } label: {
-                                Image(systemName: "xmark.circle.fill")
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-
-                        Text(response)
-                            .font(.subheadline)
-                            .foregroundStyle(.primary)
-                    }
-                    .padding()
-                }
-                .frame(maxHeight: 150)
-                .background(Color(.secondarySystemBackground))
-            }
-
-            // Input area
-            HStack(spacing: 12) {
-                // Quick action buttons
-                HStack(spacing: 8) {
-                    AIChatQuickButton(title: "Summarize", icon: "doc.text") {
-                        generateSummary()
-                    }
-                    AIChatQuickButton(title: "Key Points", icon: "list.bullet") {
-                        generateKeyPoints()
-                    }
-                    AIChatQuickButton(title: "Explain", icon: "lightbulb") {
-                        explainArticle()
-                    }
-                }
-
-                Spacer()
-
-                // Close button
-                Button {
-                    withAnimation(.spring(response: 0.3)) {
-                        showingAIChat = false
-                        aiChatText = ""
-                    }
-                } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.title2)
-                        .foregroundStyle(.secondary)
-                }
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-            .background(Color(.systemBackground))
-
-            // Loading indicator
-            if isAILoading {
-                HStack(spacing: 8) {
-                    ProgressView()
-                        .scaleEffect(0.8)
-                    Text("Analyzing article...")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                .padding(.vertical, 8)
-                .frame(maxWidth: .infinity)
-                .background(Color(.secondarySystemBackground))
-            }
-        }
-        .transition(.move(edge: .bottom).combined(with: .opacity))
-    }
-
-    // MARK: - AI Actions
-
-    private func generateSummary() {
-        performAIAction(.summarize)
-    }
-
-    private func generateKeyPoints() {
-        performAIAction(.keyPoints)
-    }
-
-    private func explainArticle() {
-        performAIAction(.explain)
-    }
-
-    private func performAIAction(_ action: ListenAICloudService.AISummaryAction) {
-        isAILoading = true
-        aiResponse = nil
-
-        Task {
-            do {
-                guard let cloudService = TTSServiceFactory.listenAICloudService else {
-                    throw ListenAICloudError.noAuthToken
-                }
-
-                let response = try await cloudService.summarize(
-                    text: article.rawText,
-                    action: action,
-                    title: article.displayTitle
-                )
-
-                await MainActor.run {
-                    aiResponse = response
-                    isAILoading = false
-                }
-            } catch {
-                await MainActor.run {
-                    // Fallback to local response on error
-                    aiResponse = generateLocalFallback(for: action, error: error)
-                    isAILoading = false
-                }
-            }
-        }
-    }
-
-    /// Generate a local fallback response when AI backend is unavailable
-    private func generateLocalFallback(for action: ListenAICloudService.AISummaryAction, error: Error) -> String {
-        let readingMinutes = Int(ceil(article.estimatedDuration / 60))
-
-        // Show error message with fallback content
-        let errorPrefix = "⚠️ AI service unavailable. Here's basic info:\n\n"
-
-        switch action {
-        case .summarize:
-            return errorPrefix +
-                "This article \"\(article.displayTitle)\" contains \(article.wordCount) words " +
-                "and would take approximately \(readingMinutes) minutes to read."
-
-        case .keyPoints:
-            return errorPrefix +
-                "• Title: \(article.displayTitle)\n" +
-                "• Length: \(article.wordCount) words (~\(readingMinutes) min read)\n" +
-                "• Source: \(article.sourceType.displayName)"
-
-        case .explain:
-            return errorPrefix +
-                "This is a \(article.sourceType.displayName.lowercased()) article " +
-                "containing \(article.wordCount) words."
-
-        case .custom:
-            return errorPrefix + "Custom AI queries require an active connection."
-        }
     }
 
     // MARK: - Computed Properties
@@ -2416,9 +2303,24 @@ struct ArticleReaderView: View {
                         )
                     }
                 } else if currentID != articleId {
-                    // Not playing this article yet - full audio is ready, can start from full
-                    print("[ArticleReader] Full audio ready but different article playing (current: \(String(describing: currentID))), ready for full playback")
-                    // Don't auto-start - user will press play when ready
+                    // Not playing this article yet - full audio is ready
+                    // Auto-start playback since the job just completed for this article
+                    // and nothing else is currently playing
+                    print("[ArticleReader] Full audio ready - auto-starting playback")
+                    try? await urlPlayer?.play(
+                        url: fullURL,
+                        articleID: articleId,
+                        title: self.article.displayTitle,
+                        artist: self.article.author ?? self.article.siteName,
+                        startPosition: nil,
+                        mode: .full,
+                        previewDuration: nil,
+                        onComplete: {
+                            Task { @MainActor in
+                                ArticleStore.shared.markAsFinished(self.article)
+                            }
+                        }
+                    )
                 } else {
                     // Same article but not in preview mode (e.g., already swapped, or mode is .none/.full)
                     print("[ArticleReader] Full audio ready but playerMode is \(String(describing: currentMode)), not swapping")
@@ -2617,6 +2519,14 @@ struct ArticleReaderView: View {
         synthesisError = nil
         synthesisStartTime = Date()
 
+        // Set estimated time for cloned voice synthesis
+        // Cloned voices are much slower than Kokoro - about 0.5x realtime for XTTS, 0.3x for Chatterbox
+        let cloningModel = VoicePresetManager.shared.voiceCloningModel
+        estimatedTimeString = estimatedClonedVoiceSynthesisTime(
+            characterCount: article.rawText.count,
+            model: cloningModel
+        )
+
         // Stop any currently playing audio
         if playbackService.state.isPlaying {
             playbackService.pause()
@@ -2649,14 +2559,17 @@ struct ArticleReaderView: View {
                     return
                 }
 
-                print("[ArticleReader] Synthesizing with cloned voice: \(voiceId), text: \(article.rawText.count) chars")
+                // Get user's preferred cloning model
+                let cloningModel = VoicePresetManager.shared.voiceCloningModel.rawValue
+                print("[ArticleReader] Synthesizing with cloned voice: \(voiceId), model: \(cloningModel), text: \(article.rawText.count) chars")
 
                 // Call direct cloned voice synthesis endpoint
                 let audioResult = try await cloudService.synthesizeCloned(
                     text: article.rawText,
                     voiceId: voiceId,
                     voiceUrl: voiceUrl,
-                    speed: Double(playbackService.playbackSpeed.rate)
+                    speed: Double(playbackService.playbackSpeed.rate),
+                    model: cloningModel
                 )
 
                 await MainActor.run {
@@ -3757,6 +3670,340 @@ extension MoreOptionsRow where Trailing == EmptyView {
         self.isDestructive = isDestructive
         self.trailing = nil
         self.action = action
+    }
+}
+
+// MARK: - AI Chat Speech Controller
+
+/// Simple speech controller for reading AI responses aloud
+final class AIChatSpeechController: NSObject, ObservableObject, AVSpeechSynthesizerDelegate {
+    @Published var isSpeaking = false
+
+    private let synthesizer = AVSpeechSynthesizer()
+
+    override init() {
+        super.init()
+        synthesizer.delegate = self
+    }
+
+    func speak(_ text: String) {
+        // Stop any current speech
+        if synthesizer.isSpeaking {
+            synthesizer.stopSpeaking(at: .immediate)
+        }
+
+        // Configure audio session for playback
+        #if os(iOS)
+        let audioSession = AVAudioSession.sharedInstance()
+        do {
+            try audioSession.setCategory(.playback, mode: .spokenAudio, options: [])
+            try audioSession.setActive(true)
+        } catch {
+            print("[AIChatSpeech] Audio session error: \(error)")
+        }
+        #endif
+
+        let utterance = AVSpeechUtterance(string: text)
+        utterance.rate = AVSpeechUtteranceDefaultSpeechRate
+        utterance.pitchMultiplier = 1.0
+        utterance.volume = 1.0
+
+        // Use default voice for user's language
+        if let voice = AVSpeechSynthesisVoice(language: Locale.current.language.languageCode?.identifier ?? "en-US") {
+            utterance.voice = voice
+        }
+
+        isSpeaking = true
+        synthesizer.speak(utterance)
+    }
+
+    func stop() {
+        synthesizer.stopSpeaking(at: .immediate)
+        isSpeaking = false
+    }
+
+    // MARK: - AVSpeechSynthesizerDelegate
+
+    func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didFinish utterance: AVSpeechUtterance) {
+        DispatchQueue.main.async {
+            self.isSpeaking = false
+        }
+    }
+
+    func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didCancel utterance: AVSpeechUtterance) {
+        DispatchQueue.main.async {
+            self.isSpeaking = false
+        }
+    }
+}
+
+// MARK: - AI Chat View
+
+struct AIChatView: View {
+    let article: Article
+    @Environment(\.dismiss) private var dismiss
+    @StateObject private var speechController = AIChatSpeechController()
+
+    @State private var messageText: String = ""
+    @State private var aiResponse: String?
+    @State private var isLoading = false
+    @State private var showingSummarizeInChat = false
+
+    /// The preamble text shown when no AI response exists yet
+    private let preambleText = "Hi there! Whatever you're wondering, just ask me or if you'd like, I can read your document and give you a quick, easy-to-digest summary."
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // Header
+            HStack {
+                Button {
+                    dismiss()
+                } label: {
+                    Image(systemName: "chevron.left")
+                        .font(.body.weight(.medium))
+                        .foregroundStyle(.primary)
+                        .frame(width: 32, height: 32)
+                }
+
+                // Link icon button
+                Button {
+                    // Open source URL if available
+                    if let url = article.sourceURL {
+                        UIApplication.shared.open(url)
+                    }
+                } label: {
+                    Image(systemName: "link")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .padding(8)
+                        .background(Color(.secondarySystemBackground))
+                        .clipShape(Circle())
+                }
+
+                // Title
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(article.displayTitle)
+                        .font(.subheadline.weight(.medium))
+                        .lineLimit(1)
+                    Text(article.sourceType.displayName)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                // Play/Stop button for reading AI response
+                Button {
+                    if speechController.isSpeaking {
+                        speechController.stop()
+                    } else {
+                        // Read AI response if available, otherwise read preamble
+                        let textToRead = aiResponse ?? preambleText
+                        speechController.speak(textToRead)
+                    }
+                } label: {
+                    Image(systemName: speechController.isSpeaking ? "stop.fill" : "play.fill")
+                        .font(.body)
+                        .foregroundStyle(.yellow)
+                        .padding(10)
+                        .background(
+                            Circle()
+                                .stroke(Color.yellow, lineWidth: 2)
+                        )
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+
+            Divider()
+
+            // Chat content
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    // Welcome message
+                    if aiResponse == nil && !isLoading {
+                        Text(preambleText + " ✨📄")
+                            .font(.body)
+                            .padding(.horizontal)
+                            .padding(.top, 16)
+
+                        // Summarize Text button
+                        Button {
+                            performSummarize()
+                        } label: {
+                            HStack(spacing: 8) {
+                                Image(systemName: "doc.text.magnifyingglass")
+                                    .font(.subheadline)
+                                Text("Summarize Text")
+                                    .font(.subheadline.weight(.medium))
+                            }
+                            .foregroundStyle(.blue)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 10)
+                            .background(
+                                RoundedRectangle(cornerRadius: 20)
+                                    .stroke(Color.blue.opacity(0.5), lineWidth: 1)
+                            )
+                        }
+                        .padding(.horizontal)
+                    }
+
+                    // Loading state
+                    if isLoading {
+                        HStack(spacing: 12) {
+                            ProgressView()
+                            Text("Analyzing article...")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                        }
+                        .padding()
+                    }
+
+                    // AI Response
+                    if let response = aiResponse {
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                Image(systemName: "sparkles")
+                                    .foregroundStyle(.yellow)
+                                Text("Summary")
+                                    .font(.subheadline.weight(.semibold))
+                            }
+
+                            Text(response)
+                                .font(.body)
+                        }
+                        .padding()
+                        .background(Color(.secondarySystemBackground))
+                        .cornerRadius(12)
+                        .padding(.horizontal)
+                    }
+
+                    Spacer(minLength: 100)
+                }
+            }
+
+            Spacer()
+
+            // Bottom input area
+            VStack(spacing: 12) {
+                // Text input
+                HStack {
+                    TextField("Type a message...", text: $messageText)
+                        .textFieldStyle(.plain)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 12)
+                        .background(Color(.secondarySystemBackground))
+                        .cornerRadius(24)
+
+                    // Send button
+                    Button {
+                        if !messageText.isEmpty {
+                            performCustomQuery(messageText)
+                            messageText = ""
+                        }
+                    } label: {
+                        Image(systemName: "arrow.up")
+                            .font(.body.weight(.semibold))
+                            .foregroundStyle(.white)
+                            .frame(width: 36, height: 36)
+                            .background(messageText.isEmpty ? Color.gray : Color.black)
+                            .clipShape(Circle())
+                    }
+                    .disabled(messageText.isEmpty)
+                }
+
+                // Quick action chip
+                HStack {
+                    Button {
+                        performSummarize()
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "doc.text.magnifyingglass")
+                                .font(.caption)
+                            Text("Summarize")
+                                .font(.caption.weight(.medium))
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background(Color(.secondarySystemBackground))
+                        .foregroundStyle(.primary)
+                        .clipShape(Capsule())
+                    }
+
+                    Spacer()
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background(Color(.systemBackground))
+        }
+        .background(Color(.systemBackground))
+        .onDisappear {
+            // Stop speech when leaving the view
+            speechController.stop()
+        }
+    }
+
+    private func performSummarize() {
+        isLoading = true
+        aiResponse = nil
+
+        Task {
+            do {
+                guard let cloudService = TTSServiceFactory.listenAICloudService else {
+                    throw ListenAICloudError.noAuthToken
+                }
+
+                let response = try await cloudService.summarize(
+                    text: article.rawText,
+                    action: .summarize
+                )
+
+                await MainActor.run {
+                    aiResponse = response
+                    isLoading = false
+                }
+            } catch {
+                await MainActor.run {
+                    aiResponse = generateFallback(error: error)
+                    isLoading = false
+                }
+            }
+        }
+    }
+
+    private func performCustomQuery(_ query: String) {
+        isLoading = true
+        aiResponse = nil
+
+        Task {
+            do {
+                guard let cloudService = TTSServiceFactory.listenAICloudService else {
+                    throw ListenAICloudError.noAuthToken
+                }
+
+                let response = try await cloudService.summarize(
+                    text: article.rawText,
+                    action: .custom,
+                    customPrompt: query
+                )
+
+                await MainActor.run {
+                    aiResponse = response
+                    isLoading = false
+                }
+            } catch {
+                await MainActor.run {
+                    aiResponse = generateFallback(error: error)
+                    isLoading = false
+                }
+            }
+        }
+    }
+
+    private func generateFallback(error: Error) -> String {
+        let wordCount = article.wordCount
+        let readingTime = max(1, wordCount / 200)
+        return "Unable to connect to AI service. This article \"\(article.displayTitle)\" contains approximately \(wordCount) words and would take about \(readingTime) minutes to read."
     }
 }
 
