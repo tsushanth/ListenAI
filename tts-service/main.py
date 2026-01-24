@@ -59,6 +59,9 @@ CHATTERBOX_SAMPLE_RATE = 24000
 # Cloned voices cache directory (downloaded from Supabase)
 CLONED_VOICES_CACHE_DIR = os.getenv("CLONED_VOICES_CACHE_DIR", "/app/cloned_voices_cache")
 
+# Target amplitude for audio normalization (90% of max to avoid clipping)
+NORMALIZE_TARGET_AMPLITUDE = 0.9
+
 # ============================================================================
 # Logging
 # ============================================================================
@@ -1456,6 +1459,41 @@ async def chunk_preview(request: SynthesizeLongRequest):
 _cloned_voice_cache: dict[str, str] = {}
 MAX_CLONED_VOICE_CACHE = 50  # Max number of voice files to keep cached
 
+
+def normalize_audio_file(file_path: str) -> None:
+    """
+    Normalize audio file to target amplitude.
+    This improves voice cloning quality by ensuring consistent input levels.
+    Modifies the file in place.
+    """
+    try:
+        audio, sample_rate = sf.read(file_path)
+
+        # Get max amplitude
+        max_amp = np.max(np.abs(audio))
+
+        if max_amp < 0.01:
+            logger.warning(f"Audio file {file_path} is nearly silent (max amp: {max_amp:.4f})")
+            return
+
+        # Check if normalization is needed (if audio is below 50% of target)
+        if max_amp < NORMALIZE_TARGET_AMPLITUDE * 0.5:
+            scale = NORMALIZE_TARGET_AMPLITUDE / max_amp
+            normalized = audio * scale
+
+            # Clip to prevent any overflow
+            normalized = np.clip(normalized, -1.0, 1.0)
+
+            sf.write(file_path, normalized, sample_rate)
+            logger.info(f"Normalized audio {file_path}: {max_amp:.3f} -> {NORMALIZE_TARGET_AMPLITUDE:.3f} (scale: {scale:.2f}x)")
+        else:
+            logger.debug(f"Audio {file_path} already normalized (max amp: {max_amp:.3f})")
+
+    except Exception as e:
+        logger.error(f"Failed to normalize audio {file_path}: {e}")
+        # Don't raise - continue with unnormalized audio
+
+
 async def download_voice_file(voice_url: str, voice_id: str) -> str:
     """
     Download a cloned voice reference file from Supabase Storage.
@@ -1480,6 +1518,9 @@ async def download_voice_file(voice_url: str, voice_id: str) -> str:
                 f.write(response.content)
 
             logger.info(f"Voice file downloaded: {voice_id} ({len(response.content)} bytes)")
+
+            # Normalize audio for better voice cloning quality
+            normalize_audio_file(cache_path)
 
             # Update cache tracking
             _cloned_voice_cache[voice_id] = cache_path
