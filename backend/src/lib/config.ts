@@ -72,10 +72,10 @@ export const config = loadConfig();
  */
 export const TIER_LIMITS = {
   free: {
-    daily_seconds: 600,           // 10 minutes per day
-    monthly_seconds: 3_600,       // 1 hour per month
-    max_chars_per_job: 10_000,    // ~12 minutes max per job
-    requests_per_minute: 5,       // Strict rate limit
+    daily_seconds: 1_800,         // 30 minutes per day
+    monthly_seconds: 10_800,      // 3 hours per month
+    max_chars_per_job: 25_000,    // ~30 minutes max per job
+    requests_per_minute: 10,      // Moderate rate limit
     priority: 0,                  // Lowest priority
     quality: 'standard',          // Standard audio quality
   },
@@ -109,8 +109,8 @@ export const TIER_LIMITS = {
 // ~750 characters = 1 minute of audio
 export const TIER_LIMITS_CHARS = {
   free: {
-    daily: 7_500,      // ~10 minutes
-    monthly: 45_000,   // ~1 hour
+    daily: 22_500,     // ~30 minutes
+    monthly: 135_000,  // ~3 hours
   },
   basic: {
     daily: 25_000,     // ~30 minutes
