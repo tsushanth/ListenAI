@@ -1021,18 +1021,9 @@ async function processClonedVoiceJob(
     const audioDataSize = audioBuffer.length - 44;  // Subtract WAV header
     const durationSec = Math.round(audioDataSize / (sampleRate * bytesPerSample * channels));
 
-    // Upload audio to storage
+    // Upload audio to storage using the shared audio bucket
     const audioPath = `audio/jobs/${jobId}_cloned.wav`;
-    const { error: uploadError } = await supabase.storage
-      .from('tts-cache')
-      .upload(audioPath, audioBuffer, {
-        contentType: 'audio/wav',
-        upsert: true,
-      });
-
-    if (uploadError) {
-      throw new Error(`Failed to upload cloned voice audio: ${uploadError.message}`);
-    }
+    await uploadAudioToCache(audioPath, audioBuffer, 'wav');
 
     // Update job as ready
     await updateTTSJobProgress({
