@@ -1014,6 +1014,7 @@ const clonedVoiceSynthSchema = z.object({
   voice_id: z.string().min(1).describe('Cloned voice ID (UUID from cloned_voices table)'),
   voice_url: z.string().url().describe('URL to reference audio file (from Supabase Storage)'),
   speed: z.number().min(0.5).max(3.0).default(1.0),  // Allow up to 3x speed to match iOS playback options
+  model: z.enum(['chatterbox', 'xtts']).default('chatterbox').describe('Voice cloning model: chatterbox (quality) or xtts (fast)'),
 });
 
 ttsRouter.post('/cloned', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
@@ -1027,7 +1028,7 @@ ttsRouter.post('/cloned', asyncHandler(async (req: AuthenticatedRequest, res: Re
     );
   }
 
-  const { text, voice_id: voiceId, voice_url: voiceUrl, speed } = parseResult.data;
+  const { text, voice_id: voiceId, voice_url: voiceUrl, speed, model } = parseResult.data;
   const characterCount = text.length;
 
   ttsLogger.info(
@@ -1065,6 +1066,7 @@ ttsRouter.post('/cloned', asyncHandler(async (req: AuthenticatedRequest, res: Re
         voice_id: voiceId,
         voice_url: voiceUrl,
         speed,
+        model,
       }),
     });
 
