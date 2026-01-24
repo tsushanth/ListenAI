@@ -772,6 +772,9 @@ def synthesize_with_xtts(text: str, voice_info: dict, language: str, speed: floa
     return wav_array, sample_rate
 
 
+XTTS_MAX_CHUNK_CHARS = 500  # Maximum chars per chunk for XTTS
+
+
 def synthesize_with_xtts_cloned(
     text: str,
     reference_audio_path: str,
@@ -783,6 +786,9 @@ def synthesize_with_xtts_cloned(
 
     XTTS v2 natively supports voice cloning via the speaker_wav parameter.
     This provides an alternative to Chatterbox with different voice characteristics.
+
+    For long texts, this function automatically chunks the text and concatenates
+    the audio segments.
 
     Args:
         text: Text to synthesize
@@ -801,6 +807,16 @@ def synthesize_with_xtts_cloned(
         raise HTTPException(
             status_code=400,
             detail=f"Reference audio file is invalid: {validation_msg}. Please re-record your voice clone."
+        )
+
+    # Check if we need to chunk the text
+    if len(text) > XTTS_MAX_CHUNK_CHARS:
+        logger.info(f"Text too long ({len(text)} chars), chunking for XTTS synthesis")
+        return synthesize_with_xtts_cloned_chunked(
+            text=text,
+            reference_audio_path=reference_audio_path,
+            language=language,
+            speed=speed
         )
 
     # Load XTTS model
@@ -866,6 +882,118 @@ def synthesize_with_xtts_cloned(
         error_str = str(e)
         metrics.record_failure("xtts", "unknown_error", error_str)
         logger.error(f"XTTS cloned synthesis failed: {error_str}")
+        raise HTTPException(status_code=500, detail=f"XTTS voice cloning synthesis failed: {error_str}")
+
+
+def synthesize_with_xtts_cloned_chunked(
+    text: str,
+    reference_audio_path: str,
+    language: str = "en",
+    speed: float = 1.0
+) -> tuple:
+    """
+    Synthesize long text with XTTS by chunking and concatenating audio.
+
+    Args:
+        text: Long text to synthesize
+        reference_audio_path: Path to the reference audio file
+        language: Language code
+        speed: Speech speed multiplier
+
+    Returns:
+        tuple: (wav_array, sample_rate)
+    """
+    global xtts_model
+
+    # Load model first
+    model = load_xtts()
+    if model is None:
+        metrics.record_failure("xtts", "model_load", "XTTS model not available")
+        raise HTTPException(status_code=503, detail="XTTS model not available")
+
+    # Chunk the text
+    chunks = chunk_text(text, max_chunk_chars=XTTS_MAX_CHUNK_CHARS)
+    total_chunks = len(chunks)
+
+    logger.info(f"XTTS chunked synthesis: {total_chunks} chunks, total {len(text)} chars")
+
+    start_time = time.time()
+    audio_segments = []
+
+    # Small pause between chunks (0.3 seconds of silence)
+    pause_samples = int(0.3 * XTTS_SAMPLE_RATE)
+    silence = np.zeros(pause_samples, dtype=np.float32)
+
+    try:
+        for i, chunk in enumerate(chunks):
+            chunk_start = time.time()
+
+            # Clear CUDA cache before each chunk
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+
+            logger.info(f"XTTS synthesizing chunk {i+1}/{total_chunks}: {len(chunk)} chars")
+
+            # Generate audio for this chunk
+            wav = model.tts(
+                text=chunk,
+                speaker_wav=reference_audio_path,
+                language=language,
+                speed=speed
+            )
+
+            wav_array = np.array(wav)
+            audio_segments.append(wav_array)
+
+            # Add pause between chunks (except after last chunk)
+            if i < total_chunks - 1:
+                audio_segments.append(silence)
+
+            chunk_time = time.time() - chunk_start
+            logger.info(f"XTTS chunk {i+1}/{total_chunks} completed in {chunk_time:.2f}s")
+
+        # Concatenate all audio segments
+        final_audio = np.concatenate(audio_segments)
+        sample_rate = model.synthesizer.output_sample_rate if hasattr(model, 'synthesizer') else XTTS_SAMPLE_RATE
+
+        synthesis_time = time.time() - start_time
+        logger.info(f"XTTS chunked synthesis complete: {total_chunks} chunks in {synthesis_time:.2f}s")
+
+        # Record success metric
+        metrics.record_success("xtts", int(synthesis_time * 1000), len(text))
+
+        return final_audio, sample_rate
+
+    except RuntimeError as e:
+        error_str = str(e)
+        synthesis_time = time.time() - start_time
+
+        # Check for CUDA errors
+        if "CUDA" in error_str or "device-side assert" in error_str:
+            metrics.record_failure("xtts", "cuda_error", error_str)
+            logger.critical(f"CUDA ERROR in XTTS chunked synthesis: {error_str}")
+
+            try:
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+                    torch.cuda.synchronize()
+                xtts_model = None
+            except Exception as recovery_error:
+                logger.error(f"Failed to recover from CUDA error: {recovery_error}")
+
+            raise HTTPException(
+                status_code=503,
+                detail="GPU synthesis failed with CUDA error. The service may need restart."
+            )
+
+        metrics.record_failure("xtts", "runtime_error", error_str)
+        logger.error(f"XTTS chunked synthesis RuntimeError: {error_str}")
+        raise HTTPException(status_code=500, detail=f"XTTS voice cloning synthesis failed: {error_str}")
+
+    except Exception as e:
+        error_str = str(e)
+        metrics.record_failure("xtts", "unknown_error", error_str)
+        logger.error(f"XTTS chunked synthesis failed: {error_str}")
         raise HTTPException(status_code=500, detail=f"XTTS voice cloning synthesis failed: {error_str}")
 
 
@@ -1628,7 +1756,7 @@ def synthesize_with_chatterbox_chunked(
 
 class SynthesizeWithClonedVoiceRequest(BaseModel):
     """Request for synthesizing with a cloned voice."""
-    text: str = Field(..., min_length=1, max_length=10000)
+    text: str = Field(..., min_length=1, max_length=500000)  # Support long articles (~100 pages)
     voice_url: str = Field(..., description="URL to the reference audio file (from Supabase Storage)")
     voice_id: str = Field(..., description="Unique ID for caching the voice file")
     speed: float = Field(default=1.0, ge=0.5, le=2.0)
