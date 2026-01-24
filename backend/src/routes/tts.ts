@@ -1110,3 +1110,148 @@ ttsRouter.post('/cloned', asyncHandler(async (req: AuthenticatedRequest, res: Re
     throw error;
   }
 }));
+
+// ============================================================================
+// POST /tts/job-cloned - Create a TTS job for cloned voice synthesis (async)
+// ============================================================================
+// Uses the job-based API for cloned voices, providing progress tracking
+// similar to regular voice synthesis.
+
+const clonedJobRequestSchema = z.object({
+  text: z.string().min(1).max(MAX_TEXT_LENGTH),
+  voice_id: z.string().min(1).describe('Cloned voice ID (UUID from cloned_voices table)'),
+  voice_url: z.string().url().describe('URL to reference audio file (from Supabase Storage)'),
+  speed: z.number().min(0.5).max(3.0).default(1.0),
+  model: z.enum(['chatterbox', 'xtts']).default('chatterbox').describe('Voice cloning model'),
+  article_id: z.string().uuid().optional(),
+  article_title: z.string().max(500).optional(),
+});
+
+ttsRouter.post('/job-cloned', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+  const userId = req.user.id;
+
+  // 1. Validate request body
+  const parseResult = clonedJobRequestSchema.safeParse(req.body);
+  if (!parseResult.success) {
+    throw new ValidationError('Invalid request body', {
+      errors: parseResult.error.flatten().fieldErrors,
+    });
+  }
+
+  const { text, voice_id: voiceId, voice_url: voiceUrl, speed, model, article_id, article_title } = parseResult.data;
+  const characterCount = text.length;
+
+  ttsLogger.info(
+    { userId, voiceId, characterCount, model },
+    'Cloned voice job request received'
+  );
+
+  // 2. Check quota (cloned voices use the same quota as regular synthesis)
+  const debugBypassQuota = req.headers['x-debug-bypass-quota'] === 'true';
+  if (debugBypassQuota) {
+    ttsLogger.warn({ userId }, 'DEBUG: Quota bypass enabled for cloned voice job');
+  }
+
+  const quotaCheck = await canSynthesizeV2(userId, characterCount);
+
+  // Check max chars per job
+  if (!debugBypassQuota && characterCount > quotaCheck.max_chars_per_job) {
+    throw new ValidationError(
+      `Text too long. Maximum ${quotaCheck.max_chars_per_job.toLocaleString()} characters per job.`,
+      {
+        max_chars: quotaCheck.max_chars_per_job,
+        current_chars: characterCount,
+        tier: quotaCheck.tier,
+      }
+    );
+  }
+
+  if (!debugBypassQuota && !quotaCheck.allowed) {
+    throw new QuotaExceededError(quotaCheck.reason ?? 'Quota exceeded', quotaCheck);
+  }
+
+  // 3. Compute cache key (includes voice_id and model for uniqueness)
+  const modelId = model === 'chatterbox' ? 'chatterbox-v1' : 'xtts-v2';
+  const cacheKey = computeCacheKey({
+    text,
+    voiceId: `cloned-${voiceId}`,  // Prefix to distinguish from regular voices
+    modelId,
+    speed,
+    format: 'wav',  // Cloned voices always return WAV
+  });
+  const textHash = computeTextHash(text);
+
+  ttsLogger.info({ cacheKey, textHash, model }, 'Computed cache key for cloned voice');
+
+  // 4. Check cache first
+  const cachedAudio = await getCachedAudio(cacheKey);
+  if (cachedAudio) {
+    const audioUrl = await getSignedAudioUrl(cachedAudio.audioPath);
+
+    if (audioUrl) {
+      ttsLogger.info({ cacheKey, hits: cachedAudio.hits }, 'Cache hit for cloned voice');
+
+      const response: CreateTTSJobResponse = {
+        job_id: `cache-${cacheKey.substring(0, 8)}`,
+        status: 'ready',
+        cache_hit: true,
+        audio_url: audioUrl,
+        estimated_wait_sec: 0,
+      };
+
+      res.json(response);
+      return;
+    }
+    ttsLogger.warn({ cacheKey }, 'Cache entry exists but failed to get signed URL');
+  }
+
+  // 5. Create a new job with cloned voice fields
+  const job = await createTTSJob({
+    userId,
+    voiceId: `cloned-${voiceId}`,  // Mark as cloned voice
+    modelId,
+    speed,
+    format: 'wav',  // Cloned voices return WAV
+    inputTextHash: textHash,
+    inputCharCount: characterCount,
+    cacheKey,
+    text,
+    articleId: article_id,
+    articleTitle: article_title,
+    // Cloned voice specific fields
+    clonedVoiceId: voiceId,
+    voiceUrl,
+    cloningModel: model,
+  });
+
+  // 6. Publish job to Pub/Sub queue
+  try {
+    await publishTTSJob(job.id);
+    ttsLogger.info({ jobId: job.id }, 'Published cloned voice job to Pub/Sub queue');
+  } catch (pubsubError) {
+    ttsLogger.error({ error: pubsubError, jobId: job.id }, 'Failed to publish cloned voice job to Pub/Sub');
+  }
+
+  // 7. Estimate wait time
+  // Cloned voices are slower: XTTS ~0.5x realtime, Chatterbox ~0.3x realtime
+  // Audio duration = characterCount / 12.5 chars per second
+  // Synthesis time = audioDuration * synthesisMultiplier
+  const audioDurationSec = characterCount / 12.5;
+  const synthesisMultiplier = model === 'xtts' ? 2.0 : 3.3;  // XTTS faster, Chatterbox slower
+  const estimatedWaitSec = Math.ceil(audioDurationSec * synthesisMultiplier) + 5;  // +5s overhead
+
+  ttsLogger.info(
+    { jobId: job.id, cacheKey, estimatedWaitSec, model, characterCount },
+    'Cloned voice TTS job created'
+  );
+
+  // 8. Return processing status (no fast lane for cloned voices)
+  const response: CreateTTSJobResponse = {
+    job_id: job.id,
+    status: 'processing',
+    cache_hit: false,
+    estimated_wait_sec: estimatedWaitSec,
+  };
+
+  res.status(202).json(response);
+}));

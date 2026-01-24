@@ -456,6 +456,11 @@ export interface DBTTSJob {
   article_id: string | null;
   article_title: string | null;
 
+  // Cloned voice fields (for voice cloning jobs)
+  cloned_voice_id: string | null;
+  voice_url: string | null;
+  cloning_model: 'chatterbox' | 'xtts' | null;
+
   // Timestamps
   created_at: string;
   updated_at: string;

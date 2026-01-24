@@ -1,5 +1,5 @@
 -- ============================================================================
--- ListenAI Database Schema
+-- ReadAloud AI Database Schema
 -- Run this in the Supabase SQL Editor to set up your database
 -- ============================================================================
 

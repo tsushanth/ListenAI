@@ -912,6 +912,152 @@ async function synthesizeWithElevenLabs(
 }
 
 /**
+ * Process job using cloned voice via GPU TTS service.
+ * Calls the /synthesize-cloned endpoint on the TTS service.
+ */
+async function processClonedVoiceJob(
+  jobId: string,
+  text: string,
+  clonedVoiceId: string,
+  voiceUrl: string,
+  cloningModel: 'chatterbox' | 'xtts',
+  speed: number,
+  cacheKey: string,
+  charCount: number
+): Promise<void> {
+  const gpuTtsUrl = process.env.GPU_TTS_URL;
+  if (!gpuTtsUrl) {
+    throw new Error('GPU_TTS_URL not configured for cloned voice synthesis');
+  }
+
+  const ttsServiceUrl = `${gpuTtsUrl}/synthesize-cloned`;
+  const modelId = cloningModel === 'chatterbox' ? 'chatterbox-v1' : 'xtts-v2';
+
+  workerLogger.info({
+    jobId,
+    clonedVoiceId,
+    cloningModel,
+    charCount,
+    ttsServiceUrl,
+  }, 'Starting cloned voice synthesis via GPU TTS service');
+
+  // Estimate chunks for progress tracking
+  const chunkSize = cloningModel === 'chatterbox' ? 500 : 500;  // Both use 500 char chunks
+  const totalChunks = Math.ceil(charCount / chunkSize);
+
+  // Update job with chunk info
+  await supabase
+    .from('tts_jobs')
+    .update({
+      chunks_total: totalChunks,
+      chunks_completed: 0,
+    })
+    .eq('id', jobId);
+
+  const synthesisStart = Date.now();
+
+  try {
+    // Call GPU TTS service
+    const response = await fetch(ttsServiceUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'audio/wav',
+        ...(process.env.SELFHOSTED_TTS_API_KEY
+          ? { 'X-API-Key': process.env.SELFHOSTED_TTS_API_KEY }
+          : {}),
+      },
+      body: JSON.stringify({
+        text,
+        voice_id: clonedVoiceId,
+        voice_url: voiceUrl,
+        speed,
+        model: cloningModel,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`TTS service error: ${response.status} - ${errorText}`);
+    }
+
+    // Get audio buffer
+    const audioBuffer = Buffer.from(await response.arrayBuffer());
+    const synthesisTimeMs = Date.now() - synthesisStart;
+
+    workerLogger.info({
+      jobId,
+      synthesisTimeMs,
+      audioSize: audioBuffer.length,
+    }, 'Cloned voice synthesis completed');
+
+    // Calculate audio duration (WAV format: 24kHz, 16-bit, mono)
+    // Duration = (bytes - 44 header) / (sample_rate * bytes_per_sample * channels)
+    const sampleRate = cloningModel === 'chatterbox' ? 24000 : 24000;  // Both use 24kHz
+    const bytesPerSample = 2;  // 16-bit
+    const channels = 1;  // Mono
+    const audioDataSize = audioBuffer.length - 44;  // Subtract WAV header
+    const durationSec = Math.round(audioDataSize / (sampleRate * bytesPerSample * channels));
+
+    // Upload audio to storage
+    const audioPath = `audio/jobs/${jobId}_cloned.wav`;
+    const { error: uploadError } = await supabase.storage
+      .from('tts-cache')
+      .upload(audioPath, audioBuffer, {
+        contentType: 'audio/wav',
+        upsert: true,
+      });
+
+    if (uploadError) {
+      throw new Error(`Failed to upload cloned voice audio: ${uploadError.message}`);
+    }
+
+    // Update job as ready
+    await updateTTSJobProgress({
+      jobId,
+      status: 'ready',
+      audioPath,
+      durationSec,
+      progressSec: durationSec,
+      chunksCompleted: totalChunks,
+    });
+
+    // Record metrics
+    recordJobReady(jobId, durationSec, audioBuffer.length, totalChunks);
+    recordInferenceLatency(modelId, synthesisTimeMs, true);  // modelId, latencyMs, usedGpu
+
+    // Upsert cache entry for future requests
+    await upsertCacheEntry({
+      cacheKey,
+      audioPath,
+      format: 'wav',
+      durationSec,
+      fileSizeBytes: audioBuffer.length,
+      voiceId: `cloned-${clonedVoiceId}`,
+      modelId,
+      speed,
+      textHash: cacheKey.split('-')[0] || cacheKey,  // Extract hash from cache key
+    });
+
+    workerLogger.info({
+      jobId,
+      audioPath,
+      durationSec,
+      cacheKey,
+    }, 'Cloned voice job completed and cached');
+
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    workerLogger.error({
+      jobId,
+      error: errorMessage,
+      synthesisTimeMs: Date.now() - synthesisStart,
+    }, 'Cloned voice synthesis failed');
+    throw error;
+  }
+}
+
+/**
  * Process job using ElevenLabs (v1 production).
  */
 async function processJobWithElevenLabs(
@@ -1097,25 +1243,40 @@ async function processJob(message: TTSJobMessage): Promise<void> {
       updated_at: new Date().toISOString(),
     };
 
-    // 5. Choose synthesis provider based on model_id from client request
-    // - model_id 'eleven_multilingual_v2' -> ElevenLabs (Premium)
-    // - model_id 'kokoro-82m' -> selfhosted/Kokoro (Standard)
-    // - Otherwise, fall back to server-configured provider
-    const isElevenLabsModel = modelId === 'eleven_multilingual_v2' || modelId === 'elevenlabs';
-    const isKokoroModel = modelId === 'kokoro-82m' || modelId === 'kokoro';
-    const effectiveProvider = isElevenLabsModel ? 'elevenlabs' : (isKokoroModel ? 'selfhosted' : getConfiguredProvider());
-    workerLogger.info({ jobId, charCount, modelId, provider: effectiveProvider, isElevenLabsModel, isKokoroModel }, 'Selected TTS provider');
+    // 5. Check if this is a cloned voice job
+    const clonedVoiceId = jobData.cloned_voice_id as string | null;
+    const voiceUrl = jobData.voice_url as string | null;
+    const cloningModel = jobData.cloning_model as 'chatterbox' | 'xtts' | null;
+    const isClonedVoiceJob = !!(clonedVoiceId && voiceUrl && cloningModel);
 
-    if (effectiveProvider === 'elevenlabs') {
-      await processJobWithElevenLabs(jobId, text, voiceId, modelId, speed, cacheKey, charCount);
-    } else if (charCount < SHORT_TEXT_THRESHOLD) {
-      // Self-hosted for short text
-      workerLogger.info({ jobId, charCount }, 'Short text, skipping preview and generating full audio');
-      await processShortText(jobId, text, voice, speed, cacheKey, modelId);
+    if (isClonedVoiceJob) {
+      // Process cloned voice job via GPU TTS service
+      workerLogger.info(
+        { jobId, charCount, clonedVoiceId, cloningModel },
+        'Processing cloned voice job'
+      );
+      await processClonedVoiceJob(jobId, text, clonedVoiceId, voiceUrl, cloningModel, speed, cacheKey, charCount);
     } else {
-      // Fallback: Self-hosted preview-first for longer text
-      workerLogger.info({ jobId, charCount }, 'Long text, using preview-first approach');
-      await processWithPreview(jobId, text, voice, speed, cacheKey, modelId);
+      // 6. Choose synthesis provider based on model_id from client request
+      // - model_id 'eleven_multilingual_v2' -> ElevenLabs (Premium)
+      // - model_id 'kokoro-82m' -> selfhosted/Kokoro (Standard)
+      // - Otherwise, fall back to server-configured provider
+      const isElevenLabsModel = modelId === 'eleven_multilingual_v2' || modelId === 'elevenlabs';
+      const isKokoroModel = modelId === 'kokoro-82m' || modelId === 'kokoro';
+      const effectiveProvider = isElevenLabsModel ? 'elevenlabs' : (isKokoroModel ? 'selfhosted' : getConfiguredProvider());
+      workerLogger.info({ jobId, charCount, modelId, provider: effectiveProvider, isElevenLabsModel, isKokoroModel }, 'Selected TTS provider');
+
+      if (effectiveProvider === 'elevenlabs') {
+        await processJobWithElevenLabs(jobId, text, voiceId, modelId, speed, cacheKey, charCount);
+      } else if (charCount < SHORT_TEXT_THRESHOLD) {
+        // Self-hosted for short text
+        workerLogger.info({ jobId, charCount }, 'Short text, skipping preview and generating full audio');
+        await processShortText(jobId, text, voice, speed, cacheKey, modelId);
+      } else {
+        // Fallback: Self-hosted preview-first for longer text
+        workerLogger.info({ jobId, charCount }, 'Long text, using preview-first approach');
+        await processWithPreview(jobId, text, voice, speed, cacheKey, modelId);
+      }
     }
 
     // 7. Clean up temporary text storage

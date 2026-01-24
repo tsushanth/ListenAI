@@ -1011,6 +1011,10 @@ export async function createTTSJob(params: {
   text: string;  // Text to synthesize (stored temporarily)
   articleId?: string;
   articleTitle?: string;
+  // Cloned voice fields (optional)
+  clonedVoiceId?: string;
+  voiceUrl?: string;
+  cloningModel?: 'chatterbox' | 'xtts';
 }): Promise<DBTTSJob> {
   // Create the job via RPC (bypasses PostgREST table cache)
   const { data: jobId, error } = await supabase.rpc('create_tts_job', {
@@ -1025,6 +1029,10 @@ export async function createTTSJob(params: {
     p_text: params.text,
     p_article_id: params.articleId ?? null,
     p_article_title: params.articleTitle ?? null,
+    // Cloned voice fields
+    p_cloned_voice_id: params.clonedVoiceId ?? null,
+    p_voice_url: params.voiceUrl ?? null,
+    p_cloning_model: params.cloningModel ?? null,
   });
 
   if (error) {
@@ -1032,7 +1040,11 @@ export async function createTTSJob(params: {
     throw error;
   }
 
-  logger.info({ jobId, userId: params.userId, cacheKey: params.cacheKey }, 'TTS job created');
+  const isClonedVoice = !!params.clonedVoiceId;
+  logger.info(
+    { jobId, userId: params.userId, cacheKey: params.cacheKey, isClonedVoice, cloningModel: params.cloningModel },
+    'TTS job created'
+  );
 
   // Return a minimal job object with the ID
   return {
@@ -1058,6 +1070,9 @@ export async function createTTSJob(params: {
     retry_count: 0,
     article_id: params.articleId ?? null,
     article_title: params.articleTitle ?? null,
+    cloned_voice_id: params.clonedVoiceId ?? null,
+    voice_url: params.voiceUrl ?? null,
+    cloning_model: params.cloningModel ?? null,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
     started_at: null,
