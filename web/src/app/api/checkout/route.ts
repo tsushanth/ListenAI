@@ -5,7 +5,7 @@ export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams
   const plan = searchParams.get('plan')
 
-  if (!plan || !['pro_monthly', 'pro_yearly', 'lifetime'].includes(plan)) {
+  if (!plan || !['pro_weekly', 'pro_yearly'].includes(plan)) {
     return NextResponse.json({ error: 'Invalid plan' }, { status: 400 })
   }
 
@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Price not configured' }, { status: 500 })
     }
 
-    const isSubscription = plan !== 'lifetime'
+    const isSubscription = true // All plans are subscriptions now
 
     const session = await stripe.checkout.sessions.create({
       mode: isSubscription ? 'subscription' : 'payment',
