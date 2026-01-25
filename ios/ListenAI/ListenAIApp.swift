@@ -92,8 +92,11 @@ struct RootView: View {
             authTokenProvider: authTokenProvider
         )
 
-        // Initialize NotificationManager (requests permission on first use)
-        _ = NotificationManager.shared
+        // Initialize NotificationManager and request permission proactively
+        // This ensures notifications work when user later clicks "Notify me when ready"
+        let notificationManager = NotificationManager.shared
+        let notificationAuthorized = await notificationManager.requestAuthorization()
+        print("[App] Notification permission: \(notificationAuthorized ? "granted" : "denied")")
 
         print("[App] Services configured")
     }

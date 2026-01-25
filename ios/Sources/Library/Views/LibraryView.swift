@@ -29,6 +29,7 @@ struct LibraryView: View {
     @EnvironmentObject var playbackService: AudioPlaybackService
     @EnvironmentObject var queueManager: QueueManager
     @ObservedObject private var articleStore = ArticleStore.shared
+    @ObservedObject private var urlPlayer = URLAudioPlayer.shared
 
     @State private var selectedFilter: LibraryFilter = .all
     @State private var searchText = ""
@@ -268,6 +269,12 @@ struct LibraryView: View {
 
     // MARK: - FAB Button
 
+    /// Whether the mini player is currently visible
+    private var isMiniPlayerVisible: Bool {
+        let hasActivePlayback = playbackService.currentItem != nil || urlPlayer.currentArticleID != nil
+        return hasActivePlayback && !playbackService.isArticleReaderActive
+    }
+
     private var fabButton: some View {
         Button {
             showingImportPicker = true
@@ -281,7 +288,9 @@ struct LibraryView: View {
                 .shadow(color: .blue.opacity(0.3), radius: 8, x: 0, y: 4)
         }
         .padding(.trailing, 20)
-        .padding(.bottom, 20)
+        // Add extra bottom padding when mini player is visible (mini player height ~70)
+        .padding(.bottom, isMiniPlayerVisible ? 90 : 20)
+        .animation(.easeInOut(duration: 0.25), value: isMiniPlayerVisible)
         .accessibilityLabel("Add new content")
         .accessibilityHint("Double tap to import articles")
     }

@@ -12,6 +12,7 @@ struct ContentView: View {
     @State private var selectedTab = 0
     @State private var showingPlayer = false
     @State private var articleToOpen: Article?
+    @State private var showingQueue = false
 
     /// Whether any playback is active (from either player)
     private var hasActivePlayback: Bool {
@@ -44,6 +45,15 @@ struct ContentView: View {
                 }
                 .tag(1)
 
+                // Queue Tab
+                NavigationStack {
+                    ListeningQueueView()
+                }
+                .tabItem {
+                    Label("Queue", systemImage: "list.bullet")
+                }
+                .tag(2)
+
                 // Settings Tab
                 NavigationStack {
                     SettingsView()
@@ -51,7 +61,7 @@ struct ContentView: View {
                 .tabItem {
                     Label("Settings", systemImage: "gear")
                 }
-                .tag(2)
+                .tag(3)
             }
 
             // Mini Player Overlay - hidden when ArticleReaderView is showing its own player
@@ -71,6 +81,13 @@ struct ContentView: View {
             // Open ArticleReaderView when tapping mini player during URL playback
             NavigationStack {
                 ArticleReaderView(article: article)
+                    .toolbar {
+                        ToolbarItem(placement: .topBarLeading) {
+                            Button("Done") {
+                                articleToOpen = nil
+                            }
+                        }
+                    }
             }
         }
         .onChange(of: playbackService.isArticleReaderActive) { _, newValue in
@@ -88,25 +105,41 @@ struct ContentView: View {
         .sheet(isPresented: $showingPlayer) {
             AudioPlayerView(playbackService: playbackService)
         }
+        .sheet(isPresented: $showingQueue) {
+            QueueSheet()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .openArticleForPlayback)) { notification in
+            // Handle request to open article for playback (e.g., from queue when synthesis needed)
+            if let articleIdString = notification.userInfo?["articleId"] as? String,
+               let articleId = UUID(uuidString: articleIdString),
+               let article = ArticleStore.shared.article(withID: articleId) {
+                articleToOpen = article
+            }
+        }
     }
 
     // MARK: - Actions
 
-    /// Handle mini player tap - opens ArticleReaderView for URL player, or AudioPlayerView for traditional playback
+    /// Handle mini player tap - always opens ArticleReaderView for the current article
     private func handleMiniPlayerTap() {
+        // First try URL player (job-based TTS)
         if isUsingURLPlayer {
-            // URL player is active - open the article in ArticleReaderView
             if let articleId = urlPlayer.currentArticleID,
                let article = ArticleStore.shared.article(withID: articleId) {
                 articleToOpen = article
-            } else {
-                // Fallback to AudioPlayerView if we can't find the article
-                showingPlayer = true
+                return
             }
-        } else {
-            // Traditional playback - show AudioPlayerView
-            showingPlayer = true
         }
+
+        // Then try traditional playback service
+        if let currentItem = playbackService.currentItem,
+           let article = ArticleStore.shared.article(withID: currentItem.id) {
+            articleToOpen = article
+            return
+        }
+
+        // Fallback to AudioPlayerView if we can't find the article
+        showingPlayer = true
     }
 }
 

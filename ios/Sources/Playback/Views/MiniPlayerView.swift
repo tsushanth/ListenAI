@@ -4,11 +4,11 @@ import SwiftUI
 
 /// Compact player bar that appears at the bottom of the screen.
 /// Supports both traditional AudioPlaybackService and URLAudioPlayer.
+/// NOTE: Tap handling is done by the parent view (ContentView) to properly navigate to ArticleReaderView.
 struct MiniPlayerView: View {
 
     @ObservedObject var playbackService: AudioPlaybackService
     @ObservedObject var urlPlayer = URLAudioPlayer.shared
-    @State private var showFullPlayer = false
 
     /// Whether any playback is active (from either player)
     private var hasActivePlayback: Bool {
@@ -46,12 +46,7 @@ struct MiniPlayerView: View {
                 .background(Color(.systemBackground))
             }
             .contentShape(Rectangle())
-            .onTapGesture {
-                showFullPlayer = true
-            }
-            .sheet(isPresented: $showFullPlayer) {
-                AudioPlayerView(playbackService: playbackService)
-            }
+            // Tap gesture handled by parent (ContentView) to navigate to ArticleReaderView
             .transition(.move(edge: .bottom).combined(with: .opacity))
         }
     }

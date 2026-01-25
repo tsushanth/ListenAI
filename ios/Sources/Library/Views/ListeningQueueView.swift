@@ -7,6 +7,8 @@ import SwiftUI
 /// Main view for displaying and managing the listening queue.
 struct ListeningQueueView: View {
     @StateObject private var queueManager = QueueManager.shared
+    @StateObject private var queueCoordinator = QueuePlaybackCoordinator.shared
+    @ObservedObject private var urlPlayer = URLAudioPlayer.shared
     @State private var editMode: EditMode = .inactive
     @State private var showingClearConfirmation = false
     @State private var selectedItem: QueueItem?
@@ -22,11 +24,32 @@ struct ListeningQueueView: View {
                     queueListView
                 }
             }
-            .navigationTitle("Up Next")
+            .navigationTitle("Queue")
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     if !queueManager.isEmpty {
                         EditButton()
+                    }
+                }
+
+                ToolbarItem(placement: .principal) {
+                    if !queueManager.isEmpty {
+                        Button {
+                            Task {
+                                await queueCoordinator.playQueue()
+                            }
+                        } label: {
+                            HStack(spacing: 6) {
+                                Image(systemName: queueCoordinator.isPlayingFromQueue ? "pause.fill" : "play.fill")
+                                Text(queueCoordinator.isPlayingFromQueue ? "Playing" : "Play Queue")
+                                    .fontWeight(.semibold)
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 8)
+                            .background(Color.blue)
+                            .foregroundStyle(.white)
+                            .clipShape(Capsule())
+                        }
                     }
                 }
 
@@ -96,72 +119,114 @@ struct ListeningQueueView: View {
 
     private var queueListView: some View {
         List {
-            // Now Playing Section
-            if let currentItem = queueManager.currentItem {
-                Section {
-                    NowPlayingRow(item: currentItem)
-                } header: {
-                    Text("Now Playing")
-                }
-            }
+            // All Queue Items Section - show all items with current item highlighted
+            Section {
+                ForEach(Array(queueManager.items.enumerated()), id: \.element.id) { index, item in
+                    let isCurrentItem = queueManager.state.currentIndex == index
 
-            // Up Next Section
-            if !queueManager.upNext.isEmpty {
-                Section {
-                    ForEach(queueManager.upNext) { item in
+                    if isCurrentItem {
+                        // Show as "Now Playing" style
+                        NowPlayingRow(item: item)
+                            .listRowBackground(Color.blue.opacity(0.1))
+                    } else {
+                        // Regular queue item - tap to play
                         QueueItemRow(
                             item: item,
-                            onTap: { queueManager.play(id: item.id) }
+                            onTap: {
+                                // Set as current and start playback
+                                queueManager.play(at: index)
+                                Task {
+                                    await queueCoordinator.playQueue()
+                                }
+                            }
                         )
                     }
-                    .onDelete { offsets in
-                        // Adjust offsets to account for current item
-                        let adjustedOffsets = IndexSet(offsets.map { $0 + (queueManager.state.currentIndex ?? -1) + 1 })
-                        queueManager.removeFromQueue(at: adjustedOffsets)
-                    }
-                    .onMove { source, destination in
-                        // Adjust indices
-                        let baseIndex = (queueManager.state.currentIndex ?? -1) + 1
-                        let adjustedSource = IndexSet(source.map { $0 + baseIndex })
-                        queueManager.moveItems(from: adjustedSource, to: destination + baseIndex)
-                    }
-                } header: {
-                    HStack {
-                        Text("Up Next")
-                        Spacer()
-                        Text(queueManager.remainingSummary)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
+                }
+                .onDelete { offsets in
+                    queueManager.removeFromQueue(at: offsets)
+                }
+                .onMove { source, destination in
+                    queueManager.moveItems(from: source, to: destination)
+                }
+            } header: {
+                HStack {
+                    Text("Queue")
+                    Spacer()
+                    Text(queueManager.summary)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
             }
 
-            // Queue Summary
-            Section {
-                HStack {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(queueManager.summary)
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
+            // Playback Controls - show when playing from queue
+            if queueCoordinator.isPlayingFromQueue {
+                Section {
+                    HStack(spacing: 0) {
+                        Spacer()
 
-                        HStack(spacing: 16) {
-                            Label(
-                                queueManager.shuffleMode.isEnabled ? "Shuffle" : "In Order",
-                                systemImage: "shuffle"
-                            )
-                            .foregroundStyle(queueManager.shuffleMode.isEnabled ? .blue : .secondary)
-
-                            Label(
-                                queueManager.repeatMode.displayName,
-                                systemImage: queueManager.repeatMode.iconName
-                            )
-                            .foregroundStyle(queueManager.repeatMode != .off ? .blue : .secondary)
+                        // Previous button
+                        Button {
+                            queueCoordinator.skipToPrevious()
+                        } label: {
+                            Image(systemName: "backward.fill")
+                                .font(.title2)
+                                .frame(width: 60, height: 44)
                         }
-                        .font(.caption)
+                        .disabled(!queueManager.hasPrevious)
+
+                        Spacer()
+
+                        // Play/Pause button
+                        Button {
+                            urlPlayer.togglePlayPause()
+                        } label: {
+                            Image(systemName: urlPlayer.isPlaying ? "pause.circle.fill" : "play.circle.fill")
+                                .font(.system(size: 50))
+                        }
+
+                        Spacer()
+
+                        // Next button
+                        Button {
+                            queueCoordinator.skipToNext()
+                        } label: {
+                            Image(systemName: "forward.fill")
+                                .font(.title2)
+                                .frame(width: 60, height: 44)
+                        }
+                        .disabled(!queueManager.hasNext)
+
+                        Spacer()
                     }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.blue)
+                    .padding(.vertical, 8)
+                } header: {
+                    Text("Controls")
+                }
+            }
+
+            // Queue Info
+            Section {
+                HStack(spacing: 16) {
+                    Label(
+                        queueManager.shuffleMode.isEnabled ? "Shuffle" : "In Order",
+                        systemImage: "shuffle"
+                    )
+                    .foregroundStyle(queueManager.shuffleMode.isEnabled ? .blue : .secondary)
+
+                    Label(
+                        queueManager.repeatMode.displayName,
+                        systemImage: queueManager.repeatMode.iconName
+                    )
+                    .foregroundStyle(queueManager.repeatMode != .off ? .blue : .secondary)
 
                     Spacer()
+
+                    Text(queueManager.remainingSummary)
+                        .foregroundStyle(.secondary)
                 }
+                .font(.subheadline)
             }
         }
         .listStyle(.insetGrouped)

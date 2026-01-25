@@ -111,6 +111,12 @@ struct MailImportView: View {
                 loadEmails()
             }
         }
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
+            // Proactively refresh token when app comes to foreground
+            Task {
+                await googleAuth.refreshTokenIfNeeded()
+            }
+        }
         .alert("Error", isPresented: .constant(importError != nil)) {
             Button("OK") { importError = nil }
         } message: {
@@ -366,7 +372,7 @@ struct MailImportView: View {
             do {
                 try await gmailService.fetchEmails(refresh: true)
             } catch {
-                importError = error.localizedDescription
+                handleGmailError(error)
             }
         }
     }
@@ -382,7 +388,7 @@ struct MailImportView: View {
             try await gmailService.fetchEmails(refresh: true)
         } catch {
             await MainActor.run {
-                importError = error.localizedDescription
+                handleGmailError(error)
             }
         }
     }
@@ -392,7 +398,7 @@ struct MailImportView: View {
             do {
                 try await gmailService.searchEmails(query: searchText)
             } catch {
-                importError = error.localizedDescription
+                handleGmailError(error)
             }
         }
     }
@@ -402,9 +408,41 @@ struct MailImportView: View {
             do {
                 try await gmailService.loadMore()
             } catch {
-                importError = error.localizedDescription
+                handleGmailError(error)
             }
         }
+    }
+
+    /// Handle Gmail errors - for auth errors, sign out silently so user sees sign-in button
+    /// For other errors, show an alert
+    private func handleGmailError(_ error: Error) {
+        // Check if it's an auth-related error
+        if let gmailError = error as? GmailError {
+            switch gmailError {
+            case .notAuthenticated, .unauthorized:
+                // Sign out silently - the UI will show the sign-in button
+                googleAuth.signOut()
+                gmailService.clearCache()
+                return
+            default:
+                break
+            }
+        }
+
+        if let authError = error as? GoogleAuthError {
+            switch authError {
+            case .notAuthenticated, .noAccessToken, .noRefreshToken, .refreshFailed:
+                // Sign out silently - the UI will show the sign-in button
+                googleAuth.signOut()
+                gmailService.clearCache()
+                return
+            default:
+                break
+            }
+        }
+
+        // For non-auth errors, show the alert
+        importError = error.localizedDescription
     }
 
     private func selectEmail(_ email: GmailMessage) {

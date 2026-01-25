@@ -1,0 +1,975 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		001000000000000000000001 /* ListenAIApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002000000000000000000001 /* ListenAIApp.swift */; };
+		001000000000000000000002 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002000000000000000000002 /* ContentView.swift */; };
+		001000000000000000000003 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 002000000000000000000003 /* Assets.xcassets */; };
+		001100000000000000000001 /* AccessibilityHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002100000000000000000001 /* AccessibilityHelpers.swift */; };
+		001100000000000000000002 /* NotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002100000000000000000002 /* NotificationManager.swift */; };
+		001200000000000000000001 /* Article.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002200000000000000000001 /* Article.swift */; };
+		001200000000000000000002 /* ExtractionModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002200000000000000000002 /* ExtractionModels.swift */; };
+		001200000000000000000003 /* ImportCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002200000000000000000003 /* ImportCoordinator.swift */; };
+		001200000000000000000004 /* WebImportService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002200000000000000000004 /* WebImportService.swift */; };
+		001200000000000000000005 /* PDFImportService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002200000000000000000005 /* PDFImportService.swift */; };
+		001200000000000000000006 /* ClipboardImportService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002200000000000000000006 /* ClipboardImportService.swift */; };
+		001200000000000000000007 /* TextCleaningService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002200000000000000000007 /* TextCleaningService.swift */; };
+		001200000000000000000008 /* ImportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002200000000000000000008 /* ImportView.swift */; };
+		001200000000000000000009 /* OCRService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002200000000000000000009 /* OCRService.swift */; };
+		00120000000000000000000A /* SimpleTextInputView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00220000000000000000000A /* SimpleTextInputView.swift */; };
+		00120000000000000000000B /* SimpleWebLinkView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00220000000000000000000B /* SimpleWebLinkView.swift */; };
+		00120000000000000000000C /* DocumentPickerSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00220000000000000000000C /* DocumentPickerSheet.swift */; };
+		00120000000000000000000D /* ScanTextView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00220000000000000000000D /* ScanTextView.swift */; };
+		00120000000000000000000E /* MailImportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00220000000000000000000E /* MailImportView.swift */; };
+		00120000000000000000000F /* GmailService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00220000000000000000000F /* GmailService.swift */; };
+		001300000000000000000001 /* LibraryModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002300000000000000000001 /* LibraryModels.swift */; };
+		001300000000000000000002 /* ListeningQueueView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002300000000000000000002 /* ListeningQueueView.swift */; };
+		001300000000000000000003 /* PlaylistDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002300000000000000000003 /* PlaylistDetailView.swift */; };
+		001300000000000000000004 /* PlaylistListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002300000000000000000004 /* PlaylistListView.swift */; };
+		001300000000000000000005 /* PlaylistManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002300000000000000000005 /* PlaylistManager.swift */; };
+		001300000000000000000006 /* QueueManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002300000000000000000006 /* QueueManager.swift */; };
+		001300000000000000000007 /* ArticleStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002300000000000000000007 /* ArticleStore.swift */; };
+		001400000000000000000001 /* PlaybackModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002400000000000000000001 /* PlaybackModels.swift */; };
+		001400000000000000000002 /* BackgroundAudioConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002400000000000000000002 /* BackgroundAudioConfiguration.swift */; };
+		001400000000000000000003 /* MiniPlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002400000000000000000003 /* MiniPlayerView.swift */; };
+		001400000000000000000004 /* AudioPlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002400000000000000000004 /* AudioPlayerView.swift */; };
+		001400000000000000000005 /* PlaybackPositionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002400000000000000000005 /* PlaybackPositionStore.swift */; };
+		001400000000000000000006 /* AudioPlaybackService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002400000000000000000006 /* AudioPlaybackService.swift */; };
+		001400000000000000000007 /* NowPlayingManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002400000000000000000007 /* NowPlayingManager.swift */; };
+		001400000000000000000008 /* AudioSessionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002400000000000000000008 /* AudioSessionManager.swift */; };
+		001400000000000000000009 /* ArticleReaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002400000000000000000009 /* ArticleReaderView.swift */; };
+		00140000000000000000000A /* URLAudioPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00240000000000000000000A /* URLAudioPlayer.swift */; };
+		00140000000000000000000B /* QueuePlaybackCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00240000000000000000000B /* QueuePlaybackCoordinator.swift */; };
+		001500000000000000000001 /* TTSModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002500000000000000000001 /* TTSModels.swift */; };
+		001500000000000000000002 /* VoicePreset.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002500000000000000000002 /* VoicePreset.swift */; };
+		001500000000000000000003 /* TTSCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002500000000000000000003 /* TTSCoordinator.swift */; };
+		001500000000000000000004 /* VoicePickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002500000000000000000004 /* VoicePickerView.swift */; };
+		001500000000000000000005 /* TTSService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002500000000000000000005 /* TTSService.swift */; };
+		001500000000000000000006 /* VoicePresetManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002500000000000000000006 /* VoicePresetManager.swift */; };
+		001500000000000000000007 /* OnDeviceTTSService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002500000000000000000007 /* OnDeviceTTSService.swift */; };
+		001500000000000000000008 /* CloudTTSService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002500000000000000000008 /* CloudTTSService.swift */; };
+		001500000000000000000009 /* ListenAICloudService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002500000000000000000009 /* ListenAICloudService.swift */; };
+		00150000000000000000000A /* SpeechSynthesisHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00250000000000000000000A /* SpeechSynthesisHelper.swift */; };
+		00150000000000000000000B /* SelectVoiceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00250000000000000000000B /* SelectVoiceView.swift */; };
+		00150000000000000000000C /* SelfHostedTTSService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00250000000000000000000C /* SelfHostedTTSService.swift */; };
+		00150000000000000000000D /* TTSJobManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00250000000000000000000D /* TTSJobManager.swift */; };
+		001600000000000000000001 /* UsageModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002600000000000000000001 /* UsageModels.swift */; };
+		001600000000000000000002 /* UsageQuotaView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002600000000000000000002 /* UsageQuotaView.swift */; };
+		001600000000000000000003 /* UsageWarningBanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002600000000000000000003 /* UsageWarningBanner.swift */; };
+		001600000000000000000004 /* UsageTrackerService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002600000000000000000004 /* UsageTrackerService.swift */; };
+		001600000000000000000005 /* SynthesisMetricsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002600000000000000000006 /* SynthesisMetricsService.swift */; };
+		001600000000000000000005 /* UsageViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002600000000000000000005 /* UsageViewModel.swift */; };
+		001700000000000000000001 /* SubscriptionModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002700000000000000000001 /* SubscriptionModels.swift */; };
+		001700000000000000000002 /* UserAccountViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002700000000000000000002 /* UserAccountViewModel.swift */; };
+		001700000000000000000003 /* GoogleAuthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002700000000000000000003 /* GoogleAuthService.swift */; };
+		001700000000000000000004 /* StoreKitManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002700000000000000000004 /* StoreKitManager.swift */; };
+		001800000000000000000001 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002800000000000000000001 /* HomeView.swift */; };
+		001800000000000000000002 /* LibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002800000000000000000002 /* LibraryView.swift */; };
+		001800000000000000000003 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002800000000000000000003 /* SettingsView.swift */; };
+		001900000000000000000001 /* VoiceCloningService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002900000000000000000001 /* VoiceCloningService.swift */; };
+		001900000000000000000002 /* VoiceCloningView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002900000000000000000002 /* VoiceCloningView.swift */; };
+		00A000000000000000000001 /* OnboardingManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00B000000000000000000001 /* OnboardingManager.swift */; };
+		00A000000000000000000002 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00B000000000000000000002 /* OnboardingView.swift */; };
+		00A000000000000000000003 /* WelcomePageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00B000000000000000000003 /* WelcomePageView.swift */; };
+		00A000000000000000000004 /* DocumentToAudioPageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00B000000000000000000004 /* DocumentToAudioPageView.swift */; };
+		00A000000000000000000005 /* TakeNotesPageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00B000000000000000000005 /* TakeNotesPageView.swift */; };
+		00A000000000000000000006 /* ProductivityPageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00B000000000000000000006 /* ProductivityPageView.swift */; };
+		00A000000000000000000007 /* VoiceSelectionPageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00B000000000000000000007 /* VoiceSelectionPageView.swift */; };
+		00A000000000000000000008 /* PaywallPageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00B000000000000000000008 /* PaywallPageView.swift */; };
+		00A000000000000000000009 /* OnboardingAudioPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00B000000000000000000009 /* OnboardingAudioPlayer.swift */; };
+		00D000000000000000000001 /* voice_sample_rachel.wav in Resources */ = {isa = PBXBuildFile; fileRef = 00E000000000000000000001 /* voice_sample_rachel.wav */; };
+		00D000000000000000000002 /* voice_sample_adam.wav in Resources */ = {isa = PBXBuildFile; fileRef = 00E000000000000000000002 /* voice_sample_adam.wav */; };
+		00D000000000000000000003 /* voice_sample_brian.wav in Resources */ = {isa = PBXBuildFile; fileRef = 00E000000000000000000003 /* voice_sample_brian.wav */; };
+		00D000000000000000000004 /* voice_sample_bella.wav in Resources */ = {isa = PBXBuildFile; fileRef = 00E000000000000000000004 /* voice_sample_bella.wav */; };
+		00D000000000000000000005 /* voice_sample_josh.wav in Resources */ = {isa = PBXBuildFile; fileRef = 00E000000000000000000005 /* voice_sample_josh.wav */; };
+		00D000000000000000000006 /* voice_sample_charlotte.wav in Resources */ = {isa = PBXBuildFile; fileRef = 00E000000000000000000006 /* voice_sample_charlotte.wav */; };
+		60053F2DC49846065D6EBC7B /* BackgroundStreamingSynthesisService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03A60CC8B1DA9D34FA981604 /* BackgroundStreamingSynthesisService.swift */; };
+		FC8D4518BE88A2E5699ED58A /* StreamingTTSService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F474471A9365C7F8F2BD6DD9 /* StreamingTTSService.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		002000000000000000000001 /* ListenAIApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ListenAIApp.swift; sourceTree = "<group>"; };
+		002000000000000000000002 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		002000000000000000000003 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		002000000000000000000004 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		002000000000000000000005 /* Configuration.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = Configuration.storekit; sourceTree = "<group>"; };
+		002100000000000000000001 /* AccessibilityHelpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessibilityHelpers.swift; sourceTree = "<group>"; };
+		002100000000000000000002 /* NotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationManager.swift; sourceTree = "<group>"; };
+		002200000000000000000001 /* Article.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Article.swift; sourceTree = "<group>"; };
+		002200000000000000000002 /* ExtractionModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExtractionModels.swift; sourceTree = "<group>"; };
+		002200000000000000000003 /* ImportCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportCoordinator.swift; sourceTree = "<group>"; };
+		002200000000000000000004 /* WebImportService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebImportService.swift; sourceTree = "<group>"; };
+		002200000000000000000005 /* PDFImportService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PDFImportService.swift; sourceTree = "<group>"; };
+		002200000000000000000006 /* ClipboardImportService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipboardImportService.swift; sourceTree = "<group>"; };
+		002200000000000000000007 /* TextCleaningService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextCleaningService.swift; sourceTree = "<group>"; };
+		002200000000000000000008 /* ImportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportView.swift; sourceTree = "<group>"; };
+		002200000000000000000009 /* OCRService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OCRService.swift; sourceTree = "<group>"; };
+		00220000000000000000000A /* SimpleTextInputView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimpleTextInputView.swift; sourceTree = "<group>"; };
+		00220000000000000000000B /* SimpleWebLinkView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimpleWebLinkView.swift; sourceTree = "<group>"; };
+		00220000000000000000000C /* DocumentPickerSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DocumentPickerSheet.swift; sourceTree = "<group>"; };
+		00220000000000000000000D /* ScanTextView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScanTextView.swift; sourceTree = "<group>"; };
+		00220000000000000000000E /* MailImportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MailImportView.swift; sourceTree = "<group>"; };
+		00220000000000000000000F /* GmailService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GmailService.swift; sourceTree = "<group>"; };
+		002300000000000000000001 /* LibraryModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryModels.swift; sourceTree = "<group>"; };
+		002300000000000000000002 /* ListeningQueueView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ListeningQueueView.swift; sourceTree = "<group>"; };
+		002300000000000000000003 /* PlaylistDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaylistDetailView.swift; sourceTree = "<group>"; };
+		002300000000000000000004 /* PlaylistListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaylistListView.swift; sourceTree = "<group>"; };
+		002300000000000000000005 /* PlaylistManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaylistManager.swift; sourceTree = "<group>"; };
+		002300000000000000000006 /* QueueManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QueueManager.swift; sourceTree = "<group>"; };
+		002300000000000000000007 /* ArticleStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArticleStore.swift; sourceTree = "<group>"; };
+		002400000000000000000001 /* PlaybackModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaybackModels.swift; sourceTree = "<group>"; };
+		002400000000000000000002 /* BackgroundAudioConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackgroundAudioConfiguration.swift; sourceTree = "<group>"; };
+		002400000000000000000003 /* MiniPlayerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MiniPlayerView.swift; sourceTree = "<group>"; };
+		002400000000000000000004 /* AudioPlayerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioPlayerView.swift; sourceTree = "<group>"; };
+		002400000000000000000005 /* PlaybackPositionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaybackPositionStore.swift; sourceTree = "<group>"; };
+		002400000000000000000006 /* AudioPlaybackService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioPlaybackService.swift; sourceTree = "<group>"; };
+		002400000000000000000007 /* NowPlayingManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NowPlayingManager.swift; sourceTree = "<group>"; };
+		002400000000000000000008 /* AudioSessionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioSessionManager.swift; sourceTree = "<group>"; };
+		002400000000000000000009 /* ArticleReaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArticleReaderView.swift; sourceTree = "<group>"; };
+		00240000000000000000000A /* URLAudioPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = URLAudioPlayer.swift; sourceTree = "<group>"; };
+		00240000000000000000000B /* QueuePlaybackCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QueuePlaybackCoordinator.swift; sourceTree = "<group>"; };
+		002500000000000000000001 /* TTSModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TTSModels.swift; sourceTree = "<group>"; };
+		002500000000000000000002 /* VoicePreset.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoicePreset.swift; sourceTree = "<group>"; };
+		002500000000000000000003 /* TTSCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TTSCoordinator.swift; sourceTree = "<group>"; };
+		002500000000000000000004 /* VoicePickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoicePickerView.swift; sourceTree = "<group>"; };
+		002500000000000000000005 /* TTSService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TTSService.swift; sourceTree = "<group>"; };
+		002500000000000000000006 /* VoicePresetManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoicePresetManager.swift; sourceTree = "<group>"; };
+		002500000000000000000007 /* OnDeviceTTSService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnDeviceTTSService.swift; sourceTree = "<group>"; };
+		002500000000000000000008 /* CloudTTSService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudTTSService.swift; sourceTree = "<group>"; };
+		002500000000000000000009 /* ListenAICloudService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ListenAICloudService.swift; sourceTree = "<group>"; };
+		00250000000000000000000A /* SpeechSynthesisHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechSynthesisHelper.swift; sourceTree = "<group>"; };
+		00250000000000000000000B /* SelectVoiceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelectVoiceView.swift; sourceTree = "<group>"; };
+		00250000000000000000000C /* SelfHostedTTSService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelfHostedTTSService.swift; sourceTree = "<group>"; };
+		00250000000000000000000D /* TTSJobManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TTSJobManager.swift; sourceTree = "<group>"; };
+		002600000000000000000001 /* UsageModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UsageModels.swift; sourceTree = "<group>"; };
+		002600000000000000000002 /* UsageQuotaView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UsageQuotaView.swift; sourceTree = "<group>"; };
+		002600000000000000000003 /* UsageWarningBanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UsageWarningBanner.swift; sourceTree = "<group>"; };
+		002600000000000000000004 /* UsageTrackerService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UsageTrackerService.swift; sourceTree = "<group>"; };
+		002600000000000000000006 /* SynthesisMetricsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SynthesisMetricsService.swift; sourceTree = "<group>"; };
+		002600000000000000000005 /* UsageViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UsageViewModel.swift; sourceTree = "<group>"; };
+		002700000000000000000001 /* SubscriptionModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubscriptionModels.swift; sourceTree = "<group>"; };
+		002700000000000000000002 /* UserAccountViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserAccountViewModel.swift; sourceTree = "<group>"; };
+		002700000000000000000003 /* GoogleAuthService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoogleAuthService.swift; sourceTree = "<group>"; };
+		002700000000000000000004 /* StoreKitManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoreKitManager.swift; sourceTree = "<group>"; };
+		002800000000000000000001 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
+		002800000000000000000002 /* LibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryView.swift; sourceTree = "<group>"; };
+		002800000000000000000003 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		002900000000000000000001 /* VoiceCloningService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceCloningService.swift; sourceTree = "<group>"; };
+		002900000000000000000002 /* VoiceCloningView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceCloningView.swift; sourceTree = "<group>"; };
+		003000000000000000000001 /* ListenAI.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ListenAI.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		00B000000000000000000001 /* OnboardingManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingManager.swift; sourceTree = "<group>"; };
+		00B000000000000000000002 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
+		00B000000000000000000003 /* WelcomePageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WelcomePageView.swift; sourceTree = "<group>"; };
+		00B000000000000000000004 /* DocumentToAudioPageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DocumentToAudioPageView.swift; sourceTree = "<group>"; };
+		00B000000000000000000005 /* TakeNotesPageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TakeNotesPageView.swift; sourceTree = "<group>"; };
+		00B000000000000000000006 /* ProductivityPageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProductivityPageView.swift; sourceTree = "<group>"; };
+		00B000000000000000000007 /* VoiceSelectionPageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceSelectionPageView.swift; sourceTree = "<group>"; };
+		00B000000000000000000008 /* PaywallPageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaywallPageView.swift; sourceTree = "<group>"; };
+		00B000000000000000000009 /* OnboardingAudioPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingAudioPlayer.swift; sourceTree = "<group>"; };
+		00E000000000000000000001 /* voice_sample_rachel.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = voice_sample_rachel.wav; sourceTree = "<group>"; };
+		00E000000000000000000002 /* voice_sample_adam.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = voice_sample_adam.wav; sourceTree = "<group>"; };
+		00E000000000000000000003 /* voice_sample_brian.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = voice_sample_brian.wav; sourceTree = "<group>"; };
+		00E000000000000000000004 /* voice_sample_bella.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = voice_sample_bella.wav; sourceTree = "<group>"; };
+		00E000000000000000000005 /* voice_sample_josh.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = voice_sample_josh.wav; sourceTree = "<group>"; };
+		00E000000000000000000006 /* voice_sample_charlotte.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = voice_sample_charlotte.wav; sourceTree = "<group>"; };
+		03A60CC8B1DA9D34FA981604 /* BackgroundStreamingSynthesisService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = BackgroundStreamingSynthesisService.swift; path = Sources/TTS/Services/BackgroundStreamingSynthesisService.swift; sourceTree = SOURCE_ROOT; };
+		F474471A9365C7F8F2BD6DD9 /* StreamingTTSService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = StreamingTTSService.swift; path = Sources/TTS/Services/StreamingTTSService.swift; sourceTree = SOURCE_ROOT; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		004000000000000000000001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		005000000000000000000000 = {
+			isa = PBXGroup;
+			children = (
+				005100000000000000000001 /* ListenAI */,
+				005100000000000000000002 /* Sources */,
+				005000000000000000000001 /* Products */,
+				03A60CC8B1DA9D34FA981604 /* BackgroundStreamingSynthesisService.swift */,
+				F474471A9365C7F8F2BD6DD9 /* StreamingTTSService.swift */,
+			);
+			sourceTree = "<group>";
+		};
+		005000000000000000000001 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				003000000000000000000001 /* ListenAI.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		005100000000000000000001 /* ListenAI */ = {
+			isa = PBXGroup;
+			children = (
+				002000000000000000000001 /* ListenAIApp.swift */,
+				002000000000000000000002 /* ContentView.swift */,
+				002000000000000000000003 /* Assets.xcassets */,
+				002000000000000000000004 /* Info.plist */,
+				002000000000000000000005 /* Configuration.storekit */,
+			);
+			path = ListenAI;
+			sourceTree = "<group>";
+		};
+		005100000000000000000002 /* Sources */ = {
+			isa = PBXGroup;
+			children = (
+				005200000000000000000007 /* Account */,
+				005200000000000000000001 /* Core */,
+				005900000000000000000001 /* Home */,
+				005200000000000000000002 /* Import */,
+				005200000000000000000003 /* Library */,
+				00C000000000000000000001 /* Onboarding */,
+				005200000000000000000004 /* Playback */,
+				005A00000000000000000001 /* Settings */,
+				005200000000000000000005 /* TTS */,
+				005200000000000000000006 /* Usage */,
+			);
+			path = Sources;
+			sourceTree = "<group>";
+		};
+		005200000000000000000001 /* Core */ = {
+			isa = PBXGroup;
+			children = (
+				005300000000000000000001 /* Accessibility */,
+				005300000000000000000002 /* Notifications */,
+			);
+			path = Core;
+			sourceTree = "<group>";
+		};
+		005200000000000000000002 /* Import */ = {
+			isa = PBXGroup;
+			children = (
+				005400000000000000000001 /* Models */,
+				005400000000000000000005 /* Services */,
+				005400000000000000000006 /* Views */,
+				002200000000000000000003 /* ImportCoordinator.swift */,
+			);
+			path = Import;
+			sourceTree = "<group>";
+		};
+		005200000000000000000003 /* Library */ = {
+			isa = PBXGroup;
+			children = (
+				005400000000000000000002 /* Models */,
+				005400000000000000000003 /* Views */,
+				005400000000000000000004 /* Services */,
+			);
+			path = Library;
+			sourceTree = "<group>";
+		};
+		005200000000000000000004 /* Playback */ = {
+			isa = PBXGroup;
+			children = (
+				005500000000000000000001 /* Models */,
+				005500000000000000000002 /* Views */,
+				005500000000000000000003 /* Services */,
+				002400000000000000000002 /* BackgroundAudioConfiguration.swift */,
+			);
+			path = Playback;
+			sourceTree = "<group>";
+		};
+		005200000000000000000005 /* TTS */ = {
+			isa = PBXGroup;
+			children = (
+				005600000000000000000001 /* Models */,
+				005600000000000000000002 /* Views */,
+				005600000000000000000003 /* Protocols */,
+				005600000000000000000004 /* Services */,
+				002500000000000000000003 /* TTSCoordinator.swift */,
+			);
+			path = TTS;
+			sourceTree = "<group>";
+		};
+		005200000000000000000006 /* Usage */ = {
+			isa = PBXGroup;
+			children = (
+				005700000000000000000001 /* Models */,
+				005700000000000000000004 /* ViewModels */,
+				005700000000000000000002 /* Views */,
+				005700000000000000000003 /* Services */,
+			);
+			path = Usage;
+			sourceTree = "<group>";
+		};
+		005200000000000000000007 /* Account */ = {
+			isa = PBXGroup;
+			children = (
+				005800000000000000000001 /* Models */,
+				005800000000000000000003 /* Services */,
+				005800000000000000000002 /* ViewModels */,
+			);
+			path = Account;
+			sourceTree = "<group>";
+		};
+		005300000000000000000001 /* Accessibility */ = {
+			isa = PBXGroup;
+			children = (
+				002100000000000000000001 /* AccessibilityHelpers.swift */,
+			);
+			path = Accessibility;
+			sourceTree = "<group>";
+		};
+		005300000000000000000002 /* Notifications */ = {
+			isa = PBXGroup;
+			children = (
+				002100000000000000000002 /* NotificationManager.swift */,
+			);
+			path = Notifications;
+			sourceTree = "<group>";
+		};
+		005400000000000000000001 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				002200000000000000000001 /* Article.swift */,
+				002200000000000000000002 /* ExtractionModels.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		005400000000000000000002 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				002300000000000000000001 /* LibraryModels.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		005400000000000000000003 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				002800000000000000000002 /* LibraryView.swift */,
+				002300000000000000000002 /* ListeningQueueView.swift */,
+				002300000000000000000003 /* PlaylistDetailView.swift */,
+				002300000000000000000004 /* PlaylistListView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		005400000000000000000004 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				002300000000000000000005 /* PlaylistManager.swift */,
+				002300000000000000000006 /* QueueManager.swift */,
+				002300000000000000000007 /* ArticleStore.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		005400000000000000000005 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				002200000000000000000004 /* WebImportService.swift */,
+				002200000000000000000005 /* PDFImportService.swift */,
+				002200000000000000000006 /* ClipboardImportService.swift */,
+				002200000000000000000007 /* TextCleaningService.swift */,
+				002200000000000000000009 /* OCRService.swift */,
+				00220000000000000000000F /* GmailService.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		005400000000000000000006 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				002200000000000000000008 /* ImportView.swift */,
+				00220000000000000000000A /* SimpleTextInputView.swift */,
+				00220000000000000000000B /* SimpleWebLinkView.swift */,
+				00220000000000000000000C /* DocumentPickerSheet.swift */,
+				00220000000000000000000D /* ScanTextView.swift */,
+				00220000000000000000000E /* MailImportView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		005500000000000000000001 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				002400000000000000000001 /* PlaybackModels.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		005500000000000000000002 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				002400000000000000000003 /* MiniPlayerView.swift */,
+				002400000000000000000004 /* AudioPlayerView.swift */,
+				002400000000000000000009 /* ArticleReaderView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		005500000000000000000003 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				002400000000000000000005 /* PlaybackPositionStore.swift */,
+				002400000000000000000006 /* AudioPlaybackService.swift */,
+				002400000000000000000007 /* NowPlayingManager.swift */,
+				002400000000000000000008 /* AudioSessionManager.swift */,
+				00240000000000000000000A /* URLAudioPlayer.swift */,
+				00240000000000000000000B /* QueuePlaybackCoordinator.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		005600000000000000000001 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				002500000000000000000001 /* TTSModels.swift */,
+				002500000000000000000002 /* VoicePreset.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		005600000000000000000002 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				002500000000000000000004 /* VoicePickerView.swift */,
+				00250000000000000000000B /* SelectVoiceView.swift */,
+				002900000000000000000002 /* VoiceCloningView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		005600000000000000000003 /* Protocols */ = {
+			isa = PBXGroup;
+			children = (
+				002500000000000000000005 /* TTSService.swift */,
+			);
+			path = Protocols;
+			sourceTree = "<group>";
+		};
+		005600000000000000000004 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				002500000000000000000006 /* VoicePresetManager.swift */,
+				002500000000000000000007 /* OnDeviceTTSService.swift */,
+				002500000000000000000008 /* CloudTTSService.swift */,
+				00250000000000000000000C /* SelfHostedTTSService.swift */,
+				00250000000000000000000D /* TTSJobManager.swift */,
+				002500000000000000000009 /* ListenAICloudService.swift */,
+				002900000000000000000001 /* VoiceCloningService.swift */,
+				00250000000000000000000A /* SpeechSynthesisHelper.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		005700000000000000000001 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				002600000000000000000001 /* UsageModels.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		005700000000000000000002 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				002600000000000000000002 /* UsageQuotaView.swift */,
+				002600000000000000000003 /* UsageWarningBanner.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		005700000000000000000003 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				002600000000000000000004 /* UsageTrackerService.swift */,
+				002600000000000000000006 /* SynthesisMetricsService.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		005700000000000000000004 /* ViewModels */ = {
+			isa = PBXGroup;
+			children = (
+				002600000000000000000005 /* UsageViewModel.swift */,
+			);
+			path = ViewModels;
+			sourceTree = "<group>";
+		};
+		005800000000000000000001 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				002700000000000000000001 /* SubscriptionModels.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		005800000000000000000002 /* ViewModels */ = {
+			isa = PBXGroup;
+			children = (
+				002700000000000000000002 /* UserAccountViewModel.swift */,
+			);
+			path = ViewModels;
+			sourceTree = "<group>";
+		};
+		005800000000000000000003 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				002700000000000000000003 /* GoogleAuthService.swift */,
+				002700000000000000000004 /* StoreKitManager.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		005900000000000000000001 /* Home */ = {
+			isa = PBXGroup;
+			children = (
+				005900000000000000000002 /* Views */,
+			);
+			path = Home;
+			sourceTree = "<group>";
+		};
+		005900000000000000000002 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				002800000000000000000001 /* HomeView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		005A00000000000000000001 /* Settings */ = {
+			isa = PBXGroup;
+			children = (
+				005A00000000000000000002 /* Views */,
+			);
+			path = Settings;
+			sourceTree = "<group>";
+		};
+		005A00000000000000000002 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				002800000000000000000003 /* SettingsView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		00C000000000000000000001 /* Onboarding */ = {
+			isa = PBXGroup;
+			children = (
+				00C000000000000000000004 /* Resources */,
+				00C000000000000000000002 /* Services */,
+				00C000000000000000000003 /* Views */,
+			);
+			path = Onboarding;
+			sourceTree = "<group>";
+		};
+		00C000000000000000000002 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				00B000000000000000000001 /* OnboardingManager.swift */,
+				00B000000000000000000009 /* OnboardingAudioPlayer.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		00C000000000000000000003 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				00B000000000000000000002 /* OnboardingView.swift */,
+				00B000000000000000000003 /* WelcomePageView.swift */,
+				00B000000000000000000004 /* DocumentToAudioPageView.swift */,
+				00B000000000000000000005 /* TakeNotesPageView.swift */,
+				00B000000000000000000006 /* ProductivityPageView.swift */,
+				00B000000000000000000007 /* VoiceSelectionPageView.swift */,
+				00B000000000000000000008 /* PaywallPageView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		00C000000000000000000004 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				00E000000000000000000001 /* voice_sample_rachel.wav */,
+				00E000000000000000000002 /* voice_sample_adam.wav */,
+				00E000000000000000000003 /* voice_sample_brian.wav */,
+				00E000000000000000000004 /* voice_sample_bella.wav */,
+				00E000000000000000000005 /* voice_sample_josh.wav */,
+				00E000000000000000000006 /* voice_sample_charlotte.wav */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		006000000000000000000001 /* ListenAI */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 007000000000000000000001 /* Build configuration list for PBXNativeTarget "ListenAI" */;
+			buildPhases = (
+				006100000000000000000001 /* Sources */,
+				004000000000000000000001 /* Frameworks */,
+				006200000000000000000001 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = ListenAI;
+			productName = ListenAI;
+			productReference = 003000000000000000000001 /* ListenAI.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		005000000000000000000099 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1500;
+				LastUpgradeCheck = 1500;
+				TargetAttributes = {
+					006000000000000000000001 = {
+						CreatedOnToolsVersion = 15.0;
+					};
+				};
+			};
+			buildConfigurationList = 007000000000000000000002 /* Build configuration list for PBXProject "ListenAI" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 005000000000000000000000;
+			productRefGroup = 005000000000000000000001 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				006000000000000000000001 /* ListenAI */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		006200000000000000000001 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				001000000000000000000003 /* Assets.xcassets in Resources */,
+				00D000000000000000000001 /* voice_sample_rachel.wav in Resources */,
+				00D000000000000000000002 /* voice_sample_adam.wav in Resources */,
+				00D000000000000000000003 /* voice_sample_brian.wav in Resources */,
+				00D000000000000000000004 /* voice_sample_bella.wav in Resources */,
+				00D000000000000000000005 /* voice_sample_josh.wav in Resources */,
+				00D000000000000000000006 /* voice_sample_charlotte.wav in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		006100000000000000000001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				001000000000000000000001 /* ListenAIApp.swift in Sources */,
+				001000000000000000000002 /* ContentView.swift in Sources */,
+				001100000000000000000001 /* AccessibilityHelpers.swift in Sources */,
+				001100000000000000000002 /* NotificationManager.swift in Sources */,
+				001200000000000000000001 /* Article.swift in Sources */,
+				001200000000000000000002 /* ExtractionModels.swift in Sources */,
+				001200000000000000000003 /* ImportCoordinator.swift in Sources */,
+				001300000000000000000001 /* LibraryModels.swift in Sources */,
+				001300000000000000000002 /* ListeningQueueView.swift in Sources */,
+				001300000000000000000003 /* PlaylistDetailView.swift in Sources */,
+				001300000000000000000004 /* PlaylistListView.swift in Sources */,
+				001300000000000000000005 /* PlaylistManager.swift in Sources */,
+				001300000000000000000006 /* QueueManager.swift in Sources */,
+				001400000000000000000001 /* PlaybackModels.swift in Sources */,
+				001400000000000000000002 /* BackgroundAudioConfiguration.swift in Sources */,
+				001400000000000000000003 /* MiniPlayerView.swift in Sources */,
+				001400000000000000000004 /* AudioPlayerView.swift in Sources */,
+				001400000000000000000005 /* PlaybackPositionStore.swift in Sources */,
+				001400000000000000000006 /* AudioPlaybackService.swift in Sources */,
+				001400000000000000000007 /* NowPlayingManager.swift in Sources */,
+				001400000000000000000008 /* AudioSessionManager.swift in Sources */,
+				001500000000000000000001 /* TTSModels.swift in Sources */,
+				001500000000000000000002 /* VoicePreset.swift in Sources */,
+				001500000000000000000003 /* TTSCoordinator.swift in Sources */,
+				001500000000000000000004 /* VoicePickerView.swift in Sources */,
+				001500000000000000000005 /* TTSService.swift in Sources */,
+				001500000000000000000006 /* VoicePresetManager.swift in Sources */,
+				001500000000000000000007 /* OnDeviceTTSService.swift in Sources */,
+				001500000000000000000008 /* CloudTTSService.swift in Sources */,
+				00150000000000000000000C /* SelfHostedTTSService.swift in Sources */,
+				00150000000000000000000D /* TTSJobManager.swift in Sources */,
+				001600000000000000000001 /* UsageModels.swift in Sources */,
+				001600000000000000000002 /* UsageQuotaView.swift in Sources */,
+				001600000000000000000003 /* UsageWarningBanner.swift in Sources */,
+				001600000000000000000004 /* UsageTrackerService.swift in Sources */,
+				001600000000000000000005 /* SynthesisMetricsService.swift in Sources */,
+				001500000000000000000009 /* ListenAICloudService.swift in Sources */,
+				001600000000000000000005 /* UsageViewModel.swift in Sources */,
+				001700000000000000000001 /* SubscriptionModels.swift in Sources */,
+				001700000000000000000002 /* UserAccountViewModel.swift in Sources */,
+				001200000000000000000004 /* WebImportService.swift in Sources */,
+				001200000000000000000005 /* PDFImportService.swift in Sources */,
+				001200000000000000000006 /* ClipboardImportService.swift in Sources */,
+				001200000000000000000007 /* TextCleaningService.swift in Sources */,
+				001200000000000000000008 /* ImportView.swift in Sources */,
+				001200000000000000000009 /* OCRService.swift in Sources */,
+				001800000000000000000001 /* HomeView.swift in Sources */,
+				001800000000000000000002 /* LibraryView.swift in Sources */,
+				001800000000000000000003 /* SettingsView.swift in Sources */,
+				001900000000000000000001 /* VoiceCloningService.swift in Sources */,
+				001900000000000000000002 /* VoiceCloningView.swift in Sources */,
+				001300000000000000000007 /* ArticleStore.swift in Sources */,
+				001400000000000000000009 /* ArticleReaderView.swift in Sources */,
+				00140000000000000000000A /* URLAudioPlayer.swift in Sources */,
+				00140000000000000000000B /* QueuePlaybackCoordinator.swift in Sources */,
+				00150000000000000000000A /* SpeechSynthesisHelper.swift in Sources */,
+				00150000000000000000000B /* SelectVoiceView.swift in Sources */,
+				00120000000000000000000A /* SimpleTextInputView.swift in Sources */,
+				00120000000000000000000B /* SimpleWebLinkView.swift in Sources */,
+				00120000000000000000000C /* DocumentPickerSheet.swift in Sources */,
+				00120000000000000000000D /* ScanTextView.swift in Sources */,
+				00120000000000000000000E /* MailImportView.swift in Sources */,
+				001700000000000000000003 /* GoogleAuthService.swift in Sources */,
+				00120000000000000000000F /* GmailService.swift in Sources */,
+				001700000000000000000004 /* StoreKitManager.swift in Sources */,
+				00A000000000000000000001 /* OnboardingManager.swift in Sources */,
+				00A000000000000000000002 /* OnboardingView.swift in Sources */,
+				00A000000000000000000003 /* WelcomePageView.swift in Sources */,
+				00A000000000000000000004 /* DocumentToAudioPageView.swift in Sources */,
+				00A000000000000000000005 /* TakeNotesPageView.swift in Sources */,
+				00A000000000000000000006 /* ProductivityPageView.swift in Sources */,
+				00A000000000000000000007 /* VoiceSelectionPageView.swift in Sources */,
+				00A000000000000000000008 /* PaywallPageView.swift in Sources */,
+				00A000000000000000000009 /* OnboardingAudioPlayer.swift in Sources */,
+				60053F2DC49846065D6EBC7B /* BackgroundStreamingSynthesisService.swift in Sources */,
+				FC8D4518BE88A2E5699ED58A /* StreamingTTSService.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		008000000000000000000001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		008000000000000000000002 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		008100000000000000000001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 9;
+				DEVELOPMENT_TEAM = 7RS696YC75;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = ListenAI/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "ReadAloud AI";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 2.3;
+				PRODUCT_BUNDLE_IDENTIFIER = com.kreativekoala.listenai;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		008100000000000000000002 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 9;
+				DEVELOPMENT_TEAM = 7RS696YC75;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = ListenAI/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "ReadAloud AI";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 2.3;
+				PRODUCT_BUNDLE_IDENTIFIER = com.kreativekoala.listenai;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		007000000000000000000001 /* Build configuration list for PBXNativeTarget "ListenAI" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				008100000000000000000001 /* Debug */,
+				008100000000000000000002 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		007000000000000000000002 /* Build configuration list for PBXProject "ListenAI" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				008000000000000000000001 /* Debug */,
+				008000000000000000000002 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 005000000000000000000099 /* Project object */;
+}

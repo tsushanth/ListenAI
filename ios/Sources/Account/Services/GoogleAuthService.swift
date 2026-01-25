@@ -165,9 +165,10 @@ final class GoogleAuthService: NSObject, ObservableObject {
             throw GoogleAuthError.notAuthenticated
         }
 
-        // Check if token is expired
+        // Check if token is expired or will expire soon
+        // Refresh 10 minutes before expiry to give more buffer
         let expiry = UserDefaults.standard.double(forKey: tokenExpiryKey)
-        if Date().timeIntervalSince1970 > expiry - 300 { // Refresh 5 min before expiry
+        if Date().timeIntervalSince1970 > expiry - 600 { // Refresh 10 min before expiry
             try await refreshAccessToken()
         }
 
@@ -176,6 +177,24 @@ final class GoogleAuthService: NSObject, ObservableObject {
         }
 
         return token
+    }
+
+    /// Check if the current token needs refresh and refresh if needed
+    /// Call this when app comes to foreground to proactively refresh
+    func refreshTokenIfNeeded() async {
+        guard isAuthenticated else { return }
+
+        let expiry = UserDefaults.standard.double(forKey: tokenExpiryKey)
+        // Refresh if less than 15 minutes remaining
+        if Date().timeIntervalSince1970 > expiry - 900 {
+            do {
+                try await refreshAccessToken()
+                print("[GoogleAuth] Proactively refreshed token on foreground")
+            } catch {
+                print("[GoogleAuth] Failed to refresh token on foreground: \(error)")
+                // Don't sign out here - let the next API call handle it
+            }
+        }
     }
 
     // MARK: - Private Methods
