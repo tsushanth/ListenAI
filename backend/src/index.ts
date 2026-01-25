@@ -23,6 +23,7 @@ import { adminRouter } from './routes/admin.js';
 import { clonedVoicesRouter } from './routes/clonedVoices.js';
 import { tidymailBriefingsRouter } from './routes/tidymailBriefings.js';
 import { voiceMarketplaceRouter } from './routes/voiceMarketplace.js';
+import { stripeWebhookRouter } from './routes/stripeWebhook.js';
 import { aggregateLatencyMetrics, checkSupabaseHealth, checkStorageHealth } from './lib/supabaseClient.js';
 import { startWorker, stopWorker } from './workers/ttsJobWorker.js';
 import { checkPubSubHealth } from './lib/pubsub.js';
@@ -64,6 +65,10 @@ app.use(cors({
 
 // Compression
 app.use(compression());
+
+// Stripe webhook needs raw body for signature verification
+// Must be before express.json() middleware
+app.use('/api/webhooks', express.raw({ type: 'application/json' }), stripeWebhookRouter);
 
 // Body parsing
 app.use(express.json({ limit: '1mb' }));
