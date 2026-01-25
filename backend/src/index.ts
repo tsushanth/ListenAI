@@ -21,7 +21,6 @@ import { latencyRouter } from './routes/latency.js';
 import { aiRouter } from './routes/ai.js';
 import { adminRouter } from './routes/admin.js';
 import { clonedVoicesRouter } from './routes/clonedVoices.js';
-import { tidymailBriefingsRouter } from './routes/tidymailBriefings.js';
 import { voiceMarketplaceRouter } from './routes/voiceMarketplace.js';
 import { stripeWebhookRouter } from './routes/stripeWebhook.js';
 import { aggregateLatencyMetrics, checkSupabaseHealth, checkStorageHealth } from './lib/supabaseClient.js';
@@ -187,8 +186,6 @@ app.use('/api/admin', adminRouter);
 // Cloned voices routes (requires auth) - for voice cloning with Chatterbox
 app.use('/api/cloned-voices', clonedVoicesRouter);
 
-// TidyMail routes (requires auth) - email briefings and TTS for TidyMail email client
-app.use('/api/tidymail', requireAuth, tidymailBriefingsRouter);
 
 // Voice marketplace routes - for sharing and discovering cloned voices
 app.use('/api/marketplace', voiceMarketplaceRouter);
