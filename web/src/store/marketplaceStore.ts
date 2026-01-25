@@ -64,7 +64,7 @@ export const useMarketplaceStore = create<MarketplaceStore>((set, get) => ({
     try {
       const currentState = get()
       const response = await marketplaceApi.browse({
-        search: search ?? currentState.search || undefined,
+        search: (search ?? currentState.search) || undefined,
         sort: sort ?? currentState.sort,
         limit: 20,
         offset: reset ? 0 : currentState.offset,
