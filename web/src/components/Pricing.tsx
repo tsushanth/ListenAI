@@ -18,14 +18,15 @@ const plans = [
       'Import from URL',
     ],
     cta: 'Get Started',
-    href: '#download',
+    href: '/app',
     highlighted: false,
   },
   {
-    name: 'Pro',
-    price: '$4.99',
-    period: 'per month',
-    yearlyPrice: '$39.99/year',
+    name: 'Pro Weekly',
+    price: '$5.59',
+    originalPrice: '$7.99',
+    period: 'per week',
+    discount: '30% OFF',
     description: 'For daily listeners who want more',
     features: [
       'Unlimited articles',
@@ -38,23 +39,25 @@ const plans = [
       'No ads',
     ],
     cta: 'Start Free Trial',
-    href: '/api/checkout?plan=pro_monthly',
+    href: '/api/checkout?plan=pro_weekly',
     highlighted: true,
   },
   {
-    name: 'Lifetime',
-    price: '$99',
-    period: 'one-time',
-    description: 'Pay once, own forever',
+    name: 'Pro Yearly',
+    price: '$27.99',
+    originalPrice: '$39.99',
+    period: 'per year',
+    discount: '30% OFF',
+    description: 'Best value - save even more',
     features: [
-      'Everything in Pro',
+      'Everything in Pro Weekly',
       'Unlimited voice clones',
-      'Lifetime updates',
       'Priority support',
       'Early access to new features',
+      'Save 90% vs weekly',
     ],
-    cta: 'Get Lifetime Access',
-    href: '/api/checkout?plan=lifetime',
+    cta: 'Start Free Trial',
+    href: '/api/checkout?plan=pro_yearly',
     highlighted: false,
   },
 ]
@@ -102,13 +105,18 @@ export default function Pricing() {
 
               <div className="text-center mb-6">
                 <h3 className="text-xl font-semibold text-white mb-2">{plan.name}</h3>
-                <div className="flex items-baseline justify-center space-x-1">
-                  <span className="text-4xl font-bold text-white">{plan.price}</span>
-                  <span className="text-gray-400">/{plan.period}</span>
-                </div>
-                {plan.yearlyPrice && (
-                  <p className="text-sm text-primary mt-1">or {plan.yearlyPrice} (save 33%)</p>
+                {plan.discount && (
+                  <span className="inline-block bg-green-500 text-white text-xs font-bold px-2 py-1 rounded-full mb-2">
+                    {plan.discount}
+                  </span>
                 )}
+                <div className="flex items-baseline justify-center space-x-2">
+                  {plan.originalPrice && (
+                    <span className="text-xl text-gray-500 line-through">{plan.originalPrice}</span>
+                  )}
+                  <span className="text-4xl font-bold text-white">{plan.price}</span>
+                </div>
+                <span className="text-gray-400">/{plan.period}</span>
                 <p className="text-gray-400 text-sm mt-2">{plan.description}</p>
               </div>
 
