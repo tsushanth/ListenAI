@@ -80,6 +80,10 @@ struct RootView: View {
         // Uses device ID for user identification (no auth required)
         await VoiceCloningService.shared.configure(baseURL: backendURL)
 
+        // Configure VoiceMarketplaceService for sharing and discovering voices
+        // Uses device ID for user identification (no auth required)
+        await VoiceMarketplaceService.shared.configure(baseURL: backendURL)
+
         // Configure StreamingTTSService for progressive audio playback
         StreamingTTSService.shared.configure(
             backendURL: backendURL,

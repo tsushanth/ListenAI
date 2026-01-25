@@ -609,3 +609,174 @@ export interface SynthesizeWithClonedVoiceRequest {
   article_id?: string;
   article_title?: string;
 }
+
+// ============================================================================
+// Voice Marketplace Types
+// ============================================================================
+
+/**
+ * Shared voice status enum
+ */
+export type SharedVoiceStatus = 'active' | 'suspended' | 'revoked' | 'pending_review';
+
+/**
+ * Voice report reason enum
+ */
+export type VoiceReportReason = 'not_their_voice' | 'celebrity' | 'public_figure' | 'offensive' | 'copyright' | 'other';
+
+/**
+ * Voice report status enum
+ */
+export type VoiceReportStatus = 'pending' | 'ai_reviewed' | 'upheld' | 'dismissed' | 'escalated';
+
+/**
+ * Shared voice record (matches shared_voices table)
+ */
+export interface DBSharedVoice {
+  id: string;
+  owner_user_id: string;
+  cloned_voice_id: string;
+  display_name: string;
+  description: string | null;
+  tags: string[];
+  preview_audio_path: string | null;
+  preview_audio_url: string | null;
+  preview_duration_sec: number | null;
+  is_public: boolean;
+  terms_accepted_at: string;
+  owner_attestation: string;
+  usage_count: number;
+  rating_sum: number;
+  rating_count: number;
+  status: SharedVoiceStatus;
+  revoked_at: string | null;
+  revoked_reason: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * Voice report record (matches voice_reports table)
+ */
+export interface DBVoiceReport {
+  id: string;
+  shared_voice_id: string;
+  reporter_user_id: string;
+  reason: VoiceReportReason;
+  description: string;
+  evidence_urls: string[];
+  ai_analysis: {
+    verdict: 'uphold' | 'dismiss' | 'escalate';
+    confidence: number;
+    reasoning: string;
+    detected_issues: string[];
+  } | null;
+  ai_analyzed_at: string | null;
+  status: VoiceReportStatus;
+  resolved_at: string | null;
+  resolved_by: string | null;
+  resolution_notes: string | null;
+  action_taken: 'none' | 'warning' | 'suspended' | 'revoked' | null;
+  created_at: string;
+}
+
+/**
+ * Voice creator reward record (matches voice_creator_rewards table)
+ */
+export interface DBVoiceCreatorReward {
+  id: string;
+  owner_user_id: string;
+  shared_voice_id: string;
+  used_by_user_id: string;
+  job_id: string | null;
+  characters_generated: number;
+  seconds_generated: number;
+  reward_minutes: number;
+  reward_rate: number;
+  credited: boolean;
+  credited_at: string | null;
+  created_at: string;
+}
+
+/**
+ * Voice rating record (matches voice_ratings table)
+ */
+export interface DBVoiceRating {
+  id: string;
+  shared_voice_id: string;
+  user_id: string;
+  rating: number;
+  review: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * Request to share a voice to marketplace
+ */
+export interface ShareVoiceRequest {
+  cloned_voice_id: string;
+  display_name: string;
+  description?: string;
+  tags?: string[];
+  owner_attestation: string;
+  terms_accepted: boolean;
+}
+
+/**
+ * Request to report a voice
+ */
+export interface ReportVoiceRequest {
+  reason: VoiceReportReason;
+  description: string;
+  evidence_urls?: string[];
+}
+
+/**
+ * Request to rate a voice
+ */
+export interface RateVoiceRequest {
+  rating: number;
+  review?: string;
+}
+
+/**
+ * Shared voice info returned to client
+ */
+export interface SharedVoiceInfo {
+  id: string;
+  display_name: string;
+  description: string | null;
+  tags: string[];
+  preview_audio_url: string | null;
+  preview_duration_sec: number | null;
+  usage_count: number;
+  avg_rating: number;
+  rating_count: number;
+  owner_user_id: string;
+  created_at: string;
+  is_own: boolean;
+}
+
+/**
+ * User's pending rewards summary
+ */
+export interface PendingRewardsSummary {
+  minutes: number;
+  count: number;
+}
+
+/**
+ * Reward history entry
+ */
+export interface RewardHistoryEntry {
+  id: string;
+  shared_voice_id: string;
+  voice_name: string;
+  characters_generated: number;
+  seconds_generated: number;
+  reward_minutes: number;
+  credited: boolean;
+  credited_at: string | null;
+  created_at: string;
+}

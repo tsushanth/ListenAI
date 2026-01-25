@@ -36,6 +36,7 @@ struct SettingsView: View {
     @State private var showingFeatureRequest = false
     @State private var showingLinkedAccounts = false
     @State private var showingUsageDetails = false
+    @State private var showingMarketplace = false
 
     // Current voice from preset manager
     @StateObject private var voicePresetManager = VoicePresetManager.shared
@@ -85,6 +86,9 @@ struct SettingsView: View {
                 UsageQuotaView()
             }
         }
+        .sheet(isPresented: $showingMarketplace) {
+            VoiceMarketplaceView()
+        }
     }
 
     // MARK: - Preferences Section
@@ -99,6 +103,19 @@ struct SettingsView: View {
                     icon: "mic.fill",
                     iconColor: .purple,
                     title: "Voice Cloning",
+                    showChevron: true
+                )
+            }
+            .buttonStyle(.plain)
+
+            // Voice Marketplace
+            Button {
+                showingMarketplace = true
+            } label: {
+                SettingsRow(
+                    icon: "waveform.circle.fill",
+                    iconColor: .orange,
+                    title: "Voice Marketplace",
                     showChevron: true
                 )
             }
