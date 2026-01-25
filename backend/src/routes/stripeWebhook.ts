@@ -14,12 +14,13 @@ const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET || '';
 
 // Stripe webhook handler
 // Note: This route needs raw body, not JSON parsed
-router.post('/stripe', async (req: Request, res: Response) => {
+router.post('/stripe', async (req: Request, res: Response): Promise<void> => {
   const signature = req.headers['stripe-signature'] as string;
 
   if (!signature) {
     logger.warn('Missing stripe-signature header');
-    return res.status(400).json({ error: 'Missing signature' });
+    res.status(400).json({ error: 'Missing signature' });
+    return;
   }
 
   let event: Stripe.Event;
@@ -29,7 +30,8 @@ router.post('/stripe', async (req: Request, res: Response) => {
     event = stripe.webhooks.constructEvent(req.body, signature, webhookSecret);
   } catch (err) {
     logger.error({ err }, 'Webhook signature verification failed');
-    return res.status(400).json({ error: 'Invalid signature' });
+    res.status(400).json({ error: 'Invalid signature' });
+    return;
   }
 
   logger.info({ type: event.type, id: event.id }, 'Stripe webhook received');

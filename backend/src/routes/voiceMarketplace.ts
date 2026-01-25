@@ -632,7 +632,7 @@ voiceMarketplaceRouter.get('/my/rewards/history', asyncHandler(async (req: Devic
   const history = (data ?? []).map(r => ({
     id: r.id,
     shared_voice_id: r.shared_voice_id,
-    voice_name: (r.shared_voices as { display_name: string } | null)?.display_name ?? 'Unknown',
+    voice_name: (r.shared_voices as unknown as { display_name: string } | null)?.display_name ?? 'Unknown',
     characters_generated: r.characters_generated,
     seconds_generated: r.seconds_generated,
     reward_minutes: r.reward_minutes,
