@@ -129,7 +129,8 @@ enum class OnboardingPage(val index: Int) {
     TAKE_NOTES(2),
     PRODUCTIVITY(3),
     VOICE_SELECTION(4),
-    PAYWALL(5);
+    PAYWALL(5),
+    SIGN_IN(6);
 
     val next: OnboardingPage?
         get() = entries.find { it.index == index + 1 }
@@ -141,11 +142,11 @@ enum class OnboardingPage(val index: Int) {
         get() = this == WELCOME
 
     val isLast: Boolean
-        get() = this == PAYWALL
+        get() = this == SIGN_IN
 
     val showsBackButton: Boolean
-        get() = !isFirst && this != PAYWALL
+        get() = !isFirst && this != PAYWALL && this != SIGN_IN
 
     val showsSkipButton: Boolean
-        get() = this != PAYWALL && this != VOICE_SELECTION
+        get() = this != PAYWALL && this != VOICE_SELECTION && this != SIGN_IN
 }

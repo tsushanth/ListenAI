@@ -458,15 +458,15 @@ struct ArticleReaderView: View {
             Divider()
                 .padding(.vertical, 8)
 
-            // Split text into paragraphs for highlighting
-            let paragraphs = article.rawText.components(separatedBy: "\n\n")
-                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-                .filter { !$0.isEmpty }
-
-            ForEach(Array(paragraphs.enumerated()), id: \.offset) { index, paragraph in
-                highlightedParagraph(text: paragraph, index: index)
-                    .id("paragraph-\(index)")
-            }
+            // Render formatted text with markdown support
+            FormattedTextView(
+                content: article.rawText,
+                fontSize: fontSize,
+                lineSpacing: lineSpacing,
+                highlightIndex: currentHighlightIndex,
+                highlightColor: highlightColor,
+                highlightWordOnly: highlightWordOnly
+            )
         }
     }
 

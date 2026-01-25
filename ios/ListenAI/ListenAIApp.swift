@@ -84,6 +84,9 @@ struct RootView: View {
         // Uses device ID for user identification (no auth required)
         await VoiceMarketplaceService.shared.configure(baseURL: backendURL)
 
+        // Configure AuthService for Apple/Google Sign In
+        AuthService.shared.configure(backendURL: backendURL)
+
         // Configure StreamingTTSService for progressive audio playback
         StreamingTTSService.shared.configure(
             backendURL: backendURL,

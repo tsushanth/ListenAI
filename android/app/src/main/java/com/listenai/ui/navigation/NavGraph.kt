@@ -18,6 +18,11 @@ import com.listenai.ui.usage.UsageQuotaScreen
 import com.listenai.ui.voice.VoiceCloningListScreen
 import com.listenai.ui.voice.VoiceCloningFlowScreen
 import com.listenai.ui.voice.VoicePickerScreen
+import com.listenai.ui.marketplace.VoiceMarketplaceScreen
+import com.listenai.ui.marketplace.VoiceDetailScreen
+import com.listenai.ui.marketplace.MySharedVoicesScreen
+import com.listenai.ui.marketplace.ShareVoiceScreen
+import com.listenai.ui.marketplace.RewardsScreen
 
 /**
  * Navigation routes
@@ -40,6 +45,13 @@ sealed class Screen(val route: String) {
     object Subscription : Screen("subscription")
     object VoiceCloning : Screen("voice_cloning")
     object VoiceCloningFlow : Screen("voice_cloning_flow")
+    object Marketplace : Screen("marketplace")
+    object MarketplaceVoiceDetail : Screen("marketplace/voice/{voiceId}") {
+        fun createRoute(voiceId: String) = "marketplace/voice/$voiceId"
+    }
+    object MySharedVoices : Screen("my_shared_voices")
+    object ShareVoice : Screen("share_voice")
+    object Rewards : Screen("rewards")
 }
 
 /**
@@ -76,7 +88,8 @@ fun NavGraph(
             SettingsScreen(
                 onNavigateToVoices = { navController.navigate(Screen.VoicePicker.route) },
                 onNavigateToUsage = { navController.navigate(Screen.Usage.route) },
-                onNavigateToVoiceCloning = { navController.navigate(Screen.VoiceCloning.route) }
+                onNavigateToVoiceCloning = { navController.navigate(Screen.VoiceCloning.route) },
+                onNavigateToMarketplace = { navController.navigate(Screen.Marketplace.route) }
             )
         }
 
@@ -158,6 +171,53 @@ fun NavGraph(
                     navController.popBackStack()
                 },
                 onCancel = { navController.popBackStack() }
+            )
+        }
+
+        composable(Screen.Marketplace.route) {
+            VoiceMarketplaceScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToVoiceDetail = { voiceId ->
+                    navController.navigate(Screen.MarketplaceVoiceDetail.createRoute(voiceId))
+                },
+                onNavigateToMyShares = { navController.navigate(Screen.MySharedVoices.route) },
+                onNavigateToRewards = { navController.navigate(Screen.Rewards.route) }
+            )
+        }
+
+        composable(
+            route = Screen.MarketplaceVoiceDetail.route,
+            arguments = listOf(
+                navArgument("voiceId") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val voiceId = backStackEntry.arguments?.getString("voiceId") ?: ""
+            VoiceDetailScreen(
+                voiceId = voiceId,
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(Screen.MySharedVoices.route) {
+            MySharedVoicesScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToShare = { navController.navigate(Screen.ShareVoice.route) }
+            )
+        }
+
+        composable(Screen.ShareVoice.route) {
+            ShareVoiceScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onShareComplete = {
+                    // Go back to my shares list
+                    navController.popBackStack()
+                }
+            )
+        }
+
+        composable(Screen.Rewards.route) {
+            RewardsScreen(
+                onNavigateBack = { navController.popBackStack() }
             )
         }
     }

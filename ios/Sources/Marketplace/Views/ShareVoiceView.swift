@@ -3,9 +3,11 @@ import SwiftUI
 // MARK: - Share Voice View
 
 /// View for sharing a cloned voice to the marketplace.
+/// Requires authentication to share voices.
 struct ShareVoiceView: View {
     @Environment(\.dismiss) private var dismiss
     @StateObject private var viewModel = ShareVoiceViewModel()
+    @ObservedObject private var authService = AuthService.shared
 
     @State private var selectedVoice: VoiceCloningService.ClonedVoice?
     @State private var displayName = ""
@@ -18,6 +20,25 @@ struct ShareVoiceView: View {
     private let attestationText = "I confirm that this is my own voice or I have explicit permission from the voice owner to share it publicly. I understand that sharing someone else's voice without permission may result in removal and account suspension."
 
     var body: some View {
+        Group {
+            if authService.isAuthenticated {
+                shareVoiceContent
+            } else {
+                SignInPromptView(
+                    title: "Sign In to Share",
+                    message: "Sign in to share your voice with the community and earn rewards when others use it.",
+                    onComplete: {},
+                    onSkip: { dismiss() }
+                )
+            }
+        }
+        .navigationTitle("Share Voice")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    // MARK: - Share Voice Content (when authenticated)
+
+    private var shareVoiceContent: some View {
         Form {
             // Voice selection
             voiceSelectionSection
@@ -29,8 +50,6 @@ struct ShareVoiceView: View {
                 termsSection
             }
         }
-        .navigationTitle("Share Voice")
-        .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
                 Button("Cancel") {
@@ -190,7 +209,7 @@ struct ShareVoiceView: View {
                             } label: {
                                 Text(tag)
                                     .font(.caption)
-                                    .foregroundStyle(tags.contains(tag) ? .secondary : .blue)
+                                    .foregroundColor(tags.contains(tag) ? .secondary : .blue)
                                     .padding(.horizontal, 10)
                                     .padding(.vertical, 4)
                                     .background(Color(.tertiarySystemBackground))

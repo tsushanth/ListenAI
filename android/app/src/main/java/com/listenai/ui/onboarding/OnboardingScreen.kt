@@ -112,6 +112,12 @@ fun OnboardingScreen(
                     )
                     OnboardingPage.PAYWALL -> PaywallPage(
                         onComplete = {
+                            // Go to sign-in page instead of completing
+                            onboardingManager.nextPage()
+                        }
+                    )
+                    OnboardingPage.SIGN_IN -> SignInPage(
+                        onComplete = {
                             onboardingManager.completeOnboarding()
                             onComplete()
                         }
@@ -120,7 +126,7 @@ fun OnboardingScreen(
             }
 
             // Page indicator and continue button
-            if (currentPage != OnboardingPage.PAYWALL) {
+            if (currentPage != OnboardingPage.PAYWALL && currentPage != OnboardingPage.SIGN_IN) {
                 OnboardingFooter(
                     currentPage = currentPage,
                     onContinue = { onboardingManager.nextPage() }
@@ -1066,5 +1072,177 @@ private fun ProFeatureRow(text: String) {
             style = MaterialTheme.typography.bodyMedium,
             color = contentColor
         )
+    }
+}
+
+// MARK: - Sign-In Page
+
+@Composable
+private fun SignInPage(
+    onComplete: () -> Unit
+) {
+    val isDarkTheme = isSystemInDarkTheme()
+    val contentColor = if (isDarkTheme) Color.White else Color.Black
+    val cardBgColor = if (isDarkTheme) CardDark else Color.White
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Skip button
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End
+        ) {
+            TextButton(onClick = onComplete) {
+                Text(
+                    text = "Skip",
+                    color = contentColor.copy(alpha = 0.6f)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(32.dp))
+
+        // Icon
+        Box(
+            modifier = Modifier
+                .size(100.dp)
+                .clip(CircleShape)
+                .background(Blue.copy(alpha = 0.1f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Default.Person,
+                contentDescription = null,
+                modifier = Modifier.size(50.dp),
+                tint = Blue
+            )
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Text(
+            text = "Sign In (Optional)",
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold,
+            color = contentColor,
+            textAlign = TextAlign.Center
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Text(
+            text = "Sign in to unlock all features including voice sharing and cross-device sync.",
+            style = MaterialTheme.typography.bodyLarge,
+            color = contentColor.copy(alpha = 0.7f),
+            textAlign = TextAlign.Center
+        )
+
+        Spacer(modifier = Modifier.height(32.dp))
+
+        // Benefits
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = cardBgColor)
+        ) {
+            Column(
+                modifier = Modifier.padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                SignInBenefitRow(Icons.Default.Mic, "Share Your Voice", "Share cloned voices with the community")
+                SignInBenefitRow(Icons.Default.Groups, "Community Voices", "Use voices shared by others")
+                SignInBenefitRow(Icons.Default.CardGiftcard, "Earn Rewards", "Get listening minutes when others use your voices")
+                SignInBenefitRow(Icons.Default.Cloud, "Sync Across Devices", "Your data follows you everywhere")
+            }
+        }
+
+        Spacer(modifier = Modifier.weight(1f))
+
+        // Google Sign In button
+        Button(
+            onClick = {
+                // TODO: Implement Google Sign In using GoogleAuthService + AuthService
+                // For now, complete onboarding
+                onComplete()
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp),
+            shape = RoundedCornerShape(16.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = if (isDarkTheme) Color.White else Color.Black,
+                contentColor = if (isDarkTheme) Color.Black else Color.White
+            )
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Google icon placeholder
+                Icon(
+                    imageVector = Icons.Default.AccountCircle,
+                    contentDescription = null,
+                    tint = if (isDarkTheme) Color.Black else Color.White
+                )
+                Text(
+                    text = "Sign in with Google",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Continue without signing in
+        TextButton(onClick = onComplete) {
+            Text(
+                text = "Continue Without Signing In",
+                color = Blue
+            )
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+    }
+}
+
+@Composable
+private fun SignInBenefitRow(
+    icon: ImageVector,
+    title: String,
+    subtitle: String
+) {
+    val isDarkTheme = isSystemInDarkTheme()
+    val contentColor = if (isDarkTheme) Color.White else Color.Black
+
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.Top
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = Blue,
+            modifier = Modifier.size(24.dp)
+        )
+        Column {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = contentColor
+            )
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = contentColor.copy(alpha = 0.6f)
+            )
+        }
     }
 }

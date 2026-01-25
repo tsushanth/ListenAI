@@ -96,6 +96,7 @@ enum OnboardingPage: Int, CaseIterable {
     case productivity = 3
     case voiceSelection = 4
     case paywall = 5
+    case signIn = 6
 
     var next: OnboardingPage? {
         OnboardingPage(rawValue: rawValue + 1)
@@ -110,14 +111,14 @@ enum OnboardingPage: Int, CaseIterable {
     }
 
     var isLast: Bool {
-        self == .paywall
+        self == .signIn
     }
 
     var showsBackButton: Bool {
-        !isFirst && self != .paywall
+        !isFirst && self != .paywall && self != .signIn
     }
 
     var showsSkipButton: Bool {
-        self != .paywall && self != .voiceSelection
+        self != .paywall && self != .voiceSelection && self != .signIn
     }
 }

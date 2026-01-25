@@ -13,6 +13,7 @@ struct ContentView: View {
     @State private var showingPlayer = false
     @State private var articleToOpen: Article?
     @State private var showingQueue = false
+    @State private var showingFeedbackPrompt = false
 
     /// Whether any playback is active (from either player)
     private var hasActivePlayback: Bool {
@@ -115,6 +116,21 @@ struct ContentView: View {
                let article = ArticleStore.shared.article(withID: articleId) {
                 articleToOpen = article
             }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: AppReviewService.shouldShowFeedbackPromptNotification)) { _ in
+            showingFeedbackPrompt = true
+        }
+        .sheet(isPresented: $showingFeedbackPrompt) {
+            FeedbackPromptView(
+                onYes: {
+                    AppReviewService.shared.requestAppStoreReview()
+                },
+                onNo: {
+                    AppReviewService.shared.userNotEnjoying()
+                }
+            )
+            .presentationDetents([.height(280)])
+            .presentationDragIndicator(.visible)
         }
     }
 

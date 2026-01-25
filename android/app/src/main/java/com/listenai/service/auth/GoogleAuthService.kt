@@ -53,7 +53,8 @@ class GoogleAuthService(private val context: Context) {
         private const val TAG = "GoogleAuthService"
 
         // OAuth configuration - Web Client ID for Android Credential Manager
-        private const val WEB_CLIENT_ID = "517355381306-tdssnaf01h8nd69vd6rlu9l6chijmod6.apps.googleusercontent.com"
+        // Using the Web Client ID for Supabase Auth integration
+        private const val WEB_CLIENT_ID = "85846747177-dkoscai57kppqeofk1229otdjip9kmuu.apps.googleusercontent.com"
 
         // Gmail scope for reading emails
         private const val GMAIL_SCOPE = "https://www.googleapis.com/auth/gmail.modify"

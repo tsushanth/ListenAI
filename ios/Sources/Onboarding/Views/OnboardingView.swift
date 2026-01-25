@@ -37,6 +37,9 @@ struct OnboardingView: View {
 
                     PaywallPageView()
                         .tag(OnboardingPage.paywall)
+
+                    SignInPageView()
+                        .tag(OnboardingPage.signIn)
                 }
                 .tabViewStyle(.page(indexDisplayMode: .never))
                 .animation(.easeInOut(duration: 0.3), value: manager.currentPage)

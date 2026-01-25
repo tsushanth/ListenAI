@@ -488,6 +488,10 @@ final class URLAudioPlayer: NSObject, ObservableObject {
         // Clear waiting state since full audio is now available
         if mode == .full {
             isAwaitingFullAudio = false
+
+            // Trigger review prompt when full audio starts playing
+            AppReviewService.shared.recordTTSPlaybackSuccess()
+            AppReviewService.shared.checkAndTriggerFeedbackPrompt()
         }
 
         // Update now playing info

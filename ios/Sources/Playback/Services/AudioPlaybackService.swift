@@ -762,6 +762,10 @@ final class AudioPlaybackService: NSObject, ObservableObject {
                 articleID: item.articleID,
                 duration: progress.duration
             )
+
+            // Record successful TTS playback for review prompt
+            AppReviewService.shared.recordTTSPlaybackSuccess()
+            AppReviewService.shared.checkAndTriggerFeedbackPrompt()
         }
 
         // Handle sleep timer

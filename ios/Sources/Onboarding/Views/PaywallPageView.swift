@@ -30,7 +30,7 @@ struct PaywallPageView: View {
             // Close and Restore buttons
             HStack {
                 Button {
-                    manager.completeOnboarding()
+                    manager.nextPage()  // Go to sign-in page
                 } label: {
                     Image(systemName: "xmark")
                         .font(.title3)
@@ -94,8 +94,8 @@ struct PaywallPageView: View {
             // CTA Button
             VStack(spacing: 12) {
                 Button {
-                    // Start subscription/trial
-                    manager.completeOnboarding()
+                    // Start subscription/trial, then go to sign-in
+                    manager.nextPage()
                 } label: {
                     Text(freeTrialEnabled ? "Try for Free" : "Subscribe Now")
                         .font(.headline)

@@ -1308,6 +1308,9 @@ private struct VoiceCloningSuccessView: View {
     let voiceId: String?
     let onDone: () -> Void
 
+    @State private var showFeedbackPrompt = false
+    @StateObject private var reviewService = AppReviewService.shared
+
     var body: some View {
         let _ = logger.debug("VoiceCloningSuccessView body, voiceId=\(voiceId ?? "nil")")
         VStack(spacing: 24) {
@@ -1347,7 +1350,7 @@ private struct VoiceCloningSuccessView: View {
 
             Button(action: {
                 logger.info("VoiceCloningSuccessView: Done button tapped")
-                onDone()
+                handleDoneTapped()
             }) {
                 Text("Done")
                     .font(.headline)
@@ -1361,6 +1364,34 @@ private struct VoiceCloningSuccessView: View {
             .padding(.bottom, 32)
         }
         .background(Color(.systemBackground))
+        .onAppear {
+            // Record voice clone success for review prompt logic
+            reviewService.recordVoiceCloneSuccess()
+        }
+        .sheet(isPresented: $showFeedbackPrompt) {
+            FeedbackPromptView(
+                onYes: {
+                    reviewService.requestAppStoreReview()
+                    onDone()
+                },
+                onNo: {
+                    reviewService.userNotEnjoying()
+                    onDone()
+                }
+            )
+            .presentationDetents([.height(280)])
+            .presentationDragIndicator(.visible)
+        }
+    }
+
+    private func handleDoneTapped() {
+        // Check if we should show feedback prompt
+        if reviewService.shouldShowFeedbackPrompt() {
+            reviewService.recordFeedbackPromptShown()
+            showFeedbackPrompt = true
+        } else {
+            onDone()
+        }
     }
 }
 

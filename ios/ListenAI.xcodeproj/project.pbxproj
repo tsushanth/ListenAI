@@ -43,6 +43,7 @@
 		001400000000000000000007 /* NowPlayingManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002400000000000000000007 /* NowPlayingManager.swift */; };
 		001400000000000000000008 /* AudioSessionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002400000000000000000008 /* AudioSessionManager.swift */; };
 		001400000000000000000009 /* ArticleReaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002400000000000000000009 /* ArticleReaderView.swift */; };
+		0014000000000000000000F1 /* FormattedTextView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0024000000000000000000F1 /* FormattedTextView.swift */; };
 		00140000000000000000000A /* URLAudioPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00240000000000000000000A /* URLAudioPlayer.swift */; };
 		00140000000000000000000B /* QueuePlaybackCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00240000000000000000000B /* QueuePlaybackCoordinator.swift */; };
 		001500000000000000000001 /* TTSModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002500000000000000000001 /* TTSModels.swift */; };
@@ -68,11 +69,20 @@
 		001700000000000000000002 /* UserAccountViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002700000000000000000002 /* UserAccountViewModel.swift */; };
 		001700000000000000000003 /* GoogleAuthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002700000000000000000003 /* GoogleAuthService.swift */; };
 		001700000000000000000004 /* StoreKitManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002700000000000000000004 /* StoreKitManager.swift */; };
+		001700000000000000000005 /* AuthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002700000000000000000005 /* AuthService.swift */; };
+		001700000000000000000006 /* SignInPromptView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002700000000000000000006 /* SignInPromptView.swift */; };
+		001700000000000000000007 /* AppReviewService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002700000000000000000007 /* AppReviewService.swift */; };
 		001800000000000000000001 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002800000000000000000001 /* HomeView.swift */; };
 		001800000000000000000002 /* LibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002800000000000000000002 /* LibraryView.swift */; };
 		001800000000000000000003 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002800000000000000000003 /* SettingsView.swift */; };
 		001900000000000000000001 /* VoiceCloningService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002900000000000000000001 /* VoiceCloningService.swift */; };
 		001900000000000000000002 /* VoiceCloningView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002900000000000000000002 /* VoiceCloningView.swift */; };
+		001A00000000000000000001 /* VoiceMarketplaceService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002A00000000000000000001 /* VoiceMarketplaceService.swift */; };
+		001A00000000000000000002 /* VoiceMarketplaceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002A00000000000000000002 /* VoiceMarketplaceView.swift */; };
+		001A00000000000000000003 /* VoiceDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002A00000000000000000003 /* VoiceDetailView.swift */; };
+		001A00000000000000000004 /* ShareVoiceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002A00000000000000000004 /* ShareVoiceView.swift */; };
+		001A00000000000000000005 /* MySharedVoicesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002A00000000000000000005 /* MySharedVoicesView.swift */; };
+		001A00000000000000000006 /* RewardsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002A00000000000000000006 /* RewardsView.swift */; };
 		00A000000000000000000001 /* OnboardingManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00B000000000000000000001 /* OnboardingManager.swift */; };
 		00A000000000000000000002 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00B000000000000000000002 /* OnboardingView.swift */; };
 		00A000000000000000000003 /* WelcomePageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00B000000000000000000003 /* WelcomePageView.swift */; };
@@ -82,6 +92,7 @@
 		00A000000000000000000007 /* VoiceSelectionPageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00B000000000000000000007 /* VoiceSelectionPageView.swift */; };
 		00A000000000000000000008 /* PaywallPageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00B000000000000000000008 /* PaywallPageView.swift */; };
 		00A000000000000000000009 /* OnboardingAudioPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00B000000000000000000009 /* OnboardingAudioPlayer.swift */; };
+		00A00000000000000000000A /* SignInPageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00B00000000000000000000A /* SignInPageView.swift */; };
 		00D000000000000000000001 /* voice_sample_rachel.wav in Resources */ = {isa = PBXBuildFile; fileRef = 00E000000000000000000001 /* voice_sample_rachel.wav */; };
 		00D000000000000000000002 /* voice_sample_adam.wav in Resources */ = {isa = PBXBuildFile; fileRef = 00E000000000000000000002 /* voice_sample_adam.wav */; };
 		00D000000000000000000003 /* voice_sample_brian.wav in Resources */ = {isa = PBXBuildFile; fileRef = 00E000000000000000000003 /* voice_sample_brian.wav */; };
@@ -98,6 +109,7 @@
 		002000000000000000000003 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		002000000000000000000004 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		002000000000000000000005 /* Configuration.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = Configuration.storekit; sourceTree = "<group>"; };
+		002000000000000000000006 /* ListenAI.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = ListenAI.entitlements; sourceTree = "<group>"; };
 		002100000000000000000001 /* AccessibilityHelpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessibilityHelpers.swift; sourceTree = "<group>"; };
 		002100000000000000000002 /* NotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationManager.swift; sourceTree = "<group>"; };
 		002200000000000000000001 /* Article.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Article.swift; sourceTree = "<group>"; };
@@ -131,6 +143,7 @@
 		002400000000000000000007 /* NowPlayingManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NowPlayingManager.swift; sourceTree = "<group>"; };
 		002400000000000000000008 /* AudioSessionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioSessionManager.swift; sourceTree = "<group>"; };
 		002400000000000000000009 /* ArticleReaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArticleReaderView.swift; sourceTree = "<group>"; };
+		0024000000000000000000F1 /* FormattedTextView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FormattedTextView.swift; sourceTree = "<group>"; };
 		00240000000000000000000A /* URLAudioPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = URLAudioPlayer.swift; sourceTree = "<group>"; };
 		00240000000000000000000B /* QueuePlaybackCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QueuePlaybackCoordinator.swift; sourceTree = "<group>"; };
 		002500000000000000000001 /* TTSModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TTSModels.swift; sourceTree = "<group>"; };
@@ -156,11 +169,20 @@
 		002700000000000000000002 /* UserAccountViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserAccountViewModel.swift; sourceTree = "<group>"; };
 		002700000000000000000003 /* GoogleAuthService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoogleAuthService.swift; sourceTree = "<group>"; };
 		002700000000000000000004 /* StoreKitManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoreKitManager.swift; sourceTree = "<group>"; };
+		002700000000000000000005 /* AuthService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthService.swift; sourceTree = "<group>"; };
+		002700000000000000000006 /* SignInPromptView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignInPromptView.swift; sourceTree = "<group>"; };
+		002700000000000000000007 /* AppReviewService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppReviewService.swift; sourceTree = "<group>"; };
 		002800000000000000000001 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		002800000000000000000002 /* LibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryView.swift; sourceTree = "<group>"; };
 		002800000000000000000003 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		002900000000000000000001 /* VoiceCloningService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceCloningService.swift; sourceTree = "<group>"; };
 		002900000000000000000002 /* VoiceCloningView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceCloningView.swift; sourceTree = "<group>"; };
+		002A00000000000000000001 /* VoiceMarketplaceService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceMarketplaceService.swift; sourceTree = "<group>"; };
+		002A00000000000000000002 /* VoiceMarketplaceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceMarketplaceView.swift; sourceTree = "<group>"; };
+		002A00000000000000000003 /* VoiceDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceDetailView.swift; sourceTree = "<group>"; };
+		002A00000000000000000004 /* ShareVoiceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareVoiceView.swift; sourceTree = "<group>"; };
+		002A00000000000000000005 /* MySharedVoicesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MySharedVoicesView.swift; sourceTree = "<group>"; };
+		002A00000000000000000006 /* RewardsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RewardsView.swift; sourceTree = "<group>"; };
 		003000000000000000000001 /* ListenAI.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ListenAI.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		00B000000000000000000001 /* OnboardingManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingManager.swift; sourceTree = "<group>"; };
 		00B000000000000000000002 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
@@ -171,6 +193,7 @@
 		00B000000000000000000007 /* VoiceSelectionPageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceSelectionPageView.swift; sourceTree = "<group>"; };
 		00B000000000000000000008 /* PaywallPageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaywallPageView.swift; sourceTree = "<group>"; };
 		00B000000000000000000009 /* OnboardingAudioPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingAudioPlayer.swift; sourceTree = "<group>"; };
+		00B00000000000000000000A /* SignInPageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignInPageView.swift; sourceTree = "<group>"; };
 		00E000000000000000000001 /* voice_sample_rachel.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = voice_sample_rachel.wav; sourceTree = "<group>"; };
 		00E000000000000000000002 /* voice_sample_adam.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = voice_sample_adam.wav; sourceTree = "<group>"; };
 		00E000000000000000000003 /* voice_sample_brian.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = voice_sample_brian.wav; sourceTree = "<group>"; };
@@ -219,6 +242,7 @@
 				002000000000000000000003 /* Assets.xcassets */,
 				002000000000000000000004 /* Info.plist */,
 				002000000000000000000005 /* Configuration.storekit */,
+				002000000000000000000006 /* ListenAI.entitlements */,
 			);
 			path = ListenAI;
 			sourceTree = "<group>";
@@ -231,6 +255,7 @@
 				005900000000000000000001 /* Home */,
 				005200000000000000000002 /* Import */,
 				005200000000000000000003 /* Library */,
+				005B00000000000000000001 /* Marketplace */,
 				00C000000000000000000001 /* Onboarding */,
 				005200000000000000000004 /* Playback */,
 				005A00000000000000000001 /* Settings */,
@@ -238,6 +263,35 @@
 				005200000000000000000006 /* Usage */,
 			);
 			path = Sources;
+			sourceTree = "<group>";
+		};
+		005B00000000000000000001 /* Marketplace */ = {
+			isa = PBXGroup;
+			children = (
+				005B00000000000000000002 /* Services */,
+				005B00000000000000000003 /* Views */,
+			);
+			path = Marketplace;
+			sourceTree = "<group>";
+		};
+		005B00000000000000000002 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				002A00000000000000000001 /* VoiceMarketplaceService.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		005B00000000000000000003 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				002A00000000000000000002 /* VoiceMarketplaceView.swift */,
+				002A00000000000000000003 /* VoiceDetailView.swift */,
+				002A00000000000000000004 /* ShareVoiceView.swift */,
+				002A00000000000000000005 /* MySharedVoicesView.swift */,
+				002A00000000000000000006 /* RewardsView.swift */,
+			);
+			path = Views;
 			sourceTree = "<group>";
 		};
 		005200000000000000000001 /* Core */ = {
@@ -310,8 +364,17 @@
 				005800000000000000000001 /* Models */,
 				005800000000000000000003 /* Services */,
 				005800000000000000000002 /* ViewModels */,
+				005800000000000000000004 /* Views */,
 			);
 			path = Account;
+			sourceTree = "<group>";
+		};
+		005800000000000000000004 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				002700000000000000000006 /* SignInPromptView.swift */,
+			);
+			path = Views;
 			sourceTree = "<group>";
 		};
 		005300000000000000000001 /* Accessibility */ = {
@@ -408,6 +471,7 @@
 				002400000000000000000003 /* MiniPlayerView.swift */,
 				002400000000000000000004 /* AudioPlayerView.swift */,
 				002400000000000000000009 /* ArticleReaderView.swift */,
+				0024000000000000000000F1 /* FormattedTextView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -520,6 +584,8 @@
 		005800000000000000000003 /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				002700000000000000000007 /* AppReviewService.swift */,
+				002700000000000000000005 /* AuthService.swift */,
 				002700000000000000000003 /* GoogleAuthService.swift */,
 				002700000000000000000004 /* StoreKitManager.swift */,
 			);
@@ -587,6 +653,7 @@
 				00B000000000000000000006 /* ProductivityPageView.swift */,
 				00B000000000000000000007 /* VoiceSelectionPageView.swift */,
 				00B000000000000000000008 /* PaywallPageView.swift */,
+				00B00000000000000000000A /* SignInPageView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -732,6 +799,7 @@
 				001900000000000000000002 /* VoiceCloningView.swift in Sources */,
 				001300000000000000000007 /* ArticleStore.swift in Sources */,
 				001400000000000000000009 /* ArticleReaderView.swift in Sources */,
+				0014000000000000000000F1 /* FormattedTextView.swift in Sources */,
 				00140000000000000000000A /* URLAudioPlayer.swift in Sources */,
 				00140000000000000000000B /* QueuePlaybackCoordinator.swift in Sources */,
 				00150000000000000000000A /* SpeechSynthesisHelper.swift in Sources */,
@@ -744,6 +812,9 @@
 				001700000000000000000003 /* GoogleAuthService.swift in Sources */,
 				00120000000000000000000F /* GmailService.swift in Sources */,
 				001700000000000000000004 /* StoreKitManager.swift in Sources */,
+				001700000000000000000005 /* AuthService.swift in Sources */,
+				001700000000000000000006 /* SignInPromptView.swift in Sources */,
+				001700000000000000000007 /* AppReviewService.swift in Sources */,
 				00A000000000000000000001 /* OnboardingManager.swift in Sources */,
 				00A000000000000000000002 /* OnboardingView.swift in Sources */,
 				00A000000000000000000003 /* WelcomePageView.swift in Sources */,
@@ -753,8 +824,15 @@
 				00A000000000000000000007 /* VoiceSelectionPageView.swift in Sources */,
 				00A000000000000000000008 /* PaywallPageView.swift in Sources */,
 				00A000000000000000000009 /* OnboardingAudioPlayer.swift in Sources */,
+				00A00000000000000000000A /* SignInPageView.swift in Sources */,
 				60053F2DC49846065D6EBC7B /* BackgroundStreamingSynthesisService.swift in Sources */,
 				FC8D4518BE88A2E5699ED58A /* StreamingTTSService.swift in Sources */,
+				001A00000000000000000001 /* VoiceMarketplaceService.swift in Sources */,
+				001A00000000000000000002 /* VoiceMarketplaceView.swift in Sources */,
+				001A00000000000000000003 /* VoiceDetailView.swift in Sources */,
+				001A00000000000000000004 /* ShareVoiceView.swift in Sources */,
+				001A00000000000000000005 /* MySharedVoicesView.swift in Sources */,
+				001A00000000000000000006 /* RewardsView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -885,6 +963,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = ListenAI/ListenAI.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 9;
 				DEVELOPMENT_TEAM = 7RS696YC75;
@@ -919,6 +998,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = ListenAI/ListenAI.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 9;
 				DEVELOPMENT_TEAM = 7RS696YC75;

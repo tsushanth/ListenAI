@@ -3,7 +3,14 @@ import { z } from 'zod';
 import axios from 'axios';
 import { JSDOM } from 'jsdom';
 import { Readability } from '@mozilla/readability';
+import OpenAI from 'openai';
 import { logger } from '../lib/logger.js';
+import { config } from '../lib/config.js';
+
+// OpenAI client for content cleaning
+const openai = config.OPENAI_API_KEY
+  ? new OpenAI({ apiKey: config.OPENAI_API_KEY })
+  : null;
 
 // ============================================================================
 // Types
@@ -34,6 +41,7 @@ export const extractRouter = Router();
 
 const extractSchema = z.object({
   url: z.string().url('Invalid URL format'),
+  clean: z.boolean().optional().default(true), // Whether to use LLM to clean the content
 });
 
 // ============================================================================
@@ -56,9 +64,9 @@ extractRouter.post('/', async (req: Request, res: Response, next: NextFunction):
       return;
     }
 
-    const { url } = validation.data;
+    const { url, clean } = validation.data;
 
-    logger.info({ url }, 'Extracting content from URL');
+    logger.info({ url, clean }, 'Extracting content from URL');
 
     // Fetch the HTML content
     const response = await axios.get(url, {
@@ -106,13 +114,18 @@ extractRouter.post('/', async (req: Request, res: Response, next: NextFunction):
 
     if (!article || !article.textContent) {
       // Fall back to basic extraction
-      const fallbackContent = extractFallbackContent(dom.window.document);
+      let fallbackContent = extractFallbackContent(dom.window.document);
       if (!fallbackContent) {
         res.status(422).json({
           error: 'Unable to extract content',
           message: 'The page does not contain readable article content',
         });
         return;
+      }
+
+      // Apply LLM cleaning if requested (default: true)
+      if (clean !== false) {
+        fallbackContent = await cleanContentWithLLM(fallbackContent, metadata.title);
       }
 
       const result: ExtractionResult = {
@@ -133,7 +146,14 @@ extractRouter.post('/', async (req: Request, res: Response, next: NextFunction):
     }
 
     // Clean up the text content
-    const cleanedContent = cleanText(article.textContent);
+    let cleanedContent = cleanText(article.textContent);
+
+    // Apply LLM cleaning if requested (default: true)
+    if (clean !== false) {
+      const articleTitle = article.title || metadata.title;
+      cleanedContent = await cleanContentWithLLM(cleanedContent, articleTitle);
+    }
+
     const wordCount = countWords(cleanedContent);
 
     const result: ExtractionResult = {
@@ -153,6 +173,7 @@ extractRouter.post('/', async (req: Request, res: Response, next: NextFunction):
       url,
       title: result.title,
       wordCount: result.wordCount,
+      llmCleaned: clean !== false,
     }, 'Successfully extracted content');
 
     res.json(result);
@@ -340,4 +361,86 @@ function detectLanguage(text: string): string {
   const englishRatio = englishCount / Math.max(1, words.length);
 
   return englishRatio > 0.05 ? 'en' : 'unknown';
+}
+
+/**
+ * Clean extracted content using LLM to remove gibberish, navigation text,
+ * and format the content coherently for text-to-speech.
+ */
+async function cleanContentWithLLM(content: string, title: string | null): Promise<string> {
+  if (!openai) {
+    logger.warn('OpenAI not configured, skipping content cleaning');
+    return content;
+  }
+
+  // Don't clean very short content
+  if (content.length < 500) {
+    return content;
+  }
+
+  // Truncate if too long (leave room for response)
+  const maxInputChars = 40_000;
+  const truncatedContent = content.length > maxInputChars
+    ? content.slice(0, maxInputChars)
+    : content;
+
+  const systemPrompt = `You are a content cleaner that prepares extracted web article text for text-to-speech.
+
+Your job is to:
+1. Remove any navigation text, menu items, social media buttons, "Read more", "Subscribe", "Share" etc.
+2. Remove gibberish, garbled text, or text that doesn't make sense in context
+3. Remove repeated phrases or words
+4. Remove any leftover HTML artifacts or encoded characters
+5. Remove cookie notices, GDPR banners, advertisement labels
+6. Remove author bios that appear multiple times
+7. Fix obvious formatting issues (e.g., words stuck together, missing spaces)
+8. Keep the main article content intact and coherent
+9. Preserve paragraph structure with double newlines between paragraphs
+10. Preserve any markdown formatting (headers ##, bullet points •, blockquotes >, etc.)
+
+IMPORTANT:
+- Do NOT summarize or shorten the content
+- Do NOT add any commentary or explanations
+- Do NOT change the meaning or rewrite sentences
+- ONLY clean up artifacts and gibberish
+- Return the cleaned article text only, nothing else`;
+
+  const userPrompt = title
+    ? `Clean this article titled "${title}":\n\n${truncatedContent}`
+    : `Clean this article:\n\n${truncatedContent}`;
+
+  try {
+    const startTime = Date.now();
+
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
+      ],
+      max_tokens: 16000, // Allow for long articles
+      temperature: 0.1, // Low temperature for consistent cleaning
+    });
+
+    const cleanedContent = completion.choices[0]?.message?.content;
+    const responseTime = Date.now() - startTime;
+
+    logger.info({
+      responseTimeMs: responseTime,
+      inputLength: truncatedContent.length,
+      outputLength: cleanedContent?.length ?? 0,
+      inputTokens: completion.usage?.prompt_tokens,
+      outputTokens: completion.usage?.completion_tokens,
+    }, 'Content cleaned with LLM');
+
+    // Return cleaned content if valid, otherwise fall back to original
+    if (cleanedContent && cleanedContent.length > 100) {
+      return cleanedContent;
+    }
+
+    return content;
+  } catch (error) {
+    logger.error({ error }, 'LLM content cleaning failed, using original content');
+    return content;
+  }
 }

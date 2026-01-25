@@ -33,6 +33,7 @@ fun SettingsScreen(
     onNavigateToVoices: () -> Unit = {},
     onNavigateToUsage: () -> Unit = {},
     onNavigateToVoiceCloning: () -> Unit = {},
+    onNavigateToMarketplace: () -> Unit = {},
     settingsManager: SettingsManager = koinInject()
 ) {
     val context = LocalContext.current
@@ -91,6 +92,16 @@ fun SettingsScreen(
                     title = "Voice Cloning",
                     subtitle = "Create a custom voice from your recording",
                     onClick = onNavigateToVoiceCloning
+                )
+
+                HorizontalDivider(modifier = Modifier.padding(start = 56.dp))
+
+                SettingsRow(
+                    icon = Icons.Default.Store,
+                    iconColor = Green,
+                    title = "Voice Marketplace",
+                    subtitle = "Browse and share community voices",
+                    onClick = onNavigateToMarketplace
                 )
 
                 HorizontalDivider(modifier = Modifier.padding(start = 56.dp))
