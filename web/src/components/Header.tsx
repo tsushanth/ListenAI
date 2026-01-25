@@ -36,10 +36,10 @@ export default function Header() {
               FAQ
             </Link>
             <Link
-              href="#download"
+              href="/app"
               className="bg-primary text-dark px-4 py-2 rounded-lg font-semibold hover:bg-primary-dark transition-colors"
             >
-              Get the App
+              Open Web App
             </Link>
           </div>
 
@@ -69,10 +69,10 @@ export default function Header() {
                 FAQ
               </Link>
               <Link
-                href="#download"
+                href="/app"
                 className="bg-primary text-dark px-4 py-2 rounded-lg font-semibold hover:bg-primary-dark transition-colors text-center"
               >
-                Get the App
+                Open Web App
               </Link>
             </div>
           </div>

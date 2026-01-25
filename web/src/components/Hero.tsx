@@ -40,10 +40,24 @@ export default function Hero() {
               Listen to your content anywhere with AI-powered voices.
             </p>
 
-            <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
+            <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start flex-wrap">
+              {/* Web App Button */}
+              <Link
+                href="/app"
+                className="inline-flex items-center justify-center space-x-3 bg-primary text-dark px-6 py-3 rounded-xl hover:bg-primary-dark transition-colors"
+              >
+                <svg className="w-8 h-8" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
+                </svg>
+                <div className="text-left">
+                  <div className="text-xs">Try it now</div>
+                  <div className="text-lg font-semibold">Web App</div>
+                </div>
+              </Link>
+
               {/* App Store Button */}
               <Link
-                href="https://apps.apple.com/app/readaloud-ai"
+                href="https://apps.apple.com/us/app/readaloud-ai/id6757346255"
                 target="_blank"
                 className="inline-flex items-center justify-center space-x-3 bg-white text-dark px-6 py-3 rounded-xl hover:bg-gray-100 transition-colors"
               >
@@ -56,20 +70,18 @@ export default function Hero() {
                 </div>
               </Link>
 
-              {/* Play Store Button */}
-              <Link
-                href="https://play.google.com/store/apps/details?id=com.listenai"
-                target="_blank"
-                className="inline-flex items-center justify-center space-x-3 bg-white text-dark px-6 py-3 rounded-xl hover:bg-gray-100 transition-colors"
+              {/* Play Store Button - Coming Soon */}
+              <div
+                className="inline-flex items-center justify-center space-x-3 bg-gray-700 text-gray-300 px-6 py-3 rounded-xl cursor-not-allowed opacity-75"
               >
                 <svg className="w-8 h-8" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M3,20.5V3.5C3,2.91 3.34,2.39 3.84,2.15L13.69,12L3.84,21.85C3.34,21.6 3,21.09 3,20.5M16.81,15.12L6.05,21.34L14.54,12.85L16.81,15.12M20.16,10.81C20.5,11.08 20.75,11.5 20.75,12C20.75,12.5 20.53,12.9 20.18,13.18L17.89,14.5L15.39,12L17.89,9.5L20.16,10.81M6.05,2.66L16.81,8.88L14.54,11.15L6.05,2.66Z"/>
                 </svg>
                 <div className="text-left">
-                  <div className="text-xs">Get it on</div>
-                  <div className="text-lg font-semibold">Google Play</div>
+                  <div className="text-xs">Android</div>
+                  <div className="text-lg font-semibold">Coming Soon</div>
                 </div>
-              </Link>
+              </div>
             </div>
 
             {/* Stats */}
