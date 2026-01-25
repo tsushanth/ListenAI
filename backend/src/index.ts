@@ -23,6 +23,7 @@ import { adminRouter } from './routes/admin.js';
 import { clonedVoicesRouter } from './routes/clonedVoices.js';
 import { voiceMarketplaceRouter } from './routes/voiceMarketplace.js';
 import { stripeWebhookRouter } from './routes/stripeWebhook.js';
+import { authRouter } from './routes/auth.js';
 import { aggregateLatencyMetrics, checkSupabaseHealth, checkStorageHealth } from './lib/supabaseClient.js';
 import { startWorker, stopWorker } from './workers/ttsJobWorker.js';
 import { checkPubSubHealth } from './lib/pubsub.js';
@@ -189,6 +190,9 @@ app.use('/api/cloned-voices', clonedVoicesRouter);
 
 // Voice marketplace routes - for sharing and discovering cloned voices
 app.use('/api/marketplace', voiceMarketplaceRouter);
+
+// Auth routes - for Apple/Google sign-in (no auth middleware - handles its own auth)
+app.use('/api/auth', authRouter);
 
 // ============================================================================
 // Error Handling
