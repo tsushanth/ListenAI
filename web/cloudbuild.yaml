@@ -26,7 +26,6 @@ steps:
       - '--min-instances=0'
       - '--max-instances=10'
       - '--set-env-vars=NODE_ENV=production,NEXT_PUBLIC_APP_URL=${_NEXT_PUBLIC_APP_URL},NEXT_PUBLIC_API_URL=${_NEXT_PUBLIC_API_URL}'
-      - '--set-secrets=STRIPE_SECRET_KEY=stripe-secret-key:latest,STRIPE_WEBHOOK_SECRET=stripe-webhook-secret:latest,STRIPE_PRICE_PRO_MONTHLY=stripe-price-pro-monthly:latest,STRIPE_PRICE_PRO_YEARLY=stripe-price-pro-yearly:latest,STRIPE_PRICE_LIFETIME=stripe-price-lifetime:latest'
 
 images:
   - 'gcr.io/$PROJECT_ID/readaloud-web:$COMMIT_SHA'
