@@ -42,11 +42,16 @@ import com.listenai.service.playback.AudioPlaybackStatus
 import com.listenai.service.playback.PlayerMode
 import com.listenai.service.tts.TTSCoordinator
 import com.listenai.service.tts.TTSError
+import com.listenai.service.review.AppReviewService
+import com.listenai.service.notification.TTSNotificationService
 import com.listenai.ui.theme.Blue
 import com.listenai.ui.theme.Orange
 import com.listenai.ui.theme.Green
 import com.listenai.ui.theme.Yellow
 import com.listenai.ui.voice.VoicePickerBottomSheet
+import com.listenai.ui.voice.toVoicePreset
+import com.listenai.ui.components.FormattedTextView
+import com.listenai.service.voice.VoiceCloningService
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 
@@ -68,7 +73,10 @@ fun PlayerScreen(
     onNavigateToVoiceCloning: () -> Unit = {},
     articleRepository: ArticleRepository = koinInject(),
     playbackService: AudioPlaybackService = koinInject(),
-    ttsCoordinator: TTSCoordinator = koinInject()
+    ttsCoordinator: TTSCoordinator = koinInject(),
+    appReviewService: AppReviewService = koinInject(),
+    ttsNotificationService: TTSNotificationService = koinInject(),
+    voiceCloningService: VoiceCloningService = koinInject()
 ) {
     var playerState by remember { mutableStateOf<PlayerState>(PlayerState.Loading) }
     var synthesisProgress by remember { mutableFloatStateOf(0f) }
@@ -99,7 +107,20 @@ fun PlayerScreen(
             // Set selectedVoice from article if it has one, otherwise use first available
             val voices = ttsCoordinator.getAvailableVoices()
             selectedVoice = article.selectedVoiceId?.let { voiceId ->
-                voices.find { it.id == voiceId }
+                // First check if it's a cloned voice (ID starts with "cloned_")
+                if (voiceId.startsWith("cloned_")) {
+                    // Extract the actual voice ID and look up the cloned voice
+                    val actualVoiceId = voiceId.removePrefix("cloned_")
+                    try {
+                        val clonedVoices = voiceCloningService.listClonedVoices()
+                        clonedVoices.find { it.id == actualVoiceId }?.toVoicePreset()
+                    } catch (e: Exception) {
+                        android.util.Log.e("PlayerScreen", "Failed to load cloned voice: ${e.message}")
+                        null
+                    }
+                } else {
+                    voices.find { it.id == voiceId }
+                }
             } ?: voices.firstOrNull()
         }
     }
@@ -129,6 +150,10 @@ fun PlayerScreen(
             android.util.Log.d("PlayerScreen", "Playing existing audio: ${article.audioFileUrl}")
             playbackService.play(article, article.audioFileUrl, PlayerMode.FULL, null)
             playerState = PlayerState.Playing(article)
+
+            // Record TTS playback success for app review prompt
+            appReviewService.recordTTSPlaybackSuccess()
+            appReviewService.checkAndTriggerFeedbackPrompt()
             return
         }
 
@@ -177,6 +202,10 @@ fun PlayerScreen(
                             scope.launch(Dispatchers.Main) {
                                 playbackService.play(article, previewUrl, PlayerMode.PREVIEW, previewDuration)
                                 playerState = PlayerState.Playing(article)
+
+                                // Record TTS playback success for app review prompt
+                                appReviewService.recordTTSPlaybackSuccess()
+                                appReviewService.checkAndTriggerFeedbackPrompt()
                             }
                         }
                     }
@@ -197,6 +226,14 @@ fun PlayerScreen(
                     voiceId = voice.id
                 )
 
+                // Show notification that TTS is complete
+                val durationFormatted = formatDuration(durationMs)
+                ttsNotificationService.showArticleTTSComplete(
+                    articleId = articleId,
+                    articleTitle = article.title ?: "Article",
+                    durationFormatted = durationFormatted
+                )
+
                 // Start playback on main thread (ExoPlayer requirement)
                 withContext(Dispatchers.Main) {
                     // If we were playing preview, seamlessly swap to full audio
@@ -207,6 +244,10 @@ fun PlayerScreen(
                         // Start full playback (wasn't playing preview)
                         android.util.Log.d("PlayerScreen", "Starting full audio playback")
                         playbackService.play(article, audioFile.absolutePath, PlayerMode.FULL, null)
+
+                        // Record TTS playback success for app review prompt (only if not already triggered by preview)
+                        appReviewService.recordTTSPlaybackSuccess()
+                        appReviewService.checkAndTriggerFeedbackPrompt()
                     }
                     playerState = PlayerState.Playing(article)
                 }
@@ -298,6 +339,14 @@ fun PlayerScreen(
                     audioUrl = audioFile.absolutePath,
                     duration = durationMs,
                     voiceId = voice.id
+                )
+
+                // Show notification that TTS is complete
+                val durationFormatted = formatDuration(durationMs)
+                ttsNotificationService.showArticleTTSComplete(
+                    articleId = article.id,
+                    articleTitle = article.title ?: "Article",
+                    durationFormatted = durationFormatted
                 )
 
                 // Start playback on main thread (ExoPlayer requirement)
@@ -911,83 +960,16 @@ private fun ArticleContent(
     scrollState: ScrollState,
     scope: CoroutineScope
 ) {
-    // Split into paragraphs
-    val paragraphs = remember(text) {
-        text.split("\n\n")
-            .map { it.trim() }
-            .filter { it.isNotEmpty() }
-    }
-
-    // Track paragraph positions for auto-scroll
-    val paragraphOffsets = remember { mutableStateMapOf<Int, Int>() }
-
-    // Auto-scroll to highlighted paragraph
-    LaunchedEffect(currentHighlightIndex) {
-        currentHighlightIndex?.let { index ->
-            paragraphOffsets[index]?.let { offset ->
-                // Scroll with some padding above the paragraph
-                val scrollTarget = (offset - 100).coerceAtLeast(0)
-                scope.launch {
-                    scrollState.animateScrollTo(scrollTarget)
-                }
-            }
-        }
-    }
-
-    Column(
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        paragraphs.forEachIndexed { index, paragraph ->
-            val isHighlighted = currentHighlightIndex == index
-
-            HighlightedParagraph(
-                text = paragraph,
-                isHighlighted = isHighlighted,
-                modifier = Modifier.onGloballyPositioned { coordinates ->
-                    paragraphOffsets[index] = coordinates.positionInParent().y.toInt()
-                }
-            )
-        }
-    }
-}
-
-/**
- * A paragraph that can be highlighted during audio playback.
- * Uses yellow background highlighting matching the iOS design.
- */
-@Composable
-private fun HighlightedParagraph(
-    text: String,
-    isHighlighted: Boolean,
-    modifier: Modifier = Modifier
-) {
-    val backgroundColor = if (isHighlighted) {
-        Yellow.copy(alpha = 0.3f)
-    } else {
-        Color.Transparent
-    }
-
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(4.dp))
-            .background(backgroundColor)
-            .then(
-                if (isHighlighted) {
-                    Modifier.padding(8.dp)
-                } else {
-                    Modifier
-                }
-            )
-    ) {
-        Text(
-            text = text,
-            style = MaterialTheme.typography.bodyLarge.copy(
-                lineHeight = 28.sp
-            ),
-            color = MaterialTheme.colorScheme.onSurface
-        )
-    }
+    // Use FormattedTextView for markdown rendering with highlighting
+    FormattedTextView(
+        content = text,
+        fontSize = 18.sp,
+        lineSpacing = 8.dp,
+        highlightIndex = currentHighlightIndex,
+        highlightColor = Yellow,
+        highlightWordOnly = false,
+        modifier = Modifier.fillMaxWidth()
+    )
 }
 
 @Composable
@@ -1194,6 +1176,28 @@ private fun formatTime(seconds: Double): String {
 }
 
 /**
+ * Format duration in milliseconds to a human-readable string (e.g., "5 min", "1 hr 23 min")
+ */
+private fun formatDuration(durationMs: Long): String {
+    val totalSeconds = (durationMs / 1000).toInt()
+    val hours = totalSeconds / 3600
+    val minutes = (totalSeconds % 3600) / 60
+    val seconds = totalSeconds % 60
+
+    return when {
+        hours > 0 -> {
+            if (minutes > 0) "$hours hr $minutes min" else "$hours hr"
+        }
+        minutes > 0 -> {
+            "$minutes min"
+        }
+        else -> {
+            "$seconds sec"
+        }
+    }
+}
+
+/**
  * Badge showing Preview vs Full audio mode, or loading state
  * Matches iOS playerModeBadge implementation
  */
@@ -1317,6 +1321,9 @@ private fun VoiceIndicatorButton(
     voice: VoicePreset?,
     onClick: () -> Unit
 ) {
+    // Check if this is a cloned voice (ID starts with "cloned_" or uses chatterbox model)
+    val isClonedVoice = voice?.id?.startsWith("cloned_") == true || voice?.providerModelId == "chatterbox"
+
     Surface(
         onClick = onClick,
         shape = RoundedCornerShape(20.dp),
@@ -1327,29 +1334,55 @@ private fun VoiceIndicatorButton(
             horizontalArrangement = Arrangement.spacedBy(6.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Avatar emoji or fallback icon
-            if (voice?.avatarEmoji != null) {
+            if (isClonedVoice) {
+                // Show "C" badge for cloned voices
+                Box(
+                    modifier = Modifier
+                        .size(20.dp)
+                        .clip(CircleShape)
+                        .background(Yellow),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "C",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.Black
+                    )
+                }
+                // Just show "Cloned" text
                 Text(
-                    text = voice.avatarEmoji,
-                    style = MaterialTheme.typography.bodyMedium
+                    text = "Cloned",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             } else {
-                Icon(
-                    Icons.Default.RecordVoiceOver,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                // Avatar emoji or fallback icon for built-in voices
+                if (voice?.avatarEmoji != null) {
+                    Text(
+                        text = voice.avatarEmoji,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                } else {
+                    Icon(
+                        Icons.Default.RecordVoiceOver,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                // Voice name
+                Text(
+                    text = voice?.name ?: "Voice",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
-
-            // Voice name
-            Text(
-                text = voice?.name ?: "Voice",
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.Medium,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
 
             // Dropdown arrow
             Icon(

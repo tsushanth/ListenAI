@@ -37,6 +37,22 @@ class SelfHostedTTSService(private val context: Context) : TTSService {
 
     private val activeTasks = mutableMapOf<UUID, Boolean>()
 
+    /**
+     * Data class to track active cloned voice synthesis jobs.
+     * This allows the UI to resume progress tracking after navigation.
+     */
+    data class ActiveClonedJob(
+        val jobId: String,
+        val voiceId: String,
+        val text: String,
+        val startTime: Long,
+        var lastProgress: Float = 0f,
+        var lastStatusMessage: String = "Processing..."
+    )
+
+    // Track active cloned voice synthesis jobs by voice ID
+    private val activeClonedJobs = mutableMapOf<String, ActiveClonedJob>()
+
     // Custom DNS resolver that falls back to Google DNS if system DNS fails
     private val customDns = object : Dns {
         private val googleDns = listOf(
@@ -477,13 +493,14 @@ class SelfHostedTTSService(private val context: Context) : TTSService {
     }
 
     /**
-     * Synthesize text using a cloned voice via Chatterbox.
-     * Uses the /api/tts/cloned endpoint which requires the voice ID and audio URL.
+     * Synthesize text using a cloned voice via job-based API with progress tracking.
+     * Uses the /api/tts/job-cloned endpoint which supports real progress updates like iOS.
      *
      * @param text The text to synthesize
      * @param voiceId The cloned voice ID (UUID from cloned_voices table)
      * @param voiceUrl The URL to the reference audio file (from Supabase Storage)
      * @param speed Playback speed multiplier (0.5 - 2.0, default 1.0)
+     * @param model Voice cloning model ("chatterbox" or "xtts", default "chatterbox")
      * @return SynthesisResult containing the audio file
      */
     suspend fun synthesizeCloned(
@@ -491,92 +508,247 @@ class SelfHostedTTSService(private val context: Context) : TTSService {
         voiceId: String,
         voiceUrl: String,
         speed: Float = 1.0f,
+        model: String = "chatterbox",
         onProgress: (SynthesisProgress) -> Unit = {}
     ): SynthesisResult = withContext(Dispatchers.IO) {
         if (text.isEmpty()) {
             throw TTSError.TextEmpty
         }
 
+        val taskId = UUID.randomUUID()
         val startTime = System.currentTimeMillis()
+        activeTasks[taskId] = false
+        consecutivePollFailures = 0
 
-        onProgress(SynthesisProgress.INITIAL.copy(
-            statusMessage = "Connecting to cloned voice service...",
-            totalCharacters = text.length
-        ))
+        try {
+            onProgress(SynthesisProgress.INITIAL.copy(
+                statusMessage = "Starting cloned voice synthesis...",
+                totalCharacters = text.length
+            ))
 
-        // Build request body for cloned voice synthesis
-        val clampedSpeed = speed.coerceIn(0.5f, 2.0f)
+            // Build request body for job-based cloned voice synthesis
+            val clampedSpeed = speed.coerceIn(0.5f, 2.0f)
 
-        android.util.Log.d("SelfHostedTTS", "Synthesizing cloned voice: voiceId=$voiceId, voiceUrl=$voiceUrl, speed=$clampedSpeed, textLength=${text.length}")
+            android.util.Log.d("SelfHostedTTS", "Synthesizing cloned voice via job API: voiceId=$voiceId, model=$model, speed=$clampedSpeed, textLength=${text.length}")
 
-        val requestBody = JSONObject().apply {
-            put("text", text)
-            put("voice_id", voiceId)
-            put("voice_url", voiceUrl)
-            put("speed", clampedSpeed)
+            val requestBody = JSONObject().apply {
+                put("text", text)
+                put("voice_id", voiceId)
+                put("voice_url", voiceUrl)
+                put("speed", clampedSpeed)
+                put("model", model)
+            }
+
+            val request = Request.Builder()
+                .url("$baseUrl/api/tts/job-cloned")  // Use job-based API for progress tracking
+                .post(requestBody.toString().toRequestBody("application/json".toMediaType()))
+                .addHeader("Content-Type", "application/json")
+                .addHeader("Accept", "application/json")
+                .addHeader("Authorization", "Bearer ")  // Empty token - backend defaults to pro user
+                .addHeader("X-Debug-Bypass-Quota", "true")  // TODO: Remove for production
+                .build()
+
+            onProgress(SynthesisProgress.INITIAL.copy(
+                overallProgress = 0.05f,
+                statusMessage = "Connecting to cloned voice service...",
+                totalCharacters = text.length
+            ))
+
+            android.util.Log.d("SelfHostedTTS", "Making request to $baseUrl/api/tts/job-cloned")
+
+            val response = try {
+                httpClient.newCall(request).execute()
+            } catch (e: java.net.UnknownHostException) {
+                android.util.Log.e("SelfHostedTTS", "DNS resolution failed: ${e.message}")
+                throw TTSError.NetworkError("Unable to connect to TTS server. Please check your internet connection.")
+            } catch (e: java.net.SocketTimeoutException) {
+                android.util.Log.e("SelfHostedTTS", "Connection timeout: ${e.message}")
+                throw TTSError.NetworkError("Connection timed out. Cloned voice synthesis can take longer.")
+            } catch (e: java.io.IOException) {
+                android.util.Log.e("SelfHostedTTS", "Network error: ${e.message}")
+                throw TTSError.NetworkError("Network error: ${e.message}")
+            }
+
+            android.util.Log.d("SelfHostedTTS", "Cloned voice job response code: ${response.code}")
+
+            if (!response.isSuccessful) {
+                val errorBody = response.body?.string() ?: "Unknown error"
+                android.util.Log.e("SelfHostedTTS", "Error response: $errorBody")
+                handleErrorResponse(response.code, errorBody, text.length)
+            }
+
+            // Parse job response
+            val responseBody = response.body?.string() ?: throw TTSError.AudioEncodingFailed("Empty response")
+            val jobResponse = JSONObject(responseBody)
+            val jobId = jobResponse.getString("job_id")
+            val initialStatus = jobResponse.getString("status")
+
+            android.util.Log.d("SelfHostedTTS", "Cloned voice job started: jobId=$jobId, status=$initialStatus")
+
+            // Register this job for progress resumption
+            activeClonedJobs[voiceId] = ActiveClonedJob(
+                jobId = jobId,
+                voiceId = voiceId,
+                text = text,
+                startTime = startTime
+            )
+
+            // If immediately ready (cache hit), download audio
+            if (initialStatus == "ready") {
+                activeClonedJobs.remove(voiceId)
+                val audioUrl = jobResponse.optString("audio_url").takeIf { it.isNotEmpty() }
+                if (audioUrl != null) {
+                    return@withContext downloadAndSaveClonedAudio(
+                        audioUrl, jobId, text, voiceId, startTime, onProgress
+                    )
+                }
+            }
+
+            // Poll for job status with real progress updates
+            var pollCount = 0
+            val maxPolls = 180  // 6 minutes max (2 sec intervals) - cloned voice takes longer
+            val pollInterval = 2000L  // 2 seconds like iOS
+
+            while (pollCount < maxPolls) {
+                // Check for cancellation
+                if (activeTasks[taskId] == true) {
+                    throw TTSError.Cancelled
+                }
+
+                Thread.sleep(pollInterval)
+                pollCount++
+
+                // Poll with retry logic
+                val statusResponse = pollJobStatusWithRetry(jobId)
+                if (statusResponse == null) {
+                    android.util.Log.w("SelfHostedTTS", "Transient poll error, continuing...")
+                    continue
+                }
+
+                val status = statusResponse.getString("status")
+                val progress = statusResponse.optJSONObject("progress")
+
+                // Get progress from backend
+                val percentage = progress?.optInt("percentage", 0) ?: 0
+                val estimatedRemainingSec = progress?.optInt("estimated_remaining_sec")
+                val chunksCompleted = progress?.optInt("chunks_completed", 0) ?: 0
+                val chunksTotal = progress?.optInt("chunks_total", 1) ?: 1
+
+                android.util.Log.d("SelfHostedTTS", "Cloned voice job $jobId: status=$status, progress=$percentage%, chunks=$chunksCompleted/$chunksTotal")
+
+                // Calculate progress based on multiple signals:
+                // 1. Backend percentage (most accurate when available)
+                // 2. Chunks completed vs total (good intermediate progress)
+                // 3. Poll count (last resort to show activity)
+                val chunkProgress = if (chunksTotal > 0) chunksCompleted.toFloat() / chunksTotal else 0f
+                val displayProgress = when {
+                    percentage > 0 -> percentage / 100f
+                    chunkProgress > 0 -> chunkProgress
+                    pollCount > 0 -> minOf(0.05f + (pollCount * 0.005f), 0.15f)  // Slow creep to show activity
+                    else -> 0.05f
+                }
+                val displayPercentage = (displayProgress * 100).toInt()
+
+                val statusMsg = when {
+                    status == "queued" -> "In queue..."
+                    status == "partial_ready" -> "Almost ready... $displayPercentage%"
+                    chunksCompleted > 0 -> "Synthesizing... $displayPercentage% (chunk $chunksCompleted/$chunksTotal)"
+                    estimatedRemainingSec != null && estimatedRemainingSec > 0 -> {
+                        val mins = estimatedRemainingSec / 60
+                        val secs = estimatedRemainingSec % 60
+                        if (mins > 0) "Synthesizing... ~${mins}m ${secs}s remaining"
+                        else "Synthesizing... ~${secs}s remaining"
+                    }
+                    chunksTotal > 1 -> "Synthesizing chunk 1/$chunksTotal..."
+                    else -> "Synthesizing... $displayPercentage%"
+                }
+
+                // Update cached progress for resume
+                activeClonedJobs[voiceId]?.let {
+                    it.lastProgress = displayProgress
+                    it.lastStatusMessage = statusMsg
+                }
+
+                onProgress(SynthesisProgress(
+                    overallProgress = displayProgress,
+                    currentSectionIndex = 0,
+                    sectionsCompleted = chunksCompleted,
+                    totalSections = chunksTotal,
+                    estimatedTimeRemaining = estimatedRemainingSec?.toDouble() ?: 0.0,
+                    statusMessage = statusMsg,
+                    charactersProcessed = (text.length * percentage / 100),
+                    totalCharacters = text.length
+                ))
+
+                when (status) {
+                    "ready" -> {
+                        activeClonedJobs.remove(voiceId)
+                        val audioUrl = statusResponse.optString("audio_url").takeIf { it.isNotEmpty() }
+                            ?: throw TTSError.AudioEncodingFailed("No audio URL in ready response")
+                        return@withContext downloadAndSaveClonedAudio(
+                            audioUrl, jobId, text, voiceId, startTime, onProgress
+                        )
+                    }
+                    "failed" -> {
+                        activeClonedJobs.remove(voiceId)
+                        val error = statusResponse.optJSONObject("error")
+                        val errorMsg = error?.optString("message") ?: "Cloned voice synthesis failed"
+                        throw TTSError.NetworkError(errorMsg)
+                    }
+                    "canceled" -> {
+                        activeClonedJobs.remove(voiceId)
+                        throw TTSError.Cancelled
+                    }
+                }
+            }
+
+            activeClonedJobs.remove(voiceId)
+            throw TTSError.NetworkError("Cloned voice synthesis timed out after ${maxPolls * pollInterval / 1000} seconds")
+
+        } finally {
+            activeTasks.remove(taskId)
         }
+    }
 
-        // Use a client with longer timeout for cloned voice synthesis
-        val clonedHttpClient = OkHttpClient.Builder()
-            .dns(customDns)
-            .connectTimeout(60, TimeUnit.SECONDS)  // Longer connect timeout
-            .readTimeout(180, TimeUnit.SECONDS)    // 3 min read timeout for cloning
-            .writeTimeout(30, TimeUnit.SECONDS)
-            .build()
-
-        val request = Request.Builder()
-            .url("$baseUrl/api/tts/cloned")
-            .post(requestBody.toString().toRequestBody("application/json".toMediaType()))
-            .addHeader("Content-Type", "application/json")
-            .addHeader("Accept", "audio/wav")
-            .addHeader("Authorization", "Bearer ")  // Empty token like iOS - backend defaults to pro user
-            .build()
-
-        onProgress(SynthesisProgress.INITIAL.copy(
-            overallProgress = 0.1f,
-            statusMessage = "Synthesizing with cloned voice...",
-            totalCharacters = text.length
-        ))
-
-        android.util.Log.d("SelfHostedTTS", "Making request to $baseUrl/api/tts/cloned")
-
-        val response = try {
-            clonedHttpClient.newCall(request).execute()
-        } catch (e: java.net.UnknownHostException) {
-            android.util.Log.e("SelfHostedTTS", "DNS resolution failed: ${e.message}")
-            throw TTSError.NetworkError("Unable to connect to TTS server. Please check your internet connection.")
-        } catch (e: java.net.SocketTimeoutException) {
-            android.util.Log.e("SelfHostedTTS", "Connection timeout: ${e.message}")
-            throw TTSError.NetworkError("Connection timed out. Cloned voice synthesis can take longer.")
-        } catch (e: java.io.IOException) {
-            android.util.Log.e("SelfHostedTTS", "Network error: ${e.message}")
-            throw TTSError.NetworkError("Network error: ${e.message}")
-        }
-
-        android.util.Log.d("SelfHostedTTS", "Cloned voice response code: ${response.code}")
-
-        if (!response.isSuccessful) {
-            val errorBody = response.body?.string() ?: "Unknown error"
-            android.util.Log.e("SelfHostedTTS", "Error response: $errorBody")
-            handleErrorResponse(response.code, errorBody, text.length)
-        }
-
-        // Get audio data directly (cloned endpoint returns audio directly, not a job)
-        val audioData = response.body?.bytes() ?: throw TTSError.AudioEncodingFailed("Empty audio response")
-        android.util.Log.d("SelfHostedTTS", "Received cloned voice audio: ${audioData.size} bytes")
-
+    /**
+     * Download cloned voice audio from URL and save to local file
+     */
+    private fun downloadAndSaveClonedAudio(
+        audioUrl: String,
+        jobId: String,
+        text: String,
+        voiceId: String,
+        startTime: Long,
+        onProgress: (SynthesisProgress) -> Unit
+    ): SynthesisResult {
         onProgress(SynthesisProgress(
-            overallProgress = 0.9f,
+            overallProgress = 0.95f,
             currentSectionIndex = 0,
             sectionsCompleted = 0,
             totalSections = 1,
-            statusMessage = "Saving audio...",
-            totalCharacters = text.length,
-            charactersProcessed = text.length
+            estimatedTimeRemaining = 0.0,
+            statusMessage = "Downloading audio...",
+            charactersProcessed = text.length,
+            totalCharacters = text.length
         ))
 
-        // Save to file
-        val outputFile = File(context.cacheDir, "tts_cloned_${UUID.randomUUID()}.wav")
+        android.util.Log.d("SelfHostedTTS", "Downloading cloned voice audio from: $audioUrl")
+
+        val audioRequest = Request.Builder()
+            .url(audioUrl)
+            .get()
+            .build()
+
+        val audioResponse = httpClient.newCall(audioRequest).execute()
+
+        if (!audioResponse.isSuccessful) {
+            throw TTSError.NetworkError("Failed to download audio: ${audioResponse.code}")
+        }
+
+        val audioData = audioResponse.body?.bytes() ?: throw TTSError.AudioEncodingFailed("Empty audio response")
+        android.util.Log.d("SelfHostedTTS", "Downloaded cloned voice audio: ${audioData.size} bytes")
+
+        val outputFile = File(context.cacheDir, "tts_cloned_${jobId}.wav")
         outputFile.writeBytes(audioData)
 
         val endTime = System.currentTimeMillis()
@@ -595,7 +767,7 @@ class SelfHostedTTSService(private val context: Context) : TTSService {
             charactersProcessed = text.length
         ))
 
-        SynthesisResult(
+        return SynthesisResult(
             audioFile = outputFile,
             duration = duration,
             sectionTimestamps = emptyList(),
@@ -756,6 +928,158 @@ class SelfHostedTTSService(private val context: Context) : TTSService {
             estimatedCostUSD = 0.0,  // Self-hosted is free
             quotaImpact = null       // No quota impact
         )
+    }
+
+    /**
+     * Get active cloned voice job for a specific voice ID.
+     * Returns null if no active job exists for this voice.
+     */
+    fun getActiveClonedJob(voiceId: String): ActiveClonedJob? {
+        return activeClonedJobs[voiceId]
+    }
+
+    /**
+     * Resume tracking an active cloned voice synthesis job.
+     * This is used when the UI returns to the screen and needs to resume progress tracking.
+     *
+     * @param voiceId The voice ID to resume tracking for
+     * @param onProgress Progress callback for updates
+     * @return The synthesis result if the job completes, null if cancelled or no active job
+     */
+    suspend fun resumeClonedJobTracking(
+        voiceId: String,
+        onProgress: (SynthesisProgress) -> Unit
+    ): SynthesisResult? = withContext(Dispatchers.IO) {
+        val activeJob = activeClonedJobs[voiceId] ?: return@withContext null
+
+        android.util.Log.d("SelfHostedTTS", "Resuming job tracking for voice $voiceId, jobId=${activeJob.jobId}")
+
+        val taskId = UUID.randomUUID()
+        activeTasks[taskId] = false
+        consecutivePollFailures = 0
+
+        try {
+            // Emit last known progress immediately
+            onProgress(SynthesisProgress(
+                overallProgress = activeJob.lastProgress,
+                currentSectionIndex = 0,
+                sectionsCompleted = 0,
+                totalSections = 1,
+                statusMessage = activeJob.lastStatusMessage,
+                charactersProcessed = (activeJob.text.length * activeJob.lastProgress).toInt(),
+                totalCharacters = activeJob.text.length
+            ))
+
+            // Continue polling for job status
+            var pollCount = 0
+            val maxPolls = 180
+            val pollInterval = 2000L
+
+            while (pollCount < maxPolls) {
+                if (activeTasks[taskId] == true) {
+                    throw TTSError.Cancelled
+                }
+
+                Thread.sleep(pollInterval)
+                pollCount++
+
+                val statusResponse = pollJobStatusWithRetry(activeJob.jobId)
+                if (statusResponse == null) {
+                    continue
+                }
+
+                val status = statusResponse.getString("status")
+                val progress = statusResponse.optJSONObject("progress")
+
+                val percentage = progress?.optInt("percentage", 0) ?: 0
+                val estimatedRemainingSec = progress?.optInt("estimated_remaining_sec")
+                val chunksCompleted = progress?.optInt("chunks_completed", 0) ?: 0
+                val chunksTotal = progress?.optInt("chunks_total", 1) ?: 1
+
+                val chunkProgress = if (chunksTotal > 0) chunksCompleted.toFloat() / chunksTotal else 0f
+                val displayProgress = when {
+                    percentage > 0 -> percentage / 100f
+                    chunkProgress > 0 -> chunkProgress
+                    pollCount > 0 -> minOf(activeJob.lastProgress + (pollCount * 0.005f), 0.15f)
+                    else -> activeJob.lastProgress
+                }
+                val displayPercentage = (displayProgress * 100).toInt()
+
+                val statusMsg = when {
+                    status == "queued" -> "In queue..."
+                    status == "partial_ready" -> "Almost ready... $displayPercentage%"
+                    chunksCompleted > 0 -> "Synthesizing... $displayPercentage% (chunk $chunksCompleted/$chunksTotal)"
+                    estimatedRemainingSec != null && estimatedRemainingSec > 0 -> {
+                        val mins = estimatedRemainingSec / 60
+                        val secs = estimatedRemainingSec % 60
+                        if (mins > 0) "Synthesizing... ~${mins}m ${secs}s remaining"
+                        else "Synthesizing... ~${secs}s remaining"
+                    }
+                    chunksTotal > 1 -> "Synthesizing chunk 1/$chunksTotal..."
+                    else -> "Synthesizing... $displayPercentage%"
+                }
+
+                // Update cached progress
+                activeJob.lastProgress = displayProgress
+                activeJob.lastStatusMessage = statusMsg
+
+                onProgress(SynthesisProgress(
+                    overallProgress = displayProgress,
+                    currentSectionIndex = 0,
+                    sectionsCompleted = chunksCompleted,
+                    totalSections = chunksTotal,
+                    estimatedTimeRemaining = estimatedRemainingSec?.toDouble() ?: 0.0,
+                    statusMessage = statusMsg,
+                    charactersProcessed = (activeJob.text.length * percentage / 100),
+                    totalCharacters = activeJob.text.length
+                ))
+
+                when (status) {
+                    "ready" -> {
+                        val audioUrl = statusResponse.optString("audio_url").takeIf { it.isNotEmpty() }
+                            ?: throw TTSError.AudioEncodingFailed("No audio URL in ready response")
+                        activeClonedJobs.remove(voiceId)
+                        return@withContext downloadAndSaveClonedAudio(
+                            audioUrl, activeJob.jobId, activeJob.text, voiceId, activeJob.startTime, onProgress
+                        )
+                    }
+                    "failed" -> {
+                        activeClonedJobs.remove(voiceId)
+                        val error = statusResponse.optJSONObject("error")
+                        val errorMsg = error?.optString("message") ?: "Cloned voice synthesis failed"
+                        throw TTSError.NetworkError(errorMsg)
+                    }
+                    "canceled" -> {
+                        activeClonedJobs.remove(voiceId)
+                        throw TTSError.Cancelled
+                    }
+                }
+            }
+
+            activeClonedJobs.remove(voiceId)
+            throw TTSError.NetworkError("Cloned voice synthesis timed out")
+
+        } finally {
+            activeTasks.remove(taskId)
+        }
+    }
+
+    /**
+     * Cancel tracking for a cloned voice job (but don't cancel the job itself).
+     * Used when user navigates away or starts a new preview.
+     */
+    fun stopTrackingClonedJob(voiceId: String) {
+        // Keep the job in the map so we can resume later
+        // Just stop the current tracking coroutine
+        android.util.Log.d("SelfHostedTTS", "Stopped tracking cloned job for voice $voiceId (job still active)")
+    }
+
+    /**
+     * Clear a cloned voice job from tracking (used when job completes or fails).
+     */
+    fun clearClonedJob(voiceId: String) {
+        activeClonedJobs.remove(voiceId)
+        android.util.Log.d("SelfHostedTTS", "Cleared cloned job tracking for voice $voiceId")
     }
 
     companion object {

@@ -20,6 +20,8 @@ import com.listenai.service.auth.GoogleAuthService
 import com.listenai.service.usage.UsageTrackerService
 import com.listenai.service.settings.SettingsManager
 import com.listenai.service.voice.VoiceCloningService
+import com.listenai.service.review.AppReviewService
+import com.listenai.service.notification.TTSNotificationService
 import com.listenai.ui.import_content.ImportViewModel
 import com.listenai.ui.library.LibraryViewModel
 import org.koin.android.ext.koin.androidContext
@@ -105,6 +107,12 @@ val serviceModule = module {
 
     // Settings Manager
     single { SettingsManager.getInstance(androidContext()) }
+
+    // App Review Service
+    single { AppReviewService.getInstance(androidContext()) }
+
+    // TTS Notification Service
+    single { TTSNotificationService.getInstance(androidContext()) }
 }
 
 /**

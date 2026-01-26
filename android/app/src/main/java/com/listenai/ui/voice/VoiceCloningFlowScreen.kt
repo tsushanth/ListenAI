@@ -36,6 +36,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import com.listenai.service.voice.VoiceCloningService
+import com.listenai.service.review.AppReviewService
 import com.listenai.ui.theme.Blue
 import com.listenai.ui.theme.Green
 import com.listenai.ui.theme.Purple
@@ -71,6 +72,7 @@ fun VoiceCloningFlowScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val voiceCloningService: VoiceCloningService = koinInject()
+    val appReviewService: AppReviewService = koinInject()
 
     // Flow state
     var currentStep by remember { mutableStateOf(VoiceCloningStep.INTRO) }
@@ -205,6 +207,10 @@ fun VoiceCloningFlowScreen(
                     audioSampleUri = uri
                 )
                 currentStep = VoiceCloningStep.SUCCESS
+
+                // Record voice clone success for app review prompts
+                appReviewService.recordVoiceCloneSuccess()
+                appReviewService.checkAndTriggerFeedbackPrompt()
             } catch (e: Exception) {
                 errorMessage = e.message ?: "Failed to create voice clone"
                 currentStep = VoiceCloningStep.ERROR
