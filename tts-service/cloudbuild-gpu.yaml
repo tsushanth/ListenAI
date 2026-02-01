@@ -46,40 +46,40 @@ steps:
         echo "=== Starting smoke tests for canary revision ==="
 
         # Get the canary URL
-        CANARY_URL=$(gcloud run services describe readaloud-tts-gpu --region=us-central1 --format='value(status.traffic[?tag=="canary"].url)')
-        echo "Canary URL: $CANARY_URL"
+        CANARY_URL=$$(gcloud run services describe readaloud-tts-gpu --region=us-central1 --format='value(status.traffic[?tag=="canary"].url)')
+        echo "Canary URL: $$CANARY_URL"
 
         # Wait for the service to be ready (up to 5 minutes)
         echo "Waiting for canary to be ready..."
         for i in {1..30}; do
-          HEALTH=$(curl -s "$CANARY_URL/health" || echo '{}')
-          STATUS=$(echo "$HEALTH" | python3 -c "import sys,json; print(json.load(sys.stdin).get('status',''))" 2>/dev/null || echo "")
-          if [ "$STATUS" = "ok" ] || [ "$STATUS" = "loading" ]; then
-            echo "Health check passed: $STATUS"
+          HEALTH=$$(curl -s "$$CANARY_URL/health" || echo '{}')
+          STATUS=$$(echo "$$HEALTH" | python3 -c "import sys,json; print(json.load(sys.stdin).get('status',''))" 2>/dev/null || echo "")
+          if [ "$$STATUS" = "ok" ] || [ "$$STATUS" = "loading" ]; then
+            echo "Health check passed: $$STATUS"
             break
           fi
-          echo "Attempt $i/30: Service not ready yet ($STATUS)"
+          echo "Attempt $$i/30: Service not ready yet ($$STATUS)"
           sleep 10
         done
 
         # Test 1: Check /capabilities endpoint for voice cloning
         echo ""
         echo "=== Test 1: Checking /capabilities ==="
-        CAPS=$(curl -s "$CANARY_URL/capabilities")
-        echo "Capabilities response: $CAPS"
+        CAPS=$$(curl -s "$$CANARY_URL/capabilities")
+        echo "Capabilities response: $$CAPS"
 
         # Check if voice cloning is available
-        VOICE_CLONING=$(echo "$CAPS" | python3 -c "import sys,json; d=json.load(sys.stdin); print('yes' if d.get('capabilities',{}).get('voice_cloning',{}).get('available') else 'no')" 2>/dev/null || echo "no")
-        if [ "$VOICE_CLONING" != "yes" ]; then
+        VOICE_CLONING=$$(echo "$$CAPS" | python3 -c "import sys,json; d=json.load(sys.stdin); print('yes' if d.get('capabilities',{}).get('voice_cloning',{}).get('available') else 'no')" 2>/dev/null || echo "no")
+        if [ "$$VOICE_CLONING" != "yes" ]; then
           echo "SMOKE TEST FAILED: Voice cloning not available!"
-          echo "Chatterbox error: $(echo "$CAPS" | python3 -c "import sys,json; print(json.load(sys.stdin).get('capabilities',{}).get('voice_cloning',{}).get('chatterbox_error','unknown'))" 2>/dev/null)"
+          echo "Chatterbox error: $$(echo "$$CAPS" | python3 -c "import sys,json; print(json.load(sys.stdin).get('capabilities',{}).get('voice_cloning',{}).get('chatterbox_error','unknown'))" 2>/dev/null)"
           exit 1
         fi
         echo "Voice cloning available: YES"
 
         # Test 2: Check if Chatterbox module is installed
-        CHATTERBOX_INSTALLED=$(echo "$CAPS" | python3 -c "import sys,json; print('yes' if 'chatterbox' in json.load(sys.stdin).get('capabilities',{}).get('voice_cloning',{}).get('models',[]) else 'no')" 2>/dev/null || echo "no")
-        if [ "$CHATTERBOX_INSTALLED" != "yes" ]; then
+        CHATTERBOX_INSTALLED=$$(echo "$$CAPS" | python3 -c "import sys,json; print('yes' if 'chatterbox' in json.load(sys.stdin).get('capabilities',{}).get('voice_cloning',{}).get('models',[]) else 'no')" 2>/dev/null || echo "no")
+        if [ "$$CHATTERBOX_INSTALLED" != "yes" ]; then
           echo "SMOKE TEST FAILED: Chatterbox module not installed!"
           exit 1
         fi
@@ -88,15 +88,15 @@ steps:
         # Test 3: Basic TTS synthesis test
         echo ""
         echo "=== Test 3: Basic TTS synthesis ==="
-        TTS_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$CANARY_URL/synthesize" \
+        TTS_RESPONSE=$$(curl -s -w "\n%{http_code}" -X POST "$$CANARY_URL/synthesize" \
           -H "Content-Type: application/json" \
           -d '{"text":"Hello, this is a test.", "voice_id":"am_adam", "model":"kokoro"}')
-        HTTP_CODE=$(echo "$TTS_RESPONSE" | tail -n1)
-        if [ "$HTTP_CODE" != "200" ]; then
-          echo "SMOKE TEST FAILED: TTS synthesis returned HTTP $HTTP_CODE"
+        HTTP_CODE=$$(echo "$$TTS_RESPONSE" | tail -n1)
+        if [ "$$HTTP_CODE" != "200" ]; then
+          echo "SMOKE TEST FAILED: TTS synthesis returned HTTP $$HTTP_CODE"
           exit 1
         fi
-        echo "TTS synthesis: OK (HTTP $HTTP_CODE)"
+        echo "TTS synthesis: OK (HTTP $$HTTP_CODE)"
 
         echo ""
         echo "=== All smoke tests passed! ==="

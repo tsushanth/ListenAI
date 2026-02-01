@@ -1,5 +1,9 @@
 # ReadAloud AI TTS Service Dependencies
 # Supports: Kokoro-82M (regular TTS) and Chatterbox (voice cloning)
+#
+# IMPORTANT: All dependencies are pinned to exact versions to prevent
+# transitive dependency updates from breaking the service.
+# Last updated: 2026-02-01
 
 # FastAPI + Uvicorn
 fastapi==0.109.0
@@ -7,30 +11,30 @@ uvicorn[standard]==0.27.0
 pydantic==2.5.3
 
 # Kokoro-82M - Fast, lightweight, Apache 2.0 license (commercial OK)
-kokoro>=0.9.2
+kokoro==0.9.4
 
 # NOTE: Chatterbox TTS is installed separately in Dockerfile with --no-build-isolation
 # to avoid pkuseg build issues
 
-# Audio processing
+# Audio processing - CRITICAL: numpy must stay <2.0 for librosa compatibility
 soundfile==0.12.1
-librosa>=0.10.0
-numpy<2.0  # Pin to 1.x - NumPy 2.0 breaks librosa's _phasor_angles ufunc
+librosa==0.10.2.post1
+numpy==1.26.4  # NumPy 2.0 breaks librosa's _phasor_angles ufunc
 
 # PyTorch (CUDA version for GPU)
 # Use torch 2.6.0 for Chatterbox compatibility
 torch==2.6.0
 
 # Transformers for Chatterbox model loading
-transformers>=4.40.0
+transformers==4.44.0
 
 # Utilities
 python-multipart==0.0.6
 aiofiles==23.2.1
 
 # HTTP client for downloading voice files from Supabase
-httpx>=0.25.0
+httpx==0.27.0
 
 # XTTS v2 for voice cloning (Coqui TTS)
 # Note: This is a large package (~2GB with models)
-TTS>=0.22.0
+TTS==0.22.0
