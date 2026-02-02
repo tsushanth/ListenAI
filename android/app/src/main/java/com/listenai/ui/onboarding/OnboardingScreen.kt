@@ -44,8 +44,9 @@ import androidx.compose.foundation.text.ClickableText
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.foundation.isSystemInDarkTheme
 import com.listenai.data.models.VoicePreset
-import com.listenai.service.billing.BillingService
+import com.listenai.service.billing.RevenueCatManager
 import com.listenai.ui.theme.*
+import com.revenuecat.purchases.PackageType
 import kotlinx.coroutines.launch
 
 // Theme colors for onboarding - Light mode
@@ -890,33 +891,33 @@ private fun PaywallPage(
     val contentColor = if (isDarkTheme) Color.White else Color.Black
     val cardBgColor = if (isDarkTheme) CardDark else Color.White
 
-    // Initialize billing service
-    val billingService = remember { BillingService.getInstance(context) }
+    // Use RevenueCat manager
+    val revenueCatManager = remember { RevenueCatManager.getInstance() }
     val scope = rememberCoroutineScope()
 
-    // Observe billing state
-    val productDetails by billingService.productDetails.collectAsState()
-    val purchaseState by billingService.purchaseState.collectAsState()
+    // Observe RevenueCat state
+    val packages by revenueCatManager.packages.collectAsState()
+    val isPremium by revenueCatManager.isPremium.collectAsState()
+    val isLoading by revenueCatManager.isLoading.collectAsState()
 
-    // Get the weekly product
-    val weeklyProduct = productDetails.firstOrNull {
-        it.productId == BillingService.PRODUCT_ID_WEEKLY
-    }
+    // Get the weekly package
+    val weeklyPackage = packages.find { it.packageType == PackageType.WEEKLY }
 
-    // Get localized price from Google Play, fallback to loading text
-    val weeklyPrice = weeklyProduct?.subscriptionOfferDetails
-        ?.firstOrNull()
-        ?.pricingPhases
-        ?.pricingPhaseList
-        ?.firstOrNull()
-        ?.formattedPrice
-        ?: "Loading..."
+    // Get localized price
+    val weeklyPrice = weeklyPackage?.product?.price?.formatted ?: "Loading..."
 
     // Handle purchase success
-    LaunchedEffect(purchaseState) {
-        if (purchaseState is BillingService.PurchaseState.Purchased) {
+    LaunchedEffect(isPremium) {
+        if (isPremium) {
             Toast.makeText(context, "Welcome to Pro!", Toast.LENGTH_LONG).show()
             onComplete()
+        }
+    }
+
+    // Load offerings if not already loaded
+    LaunchedEffect(Unit) {
+        if (packages.isEmpty()) {
+            revenueCatManager.loadOfferings()
         }
     }
 
@@ -1019,13 +1020,16 @@ private fun PaywallPage(
                     return@Button
                 }
 
-                if (weeklyProduct == null) {
+                val pkg = weeklyPackage
+                if (pkg == null) {
                     Toast.makeText(context, "Product not available yet, please try again", Toast.LENGTH_SHORT).show()
                     return@Button
                 }
 
-                // Launch real billing flow
-                billingService.launchPurchaseFlow(activity, weeklyProduct)
+                // Launch RevenueCat purchase flow
+                scope.launch {
+                    revenueCatManager.purchase(activity, pkg)
+                }
             },
             modifier = Modifier
                 .fillMaxWidth()
@@ -1035,9 +1039,9 @@ private fun PaywallPage(
                 containerColor = Purple,
                 contentColor = Color.White
             ),
-            enabled = weeklyProduct != null && purchaseState !is BillingService.PurchaseState.Purchasing
+            enabled = weeklyPackage != null && !isLoading
         ) {
-            if (purchaseState is BillingService.PurchaseState.Purchasing) {
+            if (isLoading) {
                 CircularProgressIndicator(
                     modifier = Modifier.size(24.dp),
                     color = Color.White

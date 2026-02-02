@@ -2,6 +2,7 @@ package com.listenai
 
 import android.app.Application
 import com.listenai.di.allModules
+import com.listenai.service.billing.RevenueCatManager
 import com.listenai.service.import_content.WebImportService
 import org.koin.android.ext.android.inject
 import org.koin.android.ext.koin.androidContext
@@ -27,6 +28,9 @@ class ListenAIApplication : Application() {
 
         // Configure services with backend URL
         configureServices()
+
+        // Initialize RevenueCat for subscriptions
+        RevenueCatManager.getInstance().configure(this)
     }
 
     private fun configureServices() {

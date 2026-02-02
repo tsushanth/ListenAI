@@ -144,9 +144,9 @@ dependencies {
     implementation("com.google.android.play:review:2.0.1")
     implementation("com.google.android.play:review-ktx:2.0.1")
 
-    // Google Play Billing (In-App Purchases & Subscriptions)
-    implementation("com.android.billingclient:billing:7.1.1")
-    implementation("com.android.billingclient:billing-ktx:7.1.1")
+    // RevenueCat (In-App Purchases & Subscriptions)
+    implementation("com.revenuecat.purchases:purchases:8.10.7")
+    implementation("com.revenuecat.purchases:purchases-ui:8.10.7")
 
     // Chrome Custom Tabs for OAuth
     implementation("androidx.browser:browser:1.8.0")

@@ -1,6 +1,5 @@
 package com.listenai.ui.subscription
 
-import android.app.Activity
 import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
@@ -20,16 +19,19 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import com.listenai.service.billing.BillingService
+import com.listenai.service.billing.RevenueCatManager
+import com.listenai.service.billing.displayDescription
+import com.listenai.service.billing.hasFreeTrial
+import com.listenai.service.billing.freeTrialDuration
 import com.listenai.ui.theme.*
+import com.revenuecat.purchases.Package
+import com.revenuecat.purchases.PackageType
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
@@ -51,87 +53,79 @@ fun SubscriptionScreen(
     val context = LocalContext.current
     val activity = context as? ComponentActivity
 
-    // Initialize billing service
-    val billingService = remember { BillingService.getInstance(context) }
+    // Use RevenueCat manager
+    val revenueCatManager = remember { RevenueCatManager.getInstance() }
     val scope = rememberCoroutineScope()
 
-    // Observe billing state
-    val productDetails by billingService.productDetails.collectAsState()
-    val purchaseState by billingService.purchaseState.collectAsState()
-    val connectionState by billingService.connectionState.collectAsState()
+    // Observe RevenueCat state
+    val packages by revenueCatManager.packages.collectAsState()
+    val isPremium by revenueCatManager.isPremium.collectAsState()
+    val isLoading by revenueCatManager.isLoading.collectAsState()
+    val errorMessage by revenueCatManager.errorMessage.collectAsState()
 
-    // Track selected subscription
-    var selectedProductId by remember { mutableStateOf(BillingService.PRODUCT_ID_WEEKLY) }
+    // Track selected package type
+    var selectedPackageType by remember { mutableStateOf(PackageType.WEEKLY) }
 
-    // Get the products
-    val weeklyProduct = productDetails.firstOrNull {
-        it.productId == BillingService.PRODUCT_ID_WEEKLY
+    // Get the packages
+    val weeklyPackage = packages.find { it.packageType == PackageType.WEEKLY }
+    val yearlyPackage = packages.find { it.packageType == PackageType.ANNUAL }
+    val monthlyPackage = packages.find { it.packageType == PackageType.MONTHLY }
+
+    // Use yearly if no weekly available
+    val availablePackages = listOfNotNull(weeklyPackage, yearlyPackage, monthlyPackage)
+
+    val selectedPackage: Package? = when (selectedPackageType) {
+        PackageType.WEEKLY -> weeklyPackage
+        PackageType.ANNUAL -> yearlyPackage
+        PackageType.MONTHLY -> monthlyPackage
+        else -> weeklyPackage ?: yearlyPackage
     }
-    val yearlyProduct = productDetails.firstOrNull {
-        it.productId == BillingService.PRODUCT_ID_YEARLY
-    }
 
-    val selectedProduct = if (selectedProductId == BillingService.PRODUCT_ID_WEEKLY) {
-        weeklyProduct
-    } else {
-        yearlyProduct
-    }
+    // Get localized prices
+    val weeklyPrice = weeklyPackage?.product?.price?.formatted ?: "Loading..."
+    val yearlyPrice = yearlyPackage?.product?.price?.formatted ?: "Loading..."
+    val monthlyPrice = monthlyPackage?.product?.price?.formatted ?: "Loading..."
 
-    // Get localized price from Google Play, fallback to loading text
-    val weeklyPrice = weeklyProduct?.subscriptionOfferDetails
-        ?.firstOrNull()
-        ?.pricingPhases
-        ?.pricingPhaseList
-        ?.firstOrNull()
-        ?.formattedPrice
-        ?: "Loading..."
-
-    val yearlyPrice = yearlyProduct?.subscriptionOfferDetails
-        ?.firstOrNull()
-        ?.pricingPhases
-        ?.pricingPhaseList
-        ?.firstOrNull()
-        ?.formattedPrice
-        ?: "Loading..."
-
-    val freeTrialEnabled = selectedProduct?.subscriptionOfferDetails
-        ?.firstOrNull()
-        ?.pricingPhases
-        ?.pricingPhaseList
-        ?.firstOrNull()
-        ?.priceAmountMicros == 0L
+    val freeTrialEnabled = selectedPackage?.hasFreeTrial == true
+    val trialDuration = selectedPackage?.freeTrialDuration
 
     // Subscription details
     val subscriptionTitle = "ReadAloud AI Pro"
-    val subscriptionLength = "Weekly"
-    val trialDays = 7
 
     // Legal URLs
     val privacyUrl = "https://kreativekoala.llc/privacy"
     val termsUrl = "https://kreativekoala.llc/terms"
 
-    // Calculate due date
-    val dueDateString = remember {
+    // Calculate due date for trial
+    val dueDateString = remember(trialDuration) {
         val calendar = Calendar.getInstance()
-        calendar.add(Calendar.DAY_OF_YEAR, trialDays)
+        calendar.add(Calendar.DAY_OF_YEAR, 7) // Default 7 days
         val formatter = SimpleDateFormat("MMMM d, yyyy", Locale.getDefault())
         "Due ${formatter.format(calendar.time)}"
     }
 
     val scrollState = rememberScrollState()
 
-    // Handle purchase state
-    LaunchedEffect(purchaseState) {
-        when (purchaseState) {
-            is BillingService.PurchaseState.Purchased -> {
-                Toast.makeText(context, "Subscription activated!", Toast.LENGTH_LONG).show()
-                onNavigateBack()
-            }
-            is BillingService.PurchaseState.Error -> {
-                val error = (purchaseState as BillingService.PurchaseState.Error).message
-                Toast.makeText(context, "Error: $error", Toast.LENGTH_LONG).show()
-            }
-            else -> {}
+    // Handle errors
+    LaunchedEffect(errorMessage) {
+        errorMessage?.let { error ->
+            Toast.makeText(context, error, Toast.LENGTH_LONG).show()
+            revenueCatManager.clearError()
+        }
+    }
+
+    // Navigate back if user became premium
+    LaunchedEffect(isPremium) {
+        if (isPremium) {
+            Toast.makeText(context, "Welcome to Pro!", Toast.LENGTH_LONG).show()
+            onNavigateBack()
+        }
+    }
+
+    // Load offerings on first composition
+    LaunchedEffect(Unit) {
+        if (packages.isEmpty()) {
+            revenueCatManager.loadOfferings()
         }
     }
 
@@ -175,12 +169,11 @@ fun SubscriptionScreen(
                         onClick = {
                             scope.launch {
                                 Toast.makeText(context, "Checking for previous purchases...", Toast.LENGTH_SHORT).show()
-                                val restored = billingService.restorePurchases()
-                                if (restored) {
-                                    Toast.makeText(context, "Subscription restored!", Toast.LENGTH_LONG).show()
-                                    onNavigateBack()
-                                } else {
-                                    Toast.makeText(context, "No active subscriptions found", Toast.LENGTH_SHORT).show()
+                                val result = revenueCatManager.restorePurchases()
+                                result.onFailure { error ->
+                                    if (error.message != "No active subscription found") {
+                                        Toast.makeText(context, error.message, Toast.LENGTH_SHORT).show()
+                                    }
                                 }
                             }
                         },
@@ -247,23 +240,27 @@ fun SubscriptionScreen(
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     // Weekly option
-                    SubscriptionOption(
-                        title = "Weekly",
-                        price = weeklyPrice,
-                        isSelected = selectedProductId == BillingService.PRODUCT_ID_WEEKLY,
-                        onClick = { selectedProductId = BillingService.PRODUCT_ID_WEEKLY },
-                        modifier = Modifier.weight(1f)
-                    )
+                    if (weeklyPackage != null) {
+                        SubscriptionOption(
+                            title = "Weekly",
+                            price = weeklyPrice,
+                            isSelected = selectedPackageType == PackageType.WEEKLY,
+                            onClick = { selectedPackageType = PackageType.WEEKLY },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
 
                     // Yearly option
-                    SubscriptionOption(
-                        title = "Yearly",
-                        price = yearlyPrice,
-                        badge = "Best Value",
-                        isSelected = selectedProductId == BillingService.PRODUCT_ID_YEARLY,
-                        onClick = { selectedProductId = BillingService.PRODUCT_ID_YEARLY },
-                        modifier = Modifier.weight(1f)
-                    )
+                    if (yearlyPackage != null) {
+                        SubscriptionOption(
+                            title = "Yearly",
+                            price = yearlyPrice,
+                            badge = "Best Value",
+                            isSelected = selectedPackageType == PackageType.ANNUAL,
+                            onClick = { selectedPackageType = PackageType.ANNUAL },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(32.dp))
@@ -293,10 +290,15 @@ fun SubscriptionScreen(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     // Pricing info
-                    val selectedPrice = if (selectedProductId == BillingService.PRODUCT_ID_WEEKLY) weeklyPrice else yearlyPrice
-                    val selectedPeriod = if (selectedProductId == BillingService.PRODUCT_ID_WEEKLY) "week" else "year"
+                    val selectedPrice = selectedPackage?.product?.price?.formatted ?: "..."
+                    val selectedPeriod = when (selectedPackageType) {
+                        PackageType.WEEKLY -> "week"
+                        PackageType.ANNUAL -> "year"
+                        PackageType.MONTHLY -> "month"
+                        else -> "week"
+                    }
 
-                    if (freeTrialEnabled) {
+                    if (freeTrialEnabled && trialDuration != null) {
                         Text(
                             text = "Free Trial",
                             style = MaterialTheme.typography.displaySmall,
@@ -304,7 +306,7 @@ fun SubscriptionScreen(
                             color = Purple
                         )
                         Text(
-                            text = "$trialDays days free, then $selectedPrice/$selectedPeriod",
+                            text = "$trialDuration free, then $selectedPrice/$selectedPeriod",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             textAlign = TextAlign.Center
@@ -338,13 +340,16 @@ fun SubscriptionScreen(
                                 return@Button
                             }
 
-                            if (selectedProduct == null) {
+                            val pkg = selectedPackage
+                            if (pkg == null) {
                                 Toast.makeText(context, "Product not available yet", Toast.LENGTH_SHORT).show()
                                 return@Button
                             }
 
-                            // Launch billing flow with Google Play
-                            billingService.launchPurchaseFlow(activity, selectedProduct)
+                            // Launch purchase with RevenueCat
+                            scope.launch {
+                                revenueCatManager.purchase(activity, pkg)
+                            }
                         },
                         modifier = Modifier
                             .fillMaxWidth()
@@ -353,11 +358,9 @@ fun SubscriptionScreen(
                         colors = ButtonDefaults.buttonColors(
                             containerColor = Color.Black
                         ),
-                        enabled = selectedProduct != null &&
-                                  connectionState is BillingService.ConnectionState.Connected &&
-                                  purchaseState !is BillingService.PurchaseState.Purchasing
+                        enabled = selectedPackage != null && !isLoading
                     ) {
-                        if (purchaseState is BillingService.PurchaseState.Purchasing) {
+                        if (isLoading) {
                             CircularProgressIndicator(
                                 modifier = Modifier.size(24.dp),
                                 color = Color.White
@@ -375,10 +378,22 @@ fun SubscriptionScreen(
                     Spacer(modifier = Modifier.height(12.dp))
 
                     // Subscription terms
-                    val selectedSubscriptionLength = if (selectedProductId == BillingService.PRODUCT_ID_WEEKLY) "Weekly" else "Yearly"
+                    val selectedSubscriptionLength = when (selectedPackageType) {
+                        PackageType.WEEKLY -> "Weekly"
+                        PackageType.ANNUAL -> "Yearly"
+                        PackageType.MONTHLY -> "Monthly"
+                        else -> "Weekly"
+                    }
+                    val selectedPrice2 = selectedPackage?.product?.price?.formatted ?: "..."
+                    val selectedPeriod2 = when (selectedPackageType) {
+                        PackageType.WEEKLY -> "week"
+                        PackageType.ANNUAL -> "year"
+                        PackageType.MONTHLY -> "month"
+                        else -> "week"
+                    }
                     Text(
-                        text = "Auto-renewable $selectedSubscriptionLength subscription. $selectedPrice/$selectedPeriod" +
-                               if (freeTrialEnabled) " after $trialDays-day free trial." else "." +
+                        text = "Auto-renewable $selectedSubscriptionLength subscription. $selectedPrice2/$selectedPeriod2" +
+                               if (freeTrialEnabled && trialDuration != null) " after $trialDuration free trial." else "." +
                                " Cancel anytime.",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -443,8 +458,8 @@ fun SubscriptionScreen(
                 }
             }
 
-            // Loading overlay when connection not ready
-            if (connectionState !is BillingService.ConnectionState.Connected) {
+            // Loading overlay when packages not loaded
+            if (packages.isEmpty() && isLoading) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -457,14 +472,7 @@ fun SubscriptionScreen(
                     ) {
                         CircularProgressIndicator()
                         Text(
-                            text = when (connectionState) {
-                                is BillingService.ConnectionState.Connecting -> "Connecting to Google Play..."
-                                is BillingService.ConnectionState.Error -> {
-                                    val error = (connectionState as BillingService.ConnectionState.Error).message
-                                    "Error: $error"
-                                }
-                                else -> "Loading..."
-                            },
+                            text = "Loading subscription options...",
                             style = MaterialTheme.typography.bodyMedium
                         )
                     }
