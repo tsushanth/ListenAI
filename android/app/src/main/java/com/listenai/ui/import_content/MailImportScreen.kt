@@ -6,6 +6,7 @@ import android.net.Uri
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -56,6 +57,7 @@ fun MailImportScreen(
     onImportComplete: (String) -> Unit = {}
 ) {
     val context = LocalContext.current
+    val activity = context as? ComponentActivity
     val scope = rememberCoroutineScope()
 
     val isAuthenticated by authService.isAuthenticated.collectAsState()
@@ -70,6 +72,23 @@ fun MailImportScreen(
     var isImporting by remember { mutableStateOf(false) }
     var hasGmailAccess by remember { mutableStateOf(authService.hasGmailAccess()) }
 
+    // Gmail sign-in launcher using deprecated GoogleSignIn API
+    val gmailSignInLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        scope.launch {
+            val authResult = authService.handleGmailSignInResult(result.data)
+            if (authResult.isSuccess) {
+                hasGmailAccess = true
+                isConnecting = false
+                gmailService.fetchEmails(refresh = true)
+            } else {
+                isConnecting = false
+                importError = authResult.exceptionOrNull()?.message ?: "Failed to connect to Gmail"
+            }
+        }
+    }
+
     // Log state for debugging
     LaunchedEffect(Unit) {
         android.util.Log.i("MailImportScreen", "Initial state - isAuthenticated: $isAuthenticated, hasGmailAccess: $hasGmailAccess, accessToken: ${authService.getAccessToken()?.take(20)}...")
@@ -78,25 +97,12 @@ fun MailImportScreen(
     // Preview state for email content
     var previewEmail by remember { mutableStateOf<GmailMessage?>(null) }
 
-    // Gmail sign-in launcher
-    val gmailSignInLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.StartActivityForResult()
-    ) { result ->
-        scope.launch {
+    // Listen for auth state changes to update hasGmailAccess
+    LaunchedEffect(isAuthenticated) {
+        hasGmailAccess = authService.hasGmailAccess()
+        if (isAuthenticated && hasGmailAccess) {
             isConnecting = false
-            // Always try to handle the result - the result code isn't always RESULT_OK
-            val tokenResult = authService.handleGmailSignInResult(result.data)
-            if (tokenResult.isSuccess) {
-                // Successfully signed in with Gmail access
-                hasGmailAccess = true
-                gmailService.fetchEmails(refresh = true)
-            } else {
-                val errorMsg = tokenResult.exceptionOrNull()?.message
-                // Only show error if it's not a cancellation
-                if (errorMsg != null && !errorMsg.contains("cancelled", ignoreCase = true)) {
-                    importError = errorMsg
-                }
-            }
+            gmailService.fetchEmails(refresh = true)
         }
     }
 
@@ -169,12 +175,11 @@ fun MailImportScreen(
             }
 
             if (!isAuthenticated || !hasGmailAccess) {
-                // Not connected view - need Gmail sign-in with scope
+                // Not connected view - use deprecated GoogleSignIn API
                 NotConnectedView(
                     isConnecting = isConnecting,
                     onConnect = {
                         isConnecting = true
-                        // Launch Gmail sign-in with gmail.modify scope
                         gmailSignInLauncher.launch(authService.getGmailSignInIntent())
                     }
                 )

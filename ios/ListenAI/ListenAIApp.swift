@@ -87,6 +87,9 @@ struct RootView: View {
         // Configure AuthService for Apple/Google Sign In
         AuthService.shared.configure(backendURL: backendURL)
 
+        // Configure RevenueCat for subscriptions and Apple Search Ads attribution
+        await RevenueCatManager.shared.configure()
+
         // Configure StreamingTTSService for progressive audio playback
         StreamingTTSService.shared.configure(
             backendURL: backendURL,

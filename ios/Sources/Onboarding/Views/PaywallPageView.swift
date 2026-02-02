@@ -1,4 +1,5 @@
 import SwiftUI
+import RevenueCat
 
 // MARK: - Paywall Page View
 
@@ -12,136 +13,285 @@ import SwiftUI
 /// - Functional links to Privacy Policy and Terms of Use (EULA)
 struct PaywallPageView: View {
     @ObservedObject private var manager = OnboardingManager.shared
-    @State private var freeTrialEnabled = true
+    @ObservedObject private var revenueCat = RevenueCatManager.shared
+    @State private var selectedPlan: SubscriptionPlan = .annual
+    @State private var isPurchasing = false
+    @State private var showError = false
+    @State private var errorMessage = ""
     @Environment(\.dismiss) private var dismiss
 
-    // Pricing - subscription details
+    enum SubscriptionPlan {
+        case annual
+        case weekly
+    }
+
+    // Subscription details
     private let subscriptionTitle = "ReadAloud AI Pro"
-    private let subscriptionLength = "Weekly"
-    private let weeklyPrice = "$9.99"
-    private let trialDays = 7
 
     // Legal URLs (required by App Store)
     private let privacyURL = URL(string: "https://kreativekoala.llc/privacy")!
     private let termsURL = URL(string: "https://kreativekoala.llc/terms")!
 
+    // MARK: - Computed Properties
+
+    /// Get the weekly package from RevenueCat
+    private var weeklyPackage: Package? {
+        revenueCat.weeklyPackage
+    }
+
+    /// Get the annual package from RevenueCat
+    private var annualPackage: Package? {
+        revenueCat.annualPackage
+    }
+
+    /// Currently selected package
+    private var selectedPackage: Package? {
+        selectedPlan == .annual ? annualPackage : weeklyPackage
+    }
+
+    /// Price string from RevenueCat or fallback
+    private var weeklyPrice: String {
+        weeklyPackage?.localizedPriceString ?? "$7.99"
+    }
+
+    /// Annual price string
+    private var annualPrice: String {
+        annualPackage?.localizedPriceString ?? "$39.99"
+    }
+
+    /// Check if the selected package has a free trial
+    private var hasFreeTrial: Bool {
+        selectedPackage?.hasFreeTrial ?? (selectedPlan == .annual)
+    }
+
+    /// Free trial duration string
+    private var trialDuration: String {
+        selectedPackage?.freeTrialDuration ?? "7 days"
+    }
+
+    /// Trial days as integer for date calculation
+    private var trialDays: Int {
+        // Parse from trial duration or default to 7
+        if let duration = selectedPackage?.freeTrialDuration {
+            let components = duration.components(separatedBy: " ")
+            if let days = Int(components.first ?? "") {
+                return days
+            }
+        }
+        return 7
+    }
+
+    /// Calculate weekly equivalent for annual plan
+    private var annualWeeklyEquivalent: String {
+        if let package = annualPackage {
+            let price = package.storeProduct.price as Decimal
+            let weeklyPrice = price / 52
+            let formatter = NumberFormatter()
+            formatter.numberStyle = .currency
+            formatter.locale = package.storeProduct.priceFormatter?.locale ?? Locale.current
+            return formatter.string(from: weeklyPrice as NSDecimalNumber) ?? "$0.77"
+        }
+        return "$0.77"
+    }
+
     var body: some View {
-        VStack(spacing: 0) {
-            // Close and Restore buttons
-            HStack {
-                Button {
-                    manager.nextPage()  // Go to sign-in page
-                } label: {
-                    Image(systemName: "xmark")
-                        .font(.title3)
-                        .foregroundStyle(.secondary)
-                        .frame(width: 44, height: 44)
-                        .background(Color(.secondarySystemBackground))
-                        .clipShape(Circle())
-                        .contentShape(Circle())
+        ZStack {
+            VStack(spacing: 0) {
+                // Close and Restore buttons
+                HStack {
+                    Button {
+                        manager.nextPage()  // Go to sign-in page
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.title3)
+                            .foregroundStyle(.secondary)
+                            .frame(width: 44, height: 44)
+                            .background(Color(.secondarySystemBackground))
+                            .clipShape(Circle())
+                            .contentShape(Circle())
+                    }
+                    .disabled(isPurchasing)
+
+                    Spacer()
+
+                    Button {
+                        restorePurchases()
+                    } label: {
+                        Text("Restore")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 10)
+                            .background(Color(.secondarySystemBackground))
+                            .clipShape(Capsule())
+                            .contentShape(Capsule())
+                    }
+                    .disabled(isPurchasing)
                 }
-
-                Spacer()
-
-                Button {
-                    // Restore purchases
-                } label: {
-                    Text("Restore")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 10)
-                        .background(Color(.secondarySystemBackground))
-                        .clipShape(Capsule())
-                        .contentShape(Capsule())
-                }
-            }
-            .padding(.horizontal, 20)
-            .padding(.top, 12)
-
-            // Hero illustration
-            heroIllustration
-                .padding(.top, 8)
-
-            // Title
-            VStack(spacing: 8) {
-                Text("Get Unlimited Access")
-                    .font(.system(size: 26, weight: .bold))
-
-                Text("Read anything aloud in top-quality voices")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
-            .padding(.top, 16)
-
-            // Subscription card
-            subscriptionCard
-                .padding(.horizontal, 20)
-                .padding(.top, 20)
-
-            // Free trial toggle
-            freeTrialToggle
-                .padding(.horizontal, 20)
-                .padding(.top, 16)
-
-            // Pricing breakdown
-            pricingBreakdown
                 .padding(.horizontal, 20)
                 .padding(.top, 12)
 
-            Spacer()
+                // Hero illustration
+                heroIllustration
+                    .padding(.top, 8)
 
-            // CTA Button
-            VStack(spacing: 12) {
-                Button {
-                    // Start subscription/trial, then go to sign-in
-                    manager.nextPage()
-                } label: {
-                    Text(freeTrialEnabled ? "Try for Free" : "Subscribe Now")
-                        .font(.headline)
+                // Title
+                VStack(spacing: 8) {
+                    Text("Get Unlimited Access")
+                        .font(.system(size: 26, weight: .bold))
+
+                    Text("Read anything aloud in top-quality voices")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.top, 16)
+
+                // Subscription options
+                subscriptionOptions
+                    .padding(.horizontal, 20)
+                    .padding(.top, 20)
+
+                // Pricing breakdown
+                pricingBreakdown
+                    .padding(.horizontal, 20)
+                    .padding(.top, 16)
+
+                Spacer()
+
+                // CTA Button
+                VStack(spacing: 12) {
+                    Button {
+                        purchaseSubscription()
+                    } label: {
+                        HStack(spacing: 8) {
+                            if isPurchasing {
+                                ProgressView()
+                                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                    .scaleEffect(0.8)
+                            }
+                            Text(isPurchasing ? "Processing..." : (hasFreeTrial ? "Start Free Trial" : "Subscribe Now"))
+                                .font(.headline)
+                        }
                         .foregroundStyle(.white)
                         .frame(maxWidth: .infinity)
                         .frame(height: 56)
-                        .background(Color.black)
+                        .background(isPurchasing ? Color.gray : Color.black)
                         .clipShape(RoundedRectangle(cornerRadius: 16))
                         .contentShape(RoundedRectangle(cornerRadius: 16))
-                }
-
-                // Subscription terms (required by App Store)
-                Text("Auto-renewable \(subscriptionLength) subscription. \(weeklyPrice)/week after \(trialDays)-day free trial. Cancel anytime.")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 8)
-
-                // Footer links (functional links required by App Store 3.1.2)
-                HStack {
-                    Link("Terms of Use", destination: termsURL)
-                        .font(.caption)
-                        .foregroundStyle(.blue)
-
-                    Spacer()
-
-                    HStack(spacing: 4) {
-                        Image(systemName: "lock.fill")
-                            .font(.caption2)
-                        Text("Secured with Apple")
-                            .font(.caption)
                     }
-                    .foregroundStyle(.secondary)
+                    .disabled(isPurchasing || selectedPackage == nil)
 
-                    Spacer()
+                    // Subscription terms (required by App Store)
+                    Text(subscriptionTermsText)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 8)
 
-                    Link("Privacy Policy", destination: privacyURL)
-                        .font(.caption)
-                        .foregroundStyle(.blue)
+                    // Footer links (functional links required by App Store 3.1.2)
+                    HStack {
+                        Link("Terms of Use", destination: termsURL)
+                            .font(.caption)
+                            .foregroundStyle(.blue)
+
+                        Spacer()
+
+                        HStack(spacing: 4) {
+                            Image(systemName: "lock.fill")
+                                .font(.caption2)
+                            Text("Secured with Apple")
+                                .font(.caption)
+                        }
+                        .foregroundStyle(.secondary)
+
+                        Spacer()
+
+                        Link("Privacy Policy", destination: privacyURL)
+                            .font(.caption)
+                            .foregroundStyle(.blue)
+                    }
+                }
+                .padding(.horizontal, 24)
+                .padding(.bottom, 24)
+            }
+            .frame(maxWidth: 500)  // Constrain width on iPad for better UX
+            .frame(maxWidth: .infinity)  // Center within parent
+            .disabled(isPurchasing)
+        }
+        .alert("Error", isPresented: $showError) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(errorMessage)
+        }
+        .task {
+            // Load offerings if not already loaded
+            if revenueCat.packages.isEmpty {
+                await revenueCat.loadOfferings()
+            }
+        }
+    }
+
+    // MARK: - Subscription Terms Text
+
+    private var subscriptionTermsText: String {
+        if selectedPlan == .annual {
+            if hasFreeTrial {
+                return "Auto-renewable Annual subscription. \(annualPrice)/year after \(trialDuration) free trial. Cancel anytime."
+            } else {
+                return "Auto-renewable Annual subscription. \(annualPrice)/year. Cancel anytime."
+            }
+        } else {
+            return "Auto-renewable Weekly subscription. \(weeklyPrice)/week. Cancel anytime."
+        }
+    }
+
+    // MARK: - Purchase Actions
+
+    private func purchaseSubscription() {
+        guard let package = selectedPackage else {
+            errorMessage = "Subscription not available. Please try again later."
+            showError = true
+            return
+        }
+
+        isPurchasing = true
+
+        Task {
+            do {
+                try await revenueCat.purchase(package)
+                // Purchase successful - move to next page
+                await MainActor.run {
+                    isPurchasing = false
+                    manager.nextPage()
+                }
+            } catch PurchaseError.userCancelled {
+                // User cancelled - just dismiss loading
+                await MainActor.run {
+                    isPurchasing = false
+                }
+            } catch {
+                await MainActor.run {
+                    isPurchasing = false
+                    errorMessage = error.localizedDescription
+                    showError = true
                 }
             }
-            .padding(.horizontal, 24)
-            .padding(.bottom, 24)
         }
-        .frame(maxWidth: 500)  // Constrain width on iPad for better UX
-        .frame(maxWidth: .infinity)  // Center within parent
+    }
+
+    private func restorePurchases() {
+        isPurchasing = true
+
+        Task {
+            await revenueCat.restorePurchases()
+            await MainActor.run {
+                isPurchasing = false
+                if revenueCat.isPremium {
+                    // Restored successfully - move to next page
+                    manager.nextPage()
+                }
+            }
+        }
     }
 
     // MARK: - Hero Illustration
@@ -227,59 +377,38 @@ struct PaywallPageView: View {
         return heights[index % heights.count]
     }
 
-    // MARK: - Subscription Card
+    // MARK: - Subscription Options
 
-    private var subscriptionCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            // Subscription title (required by App Store)
-            HStack {
-                Text(subscriptionTitle)
-                    .font(.headline)
-
-                Spacer()
-
-                // Subscription length badge
-                Text(subscriptionLength)
-                    .font(.caption.weight(.medium))
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(Color.yellow.opacity(0.2))
-                    .foregroundStyle(.orange)
-                    .cornerRadius(6)
+    private var subscriptionOptions: some View {
+        VStack(spacing: 12) {
+            // Annual option (recommended)
+            SubscriptionOptionCard(
+                title: "Annual",
+                price: annualPrice,
+                period: "/year",
+                subtitle: "Just \(annualWeeklyEquivalent)/week",
+                badge: "SAVE 90%",
+                hasFreeTrial: annualPackage?.hasFreeTrial ?? true,
+                trialDuration: annualPackage?.freeTrialDuration ?? "7 days",
+                isSelected: selectedPlan == .annual
+            ) {
+                selectedPlan = .annual
             }
 
-            Text("Unlock Unlimited Listening Experience, Download and Listen Offline, Listen Any Text Document, Best AI Voices Available.")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-
-            // Price and length (required by App Store)
-            Text("Free for \(trialDays) days, then \(weeklyPrice)/week")
-                .font(.subheadline.weight(.medium))
-                .foregroundStyle(.primary)
+            // Weekly option
+            SubscriptionOptionCard(
+                title: "Weekly",
+                price: weeklyPrice,
+                period: "/week",
+                subtitle: nil,
+                badge: nil,
+                hasFreeTrial: false,
+                trialDuration: nil,
+                isSelected: selectedPlan == .weekly
+            ) {
+                selectedPlan = .weekly
+            }
         }
-        .padding(20)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(.secondarySystemGroupedBackground))
-        .cornerRadius(16)
-    }
-
-    // MARK: - Free Trial Toggle
-
-    private var freeTrialToggle: some View {
-        HStack {
-            Text("Free Trial Enabled")
-                .font(.subheadline)
-
-            Spacer()
-
-            Toggle("", isOn: $freeTrialEnabled)
-                .labelsHidden()
-                .tint(.green)
-        }
-        .padding(16)
-        .background(Color(.secondarySystemGroupedBackground))
-        .cornerRadius(12)
     }
 
     // MARK: - Pricing Breakdown
@@ -297,34 +426,36 @@ struct PaywallPageView: View {
 
                 Spacer()
 
-                if freeTrialEnabled {
-                    Text("\(trialDays) days free")
+                if hasFreeTrial {
+                    Text("\(trialDuration) free")
                         .font(.subheadline)
                         .foregroundStyle(.green)
                     Text("$0.00")
                         .font(.subheadline.weight(.semibold))
                 } else {
-                    Text(weeklyPrice)
+                    Text(selectedPlan == .annual ? annualPrice : weeklyPrice)
                         .font(.subheadline.weight(.semibold))
                 }
             }
 
-            HStack {
-                HStack(spacing: 6) {
-                    Rectangle()
-                        .fill(Color.primary)
-                        .frame(width: 2, height: 20)
-                        .padding(.leading, 2)
-                    Text(dueDateString)
+            if hasFreeTrial {
+                HStack {
+                    HStack(spacing: 6) {
+                        Rectangle()
+                            .fill(Color.primary)
+                            .frame(width: 2, height: 20)
+                            .padding(.leading, 2)
+                        Text(dueDateString)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Spacer()
+
+                    Text(selectedPlan == .annual ? annualPrice : weeklyPrice)
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
-
-                Spacer()
-
-                Text(weeklyPrice)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
             }
         }
     }
@@ -355,6 +486,90 @@ struct FileTypeIconSmall: View {
                 .foregroundStyle(.white)
         }
         .shadow(color: .black.opacity(0.1), radius: 4, y: 2)
+    }
+}
+
+// MARK: - Subscription Option Card
+
+struct SubscriptionOptionCard: View {
+    let title: String
+    let price: String
+    let period: String
+    let subtitle: String?
+    let badge: String?
+    let hasFreeTrial: Bool
+    let trialDuration: String?
+    let isSelected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 8) {
+                        Text(title)
+                            .font(.headline)
+                            .foregroundStyle(.primary)
+
+                        if let badge = badge {
+                            Text(badge)
+                                .font(.caption2.bold())
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 3)
+                                .background(Color.green)
+                                .cornerRadius(4)
+                        }
+                    }
+
+                    HStack(spacing: 4) {
+                        Text(price)
+                            .font(.title3.bold())
+                            .foregroundStyle(.primary)
+                        Text(period)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    if let subtitle = subtitle {
+                        Text(subtitle)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    if hasFreeTrial, let duration = trialDuration {
+                        Text("\(duration) free trial")
+                            .font(.caption)
+                            .foregroundStyle(.green)
+                    }
+                }
+
+                Spacer()
+
+                // Selection indicator
+                ZStack {
+                    Circle()
+                        .strokeBorder(isSelected ? Color.black : Color.gray.opacity(0.3), lineWidth: 2)
+                        .frame(width: 24, height: 24)
+
+                    if isSelected {
+                        Circle()
+                            .fill(Color.black)
+                            .frame(width: 16, height: 16)
+                    }
+                }
+            }
+            .padding(16)
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(Color(.secondarySystemGroupedBackground))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .strokeBorder(isSelected ? Color.black : Color.clear, lineWidth: 2)
+            )
+        }
+        .buttonStyle(.plain)
     }
 }
 

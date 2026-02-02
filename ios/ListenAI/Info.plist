@@ -58,18 +58,5 @@
 	<string>ReadAloud AI uses speech recognition for voice commands.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>ReadAloud AI uses the camera to scan documents and extract text for listening.</string>
-	<key>CFBundleURLTypes</key>
-	<array>
-		<dict>
-			<key>CFBundleTypeRole</key>
-			<string>Editor</string>
-			<key>CFBundleURLName</key>
-			<string>Google Sign-In</string>
-			<key>CFBundleURLSchemes</key>
-			<array>
-				<string>com.googleusercontent.apps.85846747177-6dr3b825m6aj4tavspc21real3rdpuba</string>
-			</array>
-		</dict>
-	</array>
 </dict>
 </plist>

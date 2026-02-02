@@ -74,27 +74,6 @@ struct SignInPromptView: View {
                     }
                 }
 
-                // Google Sign In
-                Button {
-                    Task { await signInWithGoogle() }
-                } label: {
-                    HStack {
-                        Image(systemName: "g.circle.fill")
-                            .font(.title2)
-                        Text("Sign in with Google")
-                            .fontWeight(.medium)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 50)
-                    .background(Color(.systemBackground))
-                    .foregroundStyle(.primary)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 8)
-                            .stroke(Color(.systemGray4), lineWidth: 1)
-                    )
-                    .cornerRadius(8)
-                }
-
                 // Skip option
                 if let onSkip = onSkip {
                     Button("Continue without signing in") {
@@ -158,23 +137,6 @@ struct SignInPromptView: View {
 
         do {
             try await authService.signInWithApple()
-            // Link device data
-            try? await authService.linkDevice()
-            // onComplete will be called via onChange
-        } catch AuthError.userCancelled {
-            // User cancelled - don't show error
-        } catch {
-            errorMessage = error.localizedDescription
-            showError = true
-        }
-    }
-
-    private func signInWithGoogle() async {
-        isSigningIn = true
-        defer { isSigningIn = false }
-
-        do {
-            try await authService.signInWithGoogle()
             // Link device data
             try? await authService.linkDevice()
             // onComplete will be called via onChange

@@ -40,6 +40,9 @@ struct ShareVoiceView: View {
 
     private var shareVoiceContent: some View {
         Form {
+            // Earnings incentive banner
+            earningsIncentiveSection
+
             // Voice selection
             voiceSelectionSection
 
@@ -94,6 +97,57 @@ struct ShareVoiceView: View {
                         .cornerRadius(16)
                     }
             }
+        }
+    }
+
+    // MARK: - Earnings Incentive Section
+
+    private var earningsIncentiveSection: some View {
+        Section {
+            VStack(spacing: 16) {
+                // Header with gift icon
+                HStack(spacing: 12) {
+                    ZStack {
+                        Circle()
+                            .fill(Color.green.opacity(0.15))
+                            .frame(width: 48, height: 48)
+
+                        Image(systemName: "gift.fill")
+                            .font(.title2)
+                            .foregroundStyle(.green)
+                    }
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Earn Rewards")
+                            .font(.headline)
+
+                        Text("Get free minutes when others use your voice")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Spacer()
+                }
+
+                // Benefits list
+                VStack(alignment: .leading, spacing: 8) {
+                    EarningsBenefitRow(
+                        icon: "waveform",
+                        text: "Earn minutes every time someone generates audio with your voice"
+                    )
+
+                    EarningsBenefitRow(
+                        icon: "arrow.up.right",
+                        text: "Popular voices earn more - quality and uniqueness matter"
+                    )
+
+                    EarningsBenefitRow(
+                        icon: "clock.arrow.circlepath",
+                        text: "Rewards are credited automatically - claim anytime"
+                    )
+                }
+            }
+            .padding(.vertical, 8)
         }
     }
 
@@ -339,6 +393,27 @@ private struct VoiceSelectionRow: View {
         .buttonStyle(.plain)
         .disabled(isAlreadyShared)
         .opacity(isAlreadyShared ? 0.6 : 1)
+    }
+}
+
+// MARK: - Earnings Benefit Row
+
+private struct EarningsBenefitRow: View {
+    let icon: String
+    let text: String
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: icon)
+                .font(.caption)
+                .foregroundStyle(.green)
+                .frame(width: 16)
+
+            Text(text)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
     }
 }
 

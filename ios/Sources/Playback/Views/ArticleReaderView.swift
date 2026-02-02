@@ -119,6 +119,7 @@ struct ArticleReaderView: View {
     // Background synthesis with notification
     @State private var showNotifyWhenReadyOption = false
     @State private var isGeneratingInBackground = false
+    @State private var showNotificationExplanation = false
 
     /// Check if TTS job is currently generating
     private var isGeneratingTTS: Bool {
@@ -304,6 +305,16 @@ struct ArticleReaderView: View {
             }
         } message: {
             Text(synthesisError ?? "")
+        }
+        .alert("Get Notified When Ready", isPresented: $showNotificationExplanation) {
+            Button("Enable Notifications") {
+                Task {
+                    await enableBackgroundNotification()
+                }
+            }
+            Button("Not Now", role: .cancel) {}
+        } message: {
+            Text("Most audio generates in seconds, but longer content may take a bit more time.\n\nWe'll send you ONE notification when your audio is ready to play. We never send marketing or promotional notifications.")
         }
         .sheet(isPresented: $showingQuotaWarning) {
             if let estimate = pendingUsageEstimate {
@@ -641,9 +652,7 @@ struct ArticleReaderView: View {
                 Divider()
 
                 Button {
-                    Task {
-                        await enableBackgroundNotification()
-                    }
+                    showNotificationExplanation = true
                 } label: {
                     HStack(spacing: 8) {
                         Image(systemName: "bell.fill")

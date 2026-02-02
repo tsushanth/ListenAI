@@ -95,7 +95,10 @@ struct MySharedVoicesView: View {
     private var sharedVoicesListView: some View {
         List {
             ForEach(viewModel.shares) { share in
-                MySharedVoiceRow(share: share) {
+                MySharedVoiceRow(
+                    share: share,
+                    earnings: viewModel.getEarnings(for: share.id)
+                ) {
                     viewModel.requestRevoke(share)
                 }
             }
@@ -108,6 +111,7 @@ struct MySharedVoicesView: View {
 
 private struct MySharedVoiceRow: View {
     let share: VoiceMarketplaceService.MySharedVoice
+    let earnings: Double
     let onRevoke: () -> Void
 
     var body: some View {
@@ -150,11 +154,11 @@ private struct MySharedVoiceRow: View {
                 }
             }
 
-            // Stats
-            HStack(spacing: 16) {
+            // Stats including earnings
+            HStack(spacing: 12) {
                 StatItem(icon: "star.fill", color: .yellow, value: String(format: "%.1f", share.avgRating), label: "rating")
                 StatItem(icon: "play.fill", color: .blue, value: "\(share.usageCount)", label: "uses")
-                StatItem(icon: "person.2.fill", color: .green, value: "\(share.ratingCount)", label: "ratings")
+                StatItem(icon: "gift.fill", color: .green, value: String(format: "%.2f", earnings), label: "min earned")
             }
 
             // Tags
@@ -269,6 +273,7 @@ private struct StatItem: View {
 @MainActor
 class MySharedVoicesViewModel: ObservableObject {
     @Published var shares: [VoiceMarketplaceService.MySharedVoice] = []
+    @Published var earningsPerVoice: [String: Double] = [:]
     @Published var isLoading = false
     @Published var showError = false
     @Published var errorMessage = ""
@@ -282,11 +287,27 @@ class MySharedVoicesViewModel: ObservableObject {
         defer { isLoading = false }
 
         do {
-            shares = try await VoiceMarketplaceService.shared.getMyShares()
+            // Load shares and reward history in parallel
+            async let sharesTask = VoiceMarketplaceService.shared.getMyShares()
+            async let historyTask = VoiceMarketplaceService.shared.getRewardHistory(limit: 500)
+
+            shares = try await sharesTask
+            let history = try await historyTask
+
+            // Aggregate earnings per voice
+            var earnings: [String: Double] = [:]
+            for entry in history {
+                earnings[entry.sharedVoiceId, default: 0] += entry.rewardMinutes
+            }
+            earningsPerVoice = earnings
         } catch {
             errorMessage = error.localizedDescription
             showError = true
         }
+    }
+
+    func getEarnings(for shareId: String) -> Double {
+        earningsPerVoice[shareId] ?? 0
     }
 
     func requestRevoke(_ share: VoiceMarketplaceService.MySharedVoice) {

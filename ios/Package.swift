@@ -16,6 +16,9 @@ let package = Package(
         ),
     ],
     dependencies: [
+        // RevenueCat for subscription management and attribution
+        .package(url: "https://github.com/RevenueCat/purchases-ios.git", from: "5.0.0"),
+
         // Future: Add neural TTS package when stable SPM support is available
         // Options being evaluated:
         // - Sherpa-ONNX (requires building from source, no SPM yet)
@@ -24,7 +27,9 @@ let package = Package(
     targets: [
         .target(
             name: "ListenAI",
-            dependencies: [],
+            dependencies: [
+                .product(name: "RevenueCat", package: "purchases-ios"),
+            ],
             path: "Sources"
         ),
         .testTarget(

@@ -14,6 +14,8 @@ struct VoiceMarketplaceView: View {
     @State private var showingMyShares = false
     @State private var showingRewards = false
     @State private var selectedVoice: VoiceMarketplaceService.SharedVoice?
+    @State private var pendingRewards: Double = 0
+    @State private var hasSharedVoices = false
 
     var body: some View {
         NavigationStack {
@@ -64,6 +66,13 @@ struct VoiceMarketplaceView: View {
 
                 Divider()
 
+                // Rewards banner (show if user has pending rewards OR has shared voices)
+                if pendingRewards > 0 || hasSharedVoices {
+                    rewardsBanner
+                        .padding(.horizontal)
+                        .padding(.top, 8)
+                }
+
                 // Content
                 if viewModel.isLoading && viewModel.voices.isEmpty {
                     loadingView
@@ -112,6 +121,7 @@ struct VoiceMarketplaceView: View {
             }
             .task {
                 await viewModel.load(sort: selectedSort)
+                await loadRewardsStatus()
             }
             .refreshable {
                 await viewModel.load(sort: selectedSort)
@@ -233,6 +243,73 @@ struct VoiceMarketplaceView: View {
                 }
             }
             .padding()
+        }
+    }
+
+    // MARK: - Rewards Banner
+
+    private var rewardsBanner: some View {
+        Button {
+            showingRewards = true
+        } label: {
+            HStack(spacing: 12) {
+                // Icon
+                ZStack {
+                    Circle()
+                        .fill(pendingRewards > 0 ? Color.orange.opacity(0.15) : Color.green.opacity(0.15))
+                        .frame(width: 44, height: 44)
+
+                    Image(systemName: pendingRewards > 0 ? "gift.fill" : "chart.line.uptrend.xyaxis")
+                        .font(.title3)
+                        .foregroundStyle(pendingRewards > 0 ? .orange : .green)
+                }
+
+                // Text
+                VStack(alignment: .leading, spacing: 2) {
+                    if pendingRewards > 0 {
+                        Text("You have rewards to claim!")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.primary)
+
+                        Text("\(String(format: "%.2f", pendingRewards)) minutes waiting")
+                            .font(.caption)
+                            .foregroundStyle(.orange)
+                    } else {
+                        Text("Your voices are earning")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.primary)
+
+                        Text("View your earnings and stats")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+            }
+            .padding(12)
+            .background(Color(.secondarySystemBackground))
+            .cornerRadius(12)
+        }
+        .buttonStyle(.plain)
+    }
+
+    // MARK: - Load Rewards Status
+
+    private func loadRewardsStatus() async {
+        do {
+            let summary = try await VoiceMarketplaceService.shared.getRewardsSummary()
+            pendingRewards = summary.pending.minutes
+
+            // Check if user has shared any voices
+            let shares = try await VoiceMarketplaceService.shared.getMyShares()
+            hasSharedVoices = shares.contains { $0.status == "active" }
+        } catch {
+            // Silently fail - banner just won't show
         }
     }
 }

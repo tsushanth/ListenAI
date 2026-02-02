@@ -432,7 +432,10 @@ fun VoiceCloningScreen(
                     .fillMaxWidth()
                     .height(56.dp),
                 enabled = recordedFileUri != null && !isUploading && !isRecording,
-                colors = ButtonDefaults.buttonColors(containerColor = Blue),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Blue,
+                    contentColor = Color.White
+                ),
                 shape = RoundedCornerShape(12.dp)
             ) {
                 if (isUploading) {

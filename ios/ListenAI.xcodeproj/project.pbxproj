@@ -43,9 +43,9 @@
 		001400000000000000000007 /* NowPlayingManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002400000000000000000007 /* NowPlayingManager.swift */; };
 		001400000000000000000008 /* AudioSessionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002400000000000000000008 /* AudioSessionManager.swift */; };
 		001400000000000000000009 /* ArticleReaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002400000000000000000009 /* ArticleReaderView.swift */; };
-		0014000000000000000000F1 /* FormattedTextView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0024000000000000000000F1 /* FormattedTextView.swift */; };
 		00140000000000000000000A /* URLAudioPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00240000000000000000000A /* URLAudioPlayer.swift */; };
 		00140000000000000000000B /* QueuePlaybackCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00240000000000000000000B /* QueuePlaybackCoordinator.swift */; };
+		0014000000000000000000F1 /* FormattedTextView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0024000000000000000000F1 /* FormattedTextView.swift */; };
 		001500000000000000000001 /* TTSModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002500000000000000000001 /* TTSModels.swift */; };
 		001500000000000000000002 /* VoicePreset.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002500000000000000000002 /* VoicePreset.swift */; };
 		001500000000000000000003 /* TTSCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002500000000000000000003 /* TTSCoordinator.swift */; };
@@ -63,7 +63,6 @@
 		001600000000000000000002 /* UsageQuotaView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002600000000000000000002 /* UsageQuotaView.swift */; };
 		001600000000000000000003 /* UsageWarningBanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002600000000000000000003 /* UsageWarningBanner.swift */; };
 		001600000000000000000004 /* UsageTrackerService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002600000000000000000004 /* UsageTrackerService.swift */; };
-		001600000000000000000005 /* SynthesisMetricsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002600000000000000000006 /* SynthesisMetricsService.swift */; };
 		001600000000000000000005 /* UsageViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002600000000000000000005 /* UsageViewModel.swift */; };
 		001700000000000000000001 /* SubscriptionModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002700000000000000000001 /* SubscriptionModels.swift */; };
 		001700000000000000000002 /* UserAccountViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002700000000000000000002 /* UserAccountViewModel.swift */; };
@@ -72,6 +71,7 @@
 		001700000000000000000005 /* AuthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002700000000000000000005 /* AuthService.swift */; };
 		001700000000000000000006 /* SignInPromptView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002700000000000000000006 /* SignInPromptView.swift */; };
 		001700000000000000000007 /* AppReviewService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002700000000000000000007 /* AppReviewService.swift */; };
+		001700000000000000000008 /* RevenueCatManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002700000000000000000008 /* RevenueCatManager.swift */; };
 		001800000000000000000001 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002800000000000000000001 /* HomeView.swift */; };
 		001800000000000000000002 /* LibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002800000000000000000002 /* LibraryView.swift */; };
 		001800000000000000000003 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002800000000000000000003 /* SettingsView.swift */; };
@@ -101,6 +101,7 @@
 		00D000000000000000000006 /* voice_sample_charlotte.wav in Resources */ = {isa = PBXBuildFile; fileRef = 00E000000000000000000006 /* voice_sample_charlotte.wav */; };
 		60053F2DC49846065D6EBC7B /* BackgroundStreamingSynthesisService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03A60CC8B1DA9D34FA981604 /* BackgroundStreamingSynthesisService.swift */; };
 		FC8D4518BE88A2E5699ED58A /* StreamingTTSService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F474471A9365C7F8F2BD6DD9 /* StreamingTTSService.swift */; };
+		RC0000000000000000000001 /* RevenueCat in Frameworks */ = {isa = PBXBuildFile; productRef = RC0000000000000000000002 /* RevenueCat */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -143,9 +144,9 @@
 		002400000000000000000007 /* NowPlayingManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NowPlayingManager.swift; sourceTree = "<group>"; };
 		002400000000000000000008 /* AudioSessionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioSessionManager.swift; sourceTree = "<group>"; };
 		002400000000000000000009 /* ArticleReaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArticleReaderView.swift; sourceTree = "<group>"; };
-		0024000000000000000000F1 /* FormattedTextView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FormattedTextView.swift; sourceTree = "<group>"; };
 		00240000000000000000000A /* URLAudioPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = URLAudioPlayer.swift; sourceTree = "<group>"; };
 		00240000000000000000000B /* QueuePlaybackCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QueuePlaybackCoordinator.swift; sourceTree = "<group>"; };
+		0024000000000000000000F1 /* FormattedTextView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FormattedTextView.swift; sourceTree = "<group>"; };
 		002500000000000000000001 /* TTSModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TTSModels.swift; sourceTree = "<group>"; };
 		002500000000000000000002 /* VoicePreset.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoicePreset.swift; sourceTree = "<group>"; };
 		002500000000000000000003 /* TTSCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TTSCoordinator.swift; sourceTree = "<group>"; };
@@ -163,8 +164,8 @@
 		002600000000000000000002 /* UsageQuotaView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UsageQuotaView.swift; sourceTree = "<group>"; };
 		002600000000000000000003 /* UsageWarningBanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UsageWarningBanner.swift; sourceTree = "<group>"; };
 		002600000000000000000004 /* UsageTrackerService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UsageTrackerService.swift; sourceTree = "<group>"; };
-		002600000000000000000006 /* SynthesisMetricsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SynthesisMetricsService.swift; sourceTree = "<group>"; };
 		002600000000000000000005 /* UsageViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UsageViewModel.swift; sourceTree = "<group>"; };
+		002600000000000000000006 /* SynthesisMetricsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SynthesisMetricsService.swift; sourceTree = "<group>"; };
 		002700000000000000000001 /* SubscriptionModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubscriptionModels.swift; sourceTree = "<group>"; };
 		002700000000000000000002 /* UserAccountViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserAccountViewModel.swift; sourceTree = "<group>"; };
 		002700000000000000000003 /* GoogleAuthService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoogleAuthService.swift; sourceTree = "<group>"; };
@@ -172,6 +173,7 @@
 		002700000000000000000005 /* AuthService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthService.swift; sourceTree = "<group>"; };
 		002700000000000000000006 /* SignInPromptView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignInPromptView.swift; sourceTree = "<group>"; };
 		002700000000000000000007 /* AppReviewService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppReviewService.swift; sourceTree = "<group>"; };
+		002700000000000000000008 /* RevenueCatManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RevenueCatManager.swift; sourceTree = "<group>"; };
 		002800000000000000000001 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		002800000000000000000002 /* LibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryView.swift; sourceTree = "<group>"; };
 		002800000000000000000003 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
@@ -209,6 +211,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				RC0000000000000000000001 /* RevenueCat in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -263,35 +266,6 @@
 				005200000000000000000006 /* Usage */,
 			);
 			path = Sources;
-			sourceTree = "<group>";
-		};
-		005B00000000000000000001 /* Marketplace */ = {
-			isa = PBXGroup;
-			children = (
-				005B00000000000000000002 /* Services */,
-				005B00000000000000000003 /* Views */,
-			);
-			path = Marketplace;
-			sourceTree = "<group>";
-		};
-		005B00000000000000000002 /* Services */ = {
-			isa = PBXGroup;
-			children = (
-				002A00000000000000000001 /* VoiceMarketplaceService.swift */,
-			);
-			path = Services;
-			sourceTree = "<group>";
-		};
-		005B00000000000000000003 /* Views */ = {
-			isa = PBXGroup;
-			children = (
-				002A00000000000000000002 /* VoiceMarketplaceView.swift */,
-				002A00000000000000000003 /* VoiceDetailView.swift */,
-				002A00000000000000000004 /* ShareVoiceView.swift */,
-				002A00000000000000000005 /* MySharedVoicesView.swift */,
-				002A00000000000000000006 /* RewardsView.swift */,
-			);
-			path = Views;
 			sourceTree = "<group>";
 		};
 		005200000000000000000001 /* Core */ = {
@@ -367,14 +341,6 @@
 				005800000000000000000004 /* Views */,
 			);
 			path = Account;
-			sourceTree = "<group>";
-		};
-		005800000000000000000004 /* Views */ = {
-			isa = PBXGroup;
-			children = (
-				002700000000000000000006 /* SignInPromptView.swift */,
-			);
-			path = Views;
 			sourceTree = "<group>";
 		};
 		005300000000000000000001 /* Accessibility */ = {
@@ -587,9 +553,18 @@
 				002700000000000000000007 /* AppReviewService.swift */,
 				002700000000000000000005 /* AuthService.swift */,
 				002700000000000000000003 /* GoogleAuthService.swift */,
+				002700000000000000000008 /* RevenueCatManager.swift */,
 				002700000000000000000004 /* StoreKitManager.swift */,
 			);
 			path = Services;
+			sourceTree = "<group>";
+		};
+		005800000000000000000004 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				002700000000000000000006 /* SignInPromptView.swift */,
+			);
+			path = Views;
 			sourceTree = "<group>";
 		};
 		005900000000000000000001 /* Home */ = {
@@ -620,6 +595,35 @@
 			isa = PBXGroup;
 			children = (
 				002800000000000000000003 /* SettingsView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		005B00000000000000000001 /* Marketplace */ = {
+			isa = PBXGroup;
+			children = (
+				005B00000000000000000002 /* Services */,
+				005B00000000000000000003 /* Views */,
+			);
+			path = Marketplace;
+			sourceTree = "<group>";
+		};
+		005B00000000000000000002 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				002A00000000000000000001 /* VoiceMarketplaceService.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		005B00000000000000000003 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				002A00000000000000000002 /* VoiceMarketplaceView.swift */,
+				002A00000000000000000003 /* VoiceDetailView.swift */,
+				002A00000000000000000004 /* ShareVoiceView.swift */,
+				002A00000000000000000005 /* MySharedVoicesView.swift */,
+				002A00000000000000000006 /* RewardsView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -687,6 +691,9 @@
 			dependencies = (
 			);
 			name = ListenAI;
+			packageProductDependencies = (
+				RC0000000000000000000002 /* RevenueCat */,
+			);
 			productName = ListenAI;
 			productReference = 003000000000000000000001 /* ListenAI.app */;
 			productType = "com.apple.product-type.application";
@@ -715,6 +722,9 @@
 				Base,
 			);
 			mainGroup = 005000000000000000000000;
+			packageReferences = (
+				RC0000000000000000000003 /* XCRemoteSwiftPackageReference "purchases-ios" */,
+			);
 			productRefGroup = 005000000000000000000001 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -781,7 +791,7 @@
 				001600000000000000000002 /* UsageQuotaView.swift in Sources */,
 				001600000000000000000003 /* UsageWarningBanner.swift in Sources */,
 				001600000000000000000004 /* UsageTrackerService.swift in Sources */,
-				001600000000000000000005 /* SynthesisMetricsService.swift in Sources */,
+				001600000000000000000005 /* UsageViewModel.swift in Sources */,
 				001500000000000000000009 /* ListenAICloudService.swift in Sources */,
 				001600000000000000000005 /* UsageViewModel.swift in Sources */,
 				001700000000000000000001 /* SubscriptionModels.swift in Sources */,
@@ -815,6 +825,7 @@
 				001700000000000000000005 /* AuthService.swift in Sources */,
 				001700000000000000000006 /* SignInPromptView.swift in Sources */,
 				001700000000000000000007 /* AppReviewService.swift in Sources */,
+				001700000000000000000008 /* RevenueCatManager.swift in Sources */,
 				00A000000000000000000001 /* OnboardingManager.swift in Sources */,
 				00A000000000000000000002 /* OnboardingView.swift in Sources */,
 				00A000000000000000000003 /* WelcomePageView.swift in Sources */,
@@ -965,7 +976,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = ListenAI/ListenAI.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 10;
+				CURRENT_PROJECT_VERSION = 13;
 				DEVELOPMENT_TEAM = 7RS696YC75;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -981,7 +992,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 2.4;
+				MARKETING_VERSION = 2.7;
 				PRODUCT_BUNDLE_IDENTIFIER = com.kreativekoala.listenai;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -1000,7 +1011,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = ListenAI/ListenAI.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 10;
+				CURRENT_PROJECT_VERSION = 13;
 				DEVELOPMENT_TEAM = 7RS696YC75;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -1016,7 +1027,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 2.4;
+				MARKETING_VERSION = 2.7;
 				PRODUCT_BUNDLE_IDENTIFIER = com.kreativekoala.listenai;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -1050,6 +1061,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		RC0000000000000000000003 /* XCRemoteSwiftPackageReference "purchases-ios" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/RevenueCat/purchases-ios.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 5.0.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		RC0000000000000000000002 /* RevenueCat */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = RC0000000000000000000003 /* XCRemoteSwiftPackageReference "purchases-ios" */;
+			productName = RevenueCat;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 005000000000000000000099 /* Project object */;
 }

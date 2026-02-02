@@ -1,5 +1,7 @@
 package com.listenai.ui.onboarding
 
+import android.widget.Toast
+import androidx.activity.ComponentActivity
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -42,7 +44,9 @@ import androidx.compose.foundation.text.ClickableText
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.foundation.isSystemInDarkTheme
 import com.listenai.data.models.VoicePreset
+import com.listenai.service.billing.BillingService
 import com.listenai.ui.theme.*
+import kotlinx.coroutines.launch
 
 // Theme colors for onboarding - Light mode
 private val WarmBackgroundLight = Color(0xFFFFF8E7)
@@ -880,9 +884,41 @@ private fun parseHexColor(hex: String): Color {
 private fun PaywallPage(
     onComplete: () -> Unit
 ) {
+    val context = LocalContext.current
+    val activity = context as? ComponentActivity
     val isDarkTheme = isSystemInDarkTheme()
     val contentColor = if (isDarkTheme) Color.White else Color.Black
     val cardBgColor = if (isDarkTheme) CardDark else Color.White
+
+    // Initialize billing service
+    val billingService = remember { BillingService.getInstance(context) }
+    val scope = rememberCoroutineScope()
+
+    // Observe billing state
+    val productDetails by billingService.productDetails.collectAsState()
+    val purchaseState by billingService.purchaseState.collectAsState()
+
+    // Get the weekly product
+    val weeklyProduct = productDetails.firstOrNull {
+        it.productId == BillingService.PRODUCT_ID_WEEKLY
+    }
+
+    // Get localized price from Google Play, fallback to loading text
+    val weeklyPrice = weeklyProduct?.subscriptionOfferDetails
+        ?.firstOrNull()
+        ?.pricingPhases
+        ?.pricingPhaseList
+        ?.firstOrNull()
+        ?.formattedPrice
+        ?: "Loading..."
+
+    // Handle purchase success
+    LaunchedEffect(purchaseState) {
+        if (purchaseState is BillingService.PurchaseState.Purchased) {
+            Toast.makeText(context, "Welcome to Pro!", Toast.LENGTH_LONG).show()
+            onComplete()
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -960,13 +996,13 @@ private fun PaywallPage(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = "$9.99/week",
+                    text = "$weeklyPrice/week",
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold,
                     color = Purple
                 )
                 Text(
-                    text = "7-day free trial, then $9.99/week",
+                    text = "7-day free trial, then $weeklyPrice/week",
                     style = MaterialTheme.typography.bodySmall,
                     color = contentColor.copy(alpha = 0.6f)
                 )
@@ -978,9 +1014,18 @@ private fun PaywallPage(
         // Subscribe button
         Button(
             onClick = {
-                // TODO: Implement Google Play Billing subscription flow
-                // For now, complete onboarding - user can subscribe later from settings
-                onComplete()
+                if (activity == null) {
+                    Toast.makeText(context, "Unable to start purchase", Toast.LENGTH_SHORT).show()
+                    return@Button
+                }
+
+                if (weeklyProduct == null) {
+                    Toast.makeText(context, "Product not available yet, please try again", Toast.LENGTH_SHORT).show()
+                    return@Button
+                }
+
+                // Launch real billing flow
+                billingService.launchPurchaseFlow(activity, weeklyProduct)
             },
             modifier = Modifier
                 .fillMaxWidth()
@@ -989,14 +1034,22 @@ private fun PaywallPage(
             colors = ButtonDefaults.buttonColors(
                 containerColor = Purple,
                 contentColor = Color.White
-            )
+            ),
+            enabled = weeklyProduct != null && purchaseState !is BillingService.PurchaseState.Purchasing
         ) {
-            Text(
-                text = "Start Free Trial",
-                fontSize = 16.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = Color.White
-            )
+            if (purchaseState is BillingService.PurchaseState.Purchasing) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(24.dp),
+                    color = Color.White
+                )
+            } else {
+                Text(
+                    text = "Start Free Trial",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color.White
+                )
+            }
         }
 
         Spacer(modifier = Modifier.height(8.dp))
@@ -1164,13 +1217,9 @@ private fun SignInPage(
 
         Spacer(modifier = Modifier.weight(1f))
 
-        // Google Sign In button
+        // Continue without signing in
         Button(
-            onClick = {
-                // TODO: Implement Google Sign In using GoogleAuthService + AuthService
-                // For now, complete onboarding
-                onComplete()
-            },
+            onClick = onComplete,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(56.dp),
@@ -1180,31 +1229,10 @@ private fun SignInPage(
                 contentColor = if (isDarkTheme) Color.Black else Color.White
             )
         ) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // Google icon placeholder
-                Icon(
-                    imageVector = Icons.Default.AccountCircle,
-                    contentDescription = null,
-                    tint = if (isDarkTheme) Color.Black else Color.White
-                )
-                Text(
-                    text = "Sign in with Google",
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Continue without signing in
-        TextButton(onClick = onComplete) {
             Text(
                 text = "Continue Without Signing In",
-                color = Blue
+                fontSize = 16.sp,
+                fontWeight = FontWeight.SemiBold
             )
         }
 

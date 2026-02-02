@@ -97,6 +97,8 @@ fun NavGraph(
             ImportScreen(
                 onNavigateBack = { navController.popBackStack() },
                 onImportComplete = { articleId ->
+                    // Pop ImportScreen so when user goes back from Player, they return to Library
+                    navController.popBackStack()
                     navController.navigate(Screen.Player.createRoute(articleId))
                 },
                 onNavigateToEmail = {
@@ -109,6 +111,8 @@ fun NavGraph(
             MailImportScreen(
                 onNavigateBack = { navController.popBackStack() },
                 onImportComplete = { articleId ->
+                    // Pop MailImportScreen so when user goes back from Player, they return to Library
+                    navController.popBackStack()
                     navController.navigate(Screen.Player.createRoute(articleId))
                 }
             )

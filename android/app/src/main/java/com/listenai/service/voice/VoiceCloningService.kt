@@ -612,15 +612,15 @@ class VoiceCloningService private constructor(private val context: Context) {
         return ClonedVoice(
             id = json.getString("id"),
             name = json.getString("name"),
-            description = json.optString("description").takeIf { it.isNotEmpty() },
+            description = json.optString("description").takeIf { it.isNotEmpty() && it != "null" },
             durationSec = json.optDouble("duration_sec").takeIf { !it.isNaN() },
             exaggeration = json.optDouble("exaggeration").takeIf { !it.isNaN() },
             isDefault = json.optBoolean("is_default"),
             usageCount = json.optInt("usage_count"),
-            createdAt = json.optString("created_at").takeIf { it.isNotEmpty() }?.let {
+            createdAt = json.optString("created_at").takeIf { it.isNotEmpty() && it != "null" }?.let {
                 try { dateFormat.parse(it) } catch (e: Exception) { null }
             },
-            audioUrl = json.optString("audio_url").takeIf { it.isNotEmpty() }
+            audioUrl = json.optString("audio_url").takeIf { it.isNotEmpty() && it != "null" }
         )
     }
 

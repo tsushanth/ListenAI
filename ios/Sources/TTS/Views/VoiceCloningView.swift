@@ -13,13 +13,9 @@ struct VoiceCloningView: View {
     @Environment(\.dismiss) private var dismiss
     @StateObject private var viewModel = VoiceCloningViewModel()
     @State private var showingCloneFlow = false
-    @State private var showingUpgradePrompt = false
     @State private var isEditing = false
-
-    // Check premium status without observing to prevent re-renders
-    private var isPremium: Bool {
-        StoreKitManager.shared.isPremium
-    }
+    @State private var showNotificationExplanation = false
+    @State private var pendingNotifyVoice: VoiceCloningService.ClonedVoice?
 
     var body: some View {
         let _ = logger.debug("VoiceCloningView body evaluated, showingCloneFlow=\(showingCloneFlow)")
@@ -91,6 +87,21 @@ struct VoiceCloningView: View {
             } message: {
                 Text(viewModel.errorMessage)
             }
+            .alert("Get Notified When Ready", isPresented: $showNotificationExplanation) {
+                Button("Enable Notifications") {
+                    if let voice = pendingNotifyVoice {
+                        Task {
+                            await viewModel.notifyWhenPreviewReady(voice)
+                        }
+                    }
+                    pendingNotifyVoice = nil
+                }
+                Button("Not Now", role: .cancel) {
+                    pendingNotifyVoice = nil
+                }
+            } message: {
+                Text("Voice cloning usually completes in seconds, but can take longer for high-quality results.\n\nWe'll send you ONE notification when your voice is ready. We never send marketing or promotional notifications.")
+            }
             .fullScreenCover(isPresented: $showingCloneFlow) {
                 // Container view that uses the singleton coordinator
                 // The coordinator preserves state even if SwiftUI recreates this view
@@ -101,9 +112,6 @@ struct VoiceCloningView: View {
                     // Clean up the coordinator when the sheet is dismissed
                     VoiceCloningFlowCoordinator.shared.endFlow()
                 }
-            }
-            .sheet(isPresented: $showingUpgradePrompt) {
-                VoiceCloningLimitView()
             }
         }
     }
@@ -161,9 +169,8 @@ struct VoiceCloningView: View {
                             }
                         },
                         onNotifyWhenReady: {
-                            Task {
-                                await viewModel.notifyWhenPreviewReady(voice)
-                            }
+                            pendingNotifyVoice = voice
+                            showNotificationExplanation = true
                         },
                         onDelete: {
                             Task {
@@ -181,34 +188,24 @@ struct VoiceCloningView: View {
     // MARK: - Actions
 
     private func startCloningFlow() {
-        // Check if user can create more clones based on subscription
-        let clonedCount = viewModel.clonedVoices.count
-        let maxFreeClones = 0 // Free users get 0 clones
-        let maxProClones = 10
+        // Voice cloning is now available to all users with no limits
+        logger.info("Starting voice clone flow")
 
-        if !isPremium && clonedCount >= maxFreeClones {
-            showingUpgradePrompt = true
-        } else if isPremium && clonedCount >= maxProClones {
-            viewModel.errorMessage = "You've reached the maximum number of voice clones (\(maxProClones))."
-            viewModel.showError = true
-        } else {
-            logger.info("Starting clone flow")
-            // Initialize the coordinator before showing the sheet
-            // This ensures the view model is ready before the view appears
-            VoiceCloningFlowCoordinator.shared.startFlow(
-                onComplete: { [weak viewModel] in
-                    logger.info("Clone flow completed via coordinator")
-                    showingCloneFlow = false
-                    Task {
-                        await viewModel?.loadVoices()
-                    }
-                },
-                onDismiss: {
-                    showingCloneFlow = false
+        // Initialize the coordinator before showing the sheet
+        // This ensures the view model is ready before the view appears
+        VoiceCloningFlowCoordinator.shared.startFlow(
+            onComplete: { [weak viewModel] in
+                logger.info("Clone flow completed via coordinator")
+                showingCloneFlow = false
+                Task {
+                    await viewModel?.loadVoices()
                 }
-            )
-            showingCloneFlow = true
-        }
+            },
+            onDismiss: {
+                showingCloneFlow = false
+            }
+        )
+        showingCloneFlow = true
     }
 }
 

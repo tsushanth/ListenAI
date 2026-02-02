@@ -513,7 +513,10 @@ fun VoiceCloningListScreen(
                     .fillMaxWidth()
                     .padding(horizontal = 20.dp, vertical = 16.dp)
                     .height(56.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color.Black),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color.Black,
+                    contentColor = Color.White
+                ),
                 shape = RoundedCornerShape(12.dp)
             ) {
                 Icon(

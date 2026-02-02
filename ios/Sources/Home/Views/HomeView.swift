@@ -7,6 +7,7 @@ struct HomeView: View {
     @EnvironmentObject var playbackService: AudioPlaybackService
     @EnvironmentObject var queueManager: QueueManager
     @Environment(\.colorScheme) private var colorScheme
+    @ObservedObject private var revenueCat = RevenueCatManager.shared
 
     @State private var showingImportSheet = false
     @State private var selectedImportType: ImportType?
@@ -15,8 +16,10 @@ struct HomeView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 24) {
-                // Promotional Banner
-                promoBanner
+                // Promotional Banner (hide for premium users)
+                if !revenueCat.isPremium {
+                    promoBanner
+                }
 
                 // Quick Actions Section with header
                 quickActionsSection
@@ -309,23 +312,35 @@ struct ContinueListeningCard: View {
 // MARK: - PRO Badge Button
 
 struct ProBadgeButton: View {
-    @StateObject private var storeManager = StoreKitManager.shared
+    @ObservedObject private var revenueCat = RevenueCatManager.shared
     @State private var showingSubscription = false
 
     var body: some View {
-        Button {
-            showingSubscription = true
-        } label: {
-            Text(storeManager.isPremium ? "PRO" : "PRO")
+        if revenueCat.isPremium {
+            // Premium user - show green PRO badge (no action needed)
+            Text("PRO")
                 .font(.caption.bold())
                 .padding(.horizontal, 12)
                 .padding(.vertical, 6)
-                .background(storeManager.isPremium ? Color.green.gradient : Color.orange.gradient)
+                .background(Color.green.gradient)
                 .foregroundStyle(.white)
                 .clipShape(Capsule())
-        }
-        .sheet(isPresented: $showingSubscription) {
-            UpgradePromptView()
+        } else {
+            // Free user - show orange upgrade button
+            Button {
+                showingSubscription = true
+            } label: {
+                Text("PRO")
+                    .font(.caption.bold())
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(Color.orange.gradient)
+                    .foregroundStyle(.white)
+                    .clipShape(Capsule())
+            }
+            .sheet(isPresented: $showingSubscription) {
+                UpgradePromptView()
+            }
         }
     }
 }

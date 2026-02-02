@@ -112,27 +112,6 @@ struct SignInPageView: View {
                     }
                 }
 
-                // Google Sign In
-                Button {
-                    Task { await signInWithGoogle() }
-                } label: {
-                    HStack(spacing: 8) {
-                        Image(systemName: "g.circle.fill")
-                            .font(.title2)
-                        Text("Sign in with Google")
-                            .fontWeight(.medium)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 50)
-                    .background(Color(.systemBackground))
-                    .foregroundStyle(.primary)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12)
-                            .stroke(Color(.systemGray3), lineWidth: 1)
-                    )
-                    .cornerRadius(12)
-                }
-
                 // Continue without sign in
                 Button {
                     manager.completeOnboarding()
@@ -184,21 +163,6 @@ struct SignInPageView: View {
 
         do {
             try await authService.signInWithApple()
-            try? await authService.linkDevice()
-        } catch AuthError.userCancelled {
-            // Don't show error for cancellation
-        } catch {
-            errorMessage = error.localizedDescription
-            showError = true
-        }
-    }
-
-    private func signInWithGoogle() async {
-        isSigningIn = true
-        defer { isSigningIn = false }
-
-        do {
-            try await authService.signInWithGoogle()
             try? await authService.linkDevice()
         } catch AuthError.userCancelled {
             // Don't show error for cancellation

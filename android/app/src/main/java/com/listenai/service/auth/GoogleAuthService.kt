@@ -38,10 +38,16 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
+import java.io.BufferedReader
+import java.io.InputStreamReader
+import java.io.PrintWriter
+import java.net.ServerSocket
 import java.security.MessageDigest
 import java.time.Instant
 import java.util.UUID
 import java.util.concurrent.TimeUnit
+import kotlin.coroutines.resume
+import kotlin.coroutines.suspendCoroutine
 
 /**
  * Service for handling Google OAuth authentication.
@@ -54,13 +60,27 @@ class GoogleAuthService(private val context: Context) {
 
         // OAuth configuration - Web Client ID for Android Credential Manager
         // Using the Web Client ID for Supabase Auth integration
-        private const val WEB_CLIENT_ID = "85846747177-dkoscai57kppqeofk1229otdjip9kmuu.apps.googleusercontent.com"
+        private const val WEB_CLIENT_ID = "517355381306-tdssnaf01h8nd69vd6rlu9l6chijmod6.apps.googleusercontent.com"
+
+        // Android OAuth Client ID for GoogleSignIn API (requires SHA-1 registration)
+        private const val ANDROID_CLIENT_ID = "517355381306-b9dkf392rcmna9vrspkc5fdavhgcb1l7.apps.googleusercontent.com"
+
+        // iOS OAuth Client ID for Gmail OAuth flow (iOS clients support custom scheme URIs)
+        private const val IOS_CLIENT_ID = "517355381306-iiuf6umqhie29ii0rnrd0shtb4e1ou5i.apps.googleusercontent.com"
 
         // Gmail scope for reading emails
         private const val GMAIL_SCOPE = "https://www.googleapis.com/auth/gmail.modify"
 
+        // OAuth redirect URI for PKCE flow (using iOS client ID custom scheme)
+        private const val OAUTH_REDIRECT_URI = "com.googleusercontent.apps.517355381306-iiuf6umqhie29ii0rnrd0shtb4e1ou5i:/oauth2redirect"
+
+        // OAuth endpoints
+        private const val OAUTH_AUTHORIZATION_ENDPOINT = "https://accounts.google.com/o/oauth2/v2/auth"
+        private const val OAUTH_TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token"
+
         // Preferences keys
         private const val PREFS_NAME = "listenai_auth_prefs"
+        private const val KEY_CODE_VERIFIER = "pkce_code_verifier"
         private const val KEY_USER_ID = "user_id"
         private const val KEY_EMAIL = "email"
         private const val KEY_DISPLAY_NAME = "display_name"
@@ -93,7 +113,7 @@ class GoogleAuthService(private val context: Context) {
     private val googleSignInClient: GoogleSignInClient by lazy {
         val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
             .requestEmail()
-            .requestIdToken(WEB_CLIENT_ID)
+            .requestIdToken(WEB_CLIENT_ID)  // Use Web client ID for server-side access
             .requestScopes(Scope(GMAIL_SCOPE))
             .build()
         GoogleSignIn.getClient(context, gso)
@@ -496,6 +516,202 @@ class GoogleAuthService(private val context: Context) {
         val digest = md.digest(bytes)
         return digest.fold("") { str, it -> str + "%02x".format(it) }
     }
+
+    /**
+     * Start Gmail OAuth flow using PKCE with Chrome Custom Tab
+     * Returns immediately after launching the browser - the redirect will be handled by MainActivity
+     */
+    suspend fun startGmailOAuthFlow(activity: Activity): Result<Unit> {
+        return try {
+            // Generate PKCE code verifier and challenge
+            val codeVerifier = generateCodeVerifier()
+            val codeChallenge = generateCodeChallenge(codeVerifier)
+
+            // Store code verifier for later use in handleOAuthRedirect
+            encryptedPrefs.edit().putString(KEY_CODE_VERIFIER, codeVerifier).apply()
+
+            // Build authorization URL
+            val authUrl = buildAuthorizationUrl(codeChallenge)
+
+            // Launch Chrome Custom Tab
+            withContext(Dispatchers.Main) {
+                val customTabsIntent = androidx.browser.customtabs.CustomTabsIntent.Builder()
+                    .setShowTitle(true)
+                    .build()
+
+                customTabsIntent.launchUrl(activity, android.net.Uri.parse(authUrl))
+                Log.d(TAG, "Launched Gmail OAuth flow with PKCE")
+            }
+
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to start Gmail OAuth flow", e)
+            _error.value = GoogleAuthError.AuthenticationFailed(e.message ?: "Failed to start OAuth")
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Handle OAuth redirect and exchange authorization code for access token
+     */
+    suspend fun handleOAuthRedirect(data: android.net.Uri): Result<String> = withContext(Dispatchers.IO) {
+        try {
+            // Extract authorization code from redirect
+            val code = data.getQueryParameter("code")
+            if (code == null) {
+                val error = data.getQueryParameter("error") ?: "Unknown error"
+                Log.e(TAG, "OAuth redirect error: $error")
+                return@withContext Result.failure(IllegalStateException("OAuth error: $error"))
+            }
+
+            // Retrieve stored code verifier
+            val codeVerifier = encryptedPrefs.getString(KEY_CODE_VERIFIER, null)
+            if (codeVerifier == null) {
+                Log.e(TAG, "Code verifier not found")
+                return@withContext Result.failure(IllegalStateException("Code verifier not found"))
+            }
+
+            // Exchange authorization code for access token
+            val accessToken = exchangeCodeForToken(code, codeVerifier)
+
+            // Clear code verifier
+            encryptedPrefs.edit().remove(KEY_CODE_VERIFIER).apply()
+
+            // Store access token
+            encryptedPrefs.edit().putString(KEY_ACCESS_TOKEN, accessToken).apply()
+
+            // Fetch user info to update profile
+            val userInfo = fetchUserInfo(accessToken)
+            userInfo?.let { info ->
+                encryptedPrefs.edit().apply {
+                    putString(KEY_USER_ID, info.id)
+                    putString(KEY_EMAIL, info.email)
+                    putString(KEY_DISPLAY_NAME, info.name)
+                    putString(KEY_AVATAR_URL, info.picture)
+                    putBoolean(KEY_IS_AUTHENTICATED, true)
+                    apply()
+                }
+
+                withContext(Dispatchers.Main) {
+                    _userProfile.value = UserProfile(
+                        id = info.id,
+                        email = info.email,
+                        displayName = info.name,
+                        avatarUrl = info.picture
+                    )
+                    _isAuthenticated.value = true
+                }
+            }
+
+            Log.d(TAG, "Successfully exchanged code for access token")
+            Result.success(accessToken)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to handle OAuth redirect", e)
+            _error.value = GoogleAuthError.AuthenticationFailed(e.message ?: "Token exchange failed")
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Generate PKCE code verifier (random 128-character string)
+     */
+    private fun generateCodeVerifier(): String {
+        val random = java.security.SecureRandom()
+        val bytes = ByteArray(96) // 96 bytes = 128 characters in base64
+        random.nextBytes(bytes)
+        return android.util.Base64.encodeToString(bytes, android.util.Base64.URL_SAFE or android.util.Base64.NO_WRAP or android.util.Base64.NO_PADDING)
+    }
+
+    /**
+     * Generate PKCE code challenge (SHA256 hash of code verifier)
+     */
+    private fun generateCodeChallenge(codeVerifier: String): String {
+        val bytes = codeVerifier.toByteArray(Charsets.US_ASCII)
+        val md = MessageDigest.getInstance("SHA-256")
+        val digest = md.digest(bytes)
+        return android.util.Base64.encodeToString(digest, android.util.Base64.URL_SAFE or android.util.Base64.NO_WRAP or android.util.Base64.NO_PADDING)
+    }
+
+    /**
+     * Build OAuth authorization URL with PKCE parameters
+     */
+    private fun buildAuthorizationUrl(codeChallenge: String): String {
+        val url = android.net.Uri.parse(OAUTH_AUTHORIZATION_ENDPOINT).buildUpon()
+            .appendQueryParameter("client_id", IOS_CLIENT_ID)
+            .appendQueryParameter("redirect_uri", OAUTH_REDIRECT_URI)
+            .appendQueryParameter("response_type", "code")
+            .appendQueryParameter("scope", GMAIL_SCOPE)
+            .appendQueryParameter("code_challenge", codeChallenge)
+            .appendQueryParameter("code_challenge_method", "S256")
+            .appendQueryParameter("access_type", "offline")
+            .appendQueryParameter("prompt", "consent")
+            .build()
+            .toString()
+
+        Log.d(TAG, "Authorization URL: $url")
+        Log.d(TAG, "Redirect URI: $OAUTH_REDIRECT_URI")
+        return url
+    }
+
+    /**
+     * Exchange authorization code for access token
+     */
+    private suspend fun exchangeCodeForToken(code: String, codeVerifier: String): String = withContext(Dispatchers.IO) {
+        val requestBody = FormBody.Builder()
+            .add("client_id", IOS_CLIENT_ID)
+            .add("code", code)
+            .add("code_verifier", codeVerifier)
+            .add("grant_type", "authorization_code")
+            .add("redirect_uri", OAUTH_REDIRECT_URI)
+            .build()
+
+        val request = Request.Builder()
+            .url(OAUTH_TOKEN_ENDPOINT)
+            .post(requestBody)
+            .build()
+
+        val response = httpClient.newCall(request).execute()
+        if (!response.isSuccessful) {
+            val errorBody = response.body?.string() ?: "Unknown error"
+            throw IllegalStateException("Token exchange failed: $errorBody")
+        }
+
+        val json = JSONObject(response.body!!.string())
+        json.getString("access_token")
+    }
+
+    /**
+     * Fetch user info from Google API
+     */
+    private suspend fun fetchUserInfo(accessToken: String): UserInfo? = withContext(Dispatchers.IO) {
+        try {
+            val request = Request.Builder()
+                .url("https://www.googleapis.com/oauth2/v2/userinfo")
+                .addHeader("Authorization", "Bearer $accessToken")
+                .build()
+
+            val response = httpClient.newCall(request).execute()
+            if (!response.isSuccessful) return@withContext null
+
+            val json = JSONObject(response.body!!.string())
+            UserInfo(
+                id = json.getString("id"),
+                email = json.getString("email"),
+                name = json.optString("name"),
+                picture = json.optString("picture")
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to fetch user info", e)
+            null
+        }
+    }
+
+    private data class UserInfo(
+        val id: String,
+        val email: String,
+        val name: String?,
+        val picture: String?
+    )
 }
 
 /**

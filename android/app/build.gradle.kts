@@ -21,8 +21,8 @@ android {
         applicationId = "com.listenai"
         minSdk = 26
         targetSdk = 35
-        versionCode = 10
-        versionName = "2.3"
+        versionCode = 13
+        versionName = "2.6"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -143,6 +143,13 @@ dependencies {
     // Google Play In-App Review
     implementation("com.google.android.play:review:2.0.1")
     implementation("com.google.android.play:review-ktx:2.0.1")
+
+    // Google Play Billing (In-App Purchases & Subscriptions)
+    implementation("com.android.billingclient:billing:7.1.1")
+    implementation("com.android.billingclient:billing-ktx:7.1.1")
+
+    // Chrome Custom Tabs for OAuth
+    implementation("androidx.browser:browser:1.8.0")
 
     // Security (for encrypted preferences)
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
