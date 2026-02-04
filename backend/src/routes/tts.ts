@@ -32,6 +32,11 @@ import {
 } from '../lib/voiceMapping.js';
 import { publishTTSJob } from '../lib/pubsub.js';
 import { getElevenLabsClient, isElevenLabsConfigured } from '../lib/elevenLabsClient.js';
+import {
+  getJobProgress,
+  calculatePercentage,
+  calculateEstimatedRemaining,
+} from '../lib/jobProgressCache.js';
 import type {
   AuthenticatedRequest,
   TTSProvider,
@@ -835,14 +840,43 @@ ttsRouter.get('/job/:jobId', asyncHandler(async (req: AuthenticatedRequest, res:
     return;
   }
 
-  // 4. Look up real job
+  // 4. Check memory cache first (fast path for in-progress jobs)
+  const cachedProgress = getJobProgress(jobId);
+  if (cachedProgress) {
+    // Job is actively being processed - return progress from memory cache
+    const percentage = calculatePercentage(cachedProgress);
+    const estimatedRemainingSec = calculateEstimatedRemaining(cachedProgress);
+
+    const response: TTSJobStatusResponse = {
+      job_id: jobId,
+      status: cachedProgress.status,  // 'processing' or 'partial_ready'
+      progress: {
+        duration_sec: cachedProgress.estimatedDurationSec,
+        progress_sec: cachedProgress.progressSec,
+        chunks_total: cachedProgress.chunksTotal,
+        chunks_completed: cachedProgress.chunksCompleted,
+        percentage,
+        estimated_remaining_sec: estimatedRemainingSec ?? undefined,
+      },
+      preview_url: cachedProgress.previewUrl,
+      preview_duration_sec: cachedProgress.previewDurationSec,
+      created_at: new Date(cachedProgress.startedAt).toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    ttsLogger.debug({ jobId, status: cachedProgress.status, percentage }, 'Job progress from memory cache');
+    res.json(response);
+    return;
+  }
+
+  // 5. Not in cache - look up from DB (job is complete or was never started)
   const job = await getTTSJobForUser(jobId, userId);
   if (!job) {
     throw new NotFoundError('Job');
   }
 
-  // 5. Estimate total duration if not yet known
-  // Use actual duration if available, otherwise estimate from preview or character count
+  // Job found in DB - this is for completed/failed jobs or ones not yet in cache
+  // Estimate total duration if not yet known
   let estimatedDurationSec: number | null = job.duration_sec;
 
   if (!estimatedDurationSec && job.input_char_count) {
@@ -868,7 +902,7 @@ ttsRouter.get('/job/:jobId', asyncHandler(async (req: AuthenticatedRequest, res:
     }
   }
 
-  // 6. Calculate progress percentage and estimated remaining synthesis time
+  // Calculate progress percentage and estimated remaining synthesis time
   let percentage = 0;
   let estimatedRemainingSec: number | undefined;
 
@@ -918,7 +952,7 @@ ttsRouter.get('/job/:jobId', asyncHandler(async (req: AuthenticatedRequest, res:
     estimatedRemainingSec = Math.max(0, Math.round(remainingAudioSec / synthesisRate));
   }
 
-  // 7. Get audio URLs based on status
+  // Get audio URLs based on status
   let audioUrl: string | undefined;
   let previewUrl: string | undefined;
   let previewDurationSec: number | undefined;
@@ -938,7 +972,7 @@ ttsRouter.get('/job/:jobId', asyncHandler(async (req: AuthenticatedRequest, res:
     }
   }
 
-  // 8. Build response
+  // Build response
   const response: TTSJobStatusResponse = {
     job_id: job.id,
     status: job.status,

@@ -22,6 +22,13 @@ import {
   type TTSJobMessage,
 } from '../lib/pubsub.js';
 import {
+  initJobProgress,
+  updateChunkProgress,
+  setPreviewReady,
+  clearJobProgress,
+  getJobProgress,
+} from '../lib/jobProgressCache.js';
+import {
   initJobMetrics,
   recordProcessingStart,
   recordSegmentInference,
@@ -120,6 +127,54 @@ let stuckJobInterval: NodeJS.Timeout | null = null;
 
 // Worker instance identifier for metrics
 const WORKER_INSTANCE = process.env.K_REVISION || `worker-${Date.now()}`;
+
+// ============================================================================
+// Helper Functions
+// ============================================================================
+
+/**
+ * Update job status to partial_ready with preview audio.
+ * DRY helper used by both ElevenLabs and self-hosted preview paths.
+ */
+async function markPreviewReady(
+  jobId: string,
+  previewPath: string,
+  previewDurationSec: number,
+  options?: {
+    chunksTotal?: number;
+    chunksCompleted?: number;
+    previewCharCount?: number;
+    previewGenerationMs?: number;
+  }
+): Promise<void> {
+  // Generate signed URL for preview audio
+  const { data: signedUrlData } = await supabase.storage
+    .from('audio')
+    .createSignedUrl(previewPath, 3600);  // 1 hour expiry
+  const previewSignedUrl = signedUrlData?.signedUrl || previewPath;
+
+  // Update memory cache with preview ready status
+  setPreviewReady(jobId, previewSignedUrl, previewDurationSec);
+
+  // Update database
+  await supabase
+    .from('tts_jobs')
+    .update({
+      status: 'partial_ready',
+      preview_audio_path: previewPath,
+      preview_duration_sec: previewDurationSec,
+      progress_sec: previewDurationSec,
+      preview_char_count: options?.previewCharCount,
+      preview_generation_ms: options?.previewGenerationMs,
+      chunks_total: options?.chunksTotal,
+      chunks_completed: options?.chunksCompleted,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', jobId);
+
+  // Record metrics
+  recordPartialReady(jobId, previewDurationSec);
+}
 
 // ============================================================================
 // Text Segmentation
@@ -639,24 +694,13 @@ async function generateMicroPreview(
   // Get micro duration
   const microDurationSec = await getAudioDuration(microResult.audioBuffer);
 
-  // Update job to partial_ready so iOS can start playing ASAP
-  // Include preview_char_count and preview_generation_ms for accurate progress estimation
+  // Update cache + DB to partial_ready status
   const dbUpdateStart = Date.now();
-  await supabase
-    .from('tts_jobs')
-    .update({
-      status: 'partial_ready',
-      preview_audio_path: microPath,
-      preview_duration_sec: microDurationSec,
-      preview_char_count: microText.length,  // Track chars for rate calculation
-      preview_generation_ms: microInferenceMs,  // Track synthesis time for rate calculation
-      progress_sec: microDurationSec,
-      updated_at: new Date().toISOString(),
-    })
-    .eq('id', jobId);
+  await markPreviewReady(jobId, microPath, microDurationSec, {
+    previewCharCount: microText.length,
+    previewGenerationMs: microInferenceMs,
+  });
   const dbUpdateMs = Date.now() - dbUpdateStart;
-
-  recordPartialReady(jobId, microDurationSec);
 
   const totalMicroFlowMs = Date.now() - microFlowStart;
 
@@ -1229,6 +1273,16 @@ async function processJob(message: TTSJobMessage): Promise<void> {
   const speed = jobData.speed as number;
   const cacheKey = jobData.cache_key as string;
 
+  // Initialize memory cache for progress tracking
+  // Estimate chunks based on character count (500 chars per chunk typical)
+  const estimatedChunks = Math.ceil(charCount / 500);
+  // Estimate duration: ~150 chars/sec speaking rate
+  const estimatedDurationSec = Math.round(charCount / 150);
+  initJobProgress(jobId, estimatedChunks, estimatedDurationSec, {
+    voiceId,
+    articleId: jobData.article_id as string | undefined,
+  });
+
   workerLogger.info({ jobId, voiceId, charCount, attempt }, 'Processing TTS job');
 
   try {
@@ -1310,6 +1364,9 @@ async function processJob(message: TTSJobMessage): Promise<void> {
       .delete()
       .eq('job_id', jobId);
 
+    // 8. Clear job from memory cache (job is now complete in DB)
+    clearJobProgress(jobId);
+
     // Track success for failure rate metrics
     trackJobResult(voiceId, modelId, true);
 
@@ -1318,6 +1375,9 @@ async function processJob(message: TTSJobMessage): Promise<void> {
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     workerLogger.error({ error, jobId, attempt }, 'Job processing failed');
+
+    // Clear job from memory cache on failure too
+    clearJobProgress(jobId);
 
     // Record failure metrics
     recordJobFailure(jobId, 'SYNTHESIS_FAILED', errorMessage, voiceId, modelId);
@@ -1473,22 +1533,14 @@ async function processWithPreview(
   workerLogger.info({ jobId, previewPath, mp3Size: previewMp3.length }, 'Uploading preview');
   await uploadAudioToCache(previewPath, previewMp3, 'mp3');
 
-  // 5. Update job to partial_ready
-  await supabase
-    .from('tts_jobs')
-    .update({
-      status: 'partial_ready',
-      preview_audio_path: previewPath,
-      preview_duration_sec: previewDurationSec,
-      progress_sec: previewDurationSec,
-      chunks_total: sentences.length,
-      chunks_completed: previewSentences.length,
-      updated_at: new Date().toISOString(),
-    })
-    .eq('id', jobId);
+  // 5. Update cache + DB to partial_ready status (DRY helper)
+  await markPreviewReady(jobId, previewPath, previewDurationSec, {
+    chunksTotal: sentences.length,
+    chunksCompleted: previewSentences.length,
+  });
 
-  // Record partial ready metrics
-  recordPartialReady(jobId, previewDurationSec);
+  // Update memory cache chunk progress
+  updateChunkProgress(jobId, previewDurationSec);
 
   workerLogger.info({ jobId, previewDurationSec }, 'Preview uploaded, status: partial_ready');
 
@@ -1546,6 +1598,11 @@ async function processWithPreview(
   const remainingInferenceMs = Date.now() - remainingInferenceStart;
   recordSegmentInference(jobId, 1, remainingInferenceMs, remainingResult.usedGpu);
   recordInferenceLatency(modelId, remainingInferenceMs, remainingResult.usedGpu);
+
+  // Update memory cache with remaining chunk progress
+  // Estimate remaining audio duration from remaining chars
+  const remainingDurationSec = Math.round(remainingText.length / 150);
+  updateChunkProgress(jobId, remainingDurationSec);
 
   workerLogger.info({ jobId, usedGpu: remainingResult.usedGpu, inferenceMs: remainingInferenceMs }, 'Remaining audio generated');
   const remainingWav = remainingResult.audioBuffer;
@@ -1615,22 +1672,42 @@ async function processWithPreview(
 async function checkForStuckJobs(): Promise<void> {
   const cutoffTime = new Date(Date.now() - workerConfig.stuckJobTimeoutMs).toISOString();
 
-  const { data: stuckJobs, error } = await supabase
+  // Check for jobs stuck in 'processing' status
+  const { data: stuckProcessingJobs, error: processingError } = await supabase
     .from('tts_jobs')
-    .select('id, started_at, retry_count')
+    .select('id, started_at, retry_count, status')
     .eq('status', 'processing')
     .lt('started_at', cutoffTime);
 
-  if (error) {
-    workerLogger.error({ error }, 'Failed to check for stuck jobs');
+  if (processingError) {
+    workerLogger.error({ error: processingError }, 'Failed to check for stuck processing jobs');
+  }
+
+  // Also check for jobs stuck in 'queued' status (Pub/Sub message may have been lost)
+  const { data: stuckQueuedJobs, error: queuedError } = await supabase
+    .from('tts_jobs')
+    .select('id, created_at, retry_count, status')
+    .eq('status', 'queued')
+    .lt('created_at', cutoffTime);
+
+  if (queuedError) {
+    workerLogger.error({ error: queuedError }, 'Failed to check for stuck queued jobs');
+  }
+
+  const stuckJobs = [
+    ...(stuckProcessingJobs || []).map(j => ({ ...j, stuckType: 'processing' as const })),
+    ...(stuckQueuedJobs || []).map(j => ({ ...j, stuckType: 'queued' as const })),
+  ];
+
+  if (stuckJobs.length === 0) {
     return;
   }
 
-  if (!stuckJobs || stuckJobs.length === 0) {
-    return;
-  }
-
-  workerLogger.warn({ count: stuckJobs.length }, 'Found stuck jobs');
+  workerLogger.warn({
+    count: stuckJobs.length,
+    processing: stuckProcessingJobs?.length || 0,
+    queued: stuckQueuedJobs?.length || 0,
+  }, 'Found stuck jobs');
 
   for (const job of stuckJobs) {
     const retryCount = (job.retry_count || 0) + 1;
@@ -1640,9 +1717,9 @@ async function checkForStuckJobs(): Promise<void> {
         jobId: job.id,
         status: 'failed',
         errorCode: 'STUCK_JOB',
-        errorMessage: `Job stuck in processing for over ${workerConfig.stuckJobTimeoutMs / 1000}s after ${retryCount} attempts`,
+        errorMessage: `Job stuck in ${job.stuckType} for over ${workerConfig.stuckJobTimeoutMs / 1000}s after ${retryCount} attempts`,
       });
-      workerLogger.error({ jobId: job.id, retryCount }, 'Stuck job marked as failed');
+      workerLogger.error({ jobId: job.id, retryCount, stuckType: job.stuckType }, 'Stuck job marked as failed');
     } else {
       const republished = await republishForRetry(job.id, retryCount, workerConfig.maxRetries);
       if (republished) {
@@ -1653,7 +1730,7 @@ async function checkForStuckJobs(): Promise<void> {
             retry_count: retryCount,
           })
           .eq('id', job.id);
-        workerLogger.info({ jobId: job.id, retryCount }, 'Stuck job requeued for retry');
+        workerLogger.info({ jobId: job.id, retryCount, stuckType: job.stuckType }, 'Stuck job requeued for retry');
       }
     }
   }

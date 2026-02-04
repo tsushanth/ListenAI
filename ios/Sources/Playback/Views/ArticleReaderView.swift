@@ -1063,6 +1063,11 @@ struct ArticleReaderView: View {
 
     // MARK: - Seek Slider
 
+    /// Whether URL player is actively playing/paused for this article (DRY helper)
+    private var isURLPlayerActiveForArticle: Bool {
+        urlPlayer.currentArticleID == article.id && urlPlayer.state.isActive
+    }
+
     /// Whether seek is disabled (during active streaming or preview with restrictions)
     private var isSeekDisabled: Bool {
         // Disabled during streaming
@@ -1080,7 +1085,7 @@ struct ArticleReaderView: View {
     /// Current slider progress (handles URL player, streaming, and regular playback)
     private var sliderProgress: Double {
         // Check URL player first (new job-based playback)
-        if urlPlayer.currentArticleID == article.id && urlPlayer.state.isActive {
+        if isURLPlayerActiveForArticle {
             guard urlPlayer.duration > 0 else { return 0 }
             let progress = urlPlayer.currentTime / urlPlayer.duration
             return progress.isNaN || progress.isInfinite ? 0 : min(1, progress)
@@ -1343,8 +1348,9 @@ struct ArticleReaderView: View {
     // MARK: - Actions
 
     private func handlePlayPause() {
-        // Check if URL player is active for this article (new job-based playback)
-        if urlPlayer.currentArticleID == article.id {
+        // Check if URL player is actively playing or paused for this article
+        // Only toggle if there's actual audio loaded (not just article ID set from prewarm)
+        if isURLPlayerActiveForArticle {
             urlPlayer.togglePlayPause()
             return
         }
@@ -1370,7 +1376,7 @@ struct ArticleReaderView: View {
 
     private func handleSkipBackward() {
         // Check if URL player is active for this article (new job-based playback)
-        if urlPlayer.currentArticleID == article.id && urlPlayer.state.isActive {
+        if isURLPlayerActiveForArticle {
             urlPlayer.seek(by: -10)
             return
         }
@@ -1381,7 +1387,7 @@ struct ArticleReaderView: View {
 
     private func handleSkipForward() {
         // Check if URL player is active for this article (new job-based playback)
-        if urlPlayer.currentArticleID == article.id && urlPlayer.state.isActive {
+        if isURLPlayerActiveForArticle {
             urlPlayer.seek(by: 10)
             return
         }
