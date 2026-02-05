@@ -148,9 +148,15 @@ async function markPreviewReady(
   }
 ): Promise<void> {
   // Generate signed URL for preview audio
-  const { data: signedUrlData } = await supabase.storage
-    .from('audio')
+  // Note: bucket is 'audio-files', path is relative within the bucket
+  const { data: signedUrlData, error: signedUrlError } = await supabase.storage
+    .from('audio-files')
     .createSignedUrl(previewPath, 3600);  // 1 hour expiry
+
+  if (signedUrlError) {
+    workerLogger.error({ error: signedUrlError, previewPath, jobId }, 'Failed to generate signed URL for preview');
+  }
+
   const previewSignedUrl = signedUrlData?.signedUrl || previewPath;
 
   // Update memory cache with preview ready status
