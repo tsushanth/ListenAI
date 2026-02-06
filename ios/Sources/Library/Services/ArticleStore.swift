@@ -68,6 +68,9 @@ final class ArticleStore: ObservableObject {
             TTSJobManager.shared.cancelAndCleanup(articleId: article.id)
         }
 
+        // Clear all persisted TTS data for this article (audio cache, UserDefaults entries for all voices)
+        TTSJobManager.shared.clearAllPersistedData(for: article.id)
+
         saveArticles()
     }
 
@@ -86,6 +89,13 @@ final class ArticleStore: ObservableObject {
     func toggleFavorite(_ article: Article) {
         guard let index = articles.firstIndex(where: { $0.id == article.id }) else { return }
         articles[index].isFavorite.toggle()
+        saveArticles()
+    }
+
+    /// Update article title
+    func updateTitle(_ article: Article, newTitle: String) {
+        guard let index = articles.firstIndex(where: { $0.id == article.id }) else { return }
+        articles[index].title = newTitle
         saveArticles()
     }
 

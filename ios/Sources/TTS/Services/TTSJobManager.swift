@@ -95,6 +95,10 @@ final class TTSJobManager: ObservableObject {
     /// Called when job fails
     var onJobFailed: ((UUID, String) -> Void)?
 
+    /// Called when job is not found (expired/cleaned up on server).
+    /// The view should check backend cache and potentially restart generation.
+    var onJobExpired: ((UUID, String) -> Void)?
+
     // MARK: - Private Properties
 
     private var pollingTasks: [UUID: Task<Void, Never>] = [:]
@@ -421,10 +425,14 @@ final class TTSJobManager: ObservableObject {
                 break
             } catch let error as TTSJobError {
                 if case .jobNotFound = error {
-                    // Job expired or was deleted - stop tracking
-                    print("[TTSJobManager] Job not found, stopping tracking")
+                    // Job expired or was deleted - stop tracking and notify UI
+                    print("[TTSJobManager] Job not found (expired?), stopping tracking and notifying UI")
                     await MainActor.run {
+                        // Get voiceId before removing
+                        let voiceId = self.activeJobs[articleId]?.voiceId ?? ""
                         self.activeJobs.removeValue(forKey: articleId)
+                        // Notify UI so it can check cache and potentially restart
+                        self.onJobExpired?(articleId, voiceId)
                     }
                     break
                 }
@@ -583,6 +591,35 @@ final class TTSJobManager: ObservableObject {
     func clearAllCache() {
         try? FileManager.default.removeItem(at: cacheDirectory)
         try? FileManager.default.createDirectory(at: cacheDirectory, withIntermediateDirectories: true)
+    }
+
+    /// Clear all persisted TTS data for an article (UserDefaults entries for all voices)
+    /// Call this when an article is deleted to clean up all associated data.
+    func clearAllPersistedData(for articleId: UUID) {
+        let articleIdString = articleId.uuidString
+        let prefixes = [
+            "ttsJobId_\(articleIdString)_",
+            "ttsJobStatus_\(articleIdString)_",
+            "ttsFullAudioUrl_\(articleIdString)_"
+        ]
+
+        // Find and remove all UserDefaults keys for this article
+        let defaults = UserDefaults.standard
+        let allKeys = defaults.dictionaryRepresentation().keys
+
+        for key in allKeys {
+            for prefix in prefixes {
+                if key.hasPrefix(prefix) {
+                    defaults.removeObject(forKey: key)
+                    print("[TTSJobManager] Cleared persisted key: \(key)")
+                }
+            }
+        }
+
+        // Also clear local cache
+        clearCache(for: articleId)
+
+        print("[TTSJobManager] Cleared all persisted data for article \(articleIdString)")
     }
 
     // MARK: - Metrics

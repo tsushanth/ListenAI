@@ -95,20 +95,19 @@ struct ArticleReaderView: View {
     // URL-based audio player for job-based TTS
     @StateObject private var urlPlayer = URLAudioPlayer.shared
 
-    // Job-based TTS state
-    @State private var ttsJobId: String?
-    @State private var ttsJobStatus: TTSJobStatus?
-    @State private var ttsJobError: String?
-    @State private var ttsJobProgressSec: Double = 0
-    @State private var ttsJobTotalDurationSec: Double = 0
-    @State private var ttsJobEstimatedRemainingSec: Int?  // Backend-calculated synthesis time remaining
-    @State private var ttsJobEstimatedWaitSec: Int?
+    // TTSJobManager as single source of truth for job state (DRY consolidation)
+    @ObservedObject private var ttsJobManager = TTSJobManager.shared
+
+    // Local polling task (for when TTSJobManager isn't tracking yet)
     @State private var pollingTask: Task<Void, Never>?
 
     // Client-side progress interpolation for smooth progress display
     @State private var interpolatedProgressSec: Double = 0
     @State private var progressInterpolationTimer: Timer?
     @State private var lastProgressUpdateTime: Date?
+
+    // Estimated wait time from initial job response (not in TTSJobManager)
+    @State private var ttsJobEstimatedWaitSec: Int?
 
     // Quota limit error state
     @State private var showingQuotaLimitSheet = false
@@ -120,6 +119,50 @@ struct ArticleReaderView: View {
     @State private var showNotifyWhenReadyOption = false
     @State private var isGeneratingInBackground = false
     @State private var showNotificationExplanation = false
+
+    // MARK: - Job State from TTSJobManager (Single Source of Truth)
+
+    /// Current job ID from TTSJobManager
+    private var ttsJobId: String? {
+        currentJobInfo?.jobId
+    }
+
+    /// Current job status from TTSJobManager
+    private var ttsJobStatus: TTSJobStatus? {
+        currentJobInfo?.status
+    }
+
+    /// Current job error from TTSJobManager
+    private var ttsJobError: String? {
+        currentJobInfo?.error
+    }
+
+    /// Progress in seconds from TTSJobManager
+    private var ttsJobProgressSec: Double {
+        guard let jobInfo = currentJobInfo else { return 0 }
+        // Calculate from progress percentage and estimated duration
+        let estimatedDuration = estimatedAudioDurationForArticle
+        return estimatedDuration * jobInfo.progress
+    }
+
+    /// Total duration estimate (calculated from article text length)
+    private var ttsJobTotalDurationSec: Double {
+        estimatedAudioDurationForArticle
+    }
+
+    /// Estimated remaining time (calculated from progress)
+    private var ttsJobEstimatedRemainingSec: Int? {
+        guard let jobInfo = currentJobInfo, jobInfo.progress > 0 else { return nil }
+        let remaining = ttsJobTotalDurationSec * (1.0 - jobInfo.progress)
+        // Estimate synthesis time (roughly 8x realtime for GPU TTS)
+        return Int(remaining / 8.0)
+    }
+
+    /// Estimated audio duration for the article text
+    private var estimatedAudioDurationForArticle: Double {
+        // ~12.5 chars per second speaking rate
+        Double(article.rawText.count) / 12.5
+    }
 
     /// Check if TTS job is currently generating
     private var isGeneratingTTS: Bool {
@@ -296,12 +339,12 @@ struct ArticleReaderView: View {
         .alert("Error", isPresented: .constant(synthesisError != nil)) {
             Button("Retry") {
                 synthesisError = nil
-                ttsJobError = nil
+                ttsJobManager.stopTracking(articleId: article.id)  // Clear any job error state
                 synthesizeAndPlay()
             }
             Button("Cancel", role: .cancel) {
                 synthesisError = nil
-                ttsJobError = nil
+                ttsJobManager.stopTracking(articleId: article.id)  // Clear any job error state
             }
         } message: {
             Text(synthesisError ?? "")
@@ -409,6 +452,9 @@ struct ArticleReaderView: View {
 
             lastUsedVoiceID = newVoiceID
             lastUsedProviderVoiceID = voicePresetManager.selectedPreset.providerVoiceID
+
+            // Check if new voice has persisted audio ready (for instant replay when switching back)
+            checkAndResumePersistedJob()
         }
         .onChange(of: voicePresetManager.selectedPreset.providerVoiceID) { oldProviderVoiceID, newProviderVoiceID in
             // Provider voice ID changed (e.g., switched to different ElevenLabs voice)
@@ -420,6 +466,9 @@ struct ArticleReaderView: View {
             handleVoiceChange(previousVoiceId: oldProviderVoiceID)
 
             lastUsedProviderVoiceID = newProviderVoiceID
+
+            // Check if new voice has persisted audio ready (for instant replay when switching back)
+            checkAndResumePersistedJob()
         }
         .onReceive(NotificationCenter.default.publisher(for: .voiceDidChange)) { notification in
             // Voice changed via SelectVoiceView
@@ -434,10 +483,16 @@ struct ArticleReaderView: View {
                     if let oldId = oldProviderVoiceID {
                         handleVoiceChange(previousVoiceId: oldId)
                     }
-                }
 
-                lastUsedVoiceID = newVoice.id
-                lastUsedProviderVoiceID = newVoice.providerVoiceID
+                    lastUsedVoiceID = newVoice.id
+                    lastUsedProviderVoiceID = newVoice.providerVoiceID
+
+                    // Check if new voice has persisted audio ready (for instant replay when switching back)
+                    checkAndResumePersistedJob()
+                } else {
+                    lastUsedVoiceID = newVoice.id
+                    lastUsedProviderVoiceID = newVoice.providerVoiceID
+                }
             }
         }
         .onChange(of: streamingTTS.isPlaying) { _, isPlaying in
@@ -1068,6 +1123,16 @@ struct ArticleReaderView: View {
         urlPlayer.currentArticleID == article.id && urlPlayer.state.isActive
     }
 
+    /// Current TTS job info from TTSJobManager (single source of truth)
+    private var currentJobInfo: TTSJobManager.JobInfo? {
+        TTSJobManager.shared.getJobInfo(articleId: article.id)
+    }
+
+    /// Whether a TTS job is actively being tracked for this article
+    private var hasActiveJob: Bool {
+        TTSJobManager.shared.isTracking(articleId: article.id)
+    }
+
     /// Whether seek is disabled (during active streaming or preview with restrictions)
     private var isSeekDisabled: Bool {
         // Disabled during streaming
@@ -1449,14 +1514,12 @@ struct ArticleReaderView: View {
             print("[ArticleReader] Synthesis already in progress (status: \(status.displayText))")
             isSynthesizing = true
 
-            // Check if TTSJobManager is tracking this article and attach UI
+            // Check if TTSJobManager is tracking this article - UI reads from computed properties
             if TTSJobManager.shared.isTracking(articleId: article.id),
                let jobInfo = TTSJobManager.shared.getJobInfo(articleId: article.id) {
-                print("[ArticleReader] TTSJobManager tracking job \(jobInfo.jobId), attaching UI for updates")
-                ttsJobId = jobInfo.jobId
-                ttsJobStatus = jobInfo.status
+                print("[ArticleReader] TTSJobManager tracking job \(jobInfo.jobId), UI observes via computed properties")
                 // Don't stop TTSJobManager - let it continue background polling
-                // Just observe ArticleStore updates for UI changes
+                // UI reads ttsJobId/ttsJobStatus via computed properties from TTSJobManager
                 return
             }
 
@@ -1467,9 +1530,7 @@ struct ArticleReaderView: View {
                 let currentVoiceId = voicePresetManager.selectedPreset.kokoroVoiceID ?? voicePresetManager.selectedPreset.providerVoiceID
                 if pendingVoiceId == currentVoiceId {
                     print("[ArticleReader] Found pending job \(pendingJobId) from prewarm, resuming polling")
-                    ttsJobId = pendingJobId
-                    ttsJobStatus = .processing
-                    // Start TTSJobManager tracking if not already
+                    // Start TTSJobManager tracking if not already (UI reads via computed properties)
                     if !TTSJobManager.shared.isTracking(articleId: article.id) {
                         TTSJobManager.shared.trackJob(
                             articleId: article.id,
@@ -1630,10 +1691,9 @@ struct ArticleReaderView: View {
             return
         }
 
-        // Reset job state
-        ttsJobId = nil
-        ttsJobStatus = nil
-        ttsJobError = nil
+        // Reset job state and start synthesis
+        ttsJobManager.stopTracking(articleId: article.id)
+        ttsJobEstimatedWaitSec = nil
         isSynthesizing = true
         synthesisError = nil
         synthesisStartTime = Date()
@@ -1675,11 +1735,7 @@ struct ArticleReaderView: View {
                     speed: Double(playbackService.playbackSpeed.rate)
                 )
 
-                // Store job ID for potential polling later
-                ttsJobId = response.jobId
-                ttsJobStatus = response.status
-
-                // Persist job ID for this article+voice combo
+                // Persist job ID for this article+voice combo (for resume after app restart)
                 persistJobId(response.jobId, for: article.id, voiceId: voiceIdForJob)
 
                 print("[ArticleReader] TTS job response: status=\(response.status.rawValue), jobId=\(response.jobId)")
@@ -1730,8 +1786,8 @@ struct ArticleReaderView: View {
                     }
 
                 case .queued, .processing, .partialReady:
-                    // Job is still processing - start polling for status
-                    print("[ArticleReader] TTS job is processing (status: \(response.status.rawValue)), starting polling")
+                    // Job is still processing - start tracking with TTSJobManager
+                    print("[ArticleReader] TTS job is processing (status: \(response.status.rawValue)), starting tracking")
 
                     // Update estimated wait time
                     if let waitTime = response.estimatedWaitSec {
@@ -1741,17 +1797,22 @@ struct ArticleReaderView: View {
                     // Persist job status for resume
                     persistJobStatus(response.status, for: article.id, voiceId: currentVoice.providerVoiceID)
 
+                    // Start TTSJobManager tracking (handles polling and callbacks)
+                    ttsJobManager.trackJob(
+                        articleId: article.id,
+                        jobId: response.jobId,
+                        voiceId: voiceIdForJob,
+                        initialStatus: response.status
+                    )
+
                     // Start timer to show "Notify when ready" option after 5 seconds
                     showNotifyWhenReadyOption = false
-                                        Task { @MainActor in
+                    Task { @MainActor in
                         try? await Task.sleep(nanoseconds: 5_000_000_000)
                         if self.isSynthesizing {
                             self.showNotifyWhenReadyOption = true
                         }
                     }
-
-                    // Start polling for job completion
-                    startPollingJobStatus(jobId: response.jobId)
 
                 case .failed:
                     throw TTSJobError.jobFailed(jobId: response.jobId, reason: "Job failed during request")
@@ -1771,8 +1832,8 @@ struct ArticleReaderView: View {
     /// Handle errors from job-based TTS API
     private func handleTTSJobError(_ error: TTSJobError) {
         isSynthesizing = false
-        ttsJobStatus = .failed
-        ttsJobError = error.localizedDescription
+        // Stop any TTSJobManager tracking (clears job state)
+        ttsJobManager.stopTracking(articleId: article.id)
 
         let currentVoice = voicePresetManager.selectedPreset
 
@@ -1898,39 +1959,24 @@ struct ArticleReaderView: View {
         // Check if TTSJobManager is still tracking this article
         if TTSJobManager.shared.isTracking(articleId: article.id),
            let jobInfo = TTSJobManager.shared.getJobInfo(articleId: article.id) {
-            print("[ArticleReader] TTSJobManager is tracking job \(jobInfo.jobId), attaching UI for updates")
-            // Attach UI to the manager's polling - don't take over, let manager continue
-            ttsJobId = jobInfo.jobId
-            ttsJobStatus = jobInfo.status
+            print("[ArticleReader] TTSJobManager is tracking job \(jobInfo.jobId), UI reads via computed properties")
+            // TTSJobManager handles polling; UI reads state via computed properties
             isSynthesizing = true
 
-            // Restore progress state from job info for proper display
-            // This ensures we show percentage progress instead of "~5 seconds"
+            // Set estimated time string for cloned voices
             if jobInfo.progress > 0 {
-                // TTSJobManager tracks progress as 0-1, we need to estimate duration
-                // For cloned voices, estimate based on character count
                 let currentVoice = voicePresetManager.selectedPreset
                 let isClonedVoice = !currentVoice.isBuiltIn && currentVoice.category == .custom && currentVoice.kokoroVoiceID == nil
 
                 if isClonedVoice {
-                    // Set estimated time string for cloned voice
                     let cloningModel = VoicePresetManager.shared.voiceCloningModel
                     estimatedTimeString = estimatedClonedVoiceSynthesisTime(
                         characterCount: article.rawText.count,
                         model: cloningModel
                     )
                 }
-
-                // Estimate total duration based on character count (~12.5 chars/sec)
-                let estimatedAudioDuration = Double(article.rawText.count) / 12.5
-                ttsJobTotalDurationSec = estimatedAudioDuration
-                ttsJobProgressSec = estimatedAudioDuration * jobInfo.progress
             }
-
-            // Note: No longer stopping TTSJobManager here - let it continue background polling
-            // The UI will observe ArticleStore updates from TTSJobManager
-            // Also start local polling to get real-time progress updates
-            startPollingJobStatus(jobId: jobInfo.jobId)
+            // TTSJobManager continues background polling; UI observes via computed properties
             return
         }
 
@@ -1940,15 +1986,13 @@ struct ArticleReaderView: View {
            let pendingVoiceId = currentArticle.pendingTTSVoiceId,
            pendingVoiceId == voiceId {
             print("[ArticleReader] Found pending job \(pendingJobId) from ArticleStore, resuming tracking")
-            // Start TTSJobManager tracking for this job
+            // Start TTSJobManager tracking for this job (handles polling; UI reads via computed properties)
             TTSJobManager.shared.trackJob(
                 articleId: article.id,
                 jobId: pendingJobId,
                 voiceId: pendingVoiceId,
                 initialStatus: .processing
             )
-            ttsJobId = pendingJobId
-            ttsJobStatus = .processing
             isSynthesizing = true
 
             // Set estimated time string for cloned voices
@@ -1960,18 +2004,16 @@ struct ArticleReaderView: View {
                     model: cloningModel
                 )
             }
-
-            // Start polling for progress updates
-            startPollingJobStatus(jobId: pendingJobId)
+            // TTSJobManager handles polling; UI observes via computed properties
             return
         }
 
-        // Check if we have a persisted full audio URL - use it instantly
+        // Check if we have a persisted full audio URL for this voice - use it instantly
         if let savedFullUrlString = retrievePersistedFullAudioUrl(for: article.id, voiceId: voiceId),
-           let _ = URL(string: savedFullUrlString) {
-            print("[ArticleReader] Found persisted full audio URL, ready for instant playback: \(savedFullUrlString)")
-            // Don't auto-play, but we have it ready for when user presses play
-            // The URL is stored in ArticleStore.updateSynthesisStatus, so startPlayback() will find it
+           let savedUrl = URL(string: savedFullUrlString) {
+            print("[ArticleReader] Found persisted full audio URL for current voice, updating ArticleStore: \(savedFullUrlString)")
+            // Update ArticleStore so startPlayback() will find this URL
+            ArticleStore.shared.updateSynthesisStatus(for: article.id, status: .completed, audioURL: savedUrl)
             return
         }
 
@@ -2008,12 +2050,15 @@ struct ArticleReaderView: View {
 
                 // Job exists - check its status
                 if statusResponse.status.isInProgress {
-                    // Job still in progress - resume polling
-                    print("[ArticleReader] Job still in progress, resuming polling")
-                    ttsJobId = jobId
-                    ttsJobStatus = statusResponse.status
+                    // Job still in progress - resume with TTSJobManager
+                    print("[ArticleReader] Job still in progress, starting TTSJobManager tracking")
+                    TTSJobManager.shared.trackJob(
+                        articleId: article.id,
+                        jobId: jobId,
+                        voiceId: voiceId,
+                        initialStatus: statusResponse.status
+                    )
                     isSynthesizing = true
-                    startPollingJobStatus(jobId: jobId)
                 } else if statusResponse.status == .ready {
                     // Job already completed - use the audio URL
                     print("[ArticleReader] Job already completed, using cached audio")
@@ -2029,25 +2074,35 @@ struct ArticleReaderView: View {
                 }
             } catch let error as TTSJobError {
                 if case .jobNotFound = error {
-                    // Job expired/not found - re-request TTS to check cache
-                    print("[ArticleReader] Persisted job not found (expired?), will check cache on play")
+                    // Job expired/not found - auto-request TTS to check cache and resume generation
+                    print("[ArticleReader] Persisted job not found (expired?), auto-requesting TTS to check cache")
                     clearAllPersistedJobData(for: article.id, voiceId: voiceId)
-                    // Don't auto-request - let user press play, which will check cache
+
+                    // Auto-request TTS - this will:
+                    // 1. Check backend cache - if hit, play immediately
+                    // 2. If no cache, start new generation with new tracking ID
+                    requestTTSJob()
                 } else {
                     print("[ArticleReader] Error verifying job: \(error)")
-                    // Network error or other issue - don't clear data, try polling anyway
-                    ttsJobId = jobId
-                    ttsJobStatus = persistedStatus
+                    // Network error or other issue - try TTSJobManager tracking anyway
+                    TTSJobManager.shared.trackJob(
+                        articleId: article.id,
+                        jobId: jobId,
+                        voiceId: voiceId,
+                        initialStatus: persistedStatus ?? .processing
+                    )
                     isSynthesizing = true
-                    startPollingJobStatus(jobId: jobId)
                 }
             } catch {
                 print("[ArticleReader] Error verifying job: \(error)")
-                // Network error - try polling anyway, it will handle errors
-                ttsJobId = jobId
-                ttsJobStatus = persistedStatus
+                // Network error - try TTSJobManager tracking, it will handle errors
+                TTSJobManager.shared.trackJob(
+                    articleId: article.id,
+                    jobId: jobId,
+                    voiceId: voiceId,
+                    initialStatus: persistedStatus ?? .processing
+                )
                 isSynthesizing = true
-                startPollingJobStatus(jobId: jobId)
             }
         }
     }
@@ -2097,8 +2152,7 @@ struct ArticleReaderView: View {
                         print("[ArticleReader] Job not found (expired?), re-requesting TTS to check cache")
                         clearAllPersistedJobData(for: article.id, voiceId: voicePresetManager.selectedPreset.providerVoiceID)
                         isSynthesizing = false
-                        ttsJobId = nil
-                        ttsJobStatus = nil
+                        ttsJobManager.stopTracking(articleId: article.id)  // Clear job state
                         // Re-request TTS - this will hit cache if the audio was already generated
                         requestTTSJob()
                         break
@@ -2114,20 +2168,14 @@ struct ArticleReaderView: View {
         }
     }
 
-    /// Handle job status update from polling
+    /// Handle job status update from polling (deprecated - use TTSJobManager callbacks)
     private func handleJobStatusUpdate(_ response: TTSJobStatusResponse) {
         let currentVoice = voicePresetManager.selectedPreset
 
-        // Update state
-        ttsJobStatus = response.status
+        // Note: ttsJobStatus, ttsJobProgressSec, etc. are now computed properties from TTSJobManager
+        // This function is only used for legacy local polling (cloned voice path)
 
-        // Update progress tracking from nested progress object
-        ttsJobProgressSec = response.progress.progressSec
-        if let durationSec = response.progress.durationSec {
-            ttsJobTotalDurationSec = durationSec
-        }
-        // Use backend-calculated remaining synthesis time (based on measured rate from preview)
-        ttsJobEstimatedRemainingSec = response.progress.estimatedRemainingSec
+        // Update estimated wait time (only non-computed property)
         if let estimatedWait = response.estimatedWaitSec {
             ttsJobEstimatedWaitSec = estimatedWait
         }
@@ -2135,7 +2183,7 @@ struct ArticleReaderView: View {
         // Start/update progress interpolation for smooth animation
         updateProgressInterpolation(
             currentProgressSec: response.progress.progressSec,
-            totalDurationSec: response.progress.durationSec ?? ttsJobTotalDurationSec,
+            totalDurationSec: response.progress.durationSec ?? estimatedAudioDurationForArticle,
             estimatedRemainingSec: response.progress.estimatedRemainingSec
         )
 
@@ -2270,7 +2318,7 @@ struct ArticleReaderView: View {
             // Job was cancelled - stop progress interpolation
             stopProgressInterpolation()
             isSynthesizing = false
-            ttsJobError = "Generation was cancelled"
+            ttsJobManager.stopTracking(articleId: article.id)  // Clear job state
             synthesisError = "Generation was cancelled"
             clearAllPersistedJobData(for: article.id, voiceId: currentVoice.providerVoiceID)
 
@@ -2442,7 +2490,33 @@ struct ArticleReaderView: View {
             Task { @MainActor in
                 self.isSynthesizing = false
                 self.synthesisError = errorMessage
-                self.ttsJobError = errorMessage
+                // Note: ttsJobError is now a computed property reading from TTSJobManager
+            }
+        }
+
+        // Called when job is not found (expired/cleaned up on server)
+        // Auto-retry to check cache and potentially restart generation
+        TTSJobManager.shared.onJobExpired = { receivedArticleId, voiceId in
+            guard receivedArticleId == articleId else { return }
+
+            Task { @MainActor in
+                // Clear persisted data for this article+voice
+                clearAllPersistedJobData(for: articleId, voiceId: voiceId)
+
+                // Only auto-request if the current voice matches the expired job's voice
+                // This prevents interference if user switched voices while job was expiring
+                let currentVoiceId = voicePresetManager.selectedPreset.providerVoiceID
+                guard voiceId == currentVoiceId || voiceId.isEmpty else {
+                    print("[ArticleReader] Job expired for different voice (\(voiceId)), skipping auto-request (current: \(currentVoiceId))")
+                    return
+                }
+
+                print("[ArticleReader] Job expired callback, auto-requesting TTS to check cache")
+
+                // Auto-request TTS - this will:
+                // 1. Check backend cache - if hit, play immediately
+                // 2. If no cache, start new generation with new tracking ID
+                requestTTSJob()
             }
         }
     }
@@ -2476,21 +2550,13 @@ struct ArticleReaderView: View {
             }
         }
 
-        // Clear all job state for old voice (including fullUrl since it's voice-specific)
+        // Clear in-progress job data for old voice, but KEEP the full audio URL
+        // so we can use it if user switches back to this voice
         clearAllPersistedJobData(for: article.id, voiceId: previousVoiceId)
-        clearPersistedFullAudioUrl(for: article.id, voiceId: previousVoiceId)
+        // Note: intentionally NOT clearing persistedFullAudioUrl to enable instant replay when switching back
 
-        // Reset state
-        ttsJobId = nil
-        ttsJobStatus = nil
-        ttsJobError = nil
-        ttsJobProgressSec = 0
-        ttsJobTotalDurationSec = 0
-        ttsJobEstimatedRemainingSec = nil
-        ttsJobEstimatedWaitSec = nil
-        isSynthesizing = false
-        synthesisError = nil
-        stopProgressInterpolation()
+        // Reset state via TTSJobManager (DRY)
+        resetTTSJobState()
     }
 
     /// Cancel polling (but don't cancel the job on the server)
@@ -2498,6 +2564,16 @@ struct ArticleReaderView: View {
         pollingTask?.cancel()
         pollingTask = nil
         print("[ArticleReader] Polling cancelled")
+    }
+
+    /// Reset all TTS job state (DRY helper)
+    /// Clears TTSJobManager tracking and local state
+    private func resetTTSJobState() {
+        ttsJobManager.stopTracking(articleId: article.id)
+        ttsJobEstimatedWaitSec = nil
+        isSynthesizing = false
+        synthesisError = nil
+        stopProgressInterpolation()
     }
 
     /// Update progress interpolation for smooth animation between backend updates
@@ -2564,8 +2640,8 @@ struct ArticleReaderView: View {
 
         // Reset state
         isSynthesizing = false
-        ttsJobError = nil
         synthesisError = nil
+        // Note: ttsJobError is computed from TTSJobManager, cleared by stopTracking() below
 
         // Cancel job on server if we have a job ID
         if let jobId = ttsJobId {
@@ -2581,12 +2657,8 @@ struct ArticleReaderView: View {
             }
         }
 
-        // Clear state
-        ttsJobId = nil
-        ttsJobStatus = nil
-        ttsJobProgressSec = 0
-        ttsJobTotalDurationSec = 0
-        ttsJobEstimatedRemainingSec = nil
+        // Clear state via TTSJobManager (DRY)
+        ttsJobManager.stopTracking(articleId: article.id)
         ttsJobEstimatedWaitSec = nil
         stopProgressInterpolation()
 
@@ -2656,10 +2728,8 @@ struct ArticleReaderView: View {
     /// Synthesize using a cloned voice via job-based API with progress tracking.
     /// This uses the /api/tts/job-cloned endpoint for async synthesis with polling.
     private func requestClonedVoiceSynthesis(cloudService: ListenAICloudService, voice: VoicePreset) {
-        // Reset state
-        ttsJobId = nil
-        ttsJobStatus = nil
-        ttsJobError = nil
+        // Reset state - clear any previous job tracking
+        ttsJobManager.stopTracking(articleId: article.id)
         isSynthesizing = true
         synthesisError = nil
         synthesisStartTime = Date()
@@ -2719,11 +2789,7 @@ struct ArticleReaderView: View {
                     articleTitle: article.displayTitle
                 )
 
-                // Store job ID for tracking
-                ttsJobId = response.jobId
-                ttsJobStatus = response.status
-
-                // Persist job ID for this article+voice combo
+                // Persist job ID for this article+voice combo (for resume after app restart)
                 persistJobId(response.jobId, for: article.id, voiceId: voiceId)
 
                 print("[ArticleReader] Cloned voice job response: status=\(response.status.rawValue), jobId=\(response.jobId)")
@@ -2763,8 +2829,8 @@ struct ArticleReaderView: View {
                     }
 
                 case .queued, .processing, .partialReady:
-                    // Job is processing - start polling for status
-                    print("[ArticleReader] Cloned voice job is processing (status: \(response.status.rawValue)), starting polling")
+                    // Job is processing - start tracking with TTSJobManager
+                    print("[ArticleReader] Cloned voice job is processing (status: \(response.status.rawValue)), starting tracking")
 
                     // Update estimated wait time
                     if let waitTime = response.estimatedWaitSec {
@@ -2774,18 +2840,23 @@ struct ArticleReaderView: View {
                     // Persist job status for resume
                     persistJobStatus(response.status, for: article.id, voiceId: voice.providerVoiceID)
 
+                    // Start TTSJobManager tracking (handles polling and callbacks)
+                    ttsJobManager.trackJob(
+                        articleId: article.id,
+                        jobId: response.jobId,
+                        voiceId: voice.providerVoiceID,
+                        initialStatus: response.status
+                    )
+
                     // Start timer to show "Notify when ready" option after 5 seconds
                     // (cloned voice synthesis takes longer so this is especially useful)
                     showNotifyWhenReadyOption = false
-                                        Task { @MainActor in
+                    Task { @MainActor in
                         try? await Task.sleep(nanoseconds: 5_000_000_000)
                         if self.isSynthesizing {
                             self.showNotifyWhenReadyOption = true
                         }
                     }
-
-                    // Start polling for job completion
-                    startPollingJobStatus(jobId: response.jobId)
 
                 case .failed:
                     throw TTSJobError.jobFailed(jobId: response.jobId, reason: "Job failed during request")

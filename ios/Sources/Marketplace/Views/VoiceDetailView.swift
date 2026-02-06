@@ -72,6 +72,11 @@ struct VoiceDetailView: View {
         } message: {
             Text(viewModel.errorMessage)
         }
+        .alert("Voice Set", isPresented: $viewModel.voiceSetSuccessfully) {
+            Button("OK") { dismiss() }
+        } message: {
+            Text("\"\(voice.displayName)\" is now your active voice.")
+        }
     }
 
     // MARK: - Header Section
@@ -311,10 +316,63 @@ struct VoiceDetailView: View {
     }
 
     private func useVoice() {
-        // Create a VoicePreset from the shared voice and set it as active
-        // This requires integration with VoicePresetManager
-        // For now, we'll just show a success message
-        // TODO: Actually set the voice as active
+        let presetManager = VoicePresetManager.shared
+
+        // Create a stable UUID from the marketplace voice ID
+        let stableId = stableUUID(from: voice.id)
+
+        // Create a VoicePreset for this marketplace voice
+        // TODO: Actual TTS synthesis with marketplace voices requires a backend endpoint
+        // to resolve the marketplace share ID to a cloned voice ID + audio URL.
+        // For now, we set it as the active voice preset.
+        let preset = VoicePreset(
+            id: stableId,
+            name: voice.displayName,
+            isBuiltIn: false,
+            isCharacterVoice: false,
+            provider: .selfhosted,
+            providerVoiceID: voice.id,
+            providerModelID: nil,
+            language: "en-US",
+            supportedLanguages: ["en-US"],
+            gender: .neutral,
+            age: .adult,
+            style: .conversational,
+            category: .custom,
+            voiceDescription: voice.description ?? "Community shared voice",
+            tier: .free,
+            sampleText: "Hello, this is a community shared voice."
+        )
+
+        presetManager.select(preset)
+
+        NotificationCenter.default.post(name: .voiceDidChange, object: preset)
+
+        viewModel.voiceSetSuccessfully = true
+    }
+
+    /// Create a stable UUID from a string
+    private func stableUUID(from string: String) -> UUID {
+        let hash = string.utf8.reduce(0) { (result, char) -> UInt64 in
+            result &* 31 &+ UInt64(char)
+        }
+        var bytes = [UInt8](repeating: 0, count: 16)
+        for i in 0..<8 {
+            bytes[i] = UInt8((hash >> (i * 8)) & 0xFF)
+        }
+        let reversedString = String(string.reversed())
+        let hash2 = reversedString.utf8.reduce(0) { (result, char) -> UInt64 in
+            result &* 37 &+ UInt64(char)
+        }
+        for i in 0..<8 {
+            bytes[8 + i] = UInt8((hash2 >> (i * 8)) & 0xFF)
+        }
+        bytes[6] = (bytes[6] & 0x0F) | 0x40
+        bytes[8] = (bytes[8] & 0x3F) | 0x80
+        return UUID(uuid: (bytes[0], bytes[1], bytes[2], bytes[3],
+                          bytes[4], bytes[5], bytes[6], bytes[7],
+                          bytes[8], bytes[9], bytes[10], bytes[11],
+                          bytes[12], bytes[13], bytes[14], bytes[15]))
     }
 }
 
@@ -326,6 +384,7 @@ class VoiceDetailViewModel: NSObject, ObservableObject, AVAudioPlayerDelegate {
     @Published var isPlaying = false
     @Published var showError = false
     @Published var errorMessage = ""
+    @Published var voiceSetSuccessfully = false
 
     private var audioPlayer: AVAudioPlayer?
 

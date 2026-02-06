@@ -20,29 +20,15 @@ struct ShareVoiceView: View {
     private let attestationText = "I confirm that this is my own voice or I have explicit permission from the voice owner to share it publicly. I understand that sharing someone else's voice without permission may result in removal and account suspension."
 
     var body: some View {
-        Group {
-            if authService.isAuthenticated {
-                shareVoiceContent
-            } else {
-                SignInPromptView(
-                    title: "Sign In to Share",
-                    message: "Sign in to share your voice with the community and earn rewards when others use it.",
-                    onComplete: {},
-                    onSkip: { dismiss() }
-                )
-            }
-        }
-        .navigationTitle("Share Voice")
-        .navigationBarTitleDisplayMode(.inline)
+        shareVoiceContent
+            .navigationTitle("Share Voice")
+            .navigationBarTitleDisplayMode(.inline)
     }
 
     // MARK: - Share Voice Content (when authenticated)
 
     private var shareVoiceContent: some View {
         Form {
-            // Earnings incentive banner
-            earningsIncentiveSection
-
             // Voice selection
             voiceSelectionSection
 

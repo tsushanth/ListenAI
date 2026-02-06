@@ -16,6 +16,9 @@ struct VoiceMarketplaceView: View {
     @State private var selectedVoice: VoiceMarketplaceService.SharedVoice?
     @State private var pendingRewards: Double = 0
     @State private var hasSharedVoices = false
+    @State private var selectedCategory: String? = nil
+
+    private let commonCategories = ["male", "female", "calm", "energetic", "narrator", "deep", "friendly"]
 
     var body: some View {
         NavigationStack {
@@ -55,23 +58,45 @@ struct VoiceMarketplaceView: View {
                                 isSelected: selectedSort == option
                             ) {
                                 selectedSort = option
-                                Task { await viewModel.load(sort: option) }
+                                Task {
+                                    if let tag = selectedCategory {
+                                        await viewModel.loadWithTag(tag: tag, sort: option)
+                                    } else {
+                                        await viewModel.load(sort: option)
+                                    }
+                                }
                             }
                         }
                         Spacer()
+                    }
+
+                    // Category filters
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            SortChip(
+                                title: "All",
+                                isSelected: selectedCategory == nil
+                            ) {
+                                selectedCategory = nil
+                                Task { await viewModel.load(sort: selectedSort) }
+                            }
+
+                            ForEach(commonCategories, id: \.self) { category in
+                                SortChip(
+                                    title: category.capitalized,
+                                    isSelected: selectedCategory == category
+                                ) {
+                                    selectedCategory = category
+                                    Task { await viewModel.loadWithTag(tag: category, sort: selectedSort) }
+                                }
+                            }
+                        }
                     }
                 }
                 .padding(.horizontal)
                 .padding(.vertical, 12)
 
                 Divider()
-
-                // Rewards banner (show if user has pending rewards OR has shared voices)
-                if pendingRewards > 0 || hasSharedVoices {
-                    rewardsBanner
-                        .padding(.horizontal)
-                        .padding(.top, 8)
-                }
 
                 // Content
                 if viewModel.isLoading && viewModel.voices.isEmpty {
@@ -108,11 +133,6 @@ struct VoiceMarketplaceView: View {
                             Label("My Shared Voices", systemImage: "person.crop.circle")
                         }
 
-                        Button {
-                            showingRewards = true
-                        } label: {
-                            Label("Rewards", systemImage: "gift.fill")
-                        }
                     } label: {
                         Image(systemName: "ellipsis.circle")
                             .font(.body)
@@ -121,7 +141,6 @@ struct VoiceMarketplaceView: View {
             }
             .task {
                 await viewModel.load(sort: selectedSort)
-                await loadRewardsStatus()
             }
             .refreshable {
                 await viewModel.load(sort: selectedSort)
@@ -248,70 +267,6 @@ struct VoiceMarketplaceView: View {
 
     // MARK: - Rewards Banner
 
-    private var rewardsBanner: some View {
-        Button {
-            showingRewards = true
-        } label: {
-            HStack(spacing: 12) {
-                // Icon
-                ZStack {
-                    Circle()
-                        .fill(pendingRewards > 0 ? Color.orange.opacity(0.15) : Color.green.opacity(0.15))
-                        .frame(width: 44, height: 44)
-
-                    Image(systemName: pendingRewards > 0 ? "gift.fill" : "chart.line.uptrend.xyaxis")
-                        .font(.title3)
-                        .foregroundStyle(pendingRewards > 0 ? .orange : .green)
-                }
-
-                // Text
-                VStack(alignment: .leading, spacing: 2) {
-                    if pendingRewards > 0 {
-                        Text("You have rewards to claim!")
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(.primary)
-
-                        Text("\(String(format: "%.2f", pendingRewards)) minutes waiting")
-                            .font(.caption)
-                            .foregroundStyle(.orange)
-                    } else {
-                        Text("Your voices are earning")
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(.primary)
-
-                        Text("View your earnings and stats")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-
-                Spacer()
-
-                Image(systemName: "chevron.right")
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
-            }
-            .padding(12)
-            .background(Color(.secondarySystemBackground))
-            .cornerRadius(12)
-        }
-        .buttonStyle(.plain)
-    }
-
-    // MARK: - Load Rewards Status
-
-    private func loadRewardsStatus() async {
-        do {
-            let summary = try await VoiceMarketplaceService.shared.getRewardsSummary()
-            pendingRewards = summary.pending.minutes
-
-            // Check if user has shared any voices
-            let shares = try await VoiceMarketplaceService.shared.getMyShares()
-            hasSharedVoices = shares.contains { $0.status == "active" }
-        } catch {
-            // Silently fail - banner just won't show
-        }
-    }
 }
 
 // MARK: - Sort Chip
@@ -370,14 +325,18 @@ private struct SharedVoiceCard: View {
                         }
 
                         HStack(spacing: 8) {
-                            // Rating
-                            HStack(spacing: 2) {
-                                Image(systemName: "star.fill")
-                                    .foregroundStyle(.yellow)
+                            // Rating stars
+                            HStack(spacing: 1) {
+                                ForEach(0..<5, id: \.self) { star in
+                                    Image(systemName: star < Int(voice.avgRating.rounded()) ? "star.fill" : "star")
+                                        .font(.system(size: 8))
+                                        .foregroundStyle(star < Int(voice.avgRating.rounded()) ? .yellow : Color(.systemGray4))
+                                }
                                 Text(String(format: "%.1f", voice.avgRating))
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                                    .padding(.leading, 2)
                             }
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
 
                             // Usage count
                             HStack(spacing: 2) {
@@ -441,6 +400,7 @@ private struct SharedVoiceCard: View {
             .padding()
             .background(Color(.secondarySystemBackground))
             .cornerRadius(16)
+            .shadow(color: .black.opacity(0.04), radius: 4, x: 0, y: 2)
         }
         .buttonStyle(.plain)
     }
@@ -485,12 +445,14 @@ class VoiceMarketplaceViewModel: NSObject, ObservableObject, AVAudioPlayerDelega
     private var audioPlayer: AVAudioPlayer?
     private var currentSort: VoiceMarketplaceService.SortOption = .popular
     private var currentSearch: String?
+    private var currentTag: String?
     private var offset = 0
     private let limit = 20
 
     func load(sort: VoiceMarketplaceService.SortOption = .popular) async {
         currentSort = sort
         currentSearch = nil
+        currentTag = nil
         offset = 0
         hasMore = true
         isLoading = true
@@ -499,6 +461,30 @@ class VoiceMarketplaceViewModel: NSObject, ObservableObject, AVAudioPlayerDelega
 
         do {
             voices = try await VoiceMarketplaceService.shared.browse(
+                sort: sort,
+                limit: limit,
+                offset: 0
+            )
+            hasMore = voices.count >= limit
+        } catch {
+            errorMessage = error.localizedDescription
+            showError = true
+        }
+    }
+
+    func loadWithTag(tag: String, sort: VoiceMarketplaceService.SortOption = .popular) async {
+        currentSort = sort
+        currentSearch = nil
+        currentTag = tag
+        offset = 0
+        hasMore = true
+        isLoading = true
+
+        defer { isLoading = false }
+
+        do {
+            voices = try await VoiceMarketplaceService.shared.browse(
+                tags: [tag],
                 sort: sort,
                 limit: limit,
                 offset: 0
@@ -542,6 +528,7 @@ class VoiceMarketplaceViewModel: NSObject, ObservableObject, AVAudioPlayerDelega
 
         do {
             let newVoices = try await VoiceMarketplaceService.shared.browse(
+                tags: currentTag.map { [$0] },
                 search: currentSearch,
                 sort: currentSort,
                 limit: limit,

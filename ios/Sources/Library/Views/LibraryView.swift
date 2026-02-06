@@ -40,6 +40,8 @@ struct LibraryView: View {
     @State private var selectedArticle: Article?
     @State private var showingUsageQuota = false
     @State private var showingUpgrade = false
+    @State private var articleToEdit: Article?
+    @State private var editedTitle: String = ""
 
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
@@ -126,6 +128,23 @@ struct LibraryView: View {
                 AudioPlaybackService.shared.isArticleReaderActive = false
             }
         }
+        .alert("Edit Title", isPresented: Binding(
+            get: { articleToEdit != nil },
+            set: { if !$0 { articleToEdit = nil } }
+        )) {
+            TextField("Title", text: $editedTitle)
+            Button("Cancel", role: .cancel) {
+                articleToEdit = nil
+            }
+            Button("Save") {
+                if let article = articleToEdit, !editedTitle.isEmpty {
+                    articleStore.updateTitle(article, newTitle: editedTitle)
+                }
+                articleToEdit = nil
+            }
+        } message: {
+            Text("Enter a new title for this article")
+        }
     }
 
     // MARK: - Filter Chips
@@ -166,6 +185,10 @@ struct LibraryView: View {
                     },
                     onFavorite: {
                         articleStore.toggleFavorite(article)
+                    },
+                    onEditTitle: {
+                        editedTitle = article.displayTitle
+                        articleToEdit = article
                     },
                     onShare: {
                         shareArticle(article)
@@ -396,6 +419,7 @@ struct ArticleRowCard: View {
     let onPlay: () -> Void
     let onQueue: () -> Void
     let onFavorite: () -> Void
+    let onEditTitle: () -> Void
     let onShare: () -> Void
     let onDelete: () -> Void
 
@@ -475,6 +499,10 @@ struct ArticleRowCard: View {
                 Button(action: onFavorite) {
                     Label(article.isFavorite ? "Unfavorite" : "Favorite",
                           systemImage: article.isFavorite ? "heart.slash" : "heart")
+                }
+
+                Button(action: onEditTitle) {
+                    Label("Edit Title", systemImage: "pencil")
                 }
 
                 Button(action: onShare) {

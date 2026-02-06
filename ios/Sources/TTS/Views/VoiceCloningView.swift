@@ -16,6 +16,7 @@ struct VoiceCloningView: View {
     @State private var isEditing = false
     @State private var showNotificationExplanation = false
     @State private var pendingNotifyVoice: VoiceCloningService.ClonedVoice?
+    @State private var showingShareSheet = false
 
     var body: some View {
         let _ = logger.debug("VoiceCloningView body evaluated, showingCloneFlow=\(showingCloneFlow)")
@@ -102,6 +103,11 @@ struct VoiceCloningView: View {
             } message: {
                 Text("Voice cloning usually completes in seconds, but can take longer for high-quality results.\n\nWe'll send you ONE notification when your voice is ready. We never send marketing or promotional notifications.")
             }
+            .sheet(isPresented: $showingShareSheet) {
+                NavigationStack {
+                    ShareVoiceView()
+                }
+            }
             .fullScreenCover(isPresented: $showingCloneFlow) {
                 // Container view that uses the singleton coordinator
                 // The coordinator preserves state even if SwiftUI recreates this view
@@ -176,6 +182,9 @@ struct VoiceCloningView: View {
                             Task {
                                 await viewModel.deleteVoice(voice)
                             }
+                        },
+                        onShare: {
+                            showingShareSheet = true
                         }
                     )
                 }
@@ -221,6 +230,7 @@ private struct ClonedVoiceCard: View {
     let onPreview: () -> Void
     let onNotifyWhenReady: () -> Void
     let onDelete: () -> Void
+    var onShare: (() -> Void)? = nil
 
     @State private var showDeleteConfirmation = false
 
@@ -312,6 +322,25 @@ private struct ClonedVoiceCard: View {
                 }
             }
             .padding(16)
+
+            // Share to marketplace
+            if !isEditing && !isGeneratingInBackground, let onShare {
+                Divider()
+                    .padding(.horizontal, 16)
+
+                Button(action: onShare) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "square.and.arrow.up")
+                            .font(.subheadline)
+                        Text("Share to Marketplace")
+                            .font(.subheadline.weight(.medium))
+                    }
+                    .foregroundStyle(.blue)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                }
+                .buttonStyle(.plain)
+            }
 
             // "Notify when ready" option - shown after loading for a while
             if showNotifyOption && isLoading && !isGeneratingInBackground {
@@ -730,6 +759,7 @@ private struct VoiceCloningFlowContent: View {
 
 private struct VoiceCloningIntroView: View {
     let onContinue: () -> Void
+    @ObservedObject private var presetManager = VoicePresetManager.shared
 
     var body: some View {
         let _ = logger.debug("VoiceCloningIntroView body")
@@ -792,6 +822,35 @@ private struct VoiceCloningIntroView: View {
                         )
                     }
 
+                    // Model selection
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("CLONING MODEL")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                            .tracking(1)
+
+                        ForEach(VoiceCloningModel.allCases, id: \.self) { model in
+                            ModelOptionCard(
+                                model: model,
+                                isSelected: presetManager.voiceCloningModel == model,
+                                onSelect: {
+                                    presetManager.setVoiceCloningModel(model)
+                                }
+                            )
+                        }
+
+                        // Disclaimer
+                        HStack(alignment: .top, spacing: 8) {
+                            Image(systemName: "info.circle")
+                                .font(.caption)
+                                .foregroundStyle(.orange)
+                            Text("Quick mode generates audio faster but may not capture all voice nuances. Switch to Quality for more natural-sounding results. You can change this anytime in Settings.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        .padding(.top, 4)
+                    }
+
                     // Consent text
                     Text("By continuing, you agree to the collection and use of your voice for the purpose of creating a digital voice clone. Your recordings may be stored and processed")
                         .font(.caption)
@@ -840,6 +899,49 @@ private struct FeatureRow: View {
                 .foregroundStyle(.primary)
                 .fixedSize(horizontal: false, vertical: true)
         }
+    }
+}
+
+// MARK: - Model Option Card
+
+private struct ModelOptionCard: View {
+    let model: VoiceCloningModel
+    let isSelected: Bool
+    let onSelect: () -> Void
+
+    var body: some View {
+        Button(action: onSelect) {
+            HStack(spacing: 12) {
+                Image(systemName: model.iconName)
+                    .font(.title3)
+                    .foregroundStyle(isSelected ? .primary : .secondary)
+                    .frame(width: 28)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(model.displayName)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.primary)
+
+                    Text(model.description)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+
+                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                    .font(.title3)
+                    .foregroundStyle(isSelected ? .yellow : Color(.systemGray4))
+            }
+            .padding(12)
+            .background(isSelected ? Color.yellow.opacity(0.1) : Color(.secondarySystemBackground))
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .strokeBorder(isSelected ? Color.yellow : Color.clear, lineWidth: 1.5)
+            )
+        }
+        .buttonStyle(.plain)
     }
 }
 
