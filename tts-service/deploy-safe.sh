@@ -87,7 +87,7 @@ gcloud run deploy $SERVICE_NAME \
   --gpu=1 \
   --gpu-type=nvidia-l4 \
   --timeout=300 \
-  --min-instances=1 \
+  --min-instances=0 \
   --max-instances=2 \
   --concurrency=10 \
   --set-env-vars=CACHE_ENABLED=true,LOG_LEVEL=INFO,DEFAULT_TTS_MODEL=kokoro \
