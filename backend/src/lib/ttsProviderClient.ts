@@ -53,10 +53,10 @@ interface CircuitBreakerConfig {
 }
 
 const DEFAULT_CIRCUIT_CONFIG: CircuitBreakerConfig = {
-  failureThreshold: 5,         // Open circuit after 5 failures
+  failureThreshold: 10,        // Open circuit after 10 failures (higher for cold start tolerance)
   successThreshold: 2,         // Close circuit after 2 successes in half-open
-  resetTimeoutMs: 30000,       // Try again after 30 seconds
-  monitorWindowMs: 60000,      // Count failures in 60-second window
+  resetTimeoutMs: 60000,       // Try again after 60 seconds (cold start can take 30-90s)
+  monitorWindowMs: 120000,     // Count failures in 120-second window (wider for cold start)
 };
 
 /**
@@ -206,9 +206,9 @@ interface RetryConfig {
 }
 
 const DEFAULT_RETRY_CONFIG: RetryConfig = {
-  maxRetries: 3,
-  baseDelayMs: 1000,      // Start with 1 second
-  maxDelayMs: 10000,      // Cap at 10 seconds
+  maxRetries: 4,
+  baseDelayMs: 3000,      // Start with 3 seconds (cold start needs longer waits)
+  maxDelayMs: 30000,      // Cap at 30 seconds (cold start can take 30-90s)
   retryableErrors: [
     'ECONNRESET',         // Connection reset by peer
     'ECONNREFUSED',       // Connection refused (service down)
@@ -514,9 +514,9 @@ class SelfHostedClient implements ProviderClient {
 
     // Long synthesis gets more retries and longer delays since it's more resource-intensive
     const longSynthesisRetryConfig: RetryConfig = {
-      maxRetries: 4,          // More retries for long synthesis
-      baseDelayMs: 2000,      // Start with 2 seconds
-      maxDelayMs: 30000,      // Cap at 30 seconds
+      maxRetries: 5,          // More retries for long synthesis + cold start
+      baseDelayMs: 5000,      // Start with 5 seconds (cold start needs longer waits)
+      maxDelayMs: 45000,      // Cap at 45 seconds
       retryableErrors: DEFAULT_RETRY_CONFIG.retryableErrors,
     };
 
@@ -531,7 +531,7 @@ class SelfHostedClient implements ProviderClient {
               language: settings?.language ?? 'en',
               speed: request.speed ?? 1.0,
               model: model,
-              max_chunk_chars: 250,  // Optimal for CPU-based synthesis
+              max_chunk_chars: 5000,  // Large chunks — Kokoro handles internal segmentation via KPipeline
             },
             {
               headers: {
@@ -640,7 +640,7 @@ class SelfHostedClient implements ProviderClient {
               language: settings?.language ?? 'en',
               speed: request.speed ?? 1.0,
               model: model,
-              max_chunk_chars: 250,
+              max_chunk_chars: 5000,
             },
             {
               headers: {

@@ -1304,65 +1304,84 @@ async def synthesize_long(request: SynthesizeLongRequest):
             logger.warning(f"Unknown voice_id '{request.voice_id}', using default")
             voice_info = BUILTIN_VOICES["default"]
 
-    # Synthesize each chunk and collect audio
-    all_audio = []
-    sample_rate = KOKORO_SAMPLE_RATE if model_type == "kokoro" else XTTS_SAMPLE_RATE
-    total_synthesis_time = 0
+    start_time = time.time()
 
-    for i, chunk_text_content in enumerate(chunks):
-        chunk_start = time.time()
-        logger.info(f"Synthesizing chunk {i+1}/{total_chunks}: {len(chunk_text_content)} chars")
-
-        try:
-            # Check cache first (include model in cache key)
-            cache_key = get_cache_key(f"{model_type}|{chunk_text_content}", request.voice_id, request.language, request.speed)
+    try:
+        if model_type == "kokoro":
+            # Kokoro fast path: KPipeline handles internal text segmentation,
+            # so bypass per-chunk loop to avoid overhead of 160+ tiny chunks.
+            # This is ~10-20x faster for long articles.
+            cache_key = get_cache_key(f"{model_type}|{request.text}", request.voice_id, request.language, request.speed)
             cached = get_cached_audio(cache_key)
 
             if cached:
-                # Load cached audio
-                audio_buffer = io.BytesIO(cached)
-                cached_audio, cached_sr = sf.read(audio_buffer)
-                all_audio.append(cached_audio)
-                sample_rate = cached_sr
-                logger.info(f"Chunk {i+1} from cache")
+                audio_data = cached
+                sample_rate = KOKORO_SAMPLE_RATE
+                logger.info(f"Kokoro long synthesis from cache: {total_chars} chars")
             else:
-                # Synthesize based on model type
-                if model_type == "kokoro":
-                    wav_array, sample_rate = synthesize_with_kokoro(
-                        chunk_text_content, voice_info, request.speed
-                    )
+                logger.info(f"Kokoro fast path: synthesizing {total_chars} chars in single pass")
+                combined_audio, sample_rate = synthesize_with_kokoro(
+                    request.text, voice_info, request.speed
+                )
+
+                audio_buffer = io.BytesIO()
+                sf.write(audio_buffer, combined_audio, sample_rate, format='WAV')
+                audio_buffer.seek(0)
+                audio_data = audio_buffer.read()
+
+                save_to_cache(cache_key, audio_data)
+
+            total_synthesis_time = time.time() - start_time
+            total_chunks = 1
+        else:
+            # XTTS: use per-chunk synthesis (XTTS needs smaller text segments)
+            all_audio = []
+            sample_rate = XTTS_SAMPLE_RATE
+            total_synthesis_time = 0
+
+            for i, chunk_text_content in enumerate(chunks):
+                chunk_start = time.time()
+                logger.info(f"Synthesizing chunk {i+1}/{total_chunks}: {len(chunk_text_content)} chars")
+
+                # Check cache first (include model in cache key)
+                cache_key = get_cache_key(f"{model_type}|{chunk_text_content}", request.voice_id, request.language, request.speed)
+                cached = get_cached_audio(cache_key)
+
+                if cached:
+                    audio_buf = io.BytesIO(cached)
+                    cached_audio, cached_sr = sf.read(audio_buf)
+                    all_audio.append(cached_audio)
+                    sample_rate = cached_sr
+                    logger.info(f"Chunk {i+1} from cache")
                 else:
                     wav_array, sample_rate = synthesize_with_xtts(
                         chunk_text_content, voice_info, request.language, request.speed
                     )
 
-                all_audio.append(wav_array)
+                    all_audio.append(wav_array)
 
-                # Cache this chunk
-                chunk_buffer = io.BytesIO()
-                sf.write(chunk_buffer, wav_array, sample_rate, format='WAV')
-                chunk_buffer.seek(0)
-                save_to_cache(cache_key, chunk_buffer.read())
+                    chunk_buffer = io.BytesIO()
+                    sf.write(chunk_buffer, wav_array, sample_rate, format='WAV')
+                    chunk_buffer.seek(0)
+                    save_to_cache(cache_key, chunk_buffer.read())
 
-            chunk_time = time.time() - chunk_start
-            total_synthesis_time += chunk_time
-            logger.info(f"Chunk {i+1} completed in {chunk_time:.2f}s")
+                chunk_time = time.time() - chunk_start
+                total_synthesis_time += chunk_time
+                logger.info(f"Chunk {i+1} completed in {chunk_time:.2f}s")
 
-        except Exception as e:
-            logger.error(f"Chunk {i+1} failed: {e}")
-            raise HTTPException(
-                status_code=500,
-                detail=f"Synthesis failed at chunk {i+1}/{total_chunks}: {str(e)}"
-            )
+            combined_audio = np.concatenate(all_audio)
 
-    # Concatenate all audio chunks
-    combined_audio = np.concatenate(all_audio)
+            audio_buffer = io.BytesIO()
+            sf.write(audio_buffer, combined_audio, sample_rate, format='WAV')
+            audio_buffer.seek(0)
+            audio_data = audio_buffer.read()
 
-    # Write to buffer
-    audio_buffer = io.BytesIO()
-    sf.write(audio_buffer, combined_audio, sample_rate, format='WAV')
-    audio_buffer.seek(0)
-    audio_data = audio_buffer.read()
+    except Exception as e:
+        logger.error(f"Long synthesis failed: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Synthesis failed: {str(e)}"
+        )
 
     logger.info(f"Long synthesis complete: {total_chunks} chunks, {len(audio_data)} bytes, {total_synthesis_time:.2f}s")
 
