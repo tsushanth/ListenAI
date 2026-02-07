@@ -31,20 +31,21 @@ WORKDIR /app
 # Create directories for voice samples and cache
 RUN mkdir -p /app/voice_samples /app/audio_cache
 
-# Copy requirements and constraints first for better caching
-COPY requirements.txt constraints.txt ./
+# Copy requirements first for better caching
+COPY requirements.txt .
 
 # Install Python dependencies with CUDA support
 # Use CUDA 11.8 compatible torch 2.6.0 for Chatterbox compatibility
 # Install numpy and build tools first (required by pkuseg build which is a Chatterbox dependency)
 # Use --no-build-isolation for chatterbox-tts to use the system numpy for pkuseg build
-# Install TTS (Coqui) with constraints to override its strict numpy==1.22.0 pin on Python 3.10
+# Install TTS (Coqui) with --no-deps to avoid its strict numpy==1.22.0 pin on Python 3.10
+# (TTS's actual dependencies are listed in requirements.txt)
 RUN pip install --no-cache-dir --upgrade pip setuptools wheel cython && \
     pip install --no-cache-dir "numpy>=1.24.0,<1.26.0" && \
     pip install --no-cache-dir torch==2.6.0 torchaudio==2.6.0 --index-url https://download.pytorch.org/whl/cu118 && \
     pip install --no-cache-dir --no-build-isolation "chatterbox-tts>=0.1.4,<0.2.0" && \
     pip install --no-cache-dir -r requirements.txt && \
-    pip install --no-cache-dir -c constraints.txt TTS==0.22.0
+    pip install --no-cache-dir --no-deps TTS==0.22.0
 
 # Set HuggingFace cache directory to persist in image
 ENV HF_HOME=/app/.cache/huggingface
