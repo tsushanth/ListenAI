@@ -19,7 +19,7 @@ kokoro==0.9.4
 # Audio processing - CRITICAL: numpy must stay <2.0 for librosa compatibility
 soundfile==0.12.1
 librosa==0.10.2.post1
-numpy==1.26.4  # NumPy 2.0 breaks librosa's _phasor_angles ufunc
+numpy>=1.24.0,<2.0.0  # NumPy 2.0 breaks librosa's _phasor_angles ufunc
 
 # PyTorch (CUDA version for GPU)
 # Use torch 2.6.0 for Chatterbox compatibility
@@ -36,5 +36,6 @@ aiofiles==23.2.1
 httpx==0.27.0
 
 # XTTS v2 for voice cloning (Coqui TTS)
-# Note: This is a large package (~2GB with models)
-TTS==0.22.0
+# Note: Installed separately in Dockerfile with numpy constraint override
+# to avoid TTS's strict numpy==1.22.0 pin on Python 3.10
+# TTS==0.22.0  (see Dockerfile for install command)
