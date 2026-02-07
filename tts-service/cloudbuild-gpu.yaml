@@ -1,6 +1,9 @@
 steps:
   # Build the GPU container image using Dockerfile.gpu
+  # dir: tts-service ensures this works both when triggered from GitHub (repo root)
+  # and when submitted manually via `gcloud builds submit` from tts-service/
   - name: 'gcr.io/cloud-builders/docker'
+    dir: 'tts-service'
     args: ['build', '-f', 'Dockerfile.gpu', '-t', 'us-central1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/readaloud-tts-gpu:$BUILD_ID', '-t', 'us-central1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/readaloud-tts-gpu:latest', '.']
 
   # Push the container image to Artifact Registry
