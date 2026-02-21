@@ -90,6 +90,9 @@ struct RootView: View {
         // Configure RevenueCat for subscriptions and Apple Search Ads attribution
         await RevenueCatManager.shared.configure()
 
+        // Configure Facebook SDK for Meta Ads attribution and CAPI
+        FacebookSDKManager.shared.configure()
+
         // Configure StreamingTTSService for progressive audio playback
         StreamingTTSService.shared.configure(
             backendURL: backendURL,
