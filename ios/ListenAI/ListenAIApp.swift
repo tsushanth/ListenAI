@@ -90,6 +90,10 @@ struct RootView: View {
         // Configure RevenueCat for subscriptions and Apple Search Ads attribution
         await RevenueCatManager.shared.configure()
 
+        // Configure and collect Apple Search Ads attribution for ad-optimizer
+        SearchAdsAttributionService.shared.configure(backendURL: backendURL)
+        await SearchAdsAttributionService.shared.collectAttribution()
+
         // Configure StreamingTTSService for progressive audio playback
         StreamingTTSService.shared.configure(
             backendURL: backendURL,
