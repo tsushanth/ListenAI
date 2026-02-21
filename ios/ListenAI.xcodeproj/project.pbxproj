@@ -10,6 +10,7 @@
 		001000000000000000000001 /* ListenAIApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002000000000000000000001 /* ListenAIApp.swift */; };
 		001000000000000000000002 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002000000000000000000002 /* ContentView.swift */; };
 		001000000000000000000003 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 002000000000000000000003 /* Assets.xcassets */; };
+		001000000000000000000004 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 002000000000000000000007 /* GoogleService-Info.plist */; };
 		001100000000000000000001 /* AccessibilityHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002100000000000000000001 /* AccessibilityHelpers.swift */; };
 		001100000000000000000002 /* NotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002100000000000000000002 /* NotificationManager.swift */; };
 		001200000000000000000001 /* Article.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002200000000000000000001 /* Article.swift */; };
@@ -102,6 +103,7 @@
 		60053F2DC49846065D6EBC7B /* BackgroundStreamingSynthesisService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03A60CC8B1DA9D34FA981604 /* BackgroundStreamingSynthesisService.swift */; };
 		FC8D4518BE88A2E5699ED58A /* StreamingTTSService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F474471A9365C7F8F2BD6DD9 /* StreamingTTSService.swift */; };
 		RC0000000000000000000001 /* RevenueCat in Frameworks */ = {isa = PBXBuildFile; productRef = RC0000000000000000000002 /* RevenueCat */; };
+		FB0000000000000000000002 /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = FB0000000000000000000001 /* FirebaseAnalytics */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -111,6 +113,7 @@
 		002000000000000000000004 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		002000000000000000000005 /* Configuration.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = Configuration.storekit; sourceTree = "<group>"; };
 		002000000000000000000006 /* ListenAI.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = ListenAI.entitlements; sourceTree = "<group>"; };
+		002000000000000000000007 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 		002100000000000000000001 /* AccessibilityHelpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessibilityHelpers.swift; sourceTree = "<group>"; };
 		002100000000000000000002 /* NotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationManager.swift; sourceTree = "<group>"; };
 		002200000000000000000001 /* Article.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Article.swift; sourceTree = "<group>"; };
@@ -211,6 +214,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				FB0000000000000000000002 /* FirebaseAnalytics in Frameworks */,
 				RC0000000000000000000001 /* RevenueCat in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -246,6 +250,7 @@
 				002000000000000000000004 /* Info.plist */,
 				002000000000000000000005 /* Configuration.storekit */,
 				002000000000000000000006 /* ListenAI.entitlements */,
+				002000000000000000000007 /* GoogleService-Info.plist */,
 			);
 			path = ListenAI;
 			sourceTree = "<group>";
@@ -692,6 +697,7 @@
 			);
 			name = ListenAI;
 			packageProductDependencies = (
+				FB0000000000000000000001 /* FirebaseAnalytics */,
 				RC0000000000000000000002 /* RevenueCat */,
 			);
 			productName = ListenAI;
@@ -723,6 +729,7 @@
 			);
 			mainGroup = 005000000000000000000000;
 			packageReferences = (
+				FB0000000000000000000003 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
 				RC0000000000000000000003 /* XCRemoteSwiftPackageReference "purchases-ios" */,
 			);
 			productRefGroup = 005000000000000000000001 /* Products */;
@@ -740,6 +747,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				001000000000000000000003 /* Assets.xcassets in Resources */,
+				001000000000000000000004 /* GoogleService-Info.plist in Resources */,
 				00D000000000000000000001 /* voice_sample_rachel.wav in Resources */,
 				00D000000000000000000002 /* voice_sample_adam.wav in Resources */,
 				00D000000000000000000003 /* voice_sample_brian.wav in Resources */,
@@ -1063,6 +1071,14 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		FB0000000000000000000003 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/firebase/firebase-ios-sdk.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 11.0.0;
+			};
+		};
 		RC0000000000000000000003 /* XCRemoteSwiftPackageReference "purchases-ios" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/RevenueCat/purchases-ios.git";
@@ -1074,6 +1090,11 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		FB0000000000000000000001 /* FirebaseAnalytics */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = FB0000000000000000000003 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAnalytics;
+		};
 		RC0000000000000000000002 /* RevenueCat */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = RC0000000000000000000003 /* XCRemoteSwiftPackageReference "purchases-ios" */;

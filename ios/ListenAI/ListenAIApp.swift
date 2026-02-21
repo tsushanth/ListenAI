@@ -1,11 +1,15 @@
 import SwiftUI
 import UserNotifications
+import FirebaseCore
 
 @main
 struct ListenAIApp: App {
 
     init() {
         print("[App] ListenAIApp.init() starting")
+        // Configure Firebase for analytics
+        FirebaseApp.configure()
+        print("[App] Firebase configured")
         // Avoid any MainActor singleton access here
         print("[App] ListenAIApp.init() completed")
     }
