@@ -74,7 +74,6 @@
 		001700000000000000000007 /* AppReviewService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002700000000000000000007 /* AppReviewService.swift */; };
 		001700000000000000000008 /* RevenueCatManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002700000000000000000008 /* RevenueCatManager.swift */; };
 		001700000000000000000009 /* SearchAdsAttributionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002700000000000000000009 /* SearchAdsAttributionService.swift */; };
-		001700000000000000000009 /* FacebookSDKManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002700000000000000000009 /* FacebookSDKManager.swift */; };
 		001800000000000000000001 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002800000000000000000001 /* HomeView.swift */; };
 		001800000000000000000002 /* LibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002800000000000000000002 /* LibraryView.swift */; };
 		001800000000000000000003 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002800000000000000000003 /* SettingsView.swift */; };
@@ -102,11 +101,11 @@
 		00D000000000000000000004 /* voice_sample_bella.wav in Resources */ = {isa = PBXBuildFile; fileRef = 00E000000000000000000004 /* voice_sample_bella.wav */; };
 		00D000000000000000000005 /* voice_sample_josh.wav in Resources */ = {isa = PBXBuildFile; fileRef = 00E000000000000000000005 /* voice_sample_josh.wav */; };
 		00D000000000000000000006 /* voice_sample_charlotte.wav in Resources */ = {isa = PBXBuildFile; fileRef = 00E000000000000000000006 /* voice_sample_charlotte.wav */; };
+		2B81DA5A7C70CDE2D7D46C3F /* FacebookSDKManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A050BFDDD15ACB0B8529F6E8 /* FacebookSDKManager.swift */; };
 		60053F2DC49846065D6EBC7B /* BackgroundStreamingSynthesisService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03A60CC8B1DA9D34FA981604 /* BackgroundStreamingSynthesisService.swift */; };
+		FB0000000000000000000002 /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = FB0000000000000000000001 /* FirebaseAnalytics */; };
 		FC8D4518BE88A2E5699ED58A /* StreamingTTSService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F474471A9365C7F8F2BD6DD9 /* StreamingTTSService.swift */; };
 		RC0000000000000000000001 /* RevenueCat in Frameworks */ = {isa = PBXBuildFile; productRef = RC0000000000000000000002 /* RevenueCat */; };
-		FB0000000000000000000002 /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = FB0000000000000000000001 /* FirebaseAnalytics */; };
-		FB0000000000000000000001 /* FacebookCore in Frameworks */ = {isa = PBXBuildFile; productRef = FB0000000000000000000002 /* FacebookCore */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -181,7 +180,6 @@
 		002700000000000000000007 /* AppReviewService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppReviewService.swift; sourceTree = "<group>"; };
 		002700000000000000000008 /* RevenueCatManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RevenueCatManager.swift; sourceTree = "<group>"; };
 		002700000000000000000009 /* SearchAdsAttributionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchAdsAttributionService.swift; sourceTree = "<group>"; };
-		002700000000000000000009 /* FacebookSDKManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FacebookSDKManager.swift; sourceTree = "<group>"; };
 		002800000000000000000001 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		002800000000000000000002 /* LibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryView.swift; sourceTree = "<group>"; };
 		002800000000000000000003 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
@@ -211,6 +209,7 @@
 		00E000000000000000000005 /* voice_sample_josh.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = voice_sample_josh.wav; sourceTree = "<group>"; };
 		00E000000000000000000006 /* voice_sample_charlotte.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = voice_sample_charlotte.wav; sourceTree = "<group>"; };
 		03A60CC8B1DA9D34FA981604 /* BackgroundStreamingSynthesisService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = BackgroundStreamingSynthesisService.swift; path = Sources/TTS/Services/BackgroundStreamingSynthesisService.swift; sourceTree = SOURCE_ROOT; };
+		A050BFDDD15ACB0B8529F6E8 /* FacebookSDKManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FacebookSDKManager.swift; sourceTree = "<group>"; };
 		F474471A9365C7F8F2BD6DD9 /* StreamingTTSService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = StreamingTTSService.swift; path = Sources/TTS/Services/StreamingTTSService.swift; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
@@ -221,7 +220,6 @@
 			files = (
 				FB0000000000000000000002 /* FirebaseAnalytics in Frameworks */,
 				RC0000000000000000000001 /* RevenueCat in Frameworks */,
-				FB0000000000000000000001 /* FacebookCore in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -563,11 +561,11 @@
 			children = (
 				002700000000000000000007 /* AppReviewService.swift */,
 				002700000000000000000005 /* AuthService.swift */,
-				002700000000000000000009 /* FacebookSDKManager.swift */,
 				002700000000000000000003 /* GoogleAuthService.swift */,
 				002700000000000000000008 /* RevenueCatManager.swift */,
 				002700000000000000000009 /* SearchAdsAttributionService.swift */,
 				002700000000000000000004 /* StoreKitManager.swift */,
+				A050BFDDD15ACB0B8529F6E8 /* FacebookSDKManager.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -707,7 +705,7 @@
 			packageProductDependencies = (
 				FB0000000000000000000001 /* FirebaseAnalytics */,
 				RC0000000000000000000002 /* RevenueCat */,
-				FB0000000000000000000002 /* FacebookCore */,
+				43290B12B1A10604BD12FD98 /* FacebookCore */,
 			);
 			productName = ListenAI;
 			productReference = 003000000000000000000001 /* ListenAI.app */;
@@ -740,7 +738,7 @@
 			packageReferences = (
 				FB0000000000000000000003 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
 				RC0000000000000000000003 /* XCRemoteSwiftPackageReference "purchases-ios" */,
-				FB0000000000000000000003 /* XCRemoteSwiftPackageReference "facebook-ios-sdk" */,
+				89DE07E60035A1E7F2108C93 /* XCRemoteSwiftPackageReference "facebook-ios-sdk" */,
 			);
 			productRefGroup = 005000000000000000000001 /* Products */;
 			projectDirPath = "";
@@ -845,7 +843,6 @@
 				001700000000000000000007 /* AppReviewService.swift in Sources */,
 				001700000000000000000008 /* RevenueCatManager.swift in Sources */,
 				001700000000000000000009 /* SearchAdsAttributionService.swift in Sources */,
-				001700000000000000000009 /* FacebookSDKManager.swift in Sources */,
 				00A000000000000000000001 /* OnboardingManager.swift in Sources */,
 				00A000000000000000000002 /* OnboardingView.swift in Sources */,
 				00A000000000000000000003 /* WelcomePageView.swift in Sources */,
@@ -864,6 +861,7 @@
 				001A00000000000000000004 /* ShareVoiceView.swift in Sources */,
 				001A00000000000000000005 /* MySharedVoicesView.swift in Sources */,
 				001A00000000000000000006 /* RewardsView.swift in Sources */,
+				2B81DA5A7C70CDE2D7D46C3F /* FacebookSDKManager.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1083,6 +1081,14 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		89DE07E60035A1E7F2108C93 /* XCRemoteSwiftPackageReference "facebook-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/facebook/facebook-ios-sdk.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 17.0.0;
+			};
+		};
 		FB0000000000000000000003 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/firebase/firebase-ios-sdk.git";
@@ -1099,17 +1105,14 @@
 				minimumVersion = 5.0.0;
 			};
 		};
-		FB0000000000000000000003 /* XCRemoteSwiftPackageReference "facebook-ios-sdk" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/facebook/facebook-ios-sdk.git";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 17.0.0;
-			};
-		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		43290B12B1A10604BD12FD98 /* FacebookCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 89DE07E60035A1E7F2108C93 /* XCRemoteSwiftPackageReference "facebook-ios-sdk" */;
+			productName = FacebookCore;
+		};
 		FB0000000000000000000001 /* FirebaseAnalytics */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = FB0000000000000000000003 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
@@ -1119,11 +1122,6 @@
 			isa = XCSwiftPackageProductDependency;
 			package = RC0000000000000000000003 /* XCRemoteSwiftPackageReference "purchases-ios" */;
 			productName = RevenueCat;
-		};
-		FB0000000000000000000002 /* FacebookCore */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = FB0000000000000000000003 /* XCRemoteSwiftPackageReference "facebook-ios-sdk" */;
-			productName = FacebookCore;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
