@@ -58,5 +58,36 @@
 	<string>ReadAloud AI uses speech recognition for voice commands.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>ReadAloud AI uses the camera to scan documents and extract text for listening.</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>fb1550416256518249</string>
+			</array>
+		</dict>
+	</array>
+	<key>FacebookAppID</key>
+	<string>1550416256518249</string>
+	<key>FacebookClientToken</key>
+	<string>f910f6a8466611d75d4f612740c5e8a8</string>
+	<key>FacebookDisplayName</key>
+	<string>ReadAloud AI</string>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>fbapi</string>
+		<string>fb-messenger-share-api</string>
+	</array>
+	<key>SKAdNetworkItems</key>
+	<array>
+		<dict>
+			<key>SKAdNetworkIdentifier</key>
+			<string>v9wttpbfk9.skadnetwork</string>
+		</dict>
+		<dict>
+			<key>SKAdNetworkIdentifier</key>
+			<string>n38lu8286q.skadnetwork</string>
+		</dict>
+	</array>
 </dict>
 </plist>

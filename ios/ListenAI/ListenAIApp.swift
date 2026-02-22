@@ -98,6 +98,9 @@ struct RootView: View {
         SearchAdsAttributionService.shared.configure(backendURL: backendURL)
         await SearchAdsAttributionService.shared.collectAttribution()
 
+        // Configure Facebook SDK for Meta Ads attribution and CAPI
+        FacebookSDKManager.shared.configure()
+
         // Configure StreamingTTSService for progressive audio playback
         StreamingTTSService.shared.configure(
             backendURL: backendURL,

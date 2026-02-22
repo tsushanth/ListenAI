@@ -74,6 +74,7 @@
 		001700000000000000000007 /* AppReviewService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002700000000000000000007 /* AppReviewService.swift */; };
 		001700000000000000000008 /* RevenueCatManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002700000000000000000008 /* RevenueCatManager.swift */; };
 		001700000000000000000009 /* SearchAdsAttributionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002700000000000000000009 /* SearchAdsAttributionService.swift */; };
+		001700000000000000000009 /* FacebookSDKManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002700000000000000000009 /* FacebookSDKManager.swift */; };
 		001800000000000000000001 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002800000000000000000001 /* HomeView.swift */; };
 		001800000000000000000002 /* LibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002800000000000000000002 /* LibraryView.swift */; };
 		001800000000000000000003 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002800000000000000000003 /* SettingsView.swift */; };
@@ -105,6 +106,7 @@
 		FC8D4518BE88A2E5699ED58A /* StreamingTTSService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F474471A9365C7F8F2BD6DD9 /* StreamingTTSService.swift */; };
 		RC0000000000000000000001 /* RevenueCat in Frameworks */ = {isa = PBXBuildFile; productRef = RC0000000000000000000002 /* RevenueCat */; };
 		FB0000000000000000000002 /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = FB0000000000000000000001 /* FirebaseAnalytics */; };
+		FB0000000000000000000001 /* FacebookCore in Frameworks */ = {isa = PBXBuildFile; productRef = FB0000000000000000000002 /* FacebookCore */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -179,6 +181,7 @@
 		002700000000000000000007 /* AppReviewService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppReviewService.swift; sourceTree = "<group>"; };
 		002700000000000000000008 /* RevenueCatManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RevenueCatManager.swift; sourceTree = "<group>"; };
 		002700000000000000000009 /* SearchAdsAttributionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchAdsAttributionService.swift; sourceTree = "<group>"; };
+		002700000000000000000009 /* FacebookSDKManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FacebookSDKManager.swift; sourceTree = "<group>"; };
 		002800000000000000000001 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		002800000000000000000002 /* LibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryView.swift; sourceTree = "<group>"; };
 		002800000000000000000003 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
@@ -218,6 +221,7 @@
 			files = (
 				FB0000000000000000000002 /* FirebaseAnalytics in Frameworks */,
 				RC0000000000000000000001 /* RevenueCat in Frameworks */,
+				FB0000000000000000000001 /* FacebookCore in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -559,6 +563,7 @@
 			children = (
 				002700000000000000000007 /* AppReviewService.swift */,
 				002700000000000000000005 /* AuthService.swift */,
+				002700000000000000000009 /* FacebookSDKManager.swift */,
 				002700000000000000000003 /* GoogleAuthService.swift */,
 				002700000000000000000008 /* RevenueCatManager.swift */,
 				002700000000000000000009 /* SearchAdsAttributionService.swift */,
@@ -702,6 +707,7 @@
 			packageProductDependencies = (
 				FB0000000000000000000001 /* FirebaseAnalytics */,
 				RC0000000000000000000002 /* RevenueCat */,
+				FB0000000000000000000002 /* FacebookCore */,
 			);
 			productName = ListenAI;
 			productReference = 003000000000000000000001 /* ListenAI.app */;
@@ -734,6 +740,7 @@
 			packageReferences = (
 				FB0000000000000000000003 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
 				RC0000000000000000000003 /* XCRemoteSwiftPackageReference "purchases-ios" */,
+				FB0000000000000000000003 /* XCRemoteSwiftPackageReference "facebook-ios-sdk" */,
 			);
 			productRefGroup = 005000000000000000000001 /* Products */;
 			projectDirPath = "";
@@ -838,6 +845,7 @@
 				001700000000000000000007 /* AppReviewService.swift in Sources */,
 				001700000000000000000008 /* RevenueCatManager.swift in Sources */,
 				001700000000000000000009 /* SearchAdsAttributionService.swift in Sources */,
+				001700000000000000000009 /* FacebookSDKManager.swift in Sources */,
 				00A000000000000000000001 /* OnboardingManager.swift in Sources */,
 				00A000000000000000000002 /* OnboardingView.swift in Sources */,
 				00A000000000000000000003 /* WelcomePageView.swift in Sources */,
@@ -1091,6 +1099,14 @@
 				minimumVersion = 5.0.0;
 			};
 		};
+		FB0000000000000000000003 /* XCRemoteSwiftPackageReference "facebook-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/facebook/facebook-ios-sdk.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 17.0.0;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -1103,6 +1119,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = RC0000000000000000000003 /* XCRemoteSwiftPackageReference "purchases-ios" */;
 			productName = RevenueCat;
+		};
+		FB0000000000000000000002 /* FacebookCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = FB0000000000000000000003 /* XCRemoteSwiftPackageReference "facebook-ios-sdk" */;
+			productName = FacebookCore;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
