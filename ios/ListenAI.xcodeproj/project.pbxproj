@@ -73,6 +73,7 @@
 		001700000000000000000006 /* SignInPromptView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002700000000000000000006 /* SignInPromptView.swift */; };
 		001700000000000000000007 /* AppReviewService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002700000000000000000007 /* AppReviewService.swift */; };
 		001700000000000000000008 /* RevenueCatManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002700000000000000000008 /* RevenueCatManager.swift */; };
+		001700000000000000000009 /* SearchAdsAttributionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002700000000000000000009 /* SearchAdsAttributionService.swift */; };
 		001800000000000000000001 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002800000000000000000001 /* HomeView.swift */; };
 		001800000000000000000002 /* LibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002800000000000000000002 /* LibraryView.swift */; };
 		001800000000000000000003 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002800000000000000000003 /* SettingsView.swift */; };
@@ -177,6 +178,7 @@
 		002700000000000000000006 /* SignInPromptView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignInPromptView.swift; sourceTree = "<group>"; };
 		002700000000000000000007 /* AppReviewService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppReviewService.swift; sourceTree = "<group>"; };
 		002700000000000000000008 /* RevenueCatManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RevenueCatManager.swift; sourceTree = "<group>"; };
+		002700000000000000000009 /* SearchAdsAttributionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchAdsAttributionService.swift; sourceTree = "<group>"; };
 		002800000000000000000001 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		002800000000000000000002 /* LibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryView.swift; sourceTree = "<group>"; };
 		002800000000000000000003 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
@@ -559,6 +561,7 @@
 				002700000000000000000005 /* AuthService.swift */,
 				002700000000000000000003 /* GoogleAuthService.swift */,
 				002700000000000000000008 /* RevenueCatManager.swift */,
+				002700000000000000000009 /* SearchAdsAttributionService.swift */,
 				002700000000000000000004 /* StoreKitManager.swift */,
 			);
 			path = Services;
@@ -834,6 +837,7 @@
 				001700000000000000000006 /* SignInPromptView.swift in Sources */,
 				001700000000000000000007 /* AppReviewService.swift in Sources */,
 				001700000000000000000008 /* RevenueCatManager.swift in Sources */,
+				001700000000000000000009 /* SearchAdsAttributionService.swift in Sources */,
 				00A000000000000000000001 /* OnboardingManager.swift in Sources */,
 				00A000000000000000000002 /* OnboardingView.swift in Sources */,
 				00A000000000000000000003 /* WelcomePageView.swift in Sources */,

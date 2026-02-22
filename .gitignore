@@ -89,3 +89,6 @@ android/keystore.properties
 *.aab
 *.jks
 *.keystore
+
+# Android signing key properties
+android/key.properties

@@ -1,0 +1,24 @@
+{
+  "app_name": "ReadAloud AI",
+  "bundle_id": "com.kreativekoala.listenai",
+  "platform": "ios",
+  "health_score": 0,
+  "health_tier": "unknown",
+  "marketing_readiness": 0,
+  "last_updated": "2026-02-21",
+  "metrics": {
+    "impressions_7d": 0,
+    "units_7d": 0,
+    "revenue_7d": 0,
+    "sessions_7d": 0,
+    "ad_spend_7d": 0,
+    "active_subscribers": 0,
+    "roas": 0,
+    "rating": 0,
+    "rating_count": 0
+  },
+  "suggested_actions": {
+    "coding": [],
+    "marketing": []
+  }
+}
