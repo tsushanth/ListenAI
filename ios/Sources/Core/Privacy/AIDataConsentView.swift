@@ -88,8 +88,7 @@ struct AIDataConsentView: View {
                 title: "Voice Cloning",
                 description: "When you create a voice clone, your voice recording and text content are sent to our servers for processing.",
                 services: [
-                    (name: "Chatterbox TTS", detail: "Voice cloning (hosted on Google Cloud)"),
-                    (name: "XTTS", detail: "Multilingual voice cloning (hosted on Google Cloud)")
+                    (name: "Chatterbox TTS", detail: "Voice cloning (hosted on Google Cloud)")
                 ]
             )
 

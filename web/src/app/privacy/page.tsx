@@ -36,7 +36,7 @@ export default function PrivacyPage() {
             <ul className="list-disc pl-6 text-gray-300 space-y-2">
               <li>Encrypted in transit and at rest</li>
               <li>Only used to generate your voice clone</li>
-              <li>Processed by Chatterbox TTS and XTTS, hosted on our Google Cloud infrastructure (see Section 3 for details)</li>
+              <li>Processed by Chatterbox TTS, hosted on our Google Cloud infrastructure (see Section 3 for details)</li>
               <li>Stored in Supabase Storage (encrypted at rest)</li>
               <li>Deletable at any time through the app</li>
             </ul>
@@ -72,7 +72,6 @@ export default function PrivacyPage() {
             </p>
             <ul className="list-disc pl-6 text-gray-300 space-y-2">
               <li><strong>Chatterbox TTS</strong> (self-hosted on Google Cloud Platform) &mdash; processes audio to create voice clones</li>
-              <li><strong>XTTS</strong> (self-hosted on Google Cloud Platform) &mdash; multilingual voice cloning</li>
             </ul>
 
             <h3 className="text-xl font-semibold text-white mb-3 mt-6">Backend &amp; Authentication</h3>
@@ -113,7 +112,7 @@ export default function PrivacyPage() {
             <h2 className="text-2xl font-semibold text-white mb-4">6. Third-Party Data Protection</h2>
             <p className="text-gray-300">
               All third-party services we use provide data protection measures consistent with industry standards.
-              Self-hosted services (Kokoro TTS, Chatterbox, XTTS) run on our own Google Cloud infrastructure with
+              Self-hosted services (Kokoro TTS, Chatterbox) run on our own Google Cloud infrastructure with
               encryption in transit (TLS 1.3) and at rest. Third-party APIs (ElevenLabs, OpenAI) are accessed under
               API agreements that prohibit use of your data for model training.
             </p>

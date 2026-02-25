@@ -60,7 +60,7 @@ export default function TermsPage() {
               summarization features. By using these cloud-based features, you acknowledge and consent to your
               content being processed by the third-party services identified in our{' '}
               <Link href="/privacy" className="text-primary hover:text-primary-dark">Privacy Policy</Link>.
-              These services include Kokoro TTS, ElevenLabs, OpenAI, Chatterbox TTS, and XTTS.
+              These services include Kokoro TTS, ElevenLabs, OpenAI, and Chatterbox TTS.
             </p>
             <p className="text-gray-300 mb-4">You may revoke this consent at any time in the app&apos;s Settings, which will limit
               you to on-device voice processing. On-device Apple voices do not send any data externally.</p>
