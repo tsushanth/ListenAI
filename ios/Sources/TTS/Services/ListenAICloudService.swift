@@ -1041,6 +1041,12 @@ extension ListenAICloudService {
         title: String? = nil,
         customPrompt: String? = nil
     ) async throws -> String {
+        // Check AI data consent before sending text to OpenAI
+        let hasConsent = await MainActor.run { AIDataConsentManager.shared.hasConsented }
+        guard hasConsent else {
+            throw ListenAICloudError.unauthorized
+        }
+
         let token = try await getAuthToken()
 
         let url = configuration.baseURL

@@ -35,7 +35,10 @@ struct OnboardingView: View {
                     VoiceSelectionPageView()
                         .tag(OnboardingPage.voiceSelection)
 
-                    PaywallPageView()
+                    AIDataConsentView(isOnboarding: true)
+                        .tag(OnboardingPage.dataConsent)
+
+                    RemotePaywallView(triggerSource: "onboarding")
                         .tag(OnboardingPage.paywall)
 
                     SignInPageView()
@@ -46,6 +49,12 @@ struct OnboardingView: View {
             }
         }
         .interactiveDismissDisabled()
+        .onAppear {
+            // Returning users (who already completed onboarding v1) skip straight to consent
+            if manager.isReturningUser {
+                manager.skipToDataConsent()
+            }
+        }
     }
 }
 

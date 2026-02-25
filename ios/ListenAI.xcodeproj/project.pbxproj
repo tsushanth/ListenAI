@@ -13,6 +13,8 @@
 		001000000000000000000004 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 002000000000000000000007 /* GoogleService-Info.plist */; };
 		001100000000000000000001 /* AccessibilityHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002100000000000000000001 /* AccessibilityHelpers.swift */; };
 		001100000000000000000002 /* NotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002100000000000000000002 /* NotificationManager.swift */; };
+		001100000000000000000003 /* AIDataConsentManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002100000000000000000003 /* AIDataConsentManager.swift */; };
+		001100000000000000000004 /* AIDataConsentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002100000000000000000004 /* AIDataConsentView.swift */; };
 		001200000000000000000001 /* Article.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002200000000000000000001 /* Article.swift */; };
 		001200000000000000000002 /* ExtractionModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002200000000000000000002 /* ExtractionModels.swift */; };
 		001200000000000000000003 /* ImportCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002200000000000000000003 /* ImportCoordinator.swift */; };
@@ -102,10 +104,15 @@
 		00D000000000000000000005 /* voice_sample_josh.wav in Resources */ = {isa = PBXBuildFile; fileRef = 00E000000000000000000005 /* voice_sample_josh.wav */; };
 		00D000000000000000000006 /* voice_sample_charlotte.wav in Resources */ = {isa = PBXBuildFile; fileRef = 00E000000000000000000006 /* voice_sample_charlotte.wav */; };
 		2B81DA5A7C70CDE2D7D46C3F /* FacebookSDKManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A050BFDDD15ACB0B8529F6E8 /* FacebookSDKManager.swift */; };
+		41448C204F9EF75A0EE90380 /* ReviewManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1C8CD1DE522D6280B123B13 /* ReviewManager.swift */; };
+		544A1294F4B6410912040D5A /* RevenueCatUI in Frameworks */ = {isa = PBXBuildFile; productRef = 436BDEE2921B7E4C3268F141 /* RevenueCatUI */; };
 		60053F2DC49846065D6EBC7B /* BackgroundStreamingSynthesisService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03A60CC8B1DA9D34FA981604 /* BackgroundStreamingSynthesisService.swift */; };
+		DE50B42EBD871523FFEBE4AD /* RemotePaywallView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 832329FA4EB08897919EEED5 /* RemotePaywallView.swift */; };
 		FB0000000000000000000002 /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = FB0000000000000000000001 /* FirebaseAnalytics */; };
 		FC8D4518BE88A2E5699ED58A /* StreamingTTSService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F474471A9365C7F8F2BD6DD9 /* StreamingTTSService.swift */; };
 		RC0000000000000000000001 /* RevenueCat in Frameworks */ = {isa = PBXBuildFile; productRef = RC0000000000000000000002 /* RevenueCat */; };
+		TT0000000000000000000001 /* TikTokBusinessSDK in Frameworks */ = {isa = PBXBuildFile; productRef = TT0000000000000000000002 /* TikTokBusinessSDK */; };
+		TT0000000000000000000010 /* TikTokHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = TT0000000000000000000011 /* TikTokHelper.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -118,6 +125,8 @@
 		002000000000000000000007 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 		002100000000000000000001 /* AccessibilityHelpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessibilityHelpers.swift; sourceTree = "<group>"; };
 		002100000000000000000002 /* NotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationManager.swift; sourceTree = "<group>"; };
+		002100000000000000000003 /* AIDataConsentManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIDataConsentManager.swift; sourceTree = "<group>"; };
+		002100000000000000000004 /* AIDataConsentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIDataConsentView.swift; sourceTree = "<group>"; };
 		002200000000000000000001 /* Article.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Article.swift; sourceTree = "<group>"; };
 		002200000000000000000002 /* ExtractionModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExtractionModels.swift; sourceTree = "<group>"; };
 		002200000000000000000003 /* ImportCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportCoordinator.swift; sourceTree = "<group>"; };
@@ -209,7 +218,10 @@
 		00E000000000000000000005 /* voice_sample_josh.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = voice_sample_josh.wav; sourceTree = "<group>"; };
 		00E000000000000000000006 /* voice_sample_charlotte.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = voice_sample_charlotte.wav; sourceTree = "<group>"; };
 		03A60CC8B1DA9D34FA981604 /* BackgroundStreamingSynthesisService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = BackgroundStreamingSynthesisService.swift; path = Sources/TTS/Services/BackgroundStreamingSynthesisService.swift; sourceTree = SOURCE_ROOT; };
+		832329FA4EB08897919EEED5 /* RemotePaywallView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = RemotePaywallView.swift; path = Services/RemotePaywallView.swift; sourceTree = "<group>"; };
 		A050BFDDD15ACB0B8529F6E8 /* FacebookSDKManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FacebookSDKManager.swift; sourceTree = "<group>"; };
+		TT0000000000000000000011 /* TikTokHelper.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TikTokHelper.swift; sourceTree = "<group>"; };
+		A1C8CD1DE522D6280B123B13 /* ReviewManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ReviewManager.swift; sourceTree = "<group>"; };
 		F474471A9365C7F8F2BD6DD9 /* StreamingTTSService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = StreamingTTSService.swift; path = Sources/TTS/Services/StreamingTTSService.swift; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
@@ -220,6 +232,8 @@
 			files = (
 				FB0000000000000000000002 /* FirebaseAnalytics in Frameworks */,
 				RC0000000000000000000001 /* RevenueCat in Frameworks */,
+				544A1294F4B6410912040D5A /* RevenueCatUI in Frameworks */,
+				TT0000000000000000000001 /* TikTokBusinessSDK in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -255,6 +269,7 @@
 				002000000000000000000005 /* Configuration.storekit */,
 				002000000000000000000006 /* ListenAI.entitlements */,
 				002000000000000000000007 /* GoogleService-Info.plist */,
+				3225269273669A2553EFDD9F /* Services */,
 			);
 			path = ListenAI;
 			sourceTree = "<group>";
@@ -273,6 +288,7 @@
 				005A00000000000000000001 /* Settings */,
 				005200000000000000000005 /* TTS */,
 				005200000000000000000006 /* Usage */,
+				F75BF3079A31363D2E894B14 /* Services */,
 			);
 			path = Sources;
 			sourceTree = "<group>";
@@ -282,8 +298,18 @@
 			children = (
 				005300000000000000000001 /* Accessibility */,
 				005300000000000000000002 /* Notifications */,
+				005300000000000000000003 /* Privacy */,
 			);
 			path = Core;
+			sourceTree = "<group>";
+		};
+		005300000000000000000003 /* Privacy */ = {
+			isa = PBXGroup;
+			children = (
+				002100000000000000000003 /* AIDataConsentManager.swift */,
+				002100000000000000000004 /* AIDataConsentView.swift */,
+			);
+			path = Privacy;
 			sourceTree = "<group>";
 		};
 		005200000000000000000002 /* Import */ = {
@@ -566,6 +592,7 @@
 				002700000000000000000009 /* SearchAdsAttributionService.swift */,
 				002700000000000000000004 /* StoreKitManager.swift */,
 				A050BFDDD15ACB0B8529F6E8 /* FacebookSDKManager.swift */,
+				TT0000000000000000000011 /* TikTokHelper.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -686,6 +713,23 @@
 			path = Resources;
 			sourceTree = "<group>";
 		};
+		3225269273669A2553EFDD9F /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				A1C8CD1DE522D6280B123B13 /* ReviewManager.swift */,
+			);
+			name = Services;
+			path = ../ListenAI/Services;
+			sourceTree = "<group>";
+		};
+		F75BF3079A31363D2E894B14 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				832329FA4EB08897919EEED5 /* RemotePaywallView.swift */,
+			);
+			name = Services;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -706,6 +750,8 @@
 				FB0000000000000000000001 /* FirebaseAnalytics */,
 				RC0000000000000000000002 /* RevenueCat */,
 				43290B12B1A10604BD12FD98 /* FacebookCore */,
+				436BDEE2921B7E4C3268F141 /* RevenueCatUI */,
+				TT0000000000000000000002 /* TikTokBusinessSDK */,
 			);
 			productName = ListenAI;
 			productReference = 003000000000000000000001 /* ListenAI.app */;
@@ -739,6 +785,7 @@
 				FB0000000000000000000003 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
 				RC0000000000000000000003 /* XCRemoteSwiftPackageReference "purchases-ios" */,
 				89DE07E60035A1E7F2108C93 /* XCRemoteSwiftPackageReference "facebook-ios-sdk" */,
+				TT0000000000000000000003 /* XCRemoteSwiftPackageReference "tiktok-business-ios-sdk" */,
 			);
 			productRefGroup = 005000000000000000000001 /* Products */;
 			projectDirPath = "";
@@ -776,6 +823,8 @@
 				001000000000000000000002 /* ContentView.swift in Sources */,
 				001100000000000000000001 /* AccessibilityHelpers.swift in Sources */,
 				001100000000000000000002 /* NotificationManager.swift in Sources */,
+				001100000000000000000003 /* AIDataConsentManager.swift in Sources */,
+				001100000000000000000004 /* AIDataConsentView.swift in Sources */,
 				001200000000000000000001 /* Article.swift in Sources */,
 				001200000000000000000002 /* ExtractionModels.swift in Sources */,
 				001200000000000000000003 /* ImportCoordinator.swift in Sources */,
@@ -862,6 +911,9 @@
 				001A00000000000000000005 /* MySharedVoicesView.swift in Sources */,
 				001A00000000000000000006 /* RewardsView.swift in Sources */,
 				2B81DA5A7C70CDE2D7D46C3F /* FacebookSDKManager.swift in Sources */,
+				TT0000000000000000000010 /* TikTokHelper.swift in Sources */,
+				41448C204F9EF75A0EE90380 /* ReviewManager.swift in Sources */,
+				DE50B42EBD871523FFEBE4AD /* RemotePaywallView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -994,7 +1046,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = ListenAI/ListenAI.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 16;
+				CURRENT_PROJECT_VERSION = 22;
 				DEVELOPMENT_TEAM = 7RS696YC75;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -1010,7 +1062,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 2.9;
+				MARKETING_VERSION = 7.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.kreativekoala.listenai;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -1029,7 +1081,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = ListenAI/ListenAI.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 16;
+				CURRENT_PROJECT_VERSION = 22;
 				DEVELOPMENT_TEAM = 7RS696YC75;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -1045,7 +1097,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 2.9;
+				MARKETING_VERSION = 7.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.kreativekoala.listenai;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -1105,6 +1157,14 @@
 				minimumVersion = 5.0.0;
 			};
 		};
+		TT0000000000000000000003 /* XCRemoteSwiftPackageReference "tiktok-business-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/tiktok/tiktok-business-ios-sdk";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.0.0;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -1112,6 +1172,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 89DE07E60035A1E7F2108C93 /* XCRemoteSwiftPackageReference "facebook-ios-sdk" */;
 			productName = FacebookCore;
+		};
+		436BDEE2921B7E4C3268F141 /* RevenueCatUI */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = RC0000000000000000000003 /* XCRemoteSwiftPackageReference "purchases-ios" */;
+			productName = RevenueCatUI;
 		};
 		FB0000000000000000000001 /* FirebaseAnalytics */ = {
 			isa = XCSwiftPackageProductDependency;
@@ -1122,6 +1187,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = RC0000000000000000000003 /* XCRemoteSwiftPackageReference "purchases-ios" */;
 			productName = RevenueCat;
+		};
+		TT0000000000000000000002 /* TikTokBusinessSDK */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = TT0000000000000000000003 /* XCRemoteSwiftPackageReference "tiktok-business-ios-sdk" */;
+			productName = TikTokBusinessSDK;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

@@ -11,7 +11,7 @@ import RevenueCat
 /// - Length of subscription
 /// - Price of subscription
 /// - Functional links to Privacy Policy and Terms of Use (EULA)
-struct PaywallPageView: View {
+struct LegacyPaywallPageView: View {
     @ObservedObject private var manager = OnboardingManager.shared
     @ObservedObject private var revenueCat = RevenueCatManager.shared
     @State private var selectedPlan: SubscriptionPlan = .annual
@@ -574,5 +574,5 @@ struct SubscriptionOptionCard: View {
 }
 
 #Preview("Paywall") {
-    PaywallPageView()
+    LegacyPaywallPageView()
 }

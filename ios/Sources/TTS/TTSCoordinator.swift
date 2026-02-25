@@ -527,6 +527,13 @@ final class TTSCoordinator: ObservableObject {
 
         print("[TTS] Using voiceToUse: \(voiceToUse.name), kokoroID: \(voiceToUse.kokoroVoiceID ?? "nil")")
 
+        // Check AI data consent for cloud synthesis
+        if voiceToUse.provider != .apple && !AIDataConsentManager.shared.hasConsented {
+            print("[TTS] Cloud voice requested but AI data consent not granted, falling back to on-device")
+            let onDeviceVoice = createOnDeviceFallback(for: voiceToUse)
+            return try await synthesizeWithQuality(text: text, voice: onDeviceVoice, quality: .standard)
+        }
+
         // Check if voice supports the requested quality
         let effectiveQuality: VoiceQuality
         if qualityToUse == .premium && voiceToUse.isPremiumOnly {

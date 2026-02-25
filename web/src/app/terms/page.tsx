@@ -11,7 +11,7 @@ export default function TermsPage() {
         <h1 className="text-4xl font-bold text-white mb-8">Terms of Service</h1>
 
         <div className="prose prose-invert max-w-none">
-          <p className="text-gray-400 mb-6">Last updated: January 2026</p>
+          <p className="text-gray-400 mb-6">Last updated: February 2026</p>
 
           <section className="mb-8">
             <h2 className="text-2xl font-semibold text-white mb-4">1. Acceptance of Terms</h2>
@@ -54,7 +54,20 @@ export default function TermsPage() {
           </section>
 
           <section className="mb-8">
-            <h2 className="text-2xl font-semibold text-white mb-4">5. Acceptable Use</h2>
+            <h2 className="text-2xl font-semibold text-white mb-4">5. AI Services and Data Processing</h2>
+            <p className="text-gray-300 mb-4">
+              ReadAloud AI uses cloud-based AI services to provide text-to-speech, voice cloning, and content
+              summarization features. By using these cloud-based features, you acknowledge and consent to your
+              content being processed by the third-party services identified in our{' '}
+              <Link href="/privacy" className="text-primary hover:text-primary-dark">Privacy Policy</Link>.
+              These services include Kokoro TTS, ElevenLabs, OpenAI, Chatterbox TTS, and XTTS.
+            </p>
+            <p className="text-gray-300 mb-4">You may revoke this consent at any time in the app&apos;s Settings, which will limit
+              you to on-device voice processing. On-device Apple voices do not send any data externally.</p>
+          </section>
+
+          <section className="mb-8">
+            <h2 className="text-2xl font-semibold text-white mb-4">6. Acceptable Use</h2>
             <p className="text-gray-300 mb-4">You agree not to use our services to:</p>
             <ul className="list-disc pl-6 text-gray-300 space-y-2">
               <li>Violate any laws or regulations</li>
@@ -66,7 +79,7 @@ export default function TermsPage() {
           </section>
 
           <section className="mb-8">
-            <h2 className="text-2xl font-semibold text-white mb-4">6. Subscriptions and Payments</h2>
+            <h2 className="text-2xl font-semibold text-white mb-4">7. Subscriptions and Payments</h2>
             <p className="text-gray-300 mb-4">
               Some features require a paid subscription. By subscribing, you agree to:
             </p>
@@ -78,7 +91,7 @@ export default function TermsPage() {
           </section>
 
           <section className="mb-8">
-            <h2 className="text-2xl font-semibold text-white mb-4">7. Intellectual Property</h2>
+            <h2 className="text-2xl font-semibold text-white mb-4">8. Intellectual Property</h2>
             <p className="text-gray-300">
               ReadAloud AI and its content, features, and functionality are owned by us and are protected
               by copyright, trademark, and other intellectual property laws. You retain ownership of
@@ -87,7 +100,7 @@ export default function TermsPage() {
           </section>
 
           <section className="mb-8">
-            <h2 className="text-2xl font-semibold text-white mb-4">8. Limitation of Liability</h2>
+            <h2 className="text-2xl font-semibold text-white mb-4">9. Limitation of Liability</h2>
             <p className="text-gray-300">
               To the maximum extent permitted by law, ReadAloud AI shall not be liable for any indirect,
               incidental, special, consequential, or punitive damages resulting from your use of the service.
@@ -95,7 +108,7 @@ export default function TermsPage() {
           </section>
 
           <section className="mb-8">
-            <h2 className="text-2xl font-semibold text-white mb-4">9. Changes to Terms</h2>
+            <h2 className="text-2xl font-semibold text-white mb-4">10. Changes to Terms</h2>
             <p className="text-gray-300">
               We may modify these terms at any time. Continued use of the service after changes
               constitutes acceptance of the new terms.
@@ -103,7 +116,7 @@ export default function TermsPage() {
           </section>
 
           <section className="mb-8">
-            <h2 className="text-2xl font-semibold text-white mb-4">10. Contact Us</h2>
+            <h2 className="text-2xl font-semibold text-white mb-4">11. Contact Us</h2>
             <p className="text-gray-300">
               If you have any questions about these Terms of Service, please contact us at{' '}
               <a href="mailto:legal@readaloudai.org" className="text-primary hover:text-primary-dark">

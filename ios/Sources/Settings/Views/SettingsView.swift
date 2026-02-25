@@ -37,6 +37,7 @@ struct SettingsView: View {
     @State private var showingLinkedAccounts = false
     @State private var showingUsageDetails = false
     @State private var showingMarketplace = false
+    @State private var showingDataConsent = false
 
     // Current voice from preset manager
     @StateObject private var voicePresetManager = VoicePresetManager.shared
@@ -57,6 +58,9 @@ struct SettingsView: View {
 
             // Support Section
             supportSection
+
+            // Data & Privacy Section
+            dataPrivacySection
 
             // About Section
             aboutSection
@@ -88,6 +92,11 @@ struct SettingsView: View {
         }
         .sheet(isPresented: $showingMarketplace) {
             VoiceMarketplaceView()
+        }
+        .sheet(isPresented: $showingDataConsent) {
+            NavigationStack {
+                AIDataConsentView(isOnboarding: false)
+            }
         }
     }
 
@@ -381,6 +390,38 @@ struct SettingsView: View {
             .buttonStyle(.plain)
         } header: {
             Text("Support")
+        }
+    }
+
+    // MARK: - Data & Privacy Section
+
+    private var dataPrivacySection: some View {
+        Section {
+            Button {
+                showingDataConsent = true
+            } label: {
+                HStack {
+                    SettingsRow(
+                        icon: "shield.lefthalf.filled",
+                        iconColor: .blue,
+                        title: "AI Data Sharing",
+                        showChevron: true
+                    )
+                    Spacer()
+                    Text(AIDataConsentManager.shared.hasConsented ? "Allowed" : "Not Allowed")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .buttonStyle(.plain)
+        } header: {
+            Text("Data & Privacy")
+        } footer: {
+            if AIDataConsentManager.shared.hasConsented {
+                Text("Cloud voices and AI summaries send your text to external services. Tap to review details or revoke consent.")
+            } else {
+                Text("Cloud voices are disabled. Only on-device Apple voices are available. Tap to enable cloud features.")
+            }
         }
     }
 

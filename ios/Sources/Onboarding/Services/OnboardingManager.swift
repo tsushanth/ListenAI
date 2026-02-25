@@ -25,6 +25,9 @@ final class OnboardingManager: ObservableObject {
 
     @Published var currentPage: OnboardingPage = .welcome
 
+    /// True when a returning user needs to see the data consent page only (not full onboarding).
+    @Published var isReturningUser: Bool = false
+
     // MARK: - Singleton
 
     static let shared = OnboardingManager()
@@ -38,7 +41,9 @@ final class OnboardingManager: ObservableObject {
     }
 
     // Current onboarding version - increment to show onboarding again
-    private let currentVersion = 1
+    // v1: original onboarding
+    // v2: added AI data consent page
+    private let currentVersion = 2
 
     // MARK: - Initialization
 
@@ -46,8 +51,14 @@ final class OnboardingManager: ObservableObject {
         let savedVersion = UserDefaults.standard.integer(forKey: Keys.onboardingVersion)
         let hasCompleted = UserDefaults.standard.bool(forKey: Keys.hasCompletedOnboarding)
 
-        // Show onboarding if never completed or if version changed
-        self.hasCompletedOnboarding = hasCompleted && savedVersion >= currentVersion
+        if hasCompleted && savedVersion < currentVersion {
+            // User completed old version but not new — they need consent only
+            self.isReturningUser = true
+            self.hasCompletedOnboarding = false
+        } else {
+            // Show onboarding if never completed or if version changed
+            self.hasCompletedOnboarding = hasCompleted && savedVersion >= currentVersion
+        }
         self.selectedVoiceId = UserDefaults.standard.string(forKey: Keys.selectedVoiceId)
     }
 
@@ -56,12 +67,14 @@ final class OnboardingManager: ObservableObject {
     func completeOnboarding() {
         UserDefaults.standard.set(currentVersion, forKey: Keys.onboardingVersion)
         hasCompletedOnboarding = true
+        isReturningUser = false
     }
 
     func resetOnboarding() {
         hasCompletedOnboarding = false
         selectedVoiceId = nil
         currentPage = .welcome
+        isReturningUser = false
     }
 
     func nextPage() {
@@ -85,6 +98,12 @@ final class OnboardingManager: ObservableObject {
             currentPage = .paywall
         }
     }
+
+    func skipToDataConsent() {
+        withAnimation(.easeInOut(duration: 0.3)) {
+            currentPage = .dataConsent
+        }
+    }
 }
 
 // MARK: - Onboarding Page
@@ -95,8 +114,9 @@ enum OnboardingPage: Int, CaseIterable {
     case takeNotes = 2
     case productivity = 3
     case voiceSelection = 4
-    case paywall = 5
-    case signIn = 6
+    case dataConsent = 5
+    case paywall = 6
+    case signIn = 7
 
     var next: OnboardingPage? {
         OnboardingPage(rawValue: rawValue + 1)
@@ -115,10 +135,10 @@ enum OnboardingPage: Int, CaseIterable {
     }
 
     var showsBackButton: Bool {
-        !isFirst && self != .paywall && self != .signIn
+        !isFirst && self != .paywall && self != .signIn && self != .dataConsent
     }
 
     var showsSkipButton: Bool {
-        self != .paywall && self != .voiceSelection && self != .signIn
+        self != .paywall && self != .voiceSelection && self != .signIn && self != .dataConsent
     }
 }

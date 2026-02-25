@@ -190,6 +190,12 @@ actor VoiceCloningService {
             throw VoiceCloningError.notConfigured
         }
 
+        // Check AI data consent before uploading voice data
+        let hasConsent = await MainActor.run { AIDataConsentManager.shared.hasConsented }
+        guard hasConsent else {
+            throw VoiceCloningError.cloningFailed("Voice cloning requires data sharing consent. Please review and accept in Settings > Data & Privacy.")
+        }
+
         // Validate audio file
         let (durationSec, fileSizeBytes) = try await validateAudioFile(at: audioSampleURL)
 
