@@ -38,7 +38,7 @@ struct OnboardingView: View {
                     AIDataConsentView(isOnboarding: true)
                         .tag(OnboardingPage.dataConsent)
 
-                    RemotePaywallView(triggerSource: "onboarding")
+                    RemotePaywallView(triggerSource: "onboarding", isOnboarding: true)
                         .tag(OnboardingPage.paywall)
 
                     SignInPageView()

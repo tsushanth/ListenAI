@@ -1049,6 +1049,11 @@ struct UpgradePromptView: View {
             } message: {
                 Text(storeManager.errorMessage ?? "An error occurred")
             }
+            .onChange(of: storeManager.isPremium) { _, isPremium in
+                if isPremium {
+                    dismiss()
+                }
+            }
             .task {
                 if storeManager.products.isEmpty {
                     await storeManager.loadProducts()
