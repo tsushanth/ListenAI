@@ -62,6 +62,12 @@ struct OnboardingView: View {
                 manager.nextPage()
             }
         }
+        .onChange(of: manager.currentPage) { _, page in
+            // Skip paywall if user is already premium
+            if page == .paywall && revenueCat.isPremium {
+                manager.nextPage()
+            }
+        }
     }
 }
 
