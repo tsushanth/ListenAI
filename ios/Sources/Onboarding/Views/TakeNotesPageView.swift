@@ -30,7 +30,7 @@ struct TakeNotesPageView: View {
 
                 Text("Take notes on key ideas with a single tap")
                     .font(.body)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Color(white: 0.33))
                     .multilineTextAlignment(.center)
             }
             .padding(.horizontal, 32)
@@ -52,15 +52,15 @@ struct TakeNotesPageView: View {
             VStack(alignment: .leading, spacing: 8) {
                 Text("The key to productivity is not working harder, but working smarter on what truly matters.")
                     .font(.system(size: 14))
-                    .foregroundStyle(.secondary.opacity(0.6))
+                    .foregroundStyle(Color(white: 0.4))
 
                 Text("Introduction")
                     .font(.headline)
-                    .foregroundStyle(.secondary.opacity(0.5))
+                    .foregroundStyle(Color(white: 0.4))
 
                 Text("Research shows that taking breaks and focusing on deep work leads to better outcomes. Many successful people attribute their achievements to deliberate practice...")
                     .font(.system(size: 12))
-                    .foregroundStyle(.secondary.opacity(0.4))
+                    .foregroundStyle(Color(white: 0.45))
                     .lineLimit(4)
             }
             .blur(radius: 1)

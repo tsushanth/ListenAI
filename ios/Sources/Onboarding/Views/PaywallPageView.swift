@@ -142,9 +142,14 @@ struct LegacyPaywallPageView: View {
 
                     Text("Read anything aloud in top-quality voices")
                         .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Color(white: 0.33))
                 }
                 .padding(.top, 16)
+
+                // Subscription features
+                subscriptionFeatures
+                    .padding(.horizontal, 24)
+                    .padding(.top, 16)
 
                 // Subscription options
                 subscriptionOptions
@@ -184,7 +189,7 @@ struct LegacyPaywallPageView: View {
                     // Subscription terms (required by App Store)
                     Text(subscriptionTermsText)
                         .font(.caption2)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Color(white: 0.33))
                         .multilineTextAlignment(.center)
                         .padding(.horizontal, 8)
 
@@ -202,7 +207,7 @@ struct LegacyPaywallPageView: View {
                             Text("Secured with Apple")
                                 .font(.caption)
                         }
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Color(white: 0.33))
 
                         Spacer()
 
@@ -291,6 +296,18 @@ struct LegacyPaywallPageView: View {
                     manager.nextPage()
                 }
             }
+        }
+    }
+
+    // MARK: - Subscription Features
+
+    private var subscriptionFeatures: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            PaywallFeatureRow(icon: "waveform", text: "Unlimited text-to-speech with cloud voices")
+            PaywallFeatureRow(icon: "person.wave.2", text: "Premium AI voices from ElevenLabs")
+            PaywallFeatureRow(icon: "mic.fill", text: "Create custom voice clones")
+            PaywallFeatureRow(icon: "text.magnifyingglass", text: "AI-powered article summaries")
+            PaywallFeatureRow(icon: "gauge.with.dots.needle.67percent", text: "Speed control up to 3x")
         }
     }
 
@@ -447,14 +464,14 @@ struct LegacyPaywallPageView: View {
                             .padding(.leading, 2)
                         Text(dueDateString)
                             .font(.subheadline)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(Color(white: 0.33))
                     }
 
                     Spacer()
 
                     Text(selectedPlan == .annual ? annualPrice : weeklyPrice)
                         .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Color(white: 0.33))
                 }
             }
         }
@@ -486,6 +503,25 @@ struct FileTypeIconSmall: View {
                 .foregroundStyle(.white)
         }
         .shadow(color: .black.opacity(0.1), radius: 4, y: 2)
+    }
+}
+
+// MARK: - Paywall Feature Row
+
+struct PaywallFeatureRow: View {
+    let icon: String
+    let text: String
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon)
+                .font(.body)
+                .foregroundStyle(.orange)
+                .frame(width: 24)
+            Text(text)
+                .font(.subheadline)
+                .foregroundStyle(Color(white: 0.2))
+        }
     }
 }
 

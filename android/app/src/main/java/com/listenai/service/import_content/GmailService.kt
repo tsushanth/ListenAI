@@ -110,7 +110,7 @@ class GmailService(
     ) = withContext(Dispatchers.IO) {
         Log.d(TAG, "fetchEmails called - refresh: $refresh, isAuthenticated: ${authService.isAuthenticated.value}")
 
-        if (!authService.isAuthenticated.value) {
+        if (!authService.gmailConnected.value) {
             Log.e(TAG, "Not authenticated, returning")
             _error.value = GmailError.NotAuthenticated
             return@withContext
@@ -254,7 +254,7 @@ class GmailService(
      * Fetch full email content
      */
     suspend fun fetchFullEmail(messageId: String): GmailMessage = withContext(Dispatchers.IO) {
-        if (!authService.isAuthenticated.value) {
+        if (!authService.gmailConnected.value) {
             throw IllegalStateException("Not authenticated")
         }
 

@@ -84,7 +84,7 @@ struct VoicePickerView: View {
                 VoiceCustomizationSheet(preset: presetManager.selectedPreset)
             }
             .sheet(isPresented: $accountViewModel.showUpgradePrompt) {
-                UpgradePromptView()
+                RemotePaywallView(triggerSource: "voice_picker")
             }
         }
     }

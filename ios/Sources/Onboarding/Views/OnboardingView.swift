@@ -108,7 +108,7 @@ struct OnboardingFooterView: View {
             if showTerms {
                 Text("By continuing, you agree to our [Privacy Policy](\(privacyURL)) and [Terms of Use](\(termsURL)).")
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Color(white: 0.33))
                     .multilineTextAlignment(.center)
                     .tint(.blue)
                     .padding(.horizontal, 24)

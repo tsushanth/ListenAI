@@ -84,6 +84,13 @@ interface ArticleDao {
         updatedAt: Long = System.currentTimeMillis()
     )
 
+    @Query("UPDATE articles SET synthesisStatus = :status, updatedAt = :updatedAt WHERE id = :id")
+    suspend fun updatePendingJob(
+        id: String,
+        status: String,
+        updatedAt: Long = System.currentTimeMillis()
+    )
+
     @Query("SELECT COUNT(*) FROM articles")
     suspend fun getArticleCount(): Int
 

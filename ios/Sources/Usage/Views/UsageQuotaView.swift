@@ -82,7 +82,7 @@ struct UsageQuotaView: View {
                 await cloudUsage.refresh()
             }
             .sheet(isPresented: $cloudUsage.showUpgradePrompt) {
-                UpgradePromptView()
+                RemotePaywallView(triggerSource: "usage_quota")
             }
         }
     }

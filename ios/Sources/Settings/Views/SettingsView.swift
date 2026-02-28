@@ -38,6 +38,7 @@ struct SettingsView: View {
     @State private var showingUsageDetails = false
     @State private var showingMarketplace = false
     @State private var showingDataConsent = false
+    @State private var showingSubscription = false
 
     // Current voice from preset manager
     @StateObject private var voicePresetManager = VoicePresetManager.shared
@@ -58,6 +59,9 @@ struct SettingsView: View {
 
             // Support Section
             supportSection
+
+            // Subscription Section
+            subscriptionSection
 
             // Data & Privacy Section
             dataPrivacySection
@@ -92,6 +96,9 @@ struct SettingsView: View {
         }
         .sheet(isPresented: $showingMarketplace) {
             VoiceMarketplaceView()
+        }
+        .sheet(isPresented: $showingSubscription) {
+            RemotePaywallView(triggerSource: "settings")
         }
         .sheet(isPresented: $showingDataConsent) {
             NavigationStack {
@@ -390,6 +397,36 @@ struct SettingsView: View {
             .buttonStyle(.plain)
         } header: {
             Text("Support")
+        }
+    }
+
+    // MARK: - Subscription Section
+
+    @ObservedObject private var revenueCat = RevenueCatManager.shared
+
+    private var subscriptionSection: some View {
+        Section {
+            Button {
+                showingSubscription = true
+            } label: {
+                HStack {
+                    SettingsRow(
+                        icon: revenueCat.isPremium ? "crown.fill" : "star.fill",
+                        iconColor: revenueCat.isPremium ? .green : .orange,
+                        title: revenueCat.isPremium ? "Manage Subscription" : "Upgrade to Pro",
+                        showChevron: true
+                    )
+                    Spacer()
+                    if revenueCat.isPremium {
+                        Text("Active")
+                            .font(.subheadline)
+                            .foregroundStyle(.green)
+                    }
+                }
+            }
+            .buttonStyle(.plain)
+        } header: {
+            Text("Subscription")
         }
     }
 

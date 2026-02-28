@@ -179,7 +179,7 @@ struct SelectVoiceView: View {
                 Text("Premium voices offer high-quality, natural-sounding speech with multilingual support. Cloned voices let you listen to content in your own voice or voices you've created.")
             }
             .sheet(isPresented: $accountViewModel.showUpgradePrompt) {
-                UpgradePromptView()
+                RemotePaywallView(triggerSource: "select_voice")
             }
             .task {
                 await viewModel.loadClonedVoices()

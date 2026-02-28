@@ -4,8 +4,8 @@
   "platform": "ios",
   "health_score": 0,
   "health_tier": "unknown",
-  "marketing_readiness": 0,
-  "last_updated": "2026-02-21",
+  "marketing_readiness": 20,
+  "last_updated": "2026-02-28",
   "metrics": {
     "impressions_7d": 0,
     "units_7d": 0,
@@ -18,7 +18,17 @@
     "rating_count": 0
   },
   "suggested_actions": {
-    "coding": [],
-    "marketing": []
+    "coding": [
+      "Implement Offline Access",
+      "Enhance Voice Quality",
+      "Add Active Text Highlighting",
+      "Add Firebase Analytics",
+      "Add Apple Search Ads Attribution"
+    ],
+    "marketing": [
+      "App Store Optimization",
+      "Influencer Marketing Campaign",
+      "Social Media Ads"
+    ]
   }
 }

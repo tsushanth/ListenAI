@@ -47,6 +47,8 @@ import com.listenai.data.models.VoicePreset
 import com.listenai.service.billing.RevenueCatManager
 import com.listenai.ui.theme.*
 import com.revenuecat.purchases.PackageType
+import com.revenuecat.purchases.ui.revenuecatui.Paywall
+import com.revenuecat.purchases.ui.revenuecatui.PaywallOptions
 import kotlinx.coroutines.launch
 
 // Theme colors for onboarding - Light mode
@@ -886,25 +888,8 @@ private fun PaywallPage(
     onComplete: () -> Unit
 ) {
     val context = LocalContext.current
-    val activity = context as? ComponentActivity
-    val isDarkTheme = isSystemInDarkTheme()
-    val contentColor = if (isDarkTheme) Color.White else Color.Black
-    val cardBgColor = if (isDarkTheme) CardDark else Color.White
-
-    // Use RevenueCat manager
     val revenueCatManager = remember { RevenueCatManager.getInstance() }
-    val scope = rememberCoroutineScope()
-
-    // Observe RevenueCat state
-    val packages by revenueCatManager.packages.collectAsState()
     val isPremium by revenueCatManager.isPremium.collectAsState()
-    val isLoading by revenueCatManager.isLoading.collectAsState()
-
-    // Get the weekly package
-    val weeklyPackage = packages.find { it.packageType == PackageType.WEEKLY }
-
-    // Get localized price
-    val weeklyPrice = weeklyPackage?.product?.price?.formatted ?: "Loading..."
 
     // Handle purchase success
     LaunchedEffect(isPremium) {
@@ -914,197 +899,12 @@ private fun PaywallPage(
         }
     }
 
-    // Load offerings if not already loaded
-    LaunchedEffect(Unit) {
-        if (packages.isEmpty()) {
-            revenueCatManager.loadOfferings()
-        }
-    }
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Pro badge
-        Surface(
-            shape = RoundedCornerShape(20.dp),
-            color = Purple.copy(alpha = 0.1f)
-        ) {
-            Text(
-                text = "PRO",
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.Bold,
-                color = Purple
-            )
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Text(
-            text = "Unlock ReadAloud AI Pro",
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold,
-            color = contentColor,
-            textAlign = TextAlign.Center
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Text(
-            text = "Get unlimited access to all premium features",
-            style = MaterialTheme.typography.bodyLarge,
-            color = contentColor.copy(alpha = 0.7f),
-            textAlign = TextAlign.Center
-        )
-
-        Spacer(modifier = Modifier.height(32.dp))
-
-        // Features
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(containerColor = cardBgColor)
-        ) {
-            Column(
-                modifier = Modifier.padding(20.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                ProFeatureRow("Unlimited listening")
-                ProFeatureRow("Premium AI voices")
-                ProFeatureRow("Offline downloads")
-                ProFeatureRow("No ads")
-                ProFeatureRow("Priority support")
-            }
-        }
-
-        Spacer(modifier = Modifier.weight(1f))
-
-        // Price card
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = Purple.copy(alpha = 0.1f))
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(20.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    text = "$weeklyPrice/week",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = Purple
-                )
-                Text(
-                    text = "7-day free trial, then $weeklyPrice/week",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = contentColor.copy(alpha = 0.6f)
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Subscribe button
-        Button(
-            onClick = {
-                if (activity == null) {
-                    Toast.makeText(context, "Unable to start purchase", Toast.LENGTH_SHORT).show()
-                    return@Button
-                }
-
-                val pkg = weeklyPackage
-                if (pkg == null) {
-                    Toast.makeText(context, "Product not available yet, please try again", Toast.LENGTH_SHORT).show()
-                    return@Button
-                }
-
-                // Launch RevenueCat purchase flow
-                scope.launch {
-                    revenueCatManager.purchase(activity, pkg)
-                }
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp),
-            shape = RoundedCornerShape(16.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = Purple,
-                contentColor = Color.White
-            ),
-            enabled = weeklyPackage != null && !isLoading
-        ) {
-            if (isLoading) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(24.dp),
-                    color = Color.White
-                )
-            } else {
-                Text(
-                    text = "Start Free Trial",
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = Color.White
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        // Skip button
-        TextButton(onClick = onComplete) {
-            Text(
-                text = "Maybe Later",
-                color = contentColor.copy(alpha = 0.5f)
-            )
-        }
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        // Terms with clickable links
-        val uriHandler = LocalUriHandler.current
-        val privacyUrl = "https://kreativekoala.llc/privacy"
-        val termsUrl = "https://kreativekoala.llc/terms"
-
-        val annotatedTermsText = buildAnnotatedString {
-            append("By subscribing, you agree to our ")
-
-            pushStringAnnotation(tag = "terms", annotation = termsUrl)
-            withStyle(style = SpanStyle(color = Blue, textDecoration = TextDecoration.Underline)) {
-                append("Terms of Use")
-            }
-            pop()
-
-            append(" and ")
-
-            pushStringAnnotation(tag = "privacy", annotation = privacyUrl)
-            withStyle(style = SpanStyle(color = Blue, textDecoration = TextDecoration.Underline)) {
-                append("Privacy Policy")
-            }
-            pop()
-
-            append(". Subscription auto-renews weekly until cancelled.")
-        }
-
-        ClickableText(
-            text = annotatedTermsText,
-            style = MaterialTheme.typography.labelSmall.copy(
-                color = contentColor.copy(alpha = 0.4f),
-                textAlign = TextAlign.Center
-            ),
-            onClick = { offset ->
-                annotatedTermsText.getStringAnnotations(tag = "terms", start = offset, end = offset)
-                    .firstOrNull()?.let { uriHandler.openUri(it.item) }
-                annotatedTermsText.getStringAnnotations(tag = "privacy", start = offset, end = offset)
-                    .firstOrNull()?.let { uriHandler.openUri(it.item) }
-            }
+    // Use RevenueCat's built-in paywall (configured in RC dashboard)
+    Box(modifier = Modifier.fillMaxSize()) {
+        Paywall(
+            options = PaywallOptions.Builder(dismissRequest = { onComplete() })
+                .setShouldDisplayDismissButton(true)
+                .build()
         )
     }
 }

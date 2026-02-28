@@ -31,7 +31,7 @@ struct WelcomePageView: View {
 
                 Text("Read anything aloud in the highest quality voices.")
                     .font(.body)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Color(white: 0.33))
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -202,7 +202,7 @@ struct BadgeView: View {
 
             Text(text)
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Color(white: 0.33))
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
 

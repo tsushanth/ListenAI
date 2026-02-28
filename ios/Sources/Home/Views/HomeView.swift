@@ -44,7 +44,7 @@ struct HomeView: View {
             }
         }
         .sheet(isPresented: $showUpgradeSheet) {
-            UpgradePromptView()
+            RemotePaywallView(triggerSource: "home_banner")
         }
     }
 
@@ -316,31 +316,19 @@ struct ProBadgeButton: View {
     @State private var showingSubscription = false
 
     var body: some View {
-        if revenueCat.isPremium {
-            // Premium user - show green PRO badge (no action needed)
+        Button {
+            showingSubscription = true
+        } label: {
             Text("PRO")
                 .font(.caption.bold())
                 .padding(.horizontal, 12)
                 .padding(.vertical, 6)
-                .background(Color.green.gradient)
+                .background(revenueCat.isPremium ? Color.green.gradient : Color.orange.gradient)
                 .foregroundStyle(.white)
                 .clipShape(Capsule())
-        } else {
-            // Free user - show orange upgrade button
-            Button {
-                showingSubscription = true
-            } label: {
-                Text("PRO")
-                    .font(.caption.bold())
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .background(Color.orange.gradient)
-                    .foregroundStyle(.white)
-                    .clipShape(Capsule())
-            }
-            .sheet(isPresented: $showingSubscription) {
-                UpgradePromptView()
-            }
+        }
+        .sheet(isPresented: $showingSubscription) {
+            RemotePaywallView(triggerSource: "pro_badge")
         }
     }
 }

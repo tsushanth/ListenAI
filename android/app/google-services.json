@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "185165566105",
+    "project_id": "readaloudai-kk",
+    "storage_bucket": "readaloudai-kk.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:185165566105:android:c9925068a955eeac59a808",
+        "android_client_info": {
+          "package_name": "com.listenai"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB6dtVqmwY7RK3-4pKlBsKvUkNyvzEiuSk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

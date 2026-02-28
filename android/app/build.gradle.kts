@@ -4,6 +4,7 @@ plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("com.google.devtools.ksp")
+    id("com.google.gms.google-services")
 }
 
 // Load keystore properties from local file (not committed to git)
@@ -21,8 +22,8 @@ android {
         applicationId = "com.listenai"
         minSdk = 26
         targetSdk = 35
-        versionCode = 13
-        versionName = "2.6"
+        versionCode = 17
+        versionName = "2.8.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -43,12 +44,8 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = true
+            isMinifyEnabled = false
             signingConfig = signingConfigs.getByName("release")
-            proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
-            )
         }
         debug {
             isMinifyEnabled = false
@@ -148,6 +145,9 @@ dependencies {
     implementation("com.revenuecat.purchases:purchases:8.10.7")
     implementation("com.revenuecat.purchases:purchases-ui:8.10.7")
 
+    // TikTok Events SDK (install attribution & event tracking)
+    implementation("com.github.tiktok:tiktok-business-android-sdk:1.6.0")
+
     // Chrome Custom Tabs for OAuth
     implementation("androidx.browser:browser:1.8.0")
 
@@ -165,4 +165,8 @@ dependencies {
     // Debug
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
+
+    // Firebase Analytics (for Google Ads conversion tracking)
+    implementation(platform("com.google.firebase:firebase-bom:33.7.0"))
+    implementation("com.google.firebase:firebase-analytics")
 }

@@ -45,7 +45,7 @@ struct DocumentToAudioPageView: View {
 
                 Text("Listen to PDFs, articles, news and more")
                     .font(.body)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Color(white: 0.33))
                     .multilineTextAlignment(.center)
             }
             .padding(.horizontal, 32)

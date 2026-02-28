@@ -19,7 +19,7 @@ struct VoiceSelectionPageView: View {
 
                 Text("You can change selected voice later.")
                     .font(.body)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Color(white: 0.33))
             }
             .padding(.top, 24)
             .padding(.bottom, 16)

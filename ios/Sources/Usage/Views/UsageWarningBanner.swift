@@ -127,7 +127,7 @@ struct UsageWarningBanner: View {
                 await cloudUsage.fetchUsage()
             }
             .sheet(isPresented: $cloudUsage.showUpgradePrompt) {
-                UpgradePromptView()
+                RemotePaywallView(triggerSource: "usage_warning")
             }
         }
     }

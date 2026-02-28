@@ -56,7 +56,7 @@ struct SignInPageView: View {
 
                     Text("Sign in to unlock all features including voice sharing and cross-device sync.")
                         .font(.body)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Color(white: 0.33))
                         .multilineTextAlignment(.center)
                         .padding(.horizontal, 20)
                 }
@@ -193,7 +193,7 @@ private struct BenefitItem: View {
 
                 Text(description)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Color(white: 0.33))
             }
         }
     }

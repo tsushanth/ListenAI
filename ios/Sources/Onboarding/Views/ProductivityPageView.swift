@@ -40,7 +40,7 @@ struct ProductivityPageView: View {
 
                 Text("Listen to texts faster, learn more")
                     .font(.body)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Color(white: 0.33))
                     .multilineTextAlignment(.center)
             }
             .padding(.horizontal, 32)
@@ -103,7 +103,7 @@ struct ProductivityPageView: View {
 
                     Text("50% increase in")
                         .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.yellow)
+                        .foregroundStyle(.orange)
                     +
                     Text(" productivity")
                         .font(.subheadline.weight(.semibold))

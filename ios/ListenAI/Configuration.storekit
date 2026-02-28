@@ -4,7 +4,21 @@
 
   ],
   "products" : [
-
+    {
+      "displayPrice" : "79.99",
+      "familyShareable" : false,
+      "internalID" : "6739054326",
+      "localizations" : [
+        {
+          "description" : "Unlimited cloud voices - Forever",
+          "displayName" : "Lifetime Access",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "com.kreativekoala.listenai.lifetime",
+      "referenceName" : "Lifetime Access",
+      "type" : "NonConsumable"
+    }
   ],
   "settings" : {
     "_applicationInternalID" : "1234567890",
@@ -80,7 +94,11 @@
           "familyShareable" : false,
           "groupNumber" : 1,
           "internalID" : "6739054321",
-          "introductoryOffer" : null,
+          "introductoryOffer" : {
+            "internalID" : "INT_OFFER_ANNUAL",
+            "paymentMode" : "free",
+            "subscriptionPeriod" : "P1W"
+          },
           "localizations" : [
             {
               "description" : "Unlimited cloud voices - Best value",
@@ -101,9 +119,88 @@
           "codeOffers" : [
 
           ],
-          "displayPrice" : "7.99",
+          "displayPrice" : "49.99",
           "familyShareable" : false,
           "groupNumber" : 2,
+          "internalID" : "6739054325",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "Unlimited cloud voices - 6 months",
+              "displayName" : "6-Month",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "com.kreativekoala.listenai.semiannual",
+          "recurringSubscriptionPeriod" : "P6M",
+          "referenceName" : "6-Month Subscription",
+          "subscriptionGroupID" : "21500145",
+          "type" : "RecurringSubscription"
+        },
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "29.99",
+          "familyShareable" : false,
+          "groupNumber" : 3,
+          "internalID" : "6739054324",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "Unlimited cloud voices - Quarterly",
+              "displayName" : "3-Month",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "com.kreativekoala.listenai.quarterly",
+          "recurringSubscriptionPeriod" : "P3M",
+          "referenceName" : "3-Month Subscription",
+          "subscriptionGroupID" : "21500145",
+          "type" : "RecurringSubscription"
+        },
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "14.99",
+          "familyShareable" : false,
+          "groupNumber" : 4,
+          "internalID" : "6739054323",
+          "introductoryOffer" : {
+            "internalID" : "INT_OFFER_MONTHLY",
+            "paymentMode" : "free",
+            "subscriptionPeriod" : "P1W"
+          },
+          "localizations" : [
+            {
+              "description" : "Unlimited cloud voices - Monthly",
+              "displayName" : "Monthly",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "com.kreativekoala.listenai.monthly",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "Monthly Subscription",
+          "subscriptionGroupID" : "21500145",
+          "type" : "RecurringSubscription"
+        },
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "7.99",
+          "familyShareable" : false,
+          "groupNumber" : 5,
           "internalID" : "6739054322",
           "introductoryOffer" : null,
           "localizations" : [

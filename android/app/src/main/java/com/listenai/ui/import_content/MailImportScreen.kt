@@ -1,14 +1,12 @@
 package com.listenai.ui.import_content
 
+import android.app.Activity
 import android.content.Intent
 import android.graphics.Color as AndroidColor
 import android.net.Uri
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import androidx.activity.ComponentActivity
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -57,7 +55,6 @@ fun MailImportScreen(
     onImportComplete: (String) -> Unit = {}
 ) {
     val context = LocalContext.current
-    val activity = context as? ComponentActivity
     val scope = rememberCoroutineScope()
 
     val isAuthenticated by authService.isAuthenticated.collectAsState()
@@ -70,24 +67,9 @@ fun MailImportScreen(
     var isConnecting by remember { mutableStateOf(false) }
     var importError by remember { mutableStateOf<String?>(null) }
     var isImporting by remember { mutableStateOf(false) }
-    var hasGmailAccess by remember { mutableStateOf(authService.hasGmailAccess()) }
 
-    // Gmail sign-in launcher using deprecated GoogleSignIn API
-    val gmailSignInLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.StartActivityForResult()
-    ) { result ->
-        scope.launch {
-            val authResult = authService.handleGmailSignInResult(result.data)
-            if (authResult.isSuccess) {
-                hasGmailAccess = true
-                isConnecting = false
-                gmailService.fetchEmails(refresh = true)
-            } else {
-                isConnecting = false
-                importError = authResult.exceptionOrNull()?.message ?: "Failed to connect to Gmail"
-            }
-        }
-    }
+    // Observe Gmail connection state from auth service
+    val hasGmailAccess by authService.gmailConnected.collectAsState()
 
     // Log state for debugging
     LaunchedEffect(Unit) {
@@ -97,22 +79,21 @@ fun MailImportScreen(
     // Preview state for email content
     var previewEmail by remember { mutableStateOf<GmailMessage?>(null) }
 
-    // Listen for auth state changes to update hasGmailAccess
-    LaunchedEffect(isAuthenticated) {
-        hasGmailAccess = authService.hasGmailAccess()
-        if (isAuthenticated && hasGmailAccess) {
+    // Listen for Gmail connection state changes (PKCE flow completes via MainActivity)
+    LaunchedEffect(hasGmailAccess) {
+        if (hasGmailAccess) {
             isConnecting = false
+            android.util.Log.i("MailImportScreen", "Gmail connected, fetching emails...")
             gmailService.fetchEmails(refresh = true)
         }
     }
 
     // Load emails when authenticated with Gmail access
-    // Only fetch if we don't already have emails cached
     LaunchedEffect(isAuthenticated, hasGmailAccess) {
         android.util.Log.i("MailImportScreen", "LaunchedEffect triggered - isAuthenticated: $isAuthenticated, hasGmailAccess: $hasGmailAccess, emails.size: ${emails.size}")
         if (isAuthenticated && hasGmailAccess && emails.isEmpty()) {
             android.util.Log.i("MailImportScreen", "No cached emails, fetching fresh...")
-            gmailService.fetchEmails(refresh = false)  // Don't force refresh, use cache if available
+            gmailService.fetchEmails(refresh = false)
         } else {
             android.util.Log.i("MailImportScreen", "Using cached emails: ${emails.size} emails")
         }
@@ -174,13 +155,25 @@ fun MailImportScreen(
                 }
             }
 
-            if (!isAuthenticated || !hasGmailAccess) {
-                // Not connected view - use deprecated GoogleSignIn API
+            if (!hasGmailAccess) {
+                // Not connected view - uses PKCE OAuth flow via Chrome Custom Tab
                 NotConnectedView(
                     isConnecting = isConnecting,
                     onConnect = {
                         isConnecting = true
-                        gmailSignInLauncher.launch(authService.getGmailSignInIntent())
+                        val currentActivity = context as? Activity
+                        if (currentActivity != null) {
+                            scope.launch {
+                                val result = authService.startGmailOAuthFlow(currentActivity)
+                                if (result.isFailure) {
+                                    isConnecting = false
+                                    importError = result.exceptionOrNull()?.message ?: "Failed to start Gmail sign-in"
+                                }
+                            }
+                        } else {
+                            isConnecting = false
+                            importError = "Unable to start sign-in flow"
+                        }
                     }
                 )
             } else {

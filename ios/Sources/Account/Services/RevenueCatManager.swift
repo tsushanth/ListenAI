@@ -48,8 +48,19 @@ final class RevenueCatManager: ObservableObject {
     /// Configure RevenueCat SDK - call this at app launch
     func configure() async {
         // Configure RevenueCat
-        Purchases.logLevel = .debug // Set to .warn for production
+        #if DEBUG
+        Purchases.logLevel = .debug
+        #else
+        Purchases.logLevel = .warn
+        #endif
         Purchases.configure(withAPIKey: Self.apiKey)
+
+        // Set customer attributes for segmentation
+        Purchases.shared.attribution.setAttributes([
+            "$appVersion": Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "",
+            "app_name": "ReadAloudAI",
+            "platform": "ios"
+        ])
 
         // Enable Apple Search Ads attribution
         await collectAppleSearchAdsAttribution()
@@ -198,9 +209,29 @@ final class RevenueCatManager: ObservableObject {
         packages.first { $0.packageType == .weekly }
     }
 
+    /// Get the monthly package
+    var monthlyPackage: Package? {
+        packages.first { $0.packageType == .monthly }
+    }
+
+    /// Get the 3-month package
+    var threeMonthPackage: Package? {
+        packages.first { $0.packageType == .threeMonth }
+    }
+
+    /// Get the 6-month package
+    var sixMonthPackage: Package? {
+        packages.first { $0.packageType == .sixMonth }
+    }
+
     /// Get the annual package
     var annualPackage: Package? {
         packages.first { $0.packageType == .annual }
+    }
+
+    /// Get the lifetime package
+    var lifetimePackage: Package? {
+        packages.first { $0.packageType == .lifetime }
     }
 
     /// Set user ID for attribution (call after user signs in)
@@ -277,8 +308,16 @@ extension Package {
         switch packageType {
         case .weekly:
             return "Billed weekly"
+        case .monthly:
+            return "Billed monthly"
+        case .threeMonth:
+            return "Save 33% - Billed quarterly"
+        case .sixMonth:
+            return "Save 44% - Billed every 6 months"
         case .annual:
             return "Best value - Save 90%"
+        case .lifetime:
+            return "One-time purchase - Forever"
         default:
             return storeProduct.localizedDescription
         }

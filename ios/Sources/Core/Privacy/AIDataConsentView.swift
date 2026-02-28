@@ -62,7 +62,7 @@ struct AIDataConsentView: View {
 
             Text("ReadAloud AI uses cloud-based AI services to convert your text to speech and provide content summaries. Here's exactly what data is shared and with whom.")
                 .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Color(white: 0.33))
                 .multilineTextAlignment(.center)
         }
     }
@@ -122,7 +122,7 @@ struct AIDataConsentView: View {
         VStack(spacing: 8) {
             Text("On-device Apple voices work without any data sharing. You can switch to on-device voices anytime in Settings.")
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Color(white: 0.33))
                 .multilineTextAlignment(.center)
 
             Link("Read our full Privacy Policy", destination: privacyURL)
@@ -225,7 +225,7 @@ struct DataConsentDisclosureCard: View {
 
             Text(description)
                 .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Color(white: 0.33))
 
             ForEach(Array(services.enumerated()), id: \.offset) { _, service in
                 HStack(spacing: 8) {
@@ -236,7 +236,7 @@ struct DataConsentDisclosureCard: View {
                         .font(.caption.weight(.medium))
                     Text("— \(service.detail)")
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Color(white: 0.33))
                 }
             }
         }

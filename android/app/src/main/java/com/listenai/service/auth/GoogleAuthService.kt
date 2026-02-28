@@ -106,6 +106,10 @@ class GoogleAuthService(private val context: Context) {
     private val _error = MutableStateFlow<GoogleAuthError?>(null)
     val error: StateFlow<GoogleAuthError?> = _error.asStateFlow()
 
+    // Gmail connection state - observed by MailImportScreen
+    private val _gmailConnected = MutableStateFlow(false)
+    val gmailConnected: StateFlow<Boolean> = _gmailConnected.asStateFlow()
+
     // Credential manager
     private val credentialManager = CredentialManager.create(context)
 
@@ -348,6 +352,7 @@ class GoogleAuthService(private val context: Context) {
                     )
                     _isAuthenticated.value = true
 
+                    _gmailConnected.value = true
                     Log.d(TAG, "Gmail sign-in successful for: ${account.email}")
                     Result.success(accessToken)
                 } else {
@@ -499,6 +504,7 @@ class GoogleAuthService(private val context: Context) {
                     avatarUrl = avatarUrl
                 )
                 _isAuthenticated.value = true
+                _gmailConnected.value = accessToken != null
                 android.util.Log.i("ListenAI-Auth", "Loaded stored credentials for: $email, hasAccessToken: ${accessToken != null}")
             }
         } else {
@@ -580,27 +586,9 @@ class GoogleAuthService(private val context: Context) {
             // Store access token
             encryptedPrefs.edit().putString(KEY_ACCESS_TOKEN, accessToken).apply()
 
-            // Fetch user info to update profile
-            val userInfo = fetchUserInfo(accessToken)
-            userInfo?.let { info ->
-                encryptedPrefs.edit().apply {
-                    putString(KEY_USER_ID, info.id)
-                    putString(KEY_EMAIL, info.email)
-                    putString(KEY_DISPLAY_NAME, info.name)
-                    putString(KEY_AVATAR_URL, info.picture)
-                    putBoolean(KEY_IS_AUTHENTICATED, true)
-                    apply()
-                }
-
-                withContext(Dispatchers.Main) {
-                    _userProfile.value = UserProfile(
-                        id = info.id,
-                        email = info.email,
-                        displayName = info.name,
-                        avatarUrl = info.picture
-                    )
-                    _isAuthenticated.value = true
-                }
+            // Mark Gmail as connected (gmail.modify scope only — no userinfo access)
+            withContext(Dispatchers.Main) {
+                _gmailConnected.value = true
             }
 
             Log.d(TAG, "Successfully exchanged code for access token")

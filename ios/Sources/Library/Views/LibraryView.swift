@@ -104,7 +104,7 @@ struct LibraryView: View {
             }
         }
         .sheet(isPresented: $showingUpgrade) {
-            UpgradePromptView()
+            RemotePaywallView(triggerSource: "library")
         }
         .searchable(text: $searchText, prompt: "Search articles")
         .sheet(isPresented: $showingImportPicker) {

@@ -76,6 +76,10 @@ class ArticleRepository(
         articleDao.updateSynthesisStatus(id, status, audioUrl, duration, voiceId)
     }
 
+    suspend fun updatePendingJob(id: String, pendingJobId: String?, status: String) {
+        articleDao.updatePendingJob(id, status)
+    }
+
     suspend fun getArticleCount(): Int {
         return articleDao.getArticleCount()
     }

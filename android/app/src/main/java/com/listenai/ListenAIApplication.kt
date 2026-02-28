@@ -2,6 +2,7 @@ package com.listenai
 
 import android.app.Application
 import com.listenai.di.allModules
+import com.listenai.service.TikTokHelper
 import com.listenai.service.billing.RevenueCatManager
 import com.listenai.service.import_content.WebImportService
 import org.koin.android.ext.android.inject
@@ -31,6 +32,9 @@ class ListenAIApplication : Application() {
 
         // Initialize RevenueCat for subscriptions
         RevenueCatManager.getInstance().configure(this)
+
+        // Initialize TikTok Events SDK for install attribution
+        TikTokHelper.initialize(this)
     }
 
     private fun configureServices() {

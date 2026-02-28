@@ -34,6 +34,7 @@ struct RootView: View {
         Group {
             if isReady {
                 MainContentView()
+                    .reviewPrompt()
             } else {
                 // Launch screen while initializing
                 LaunchScreenView()
@@ -57,6 +58,9 @@ struct RootView: View {
     @MainActor
     private func configureServices() async {
         print("[App] Configuring services...")
+
+        // Record app launch for review prompt
+        ReviewManager.shared.recordAppLaunch()
 
         // Configure ListenAI Cloud Service with deployed backend
         let backendURL = URL(string: "https://listenai-backend-917362189743.us-central1.run.app")!
@@ -100,6 +104,10 @@ struct RootView: View {
 
         // Configure Facebook SDK for Meta Ads attribution and CAPI
         FacebookSDKManager.shared.configure()
+
+        // Initialize TikTok Events SDK for install attribution
+        TikTokHelper.shared.initialize()
+        TikTokHelper.shared.requestTrackingPermission()
 
         // Configure StreamingTTSService for progressive audio playback
         StreamingTTSService.shared.configure(
@@ -160,11 +168,13 @@ struct MainContentView: View {
         Group {
             if onboarding.hasCompletedOnboarding {
                 ContentView()
+                    .reviewPrompt()
                     .environmentObject(playback)
                     .environmentObject(queue)
                     .environmentObject(usage)
             } else {
                 OnboardingView()
+                    .reviewPrompt()
                     .environmentObject(playback)
                     .environmentObject(queue)
                     .environmentObject(usage)

@@ -42,3 +42,8 @@
 # Google Auth
 -keep class com.google.android.gms.auth.** { *; }
 -keep class com.google.api.** { *; }
+
+# TikTok SDK install referrer
+-dontwarn com.android.installreferrer.api.InstallReferrerClient$Builder
+-dontwarn com.android.installreferrer.api.InstallReferrerClient
+-dontwarn com.android.installreferrer.api.InstallReferrerStateListener
