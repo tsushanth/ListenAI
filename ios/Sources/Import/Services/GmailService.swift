@@ -199,8 +199,8 @@ final class GmailService: ObservableObject {
             }
         }
 
-        // Extract body
-        let body = extractBody(from: response.payload)
+        // Extract body (both plain text and HTML)
+        let (body, htmlBody) = extractBody(from: response.payload)
         let snippet = response.snippet ?? ""
 
         // Check if read (UNREAD label means not read)
@@ -217,6 +217,7 @@ final class GmailService: ObservableObject {
             subject: subject,
             snippet: snippet,
             body: body,
+            htmlBody: htmlBody,
             date: date,
             isRead: isRead,
             hasAttachment: hasAttachment,
@@ -224,49 +225,66 @@ final class GmailService: ObservableObject {
         )
     }
 
-    private func extractBody(from payload: MessagePayload?) -> String {
-        guard let payload = payload else { return "" }
+    /// Extract both plain text and HTML body from email payload.
+    /// Returns (plainText, htmlBody) tuple.
+    private func extractBody(from payload: MessagePayload?) -> (String, String?) {
+        guard let payload = payload else { return ("", nil) }
 
-        // Try to get body from payload directly
+        // Try to get body from payload directly (single-part email)
         if let body = payload.body?.data {
-            return decodeBase64URL(body)
+            let decoded = decodeBase64URL(body)
+            if payload.mimeType == "text/html" {
+                return (stripHTML(decoded), decoded)
+            }
+            return (decoded, nil)
         }
 
         // Check parts for text content
         if let parts = payload.parts {
-            // Prefer text/plain, then text/html
+            var plainText: String?
+            var htmlContent: String?
+
+            // Extract text/plain
             for part in parts {
-                if part.mimeType == "text/plain", let data = part.body?.data {
-                    return decodeBase64URL(data)
+                if part.mimeType == "text/plain", let data = part.body?.data, plainText == nil {
+                    plainText = decodeBase64URL(data)
                 }
             }
 
+            // Extract text/html
             for part in parts {
-                if part.mimeType == "text/html", let data = part.body?.data {
-                    let html = decodeBase64URL(data)
-                    return stripHTML(html)
+                if part.mimeType == "text/html", let data = part.body?.data, htmlContent == nil {
+                    htmlContent = decodeBase64URL(data)
                 }
             }
 
             // Recursively check nested parts (multipart/alternative)
-            for part in parts {
-                if let nestedParts = part.parts {
-                    let nestedPayload = MessagePayload(
-                        mimeType: part.mimeType,
-                        headers: part.headers,
-                        body: part.body,
-                        parts: nestedParts,
-                        filename: part.filename
-                    )
-                    let nestedBody = extractBody(from: nestedPayload)
-                    if !nestedBody.isEmpty {
-                        return nestedBody
+            if plainText == nil && htmlContent == nil {
+                for part in parts {
+                    if let nestedParts = part.parts {
+                        let nestedPayload = MessagePayload(
+                            mimeType: part.mimeType,
+                            headers: part.headers,
+                            body: part.body,
+                            parts: nestedParts,
+                            filename: part.filename
+                        )
+                        let (nestedText, nestedHtml) = extractBody(from: nestedPayload)
+                        if plainText == nil && !nestedText.isEmpty { plainText = nestedText }
+                        if htmlContent == nil && nestedHtml != nil { htmlContent = nestedHtml }
                     }
                 }
             }
+
+            // If we only have HTML, generate plain text from it
+            if plainText == nil, let html = htmlContent {
+                plainText = stripHTML(html)
+            }
+
+            return (plainText ?? "", htmlContent)
         }
 
-        return ""
+        return ("", nil)
     }
 
     private func decodeBase64URL(_ encoded: String) -> String {
@@ -287,8 +305,18 @@ final class GmailService: ObservableObject {
     }
 
     private func stripHTML(_ html: String) -> String {
-        // Remove HTML tags
         var result = html
+
+        // Remove <style> and <script> blocks entirely (including content)
+        if let regex = try? NSRegularExpression(pattern: "<style[^>]*>[\\s\\S]*?</style>", options: .caseInsensitive) {
+            result = regex.stringByReplacingMatches(in: result, range: NSRange(result.startIndex..., in: result), withTemplate: "")
+        }
+        if let regex = try? NSRegularExpression(pattern: "<script[^>]*>[\\s\\S]*?</script>", options: .caseInsensitive) {
+            result = regex.stringByReplacingMatches(in: result, range: NSRange(result.startIndex..., in: result), withTemplate: "")
+        }
+
+        // Convert block elements to newlines
+        result = result
             .replacingOccurrences(of: "<br>", with: "\n", options: .caseInsensitive)
             .replacingOccurrences(of: "<br/>", with: "\n", options: .caseInsensitive)
             .replacingOccurrences(of: "<br />", with: "\n", options: .caseInsensitive)
@@ -296,8 +324,8 @@ final class GmailService: ObservableObject {
             .replacingOccurrences(of: "</div>", with: "\n", options: .caseInsensitive)
 
         // Remove all remaining HTML tags
-        while let range = result.range(of: "<[^>]+>", options: .regularExpression) {
-            result.removeSubrange(range)
+        if let regex = try? NSRegularExpression(pattern: "<[^>]+>", options: []) {
+            result = regex.stringByReplacingMatches(in: result, range: NSRange(result.startIndex..., in: result), withTemplate: "")
         }
 
         // Decode HTML entities
@@ -348,10 +376,14 @@ struct GmailMessage: Identifiable, Equatable {
     let subject: String
     let snippet: String
     let body: String
+    let htmlBody: String?
     let date: Date
     let isRead: Bool
     let hasAttachment: Bool
     let labelIds: [String]
+
+    /// Whether rich HTML content is available
+    var hasHtmlBody: Bool { !(htmlBody?.isEmpty ?? true) }
 
     /// Sender name extracted from "Name <email>" format
     var senderName: String {

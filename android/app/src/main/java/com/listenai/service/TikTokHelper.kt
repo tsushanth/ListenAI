@@ -9,7 +9,7 @@ import com.tiktok.TikTokBusinessSdk
  */
 object TikTokHelper {
     private const val TAG = "TikTokHelper"
-    private const val APP_ID = "7610334570906435592"
+    private const val APP_ID = "7612093102200520711"
 
     fun initialize(context: Context) {
         try {

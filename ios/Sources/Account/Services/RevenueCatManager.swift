@@ -1,6 +1,7 @@
 import Foundation
 import RevenueCat
 import AdServices
+import FirebaseAnalytics
 
 // MARK: - RevenueCat Manager
 
@@ -164,6 +165,19 @@ final class RevenueCatManager: ObservableObject {
             UsageTrackerService.shared.setTier(isPremium ? .pro : .free)
 
             print("[RevenueCat] Purchase successful: \(package.identifier)")
+
+            // Track purchase events for attribution
+            let productId = package.storeProduct.productIdentifier
+            let price = package.storeProduct.price
+            let currency = package.storeProduct.currencyCode ?? "USD"
+            let params: [String: Any] = ["product_id": productId, "price": Double(truncating: price as NSNumber), "currency": currency]
+            Analytics.logEvent(AnalyticsEventPurchase, parameters: [
+                AnalyticsParameterCurrency: currency,
+                AnalyticsParameterValue: Double(truncating: price as NSNumber),
+                AnalyticsParameterItems: [[AnalyticsParameterItemID: productId]]
+            ])
+            Analytics.logEvent("purchase_success", parameters: params)
+            TikTokHelper.shared.trackEvent("purchase_success", properties: params)
 
         } catch let error as PurchaseError {
             throw error

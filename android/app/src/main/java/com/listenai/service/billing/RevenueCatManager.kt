@@ -3,6 +3,8 @@ package com.listenai.service.billing
 import android.app.Activity
 import android.app.Application
 import android.util.Log
+import com.listenai.service.FirebaseAnalyticsHelper
+import com.listenai.service.TikTokHelper
 import com.revenuecat.purchases.CustomerInfo
 import com.revenuecat.purchases.LogLevel
 import com.revenuecat.purchases.Offering
@@ -177,6 +179,12 @@ class RevenueCatManager private constructor() : UpdatedCustomerInfoListener {
 
             updateCustomerInfo(result.customerInfo)
             Log.d(TAG, "Purchase successful: ${pkg.identifier}")
+
+            // Track purchase events for ad attribution
+            val productId = pkg.product.id
+            val price = pkg.product.price.amountMicros / 1_000_000.0
+            FirebaseAnalyticsHelper.logPurchaseCompleted(productId, price)
+            TikTokHelper.trackEvent("purchase_success")
 
             Result.success(result.customerInfo)
         } catch (e: PurchasesException) {

@@ -89,7 +89,8 @@ fun NavGraph(
                 onNavigateToVoices = { navController.navigate(Screen.VoicePicker.route) },
                 onNavigateToUsage = { navController.navigate(Screen.Usage.route) },
                 onNavigateToVoiceCloning = { navController.navigate(Screen.VoiceCloning.route) },
-                onNavigateToMarketplace = { navController.navigate(Screen.Marketplace.route) }
+                onNavigateToMarketplace = { navController.navigate(Screen.Marketplace.route) },
+                onNavigateToSubscription = { navController.navigate(Screen.Subscription.route) }
             )
         }
 

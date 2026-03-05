@@ -2,6 +2,7 @@ package com.listenai
 
 import android.app.Application
 import com.listenai.di.allModules
+import com.listenai.service.FirebaseAnalyticsHelper
 import com.listenai.service.TikTokHelper
 import com.listenai.service.billing.RevenueCatManager
 import com.listenai.service.import_content.WebImportService
@@ -32,6 +33,9 @@ class ListenAIApplication : Application() {
 
         // Initialize RevenueCat for subscriptions
         RevenueCatManager.getInstance().configure(this)
+
+        // Initialize Firebase Analytics for Google Ads conversion tracking
+        FirebaseAnalyticsHelper.initialize(this)
 
         // Initialize TikTok Events SDK for install attribution
         TikTokHelper.initialize(this)

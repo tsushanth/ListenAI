@@ -1,5 +1,6 @@
 import SwiftUI
 import MessageUI
+import WebKit
 
 // MARK: - Mail Import View
 
@@ -13,11 +14,14 @@ struct MailImportView: View {
 
     @State private var searchText: String = ""
     @State private var selectedEmail: GmailMessage?
+    @State private var previewEmail: GmailMessage?
+    @State private var showEmailPreview = false
     @State private var importError: String?
     @State private var importedArticle: Article?
     @State private var showReader = false
     @State private var isConnecting = false
     @State private var showSettings = false
+    @State private var isLoadingEmail = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -130,7 +134,6 @@ struct MailImportView: View {
                             ToolbarItem(placement: .topBarLeading) {
                                 Button("Done") {
                                     showReader = false
-                                    dismiss()
                                 }
                             }
                         }
@@ -148,6 +151,33 @@ struct MailImportView: View {
         .sheet(isPresented: $showSettings) {
             NavigationStack {
                 gmailSettingsView
+            }
+        }
+        .sheet(isPresented: $showEmailPreview) {
+            if let email = previewEmail {
+                NavigationStack {
+                    EmailPreviewView(
+                        email: email,
+                        onImport: { importEmail(email) }
+                    )
+                }
+            }
+        }
+        .overlay {
+            if isLoadingEmail {
+                Color.black.opacity(0.2)
+                    .ignoresSafeArea()
+                    .overlay {
+                        VStack(spacing: 12) {
+                            ProgressView()
+                            Text("Loading email...")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                        }
+                        .padding(24)
+                        .background(.ultraThinMaterial)
+                        .cornerRadius(12)
+                    }
             }
         }
     }
@@ -447,22 +477,39 @@ struct MailImportView: View {
 
     private func selectEmail(_ email: GmailMessage) {
         Task {
+            isLoadingEmail = true
             do {
                 // Fetch full email content if needed
                 let fullEmail: GmailMessage
-                if email.body.isEmpty {
+                if email.body.isEmpty && email.htmlBody == nil {
                     fullEmail = try await gmailService.fetchFullEmail(messageId: email.id)
                 } else {
                     fullEmail = email
                 }
 
-                // Use only the email body - the title will be shown separately
-                // Email-specific cleaning options will strip HTML, signatures, headers, etc.
+                await MainActor.run {
+                    isLoadingEmail = false
+                    previewEmail = fullEmail
+                    showEmailPreview = true
+                }
+            } catch {
+                await MainActor.run {
+                    isLoadingEmail = false
+                    importError = error.localizedDescription
+                }
+            }
+        }
+    }
+
+    private func importEmail(_ email: GmailMessage) {
+        showEmailPreview = false
+        Task {
+            do {
                 let article = try await coordinator.importFromText(
-                    fullEmail.body,
-                    title: fullEmail.subject,
+                    email.body,
+                    title: email.subject,
                     options: .email,
-                    saveToLibrary: false  // Don't auto-save - user must explicitly add to library
+                    saveToLibrary: false
                 )
                 await MainActor.run {
                     importedArticle = article
@@ -543,6 +590,167 @@ struct GmailEmailRow: View {
         let colors: [Color] = [.blue, .green, .orange, .purple, .pink, .teal, .indigo]
         let hash = abs(email.senderName.hashValue)
         return colors[hash % colors.count]
+    }
+}
+
+// MARK: - Email Preview View
+
+/// Full-screen email preview with HTML rendering support.
+/// Uses WKWebView to display rich HTML content with proper formatting.
+struct EmailPreviewView: View {
+    let email: GmailMessage
+    let onImport: () -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // Email header
+            VStack(alignment: .leading, spacing: 8) {
+                Text(email.subject.isEmpty ? "(No Subject)" : email.subject)
+                    .font(.headline)
+
+                HStack {
+                    Text(email.senderName)
+                        .font(.subheadline.weight(.medium))
+                    Spacer()
+                    Text(email.date.formatted(.relative(presentation: .named)))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Text(email.senderEmail)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            .padding()
+            .background(Color(.secondarySystemGroupedBackground))
+
+            Divider()
+
+            // Email body - WKWebView for HTML, plain text fallback
+            if email.hasHtmlBody {
+                EmailWebView(html: email.htmlBody!, isDarkMode: colorScheme == .dark)
+            } else {
+                ScrollView {
+                    Text(email.body.isEmpty ? "(No content)" : email.body)
+                        .font(.body)
+                        .padding()
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+        }
+        .navigationTitle("Email")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Button("Close") { dismiss() }
+            }
+
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    onImport()
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "headphones")
+                        Text("Listen")
+                    }
+                    .fontWeight(.semibold)
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Email WebView
+
+/// A WKWebView wrapper for rendering HTML email content.
+struct EmailWebView: UIViewRepresentable {
+    let html: String
+    let isDarkMode: Bool
+
+    func makeUIView(context: Context) -> WKWebView {
+        let config = WKWebViewConfiguration()
+        config.dataDetectorTypes = [.link, .phoneNumber]
+
+        let webView = WKWebView(frame: .zero, configuration: config)
+        webView.isOpaque = false
+        webView.backgroundColor = .clear
+        webView.scrollView.backgroundColor = .clear
+        webView.navigationDelegate = context.coordinator
+        return webView
+    }
+
+    func updateUIView(_ webView: WKWebView, context: Context) {
+        let textColor = isDarkMode ? "#E0E0E0" : "#212121"
+        let linkColor = "#64B5F6"
+
+        let styledHtml = """
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=3.0">
+            <style>
+                * { margin: 0; padding: 0; box-sizing: border-box; }
+                html, body {
+                    background-color: transparent;
+                    color: \(textColor);
+                    font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+                    font-size: 15px;
+                    line-height: 1.6;
+                    word-wrap: break-word;
+                    overflow-wrap: break-word;
+                }
+                a { color: \(linkColor); }
+                img {
+                    max-width: 100% !important;
+                    height: auto !important;
+                    border-radius: 8px;
+                }
+                table { max-width: 100% !important; border-collapse: collapse; }
+                td, th { max-width: 100% !important; }
+                pre, code {
+                    white-space: pre-wrap;
+                    word-wrap: break-word;
+                    background: rgba(128, 128, 128, 0.1);
+                    padding: 2px 4px;
+                    border-radius: 4px;
+                    font-size: 13px;
+                }
+                blockquote {
+                    border-left: 3px solid #666;
+                    margin: 8px 0;
+                    padding-left: 12px;
+                    color: #888;
+                }
+                .email-content { padding: 16px; }
+            </style>
+        </head>
+        <body>
+            <div class="email-content">\(html)</div>
+        </body>
+        </html>
+        """
+
+        webView.loadHTMLString(styledHtml, baseURL: nil)
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator()
+    }
+
+    class Coordinator: NSObject, WKNavigationDelegate {
+        func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
+            // Allow initial load, open links externally
+            if navigationAction.navigationType == .linkActivated,
+               let url = navigationAction.request.url {
+                UIApplication.shared.open(url)
+                decisionHandler(.cancel)
+            } else {
+                decisionHandler(.allow)
+            }
+        }
     }
 }
 

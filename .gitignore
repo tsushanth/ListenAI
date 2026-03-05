@@ -92,3 +92,11 @@ android/keystore.properties
 
 # Android signing key properties
 android/key.properties
+
+# Xcode SPM & Build caches
+SourcePackages/
+*.noindex/
+*.noindex
+SDKStatCaches.noindex/
+ModuleCache.noindex/
+Index.noindex/

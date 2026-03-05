@@ -39,6 +39,9 @@ struct SettingsView: View {
     @State private var showingMarketplace = false
     @State private var showingDataConsent = false
     @State private var showingSubscription = false
+    @State private var showingDeleteAccount = false
+    @State private var showingDeleteSuccess = false
+    @State private var isDeletingAccount = false
 
     // Current voice from preset manager
     @StateObject private var voicePresetManager = VoicePresetManager.shared
@@ -250,13 +253,59 @@ struct SettingsView: View {
     // MARK: - Linked Accounts Section
 
     @StateObject private var googleAuth = GoogleAuthService.shared
+    @ObservedObject private var authService = AuthService.shared
     @State private var isConnectingGoogle = false
+    @State private var isConnectingApple = false
     @State private var googleAuthError: String?
+    @State private var appleAuthError: String?
 
     private var linkedAccountsSection: some View {
         Section {
+            // Apple Sign In row
             HStack {
-                // Google icon (multicolor G)
+                Image(systemName: "apple.logo")
+                    .font(.title)
+                    .foregroundStyle(.primary)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Apple")
+                        .foregroundStyle(.primary)
+
+                    if authService.isAuthenticated, let email = authService.user?.email {
+                        Text(email)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                Spacer()
+
+                if isConnectingApple {
+                    ProgressView()
+                        .padding(.horizontal, 16)
+                } else {
+                    Button {
+                        if authService.isAuthenticated {
+                            disconnectApple()
+                        } else {
+                            connectApple()
+                        }
+                    } label: {
+                        Text(authService.isAuthenticated ? "Disconnect" : "Connect")
+                            .font(.subheadline.weight(.medium))
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 8)
+                            .background(authService.isAuthenticated ? Color(red: 1.0, green: 0.4, blue: 0.4) : Color.blue)
+                            .foregroundStyle(.white)
+                            .clipShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.vertical, 4)
+
+            // Google row
+            HStack {
                 Image(systemName: "g.circle.fill")
                     .font(.title)
                     .foregroundStyle(.red, .white)
@@ -274,7 +323,6 @@ struct SettingsView: View {
 
                 Spacer()
 
-                // Connect/Disconnect button (coral color when connected like reference)
                 if isConnectingGoogle {
                     ProgressView()
                         .padding(.horizontal, 16)
@@ -301,12 +349,39 @@ struct SettingsView: View {
         } header: {
             Text("Linked Accounts")
         } footer: {
-            Text("Connect Google to import emails from Gmail and listen to them.")
+            Text("Connect Apple to sync data across devices. Connect Google to import emails from Gmail.")
         }
         .alert("Google Sign-In Error", isPresented: .constant(googleAuthError != nil)) {
             Button("OK") { googleAuthError = nil }
         } message: {
             Text(googleAuthError ?? "")
+        }
+        .alert("Apple Sign-In Error", isPresented: .constant(appleAuthError != nil)) {
+            Button("OK") { appleAuthError = nil }
+        } message: {
+            Text(appleAuthError ?? "")
+        }
+    }
+
+    private func connectApple() {
+        isConnectingApple = true
+        Task {
+            do {
+                try await authService.signInWithApple()
+                try? await authService.linkDevice()
+                isConnectingApple = false
+            } catch AuthError.userCancelled {
+                isConnectingApple = false
+            } catch {
+                isConnectingApple = false
+                appleAuthError = error.localizedDescription
+            }
+        }
+    }
+
+    private func disconnectApple() {
+        Task {
+            await authService.signOut()
         }
     }
 
@@ -451,6 +526,17 @@ struct SettingsView: View {
                 }
             }
             .buttonStyle(.plain)
+
+            Button(role: .destructive) {
+                showingDeleteAccount = true
+            } label: {
+                HStack {
+                    SettingsIconView(icon: "trash.fill", color: .red)
+                    Text("Delete Account & Data")
+                        .foregroundStyle(.red)
+                }
+            }
+            .buttonStyle(.plain)
         } header: {
             Text("Data & Privacy")
         } footer: {
@@ -459,6 +545,39 @@ struct SettingsView: View {
             } else {
                 Text("Cloud voices are disabled. Only on-device Apple voices are available. Tap to enable cloud features.")
             }
+        }
+        .alert("Delete Account", isPresented: $showingDeleteAccount) {
+            Button("Cancel", role: .cancel) {}
+            Button("Delete", role: .destructive) {
+                deleteAccount()
+            }
+        } message: {
+            Text("This will permanently delete your account, all saved data, cloned voices, and library items. This action cannot be undone.")
+        }
+        .alert("Account Deleted", isPresented: $showingDeleteSuccess) {
+            Button("OK") {}
+        } message: {
+            Text("Your account and all associated data have been successfully deleted.")
+        }
+    }
+
+    private func deleteAccount() {
+        isDeletingAccount = true
+        Task {
+            // Sign out from Apple auth (clears backend session)
+            await authService.signOut()
+
+            // Sign out from Google
+            googleAuth.signOut()
+            GmailService.shared.clearCache()
+
+            // Clear all local data
+            let domain = Bundle.main.bundleIdentifier ?? "com.kreativekoala.listenai"
+            UserDefaults.standard.removePersistentDomain(forName: domain)
+            UserDefaults.standard.synchronize()
+
+            isDeletingAccount = false
+            showingDeleteSuccess = true
         }
     }
 

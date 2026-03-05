@@ -1,0 +1,40 @@
+ReadAloud AI - Turn Any Text Into Audio
+
+Transform how you consume content. ReadAloud AI converts articles, PDFs, web pages, and documents into natural-sounding audio using advanced AI text-to-speech technology.
+
+Key Features:
+
+Multiple Import Options
+• Import articles from URLs - just paste any web link
+• Upload PDF documents directly
+• Import from your email inbox
+• Paste text manually
+
+Premium AI Voices
+• Choose from a variety of natural-sounding voices
+• Multiple languages supported
+• Adjustable playback speed
+• Create your own custom cloned voice using just a short audio sample
+
+Voice Cloning
+Record a short sample of any voice and create a personalized AI voice clone. Use your own voice or any voice you have permission to clone to read your content aloud.
+
+Smart Playback
+• Background audio playback - listen while using other apps
+• Playback controls from notification and lock screen
+• Resume where you left off
+• Queue multiple articles for continuous listening
+
+Perfect For:
+• Commuters who want to catch up on reading
+• Multitaskers who listen while working out or doing chores
+• Anyone with visual impairments or reading difficulties
+• Language learners practicing listening comprehension
+• Busy professionals staying informed on the go
+
+How It Works:
+
+Import content via URL, PDF, email, or text paste
+Select your preferred AI voice
+Tap play and listen anywhere
+Turn your reading list into a listening list. Download ReadAloud AI today and never fall behind on your reading again.

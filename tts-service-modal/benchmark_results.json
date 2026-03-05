@@ -1,0 +1,62 @@
+[
+  {
+    "test_case": "Short (1 sentence)",
+    "text_length": 61,
+    "voice": "af_heart",
+    "cloud_run_gpu_e2e_avg_ms": 450,
+    "cloud_run_gpu_e2e_min_ms": 400,
+    "cloud_run_gpu_e2e_max_ms": 510,
+    "cloud_run_gpu_audio_bytes": 330044,
+    "cloud_run_gpu_synth_avg_ms": 135,
+    "modal_t4_e2e_avg_ms": 2377,
+    "modal_t4_e2e_min_ms": 2140,
+    "modal_t4_e2e_max_ms": 2600,
+    "modal_t4_audio_bytes": 318044,
+    "modal_t4_synth_avg_ms": 273
+  },
+  {
+    "test_case": "Medium (3 sentences)",
+    "text_length": 122,
+    "voice": "am_adam",
+    "cloud_run_gpu_e2e_avg_ms": 693,
+    "cloud_run_gpu_e2e_min_ms": 633,
+    "cloud_run_gpu_e2e_max_ms": 774,
+    "cloud_run_gpu_audio_bytes": 544444,
+    "cloud_run_gpu_synth_avg_ms": 171,
+    "modal_t4_e2e_avg_ms": 3763,
+    "modal_t4_e2e_min_ms": 3545,
+    "modal_t4_e2e_max_ms": 3990,
+    "modal_t4_audio_bytes": 555644,
+    "modal_t4_synth_avg_ms": 406
+  },
+  {
+    "test_case": "Paragraph (~500 chars)",
+    "text_length": 513,
+    "voice": "af_bella",
+    "cloud_run_gpu_e2e_avg_ms": 2063,
+    "cloud_run_gpu_e2e_min_ms": 1987,
+    "cloud_run_gpu_e2e_max_ms": 2147,
+    "cloud_run_gpu_audio_bytes": 1764444,
+    "cloud_run_gpu_synth_avg_ms": 512,
+    "modal_t4_e2e_avg_ms": 12227,
+    "modal_t4_e2e_min_ms": 10927,
+    "modal_t4_e2e_max_ms": 13858,
+    "modal_t4_audio_bytes": 1768444,
+    "modal_t4_synth_avg_ms": 964
+  },
+  {
+    "test_case": "Long (~1500 chars)",
+    "text_length": 1187,
+    "voice": "bm_george",
+    "cloud_run_gpu_e2e_avg_ms": 5816,
+    "cloud_run_gpu_e2e_min_ms": 5556,
+    "cloud_run_gpu_e2e_max_ms": 6079,
+    "cloud_run_gpu_audio_bytes": 3946444,
+    "cloud_run_gpu_synth_avg_ms": 1077,
+    "modal_t4_e2e_avg_ms": 37069,
+    "modal_t4_e2e_min_ms": 33916,
+    "modal_t4_e2e_max_ms": 39338,
+    "modal_t4_audio_bytes": 3932444,
+    "modal_t4_synth_avg_ms": 1915
+  }
+]

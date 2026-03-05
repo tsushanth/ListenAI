@@ -23,6 +23,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.listenai.R
+import com.listenai.service.billing.RevenueCatManager
 import com.listenai.service.settings.SettingsManager
 import com.listenai.ui.theme.*
 import org.koin.compose.koinInject
@@ -34,6 +35,7 @@ fun SettingsScreen(
     onNavigateToUsage: () -> Unit = {},
     onNavigateToVoiceCloning: () -> Unit = {},
     onNavigateToMarketplace: () -> Unit = {},
+    onNavigateToSubscription: () -> Unit = {},
     settingsManager: SettingsManager = koinInject()
 ) {
     val context = LocalContext.current
@@ -50,6 +52,10 @@ fun SettingsScreen(
     val appearanceMode by settingsManager.appearanceMode.collectAsState()
     val skipInterval by settingsManager.skipInterval.collectAsState()
     val sleepTimerDefault by settingsManager.sleepTimerDefault.collectAsState()
+
+    // Subscription state
+    val revenueCatManager = remember { RevenueCatManager.getInstance() }
+    val isPremium by revenueCatManager.isPremium.collectAsState()
 
     Scaffold(
         topBar = {
@@ -74,6 +80,29 @@ fun SettingsScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
+            // Subscription Section
+            if (!isPremium) {
+                SettingsSection(title = "Subscription") {
+                    SettingsRow(
+                        icon = Icons.Default.WorkspacePremium,
+                        iconColor = Purple,
+                        title = "Upgrade to Pro",
+                        subtitle = "Unlimited listening, all voices & more",
+                        onClick = onNavigateToSubscription
+                    )
+                }
+            } else {
+                SettingsSection(title = "Subscription") {
+                    SettingsRow(
+                        icon = Icons.Default.WorkspacePremium,
+                        iconColor = Green,
+                        title = "ReadAloud AI Pro",
+                        subtitle = "You're a Pro member",
+                        onClick = onNavigateToSubscription
+                    )
+                }
+            }
+
             // Preferences Section
             SettingsSection(title = stringResource(R.string.settings_preferences)) {
                 SettingsRow(

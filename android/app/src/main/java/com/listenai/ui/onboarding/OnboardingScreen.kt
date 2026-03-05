@@ -1,7 +1,5 @@
 package com.listenai.ui.onboarding
 
-import android.widget.Toast
-import androidx.activity.ComponentActivity
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -46,10 +44,8 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import com.listenai.data.models.VoicePreset
 import com.listenai.service.billing.RevenueCatManager
 import com.listenai.ui.theme.*
-import com.revenuecat.purchases.PackageType
 import com.revenuecat.purchases.ui.revenuecatui.Paywall
 import com.revenuecat.purchases.ui.revenuecatui.PaywallOptions
-import kotlinx.coroutines.launch
 
 // Theme colors for onboarding - Light mode
 private val WarmBackgroundLight = Color(0xFFFFF8E7)
@@ -887,48 +883,42 @@ private fun parseHexColor(hex: String): Color {
 private fun PaywallPage(
     onComplete: () -> Unit
 ) {
-    val context = LocalContext.current
     val revenueCatManager = remember { RevenueCatManager.getInstance() }
     val isPremium by revenueCatManager.isPremium.collectAsState()
+    val wasPremiumOnOpen = remember { isPremium }
 
-    // Handle purchase success
+    // If user becomes premium during this page (new purchase), advance
     LaunchedEffect(isPremium) {
-        if (isPremium) {
-            Toast.makeText(context, "Welcome to Pro!", Toast.LENGTH_LONG).show()
+        if (isPremium && !wasPremiumOnOpen) {
             onComplete()
         }
     }
 
-    // Use RevenueCat's built-in paywall (configured in RC dashboard)
+    // Use RevenueCat's dashboard-configured paywall
     Box(modifier = Modifier.fillMaxSize()) {
         Paywall(
             options = PaywallOptions.Builder(dismissRequest = { onComplete() })
                 .setShouldDisplayDismissButton(true)
                 .build()
         )
-    }
-}
 
-@Composable
-private fun ProFeatureRow(text: String) {
-    val isDarkTheme = isSystemInDarkTheme()
-    val contentColor = if (isDarkTheme) Color.White else Color.Black
-
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(
-            imageVector = Icons.Default.CheckCircle,
-            contentDescription = null,
-            tint = Purple,
-            modifier = Modifier.size(20.dp)
-        )
-        Text(
-            text = text,
-            style = MaterialTheme.typography.bodyMedium,
-            color = contentColor
-        )
+        // Close button overlay (top-right)
+        IconButton(
+            onClick = onComplete,
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .statusBarsPadding()
+                .padding(8.dp)
+                .size(40.dp)
+                .background(Color.Black.copy(alpha = 0.3f), CircleShape)
+        ) {
+            Icon(
+                imageVector = Icons.Default.Close,
+                contentDescription = "Skip",
+                tint = Color.White,
+                modifier = Modifier.size(20.dp)
+            )
+        }
     }
 }
 

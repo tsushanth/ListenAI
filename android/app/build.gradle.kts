@@ -22,8 +22,8 @@ android {
         applicationId = "com.listenai"
         minSdk = 26
         targetSdk = 35
-        versionCode = 17
-        versionName = "2.8.0"
+        versionCode = 22
+        versionName = "2.11.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -142,8 +142,8 @@ dependencies {
     implementation("com.google.android.play:review-ktx:2.0.1")
 
     // RevenueCat (In-App Purchases & Subscriptions)
-    implementation("com.revenuecat.purchases:purchases:8.10.7")
-    implementation("com.revenuecat.purchases:purchases-ui:8.10.7")
+    implementation("com.revenuecat.purchases:purchases:9.22.2")
+    implementation("com.revenuecat.purchases:purchases-ui:9.22.2")
 
     // TikTok Events SDK (install attribution & event tracking)
     implementation("com.github.tiktok:tiktok-business-android-sdk:1.6.0")
