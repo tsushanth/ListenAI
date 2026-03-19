@@ -8,7 +8,6 @@ struct ContentView: View {
     @EnvironmentObject var queueManager: QueueManager
     @EnvironmentObject var usageTracker: UsageTrackerService
     @ObservedObject private var urlPlayer = URLAudioPlayer.shared
-
     @State private var selectedTab = 0
     @State private var showingPlayer = false
     @State private var articleToOpen: Article?

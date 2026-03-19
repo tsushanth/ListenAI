@@ -157,6 +157,8 @@ struct LaunchScreenView: View {
 /// Container that holds the main app content with environment objects
 struct MainContentView: View {
     @ObservedObject private var onboarding = OnboardingManager.shared
+    @StateObject private var paywallCoordinator = PaywallCoordinator.shared
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         // Access singletons directly in body - this is safe because body
@@ -178,6 +180,14 @@ struct MainContentView: View {
                     .environmentObject(playback)
                     .environmentObject(queue)
                     .environmentObject(usage)
+            }
+        }
+        .sheet(isPresented: $paywallCoordinator.showWinbackOffer) {
+            WinbackOfferView()
+        }
+        .onChange(of: scenePhase) { _, newPhase in
+            if newPhase == .active {
+                paywallCoordinator.checkWinbackEligibility()
             }
         }
     }

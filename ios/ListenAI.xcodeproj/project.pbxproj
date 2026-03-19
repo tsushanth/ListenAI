@@ -105,6 +105,7 @@
 		00D000000000000000000006 /* voice_sample_charlotte.wav in Resources */ = {isa = PBXBuildFile; fileRef = 00E000000000000000000006 /* voice_sample_charlotte.wav */; };
 		2B81DA5A7C70CDE2D7D46C3F /* FacebookSDKManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A050BFDDD15ACB0B8529F6E8 /* FacebookSDKManager.swift */; };
 		41448C204F9EF75A0EE90380 /* ReviewManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1C8CD1DE522D6280B123B13 /* ReviewManager.swift */; };
+		PRA000000000003 /* PaywallKit in Frameworks */ = {isa = PBXBuildFile; productRef = PRA000000000002 /* PaywallKit */; };
 		544A1294F4B6410912040D5A /* RevenueCatUI in Frameworks */ = {isa = PBXBuildFile; productRef = 436BDEE2921B7E4C3268F141 /* RevenueCatUI */; };
 		60053F2DC49846065D6EBC7B /* BackgroundStreamingSynthesisService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03A60CC8B1DA9D34FA981604 /* BackgroundStreamingSynthesisService.swift */; };
 		DE50B42EBD871523FFEBE4AD /* RemotePaywallView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 832329FA4EB08897919EEED5 /* RemotePaywallView.swift */; };
@@ -113,6 +114,8 @@
 		RC0000000000000000000001 /* RevenueCat in Frameworks */ = {isa = PBXBuildFile; productRef = RC0000000000000000000002 /* RevenueCat */; };
 		TT0000000000000000000001 /* TikTokBusinessSDK in Frameworks */ = {isa = PBXBuildFile; productRef = TT0000000000000000000002 /* TikTokBusinessSDK */; };
 		TT0000000000000000000010 /* TikTokHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = TT0000000000000000000011 /* TikTokHelper.swift */; };
+		C7A1B2D3E4F5061728394A5B /* PaywallCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = E9C3D4F5A6B7081939405B6D /* PaywallCoordinator.swift */; };
+		D8B2C3E4F5061728394A5B6C /* WinbackOfferView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0D4E5A6B7C8192A40516C7E /* WinbackOfferView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -223,6 +226,8 @@
 		TT0000000000000000000011 /* TikTokHelper.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TikTokHelper.swift; sourceTree = "<group>"; };
 		A1C8CD1DE522D6280B123B13 /* ReviewManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ReviewManager.swift; sourceTree = "<group>"; };
 		F474471A9365C7F8F2BD6DD9 /* StreamingTTSService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = StreamingTTSService.swift; path = Sources/TTS/Services/StreamingTTSService.swift; sourceTree = SOURCE_ROOT; };
+		E9C3D4F5A6B7081939405B6D /* PaywallCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaywallCoordinator.swift; sourceTree = "<group>"; };
+		F0D4E5A6B7C8192A40516C7E /* WinbackOfferView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WinbackOfferView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -234,6 +239,7 @@
 				RC0000000000000000000001 /* RevenueCat in Frameworks */,
 				544A1294F4B6410912040D5A /* RevenueCatUI in Frameworks */,
 				TT0000000000000000000001 /* TikTokBusinessSDK in Frameworks */,
+				PRA000000000003 /* PaywallKit in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -588,6 +594,7 @@
 				002700000000000000000007 /* AppReviewService.swift */,
 				002700000000000000000005 /* AuthService.swift */,
 				002700000000000000000003 /* GoogleAuthService.swift */,
+				E9C3D4F5A6B7081939405B6D /* PaywallCoordinator.swift */,
 				002700000000000000000008 /* RevenueCatManager.swift */,
 				002700000000000000000009 /* SearchAdsAttributionService.swift */,
 				002700000000000000000004 /* StoreKitManager.swift */,
@@ -601,6 +608,7 @@
 			isa = PBXGroup;
 			children = (
 				002700000000000000000006 /* SignInPromptView.swift */,
+				F0D4E5A6B7C8192A40516C7E /* WinbackOfferView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -752,6 +760,7 @@
 				43290B12B1A10604BD12FD98 /* FacebookCore */,
 				436BDEE2921B7E4C3268F141 /* RevenueCatUI */,
 				TT0000000000000000000002 /* TikTokBusinessSDK */,
+				PRA000000000002 /* PaywallKit */,
 			);
 			productName = ListenAI;
 			productReference = 003000000000000000000001 /* ListenAI.app */;
@@ -786,6 +795,7 @@
 				RC0000000000000000000003 /* XCRemoteSwiftPackageReference "purchases-ios" */,
 				89DE07E60035A1E7F2108C93 /* XCRemoteSwiftPackageReference "facebook-ios-sdk" */,
 				TT0000000000000000000003 /* XCRemoteSwiftPackageReference "tiktok-business-ios-sdk" */,
+				PRA000000000001 /* XCLocalSwiftPackageReference "PaywallKit" */,
 			);
 			productRefGroup = 005000000000000000000001 /* Products */;
 			projectDirPath = "";
@@ -914,6 +924,8 @@
 				TT0000000000000000000010 /* TikTokHelper.swift in Sources */,
 				41448C204F9EF75A0EE90380 /* ReviewManager.swift in Sources */,
 				DE50B42EBD871523FFEBE4AD /* RemotePaywallView.swift in Sources */,
+				C7A1B2D3E4F5061728394A5B /* PaywallCoordinator.swift in Sources */,
+				D8B2C3E4F5061728394A5B6C /* WinbackOfferView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1046,7 +1058,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = ListenAI/ListenAI.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 29;
+				CURRENT_PROJECT_VERSION = 32;
 				DEVELOPMENT_TEAM = 7RS696YC75;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -1062,7 +1074,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 7.0;
+				MARKETING_VERSION = 7.2;
 				PRODUCT_BUNDLE_IDENTIFIER = com.kreativekoala.listenai;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -1081,7 +1093,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = ListenAI/ListenAI.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 29;
+				CURRENT_PROJECT_VERSION = 32;
 				DEVELOPMENT_TEAM = 7RS696YC75;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -1097,7 +1109,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 7.0;
+				MARKETING_VERSION = 7.2;
 				PRODUCT_BUNDLE_IDENTIFIER = com.kreativekoala.listenai;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -1167,6 +1179,13 @@
 		};
 /* End XCRemoteSwiftPackageReference section */
 
+/* Begin XCLocalSwiftPackageReference section */
+		PRA000000000001 /* XCLocalSwiftPackageReference "PaywallKit" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../../PaywallKit;
+		};
+/* End XCLocalSwiftPackageReference section */
+
 /* Begin XCSwiftPackageProductDependency section */
 		43290B12B1A10604BD12FD98 /* FacebookCore */ = {
 			isa = XCSwiftPackageProductDependency;
@@ -1192,6 +1211,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = TT0000000000000000000003 /* XCRemoteSwiftPackageReference "tiktok-business-ios-sdk" */;
 			productName = TikTokBusinessSDK;
+		};
+		PRA000000000002 /* PaywallKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = PRA000000000001 /* XCLocalSwiftPackageReference "PaywallKit" */;
+			productName = PaywallKit;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
