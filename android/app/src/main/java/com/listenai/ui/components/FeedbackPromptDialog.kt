@@ -9,10 +9,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import com.listenai.R
 import com.listenai.ui.theme.Yellow
 
 /**
@@ -55,7 +57,7 @@ fun FeedbackPromptDialog(
 
                 // Title
                 Text(
-                    text = "Enjoying ReadAloud?",
+                    text = stringResource(R.string.feedback_title),
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
@@ -65,7 +67,7 @@ fun FeedbackPromptDialog(
 
                 // Subtitle
                 Text(
-                    text = "Your feedback helps us improve the app for everyone.",
+                    text = stringResource(R.string.feedback_subtitle),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center
@@ -93,7 +95,7 @@ fun FeedbackPromptDialog(
                         )
                     ) {
                         Text(
-                            text = "Not Really",
+                            text = stringResource(R.string.feedback_button_negative),
                             style = MaterialTheme.typography.labelLarge,
                             fontWeight = FontWeight.SemiBold
                         )
@@ -115,7 +117,7 @@ fun FeedbackPromptDialog(
                         )
                     ) {
                         Text(
-                            text = "Yes!",
+                            text = stringResource(R.string.feedback_button_positive),
                             style = MaterialTheme.typography.labelLarge,
                             fontWeight = FontWeight.SemiBold
                         )

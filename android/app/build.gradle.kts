@@ -3,6 +3,7 @@ import java.util.Properties
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
+    id("org.jetbrains.kotlin.plugin.compose")
     id("com.google.devtools.ksp")
     id("com.google.gms.google-services")
 }
@@ -22,8 +23,8 @@ android {
         applicationId = "com.listenai"
         minSdk = 26
         targetSdk = 35
-        versionCode = 22
-        versionName = "2.11.2"
+        versionCode = 29
+        versionName = "2.12.3"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -66,10 +67,6 @@ android {
         buildConfig = true
     }
 
-    composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.8"
-    }
-
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
@@ -80,6 +77,7 @@ android {
 dependencies {
     // Core Android
     implementation("androidx.core:core-ktx:1.12.0")
+    implementation("androidx.appcompat:appcompat:1.7.0")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.7.0")
     implementation("androidx.activity:activity-compose:1.8.2")
@@ -122,6 +120,13 @@ dependencies {
     // PDF parsing
     implementation("com.tom-roush:pdfbox-android:2.0.27.0")
 
+    // EPUB parsing
+    implementation("com.positiondev.epublib:epublib-core:3.1") {
+        exclude(group = "xmlpull")
+        exclude(group = "org.slf4j")
+    }
+    implementation("org.slf4j:slf4j-android:1.7.25")
+
     // HTML parsing
     implementation("org.jsoup:jsoup:1.17.2")
 
@@ -144,6 +149,9 @@ dependencies {
     // RevenueCat (In-App Purchases & Subscriptions)
     implementation("com.revenuecat.purchases:purchases:9.22.2")
     implementation("com.revenuecat.purchases:purchases-ui:9.22.2")
+
+    // PaywallKit
+    implementation(project(":paywallkit"))
 
     // TikTok Events SDK (install attribution & event tracking)
     implementation("com.github.tiktok:tiktok-business-android-sdk:1.6.0")

@@ -1,0 +1,444 @@
+/* ReadAloud AI - French (fr) */
+
+/* ===== Tab Bar ===== */
+"Home" = "Accueil";
+"Library" = "Bibliothèque";
+"Queue" = "File d'attente";
+"Settings" = "Réglages";
+
+/* ===== Home View ===== */
+"Download and listen anytime, anywhere" = "Téléchargez et écoutez n'importe quand, n'importe où";
+"Try for free" = "Essayer gratuitement";
+"What do you want to listen today?" = "Que voulez-vous écouter aujourd'hui ?";
+"Document" = "Document";
+"Upload files from Drive or device" = "Importer des fichiers depuis Drive ou l'appareil";
+"Scan Text" = "Scanner du texte";
+"Scanned documents or images" = "Documents ou images numérisés";
+"Web Link" = "Lien web";
+"Convert URLs to audio" = "Convertir des URLs en audio";
+"Type or Paste Text" = "Saisir ou coller du texte";
+"Input or paste text to listen" = "Saisir ou coller du texte à écouter";
+"Mail" = "Courrier";
+"Listen to e-mails easily" = "Écoutez vos e-mails facilement";
+"Double tap to import" = "Appuyez deux fois pour importer";
+"Welcome to ReadAloud AI" = "Bienvenue sur ReadAloud AI";
+"1 min" = "1 min";
+"Welcome to ReadAloud AI. 1 minute introduction" = "Bienvenue sur ReadAloud AI. Introduction d'1 minute";
+
+/* ===== Import Picker Sheet ===== */
+"Add Content" = "Ajouter du contenu";
+"PDF, ePub, TXT & more" = "PDF, ePub, TXT et plus";
+"Use camera to scan documents" = "Utiliser l'appareil photo pour numériser des documents";
+"Convert any URL to audio" = "Convertir n'importe quelle URL en audio";
+"Enter text manually" = "Saisir du texte manuellement";
+"Import emails from Gmail" = "Importer des e-mails depuis Gmail";
+"Cancel" = "Annuler";
+
+/* ===== Import View ===== */
+"Import from Web" = "Importer depuis le web";
+"Enter a URL to extract article content" = "Saisissez une URL pour extraire le contenu de l'article";
+"Paste from Clipboard" = "Coller depuis le presse-papiers";
+"Import from Clipboard" = "Importer du presse-papiers";
+"Import text or links you've copied" = "Importez du texte ou des liens que vous avez copiés";
+"Refresh Clipboard" = "Actualiser le presse-papiers";
+"Clipboard is empty" = "Le presse-papiers est vide";
+"This content type cannot be imported" = "Ce type de contenu ne peut pas être importé";
+"Checking clipboard..." = "Vérification du presse-papiers...";
+"Import PDF" = "Importer un PDF";
+"Extract text from PDF documents" = "Extraire du texte des documents PDF";
+"PDF selected" = "PDF sélectionné";
+"Choose PDF File" = "Choisir un fichier PDF";
+"Choose Different File" = "Choisir un autre fichier";
+"Select from Files app" = "Sélectionner depuis l'app Fichiers";
+"Enter Text" = "Saisir du texte";
+"Type or paste text directly" = "Saisissez ou collez du texte directement";
+"Title (optional)" = "Titre (facultatif)";
+"Paste or type your text here..." = "Collez ou saisissez votre texte ici...";
+"%d words" = "%d mots";
+"Generating audio..." = "Génération de l'audio...";
+"Import" = "Importer";
+"Import Error" = "Erreur d'importation";
+"OK" = "OK";
+"Done" = "Terminé";
+"Tips" = "Astuces";
+"Works best with article pages from news sites and blogs" = "Fonctionne mieux avec les pages d'articles des sites d'actualités et des blogs";
+"Paywalled content may not be accessible" = "Le contenu payant peut ne pas être accessible";
+"JavaScript-heavy sites may have limited extraction" = "Les sites utilisant beaucoup de JavaScript peuvent avoir une extraction limitée";
+"Works best with text-based PDFs" = "Fonctionne mieux avec les PDF textuels";
+"Scanned documents may have limited text extraction" = "Les documents numérisés peuvent avoir une extraction de texte limitée";
+"Password-protected PDFs are not supported" = "Les PDF protégés par mot de passe ne sont pas pris en charge";
+"No PDF file selected" = "Aucun fichier PDF sélectionné";
+"Preview" = "Aperçu";
+"Add to Library" = "Ajouter à la bibliothèque";
+"Title" = "Titre";
+"words" = "mots";
+"listen time" = "temps d'écoute";
+"sections" = "sections";
+"Content Preview" = "Aperçu du contenu";
+
+/* ===== Simple Web Link View ===== */
+"Paste any URL to listen" = "Collez n'importe quelle URL pour écouter";
+"Continue" = "Continuer";
+
+/* ===== Simple Text Input View ===== */
+"Type or paste your text here..." = "Saisissez ou collez votre texte ici...";
+"Save & Listen" = "Enregistrer et écouter";
+
+/* ===== Scan Text View ===== */
+"Checking camera access..." = "Vérification de l'accès à l'appareil photo...";
+"Camera Access Required" = "Accès à l'appareil photo requis";
+"ReadAloud AI needs camera access to scan documents and extract text for listening." = "ReadAloud AI a besoin d'accéder à l'appareil photo pour numériser des documents et extraire du texte pour l'écoute.";
+"Allow Camera Access" = "Autoriser l'accès à l'appareil photo";
+"Camera Access Denied" = "Accès à l'appareil photo refusé";
+"Please enable camera access in Settings to scan documents." = "Veuillez activer l'accès à l'appareil photo dans les Réglages pour numériser des documents.";
+"Open Settings" = "Ouvrir les réglages";
+"Processing..." = "Traitement...";
+"This may take a moment..." = "Cela peut prendre un moment...";
+"Extracting text..." = "Extraction du texte...";
+"Creating article..." = "Création de l'article...";
+"No images scanned" = "Aucune image numérisée";
+"No text detected in the scanned images. Please try scanning again with clearer text." = "Aucun texte détecté dans les images numérisées. Veuillez réessayer avec un texte plus clair.";
+"Scanned Document" = "Document numérisé";
+
+/* ===== Mail Import View ===== */
+"Search in mail" = "Rechercher dans le courrier";
+"Gmail" = "Gmail";
+"Connect Gmail" = "Connecter Gmail";
+"Sign in with Google to import and listen to your emails" = "Connectez-vous avec Google pour importer et écouter vos e-mails";
+"Loading email..." = "Chargement de l'e-mail...";
+
+/* ===== Library View ===== */
+"My Library" = "Ma bibliothèque";
+"Usage" = "Utilisation";
+"PRO" = "PRO";
+"Search articles" = "Rechercher des articles";
+"Add new content" = "Ajouter du nouveau contenu";
+"Double tap to import articles" = "Appuyez deux fois pour importer des articles";
+"All" = "Tout";
+"Finished" = "Terminé";
+"Favorites" = "Favoris";
+"Folders" = "Dossiers";
+"Downloaded" = "Téléchargé";
+"No Articles Yet" = "Aucun article pour le moment";
+"Nothing in Progress" = "Rien en cours";
+"Nothing Finished" = "Rien de terminé";
+"No Favorites" = "Aucun favori";
+"No Folders" = "Aucun dossier";
+"Nothing Downloaded" = "Rien de téléchargé";
+"Add articles from web links, documents, or paste text." = "Ajoutez des articles depuis des liens web, des documents ou du texte collé.";
+"Start listening to see your in-progress items here." = "Commencez à écouter pour voir vos éléments en cours ici.";
+"Completed articles will appear here." = "Les articles terminés apparaîtront ici.";
+"Mark articles as favorites to find them quickly." = "Marquez des articles comme favoris pour les retrouver rapidement.";
+"Organize your articles into folders." = "Organisez vos articles dans des dossiers.";
+"Download articles for offline listening." = "Téléchargez des articles pour une écoute hors ligne.";
+"Edit Title" = "Modifier le titre";
+"Enter a new title for this article" = "Saisissez un nouveau titre pour cet article";
+"Save" = "Enregistrer";
+"Play" = "Lecture";
+"Add to Queue" = "Ajouter à la file d'attente";
+"Favorite" = "Favori";
+"Unfavorite" = "Retirer des favoris";
+"Share" = "Partager";
+"Delete" = "Supprimer";
+"Preparing audio..." = "Préparation de l'audio...";
+"left" = "restant";
+"< 1 min" = "< 1 min";
+"Date Added" = "Date d'ajout";
+"Author" = "Auteur";
+"Duration" = "Durée";
+
+/* ===== Audio Player View ===== */
+"Not Playing" = "Pas de lecture";
+"Not playing" = "Pas de lecture";
+"Playback position" = "Position de lecture";
+"Adjust to seek through the audio" = "Ajuster pour naviguer dans l'audio";
+"Skip back 15 seconds" = "Reculer de 15 secondes";
+"Double tap to go back" = "Appuyez deux fois pour revenir en arrière";
+"Pause" = "Pause";
+"Double tap to pause" = "Appuyez deux fois pour mettre en pause";
+"Double tap to play" = "Appuyez deux fois pour lire";
+"Skip forward 15 seconds" = "Avancer de 15 secondes";
+"Double tap to skip ahead" = "Appuyez deux fois pour avancer";
+"Double tap to change speed" = "Appuyez deux fois pour changer la vitesse";
+"Sleep timer off" = "Minuterie de sommeil désactivée";
+"Sleep timer on" = "Minuterie de sommeil activée";
+"Double tap to set sleep timer" = "Appuyez deux fois pour régler la minuterie de sommeil";
+"Double tap to change repeat mode" = "Appuyez deux fois pour changer le mode de répétition";
+"Double tap to view and manage queue" = "Appuyez deux fois pour voir et gérer la file d'attente";
+"Playback Speed" = "Vitesse de lecture";
+"Sleep Timer" = "Minuterie de sommeil";
+
+/* ===== Queue View ===== */
+"Now Playing" = "En cours de lecture";
+"Up Next" = "À suivre";
+"Recently Played" = "Écouté récemment";
+"Now playing" = "En cours de lecture";
+"Play Queue" = "Lire la file d'attente";
+"Playing" = "En lecture";
+"Shuffle On" = "Lecture aléatoire activée";
+"Shuffle Off" = "Lecture aléatoire désactivée";
+"Clear Completed" = "Effacer les terminés";
+"Clear All" = "Tout effacer";
+"Clear Queue?" = "Effacer la file d'attente ?";
+"This will remove all items from your queue." = "Cela supprimera tous les éléments de votre file d'attente.";
+
+/* ===== Settings View ===== */
+"Voice Cloning" = "Clonage vocal";
+"Voice Marketplace" = "Marché des voix";
+"Cloning Speed" = "Vitesse de clonage";
+"Change Voice" = "Changer de voix";
+"App Language" = "Langue de l'app";
+"Request Feature" = "Demander une fonctionnalité";
+"Preferences" = "Préférences";
+"Default Speed" = "Vitesse par défaut";
+"Skip Silences" = "Sauter les silences";
+"Auto-Play Next" = "Lecture automatique suivante";
+"Playback" = "Lecture";
+"Linked Accounts" = "Comptes liés";
+"Apple" = "Apple";
+"Google" = "Google";
+"Disconnect" = "Déconnecter";
+"Connect" = "Connecter";
+"Connect Apple to sync data across devices. Connect Google to import emails from Gmail." = "Connectez Apple pour synchroniser les données entre les appareils. Connectez Google pour importer les e-mails de Gmail.";
+"Connect Google to import emails from Gmail and listen to them." = "Connectez Google pour importer les e-mails de Gmail et les écouter.";
+"Google Sign-In Error" = "Erreur de connexion Google";
+"Apple Sign-In Error" = "Erreur de connexion Apple";
+"Share ReadAloud AI" = "Partager ReadAloud AI";
+"Like us, Rate us" = "Notez-nous";
+"Contact Support" = "Contacter le support";
+"Usage & Quota" = "Utilisation et quota";
+"Support" = "Support";
+"Manage Subscription" = "Gérer l'abonnement";
+"Upgrade to Pro" = "Passer à Pro";
+"Active" = "Actif";
+"Subscription" = "Abonnement";
+"AI Data Sharing" = "Partage de données IA";
+"Allowed" = "Autorisé";
+"Not Allowed" = "Non autorisé";
+"Delete Account & Data" = "Supprimer le compte et les données";
+"Data & Privacy" = "Données et confidentialité";
+"Cloud voices and AI summaries send your text to external services. Tap to review details or revoke consent." = "Les voix cloud et les résumés IA envoient votre texte à des services externes. Appuyez pour consulter les détails ou révoquer le consentement.";
+"Cloud voices are disabled. Only on-device Apple voices are available. Tap to enable cloud features." = "Les voix cloud sont désactivées. Seules les voix Apple sur l'appareil sont disponibles. Appuyez pour activer les fonctionnalités cloud.";
+"Delete Account" = "Supprimer le compte";
+"This will permanently delete your account, all saved data, cloned voices, and library items. This action cannot be undone." = "Cela supprimera définitivement votre compte, toutes les données enregistrées, les voix clonées et les éléments de la bibliothèque. Cette action est irréversible.";
+"Account Deleted" = "Compte supprimé";
+"Your account and all associated data have been successfully deleted." = "Votre compte et toutes les données associées ont été supprimés avec succès.";
+"Version" = "Version";
+"Privacy Policy" = "Politique de confidentialité";
+"Terms of Service" = "Conditions d'utilisation";
+"About" = "À propos";
+"Connected" = "Connecté";
+"Not connected" = "Non connecté";
+"Error" = "Erreur";
+
+/* ===== Language Picker ===== */
+"English (US)" = "Anglais (États-Unis)";
+"English (UK)" = "Anglais (Royaume-Uni)";
+"Spanish" = "Espagnol";
+"French" = "Français";
+"German" = "Allemand";
+"Italian" = "Italien";
+"Portuguese (Brazil)" = "Portugais (Brésil)";
+"Japanese" = "Japonais";
+"Korean" = "Coréen";
+"Chinese (Simplified)" = "Chinois (simplifié)";
+
+/* ===== Feature Request ===== */
+"Describe your feature idea" = "Décrivez votre idée de fonctionnalité";
+"We read every suggestion and use them to improve ReadAloud AI." = "Nous lisons chaque suggestion et les utilisons pour améliorer ReadAloud AI.";
+"Submit" = "Soumettre";
+
+/* ===== Onboarding: Welcome ===== */
+"Welcome to\nReadAloud AI!" = "Bienvenue sur\nReadAloud AI !";
+"Read anything aloud in the highest quality voices." = "Lisez n'importe quoi à voix haute avec les voix de la plus haute qualité.";
+"Get Started" = "Commencer";
+"PDF, ePUB & more" = "PDF, ePUB et plus";
+"Top Text to\nSpeech App" = "Meilleure app de\nsynthèse vocale";
+
+/* ===== Onboarding: Document to Audio ===== */
+"Turn any document to audio" = "Transformez n'importe quel document en audio";
+"Listen to PDFs, articles, news and more" = "Écoutez des PDF, articles, actualités et plus";
+"Type & Paste Text" = "Saisir et coller du texte";
+
+/* ===== Onboarding: Take Notes ===== */
+"Take notes on key concepts" = "Prenez des notes sur les concepts clés";
+"Take notes on key ideas with a single tap" = "Prenez des notes sur les idées clés d'un simple toucher";
+"Take Note" = "Prendre une note";
+"Key Insight" = "Idée clé";
+"Focus on deep work and deliberate practice for better outcomes." = "Concentrez-vous sur le travail approfondi et la pratique délibérée pour de meilleurs résultats.";
+
+/* ===== Onboarding: Productivity ===== */
+"Increase your productivity" = "Augmentez votre productivité";
+"Listen to texts faster, learn more" = "Écoutez les textes plus vite, apprenez davantage";
+"50% increase in" = "Augmentation de 50% de la";
+" productivity" = " productivité";
+
+/* ===== Onboarding: Voice Selection ===== */
+"Choose Your Voice" = "Choisissez votre voix";
+"You can change selected voice later." = "Vous pouvez changer la voix sélectionnée plus tard.";
+"Professional Narrator" = "Narrateur professionnel";
+"Calm & Soothing" = "Calme et apaisante";
+"Deep British" = "Britannique profond";
+"Storyteller" = "Conteur";
+"Elegant & Articulate" = "Élégante et articulée";
+"Multilingual" = "Multilingue";
+"English" = "Anglais";
+
+/* ===== Onboarding: Sign In ===== */
+"Skip" = "Passer";
+"Sign In (Optional)" = "Connexion (facultatif)";
+"Sign in to unlock all features including voice sharing and cross-device sync." = "Connectez-vous pour débloquer toutes les fonctionnalités, y compris le partage de voix et la synchronisation entre appareils.";
+"Share Your Voice" = "Partagez votre voix";
+"Share cloned voices with the community" = "Partagez les voix clonées avec la communauté";
+"Community Voices" = "Voix de la communauté";
+"Use voices shared by others" = "Utilisez les voix partagées par d'autres";
+"Earn Rewards" = "Gagnez des récompenses";
+"Get listening minutes when others use your voices" = "Obtenez des minutes d'écoute quand d'autres utilisent vos voix";
+"Sync Across Devices" = "Synchroniser entre les appareils";
+"Your data follows you everywhere" = "Vos données vous suivent partout";
+"Continue Without Signing In" = "Continuer sans se connecter";
+"Signing in..." = "Connexion en cours...";
+"Sign In Error" = "Erreur de connexion";
+
+/* ===== Onboarding: Paywall ===== */
+"Restore" = "Restaurer";
+"Get Unlimited Access" = "Obtenez un accès illimité";
+"Read anything aloud in top-quality voices" = "Lisez n'importe quoi à voix haute avec des voix de haute qualité";
+"Unlimited text-to-speech with cloud voices" = "Synthèse vocale illimitée avec les voix cloud";
+"Premium AI voices from ElevenLabs" = "Voix IA premium d'ElevenLabs";
+"Create custom voice clones" = "Créez des clones vocaux personnalisés";
+"AI-powered article summaries" = "Résumés d'articles par IA";
+"Speed control up to 3x" = "Contrôle de vitesse jusqu'à 3x";
+"Annual" = "Annuel";
+"/year" = "/an";
+"SAVE 90%" = "ÉCONOMISEZ 90%";
+"Weekly" = "Hebdomadaire";
+"/week" = "/semaine";
+"Due today" = "Dû aujourd'hui";
+"free" = "gratuit";
+"Processing..." = "Traitement...";
+"Start Free Trial" = "Commencer l'essai gratuit";
+"Subscribe Now" = "S'abonner maintenant";
+"Terms of Use" = "Conditions d'utilisation";
+"Secured with Apple" = "Sécurisé par Apple";
+"Subscription not available. Please try again later." = "Abonnement non disponible. Veuillez réessayer plus tard.";
+"free trial" = "essai gratuit";
+
+/* ===== Voice Cloning View ===== */
+"Clone Voice" = "Cloner la voix";
+"No cloned voice here" = "Aucune voix clonée ici";
+"You haven't created any voice clones yet." = "Vous n'avez encore créé aucun clone vocal.";
+"Edit" = "Modifier";
+"Get Notified When Ready" = "Être notifié quand c'est prêt";
+"Enable Notifications" = "Activer les notifications";
+"Not Now" = "Pas maintenant";
+"Voice cloning usually completes in seconds, but can take longer for high-quality results.\n\nWe'll send you ONE notification when your voice is ready. We never send marketing or promotional notifications." = "Le clonage vocal se termine généralement en quelques secondes, mais peut prendre plus de temps pour des résultats de haute qualité.\n\nNous vous enverrons UNE notification quand votre voix sera prête. Nous n'envoyons jamais de notifications marketing ou promotionnelles.";
+
+/* ===== Select Voice View ===== */
+"Select Voice" = "Sélectionner une voix";
+"Popular" = "Populaire";
+"Cloned" = "Cloné";
+"Your Voices" = "Vos voix";
+"Popular Voices" = "Voix populaires";
+"All Voices" = "Toutes les voix";
+"No cloned voices yet" = "Aucune voix clonée pour le moment";
+"Create a voice clone in Settings to see it here." = "Créez un clone vocal dans les Réglages pour le voir ici.";
+"About Voices" = "À propos des voix";
+"Premium voices offer high-quality, natural-sounding speech with multilingual support. Cloned voices let you listen to content in your own voice or voices you've created." = "Les voix premium offrent une synthèse vocale de haute qualité et naturelle avec un support multilingue. Les voix clonées vous permettent d'écouter du contenu avec votre propre voix ou des voix que vous avez créées.";
+
+/* ===== Voice Picker View ===== */
+"Choose Voice" = "Choisir une voix";
+"Search voices" = "Rechercher des voix";
+"Speed" = "Vitesse";
+"Voice Quality" = "Qualité vocale";
+"Standard" = "Standard";
+"Fast & Unlimited" = "Rapide et illimité";
+"Premium" = "Premium";
+"Highest Quality" = "Qualité maximale";
+
+/* ===== Usage Views ===== */
+"Current Plan" = "Forfait actuel";
+"Free" = "Gratuit";
+"Unlimited" = "Illimité";
+"remaining" = "restant";
+"Upgrade" = "Améliorer";
+"Upgrade Plan" = "Améliorer le forfait";
+"View Pricing" = "Voir les tarifs";
+"Refresh Usage" = "Actualiser l'utilisation";
+"More options" = "Plus d'options";
+"Double tap to view upgrade and pricing options" = "Appuyez deux fois pour voir les options d'amélioration et de tarification";
+"Cloud (Monthly)" = "Cloud (mensuel)";
+"Daily (Local)" = "Quotidien (local)";
+"Monthly (Local)" = "Mensuel (local)";
+"View Details" = "Voir les détails";
+"Tip: Use on-device voices to save your cloud quota" = "Astuce : Utilisez les voix sur l'appareil pour économiser votre quota cloud";
+"Quota Exceeded" = "Quota dépassé";
+"Almost at Limit" = "Presque à la limite";
+"Quota Warning" = "Avertissement de quota";
+"Usage Update" = "Mise à jour d'utilisation";
+"Dismiss warning" = "Ignorer l'avertissement";
+"Double tap to hide this warning banner" = "Appuyez deux fois pour masquer cette bannière d'avertissement";
+"Double tap to collapse" = "Appuyez deux fois pour réduire";
+"Double tap to expand for more details" = "Appuyez deux fois pour agrandir et voir plus de détails";
+"Content Size" = "Taille du contenu";
+"Est. Duration" = "Durée est.";
+"Daily Remaining After" = "Restant quotidien après";
+"Monthly Remaining After" = "Restant mensuel après";
+"Proceed" = "Continuer";
+"Use On-Device" = "Utiliser sur l'appareil";
+"Usage Estimate" = "Estimation d'utilisation";
+"Approaching Limit" = "Approche de la limite";
+"Confirm Synthesis" = "Confirmer la synthèse";
+"Quota Impact" = "Impact sur le quota";
+"Daily Remaining" = "Restant quotidien";
+"Monthly Remaining" = "Restant mensuel";
+"Use Cloud Voice" = "Utiliser la voix cloud";
+"Use On-Device Voice (Free)" = "Utiliser la voix sur l'appareil (gratuit)";
+"Unlock Premium Voices" = "Débloquer les voix premium";
+"Unlimited AI Voices" = "Voix IA illimitées";
+"Access all premium cloud voices" = "Accédez à toutes les voix cloud premium";
+"No Daily Limits" = "Aucune limite quotidienne";
+"Listen as much as you want" = "Écoutez autant que vous le souhaitez";
+"Priority Processing" = "Traitement prioritaire";
+"Faster audio generation" = "Génération audio plus rapide";
+"New Voices First" = "Nouvelles voix en premier";
+"Early access to new voice releases" = "Accès anticipé aux nouvelles voix";
+"Upgrade to Premium" = "Passer à Premium";
+"Starting at $4.99/month" = "À partir de 4,99 $/mois";
+"Continue with On-Device Voice" = "Continuer avec la voix sur l'appareil";
+"Maybe Later" = "Peut-être plus tard";
+"Daily limit reached. Upgrade or try tomorrow." = "Limite quotidienne atteinte. Améliorez ou réessayez demain.";
+
+/* ===== AI Data Consent View ===== */
+"Your Data & AI Services" = "Vos données et services IA";
+"ReadAloud AI uses cloud-based AI services to convert your text to speech and provide content summaries. Here's exactly what data is shared and with whom." = "ReadAloud AI utilise des services IA cloud pour convertir votre texte en voix et fournir des résumés de contenu. Voici exactement quelles données sont partagées et avec qui.";
+"Text-to-Speech" = "Synthèse vocale";
+"AI Content Summaries" = "Résumés de contenu IA";
+"What Stays on Your Device" = "Ce qui reste sur votre appareil";
+"The following never leaves your device:" = "Les éléments suivants ne quittent jamais votre appareil :";
+"On-device Apple voices work without any data sharing. You can switch to on-device voices anytime in Settings." = "Les voix Apple sur l'appareil fonctionnent sans aucun partage de données. Vous pouvez passer aux voix sur l'appareil à tout moment dans les Réglages.";
+"Read our full Privacy Policy" = "Lire notre politique de confidentialité complète";
+"I Understand & Agree" = "Je comprends et j'accepte";
+"Use On-Device Voices Only" = "Utiliser uniquement les voix sur l'appareil";
+
+/* ===== Sign In Prompt View ===== */
+"Sign In Required" = "Connexion requise";
+"Continue without signing in" = "Continuer sans se connecter";
+"Benefits of signing in:" = "Avantages de la connexion :";
+"Share your cloned voices" = "Partagez vos voix clonées";
+"Use voices from the community" = "Utilisez les voix de la communauté";
+"Earn rewards when others use your voices" = "Gagnez des récompenses quand d'autres utilisent vos voix";
+"Sync your data across devices" = "Synchronisez vos données entre les appareils";
+"Sign in to continue" = "Connectez-vous pour continuer";
+"Sign in to access this feature" = "Connectez-vous pour accéder à cette fonctionnalité";
+
+/* ===== Voice Marketplace ===== */
+"Search voices..." = "Rechercher des voix...";
+
+/* ===== Onboarding Footer ===== */
+"By continuing, you agree to our [Privacy Policy](%@) and [Terms of Use](%@)." = "En continuant, vous acceptez notre [Politique de confidentialité](%@) et nos [Conditions d'utilisation](%@).";
+
+/* ===== ContentView / Tab Bar Labels ===== */
+"Voices" = "Voix";
+"Continue" = "Continuer";
+"Voice Cloning" = "Clonage vocal";

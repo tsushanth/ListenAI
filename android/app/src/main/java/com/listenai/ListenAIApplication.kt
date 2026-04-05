@@ -2,6 +2,7 @@ package com.listenai
 
 import android.app.Application
 import com.listenai.di.allModules
+import com.listenai.service.AppOpenTracker
 import com.listenai.service.FirebaseAnalyticsHelper
 import com.listenai.service.TikTokHelper
 import com.listenai.service.billing.RevenueCatManager
@@ -31,8 +32,14 @@ class ListenAIApplication : Application() {
         // Configure services with backend URL
         configureServices()
 
+        // Initialize app open tracker
+        AppOpenTracker.init(this)
+
         // Initialize RevenueCat for subscriptions
         RevenueCatManager.getInstance().configure(this)
+
+        // Initialize PaywallKit experiment manager
+        com.kreativekoala.paywallkit.manager.ExperimentManager.init(this)
 
         // Initialize Firebase Analytics for Google Ads conversion tracking
         FirebaseAnalyticsHelper.initialize(this)

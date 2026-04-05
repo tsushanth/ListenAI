@@ -1,0 +1,469 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">ReadAloud AI</string>
+
+    <!-- Tab Labels -->
+    <string name="tab_home">首页</string>
+    <string name="tab_library">我的库</string>
+    <string name="tab_settings">设置</string>
+
+    <!-- Home Screen -->
+    <string name="promo_title">下载后随时随地收听</string>
+    <string name="promo_button">免费试用</string>
+    <string name="quick_actions_title">今天想听什么？</string>
+    <string name="action_document">文档</string>
+    <string name="action_document_subtitle">从云端硬盘或设备上传文件</string>
+    <string name="action_scan">扫描文本</string>
+    <string name="action_scan_subtitle">扫描的文档或图片</string>
+    <string name="action_web_link">网页链接</string>
+    <string name="action_web_link_subtitle">将URL转换为音频</string>
+    <string name="action_text">输入或粘贴文本</string>
+    <string name="action_text_subtitle">输入或粘贴文本来收听</string>
+    <string name="action_mail">邮件</string>
+    <string name="action_mail_subtitle">轻松收听电子邮件</string>
+
+    <!-- Library Screen -->
+    <string name="library_title">我的库</string>
+    <string name="filter_all">全部</string>
+    <string name="filter_in_progress">进行中</string>
+    <string name="filter_continue">继续</string>
+    <string name="filter_finished">已完成</string>
+    <string name="filter_favorites">收藏</string>
+    <string name="filter_archived">已归档</string>
+    <string name="filter_folders">文件夹</string>
+    <string name="filter_downloaded">已下载</string>
+    <string name="empty_library">暂无文章</string>
+    <string name="empty_library_description">通过网页链接、文档或粘贴文本添加文章。</string>
+    <string name="more_options">更多选项</string>
+
+    <!-- Settings Screen -->
+    <string name="settings_title">设置</string>
+    <string name="settings_preferences">偏好设置</string>
+    <string name="settings_voice">语音</string>
+    <string name="settings_voice_subtitle">选择您喜欢的语音</string>
+    <string name="settings_speed">播放速度</string>
+    <string name="settings_speed_subtitle">默认 1.0x</string>
+    <string name="settings_appearance">外观</string>
+    <string name="settings_appearance_subtitle">浅色、深色或跟随系统</string>
+    <string name="settings_voice_cloning">语音克隆</string>
+    <string name="settings_change_voice">更改语音</string>
+    <string name="settings_app_language">应用语言</string>
+    <string name="settings_request_feature">功能请求</string>
+    <string name="settings_linked_accounts">关联账户</string>
+    <string name="settings_google">Google</string>
+    <string name="settings_google_subtitle">跨设备同步文章</string>
+    <string name="settings_google_connected">已连接</string>
+    <string name="settings_connect">连接</string>
+    <string name="settings_disconnect">断开连接</string>
+    <string name="settings_share">分享</string>
+    <string name="settings_share_app">分享ReadAloud AI</string>
+    <string name="settings_share_app_subtitle">向朋友推荐ReadAloud AI</string>
+    <string name="settings_rate_app">给应用评分</string>
+    <string name="settings_rate_app_subtitle">给我们5星好评吧</string>
+    <string name="settings_playback">播放</string>
+    <string name="settings_audio_quality">音频质量</string>
+    <string name="settings_audio_quality_subtitle">高质量合成</string>
+    <string name="settings_skip_interval">跳过间隔</string>
+    <string name="settings_skip_interval_subtitle">后退10秒，前进30秒</string>
+    <string name="settings_sleep_timer">睡眠定时器</string>
+    <string name="settings_sleep_timer_subtitle">设定时间后自动暂停</string>
+    <string name="settings_default_speed">默认速度</string>
+    <string name="settings_skip_silences">跳过静音</string>
+    <string name="settings_auto_play">自动播放下一个</string>
+    <string name="settings_support">支持</string>
+    <string name="settings_usage">用量 &amp; 配额</string>
+    <string name="settings_usage_subtitle">查看用量和限制</string>
+    <string name="settings_help">帮助中心</string>
+    <string name="settings_help_subtitle">常见问题和指南</string>
+    <string name="settings_feedback">发送反馈</string>
+    <string name="settings_feedback_subtitle">报告问题或建议</string>
+    <string name="settings_rate_us">喜欢的话请给我们评分</string>
+    <string name="settings_contact">联系支持</string>
+    <string name="settings_about">关于</string>
+    <string name="settings_version">版本</string>
+    <string name="settings_privacy">隐私政策</string>
+    <string name="settings_privacy_subtitle">查看我们的隐私政策</string>
+    <string name="settings_terms">服务条款</string>
+    <string name="settings_terms_subtitle">查看条款和条件</string>
+
+    <!-- Playback -->
+    <string name="now_playing">正在播放</string>
+    <string name="up_next">下一个</string>
+    <string name="minutes_left">剩余%d分钟</string>
+    <string name="speed_format">%sx</string>
+    <string name="skip_backward">快退</string>
+    <string name="skip_forward">快进</string>
+    <string name="sleep_timer">睡眠定时器</string>
+
+    <!-- Import Screen -->
+    <string name="import_title">添加内容</string>
+    <string name="import_mode_url">URL</string>
+    <string name="import_mode_document">文档</string>
+    <string name="import_mode_text">文本</string>
+    <string name="import_mode_scan">扫描</string>
+    <string name="import_url_title">从URL导入</string>
+    <string name="import_url_description">粘贴网页链接以提取文章并转换为音频。</string>
+    <string name="import_url_placeholder">https://example.com/article</string>
+    <string name="import_document_title">导入文档</string>
+    <string name="import_document_description">上传PDF、DOCX或TXT文件转换为音频。</string>
+    <string name="import_document_tap">点击选择文件</string>
+    <string name="import_document_formats">支持PDF、DOCX、TXT格式</string>
+    <string name="import_text_title">输入文本</string>
+    <string name="import_text_title_placeholder">标题（可选）</string>
+    <string name="import_text_content_placeholder">在此粘贴或输入文本…</string>
+    <string name="import_scan_title">扫描文档</string>
+    <string name="import_scan_description">使用相机扫描印刷文本并转换为音频。</string>
+    <string name="import_scan_tap">点击扫描</string>
+    <string name="import_button">导入</string>
+
+    <!-- Import Screen (additional) -->
+    <string name="import_mode_clipboard">剪贴板</string>
+    <string name="import_mode_email">邮件</string>
+    <string name="clear">清除</string>
+    <string name="importing">正在导入…</string>
+    <string name="clipboard_import_title">从剪贴板导入</string>
+    <string name="clipboard_import_description">导入您复制的文本或URL</string>
+    <string name="clipboard_url_detected">检测到URL</string>
+    <string name="clipboard_text_content">文本内容</string>
+    <string name="clipboard_empty">剪贴板为空</string>
+    <string name="word_count_format">%d个字</string>
+    <string name="pdf_selected">已选择PDF</string>
+    <string name="epub_selected">EPUB</string>    <string name="remove">移除</string>
+
+    <!-- Library Screen (additional) -->
+    <string name="library_empty_in_progress_title">没有进行中的内容</string>
+    <string name="library_empty_in_progress_description">开始收听后，进行中的项目将显示在此处</string>
+    <string name="library_empty_favorites_title">没有收藏</string>
+    <string name="library_empty_favorites_description">将文章标记为收藏以便快速查找</string>
+    <string name="library_empty_email_title">没有邮件</string>
+    <string name="library_empty_email_description">从Gmail导入邮件来收听</string>
+    <string name="library_empty_archived_title">没有已归档的文章</string>
+    <string name="library_empty_archived_description">归档已完成的文章以保持库的整洁</string>
+    <string name="library_add_content_button">添加内容</string>
+    <string name="filter_email">邮件</string>
+    <string name="remove_from_favorites">从收藏中移除</string>
+    <string name="add_to_favorites">添加到收藏</string>
+    <string name="unarchive">取消归档</string>
+    <string name="archive">归档</string>
+    <string name="duration_left_minutes">剩余%d分%d秒</string>
+    <string name="duration_left_seconds">剩余%d秒</string>
+
+    <!-- Feedback Dialog -->
+    <string name="feedback_title">喜欢ReadAloud吗？</string>
+    <string name="feedback_subtitle">您的反馈有助于我们为大家改进应用。</string>
+    <string name="feedback_button_negative">不太喜欢</string>
+    <string name="feedback_button_positive">喜欢！</string>
+
+    <!-- Mail Import -->
+    <string name="mail_import_title">Gmail</string>
+    <string name="back">返回</string>
+    <string name="refresh">刷新</string>
+    <string name="loading_emails">正在加载邮件…</string>
+    <string name="load_more">加载更多</string>
+    <string name="loading_email">正在加载邮件…</string>
+    <string name="no_subject">（无主题）</string>
+    <string name="email_from_format">发件人: %s &lt;%s&gt;</string>
+    <string name="no_content">（无内容）</string>
+    <string name="email_import_button">导入 &amp; 收听</string>
+    <string name="gmail_connect_title">连接Gmail</string>
+    <string name="gmail_connect_description">使用Google登录以导入和收听您的邮件</string>
+    <string name="gmail_signin_button">使用Google登录</string>
+    <string name="gmail_privacy_notice">我们仅请求对您邮件的读取权限。您的数据将保持私密。</string>
+    <string name="mail_search_placeholder">在邮件中搜索</string>
+    <string name="no_emails_found">未找到邮件</string>
+    <string name="no_emails_search_suggestion">尝试不同的搜索关键词</string>
+    <string name="clear_search">清除搜索</string>
+    <string name="inbox_empty">您的收件箱似乎为空</string>
+
+    <!-- Voice Marketplace -->
+    <string name="marketplace_title">语音市场</string>
+    <string name="my_shares">我的分享</string>
+    <string name="rewards">奖励</string>
+    <string name="marketplace_search_placeholder">搜索语音…</string>
+    <string name="no_voices_found">未找到语音</string>
+    <string name="no_voices_suggestion">尝试调整筛选条件</string>
+    <string name="voice_uses_format">%d次使用</string>
+
+    <!-- Voice Detail -->
+    <string name="voice_detail_title">语音详情</string>
+    <string name="report">举报</string>
+    <string name="retry">重试</string>
+    <string name="rate_voice_prompt">您如何评价这个语音？</string>
+    <string name="star_rating_format">%d颗星</string>
+    <string name="review_optional">评论（可选）</string>
+    <string name="rate_voice">评价语音</string>
+    <string name="submit">提交</string>
+    <string name="report_voice_title">举报语音</string>
+    <string name="report_voice_prompt">您举报此语音的原因是什么？</string>
+    <string name="description_label">描述</string>
+    <string name="submit_report">提交举报</string>
+    <string name="rating_count_format">%d个评价</string>
+    <string name="uses_label">使用次数</string>
+    <string name="created_label">创建时间</string>
+    <string name="stop_preview">停止预览</string>
+    <string name="play_preview">播放预览</string>
+
+    <!-- Share Voice -->
+    <string name="share_voice_title">分享语音</string>
+    <string name="no_cloned_voices">没有克隆语音</string>
+    <string name="no_cloned_voices_hint">请先创建克隆语音再进行分享</string>
+    <string name="select_voice">选择语音</string>
+    <string name="voice_sample_duration">%.1f秒示例</string>
+    <string name="display_name">显示名称</string>
+    <string name="display_name_hint">在市场中显示的名称</string>
+    <string name="description_optional">描述（可选）</string>
+    <string name="describe_voice_placeholder">描述您的语音…</string>
+    <string name="tags_label">标签</string>
+    <string name="tags_description">选择描述您语音的标签</string>
+    <string name="voice_attestation">我确认这是我自己的声音，并且我有权分享</string>
+    <string name="marketplace_terms">我同意语音市场服务条款</string>
+    <string name="share_voice_button">分享语音</string>
+
+    <!-- My Shared Voices -->
+    <string name="my_shared_voices_title">我分享的语音</string>
+    <string name="no_shared_voices_title">尚未分享语音</string>
+    <string name="no_shared_voices_description">与社区分享您的克隆语音，当他人使用时即可获得奖励！</string>
+    <string name="share_a_voice">分享语音</string>
+    <string name="revoke_voice_title">撤销语音</string>
+    <string name="revoke_voice_prompt">确定要停止分享「%s」吗？其他人将无法再使用此语音。</string>
+    <string name="revoke">撤销</string>
+    <string name="status_active">活跃</string>
+    <string name="status_pending">待处理</string>
+    <string name="status_revoked">已撤销</string>
+    <string name="revoked_reason_format">撤销原因: %s</string>
+
+    <!-- Rewards -->
+    <string name="rewards_title">奖励</string>
+    <string name="total_earned">总计获得</string>
+    <string name="pending">待处理</string>
+    <string name="uses">使用次数</string>
+    <string name="claim_rewards">领取奖励</string>
+    <string name="claim_success_format">成功领取%.1f分钟！</string>
+    <string name="how_rewards_work">奖励机制</string>
+    <string name="reward_step1_title">分享语音</string>
+    <string name="reward_step1_description">与社区分享您的克隆语音</string>
+    <string name="reward_step2_title">他人使用</string>
+    <string name="reward_step2_description">当他人使用您的语音进行TTS时，您将获得奖励</string>
+    <string name="reward_step3_title">领取时长</string>
+    <string name="reward_step3_description">将待处理的奖励兑换为免费收听时长</string>
+    <string name="reward_history">奖励历史</string>
+    <string name="no_rewards_title">暂无奖励</string>
+    <string name="no_rewards_description">分享您的语音，开始赚取奖励！</string>
+    <string name="characters_generated_format">%d个字符</string>
+    <string name="credited">已到账</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_back">返回</string>
+    <string name="skip">跳过</string>
+    <string name="onboarding_continue">继续</string>
+    <string name="next">下一步</string>
+    <string name="onboarding_terms">继续即表示您同意我们的隐私政策和使用条款。</string>
+    <string name="privacy_policy">隐私政策</string>
+    <string name="terms_of_use">使用条款</string>
+    <string name="onboarding_welcome_prefix">欢迎使用</string>
+    <string name="onboarding_welcome_description">将任何文档转化为自然语音。随时随地收听文章、PDF等内容。</string>
+    <string name="feature_pdf">PDF</string>
+    <string name="feature_web">网页</string>
+    <string name="feature_epub">ePUB</string>
+    <string name="feature_text">文本</string>
+    <string name="onboarding_import_title">随处导入</string>
+    <string name="onboarding_import_description">粘贴链接、上传PDF或直接输入文本</string>
+    <string name="import_method_web_links">网页链接</string>
+    <string name="import_method_web_links_subtitle">粘贴任意文章URL</string>
+    <string name="import_method_pdf">PDF文档</string>
+    <string name="import_method_pdf_subtitle">从设备上传PDF</string>
+    <string name="import_method_text">直接输入文本</string>
+    <string name="import_method_text_subtitle">输入或粘贴任意文本</string>
+    <string name="import_method_clipboard">剪贴板</string>
+    <string name="import_method_clipboard_subtitle">自动检测复制的内容</string>
+    <string name="onboarding_notes_title">边听边做笔记</string>
+    <string name="onboarding_notes_description">在不中断播放的情况下记录关键要点</string>
+    <string name="add_note_placeholder">在2:34添加笔记…</string>
+    <string name="onboarding_productivity_title">提升您的效率</string>
+    <string name="onboarding_productivity_description">自然语音和可调节速度，助您高效学习</string>
+    <string name="playback_speed_title">播放速度</string>
+    <string name="speed_075x">0.75x</string>
+    <string name="speed_1x">1x</string>
+    <string name="speed_15x">1.5x</string>
+    <string name="speed_2x">2x</string>
+    <string name="feature_background_playback">后台播放</string>
+    <string name="feature_sleep_timer">睡眠定时器</string>
+    <string name="feature_bookmarks">书签 &amp; 章节</string>
+    <string name="onboarding_voice_title">选择您的语音</string>
+    <string name="onboarding_voice_description">选择一个适合您收听风格的语音</string>
+    <string name="stop_preview_description">停止预览</string>
+    <string name="preview_voice_description">预览语音</string>
+    <string name="selected">已选择</string>
+    <string name="signin_optional_title">登录（可选）</string>
+    <string name="signin_optional_description">登录以解锁所有功能，包括语音分享和跨设备同步。</string>
+    <string name="signin_benefit_share">分享您的语音</string>
+    <string name="signin_benefit_share_description">与社区分享克隆语音</string>
+    <string name="signin_benefit_community">社区语音</string>
+    <string name="signin_benefit_community_description">使用他人分享的语音</string>
+    <string name="signin_benefit_rewards">赚取奖励</string>
+    <string name="signin_benefit_rewards_description">当他人使用您的语音时获得收听时长</string>
+    <string name="signin_benefit_sync">跨设备同步</string>
+    <string name="signin_benefit_sync_description">您的数据随时随地跟随您</string>
+    <string name="continue_without_signin">不登录继续</string>
+
+    <!-- Voice Picker -->
+    <string name="choose_voice">选择语音</string>
+    <string name="quality_high_title">高品质语音</string>
+    <string name="quality_high_description">GPU加速，自然语音 - 无限使用</string>
+    <string name="quality_free">免费</string>
+
+    <!-- Settings (additional) -->
+    <string name="settings_voice_cloning_subtitle">通过录音创建自定义语音</string>
+    <string name="settings_voice_marketplace">语音市场</string>
+    <string name="settings_voice_marketplace_subtitle">浏览和分享社区语音</string>
+
+    <!-- General -->
+    <string name="pro">PRO</string>
+    <string name="connect">连接</string>
+    <string name="disconnect">断开连接</string>
+    <string name="cancel">取消</string>
+    <string name="done">完成</string>
+    <string name="delete">删除</string>
+    <string name="play">播放</string>
+    <string name="pause">暂停</string>
+    <string name="close">关闭</string>
+    <string name="add_to_queue">添加到队列</string>
+    <string name="favorite">收藏</string>
+    <string name="share">分享</string>
+
+    <!-- Settings Subscription -->
+    <string name="settings_subscription">订阅</string>
+    <string name="settings_upgrade_to_pro">升级到Pro</string>
+    <string name="settings_upgrade_to_pro_subtitle">无限收听、所有语音 &amp; 更多</string>
+    <string name="settings_readaloud_pro">ReadAloud AI Pro</string>
+    <string name="settings_pro_member_subtitle">您是Pro会员</string>
+    <string name="settings_audio_quality_hd">高品质（HD）</string>
+
+    <!-- Settings Dialogs -->
+    <string name="dialog_playback_speed">播放速度</string>
+    <string name="dialog_appearance">外观</string>
+    <string name="dialog_skip_interval">跳过间隔</string>
+    <string name="dialog_sleep_timer_default">睡眠定时器默认</string>
+    <string name="selected_check">已选择</string>
+    <string name="seconds_format">%d秒</string>
+    <string name="sleep_timer_off">关闭</string>
+    <string name="sleep_timer_minutes_format">%d分钟</string>
+    <string name="sleep_timer_15_min">15分钟</string>
+    <string name="sleep_timer_30_min">30分钟</string>
+    <string name="sleep_timer_45_min">45分钟</string>
+    <string name="sleep_timer_1_hour">1小时</string>
+    <string name="appearance_system">跟随系统</string>
+    <string name="appearance_light">浅色</string>
+    <string name="appearance_dark">深色</string>
+
+    <!-- Share Intent -->
+    <string name="share_subject">看看ListenAI</string>
+    <string name="share_body">用自然AI语音收听任何文章！下载ListenAI: https://play.google.com/store/apps/details?id=com.listenai</string>
+    <string name="share_chooser_title">分享ListenAI</string>
+    <string name="feedback_email_subject">ListenAI 反馈</string>
+
+    <!-- Player Screen -->
+    <string name="player_loading_article">正在加载文章…</string>
+    <string name="player_article_not_found">未找到文章</string>
+    <string name="player_no_text_content">没有可合成的文本内容。</string>
+    <string name="player_no_voice_available">没有可用的语音。请检查您的TTS服务连接。</string>
+    <string name="player_network_error">网络错误。请检查您的网络连接。</string>
+    <string name="player_timeout_error">请求超时。服务器可能繁忙。</string>
+    <string name="player_rate_limit_error">服务器繁忙。请稍后重试。</string>
+    <string name="player_synthesis_failed">合成失败</string>
+    <string name="player_regeneration_failed">重新生成失败</string>
+    <string name="player_something_went_wrong">出了点问题</string>
+    <string name="player_go_back">返回</string>
+    <string name="player_try_again">重试</string>
+    <string name="player_preparing_audio">正在准备音频…</string>
+    <string name="player_percent_complete">已完成%d%%</string>
+    <string name="player_back">返回</string>
+    <string name="player_change_voice">更改语音</string>
+    <string name="player_more_options">更多</string>
+    <string name="player_skip_back_10">后退10秒</string>
+    <string name="player_skip_forward_10">前进10秒</string>
+    <string name="player_select_speed">选择速度</string>
+    <string name="player_change_voice_button">更改语音</string>
+    <string name="player_added_to_queue">已添加到队列</string>
+    <string name="player_marked_finished">已标记为完成</string>
+    <string name="player_removed_from_favorites">已从收藏中移除</string>
+    <string name="player_added_to_favorites">已添加到收藏</string>
+    <string name="player_export_audio">导出音频</string>
+    <string name="player_audio_not_found">未找到音频文件</string>
+    <string name="player_export_failed">导出失败: %s</string>
+    <string name="player_sleep_timer_set">睡眠定时器已设置为%d分钟</string>
+    <string name="player_sleep_timer_cancelled">睡眠定时器已取消</string>
+    <string name="player_by_author">作者 %s</string>
+    <string name="player_words_count">%d个字</string>
+    <string name="player_untitled">无标题</string>
+    <string name="player_article_fallback">文章</string>
+    <string name="player_from_label">发件人:</string>
+    <string name="player_unknown_sender">未知</string>
+
+    <!-- Player Source Badges -->
+    <string name="source_web">网页</string>
+    <string name="source_pdf">PDF</string>
+    <string name="source_clipboard">剪贴板</string>
+    <string name="source_file">文件</string>
+    <string name="source_text">文本</string>
+    <string name="source_email">邮件</string>
+
+    <!-- Player Mode Badge -->
+    <string name="player_mode_loading_full">正在加载完整版…</string>
+    <string name="player_mode_preview">预览</string>
+    <string name="player_mode_full">完整</string>
+
+    <!-- Player Voice Indicator -->
+    <string name="player_cloned_voice">克隆</string>
+    <string name="player_voice_fallback">语音</string>
+
+    <!-- Quota Exceeded -->
+    <string name="quota_exceeded_title">每日配额已用尽</string>
+    <string name="quota_exceeded_message">您今天还剩%1$d个字符，\n但此文章需要%2$d个字符。</string>
+    <string name="quota_upgrade_to_pro">升级到Pro</string>
+    <string name="quota_benefit_chars_day">每天100K字符（多25倍）</string>
+    <string name="quota_benefit_chars_month">每月1M字符</string>
+    <string name="quota_benefit_premium_voices">高级AI语音</string>
+    <string name="quota_benefit_priority">优先合成队列</string>
+    <string name="quota_maybe_later">以后再说</string>
+    <string name="quota_reset_info">每日配额在午夜重置</string>
+
+    <!-- More Options Sheet -->
+    <string name="more_options_download_audio">下载音频</string>
+    <string name="more_options_download_subtitle">可在应用内离线收听。</string>
+    <string name="more_options_add_to_queue">添加到队列</string>
+    <string name="more_options_mark_finished">标记为已完成</string>
+    <string name="more_options_sleep_timer">睡眠定时器</string>
+    <string name="more_options_export_audio">导出音频</string>
+    <string name="more_options_export_subtitle">保存音频到设备或直接分享。</string>
+    <string name="more_options_delete_article">删除文章</string>
+    <string name="more_options_timer_active">定时器已启动: %s</string>
+    <string name="more_options_current">当前</string>
+
+    <!-- Sleep Timer Picker -->
+    <string name="sleep_timer_picker_title">睡眠定时器</string>
+    <string name="sleep_timer_5_min">5分钟</string>
+    <string name="sleep_timer_10_min">10分钟</string>
+    <string name="sleep_timer_1_5_hours">1.5小时</string>
+    <string name="sleep_timer_2_hours">2小时</string>
+
+    <!-- Duration Formats -->
+    <string name="duration_hr_min">%1$d小时%2$d分钟</string>
+    <string name="duration_hr">%d小时</string>
+    <string name="duration_min">%d分钟</string>
+    <string name="duration_sec">%d秒</string>
+
+    <!-- Language Picker -->
+    <string name="language">语言</string>
+    <string name="language_picker_title">选择语言</string>
+    <string name="language_english">English</string>
+    <string name="language_spanish">Español</string>
+    <string name="language_french">Français</string>
+    <string name="language_german">Deutsch</string>
+    <string name="language_japanese">日本語</string>
+    <string name="language_chinese">中文(简体)</string>
+    <string name="language_korean">한국어</string>
+    <string name="language_portuguese">Português</string>
+    <string name="language_italian">Italiano</string>
+    <string name="language_hindi">हिन्दी</string>
+</resources>

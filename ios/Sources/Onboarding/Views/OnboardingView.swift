@@ -5,7 +5,7 @@ import SwiftUI
 /// Main onboarding container with page-based navigation.
 struct OnboardingView: View {
     @ObservedObject private var manager = OnboardingManager.shared
-    @ObservedObject private var revenueCat = RevenueCatManager.shared
+    private var premiumManager: PremiumManager { PremiumManager.shared }
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -56,7 +56,7 @@ struct OnboardingView: View {
                 manager.skipToDataConsent()
             }
         }
-        .onChange(of: revenueCat.isPremium) { _, isPremium in
+        .onChange(of: premiumManager.isPremium) { _, isPremium in
             // Auto-advance past paywall when user becomes premium
             if isPremium && manager.currentPage == .paywall {
                 manager.nextPage()
@@ -64,7 +64,7 @@ struct OnboardingView: View {
         }
         .onChange(of: manager.currentPage) { _, page in
             // Skip paywall if user is already premium
-            if page == .paywall && revenueCat.isPremium {
+            if page == .paywall && premiumManager.isPremium {
                 manager.nextPage()
             }
         }

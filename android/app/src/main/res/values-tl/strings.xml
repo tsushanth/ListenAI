@@ -1,0 +1,469 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">ReadAloud AI</string>
+
+    <!-- Tab Labels -->
+    <string name="tab_home">Home</string>
+    <string name="tab_library">Aking Library</string>
+    <string name="tab_settings">Mga Setting</string>
+
+    <!-- Home Screen -->
+    <string name="promo_title">Mag-download at makinig kahit kailan, kahit saan</string>
+    <string name="promo_button">Subukan nang libre</string>
+    <string name="quick_actions_title">Ano ang gusto mong pakinggan ngayon?</string>
+    <string name="action_document">Dokumento</string>
+    <string name="action_document_subtitle">Mag-upload ng mga file mula sa Drive o device</string>
+    <string name="action_scan">I-scan ang Teksto</string>
+    <string name="action_scan_subtitle">Na-scan na mga dokumento o larawan</string>
+    <string name="action_web_link">Web Link</string>
+    <string name="action_web_link_subtitle">Gawing audio ang mga URL</string>
+    <string name="action_text">Mag-type o Mag-paste ng Teksto</string>
+    <string name="action_text_subtitle">Maglagay o mag-paste ng teksto para pakinggan</string>
+    <string name="action_mail">Mail</string>
+    <string name="action_mail_subtitle">Madaling makinig ng mga email</string>
+
+    <!-- Library Screen -->
+    <string name="library_title">Aking Library</string>
+    <string name="filter_all">Lahat</string>
+    <string name="filter_in_progress">Kasalukuyan</string>
+    <string name="filter_continue">Ituloy</string>
+    <string name="filter_finished">Tapos Na</string>
+    <string name="filter_favorites">Mga Paborito</string>
+    <string name="filter_archived">Naka-archive</string>
+    <string name="filter_folders">Mga Folder</string>
+    <string name="filter_downloaded">Na-download</string>
+    <string name="empty_library">Wala Pang Artikulo</string>
+    <string name="empty_library_description">Magdagdag ng mga artikulo mula sa web link, dokumento, o mag-paste ng teksto.</string>
+    <string name="more_options">Higit pang mga pagpipilian</string>
+
+    <!-- Settings Screen -->
+    <string name="settings_title">Mga Setting</string>
+    <string name="settings_preferences">Mga Kagustuhan</string>
+    <string name="settings_voice">Boses</string>
+    <string name="settings_voice_subtitle">Pumili ng gusto mong boses</string>
+    <string name="settings_speed">Bilis ng Pag-play</string>
+    <string name="settings_speed_subtitle">Default 1.0x</string>
+    <string name="settings_appearance">Hitsura</string>
+    <string name="settings_appearance_subtitle">Light, Dark, o System</string>
+    <string name="settings_voice_cloning">Pag-clone ng Boses</string>
+    <string name="settings_change_voice">Palitan ang Boses</string>
+    <string name="settings_app_language">Wika ng App</string>
+    <string name="settings_request_feature">Humiling ng Feature</string>
+    <string name="settings_linked_accounts">Mga Naka-link na Account</string>
+    <string name="settings_google">Google</string>
+    <string name="settings_google_subtitle">I-sync ang mga artikulo sa iba\'t ibang device</string>
+    <string name="settings_google_connected">Nakakonekta</string>
+    <string name="settings_connect">Ikonekta</string>
+    <string name="settings_disconnect">I-disconnect</string>
+    <string name="settings_share">Ibahagi</string>
+    <string name="settings_share_app">Ibahagi ang ReadAloud AI</string>
+    <string name="settings_share_app_subtitle">Sabihin sa mga kaibigan ang tungkol sa ReadAloud AI</string>
+    <string name="settings_rate_app">I-rate ang App</string>
+    <string name="settings_rate_app_subtitle">Tulungan kami sa 5-star rating</string>
+    <string name="settings_playback">Pag-play</string>
+    <string name="settings_audio_quality">Kalidad ng Audio</string>
+    <string name="settings_audio_quality_subtitle">Mataas na kalidad na synthesis</string>
+    <string name="settings_skip_interval">Agwat ng Paglaktaw</string>
+    <string name="settings_skip_interval_subtitle">10s pabalik, 30s pasulong</string>
+    <string name="settings_sleep_timer">Sleep Timer</string>
+    <string name="settings_sleep_timer_subtitle">Auto-pause pagkatapos ng tagal</string>
+    <string name="settings_default_speed">Default na Bilis</string>
+    <string name="settings_skip_silences">Laktawan ang Katahimikan</string>
+    <string name="settings_auto_play">Auto-Play Susunod</string>
+    <string name="settings_support">Suporta</string>
+    <string name="settings_usage">Paggamit &amp; Quota</string>
+    <string name="settings_usage_subtitle">Tingnan ang paggamit at mga limitasyon</string>
+    <string name="settings_help">Help Center</string>
+    <string name="settings_help_subtitle">Mga FAQ at gabay</string>
+    <string name="settings_feedback">Magpadala ng Feedback</string>
+    <string name="settings_feedback_subtitle">Mag-ulat ng mga isyu o mungkahi</string>
+    <string name="settings_rate_us">Nagustuhan mo kami, I-rate kami</string>
+    <string name="settings_contact">Makipag-ugnayan sa Suporta</string>
+    <string name="settings_about">Tungkol</string>
+    <string name="settings_version">Bersyon</string>
+    <string name="settings_privacy">Patakaran sa Privacy</string>
+    <string name="settings_privacy_subtitle">Tingnan ang aming patakaran sa privacy</string>
+    <string name="settings_terms">Mga Tuntunin ng Serbisyo</string>
+    <string name="settings_terms_subtitle">Tingnan ang mga tuntunin at kundisyon</string>
+
+    <!-- Playback -->
+    <string name="now_playing">Kasalukuyang Pinapatugtog</string>
+    <string name="up_next">Susunod</string>
+    <string name="minutes_left">%d min natitira</string>
+    <string name="speed_format">%sx</string>
+    <string name="skip_backward">Pabalik</string>
+    <string name="skip_forward">Pasulong</string>
+    <string name="sleep_timer">Sleep timer</string>
+
+    <!-- Import Screen -->
+    <string name="import_title">Magdagdag ng Nilalaman</string>
+    <string name="import_mode_url">URL</string>
+    <string name="import_mode_document">Dok</string>
+    <string name="import_mode_text">Teksto</string>
+    <string name="import_mode_scan">Scan</string>
+    <string name="import_url_title">Mag-import mula sa URL</string>
+    <string name="import_url_description">Mag-paste ng web link para i-extract at gawing audio ang artikulo.</string>
+    <string name="import_url_placeholder">https://example.com/article</string>
+    <string name="import_document_title">Mag-import ng Dokumento</string>
+    <string name="import_document_description">Mag-upload ng PDF, EPUB, DOCX, o TXT file para gawing audio.</string>
+    <string name="import_document_tap">I-tap para pumili ng file</string>
+    <string name="import_document_formats">Sinusuportahan ang PDF, EPUB, DOCX, TXT</string>
+    <string name="import_text_title">Maglagay ng Teksto</string>
+    <string name="import_text_title_placeholder">Pamagat (opsyonal)</string>
+    <string name="import_text_content_placeholder">I-paste o i-type ang iyong teksto dito...</string>
+    <string name="import_scan_title">I-scan ang Dokumento</string>
+    <string name="import_scan_description">Gamitin ang camera para i-scan ang naka-print na teksto at gawing audio.</string>
+    <string name="import_scan_tap">I-tap para mag-scan</string>
+    <string name="import_button">I-import</string>
+
+    <!-- Import Screen (additional) -->
+    <string name="import_mode_clipboard">Clipboard</string>
+    <string name="import_mode_email">Email</string>
+    <string name="clear">I-clear</string>
+    <string name="importing">Nag-i-import…</string>
+    <string name="clipboard_import_title">Mag-import mula sa Clipboard</string>
+    <string name="clipboard_import_description">Mag-import ng teksto o URL na iyong kinopya</string>
+    <string name="clipboard_url_detected">Na-detect ang URL</string>
+    <string name="clipboard_text_content">Nilalaman ng teksto</string>
+    <string name="clipboard_empty">Walang laman ang clipboard</string>
+    <string name="word_count_format">%d salita</string>
+    <string name="pdf_selected">Napili ang PDF</string>
+    <string name="epub_selected">EPUB</string>    <string name="remove">Alisin</string>
+
+    <!-- Library Screen (additional) -->
+    <string name="library_empty_in_progress_title">Walang Kasalukuyan</string>
+    <string name="library_empty_in_progress_description">Magsimulang makinig para makita ang iyong kasalukuyang mga item dito</string>
+    <string name="library_empty_favorites_title">Walang Paborito</string>
+    <string name="library_empty_favorites_description">Markahan ang mga artikulo bilang paborito para mabilis na mahanap</string>
+    <string name="library_empty_email_title">Walang Email</string>
+    <string name="library_empty_email_description">Mag-import ng email mula sa Gmail para pakinggan</string>
+    <string name="library_empty_archived_title">Walang Naka-archive na Artikulo</string>
+    <string name="library_empty_archived_description">I-archive ang mga natapos na artikulo para mapanatiling malinis ang iyong library</string>
+    <string name="library_add_content_button">Magdagdag ng Nilalaman</string>
+    <string name="filter_email">Mga Email</string>
+    <string name="remove_from_favorites">Alisin sa Mga Paborito</string>
+    <string name="add_to_favorites">Idagdag sa Mga Paborito</string>
+    <string name="unarchive">I-unarchive</string>
+    <string name="archive">I-archive</string>
+    <string name="duration_left_minutes">%d min %d seg natitira</string>
+    <string name="duration_left_seconds">%d seg natitira</string>
+
+    <!-- Feedback Dialog -->
+    <string name="feedback_title">Nae-enjoy mo ba ang ReadAloud?</string>
+    <string name="feedback_subtitle">Ang iyong feedback ay nakakatulong sa amin na mapabuti ang app para sa lahat.</string>
+    <string name="feedback_button_negative">Hindi Naman</string>
+    <string name="feedback_button_positive">Oo!</string>
+
+    <!-- Mail Import -->
+    <string name="mail_import_title">Gmail</string>
+    <string name="back">Bumalik</string>
+    <string name="refresh">I-refresh</string>
+    <string name="loading_emails">Nilo-load ang mga email…</string>
+    <string name="load_more">Mag-load pa</string>
+    <string name="loading_email">Nilo-load ang email…</string>
+    <string name="no_subject">(Walang Paksa)</string>
+    <string name="email_from_format">Mula sa: %s &lt;%s&gt;</string>
+    <string name="no_content">(Walang nilalaman)</string>
+    <string name="email_import_button">I-import at Makinig</string>
+    <string name="gmail_connect_title">Ikonekta ang Gmail</string>
+    <string name="gmail_connect_description">Mag-sign in gamit ang Google para mag-import at makinig ng iyong mga email</string>
+    <string name="gmail_signin_button">Mag-sign in gamit ang Google</string>
+    <string name="gmail_privacy_notice">Hinihingi lang namin ang access para basahin ang iyong mga email. Pribado ang iyong data.</string>
+    <string name="mail_search_placeholder">Maghanap sa mail</string>
+    <string name="no_emails_found">Walang nahanap na email</string>
+    <string name="no_emails_search_suggestion">Subukan ang ibang search term</string>
+    <string name="clear_search">I-clear ang Paghahanap</string>
+    <string name="inbox_empty">Mukhang walang laman ang iyong inbox</string>
+
+    <!-- Voice Marketplace -->
+    <string name="marketplace_title">Voice Marketplace</string>
+    <string name="my_shares">Mga Ibinahagi Ko</string>
+    <string name="rewards">Mga Reward</string>
+    <string name="marketplace_search_placeholder">Maghanap ng boses…</string>
+    <string name="no_voices_found">Walang nahanap na boses</string>
+    <string name="no_voices_suggestion">Subukan i-adjust ang iyong mga filter</string>
+    <string name="voice_uses_format">%d gamit</string>
+
+    <!-- Voice Detail -->
+    <string name="voice_detail_title">Mga Detalye ng Boses</string>
+    <string name="report">I-report</string>
+    <string name="retry">Subukan Muli</string>
+    <string name="rate_voice_prompt">Paano mo ire-rate ang boses na ito?</string>
+    <string name="star_rating_format">%d star</string>
+    <string name="review_optional">Review (opsyonal)</string>
+    <string name="rate_voice">I-rate ang Boses</string>
+    <string name="submit">Isumite</string>
+    <string name="report_voice_title">I-report ang Boses</string>
+    <string name="report_voice_prompt">Bakit mo ire-report ang boses na ito?</string>
+    <string name="description_label">Paglalarawan</string>
+    <string name="submit_report">Isumite ang Report</string>
+    <string name="rating_count_format">%d rating</string>
+    <string name="uses_label">gamit</string>
+    <string name="created_label">ginawa</string>
+    <string name="stop_preview">Itigil ang Preview</string>
+    <string name="play_preview">I-play ang Preview</string>
+
+    <!-- Share Voice -->
+    <string name="share_voice_title">Ibahagi ang Boses</string>
+    <string name="no_cloned_voices">Walang na-clone na boses</string>
+    <string name="no_cloned_voices_hint">Gumawa muna ng na-clone na boses para ibahagi</string>
+    <string name="select_voice">Pumili ng Boses</string>
+    <string name="voice_sample_duration">%.1fs sample</string>
+    <string name="display_name">Display Name</string>
+    <string name="display_name_hint">Paano lalabas ang boses na ito sa marketplace</string>
+    <string name="description_optional">Paglalarawan (opsyonal)</string>
+    <string name="describe_voice_placeholder">Ilarawan ang iyong boses…</string>
+    <string name="tags_label">Mga Tag</string>
+    <string name="tags_description">Pumili ng mga tag na naglalarawan sa iyong boses</string>
+    <string name="voice_attestation">Kinukumpirma ko na ito ay sarili kong boses at may karapatan akong ibahagi ito</string>
+    <string name="marketplace_terms">Sumasang-ayon ako sa Mga Tuntunin ng Serbisyo ng Voice Marketplace</string>
+    <string name="share_voice_button">Ibahagi ang Boses</string>
+
+    <!-- My Shared Voices -->
+    <string name="my_shared_voices_title">Aking Mga Ibinahaging Boses</string>
+    <string name="no_shared_voices_title">Wala pang naibahaging boses</string>
+    <string name="no_shared_voices_description">Ibahagi ang iyong mga na-clone na boses sa komunidad at kumita ng mga reward kapag ginamit ng iba!</string>
+    <string name="share_a_voice">Magbahagi ng Boses</string>
+    <string name="revoke_voice_title">I-revoke ang Boses</string>
+    <string name="revoke_voice_prompt">Sigurado ka bang gusto mong ihinto ang pagbabahagi ng \"%s\"? Hindi na magagamit ng iba ang boses na ito.</string>
+    <string name="revoke">I-revoke</string>
+    <string name="status_active">aktibo</string>
+    <string name="status_pending">naghihintay</string>
+    <string name="status_revoked">na-revoke</string>
+    <string name="revoked_reason_format">Na-revoke: %s</string>
+
+    <!-- Rewards -->
+    <string name="rewards_title">Mga Reward</string>
+    <string name="total_earned">Kabuuang Kinita</string>
+    <string name="pending">Naghihintay</string>
+    <string name="uses">Mga Gamit</string>
+    <string name="claim_rewards">I-claim ang Mga Reward</string>
+    <string name="claim_success_format">Matagumpay na na-claim ang %.1f minuto!</string>
+    <string name="how_rewards_work">Paano Gumagana ang Mga Reward</string>
+    <string name="reward_step1_title">Ibahagi ang Iyong Boses</string>
+    <string name="reward_step1_description">Ibahagi ang iyong mga na-clone na boses sa komunidad</string>
+    <string name="reward_step2_title">Ginagamit ng Iba</string>
+    <string name="reward_step2_description">Kapag ginamit ng mga tao ang iyong boses para sa TTS, kumikita ka ng mga reward</string>
+    <string name="reward_step3_title">I-claim ang Mga Minuto</string>
+    <string name="reward_step3_description">I-claim ang iyong naghihintay na mga reward bilang libreng minuto ng pakikinig</string>
+    <string name="reward_history">Kasaysayan ng Reward</string>
+    <string name="no_rewards_title">Wala pang mga reward</string>
+    <string name="no_rewards_description">Ibahagi ang iyong mga boses para magsimulang kumita!</string>
+    <string name="characters_generated_format">%d character</string>
+    <string name="credited">Na-credit</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_back">Bumalik</string>
+    <string name="skip">Laktawan</string>
+    <string name="onboarding_continue">Magpatuloy</string>
+    <string name="next">Susunod</string>
+    <string name="onboarding_terms">Sa pagpapatuloy, sumasang-ayon ka sa aming Patakaran sa Privacy at Mga Tuntunin ng Paggamit.</string>
+    <string name="privacy_policy">Patakaran sa Privacy</string>
+    <string name="terms_of_use">Mga Tuntunin ng Paggamit</string>
+    <string name="onboarding_welcome_prefix">Maligayang pagdating sa</string>
+    <string name="onboarding_welcome_description">Gawing natural na tunog na audio ang anumang dokumento. Makinig ng mga artikulo, PDF, at higit pa habang nasa daan.</string>
+    <string name="feature_pdf">PDF</string>
+    <string name="feature_web">Web</string>
+    <string name="feature_epub">ePUB</string>
+    <string name="feature_text">Teksto</string>
+    <string name="onboarding_import_title">Mag-import mula Kahit Saan</string>
+    <string name="onboarding_import_description">Mag-paste ng link, mag-upload ng PDF, o direktang mag-type ng teksto</string>
+    <string name="import_method_web_links">Mga Web Link</string>
+    <string name="import_method_web_links_subtitle">Mag-paste ng anumang URL ng artikulo</string>
+    <string name="import_method_pdf">Mga PDF Dokumento</string>
+    <string name="import_method_pdf_subtitle">Mag-upload ng PDF mula sa iyong device</string>
+    <string name="import_method_text">Direktang Teksto</string>
+    <string name="import_method_text_subtitle">Mag-type o mag-paste ng anumang teksto</string>
+    <string name="import_method_clipboard">Clipboard</string>
+    <string name="import_method_clipboard_subtitle">Auto-detect ng kinopyang nilalaman</string>
+    <string name="onboarding_notes_title">Gumawa ng Tala Habang Nakikinig</string>
+    <string name="onboarding_notes_description">Kunin ang mahahalagang insight nang hindi naaabala ang pag-play</string>
+    <string name="add_note_placeholder">Magdagdag ng tala sa 2:34…</string>
+    <string name="onboarding_productivity_title">Palakasin ang Iyong Produktibidad</string>
+    <string name="onboarding_productivity_description">Natural na boses at adjustable na bilis para sa episyenteng pag-aaral</string>
+    <string name="playback_speed_title">Bilis ng Pag-play</string>
+    <string name="speed_075x">0.75x</string>
+    <string name="speed_1x">1x</string>
+    <string name="speed_15x">1.5x</string>
+    <string name="speed_2x">2x</string>
+    <string name="feature_background_playback">Background playback</string>
+    <string name="feature_sleep_timer">Sleep timer</string>
+    <string name="feature_bookmarks">Mga bookmark &amp; kabanata</string>
+    <string name="onboarding_voice_title">Piliin ang Iyong Boses</string>
+    <string name="onboarding_voice_description">Pumili ng boses na angkop sa iyong istilo ng pakikinig</string>
+    <string name="stop_preview_description">Itigil ang preview</string>
+    <string name="preview_voice_description">I-preview ang boses</string>
+    <string name="selected">Napili</string>
+    <string name="signin_optional_title">Mag-sign In (Opsyonal)</string>
+    <string name="signin_optional_description">Mag-sign in para ma-unlock ang lahat ng feature kabilang ang pagbabahagi ng boses at cross-device sync.</string>
+    <string name="signin_benefit_share">Ibahagi ang Iyong Boses</string>
+    <string name="signin_benefit_share_description">Ibahagi ang mga na-clone na boses sa komunidad</string>
+    <string name="signin_benefit_community">Mga Boses ng Komunidad</string>
+    <string name="signin_benefit_community_description">Gamitin ang mga boses na ibinahagi ng iba</string>
+    <string name="signin_benefit_rewards">Kumita ng Mga Reward</string>
+    <string name="signin_benefit_rewards_description">Makakuha ng mga minuto ng pakikinig kapag ginamit ng iba ang iyong mga boses</string>
+    <string name="signin_benefit_sync">I-sync sa Iba\'t Ibang Device</string>
+    <string name="signin_benefit_sync_description">Sumusunod sa iyo ang iyong data kahit saan</string>
+    <string name="continue_without_signin">Magpatuloy nang Hindi Nag-sign In</string>
+
+    <!-- Voice Picker -->
+    <string name="choose_voice">Pumili ng Boses</string>
+    <string name="quality_high_title">Mataas na Kalidad na Boses</string>
+    <string name="quality_high_description">GPU-accelerated, natural na boses - walang limitasyong paggamit</string>
+    <string name="quality_free">LIBRE</string>
+
+    <!-- Settings (additional) -->
+    <string name="settings_voice_cloning_subtitle">Gumawa ng custom na boses mula sa iyong recording</string>
+    <string name="settings_voice_marketplace">Voice Marketplace</string>
+    <string name="settings_voice_marketplace_subtitle">Mag-browse at magbahagi ng mga boses ng komunidad</string>
+
+    <!-- General -->
+    <string name="pro">PRO</string>
+    <string name="connect">Ikonekta</string>
+    <string name="disconnect">I-disconnect</string>
+    <string name="cancel">Kanselahin</string>
+    <string name="done">Tapos</string>
+    <string name="delete">I-delete</string>
+    <string name="play">I-play</string>
+    <string name="pause">I-pause</string>
+    <string name="close">Isara</string>
+    <string name="add_to_queue">Idagdag sa Queue</string>
+    <string name="favorite">Paborito</string>
+    <string name="share">Ibahagi</string>
+
+    <!-- Settings Subscription -->
+    <string name="settings_subscription">Subscription</string>
+    <string name="settings_upgrade_to_pro">Mag-upgrade sa Pro</string>
+    <string name="settings_upgrade_to_pro_subtitle">Walang limitasyong pakikinig, lahat ng boses &amp; higit pa</string>
+    <string name="settings_readaloud_pro">ReadAloud AI Pro</string>
+    <string name="settings_pro_member_subtitle">Ikaw ay Pro member</string>
+    <string name="settings_audio_quality_hd">Mataas na Kalidad (HD)</string>
+
+    <!-- Settings Dialogs -->
+    <string name="dialog_playback_speed">Bilis ng Pag-play</string>
+    <string name="dialog_appearance">Hitsura</string>
+    <string name="dialog_skip_interval">Agwat ng Paglaktaw</string>
+    <string name="dialog_sleep_timer_default">Default na Sleep Timer</string>
+    <string name="selected_check">Napili</string>
+    <string name="seconds_format">%d segundo</string>
+    <string name="sleep_timer_off">Naka-off</string>
+    <string name="sleep_timer_minutes_format">%d minuto</string>
+    <string name="sleep_timer_15_min">15 minuto</string>
+    <string name="sleep_timer_30_min">30 minuto</string>
+    <string name="sleep_timer_45_min">45 minuto</string>
+    <string name="sleep_timer_1_hour">1 oras</string>
+    <string name="appearance_system">System</string>
+    <string name="appearance_light">Light</string>
+    <string name="appearance_dark">Dark</string>
+
+    <!-- Share Intent -->
+    <string name="share_subject">Subukan ang ListenAI</string>
+    <string name="share_body">Makinig ng anumang artikulo gamit ang natural na AI na boses! I-download ang ListenAI: https://play.google.com/store/apps/details?id=com.listenai</string>
+    <string name="share_chooser_title">Ibahagi ang ListenAI</string>
+    <string name="feedback_email_subject">ListenAI Feedback</string>
+
+    <!-- Player Screen -->
+    <string name="player_loading_article">Nilo-load ang artikulo…</string>
+    <string name="player_article_not_found">Hindi nahanap ang artikulo</string>
+    <string name="player_no_text_content">Walang nilalaman ng teksto para i-synthesize.</string>
+    <string name="player_no_voice_available">Walang available na boses. Pakitingnan ang iyong koneksyon sa TTS service.</string>
+    <string name="player_network_error">Error sa network. Pakitingnan ang iyong koneksyon sa internet.</string>
+    <string name="player_timeout_error">Nag-timeout ang request. Maaaring busy ang server.</string>
+    <string name="player_rate_limit_error">Busy ang server. Pakisubukan muli maya-maya.</string>
+    <string name="player_synthesis_failed">Nabigo ang synthesis</string>
+    <string name="player_regeneration_failed">Nabigo ang regeneration</string>
+    <string name="player_something_went_wrong">May nangyaring mali</string>
+    <string name="player_go_back">Bumalik</string>
+    <string name="player_try_again">Subukan Muli</string>
+    <string name="player_preparing_audio">Inihahanda ang audio…</string>
+    <string name="player_percent_complete">%d%% kumpleto</string>
+    <string name="player_back">Bumalik</string>
+    <string name="player_change_voice">Palitan ang Boses</string>
+    <string name="player_more_options">Higit pa</string>
+    <string name="player_skip_back_10">Pabalik ng 10 segundo</string>
+    <string name="player_skip_forward_10">Pasulong ng 10 segundo</string>
+    <string name="player_select_speed">Pumili ng bilis</string>
+    <string name="player_change_voice_button">Palitan ang boses</string>
+    <string name="player_added_to_queue">Naidagdag sa queue</string>
+    <string name="player_marked_finished">Na-mark bilang tapos</string>
+    <string name="player_removed_from_favorites">Naalis sa mga paborito</string>
+    <string name="player_added_to_favorites">Naidagdag sa mga paborito</string>
+    <string name="player_export_audio">I-export ang Audio</string>
+    <string name="player_audio_not_found">Hindi nahanap ang audio file</string>
+    <string name="player_export_failed">Nabigo ang pag-export: %s</string>
+    <string name="player_sleep_timer_set">Na-set ang sleep timer sa %d minuto</string>
+    <string name="player_sleep_timer_cancelled">Na-cancel ang sleep timer</string>
+    <string name="player_by_author">ni %s</string>
+    <string name="player_words_count">%d salita</string>
+    <string name="player_untitled">Walang Pamagat</string>
+    <string name="player_article_fallback">Artikulo</string>
+    <string name="player_from_label">Mula sa:</string>
+    <string name="player_unknown_sender">Hindi kilala</string>
+
+    <!-- Player Source Badges -->
+    <string name="source_web">Web</string>
+    <string name="source_pdf">PDF</string>
+    <string name="source_clipboard">Clipboard</string>
+    <string name="source_file">File</string>
+    <string name="source_text">Teksto</string>
+    <string name="source_email">Email</string>
+
+    <!-- Player Mode Badge -->
+    <string name="player_mode_loading_full">Nilo-load ang Buong…</string>
+    <string name="player_mode_preview">Preview</string>
+    <string name="player_mode_full">Buo</string>
+
+    <!-- Player Voice Indicator -->
+    <string name="player_cloned_voice">Na-clone</string>
+    <string name="player_voice_fallback">Boses</string>
+
+    <!-- Quota Exceeded -->
+    <string name="quota_exceeded_title">Lumampas na sa Araw-araw na Quota</string>
+    <string name="quota_exceeded_message">Mayroon kang %1$d character na natitira ngayon,\nngunit ang artikulong ito ay nangangailangan ng %2$d character.</string>
+    <string name="quota_upgrade_to_pro">Mag-upgrade sa Pro</string>
+    <string name="quota_benefit_chars_day">100K character bawat araw (25x higit pa)</string>
+    <string name="quota_benefit_chars_month">1M character bawat buwan</string>
+    <string name="quota_benefit_premium_voices">Premium na AI na boses</string>
+    <string name="quota_benefit_priority">Priority synthesis queue</string>
+    <string name="quota_maybe_later">Siguro Mamaya</string>
+    <string name="quota_reset_info">Nagre-reset ang iyong araw-araw na quota sa hatinggabi</string>
+
+    <!-- More Options Sheet -->
+    <string name="more_options_download_audio">I-download ang Audio</string>
+    <string name="more_options_download_subtitle">Pinapayagan kang makinig offline sa loob ng app.</string>
+    <string name="more_options_add_to_queue">Idagdag sa Queue</string>
+    <string name="more_options_mark_finished">Markahan bilang Tapos</string>
+    <string name="more_options_sleep_timer">Sleep Timer</string>
+    <string name="more_options_export_audio">I-export ang Audio</string>
+    <string name="more_options_export_subtitle">I-save ang audio sa device o ibahagi nang direkta.</string>
+    <string name="more_options_delete_article">I-delete ang Artikulo</string>
+    <string name="more_options_timer_active">Aktibo ang timer: %s</string>
+    <string name="more_options_current">Kasalukuyan</string>
+
+    <!-- Sleep Timer Picker -->
+    <string name="sleep_timer_picker_title">Sleep Timer</string>
+    <string name="sleep_timer_5_min">5 minuto</string>
+    <string name="sleep_timer_10_min">10 minuto</string>
+    <string name="sleep_timer_1_5_hours">1.5 oras</string>
+    <string name="sleep_timer_2_hours">2 oras</string>
+
+    <!-- Duration Formats -->
+    <string name="duration_hr_min">%1$d oras %2$d min</string>
+    <string name="duration_hr">%d oras</string>
+    <string name="duration_min">%d min</string>
+    <string name="duration_sec">%d seg</string>
+
+    <!-- Language Picker -->
+    <string name="language">Wika</string>
+    <string name="language_picker_title">Pumili ng Wika</string>
+    <string name="language_english">English</string>
+    <string name="language_spanish">Español</string>
+    <string name="language_french">Français</string>
+    <string name="language_german">Deutsch</string>
+    <string name="language_japanese">日本語</string>
+    <string name="language_chinese">中文(简体)</string>
+    <string name="language_korean">한국어</string>
+    <string name="language_portuguese">Português</string>
+    <string name="language_italian">Italiano</string>
+    <string name="language_hindi">हिन्दी</string>
+</resources>

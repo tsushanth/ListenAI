@@ -41,6 +41,8 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.foundation.text.ClickableText
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.ui.res.stringResource
+import com.listenai.R
 import com.listenai.data.models.VoicePreset
 import com.listenai.service.billing.RevenueCatManager
 import com.listenai.ui.theme.*
@@ -115,12 +117,6 @@ fun OnboardingScreen(
                     )
                     OnboardingPage.PAYWALL -> PaywallPage(
                         onComplete = {
-                            // Go to sign-in page instead of completing
-                            onboardingManager.nextPage()
-                        }
-                    )
-                    OnboardingPage.SIGN_IN -> SignInPage(
-                        onComplete = {
                             onboardingManager.completeOnboarding()
                             onComplete()
                         }
@@ -129,7 +125,7 @@ fun OnboardingScreen(
             }
 
             // Page indicator and continue button
-            if (currentPage != OnboardingPage.PAYWALL && currentPage != OnboardingPage.SIGN_IN) {
+            if (currentPage != OnboardingPage.PAYWALL) {
                 OnboardingFooter(
                     currentPage = currentPage,
                     onContinue = { onboardingManager.nextPage() }
@@ -161,7 +157,7 @@ private fun OnboardingTopBar(
             IconButton(onClick = onBack) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "Back",
+                    contentDescription = stringResource(R.string.back),
                     tint = contentColor
                 )
             }
@@ -189,7 +185,7 @@ private fun OnboardingTopBar(
         // Skip button
         if (currentPage.showsSkipButton) {
             TextButton(onClick = onSkip) {
-                Text("Skip", color = contentColor.copy(alpha = 0.6f))
+                Text(stringResource(R.string.skip), color = contentColor.copy(alpha = 0.6f))
             }
         } else {
             Spacer(modifier = Modifier.size(48.dp))
@@ -229,7 +225,7 @@ private fun OnboardingFooter(
             )
         ) {
             Text(
-                text = if (currentPage == OnboardingPage.VOICE_SELECTION) "Continue" else "Next",
+                text = if (currentPage == OnboardingPage.VOICE_SELECTION) stringResource(R.string.onboarding_continue) else stringResource(R.string.next),
                 fontSize = 16.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = buttonTextColor
@@ -238,12 +234,14 @@ private fun OnboardingFooter(
 
         // Terms text with clickable links
         if (currentPage == OnboardingPage.WELCOME) {
+            val privacyPolicyText = stringResource(R.string.privacy_policy)
+            val termsOfUseText = stringResource(R.string.terms_of_use)
             val annotatedText = buildAnnotatedString {
                 append("By continuing, you agree to our ")
 
                 pushStringAnnotation(tag = "privacy", annotation = privacyUrl)
                 withStyle(style = SpanStyle(color = Blue, textDecoration = TextDecoration.Underline)) {
-                    append("Privacy Policy")
+                    append(privacyPolicyText)
                 }
                 pop()
 
@@ -251,7 +249,7 @@ private fun OnboardingFooter(
 
                 pushStringAnnotation(tag = "terms", annotation = termsUrl)
                 withStyle(style = SpanStyle(color = Blue, textDecoration = TextDecoration.Underline)) {
-                    append("Terms of Use")
+                    append(termsOfUseText)
                 }
                 pop()
 
@@ -310,13 +308,13 @@ private fun WelcomePage() {
         Spacer(modifier = Modifier.height(32.dp))
 
         Text(
-            text = "Welcome to",
+            text = stringResource(R.string.onboarding_welcome_prefix),
             style = MaterialTheme.typography.headlineMedium,
             color = contentColor.copy(alpha = 0.6f)
         )
 
         Text(
-            text = "ReadAloud AI",
+            text = stringResource(R.string.app_name),
             style = MaterialTheme.typography.displayMedium,
             fontWeight = FontWeight.Bold,
             color = contentColor
@@ -325,7 +323,7 @@ private fun WelcomePage() {
         Spacer(modifier = Modifier.height(16.dp))
 
         Text(
-            text = "Transform any document into natural-sounding audio. Listen to articles, PDFs, and more on the go.",
+            text = stringResource(R.string.onboarding_welcome_description),
             style = MaterialTheme.typography.bodyLarge,
             color = contentColor.copy(alpha = 0.7f),
             textAlign = TextAlign.Center
@@ -337,10 +335,10 @@ private fun WelcomePage() {
         Row(
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            FeaturePill("PDF")
-            FeaturePill("Web")
-            FeaturePill("ePUB")
-            FeaturePill("Text")
+            FeaturePill(stringResource(R.string.feature_pdf))
+            FeaturePill(stringResource(R.string.feature_web))
+            FeaturePill(stringResource(R.string.feature_epub))
+            FeaturePill(stringResource(R.string.feature_text))
         }
     }
 }
@@ -379,7 +377,7 @@ private fun DocumentToAudioPage() {
         verticalArrangement = Arrangement.Center
     ) {
         Text(
-            text = "Import from Anywhere",
+            text = stringResource(R.string.onboarding_import_title),
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold,
             color = contentColor,
@@ -389,7 +387,7 @@ private fun DocumentToAudioPage() {
         Spacer(modifier = Modifier.height(8.dp))
 
         Text(
-            text = "Paste a link, upload a PDF, or type text directly",
+            text = stringResource(R.string.onboarding_import_description),
             style = MaterialTheme.typography.bodyLarge,
             color = contentColor.copy(alpha = 0.7f),
             textAlign = TextAlign.Center
@@ -403,23 +401,23 @@ private fun DocumentToAudioPage() {
         ) {
             ImportMethodCard(
                 icon = Icons.Default.Link,
-                title = "Web Links",
-                subtitle = "Paste any article URL"
+                title = stringResource(R.string.import_method_web_links),
+                subtitle = stringResource(R.string.import_method_web_links_subtitle)
             )
             ImportMethodCard(
                 icon = Icons.Default.PictureAsPdf,
-                title = "PDF Documents",
-                subtitle = "Upload PDFs from your device"
+                title = stringResource(R.string.import_method_pdf),
+                subtitle = stringResource(R.string.import_method_pdf_subtitle)
             )
             ImportMethodCard(
                 icon = Icons.Default.TextFields,
-                title = "Direct Text",
-                subtitle = "Type or paste any text"
+                title = stringResource(R.string.import_method_text),
+                subtitle = stringResource(R.string.import_method_text_subtitle)
             )
             ImportMethodCard(
                 icon = Icons.Default.ContentPaste,
-                title = "Clipboard",
-                subtitle = "Auto-detect copied content"
+                title = stringResource(R.string.import_method_clipboard),
+                subtitle = stringResource(R.string.import_method_clipboard_subtitle)
             )
         }
     }
@@ -492,7 +490,7 @@ private fun TakeNotesPage() {
         verticalArrangement = Arrangement.Center
     ) {
         Text(
-            text = "Take Notes While Listening",
+            text = stringResource(R.string.onboarding_notes_title),
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold,
             color = contentColor,
@@ -502,7 +500,7 @@ private fun TakeNotesPage() {
         Spacer(modifier = Modifier.height(8.dp))
 
         Text(
-            text = "Capture key insights without interrupting playback",
+            text = stringResource(R.string.onboarding_notes_description),
             style = MaterialTheme.typography.bodyLarge,
             color = contentColor.copy(alpha = 0.7f),
             textAlign = TextAlign.Center
@@ -565,7 +563,7 @@ private fun TakeNotesPage() {
                         tint = contentColor.copy(alpha = 0.5f)
                     )
                     Text(
-                        text = "Add a note at 2:34...",
+                        text = stringResource(R.string.add_note_placeholder),
                         style = MaterialTheme.typography.bodyMedium,
                         color = contentColor.copy(alpha = 0.5f)
                     )
@@ -591,7 +589,7 @@ private fun ProductivityPage() {
         verticalArrangement = Arrangement.Center
     ) {
         Text(
-            text = "Boost Your Productivity",
+            text = stringResource(R.string.onboarding_productivity_title),
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold,
             color = contentColor,
@@ -601,7 +599,7 @@ private fun ProductivityPage() {
         Spacer(modifier = Modifier.height(8.dp))
 
         Text(
-            text = "Natural voices and adjustable speed for efficient learning",
+            text = stringResource(R.string.onboarding_productivity_description),
             style = MaterialTheme.typography.bodyLarge,
             color = contentColor.copy(alpha = 0.7f),
             textAlign = TextAlign.Center
@@ -620,7 +618,7 @@ private fun ProductivityPage() {
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 Text(
-                    text = "Playback Speed",
+                    text = stringResource(R.string.playback_speed_title),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
                     color = contentColor
@@ -630,10 +628,10 @@ private fun ProductivityPage() {
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
-                    SpeedChip("0.75x", false)
-                    SpeedChip("1x", false)
-                    SpeedChip("1.5x", true)
-                    SpeedChip("2x", false)
+                    SpeedChip(stringResource(R.string.speed_075x), false)
+                    SpeedChip(stringResource(R.string.speed_1x), false)
+                    SpeedChip(stringResource(R.string.speed_15x), true)
+                    SpeedChip(stringResource(R.string.speed_2x), false)
                 }
             }
         }
@@ -644,9 +642,9 @@ private fun ProductivityPage() {
         Column(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            FeatureRow(Icons.Default.Headphones, "Background playback")
-            FeatureRow(Icons.Default.Timer, "Sleep timer")
-            FeatureRow(Icons.Default.Bookmark, "Bookmarks & chapters")
+            FeatureRow(Icons.Default.Headphones, stringResource(R.string.feature_background_playback))
+            FeatureRow(Icons.Default.Timer, stringResource(R.string.feature_sleep_timer))
+            FeatureRow(Icons.Default.Bookmark, stringResource(R.string.feature_bookmarks))
         }
     }
 }
@@ -727,7 +725,7 @@ private fun VoiceSelectionPage(
         Spacer(modifier = Modifier.height(16.dp))
 
         Text(
-            text = "Choose Your Voice",
+            text = stringResource(R.string.onboarding_voice_title),
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold,
             color = contentColor,
@@ -737,7 +735,7 @@ private fun VoiceSelectionPage(
         Spacer(modifier = Modifier.height(8.dp))
 
         Text(
-            text = "Pick a voice that suits your listening style",
+            text = stringResource(R.string.onboarding_voice_description),
             style = MaterialTheme.typography.bodyLarge,
             color = contentColor.copy(alpha = 0.7f),
             textAlign = TextAlign.Center
@@ -848,7 +846,7 @@ private fun VoiceOptionCard(
             IconButton(onClick = onPlayPreview) {
                 Icon(
                     imageVector = if (isPlaying) Icons.Default.StopCircle else Icons.Default.PlayCircle,
-                    contentDescription = if (isPlaying) "Stop preview" else "Preview voice",
+                    contentDescription = if (isPlaying) stringResource(R.string.stop_preview_description) else stringResource(R.string.preview_voice_description),
                     tint = if (isPlaying) Orange else if (isSelected) accentColor else contentColor.copy(alpha = 0.5f)
                 )
             }
@@ -856,7 +854,7 @@ private fun VoiceOptionCard(
             if (isSelected) {
                 Icon(
                     imageVector = Icons.Default.CheckCircle,
-                    contentDescription = "Selected",
+                    contentDescription = stringResource(R.string.selected),
                     tint = accentColor
                 )
             }
@@ -914,156 +912,9 @@ private fun PaywallPage(
         ) {
             Icon(
                 imageVector = Icons.Default.Close,
-                contentDescription = "Skip",
+                contentDescription = stringResource(R.string.skip),
                 tint = Color.White,
                 modifier = Modifier.size(20.dp)
-            )
-        }
-    }
-}
-
-// MARK: - Sign-In Page
-
-@Composable
-private fun SignInPage(
-    onComplete: () -> Unit
-) {
-    val isDarkTheme = isSystemInDarkTheme()
-    val contentColor = if (isDarkTheme) Color.White else Color.Black
-    val cardBgColor = if (isDarkTheme) CardDark else Color.White
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Skip button
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.End
-        ) {
-            TextButton(onClick = onComplete) {
-                Text(
-                    text = "Skip",
-                    color = contentColor.copy(alpha = 0.6f)
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(32.dp))
-
-        // Icon
-        Box(
-            modifier = Modifier
-                .size(100.dp)
-                .clip(CircleShape)
-                .background(Blue.copy(alpha = 0.1f)),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = Icons.Default.Person,
-                contentDescription = null,
-                modifier = Modifier.size(50.dp),
-                tint = Blue
-            )
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        Text(
-            text = "Sign In (Optional)",
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold,
-            color = contentColor,
-            textAlign = TextAlign.Center
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Text(
-            text = "Sign in to unlock all features including voice sharing and cross-device sync.",
-            style = MaterialTheme.typography.bodyLarge,
-            color = contentColor.copy(alpha = 0.7f),
-            textAlign = TextAlign.Center
-        )
-
-        Spacer(modifier = Modifier.height(32.dp))
-
-        // Benefits
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = cardBgColor)
-        ) {
-            Column(
-                modifier = Modifier.padding(20.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                SignInBenefitRow(Icons.Default.Mic, "Share Your Voice", "Share cloned voices with the community")
-                SignInBenefitRow(Icons.Default.Groups, "Community Voices", "Use voices shared by others")
-                SignInBenefitRow(Icons.Default.CardGiftcard, "Earn Rewards", "Get listening minutes when others use your voices")
-                SignInBenefitRow(Icons.Default.Cloud, "Sync Across Devices", "Your data follows you everywhere")
-            }
-        }
-
-        Spacer(modifier = Modifier.weight(1f))
-
-        // Continue without signing in
-        Button(
-            onClick = onComplete,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp),
-            shape = RoundedCornerShape(16.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = if (isDarkTheme) Color.White else Color.Black,
-                contentColor = if (isDarkTheme) Color.Black else Color.White
-            )
-        ) {
-            Text(
-                text = "Continue Without Signing In",
-                fontSize = 16.sp,
-                fontWeight = FontWeight.SemiBold
-            )
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-    }
-}
-
-@Composable
-private fun SignInBenefitRow(
-    icon: ImageVector,
-    title: String,
-    subtitle: String
-) {
-    val isDarkTheme = isSystemInDarkTheme()
-    val contentColor = if (isDarkTheme) Color.White else Color.Black
-
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.Top
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = Blue,
-            modifier = Modifier.size(24.dp)
-        )
-        Column {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = contentColor
-            )
-            Text(
-                text = subtitle,
-                style = MaterialTheme.typography.bodySmall,
-                color = contentColor.copy(alpha = 0.6f)
             )
         }
     }

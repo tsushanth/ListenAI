@@ -105,18 +105,30 @@
 		00D000000000000000000006 /* voice_sample_charlotte.wav in Resources */ = {isa = PBXBuildFile; fileRef = 00E000000000000000000006 /* voice_sample_charlotte.wav */; };
 		2B81DA5A7C70CDE2D7D46C3F /* FacebookSDKManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A050BFDDD15ACB0B8529F6E8 /* FacebookSDKManager.swift */; };
 		41448C204F9EF75A0EE90380 /* ReviewManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1C8CD1DE522D6280B123B13 /* ReviewManager.swift */; };
-		PRA000000000003 /* PaywallKit in Frameworks */ = {isa = PBXBuildFile; productRef = PRA000000000002 /* PaywallKit */; };
-		544A1294F4B6410912040D5A /* RevenueCatUI in Frameworks */ = {isa = PBXBuildFile; productRef = 436BDEE2921B7E4C3268F141 /* RevenueCatUI */; };
+		4535A1084E4998B4FF8EE9AC /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0E5EFBD077EDCD7EFC25471F /* Foundation.framework */; };
 		60053F2DC49846065D6EBC7B /* BackgroundStreamingSynthesisService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03A60CC8B1DA9D34FA981604 /* BackgroundStreamingSynthesisService.swift */; };
-		DE50B42EBD871523FFEBE4AD /* RemotePaywallView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 832329FA4EB08897919EEED5 /* RemotePaywallView.swift */; };
-		FB0000000000000000000002 /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = FB0000000000000000000001 /* FirebaseAnalytics */; };
-		FC8D4518BE88A2E5699ED58A /* StreamingTTSService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F474471A9365C7F8F2BD6DD9 /* StreamingTTSService.swift */; };
-		RC0000000000000000000001 /* RevenueCat in Frameworks */ = {isa = PBXBuildFile; productRef = RC0000000000000000000002 /* RevenueCat */; };
-		TT0000000000000000000001 /* TikTokBusinessSDK in Frameworks */ = {isa = PBXBuildFile; productRef = TT0000000000000000000002 /* TikTokBusinessSDK */; };
-		TT0000000000000000000010 /* TikTokHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = TT0000000000000000000011 /* TikTokHelper.swift */; };
+		69BE24266856BA3C114CA072 /* ScreenshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E35473729D80F586FBE12069 /* ScreenshotTests.swift */; };
 		C7A1B2D3E4F5061728394A5B /* PaywallCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = E9C3D4F5A6B7081939405B6D /* PaywallCoordinator.swift */; };
 		D8B2C3E4F5061728394A5B6C /* WinbackOfferView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0D4E5A6B7C8192A40516C7E /* WinbackOfferView.swift */; };
+		DE50B42EBD871523FFEBE4AD /* RemotePaywallView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 832329FA4EB08897919EEED5 /* RemotePaywallView.swift */; };
+		EEA2F3CEA9C7A70D82C2AE89 /* SnapshotHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD2AC80C015A9C67A3BFD0E7 /* SnapshotHelper.swift */; };
+		FB0000000000000000000002 /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = FB0000000000000000000001 /* FirebaseAnalytics */; };
+		FC8D4518BE88A2E5699ED58A /* StreamingTTSService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F474471A9365C7F8F2BD6DD9 /* StreamingTTSService.swift */; };
+		PM00000000000000000000B1 /* PremiumManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = PM00000000000000000000F1 /* PremiumManager.swift */; };
+		PRA000000000003 /* PaywallKit in Frameworks */ = {isa = PBXBuildFile; productRef = PRA000000000002 /* PaywallKit */; };
+		TT0000000000000000000001 /* TikTokBusinessSDK in Frameworks */ = {isa = PBXBuildFile; productRef = TT0000000000000000000002 /* TikTokBusinessSDK */; };
+		TT0000000000000000000010 /* TikTokHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = TT0000000000000000000011 /* TikTokHelper.swift */; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		27ED2E94E64A527A501ED207 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 005000000000000000000099 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 006000000000000000000001;
+			remoteInfo = ListenAI;
+		};
+/* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
 		002000000000000000000001 /* ListenAIApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ListenAIApp.swift; sourceTree = "<group>"; };
@@ -221,13 +233,18 @@
 		00E000000000000000000005 /* voice_sample_josh.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = voice_sample_josh.wav; sourceTree = "<group>"; };
 		00E000000000000000000006 /* voice_sample_charlotte.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = voice_sample_charlotte.wav; sourceTree = "<group>"; };
 		03A60CC8B1DA9D34FA981604 /* BackgroundStreamingSynthesisService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = BackgroundStreamingSynthesisService.swift; path = Sources/TTS/Services/BackgroundStreamingSynthesisService.swift; sourceTree = SOURCE_ROOT; };
+		0E5EFBD077EDCD7EFC25471F /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
 		832329FA4EB08897919EEED5 /* RemotePaywallView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = RemotePaywallView.swift; path = Services/RemotePaywallView.swift; sourceTree = "<group>"; };
 		A050BFDDD15ACB0B8529F6E8 /* FacebookSDKManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FacebookSDKManager.swift; sourceTree = "<group>"; };
-		TT0000000000000000000011 /* TikTokHelper.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TikTokHelper.swift; sourceTree = "<group>"; };
 		A1C8CD1DE522D6280B123B13 /* ReviewManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ReviewManager.swift; sourceTree = "<group>"; };
-		F474471A9365C7F8F2BD6DD9 /* StreamingTTSService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = StreamingTTSService.swift; path = Sources/TTS/Services/StreamingTTSService.swift; sourceTree = SOURCE_ROOT; };
+		DD2AC80C015A9C67A3BFD0E7 /* SnapshotHelper.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SnapshotHelper.swift; sourceTree = "<group>"; };
+		E35473729D80F586FBE12069 /* ScreenshotTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ScreenshotTests.swift; sourceTree = "<group>"; };
 		E9C3D4F5A6B7081939405B6D /* PaywallCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaywallCoordinator.swift; sourceTree = "<group>"; };
+		F0724FE6A17BCFE6CADDCAEE /* ListenAIUITests */ = {isa = PBXFileReference; includeInIndex = 0; path = ListenAIUITests; sourceTree = BUILT_PRODUCTS_DIR; };
 		F0D4E5A6B7C8192A40516C7E /* WinbackOfferView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WinbackOfferView.swift; sourceTree = "<group>"; };
+		F474471A9365C7F8F2BD6DD9 /* StreamingTTSService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = StreamingTTSService.swift; path = Sources/TTS/Services/StreamingTTSService.swift; sourceTree = SOURCE_ROOT; };
+		PM00000000000000000000F1 /* PremiumManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PremiumManager.swift; sourceTree = "<group>"; };
+		TT0000000000000000000011 /* TikTokHelper.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TikTokHelper.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -236,10 +253,16 @@
 			buildActionMask = 2147483647;
 			files = (
 				FB0000000000000000000002 /* FirebaseAnalytics in Frameworks */,
-				RC0000000000000000000001 /* RevenueCat in Frameworks */,
-				544A1294F4B6410912040D5A /* RevenueCatUI in Frameworks */,
 				TT0000000000000000000001 /* TikTokBusinessSDK in Frameworks */,
 				PRA000000000003 /* PaywallKit in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		242E809975C4F80628E6F065 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				4535A1084E4998B4FF8EE9AC /* Foundation.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -254,6 +277,8 @@
 				005000000000000000000001 /* Products */,
 				03A60CC8B1DA9D34FA981604 /* BackgroundStreamingSynthesisService.swift */,
 				F474471A9365C7F8F2BD6DD9 /* StreamingTTSService.swift */,
+				6D4C4C7FCC5CB519FCD259FD /* Frameworks */,
+				82A5CA2DE25DEC7D905E4133 /* ListenAIUITests */,
 			);
 			sourceTree = "<group>";
 		};
@@ -261,6 +286,7 @@
 			isa = PBXGroup;
 			children = (
 				003000000000000000000001 /* ListenAI.app */,
+				F0724FE6A17BCFE6CADDCAEE /* ListenAIUITests */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -307,15 +333,6 @@
 				005300000000000000000003 /* Privacy */,
 			);
 			path = Core;
-			sourceTree = "<group>";
-		};
-		005300000000000000000003 /* Privacy */ = {
-			isa = PBXGroup;
-			children = (
-				002100000000000000000003 /* AIDataConsentManager.swift */,
-				002100000000000000000004 /* AIDataConsentView.swift */,
-			);
-			path = Privacy;
 			sourceTree = "<group>";
 		};
 		005200000000000000000002 /* Import */ = {
@@ -398,6 +415,15 @@
 				002100000000000000000002 /* NotificationManager.swift */,
 			);
 			path = Notifications;
+			sourceTree = "<group>";
+		};
+		005300000000000000000003 /* Privacy */ = {
+			isa = PBXGroup;
+			children = (
+				002100000000000000000003 /* AIDataConsentManager.swift */,
+				002100000000000000000004 /* AIDataConsentView.swift */,
+			);
+			path = Privacy;
 			sourceTree = "<group>";
 		};
 		005400000000000000000001 /* Models */ = {
@@ -595,6 +621,7 @@
 				002700000000000000000005 /* AuthService.swift */,
 				002700000000000000000003 /* GoogleAuthService.swift */,
 				E9C3D4F5A6B7081939405B6D /* PaywallCoordinator.swift */,
+				PM00000000000000000000F1 /* PremiumManager.swift */,
 				002700000000000000000008 /* RevenueCatManager.swift */,
 				002700000000000000000009 /* SearchAdsAttributionService.swift */,
 				002700000000000000000004 /* StoreKitManager.swift */,
@@ -721,6 +748,14 @@
 			path = Resources;
 			sourceTree = "<group>";
 		};
+		17CC84C5B294F92FF61C8F04 /* iOS */ = {
+			isa = PBXGroup;
+			children = (
+				0E5EFBD077EDCD7EFC25471F /* Foundation.framework */,
+			);
+			name = iOS;
+			sourceTree = "<group>";
+		};
 		3225269273669A2553EFDD9F /* Services */ = {
 			isa = PBXGroup;
 			children = (
@@ -728,6 +763,24 @@
 			);
 			name = Services;
 			path = ../ListenAI/Services;
+			sourceTree = "<group>";
+		};
+		6D4C4C7FCC5CB519FCD259FD /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				17CC84C5B294F92FF61C8F04 /* iOS */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		82A5CA2DE25DEC7D905E4133 /* ListenAIUITests */ = {
+			isa = PBXGroup;
+			children = (
+				DD2AC80C015A9C67A3BFD0E7 /* SnapshotHelper.swift */,
+				E35473729D80F586FBE12069 /* ScreenshotTests.swift */,
+			);
+			name = ListenAIUITests;
+			path = ListenAIUITests;
 			sourceTree = "<group>";
 		};
 		F75BF3079A31363D2E894B14 /* Services */ = {
@@ -756,15 +809,31 @@
 			name = ListenAI;
 			packageProductDependencies = (
 				FB0000000000000000000001 /* FirebaseAnalytics */,
-				RC0000000000000000000002 /* RevenueCat */,
 				43290B12B1A10604BD12FD98 /* FacebookCore */,
-				436BDEE2921B7E4C3268F141 /* RevenueCatUI */,
 				TT0000000000000000000002 /* TikTokBusinessSDK */,
 				PRA000000000002 /* PaywallKit */,
 			);
 			productName = ListenAI;
 			productReference = 003000000000000000000001 /* ListenAI.app */;
 			productType = "com.apple.product-type.application";
+		};
+		420D09ACFBEE820B7E070965 /* ListenAIUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 1CC2308EABD78D07BB89C534 /* Build configuration list for PBXNativeTarget "ListenAIUITests" */;
+			buildPhases = (
+				90E77BA4EB275D6FDA71E6BA /* Sources */,
+				242E809975C4F80628E6F065 /* Frameworks */,
+				E204699C7058B38FEC538AD7 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				E181771793C89A5930B17687 /* PBXTargetDependency */,
+			);
+			name = ListenAIUITests;
+			productName = ListenAIUITests;
+			productReference = F0724FE6A17BCFE6CADDCAEE /* ListenAIUITests */;
+			productType = "com.apple.product-type.bundle.ui-testing";
 		};
 /* End PBXNativeTarget section */
 
@@ -792,7 +861,6 @@
 			mainGroup = 005000000000000000000000;
 			packageReferences = (
 				FB0000000000000000000003 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
-				RC0000000000000000000003 /* XCRemoteSwiftPackageReference "purchases-ios" */,
 				89DE07E60035A1E7F2108C93 /* XCRemoteSwiftPackageReference "facebook-ios-sdk" */,
 				TT0000000000000000000003 /* XCRemoteSwiftPackageReference "tiktok-business-ios-sdk" */,
 				PRA000000000001 /* XCLocalSwiftPackageReference "PaywallKit" */,
@@ -802,6 +870,7 @@
 			projectRoot = "";
 			targets = (
 				006000000000000000000001 /* ListenAI */,
+				420D09ACFBEE820B7E070965 /* ListenAIUITests */,
 			);
 		};
 /* End PBXProject section */
@@ -819,6 +888,13 @@
 				00D000000000000000000004 /* voice_sample_bella.wav in Resources */,
 				00D000000000000000000005 /* voice_sample_josh.wav in Resources */,
 				00D000000000000000000006 /* voice_sample_charlotte.wav in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		E204699C7058B38FEC538AD7 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -925,11 +1001,30 @@
 				41448C204F9EF75A0EE90380 /* ReviewManager.swift in Sources */,
 				DE50B42EBD871523FFEBE4AD /* RemotePaywallView.swift in Sources */,
 				C7A1B2D3E4F5061728394A5B /* PaywallCoordinator.swift in Sources */,
+				PM00000000000000000000B1 /* PremiumManager.swift in Sources */,
 				D8B2C3E4F5061728394A5B6C /* WinbackOfferView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		90E77BA4EB275D6FDA71E6BA /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				EEA2F3CEA9C7A70D82C2AE89 /* SnapshotHelper.swift in Sources */,
+				69BE24266856BA3C114CA072 /* ScreenshotTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		E181771793C89A5930B17687 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = ListenAI;
+			target = 006000000000000000000001 /* ListenAI */;
+			targetProxy = 27ED2E94E64A527A501ED207 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		008000000000000000000001 /* Debug */ = {
@@ -1121,6 +1216,37 @@
 			};
 			name = Release;
 		};
+		5310AB76907868F9E92A2BB8 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 7RS696YC75;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.kreativekoala.listenai.UITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TEST_TARGET_NAME = ListenAI;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		F7318DC35F744E376AD0C187 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 7RS696YC75;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.kreativekoala.listenai.UITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TEST_TARGET_NAME = ListenAI;
+			};
+			name = Debug;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -1142,7 +1268,23 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
+		1CC2308EABD78D07BB89C534 /* Build configuration list for PBXNativeTarget "ListenAIUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				5310AB76907868F9E92A2BB8 /* Release */,
+				F7318DC35F744E376AD0C187 /* Debug */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 /* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		PRA000000000001 /* XCLocalSwiftPackageReference "PaywallKit" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../../PaywallKit;
+		};
+/* End XCLocalSwiftPackageReference section */
 
 /* Begin XCRemoteSwiftPackageReference section */
 		89DE07E60035A1E7F2108C93 /* XCRemoteSwiftPackageReference "facebook-ios-sdk" */ = {
@@ -1161,14 +1303,6 @@
 				minimumVersion = 11.0.0;
 			};
 		};
-		RC0000000000000000000003 /* XCRemoteSwiftPackageReference "purchases-ios" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/RevenueCat/purchases-ios.git";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 5.0.0;
-			};
-		};
 		TT0000000000000000000003 /* XCRemoteSwiftPackageReference "tiktok-business-ios-sdk" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/tiktok/tiktok-business-ios-sdk";
@@ -1179,43 +1313,26 @@
 		};
 /* End XCRemoteSwiftPackageReference section */
 
-/* Begin XCLocalSwiftPackageReference section */
-		PRA000000000001 /* XCLocalSwiftPackageReference "PaywallKit" */ = {
-			isa = XCLocalSwiftPackageReference;
-			relativePath = ../../PaywallKit;
-		};
-/* End XCLocalSwiftPackageReference section */
-
 /* Begin XCSwiftPackageProductDependency section */
 		43290B12B1A10604BD12FD98 /* FacebookCore */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 89DE07E60035A1E7F2108C93 /* XCRemoteSwiftPackageReference "facebook-ios-sdk" */;
 			productName = FacebookCore;
 		};
-		436BDEE2921B7E4C3268F141 /* RevenueCatUI */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = RC0000000000000000000003 /* XCRemoteSwiftPackageReference "purchases-ios" */;
-			productName = RevenueCatUI;
-		};
 		FB0000000000000000000001 /* FirebaseAnalytics */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = FB0000000000000000000003 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseAnalytics;
 		};
-		RC0000000000000000000002 /* RevenueCat */ = {
+		PRA000000000002 /* PaywallKit */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = RC0000000000000000000003 /* XCRemoteSwiftPackageReference "purchases-ios" */;
-			productName = RevenueCat;
+			package = PRA000000000001 /* XCLocalSwiftPackageReference "PaywallKit" */;
+			productName = PaywallKit;
 		};
 		TT0000000000000000000002 /* TikTokBusinessSDK */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = TT0000000000000000000003 /* XCRemoteSwiftPackageReference "tiktok-business-ios-sdk" */;
 			productName = TikTokBusinessSDK;
-		};
-		PRA000000000002 /* PaywallKit */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = PRA000000000001 /* XCLocalSwiftPackageReference "PaywallKit" */;
-			productName = PaywallKit;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

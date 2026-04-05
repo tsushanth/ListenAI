@@ -1,6 +1,7 @@
 import SwiftUI
 import UserNotifications
 import FirebaseCore
+import PaywallKit
 
 @main
 struct ListenAIApp: App {
@@ -10,6 +11,11 @@ struct ListenAIApp: App {
         // Configure Firebase for analytics
         FirebaseApp.configure()
         print("[App] Firebase configured")
+
+        // Configure StoreKit 2 via PaywallKit (replaces RevenueCat)
+        StoreManager.shared.configure(productIds: ProductID.allIDs)
+        print("[App] StoreManager configured")
+
         // Avoid any MainActor singleton access here
         print("[App] ListenAIApp.init() completed")
     }
@@ -95,8 +101,8 @@ struct RootView: View {
         // Configure AuthService for Apple/Google Sign In
         AuthService.shared.configure(backendURL: backendURL)
 
-        // Configure RevenueCat for subscriptions and Apple Search Ads attribution
-        await RevenueCatManager.shared.configure()
+        // Validate subscription state via StoreKit 2 / PaywallKit
+        await PremiumManager.shared.validateSubscriptionState()
 
         // Configure and collect Apple Search Ads attribution for ad-optimizer
         SearchAdsAttributionService.shared.configure(backendURL: backendURL)
@@ -168,7 +174,7 @@ struct MainContentView: View {
         let usage = UsageTrackerService.shared
 
         Group {
-            if onboarding.hasCompletedOnboarding {
+            if onboarding.hasCompletedOnboarding || ProcessInfo.processInfo.arguments.contains("FASTLANE_SNAPSHOT") {
                 ContentView()
                     .reviewPrompt()
                     .environmentObject(playback)
@@ -186,7 +192,7 @@ struct MainContentView: View {
             WinbackOfferView()
         }
         .onChange(of: scenePhase) { _, newPhase in
-            if newPhase == .active {
+            if newPhase == .active && !ProcessInfo.processInfo.arguments.contains("FASTLANE_SNAPSHOT") {
                 paywallCoordinator.checkWinbackEligibility()
             }
         }

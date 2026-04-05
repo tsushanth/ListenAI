@@ -1,0 +1,469 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">ReadAloud AI</string>
+
+    <!-- Tab Labels -->
+    <string name="tab_home">ホーム</string>
+    <string name="tab_library">マイライブラリ</string>
+    <string name="tab_settings">設定</string>
+
+    <!-- Home Screen -->
+    <string name="promo_title">ダウンロードしていつでもどこでも聴こう</string>
+    <string name="promo_button">無料で試す</string>
+    <string name="quick_actions_title">今日は何を聴きますか？</string>
+    <string name="action_document">ドキュメント</string>
+    <string name="action_document_subtitle">ドライブやデバイスからファイルをアップロード</string>
+    <string name="action_scan">テキストをスキャン</string>
+    <string name="action_scan_subtitle">スキャンした文書や画像</string>
+    <string name="action_web_link">ウェブリンク</string>
+    <string name="action_web_link_subtitle">URLを音声に変換</string>
+    <string name="action_text">テキストを入力または貼り付け</string>
+    <string name="action_text_subtitle">テキストを入力または貼り付けて聴く</string>
+    <string name="action_mail">メール</string>
+    <string name="action_mail_subtitle">メールを簡単に聴く</string>
+
+    <!-- Library Screen -->
+    <string name="library_title">マイライブラリ</string>
+    <string name="filter_all">すべて</string>
+    <string name="filter_in_progress">再生中</string>
+    <string name="filter_continue">続き</string>
+    <string name="filter_finished">完了</string>
+    <string name="filter_favorites">お気に入り</string>
+    <string name="filter_archived">アーカイブ済み</string>
+    <string name="filter_folders">フォルダ</string>
+    <string name="filter_downloaded">ダウンロード済み</string>
+    <string name="empty_library">記事がまだありません</string>
+    <string name="empty_library_description">ウェブリンク、ドキュメント、またはテキストの貼り付けで記事を追加してください。</string>
+    <string name="more_options">その他のオプション</string>
+
+    <!-- Settings Screen -->
+    <string name="settings_title">設定</string>
+    <string name="settings_preferences">環境設定</string>
+    <string name="settings_voice">音声</string>
+    <string name="settings_voice_subtitle">お好みの音声を選択</string>
+    <string name="settings_speed">再生速度</string>
+    <string name="settings_speed_subtitle">デフォルト 1.0x</string>
+    <string name="settings_appearance">外観</string>
+    <string name="settings_appearance_subtitle">ライト、ダーク、またはシステム</string>
+    <string name="settings_voice_cloning">ボイスクローニング</string>
+    <string name="settings_change_voice">音声を変更</string>
+    <string name="settings_app_language">アプリの言語</string>
+    <string name="settings_request_feature">機能をリクエスト</string>
+    <string name="settings_linked_accounts">連携アカウント</string>
+    <string name="settings_google">Google</string>
+    <string name="settings_google_subtitle">デバイス間で記事を同期</string>
+    <string name="settings_google_connected">接続済み</string>
+    <string name="settings_connect">接続</string>
+    <string name="settings_disconnect">切断</string>
+    <string name="settings_share">共有</string>
+    <string name="settings_share_app">ReadAloud AIを共有</string>
+    <string name="settings_share_app_subtitle">友達にReadAloud AIを紹介する</string>
+    <string name="settings_rate_app">アプリを評価</string>
+    <string name="settings_rate_app_subtitle">星5つの評価にご協力ください</string>
+    <string name="settings_playback">再生</string>
+    <string name="settings_audio_quality">音質</string>
+    <string name="settings_audio_quality_subtitle">高品質合成</string>
+    <string name="settings_skip_interval">スキップ間隔</string>
+    <string name="settings_skip_interval_subtitle">10秒戻り、30秒進む</string>
+    <string name="settings_sleep_timer">スリープタイマー</string>
+    <string name="settings_sleep_timer_subtitle">一定時間後に自動一時停止</string>
+    <string name="settings_default_speed">デフォルト速度</string>
+    <string name="settings_skip_silences">無音をスキップ</string>
+    <string name="settings_auto_play">次を自動再生</string>
+    <string name="settings_support">サポート</string>
+    <string name="settings_usage">使用量 &amp; クォータ</string>
+    <string name="settings_usage_subtitle">使用量と制限を表示</string>
+    <string name="settings_help">ヘルプセンター</string>
+    <string name="settings_help_subtitle">FAQとガイド</string>
+    <string name="settings_feedback">フィードバックを送信</string>
+    <string name="settings_feedback_subtitle">問題や提案を報告</string>
+    <string name="settings_rate_us">気に入ったら評価してください</string>
+    <string name="settings_contact">サポートに連絡</string>
+    <string name="settings_about">アプリについて</string>
+    <string name="settings_version">バージョン</string>
+    <string name="settings_privacy">プライバシーポリシー</string>
+    <string name="settings_privacy_subtitle">プライバシーポリシーを表示</string>
+    <string name="settings_terms">利用規約</string>
+    <string name="settings_terms_subtitle">利用規約を表示</string>
+
+    <!-- Playback -->
+    <string name="now_playing">再生中</string>
+    <string name="up_next">次の再生</string>
+    <string name="minutes_left">残り%d分</string>
+    <string name="speed_format">%sx</string>
+    <string name="skip_backward">巻き戻し</string>
+    <string name="skip_forward">早送り</string>
+    <string name="sleep_timer">スリープタイマー</string>
+
+    <!-- Import Screen -->
+    <string name="import_title">コンテンツを追加</string>
+    <string name="import_mode_url">URL</string>
+    <string name="import_mode_document">文書</string>
+    <string name="import_mode_text">テキスト</string>
+    <string name="import_mode_scan">スキャン</string>
+    <string name="import_url_title">URLからインポート</string>
+    <string name="import_url_description">ウェブリンクを貼り付けて記事を抽出し、音声に変換します。</string>
+    <string name="import_url_placeholder">https://example.com/article</string>
+    <string name="import_document_title">ドキュメントをインポート</string>
+    <string name="import_document_description">PDF、DOCX、またはTXTファイルをアップロードして音声に変換します。</string>
+    <string name="import_document_tap">タップしてファイルを選択</string>
+    <string name="import_document_formats">PDF、DOCX、TXTに対応</string>
+    <string name="import_text_title">テキストを入力</string>
+    <string name="import_text_title_placeholder">タイトル（任意）</string>
+    <string name="import_text_content_placeholder">ここにテキストを貼り付けまたは入力してください…</string>
+    <string name="import_scan_title">文書をスキャン</string>
+    <string name="import_scan_description">カメラを使って印刷されたテキストをスキャンし、音声に変換します。</string>
+    <string name="import_scan_tap">タップしてスキャン</string>
+    <string name="import_button">インポート</string>
+
+    <!-- Import Screen (additional) -->
+    <string name="import_mode_clipboard">クリップボード</string>
+    <string name="import_mode_email">メール</string>
+    <string name="clear">クリア</string>
+    <string name="importing">インポート中…</string>
+    <string name="clipboard_import_title">クリップボードからインポート</string>
+    <string name="clipboard_import_description">コピーしたテキストやURLをインポート</string>
+    <string name="clipboard_url_detected">URLが検出されました</string>
+    <string name="clipboard_text_content">テキストコンテンツ</string>
+    <string name="clipboard_empty">クリップボードは空です</string>
+    <string name="word_count_format">%d語</string>
+    <string name="pdf_selected">PDFが選択されました</string>
+    <string name="epub_selected">EPUB</string>    <string name="remove">削除</string>
+
+    <!-- Library Screen (additional) -->
+    <string name="library_empty_in_progress_title">再生中のものはありません</string>
+    <string name="library_empty_in_progress_description">再生を開始すると、再生中のアイテムがここに表示されます</string>
+    <string name="library_empty_favorites_title">お気に入りはありません</string>
+    <string name="library_empty_favorites_description">記事をお気に入りに追加して素早く見つけましょう</string>
+    <string name="library_empty_email_title">メールはありません</string>
+    <string name="library_empty_email_description">Gmailからメールをインポートして聴きましょう</string>
+    <string name="library_empty_archived_title">アーカイブされた記事はありません</string>
+    <string name="library_empty_archived_description">完了した記事をアーカイブしてライブラリを整理しましょう</string>
+    <string name="library_add_content_button">コンテンツを追加</string>
+    <string name="filter_email">メール</string>
+    <string name="remove_from_favorites">お気に入りから削除</string>
+    <string name="add_to_favorites">お気に入りに追加</string>
+    <string name="unarchive">アーカイブ解除</string>
+    <string name="archive">アーカイブ</string>
+    <string name="duration_left_minutes">残り%d分%d秒</string>
+    <string name="duration_left_seconds">残り%d秒</string>
+
+    <!-- Feedback Dialog -->
+    <string name="feedback_title">ReadAloudを楽しんでいますか？</string>
+    <string name="feedback_subtitle">あなたのフィードバックがアプリの改善に役立ちます。</string>
+    <string name="feedback_button_negative">あまり</string>
+    <string name="feedback_button_positive">はい！</string>
+
+    <!-- Mail Import -->
+    <string name="mail_import_title">Gmail</string>
+    <string name="back">戻る</string>
+    <string name="refresh">更新</string>
+    <string name="loading_emails">メールを読み込み中…</string>
+    <string name="load_more">もっと読み込む</string>
+    <string name="loading_email">メールを読み込み中…</string>
+    <string name="no_subject">（件名なし）</string>
+    <string name="email_from_format">差出人: %s &lt;%s&gt;</string>
+    <string name="no_content">（内容なし）</string>
+    <string name="email_import_button">インポート &amp; 聴く</string>
+    <string name="gmail_connect_title">Gmailに接続</string>
+    <string name="gmail_connect_description">Googleでサインインしてメールをインポートして聴きましょう</string>
+    <string name="gmail_signin_button">Googleでサインイン</string>
+    <string name="gmail_privacy_notice">メールの読み取りアクセスのみを要求します。あなたのデータはプライベートに保たれます。</string>
+    <string name="mail_search_placeholder">メール内を検索</string>
+    <string name="no_emails_found">メールが見つかりません</string>
+    <string name="no_emails_search_suggestion">別の検索キーワードを試してください</string>
+    <string name="clear_search">検索をクリア</string>
+    <string name="inbox_empty">受信トレイは空のようです</string>
+
+    <!-- Voice Marketplace -->
+    <string name="marketplace_title">ボイスマーケットプレイス</string>
+    <string name="my_shares">マイシェア</string>
+    <string name="rewards">リワード</string>
+    <string name="marketplace_search_placeholder">音声を検索…</string>
+    <string name="no_voices_found">音声が見つかりません</string>
+    <string name="no_voices_suggestion">フィルターを調整してみてください</string>
+    <string name="voice_uses_format">%d回使用</string>
+
+    <!-- Voice Detail -->
+    <string name="voice_detail_title">音声の詳細</string>
+    <string name="report">報告</string>
+    <string name="retry">再試行</string>
+    <string name="rate_voice_prompt">この音声をどう評価しますか？</string>
+    <string name="star_rating_format">%d つ星</string>
+    <string name="review_optional">レビュー（任意）</string>
+    <string name="rate_voice">音声を評価</string>
+    <string name="submit">送信</string>
+    <string name="report_voice_title">音声を報告</string>
+    <string name="report_voice_prompt">この音声を報告する理由は？</string>
+    <string name="description_label">説明</string>
+    <string name="submit_report">報告を送信</string>
+    <string name="rating_count_format">%d件の評価</string>
+    <string name="uses_label">使用回数</string>
+    <string name="created_label">作成日</string>
+    <string name="stop_preview">プレビューを停止</string>
+    <string name="play_preview">プレビューを再生</string>
+
+    <!-- Share Voice -->
+    <string name="share_voice_title">音声を共有</string>
+    <string name="no_cloned_voices">クローン音声がありません</string>
+    <string name="no_cloned_voices_hint">共有するにはまずクローン音声を作成してください</string>
+    <string name="select_voice">音声を選択</string>
+    <string name="voice_sample_duration">%.1f秒のサンプル</string>
+    <string name="display_name">表示名</string>
+    <string name="display_name_hint">マーケットプレイスでの表示名</string>
+    <string name="description_optional">説明（任意）</string>
+    <string name="describe_voice_placeholder">あなたの音声を説明してください…</string>
+    <string name="tags_label">タグ</string>
+    <string name="tags_description">あなたの音声を説明するタグを選択</string>
+    <string name="voice_attestation">これは自分の声であり、共有する権利があることを確認します</string>
+    <string name="marketplace_terms">ボイスマーケットプレイス利用規約に同意します</string>
+    <string name="share_voice_button">音声を共有</string>
+
+    <!-- My Shared Voices -->
+    <string name="my_shared_voices_title">共有した音声</string>
+    <string name="no_shared_voices_title">まだ共有した音声はありません</string>
+    <string name="no_shared_voices_description">クローン音声をコミュニティと共有して、他の人が使用するとリワードを獲得できます！</string>
+    <string name="share_a_voice">音声を共有する</string>
+    <string name="revoke_voice_title">音声を取り消し</string>
+    <string name="revoke_voice_prompt">「%s」の共有を停止してもよろしいですか？他のユーザーはこの音声を使用できなくなります。</string>
+    <string name="revoke">取り消し</string>
+    <string name="status_active">アクティブ</string>
+    <string name="status_pending">保留中</string>
+    <string name="status_revoked">取り消し済み</string>
+    <string name="revoked_reason_format">取り消し理由: %s</string>
+
+    <!-- Rewards -->
+    <string name="rewards_title">リワード</string>
+    <string name="total_earned">合計獲得</string>
+    <string name="pending">保留中</string>
+    <string name="uses">使用回数</string>
+    <string name="claim_rewards">リワードを受け取る</string>
+    <string name="claim_success_format">%.1f分を受け取りました！</string>
+    <string name="how_rewards_work">リワードの仕組み</string>
+    <string name="reward_step1_title">音声を共有</string>
+    <string name="reward_step1_description">クローン音声をコミュニティと共有</string>
+    <string name="reward_step2_title">他の人が使用</string>
+    <string name="reward_step2_description">あなたの音声がTTSに使用されるとリワードが貯まります</string>
+    <string name="reward_step3_title">リスニング時間を受け取る</string>
+    <string name="reward_step3_description">保留中のリワードを無料のリスニング時間として受け取れます</string>
+    <string name="reward_history">リワード履歴</string>
+    <string name="no_rewards_title">まだリワードはありません</string>
+    <string name="no_rewards_description">音声を共有してリワードを獲得しましょう！</string>
+    <string name="characters_generated_format">%d文字</string>
+    <string name="credited">付与済み</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_back">戻る</string>
+    <string name="skip">スキップ</string>
+    <string name="onboarding_continue">続ける</string>
+    <string name="next">次へ</string>
+    <string name="onboarding_terms">続行すると、プライバシーポリシーと利用規約に同意したことになります。</string>
+    <string name="privacy_policy">プライバシーポリシー</string>
+    <string name="terms_of_use">利用規約</string>
+    <string name="onboarding_welcome_prefix">ようこそ</string>
+    <string name="onboarding_welcome_description">あらゆる文書を自然な音声に変換。記事やPDFなどを外出先で聴きましょう。</string>
+    <string name="feature_pdf">PDF</string>
+    <string name="feature_web">ウェブ</string>
+    <string name="feature_epub">ePUB</string>
+    <string name="feature_text">テキスト</string>
+    <string name="onboarding_import_title">どこからでもインポート</string>
+    <string name="onboarding_import_description">リンクを貼り付け、PDFをアップロード、またはテキストを直接入力</string>
+    <string name="import_method_web_links">ウェブリンク</string>
+    <string name="import_method_web_links_subtitle">任意の記事URLを貼り付け</string>
+    <string name="import_method_pdf">PDF文書</string>
+    <string name="import_method_pdf_subtitle">デバイスからPDFをアップロード</string>
+    <string name="import_method_text">テキスト直接入力</string>
+    <string name="import_method_text_subtitle">テキストを入力または貼り付け</string>
+    <string name="import_method_clipboard">クリップボード</string>
+    <string name="import_method_clipboard_subtitle">コピーしたコンテンツを自動検出</string>
+    <string name="onboarding_notes_title">聴きながらメモを取ろう</string>
+    <string name="onboarding_notes_description">再生を中断せずに重要なポイントをキャプチャ</string>
+    <string name="add_note_placeholder">2:34にメモを追加…</string>
+    <string name="onboarding_productivity_title">生産性を向上</string>
+    <string name="onboarding_productivity_description">自然な音声と調整可能な速度で効率的に学習</string>
+    <string name="playback_speed_title">再生速度</string>
+    <string name="speed_075x">0.75x</string>
+    <string name="speed_1x">1x</string>
+    <string name="speed_15x">1.5x</string>
+    <string name="speed_2x">2x</string>
+    <string name="feature_background_playback">バックグラウンド再生</string>
+    <string name="feature_sleep_timer">スリープタイマー</string>
+    <string name="feature_bookmarks">ブックマーク &amp; チャプター</string>
+    <string name="onboarding_voice_title">音声を選択</string>
+    <string name="onboarding_voice_description">お好みのリスニングスタイルに合った音声を選びましょう</string>
+    <string name="stop_preview_description">プレビューを停止</string>
+    <string name="preview_voice_description">音声をプレビュー</string>
+    <string name="selected">選択済み</string>
+    <string name="signin_optional_title">サインイン（任意）</string>
+    <string name="signin_optional_description">サインインすると、音声共有やデバイス間同期などすべての機能が利用できます。</string>
+    <string name="signin_benefit_share">音声を共有</string>
+    <string name="signin_benefit_share_description">クローン音声をコミュニティと共有</string>
+    <string name="signin_benefit_community">コミュニティ音声</string>
+    <string name="signin_benefit_community_description">他の人が共有した音声を使用</string>
+    <string name="signin_benefit_rewards">リワードを獲得</string>
+    <string name="signin_benefit_rewards_description">他の人があなたの音声を使用するとリスニング時間を獲得</string>
+    <string name="signin_benefit_sync">デバイス間で同期</string>
+    <string name="signin_benefit_sync_description">どこにいてもデータが同期されます</string>
+    <string name="continue_without_signin">サインインせずに続ける</string>
+
+    <!-- Voice Picker -->
+    <string name="choose_voice">音声を選択</string>
+    <string name="quality_high_title">高品質音声</string>
+    <string name="quality_high_description">GPU高速化、自然な音声 - 無制限使用</string>
+    <string name="quality_free">無料</string>
+
+    <!-- Settings (additional) -->
+    <string name="settings_voice_cloning_subtitle">録音からカスタム音声を作成</string>
+    <string name="settings_voice_marketplace">ボイスマーケットプレイス</string>
+    <string name="settings_voice_marketplace_subtitle">コミュニティの音声を閲覧・共有</string>
+
+    <!-- General -->
+    <string name="pro">PRO</string>
+    <string name="connect">接続</string>
+    <string name="disconnect">切断</string>
+    <string name="cancel">キャンセル</string>
+    <string name="done">完了</string>
+    <string name="delete">削除</string>
+    <string name="play">再生</string>
+    <string name="pause">一時停止</string>
+    <string name="close">閉じる</string>
+    <string name="add_to_queue">キューに追加</string>
+    <string name="favorite">お気に入り</string>
+    <string name="share">共有</string>
+
+    <!-- Settings Subscription -->
+    <string name="settings_subscription">サブスクリプション</string>
+    <string name="settings_upgrade_to_pro">Proにアップグレード</string>
+    <string name="settings_upgrade_to_pro_subtitle">無制限のリスニング、すべての音声 &amp; その他</string>
+    <string name="settings_readaloud_pro">ReadAloud AI Pro</string>
+    <string name="settings_pro_member_subtitle">Proメンバーです</string>
+    <string name="settings_audio_quality_hd">高品質（HD）</string>
+
+    <!-- Settings Dialogs -->
+    <string name="dialog_playback_speed">再生速度</string>
+    <string name="dialog_appearance">外観</string>
+    <string name="dialog_skip_interval">スキップ間隔</string>
+    <string name="dialog_sleep_timer_default">スリープタイマーのデフォルト</string>
+    <string name="selected_check">選択済み</string>
+    <string name="seconds_format">%d秒</string>
+    <string name="sleep_timer_off">オフ</string>
+    <string name="sleep_timer_minutes_format">%d分</string>
+    <string name="sleep_timer_15_min">15分</string>
+    <string name="sleep_timer_30_min">30分</string>
+    <string name="sleep_timer_45_min">45分</string>
+    <string name="sleep_timer_1_hour">1時間</string>
+    <string name="appearance_system">システム</string>
+    <string name="appearance_light">ライト</string>
+    <string name="appearance_dark">ダーク</string>
+
+    <!-- Share Intent -->
+    <string name="share_subject">ListenAIをチェック</string>
+    <string name="share_body">自然なAI音声であらゆる記事を聴こう！ListenAIをダウンロード: https://play.google.com/store/apps/details?id=com.listenai</string>
+    <string name="share_chooser_title">ListenAIを共有</string>
+    <string name="feedback_email_subject">ListenAI フィードバック</string>
+
+    <!-- Player Screen -->
+    <string name="player_loading_article">記事を読み込み中…</string>
+    <string name="player_article_not_found">記事が見つかりません</string>
+    <string name="player_no_text_content">合成するテキストコンテンツがありません。</string>
+    <string name="player_no_voice_available">利用可能な音声がありません。TTSサービスの接続を確認してください。</string>
+    <string name="player_network_error">ネットワークエラー。インターネット接続を確認してください。</string>
+    <string name="player_timeout_error">リクエストがタイムアウトしました。サーバーが混雑している可能性があります。</string>
+    <string name="player_rate_limit_error">サーバーが混雑しています。しばらくしてから再試行してください。</string>
+    <string name="player_synthesis_failed">合成に失敗しました</string>
+    <string name="player_regeneration_failed">再生成に失敗しました</string>
+    <string name="player_something_went_wrong">エラーが発生しました</string>
+    <string name="player_go_back">戻る</string>
+    <string name="player_try_again">再試行</string>
+    <string name="player_preparing_audio">音声を準備中…</string>
+    <string name="player_percent_complete">%d%%完了</string>
+    <string name="player_back">戻る</string>
+    <string name="player_change_voice">音声を変更</string>
+    <string name="player_more_options">その他</string>
+    <string name="player_skip_back_10">10秒戻す</string>
+    <string name="player_skip_forward_10">10秒進める</string>
+    <string name="player_select_speed">速度を選択</string>
+    <string name="player_change_voice_button">音声を変更</string>
+    <string name="player_added_to_queue">キューに追加しました</string>
+    <string name="player_marked_finished">完了としてマークしました</string>
+    <string name="player_removed_from_favorites">お気に入りから削除しました</string>
+    <string name="player_added_to_favorites">お気に入りに追加しました</string>
+    <string name="player_export_audio">音声をエクスポート</string>
+    <string name="player_audio_not_found">音声ファイルが見つかりません</string>
+    <string name="player_export_failed">エクスポートに失敗しました: %s</string>
+    <string name="player_sleep_timer_set">スリープタイマーを%d分に設定しました</string>
+    <string name="player_sleep_timer_cancelled">スリープタイマーをキャンセルしました</string>
+    <string name="player_by_author">%s 著</string>
+    <string name="player_words_count">%d語</string>
+    <string name="player_untitled">無題</string>
+    <string name="player_article_fallback">記事</string>
+    <string name="player_from_label">差出人:</string>
+    <string name="player_unknown_sender">不明</string>
+
+    <!-- Player Source Badges -->
+    <string name="source_web">ウェブ</string>
+    <string name="source_pdf">PDF</string>
+    <string name="source_clipboard">クリップボード</string>
+    <string name="source_file">ファイル</string>
+    <string name="source_text">テキスト</string>
+    <string name="source_email">メール</string>
+
+    <!-- Player Mode Badge -->
+    <string name="player_mode_loading_full">フルを読み込み中…</string>
+    <string name="player_mode_preview">プレビュー</string>
+    <string name="player_mode_full">フル</string>
+
+    <!-- Player Voice Indicator -->
+    <string name="player_cloned_voice">クローン</string>
+    <string name="player_voice_fallback">音声</string>
+
+    <!-- Quota Exceeded -->
+    <string name="quota_exceeded_title">1日のクォータを超過しました</string>
+    <string name="quota_exceeded_message">本日の残り文字数は%1$d文字ですが、\nこの記事には%2$d文字が必要です。</string>
+    <string name="quota_upgrade_to_pro">Proにアップグレード</string>
+    <string name="quota_benefit_chars_day">1日100K文字（25倍）</string>
+    <string name="quota_benefit_chars_month">月間1M文字</string>
+    <string name="quota_benefit_premium_voices">プレミアムAI音声</string>
+    <string name="quota_benefit_priority">優先合成キュー</string>
+    <string name="quota_maybe_later">あとで</string>
+    <string name="quota_reset_info">1日のクォータは深夜にリセットされます</string>
+
+    <!-- More Options Sheet -->
+    <string name="more_options_download_audio">音声をダウンロード</string>
+    <string name="more_options_download_subtitle">アプリ内でオフラインで聴くことができます。</string>
+    <string name="more_options_add_to_queue">キューに追加</string>
+    <string name="more_options_mark_finished">完了としてマーク</string>
+    <string name="more_options_sleep_timer">スリープタイマー</string>
+    <string name="more_options_export_audio">音声をエクスポート</string>
+    <string name="more_options_export_subtitle">音声をデバイスに保存または直接共有します。</string>
+    <string name="more_options_delete_article">記事を削除</string>
+    <string name="more_options_timer_active">タイマー作動中: %s</string>
+    <string name="more_options_current">現在</string>
+
+    <!-- Sleep Timer Picker -->
+    <string name="sleep_timer_picker_title">スリープタイマー</string>
+    <string name="sleep_timer_5_min">5分</string>
+    <string name="sleep_timer_10_min">10分</string>
+    <string name="sleep_timer_1_5_hours">1.5時間</string>
+    <string name="sleep_timer_2_hours">2時間</string>
+
+    <!-- Duration Formats -->
+    <string name="duration_hr_min">%1$d時間%2$d分</string>
+    <string name="duration_hr">%d時間</string>
+    <string name="duration_min">%d分</string>
+    <string name="duration_sec">%d秒</string>
+
+    <!-- Language Picker -->
+    <string name="language">言語</string>
+    <string name="language_picker_title">言語を選択</string>
+    <string name="language_english">English</string>
+    <string name="language_spanish">Español</string>
+    <string name="language_french">Français</string>
+    <string name="language_german">Deutsch</string>
+    <string name="language_japanese">日本語</string>
+    <string name="language_chinese">中文(简体)</string>
+    <string name="language_korean">한국어</string>
+    <string name="language_portuguese">Português</string>
+    <string name="language_italian">Italiano</string>
+    <string name="language_hindi">हिन्दी</string>
+</resources>

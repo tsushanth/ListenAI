@@ -1,4 +1,5 @@
 import SwiftUI
+import PaywallKit
 
 // MARK: - TTS Quality Setting
 
@@ -65,6 +66,21 @@ struct SettingsView: View {
 
             // Subscription Section
             subscriptionSection
+
+            #if DEBUG
+            PaywallDebugView(
+                appId: "readaloud",
+                appName: "ReadAloud Premium",
+                features: [
+                    PaywallFeature(icon: "\u{1F5E3}", title: "Premium Voices", description: "Natural-sounding AI voices"),
+                    PaywallFeature(icon: "\u{1F4D6}", title: "Unlimited Articles", description: "No reading limits"),
+                    PaywallFeature(icon: "\u{26A1}", title: "Faster Processing", description: "Priority text-to-speech"),
+                    PaywallFeature(icon: "\u{1F30D}", title: "All Languages", description: "50+ language support"),
+                    PaywallFeature(icon: "\u{1F4E5}", title: "Offline Playback", description: "Download for later"),
+                ],
+                theme: PaywallTheme(accent: Color(red: 1.0, green: 0.5, blue: 0.0), accent2: Color(red: 0.9, green: 0.2, blue: 0.3))
+            )
+            #endif
 
             // Data & Privacy Section
             dataPrivacySection
@@ -477,7 +493,7 @@ struct SettingsView: View {
 
     // MARK: - Subscription Section
 
-    @ObservedObject private var revenueCat = RevenueCatManager.shared
+    private var premiumManager: PremiumManager { PremiumManager.shared }
 
     private var subscriptionSection: some View {
         Section {
@@ -486,13 +502,13 @@ struct SettingsView: View {
             } label: {
                 HStack {
                     SettingsRow(
-                        icon: revenueCat.isPremium ? "crown.fill" : "star.fill",
-                        iconColor: revenueCat.isPremium ? .green : .orange,
-                        title: revenueCat.isPremium ? "Manage Subscription" : "Upgrade to Pro",
+                        icon: premiumManager.isPremium ? "crown.fill" : "star.fill",
+                        iconColor: premiumManager.isPremium ? .green : .orange,
+                        title: premiumManager.isPremium ? "Manage Subscription" : "Upgrade to Pro",
                         showChevron: true
                     )
                     Spacer()
-                    if revenueCat.isPremium {
+                    if premiumManager.isPremium {
                         Text("Active")
                             .font(.subheadline)
                             .foregroundStyle(.green)

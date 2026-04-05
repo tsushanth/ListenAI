@@ -1,0 +1,469 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">ReadAloud AI</string>
+
+    <!-- Tab Labels -->
+    <string name="tab_home">홈</string>
+    <string name="tab_library">내 라이브러리</string>
+    <string name="tab_settings">설정</string>
+
+    <!-- Home Screen -->
+    <string name="promo_title">다운로드하고 언제 어디서나 들으세요</string>
+    <string name="promo_button">무료 체험</string>
+    <string name="quick_actions_title">오늘 무엇을 듣고 싶으세요?</string>
+    <string name="action_document">문서</string>
+    <string name="action_document_subtitle">드라이브 또는 기기에서 파일 업로드</string>
+    <string name="action_scan">텍스트 스캔</string>
+    <string name="action_scan_subtitle">스캔한 문서 또는 이미지</string>
+    <string name="action_web_link">웹 링크</string>
+    <string name="action_web_link_subtitle">URL을 오디오로 변환</string>
+    <string name="action_text">텍스트 입력 또는 붙여넣기</string>
+    <string name="action_text_subtitle">텍스트를 입력하거나 붙여넣어 듣기</string>
+    <string name="action_mail">메일</string>
+    <string name="action_mail_subtitle">이메일을 쉽게 듣기</string>
+
+    <!-- Library Screen -->
+    <string name="library_title">내 라이브러리</string>
+    <string name="filter_all">전체</string>
+    <string name="filter_in_progress">진행 중</string>
+    <string name="filter_continue">계속</string>
+    <string name="filter_finished">완료</string>
+    <string name="filter_favorites">즐겨찾기</string>
+    <string name="filter_archived">보관됨</string>
+    <string name="filter_folders">폴더</string>
+    <string name="filter_downloaded">다운로드됨</string>
+    <string name="empty_library">아직 기사가 없습니다</string>
+    <string name="empty_library_description">웹 링크, 문서 또는 텍스트 붙여넣기로 기사를 추가하세요.</string>
+    <string name="more_options">더 많은 옵션</string>
+
+    <!-- Settings Screen -->
+    <string name="settings_title">설정</string>
+    <string name="settings_preferences">환경설정</string>
+    <string name="settings_voice">음성</string>
+    <string name="settings_voice_subtitle">원하는 음성 선택</string>
+    <string name="settings_speed">재생 속도</string>
+    <string name="settings_speed_subtitle">기본 1.0x</string>
+    <string name="settings_appearance">외관</string>
+    <string name="settings_appearance_subtitle">라이트, 다크 또는 시스템</string>
+    <string name="settings_voice_cloning">음성 복제</string>
+    <string name="settings_change_voice">음성 변경</string>
+    <string name="settings_app_language">앱 언어</string>
+    <string name="settings_request_feature">기능 요청</string>
+    <string name="settings_linked_accounts">연결된 계정</string>
+    <string name="settings_google">Google</string>
+    <string name="settings_google_subtitle">기기 간 기사 동기화</string>
+    <string name="settings_google_connected">연결됨</string>
+    <string name="settings_connect">연결</string>
+    <string name="settings_disconnect">연결 해제</string>
+    <string name="settings_share">공유</string>
+    <string name="settings_share_app">ReadAloud AI 공유</string>
+    <string name="settings_share_app_subtitle">친구에게 ReadAloud AI 알려주기</string>
+    <string name="settings_rate_app">앱 평가</string>
+    <string name="settings_rate_app_subtitle">별점 5점으로 도와주세요</string>
+    <string name="settings_playback">재생</string>
+    <string name="settings_audio_quality">오디오 품질</string>
+    <string name="settings_audio_quality_subtitle">고품질 합성</string>
+    <string name="settings_skip_interval">건너뛰기 간격</string>
+    <string name="settings_skip_interval_subtitle">10초 뒤로, 30초 앞으로</string>
+    <string name="settings_sleep_timer">수면 타이머</string>
+    <string name="settings_sleep_timer_subtitle">일정 시간 후 자동 일시정지</string>
+    <string name="settings_default_speed">기본 속도</string>
+    <string name="settings_skip_silences">무음 건너뛰기</string>
+    <string name="settings_auto_play">다음 자동 재생</string>
+    <string name="settings_support">지원</string>
+    <string name="settings_usage">사용량 &amp; 할당량</string>
+    <string name="settings_usage_subtitle">사용량 및 한도 보기</string>
+    <string name="settings_help">도움말 센터</string>
+    <string name="settings_help_subtitle">FAQ 및 가이드</string>
+    <string name="settings_feedback">피드백 보내기</string>
+    <string name="settings_feedback_subtitle">문제 또는 제안 보고</string>
+    <string name="settings_rate_us">마음에 드시면 평가해 주세요</string>
+    <string name="settings_contact">지원팀 연락</string>
+    <string name="settings_about">정보</string>
+    <string name="settings_version">버전</string>
+    <string name="settings_privacy">개인정보 처리방침</string>
+    <string name="settings_privacy_subtitle">개인정보 처리방침 보기</string>
+    <string name="settings_terms">서비스 약관</string>
+    <string name="settings_terms_subtitle">이용약관 보기</string>
+
+    <!-- Playback -->
+    <string name="now_playing">지금 재생 중</string>
+    <string name="up_next">다음 재생</string>
+    <string name="minutes_left">%d분 남음</string>
+    <string name="speed_format">%sx</string>
+    <string name="skip_backward">되감기</string>
+    <string name="skip_forward">빨리감기</string>
+    <string name="sleep_timer">수면 타이머</string>
+
+    <!-- Import Screen -->
+    <string name="import_title">콘텐츠 추가</string>
+    <string name="import_mode_url">URL</string>
+    <string name="import_mode_document">문서</string>
+    <string name="import_mode_text">텍스트</string>
+    <string name="import_mode_scan">스캔</string>
+    <string name="import_url_title">URL에서 가져오기</string>
+    <string name="import_url_description">웹 링크를 붙여넣어 기사를 추출하고 오디오로 변환합니다.</string>
+    <string name="import_url_placeholder">https://example.com/article</string>
+    <string name="import_document_title">문서 가져오기</string>
+    <string name="import_document_description">PDF, EPUB, DOCX 또는 TXT 파일을 업로드하여 오디오로 변환합니다.</string>
+    <string name="import_document_tap">탭하여 파일 선택</string>
+    <string name="import_document_formats">PDF, EPUB, DOCX, TXT 지원</string>
+    <string name="import_text_title">텍스트 입력</string>
+    <string name="import_text_title_placeholder">제목 (선택사항)</string>
+    <string name="import_text_content_placeholder">여기에 텍스트를 붙여넣거나 입력하세요…</string>
+    <string name="import_scan_title">문서 스캔</string>
+    <string name="import_scan_description">카메라를 사용하여 인쇄된 텍스트를 스캔하고 오디오로 변환합니다.</string>
+    <string name="import_scan_tap">탭하여 스캔</string>
+    <string name="import_button">가져오기</string>
+
+    <!-- Import Screen (additional) -->
+    <string name="import_mode_clipboard">클립보드</string>
+    <string name="import_mode_email">이메일</string>
+    <string name="clear">지우기</string>
+    <string name="importing">가져오는 중…</string>
+    <string name="clipboard_import_title">클립보드에서 가져오기</string>
+    <string name="clipboard_import_description">복사한 텍스트 또는 URL 가져오기</string>
+    <string name="clipboard_url_detected">URL 감지됨</string>
+    <string name="clipboard_text_content">텍스트 콘텐츠</string>
+    <string name="clipboard_empty">클립보드가 비어 있습니다</string>
+    <string name="word_count_format">%d단어</string>
+    <string name="pdf_selected">PDF 선택됨</string>
+    <string name="epub_selected">EPUB</string>    <string name="remove">제거</string>
+
+    <!-- Library Screen (additional) -->
+    <string name="library_empty_in_progress_title">진행 중인 항목 없음</string>
+    <string name="library_empty_in_progress_description">듣기를 시작하면 진행 중인 항목이 여기에 표시됩니다</string>
+    <string name="library_empty_favorites_title">즐겨찾기 없음</string>
+    <string name="library_empty_favorites_description">기사를 즐겨찾기에 추가하여 빠르게 찾으세요</string>
+    <string name="library_empty_email_title">이메일 없음</string>
+    <string name="library_empty_email_description">Gmail에서 이메일을 가져와서 들으세요</string>
+    <string name="library_empty_archived_title">보관된 기사 없음</string>
+    <string name="library_empty_archived_description">완료한 기사를 보관하여 라이브러리를 깔끔하게 유지하세요</string>
+    <string name="library_add_content_button">콘텐츠 추가</string>
+    <string name="filter_email">이메일</string>
+    <string name="remove_from_favorites">즐겨찾기에서 제거</string>
+    <string name="add_to_favorites">즐겨찾기에 추가</string>
+    <string name="unarchive">보관 취소</string>
+    <string name="archive">보관</string>
+    <string name="duration_left_minutes">%d분 %d초 남음</string>
+    <string name="duration_left_seconds">%d초 남음</string>
+
+    <!-- Feedback Dialog -->
+    <string name="feedback_title">ReadAloud가 마음에 드시나요?</string>
+    <string name="feedback_subtitle">여러분의 피드백이 앱 개선에 도움이 됩니다.</string>
+    <string name="feedback_button_negative">아니요</string>
+    <string name="feedback_button_positive">네!</string>
+
+    <!-- Mail Import -->
+    <string name="mail_import_title">Gmail</string>
+    <string name="back">뒤로</string>
+    <string name="refresh">새로고침</string>
+    <string name="loading_emails">이메일 로딩 중…</string>
+    <string name="load_more">더 보기</string>
+    <string name="loading_email">이메일 로딩 중…</string>
+    <string name="no_subject">(제목 없음)</string>
+    <string name="email_from_format">보낸 사람: %s &lt;%s&gt;</string>
+    <string name="no_content">(내용 없음)</string>
+    <string name="email_import_button">가져오기 &amp; 듣기</string>
+    <string name="gmail_connect_title">Gmail 연결</string>
+    <string name="gmail_connect_description">Google로 로그인하여 이메일을 가져오고 들으세요</string>
+    <string name="gmail_signin_button">Google로 로그인</string>
+    <string name="gmail_privacy_notice">이메일 읽기 권한만 요청합니다. 데이터는 비공개로 유지됩니다.</string>
+    <string name="mail_search_placeholder">메일에서 검색</string>
+    <string name="no_emails_found">이메일을 찾을 수 없습니다</string>
+    <string name="no_emails_search_suggestion">다른 검색어를 시도해 보세요</string>
+    <string name="clear_search">검색 지우기</string>
+    <string name="inbox_empty">받은편지함이 비어 있는 것 같습니다</string>
+
+    <!-- Voice Marketplace -->
+    <string name="marketplace_title">음성 마켓플레이스</string>
+    <string name="my_shares">내 공유</string>
+    <string name="rewards">리워드</string>
+    <string name="marketplace_search_placeholder">음성 검색…</string>
+    <string name="no_voices_found">음성을 찾을 수 없습니다</string>
+    <string name="no_voices_suggestion">필터를 조정해 보세요</string>
+    <string name="voice_uses_format">%d회 사용</string>
+
+    <!-- Voice Detail -->
+    <string name="voice_detail_title">음성 상세</string>
+    <string name="report">신고</string>
+    <string name="retry">재시도</string>
+    <string name="rate_voice_prompt">이 음성을 어떻게 평가하시겠습니까?</string>
+    <string name="star_rating_format">별 %d개</string>
+    <string name="review_optional">리뷰 (선택사항)</string>
+    <string name="rate_voice">음성 평가</string>
+    <string name="submit">제출</string>
+    <string name="report_voice_title">음성 신고</string>
+    <string name="report_voice_prompt">이 음성을 신고하는 이유는 무엇인가요?</string>
+    <string name="description_label">설명</string>
+    <string name="submit_report">신고 제출</string>
+    <string name="rating_count_format">평가 %d개</string>
+    <string name="uses_label">사용 횟수</string>
+    <string name="created_label">생성일</string>
+    <string name="stop_preview">미리듣기 중지</string>
+    <string name="play_preview">미리듣기 재생</string>
+
+    <!-- Share Voice -->
+    <string name="share_voice_title">음성 공유</string>
+    <string name="no_cloned_voices">복제된 음성 없음</string>
+    <string name="no_cloned_voices_hint">공유하려면 먼저 복제 음성을 만드세요</string>
+    <string name="select_voice">음성 선택</string>
+    <string name="voice_sample_duration">%.1f초 샘플</string>
+    <string name="display_name">표시 이름</string>
+    <string name="display_name_hint">마켓플레이스에 표시될 이름</string>
+    <string name="description_optional">설명 (선택사항)</string>
+    <string name="describe_voice_placeholder">음성을 설명해 주세요…</string>
+    <string name="tags_label">태그</string>
+    <string name="tags_description">음성을 설명하는 태그를 선택하세요</string>
+    <string name="voice_attestation">이것이 제 목소리이며 공유할 권리가 있음을 확인합니다</string>
+    <string name="marketplace_terms">음성 마켓플레이스 서비스 약관에 동의합니다</string>
+    <string name="share_voice_button">음성 공유</string>
+
+    <!-- My Shared Voices -->
+    <string name="my_shared_voices_title">내가 공유한 음성</string>
+    <string name="no_shared_voices_title">아직 공유한 음성이 없습니다</string>
+    <string name="no_shared_voices_description">복제 음성을 커뮤니티와 공유하고 다른 사람들이 사용하면 리워드를 받으세요!</string>
+    <string name="share_a_voice">음성 공유하기</string>
+    <string name="revoke_voice_title">음성 철회</string>
+    <string name="revoke_voice_prompt">\"%s\" 공유를 중단하시겠습니까? 다른 사람들이 더 이상 이 음성을 사용할 수 없게 됩니다.</string>
+    <string name="revoke">철회</string>
+    <string name="status_active">활성</string>
+    <string name="status_pending">대기 중</string>
+    <string name="status_revoked">철회됨</string>
+    <string name="revoked_reason_format">철회 사유: %s</string>
+
+    <!-- Rewards -->
+    <string name="rewards_title">리워드</string>
+    <string name="total_earned">총 획득</string>
+    <string name="pending">대기 중</string>
+    <string name="uses">사용 횟수</string>
+    <string name="claim_rewards">리워드 받기</string>
+    <string name="claim_success_format">%.1f분을 받았습니다!</string>
+    <string name="how_rewards_work">리워드 안내</string>
+    <string name="reward_step1_title">음성 공유</string>
+    <string name="reward_step1_description">복제 음성을 커뮤니티와 공유하세요</string>
+    <string name="reward_step2_title">다른 사람이 사용</string>
+    <string name="reward_step2_description">다른 사람이 TTS에 음성을 사용하면 리워드가 적립됩니다</string>
+    <string name="reward_step3_title">듣기 시간 받기</string>
+    <string name="reward_step3_description">대기 중인 리워드를 무료 듣기 시간으로 받으세요</string>
+    <string name="reward_history">리워드 내역</string>
+    <string name="no_rewards_title">아직 리워드가 없습니다</string>
+    <string name="no_rewards_description">음성을 공유하고 리워드를 받기 시작하세요!</string>
+    <string name="characters_generated_format">%d자</string>
+    <string name="credited">적립됨</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_back">뒤로</string>
+    <string name="skip">건너뛰기</string>
+    <string name="onboarding_continue">계속</string>
+    <string name="next">다음</string>
+    <string name="onboarding_terms">계속하면 개인정보 처리방침 및 이용약관에 동의하게 됩니다.</string>
+    <string name="privacy_policy">개인정보 처리방침</string>
+    <string name="terms_of_use">이용약관</string>
+    <string name="onboarding_welcome_prefix">환영합니다</string>
+    <string name="onboarding_welcome_description">모든 문서를 자연스러운 음성으로 변환하세요. 이동 중에 기사, PDF 등을 들으세요.</string>
+    <string name="feature_pdf">PDF</string>
+    <string name="feature_web">웹</string>
+    <string name="feature_epub">ePUB</string>
+    <string name="feature_text">텍스트</string>
+    <string name="onboarding_import_title">어디서든 가져오기</string>
+    <string name="onboarding_import_description">링크를 붙여넣거나, PDF를 업로드하거나, 텍스트를 직접 입력하세요</string>
+    <string name="import_method_web_links">웹 링크</string>
+    <string name="import_method_web_links_subtitle">기사 URL을 붙여넣기</string>
+    <string name="import_method_pdf">PDF 문서</string>
+    <string name="import_method_pdf_subtitle">기기에서 PDF 업로드</string>
+    <string name="import_method_text">직접 텍스트 입력</string>
+    <string name="import_method_text_subtitle">텍스트 입력 또는 붙여넣기</string>
+    <string name="import_method_clipboard">클립보드</string>
+    <string name="import_method_clipboard_subtitle">복사한 콘텐츠 자동 감지</string>
+    <string name="onboarding_notes_title">들으면서 메모하기</string>
+    <string name="onboarding_notes_description">재생을 중단하지 않고 핵심 내용을 기록하세요</string>
+    <string name="add_note_placeholder">2:34에 메모 추가…</string>
+    <string name="onboarding_productivity_title">생산성 향상</string>
+    <string name="onboarding_productivity_description">자연스러운 음성과 조절 가능한 속도로 효율적으로 학습하세요</string>
+    <string name="playback_speed_title">재생 속도</string>
+    <string name="speed_075x">0.75x</string>
+    <string name="speed_1x">1x</string>
+    <string name="speed_15x">1.5x</string>
+    <string name="speed_2x">2x</string>
+    <string name="feature_background_playback">백그라운드 재생</string>
+    <string name="feature_sleep_timer">수면 타이머</string>
+    <string name="feature_bookmarks">북마크 &amp; 챕터</string>
+    <string name="onboarding_voice_title">음성 선택</string>
+    <string name="onboarding_voice_description">듣기 스타일에 맞는 음성을 선택하세요</string>
+    <string name="stop_preview_description">미리듣기 중지</string>
+    <string name="preview_voice_description">음성 미리듣기</string>
+    <string name="selected">선택됨</string>
+    <string name="signin_optional_title">로그인 (선택사항)</string>
+    <string name="signin_optional_description">로그인하면 음성 공유 및 기기 간 동기화를 포함한 모든 기능을 이용할 수 있습니다.</string>
+    <string name="signin_benefit_share">음성 공유</string>
+    <string name="signin_benefit_share_description">복제 음성을 커뮤니티와 공유</string>
+    <string name="signin_benefit_community">커뮤니티 음성</string>
+    <string name="signin_benefit_community_description">다른 사람이 공유한 음성 사용</string>
+    <string name="signin_benefit_rewards">리워드 받기</string>
+    <string name="signin_benefit_rewards_description">다른 사람이 음성을 사용하면 듣기 시간 획득</string>
+    <string name="signin_benefit_sync">기기 간 동기화</string>
+    <string name="signin_benefit_sync_description">어디서든 데이터가 따라갑니다</string>
+    <string name="continue_without_signin">로그인 없이 계속</string>
+
+    <!-- Voice Picker -->
+    <string name="choose_voice">음성 선택</string>
+    <string name="quality_high_title">고품질 음성</string>
+    <string name="quality_high_description">GPU 가속, 자연스러운 음성 - 무제한 사용</string>
+    <string name="quality_free">무료</string>
+
+    <!-- Settings (additional) -->
+    <string name="settings_voice_cloning_subtitle">녹음으로 맞춤 음성 만들기</string>
+    <string name="settings_voice_marketplace">음성 마켓플레이스</string>
+    <string name="settings_voice_marketplace_subtitle">커뮤니티 음성 탐색 및 공유</string>
+
+    <!-- General -->
+    <string name="pro">PRO</string>
+    <string name="connect">연결</string>
+    <string name="disconnect">연결 해제</string>
+    <string name="cancel">취소</string>
+    <string name="done">완료</string>
+    <string name="delete">삭제</string>
+    <string name="play">재생</string>
+    <string name="pause">일시정지</string>
+    <string name="close">닫기</string>
+    <string name="add_to_queue">대기열에 추가</string>
+    <string name="favorite">즐겨찾기</string>
+    <string name="share">공유</string>
+
+    <!-- Settings Subscription -->
+    <string name="settings_subscription">구독</string>
+    <string name="settings_upgrade_to_pro">Pro로 업그레이드</string>
+    <string name="settings_upgrade_to_pro_subtitle">무제한 듣기, 모든 음성 &amp; 더 많은 기능</string>
+    <string name="settings_readaloud_pro">ReadAloud AI Pro</string>
+    <string name="settings_pro_member_subtitle">Pro 멤버입니다</string>
+    <string name="settings_audio_quality_hd">고품질 (HD)</string>
+
+    <!-- Settings Dialogs -->
+    <string name="dialog_playback_speed">재생 속도</string>
+    <string name="dialog_appearance">외관</string>
+    <string name="dialog_skip_interval">건너뛰기 간격</string>
+    <string name="dialog_sleep_timer_default">수면 타이머 기본값</string>
+    <string name="selected_check">선택됨</string>
+    <string name="seconds_format">%d초</string>
+    <string name="sleep_timer_off">끄기</string>
+    <string name="sleep_timer_minutes_format">%d분</string>
+    <string name="sleep_timer_15_min">15분</string>
+    <string name="sleep_timer_30_min">30분</string>
+    <string name="sleep_timer_45_min">45분</string>
+    <string name="sleep_timer_1_hour">1시간</string>
+    <string name="appearance_system">시스템</string>
+    <string name="appearance_light">라이트</string>
+    <string name="appearance_dark">다크</string>
+
+    <!-- Share Intent -->
+    <string name="share_subject">ListenAI를 확인해 보세요</string>
+    <string name="share_body">자연스러운 AI 음성으로 어떤 기사든 들으세요! ListenAI 다운로드: https://play.google.com/store/apps/details?id=com.listenai</string>
+    <string name="share_chooser_title">ListenAI 공유</string>
+    <string name="feedback_email_subject">ListenAI 피드백</string>
+
+    <!-- Player Screen -->
+    <string name="player_loading_article">기사 로딩 중…</string>
+    <string name="player_article_not_found">기사를 찾을 수 없습니다</string>
+    <string name="player_no_text_content">합성할 텍스트 콘텐츠가 없습니다.</string>
+    <string name="player_no_voice_available">사용 가능한 음성이 없습니다. TTS 서비스 연결을 확인하세요.</string>
+    <string name="player_network_error">네트워크 오류. 인터넷 연결을 확인하세요.</string>
+    <string name="player_timeout_error">요청 시간이 초과되었습니다. 서버가 바쁠 수 있습니다.</string>
+    <string name="player_rate_limit_error">서버가 바쁩니다. 잠시 후 다시 시도하세요.</string>
+    <string name="player_synthesis_failed">합성 실패</string>
+    <string name="player_regeneration_failed">재생성 실패</string>
+    <string name="player_something_went_wrong">문제가 발생했습니다</string>
+    <string name="player_go_back">뒤로 가기</string>
+    <string name="player_try_again">다시 시도</string>
+    <string name="player_preparing_audio">오디오 준비 중…</string>
+    <string name="player_percent_complete">%d%% 완료</string>
+    <string name="player_back">뒤로</string>
+    <string name="player_change_voice">음성 변경</string>
+    <string name="player_more_options">더보기</string>
+    <string name="player_skip_back_10">10초 뒤로</string>
+    <string name="player_skip_forward_10">10초 앞으로</string>
+    <string name="player_select_speed">속도 선택</string>
+    <string name="player_change_voice_button">음성 변경</string>
+    <string name="player_added_to_queue">대기열에 추가됨</string>
+    <string name="player_marked_finished">완료로 표시됨</string>
+    <string name="player_removed_from_favorites">즐겨찾기에서 제거됨</string>
+    <string name="player_added_to_favorites">즐겨찾기에 추가됨</string>
+    <string name="player_export_audio">오디오 내보내기</string>
+    <string name="player_audio_not_found">오디오 파일을 찾을 수 없습니다</string>
+    <string name="player_export_failed">내보내기 실패: %s</string>
+    <string name="player_sleep_timer_set">수면 타이머 %d분 설정됨</string>
+    <string name="player_sleep_timer_cancelled">수면 타이머 취소됨</string>
+    <string name="player_by_author">%s 저</string>
+    <string name="player_words_count">%d단어</string>
+    <string name="player_untitled">제목 없음</string>
+    <string name="player_article_fallback">기사</string>
+    <string name="player_from_label">보낸 사람:</string>
+    <string name="player_unknown_sender">알 수 없음</string>
+
+    <!-- Player Source Badges -->
+    <string name="source_web">웹</string>
+    <string name="source_pdf">PDF</string>
+    <string name="source_clipboard">클립보드</string>
+    <string name="source_file">파일</string>
+    <string name="source_text">텍스트</string>
+    <string name="source_email">이메일</string>
+
+    <!-- Player Mode Badge -->
+    <string name="player_mode_loading_full">전체 로딩 중…</string>
+    <string name="player_mode_preview">미리보기</string>
+    <string name="player_mode_full">전체</string>
+
+    <!-- Player Voice Indicator -->
+    <string name="player_cloned_voice">복제</string>
+    <string name="player_voice_fallback">음성</string>
+
+    <!-- Quota Exceeded -->
+    <string name="quota_exceeded_title">일일 할당량 초과</string>
+    <string name="quota_exceeded_message">오늘 남은 글자 수는 %1$d자이지만,\n이 기사에는 %2$d자가 필요합니다.</string>
+    <string name="quota_upgrade_to_pro">Pro로 업그레이드</string>
+    <string name="quota_benefit_chars_day">하루 100K 글자 (25배 더 많음)</string>
+    <string name="quota_benefit_chars_month">월 1M 글자</string>
+    <string name="quota_benefit_premium_voices">프리미엄 AI 음성</string>
+    <string name="quota_benefit_priority">우선 합성 대기열</string>
+    <string name="quota_maybe_later">나중에</string>
+    <string name="quota_reset_info">일일 할당량은 자정에 초기화됩니다</string>
+
+    <!-- More Options Sheet -->
+    <string name="more_options_download_audio">오디오 다운로드</string>
+    <string name="more_options_download_subtitle">앱 내에서 오프라인으로 들을 수 있습니다.</string>
+    <string name="more_options_add_to_queue">대기열에 추가</string>
+    <string name="more_options_mark_finished">완료로 표시</string>
+    <string name="more_options_sleep_timer">수면 타이머</string>
+    <string name="more_options_export_audio">오디오 내보내기</string>
+    <string name="more_options_export_subtitle">오디오를 기기에 저장하거나 바로 공유합니다.</string>
+    <string name="more_options_delete_article">기사 삭제</string>
+    <string name="more_options_timer_active">타이머 활성: %s</string>
+    <string name="more_options_current">현재</string>
+
+    <!-- Sleep Timer Picker -->
+    <string name="sleep_timer_picker_title">수면 타이머</string>
+    <string name="sleep_timer_5_min">5분</string>
+    <string name="sleep_timer_10_min">10분</string>
+    <string name="sleep_timer_1_5_hours">1.5시간</string>
+    <string name="sleep_timer_2_hours">2시간</string>
+
+    <!-- Duration Formats -->
+    <string name="duration_hr_min">%1$d시간 %2$d분</string>
+    <string name="duration_hr">%d시간</string>
+    <string name="duration_min">%d분</string>
+    <string name="duration_sec">%d초</string>
+
+    <!-- Language Picker -->
+    <string name="language">언어</string>
+    <string name="language_picker_title">언어 선택</string>
+    <string name="language_english">English</string>
+    <string name="language_spanish">Español</string>
+    <string name="language_french">Français</string>
+    <string name="language_german">Deutsch</string>
+    <string name="language_japanese">日本語</string>
+    <string name="language_chinese">中文(简体)</string>
+    <string name="language_korean">한국어</string>
+    <string name="language_portuguese">Português</string>
+    <string name="language_italian">Italiano</string>
+    <string name="language_hindi">हिन्दी</string>
+</resources>

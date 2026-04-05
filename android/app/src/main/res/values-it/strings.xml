@@ -1,0 +1,469 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">ReadAloud AI</string>
+
+    <!-- Tab Labels -->
+    <string name="tab_home">Home</string>
+    <string name="tab_library">La Mia Libreria</string>
+    <string name="tab_settings">Impostazioni</string>
+
+    <!-- Home Screen -->
+    <string name="promo_title">Scarica e ascolta sempre e ovunque</string>
+    <string name="promo_button">Prova gratis</string>
+    <string name="quick_actions_title">Cosa vuoi ascoltare oggi?</string>
+    <string name="action_document">Documento</string>
+    <string name="action_document_subtitle">Carica file da Drive o dal dispositivo</string>
+    <string name="action_scan">Scansiona Testo</string>
+    <string name="action_scan_subtitle">Documenti o immagini scansionati</string>
+    <string name="action_web_link">Link Web</string>
+    <string name="action_web_link_subtitle">Converti URL in audio</string>
+    <string name="action_text">Digita o Incolla Testo</string>
+    <string name="action_text_subtitle">Inserisci o incolla testo da ascoltare</string>
+    <string name="action_mail">E-mail</string>
+    <string name="action_mail_subtitle">Ascolta le e-mail facilmente</string>
+
+    <!-- Library Screen -->
+    <string name="library_title">La Mia Libreria</string>
+    <string name="filter_all">Tutti</string>
+    <string name="filter_in_progress">In Corso</string>
+    <string name="filter_continue">Continua</string>
+    <string name="filter_finished">Completati</string>
+    <string name="filter_favorites">Preferiti</string>
+    <string name="filter_archived">Archiviati</string>
+    <string name="filter_folders">Cartelle</string>
+    <string name="filter_downloaded">Scaricati</string>
+    <string name="empty_library">Nessun Articolo</string>
+    <string name="empty_library_description">Aggiungi articoli da link web, documenti o incolla testo.</string>
+    <string name="more_options">Altre opzioni</string>
+
+    <!-- Settings Screen -->
+    <string name="settings_title">Impostazioni</string>
+    <string name="settings_preferences">Preferenze</string>
+    <string name="settings_voice">Voce</string>
+    <string name="settings_voice_subtitle">Scegli la tua voce preferita</string>
+    <string name="settings_speed">Velocità di Riproduzione</string>
+    <string name="settings_speed_subtitle">Predefinita 1.0x</string>
+    <string name="settings_appearance">Aspetto</string>
+    <string name="settings_appearance_subtitle">Chiaro, Scuro o Sistema</string>
+    <string name="settings_voice_cloning">Clonazione Vocale</string>
+    <string name="settings_change_voice">Cambia Voce</string>
+    <string name="settings_app_language">Lingua dell\'App</string>
+    <string name="settings_request_feature">Richiedi Funzionalità</string>
+    <string name="settings_linked_accounts">Account Collegati</string>
+    <string name="settings_google">Google</string>
+    <string name="settings_google_subtitle">Sincronizza articoli tra i dispositivi</string>
+    <string name="settings_google_connected">Connesso</string>
+    <string name="settings_connect">Connetti</string>
+    <string name="settings_disconnect">Disconnetti</string>
+    <string name="settings_share">Condividi</string>
+    <string name="settings_share_app">Condividi ReadAloud AI</string>
+    <string name="settings_share_app_subtitle">Parla ai tuoi amici di ReadAloud AI</string>
+    <string name="settings_rate_app">Valuta App</string>
+    <string name="settings_rate_app_subtitle">Aiutaci con una valutazione di 5 stelle</string>
+    <string name="settings_playback">Riproduzione</string>
+    <string name="settings_audio_quality">Qualità Audio</string>
+    <string name="settings_audio_quality_subtitle">Sintesi di alta qualità</string>
+    <string name="settings_skip_interval">Intervallo di Salto</string>
+    <string name="settings_skip_interval_subtitle">10s indietro, 30s avanti</string>
+    <string name="settings_sleep_timer">Timer di Spegnimento</string>
+    <string name="settings_sleep_timer_subtitle">Pausa automatica dopo la durata</string>
+    <string name="settings_default_speed">Velocità Predefinita</string>
+    <string name="settings_skip_silences">Salta Silenzi</string>
+    <string name="settings_auto_play">Riproduci Successivo Automaticamente</string>
+    <string name="settings_support">Supporto</string>
+    <string name="settings_usage">Utilizzo &amp; Quota</string>
+    <string name="settings_usage_subtitle">Visualizza utilizzo e limiti</string>
+    <string name="settings_help">Centro Assistenza</string>
+    <string name="settings_help_subtitle">FAQ e guide</string>
+    <string name="settings_feedback">Invia Feedback</string>
+    <string name="settings_feedback_subtitle">Segnala problemi o suggerimenti</string>
+    <string name="settings_rate_us">Ti piace? Valutaci</string>
+    <string name="settings_contact">Contatta il Supporto</string>
+    <string name="settings_about">Informazioni</string>
+    <string name="settings_version">Versione</string>
+    <string name="settings_privacy">Informativa sulla Privacy</string>
+    <string name="settings_privacy_subtitle">Visualizza la nostra informativa sulla privacy</string>
+    <string name="settings_terms">Termini di Servizio</string>
+    <string name="settings_terms_subtitle">Visualizza termini e condizioni</string>
+
+    <!-- Playback -->
+    <string name="now_playing">In Riproduzione</string>
+    <string name="up_next">Successivo</string>
+    <string name="minutes_left">%d m rimanenti</string>
+    <string name="speed_format">%sx</string>
+    <string name="skip_backward">Salta indietro</string>
+    <string name="skip_forward">Salta avanti</string>
+    <string name="sleep_timer">Timer di spegnimento</string>
+
+    <!-- Import Screen -->
+    <string name="import_title">Aggiungi Contenuto</string>
+    <string name="import_mode_url">URL</string>
+    <string name="import_mode_document">Doc</string>
+    <string name="import_mode_text">Testo</string>
+    <string name="import_mode_scan">Scansiona</string>
+    <string name="import_url_title">Importa da URL</string>
+    <string name="import_url_description">Incolla un link web per estrarre e convertire l\'articolo in audio.</string>
+    <string name="import_url_placeholder">https://example.com/article</string>
+    <string name="import_document_title">Importa Documento</string>
+    <string name="import_document_description">Carica file PDF, EPUB, DOCX o TXT per convertirli in audio.</string>
+    <string name="import_document_tap">Tocca per selezionare il file</string>
+    <string name="import_document_formats">PDF, EPUB, DOCX, TXT supportati</string>
+    <string name="import_text_title">Inserisci Testo</string>
+    <string name="import_text_title_placeholder">Titolo (opzionale)</string>
+    <string name="import_text_content_placeholder">Incolla o digita il tuo testo qui...</string>
+    <string name="import_scan_title">Scansiona Documento</string>
+    <string name="import_scan_description">Usa la fotocamera per scansionare testo stampato e convertirlo in audio.</string>
+    <string name="import_scan_tap">Tocca per scansionare</string>
+    <string name="import_button">Importa</string>
+
+    <!-- Import Screen (additional) -->
+    <string name="import_mode_clipboard">Appunti</string>
+    <string name="import_mode_email">E-mail</string>
+    <string name="clear">Cancella</string>
+    <string name="importing">Importazione…</string>
+    <string name="clipboard_import_title">Importa dagli Appunti</string>
+    <string name="clipboard_import_description">Importa testo o URL che hai copiato</string>
+    <string name="clipboard_url_detected">URL rilevato</string>
+    <string name="clipboard_text_content">Contenuto testuale</string>
+    <string name="clipboard_empty">Gli appunti sono vuoti</string>
+    <string name="word_count_format">%d parole</string>
+    <string name="pdf_selected">PDF selezionato</string>
+    <string name="epub_selected">EPUB</string>    <string name="remove">Rimuovi</string>
+
+    <!-- Library Screen (additional) -->
+    <string name="library_empty_in_progress_title">Niente in Corso</string>
+    <string name="library_empty_in_progress_description">Inizia ad ascoltare per vedere i tuoi elementi in corso qui</string>
+    <string name="library_empty_favorites_title">Nessun Preferito</string>
+    <string name="library_empty_favorites_description">Segna gli articoli come preferiti per trovarli velocemente</string>
+    <string name="library_empty_email_title">Nessuna E-mail</string>
+    <string name="library_empty_email_description">Importa e-mail da Gmail per ascoltarle</string>
+    <string name="library_empty_archived_title">Nessun Articolo Archiviato</string>
+    <string name="library_empty_archived_description">Archivia gli articoli che hai finito per mantenere la libreria ordinata</string>
+    <string name="library_add_content_button">Aggiungi Contenuto</string>
+    <string name="filter_email">E-mail</string>
+    <string name="remove_from_favorites">Rimuovi dai Preferiti</string>
+    <string name="add_to_favorites">Aggiungi ai Preferiti</string>
+    <string name="unarchive">Ripristina dall\'archivio</string>
+    <string name="archive">Archivia</string>
+    <string name="duration_left_minutes">%dm %ds rimanenti</string>
+    <string name="duration_left_seconds">%ds rimanenti</string>
+
+    <!-- Feedback Dialog -->
+    <string name="feedback_title">Ti piace ReadAloud?</string>
+    <string name="feedback_subtitle">Il tuo feedback ci aiuta a migliorare l\'app per tutti.</string>
+    <string name="feedback_button_negative">Non molto</string>
+    <string name="feedback_button_positive">Sì!</string>
+
+    <!-- Mail Import -->
+    <string name="mail_import_title">Gmail</string>
+    <string name="back">Indietro</string>
+    <string name="refresh">Aggiorna</string>
+    <string name="loading_emails">Caricamento e-mail…</string>
+    <string name="load_more">Carica Altro</string>
+    <string name="loading_email">Caricamento e-mail…</string>
+    <string name="no_subject">(Nessun Oggetto)</string>
+    <string name="email_from_format">Da: %s &lt;%s&gt;</string>
+    <string name="no_content">(Nessun contenuto)</string>
+    <string name="email_import_button">Importa &amp; Ascolta</string>
+    <string name="gmail_connect_title">Connetti Gmail</string>
+    <string name="gmail_connect_description">Accedi con Google per importare e ascoltare le tue e-mail</string>
+    <string name="gmail_signin_button">Accedi con Google</string>
+    <string name="gmail_privacy_notice">Richiediamo solo l\'accesso in lettura alle tue e-mail. I tuoi dati restano privati.</string>
+    <string name="mail_search_placeholder">Cerca nella posta</string>
+    <string name="no_emails_found">Nessuna e-mail trovata</string>
+    <string name="no_emails_search_suggestion">Prova un termine di ricerca diverso</string>
+    <string name="clear_search">Cancella Ricerca</string>
+    <string name="inbox_empty">La tua casella di posta sembra essere vuota</string>
+
+    <!-- Voice Marketplace -->
+    <string name="marketplace_title">Mercato delle Voci</string>
+    <string name="my_shares">Le Mie Condivisioni</string>
+    <string name="rewards">Premi</string>
+    <string name="marketplace_search_placeholder">Cerca voci…</string>
+    <string name="no_voices_found">Nessuna voce trovata</string>
+    <string name="no_voices_suggestion">Prova a modificare i filtri</string>
+    <string name="voice_uses_format">%d utilizzi</string>
+
+    <!-- Voice Detail -->
+    <string name="voice_detail_title">Dettagli Voce</string>
+    <string name="report">Segnala</string>
+    <string name="retry">Riprova</string>
+    <string name="rate_voice_prompt">Come valuteresti questa voce?</string>
+    <string name="star_rating_format">%d stelle</string>
+    <string name="review_optional">Recensione (opzionale)</string>
+    <string name="rate_voice">Valuta Voce</string>
+    <string name="submit">Invia</string>
+    <string name="report_voice_title">Segnala Voce</string>
+    <string name="report_voice_prompt">Perché stai segnalando questa voce?</string>
+    <string name="description_label">Descrizione</string>
+    <string name="submit_report">Invia Segnalazione</string>
+    <string name="rating_count_format">%d valutazioni</string>
+    <string name="uses_label">utilizzi</string>
+    <string name="created_label">creata</string>
+    <string name="stop_preview">Ferma Anteprima</string>
+    <string name="play_preview">Riproduci Anteprima</string>
+
+    <!-- Share Voice -->
+    <string name="share_voice_title">Condividi Voce</string>
+    <string name="no_cloned_voices">Nessuna voce clonata</string>
+    <string name="no_cloned_voices_hint">Crea prima una voce clonata per condividerla</string>
+    <string name="select_voice">Seleziona Voce</string>
+    <string name="voice_sample_duration">Campione di %.1fs</string>
+    <string name="display_name">Nome Visualizzato</string>
+    <string name="display_name_hint">Come apparirà questa voce nel mercato</string>
+    <string name="description_optional">Descrizione (opzionale)</string>
+    <string name="describe_voice_placeholder">Descrivi la tua voce…</string>
+    <string name="tags_label">Tag</string>
+    <string name="tags_description">Seleziona i tag che descrivono la tua voce</string>
+    <string name="voice_attestation">Confermo che questa è la mia voce e ho il diritto di condividerla</string>
+    <string name="marketplace_terms">Accetto i Termini di Servizio del Mercato delle Voci</string>
+    <string name="share_voice_button">Condividi Voce</string>
+
+    <!-- My Shared Voices -->
+    <string name="my_shared_voices_title">Le Mie Voci Condivise</string>
+    <string name="no_shared_voices_title">Nessuna voce condivisa ancora</string>
+    <string name="no_shared_voices_description">Condividi le tue voci clonate con la comunità e guadagna premi quando altri le usano!</string>
+    <string name="share_a_voice">Condividi una Voce</string>
+    <string name="revoke_voice_title">Revoca Voce</string>
+    <string name="revoke_voice_prompt">Sei sicuro di voler smettere di condividere \"%s\"? Gli altri non potranno più usare questa voce.</string>
+    <string name="revoke">Revoca</string>
+    <string name="status_active">attivo</string>
+    <string name="status_pending">in attesa</string>
+    <string name="status_revoked">revocato</string>
+    <string name="revoked_reason_format">Revocato: %s</string>
+
+    <!-- Rewards -->
+    <string name="rewards_title">Premi</string>
+    <string name="total_earned">Totale Guadagnato</string>
+    <string name="pending">In Attesa</string>
+    <string name="uses">Utilizzi</string>
+    <string name="claim_rewards">Riscuoti Premi</string>
+    <string name="claim_success_format">%.1f minuti riscossi con successo!</string>
+    <string name="how_rewards_work">Come Funzionano i Premi</string>
+    <string name="reward_step1_title">Condividi la Tua Voce</string>
+    <string name="reward_step1_description">Condividi le tue voci clonate con la comunità</string>
+    <string name="reward_step2_title">Altri la Usano</string>
+    <string name="reward_step2_description">Quando le persone usano la tua voce per il TTS, guadagni premi</string>
+    <string name="reward_step3_title">Riscuoti Minuti</string>
+    <string name="reward_step3_description">Riscuoti i tuoi premi in attesa come minuti di ascolto gratuiti</string>
+    <string name="reward_history">Storico Premi</string>
+    <string name="no_rewards_title">Nessun premio ancora</string>
+    <string name="no_rewards_description">Condividi le tue voci per iniziare a guadagnare!</string>
+    <string name="characters_generated_format">%d caratteri</string>
+    <string name="credited">Accreditato</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_back">Indietro</string>
+    <string name="skip">Salta</string>
+    <string name="onboarding_continue">Continua</string>
+    <string name="next">Avanti</string>
+    <string name="onboarding_terms">Continuando, accetti la nostra Informativa sulla Privacy e i Termini di Utilizzo.</string>
+    <string name="privacy_policy">Informativa sulla Privacy</string>
+    <string name="terms_of_use">Termini di Utilizzo</string>
+    <string name="onboarding_welcome_prefix">Benvenuto su</string>
+    <string name="onboarding_welcome_description">Trasforma qualsiasi documento in audio dal suono naturale. Ascolta articoli, PDF e altro in movimento.</string>
+    <string name="feature_pdf">PDF</string>
+    <string name="feature_web">Web</string>
+    <string name="feature_epub">ePUB</string>
+    <string name="feature_text">Testo</string>
+    <string name="onboarding_import_title">Importa da Qualsiasi Posto</string>
+    <string name="onboarding_import_description">Incolla un link, carica un PDF o digita il testo direttamente</string>
+    <string name="import_method_web_links">Link Web</string>
+    <string name="import_method_web_links_subtitle">Incolla qualsiasi URL di articolo</string>
+    <string name="import_method_pdf">Documenti PDF</string>
+    <string name="import_method_pdf_subtitle">Carica PDF dal tuo dispositivo</string>
+    <string name="import_method_text">Testo Diretto</string>
+    <string name="import_method_text_subtitle">Digita o incolla qualsiasi testo</string>
+    <string name="import_method_clipboard">Appunti</string>
+    <string name="import_method_clipboard_subtitle">Rileva automaticamente il contenuto copiato</string>
+    <string name="onboarding_notes_title">Prendi Appunti Mentre Ascolti</string>
+    <string name="onboarding_notes_description">Cattura le idee chiave senza interrompere la riproduzione</string>
+    <string name="add_note_placeholder">Aggiungi una nota a 2:34…</string>
+    <string name="onboarding_productivity_title">Aumenta la Tua Produttività</string>
+    <string name="onboarding_productivity_description">Voci naturali e velocità regolabile per un apprendimento efficiente</string>
+    <string name="playback_speed_title">Velocità di Riproduzione</string>
+    <string name="speed_075x">0.75x</string>
+    <string name="speed_1x">1x</string>
+    <string name="speed_15x">1.5x</string>
+    <string name="speed_2x">2x</string>
+    <string name="feature_background_playback">Riproduzione in background</string>
+    <string name="feature_sleep_timer">Timer di spegnimento</string>
+    <string name="feature_bookmarks">Segnalibri &amp; capitoli</string>
+    <string name="onboarding_voice_title">Scegli la Tua Voce</string>
+    <string name="onboarding_voice_description">Scegli una voce che si adatti al tuo stile di ascolto</string>
+    <string name="stop_preview_description">Ferma anteprima</string>
+    <string name="preview_voice_description">Anteprima voce</string>
+    <string name="selected">Selezionato</string>
+    <string name="signin_optional_title">Accedi (Opzionale)</string>
+    <string name="signin_optional_description">Accedi per sbloccare tutte le funzionalità, inclusa la condivisione vocale e la sincronizzazione tra dispositivi.</string>
+    <string name="signin_benefit_share">Condividi la Tua Voce</string>
+    <string name="signin_benefit_share_description">Condividi voci clonate con la comunità</string>
+    <string name="signin_benefit_community">Voci della Comunità</string>
+    <string name="signin_benefit_community_description">Usa le voci condivise da altri</string>
+    <string name="signin_benefit_rewards">Guadagna Premi</string>
+    <string name="signin_benefit_rewards_description">Ottieni minuti di ascolto quando altri usano le tue voci</string>
+    <string name="signin_benefit_sync">Sincronizza tra Dispositivi</string>
+    <string name="signin_benefit_sync_description">I tuoi dati ti seguono ovunque</string>
+    <string name="continue_without_signin">Continua Senza Accedere</string>
+
+    <!-- Voice Picker -->
+    <string name="choose_voice">Scegli Voce</string>
+    <string name="quality_high_title">Voci di Alta Qualità</string>
+    <string name="quality_high_description">Accelerate da GPU, voci naturali - utilizzo illimitato</string>
+    <string name="quality_free">GRATIS</string>
+
+    <!-- Settings (additional) -->
+    <string name="settings_voice_cloning_subtitle">Crea una voce personalizzata dalla tua registrazione</string>
+    <string name="settings_voice_marketplace">Mercato delle Voci</string>
+    <string name="settings_voice_marketplace_subtitle">Sfoglia e condividi voci della comunità</string>
+
+    <!-- General -->
+    <string name="pro">PRO</string>
+    <string name="connect">Connetti</string>
+    <string name="disconnect">Disconnetti</string>
+    <string name="cancel">Annulla</string>
+    <string name="done">Fatto</string>
+    <string name="delete">Elimina</string>
+    <string name="play">Riproduci</string>
+    <string name="pause">Pausa</string>
+    <string name="close">Chiudi</string>
+    <string name="add_to_queue">Aggiungi alla Coda</string>
+    <string name="favorite">Preferito</string>
+    <string name="share">Condividi</string>
+
+    <!-- Settings Subscription -->
+    <string name="settings_subscription">Abbonamento</string>
+    <string name="settings_upgrade_to_pro">Passa a Pro</string>
+    <string name="settings_upgrade_to_pro_subtitle">Ascolto illimitato, tutte le voci &amp; altro</string>
+    <string name="settings_readaloud_pro">ReadAloud AI Pro</string>
+    <string name="settings_pro_member_subtitle">Sei un membro Pro</string>
+    <string name="settings_audio_quality_hd">Alta Qualità (HD)</string>
+
+    <!-- Settings Dialogs -->
+    <string name="dialog_playback_speed">Velocità di Riproduzione</string>
+    <string name="dialog_appearance">Aspetto</string>
+    <string name="dialog_skip_interval">Intervallo di Salto</string>
+    <string name="dialog_sleep_timer_default">Timer di Spegnimento Predefinito</string>
+    <string name="selected_check">Selezionato</string>
+    <string name="seconds_format">%d secondi</string>
+    <string name="sleep_timer_off">Disattivato</string>
+    <string name="sleep_timer_minutes_format">%d minuti</string>
+    <string name="sleep_timer_15_min">15 minuti</string>
+    <string name="sleep_timer_30_min">30 minuti</string>
+    <string name="sleep_timer_45_min">45 minuti</string>
+    <string name="sleep_timer_1_hour">1 ora</string>
+    <string name="appearance_system">Sistema</string>
+    <string name="appearance_light">Chiaro</string>
+    <string name="appearance_dark">Scuro</string>
+
+    <!-- Share Intent -->
+    <string name="share_subject">Scopri ListenAI</string>
+    <string name="share_body">Ascolta qualsiasi articolo con voci AI naturali! Scarica ListenAI: https://play.google.com/store/apps/details?id=com.listenai</string>
+    <string name="share_chooser_title">Condividi ListenAI</string>
+    <string name="feedback_email_subject">Feedback su ListenAI</string>
+
+    <!-- Player Screen -->
+    <string name="player_loading_article">Caricamento articolo…</string>
+    <string name="player_article_not_found">Articolo non trovato</string>
+    <string name="player_no_text_content">Nessun contenuto testuale da sintetizzare.</string>
+    <string name="player_no_voice_available">Nessuna voce disponibile. Verifica la connessione al servizio TTS.</string>
+    <string name="player_network_error">Errore di rete. Verifica la tua connessione a internet.</string>
+    <string name="player_timeout_error">Richiesta scaduta. Il server potrebbe essere occupato.</string>
+    <string name="player_rate_limit_error">Il server è occupato. Riprova tra un momento.</string>
+    <string name="player_synthesis_failed">Sintesi fallita</string>
+    <string name="player_regeneration_failed">Rigenerazione fallita</string>
+    <string name="player_something_went_wrong">Qualcosa è andato storto</string>
+    <string name="player_go_back">Torna Indietro</string>
+    <string name="player_try_again">Riprova</string>
+    <string name="player_preparing_audio">Preparazione audio…</string>
+    <string name="player_percent_complete">%d%% completato</string>
+    <string name="player_back">Indietro</string>
+    <string name="player_change_voice">Cambia Voce</string>
+    <string name="player_more_options">Altro</string>
+    <string name="player_skip_back_10">Salta indietro di 10 secondi</string>
+    <string name="player_skip_forward_10">Salta avanti di 10 secondi</string>
+    <string name="player_select_speed">Seleziona velocità</string>
+    <string name="player_change_voice_button">Cambia voce</string>
+    <string name="player_added_to_queue">Aggiunto alla coda</string>
+    <string name="player_marked_finished">Segnato come completato</string>
+    <string name="player_removed_from_favorites">Rimosso dai preferiti</string>
+    <string name="player_added_to_favorites">Aggiunto ai preferiti</string>
+    <string name="player_export_audio">Esporta Audio</string>
+    <string name="player_audio_not_found">File audio non trovato</string>
+    <string name="player_export_failed">Esportazione fallita: %s</string>
+    <string name="player_sleep_timer_set">Timer di spegnimento impostato per %d minuti</string>
+    <string name="player_sleep_timer_cancelled">Timer di spegnimento annullato</string>
+    <string name="player_by_author">di %s</string>
+    <string name="player_words_count">%d parole</string>
+    <string name="player_untitled">Senza Titolo</string>
+    <string name="player_article_fallback">Articolo</string>
+    <string name="player_from_label">Da:</string>
+    <string name="player_unknown_sender">Sconosciuto</string>
+
+    <!-- Player Source Badges -->
+    <string name="source_web">Web</string>
+    <string name="source_pdf">PDF</string>
+    <string name="source_clipboard">Appunti</string>
+    <string name="source_file">File</string>
+    <string name="source_text">Testo</string>
+    <string name="source_email">E-mail</string>
+
+    <!-- Player Mode Badge -->
+    <string name="player_mode_loading_full">Caricamento Completo…</string>
+    <string name="player_mode_preview">Anteprima</string>
+    <string name="player_mode_full">Completo</string>
+
+    <!-- Player Voice Indicator -->
+    <string name="player_cloned_voice">Clonata</string>
+    <string name="player_voice_fallback">Voce</string>
+
+    <!-- Quota Exceeded -->
+    <string name="quota_exceeded_title">Quota Giornaliera Superata</string>
+    <string name="quota_exceeded_message">Hai %1$d caratteri rimanenti oggi,\nma questo articolo richiede %2$d caratteri.</string>
+    <string name="quota_upgrade_to_pro">Passa a Pro</string>
+    <string name="quota_benefit_chars_day">100K caratteri al giorno (25x in più)</string>
+    <string name="quota_benefit_chars_month">1M caratteri al mese</string>
+    <string name="quota_benefit_premium_voices">Voci AI premium</string>
+    <string name="quota_benefit_priority">Coda di sintesi prioritaria</string>
+    <string name="quota_maybe_later">Forse Dopo</string>
+    <string name="quota_reset_info">La tua quota giornaliera si reimposta a mezzanotte</string>
+
+    <!-- More Options Sheet -->
+    <string name="more_options_download_audio">Scarica Audio</string>
+    <string name="more_options_download_subtitle">Ti permette di ascoltare offline nell\'app.</string>
+    <string name="more_options_add_to_queue">Aggiungi alla Coda</string>
+    <string name="more_options_mark_finished">Segna come Completato</string>
+    <string name="more_options_sleep_timer">Timer di Spegnimento</string>
+    <string name="more_options_export_audio">Esporta Audio</string>
+    <string name="more_options_export_subtitle">Salva l\'audio sul dispositivo o condividilo direttamente.</string>
+    <string name="more_options_delete_article">Elimina Articolo</string>
+    <string name="more_options_timer_active">Timer attivo: %s</string>
+    <string name="more_options_current">Attuale</string>
+
+    <!-- Sleep Timer Picker -->
+    <string name="sleep_timer_picker_title">Timer di Spegnimento</string>
+    <string name="sleep_timer_5_min">5 minuti</string>
+    <string name="sleep_timer_10_min">10 minuti</string>
+    <string name="sleep_timer_1_5_hours">1,5 ore</string>
+    <string name="sleep_timer_2_hours">2 ore</string>
+
+    <!-- Duration Formats -->
+    <string name="duration_hr_min">%1$d h %2$d min</string>
+    <string name="duration_hr">%d h</string>
+    <string name="duration_min">%d min</string>
+    <string name="duration_sec">%d sec</string>
+
+    <!-- Language Picker -->
+    <string name="language">Lingua</string>
+    <string name="language_picker_title">Seleziona Lingua</string>
+    <string name="language_english">English</string>
+    <string name="language_spanish">Español</string>
+    <string name="language_french">Français</string>
+    <string name="language_german">Deutsch</string>
+    <string name="language_japanese">日本語</string>
+    <string name="language_chinese">中文(简体)</string>
+    <string name="language_korean">한국어</string>
+    <string name="language_portuguese">Português</string>
+    <string name="language_italian">Italiano</string>
+    <string name="language_hindi">हिन्दी</string>
+</resources>

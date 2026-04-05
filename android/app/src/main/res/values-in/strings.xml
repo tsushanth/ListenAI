@@ -1,0 +1,469 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">ReadAloud AI</string>
+
+    <!-- Tab Labels -->
+    <string name="tab_home">Beranda</string>
+    <string name="tab_library">Pustaka Saya</string>
+    <string name="tab_settings">Pengaturan</string>
+
+    <!-- Home Screen -->
+    <string name="promo_title">Unduh dan dengarkan kapan saja, di mana saja</string>
+    <string name="promo_button">Coba gratis</string>
+    <string name="quick_actions_title">Apa yang ingin Anda dengarkan hari ini?</string>
+    <string name="action_document">Dokumen</string>
+    <string name="action_document_subtitle">Unggah file dari Drive atau perangkat</string>
+    <string name="action_scan">Pindai Teks</string>
+    <string name="action_scan_subtitle">Dokumen atau gambar yang dipindai</string>
+    <string name="action_web_link">Tautan Web</string>
+    <string name="action_web_link_subtitle">Ubah URL menjadi audio</string>
+    <string name="action_text">Ketik atau Tempel Teks</string>
+    <string name="action_text_subtitle">Masukkan atau tempel teks untuk didengarkan</string>
+    <string name="action_mail">Email</string>
+    <string name="action_mail_subtitle">Dengarkan email dengan mudah</string>
+
+    <!-- Library Screen -->
+    <string name="library_title">Pustaka Saya</string>
+    <string name="filter_all">Semua</string>
+    <string name="filter_in_progress">Berlangsung</string>
+    <string name="filter_continue">Lanjutkan</string>
+    <string name="filter_finished">Selesai</string>
+    <string name="filter_favorites">Favorit</string>
+    <string name="filter_archived">Diarsipkan</string>
+    <string name="filter_folders">Folder</string>
+    <string name="filter_downloaded">Diunduh</string>
+    <string name="empty_library">Belum Ada Artikel</string>
+    <string name="empty_library_description">Tambahkan artikel dari tautan web, dokumen, atau tempel teks.</string>
+    <string name="more_options">Opsi lainnya</string>
+
+    <!-- Settings Screen -->
+    <string name="settings_title">Pengaturan</string>
+    <string name="settings_preferences">Preferensi</string>
+    <string name="settings_voice">Suara</string>
+    <string name="settings_voice_subtitle">Pilih suara pilihan Anda</string>
+    <string name="settings_speed">Kecepatan Putar</string>
+    <string name="settings_speed_subtitle">Default 1.0x</string>
+    <string name="settings_appearance">Tampilan</string>
+    <string name="settings_appearance_subtitle">Terang, Gelap, atau Sistem</string>
+    <string name="settings_voice_cloning">Kloning Suara</string>
+    <string name="settings_change_voice">Ubah Suara</string>
+    <string name="settings_app_language">Bahasa Aplikasi</string>
+    <string name="settings_request_feature">Minta Fitur</string>
+    <string name="settings_linked_accounts">Akun Terhubung</string>
+    <string name="settings_google">Google</string>
+    <string name="settings_google_subtitle">Sinkronkan artikel antar perangkat</string>
+    <string name="settings_google_connected">Terhubung</string>
+    <string name="settings_connect">Hubungkan</string>
+    <string name="settings_disconnect">Putuskan</string>
+    <string name="settings_share">Bagikan</string>
+    <string name="settings_share_app">Bagikan ReadAloud AI</string>
+    <string name="settings_share_app_subtitle">Beritahu teman tentang ReadAloud AI</string>
+    <string name="settings_rate_app">Beri Nilai Aplikasi</string>
+    <string name="settings_rate_app_subtitle">Bantu kami dengan rating 5 bintang</string>
+    <string name="settings_playback">Pemutaran</string>
+    <string name="settings_audio_quality">Kualitas Audio</string>
+    <string name="settings_audio_quality_subtitle">Sintesis berkualitas tinggi</string>
+    <string name="settings_skip_interval">Interval Lewati</string>
+    <string name="settings_skip_interval_subtitle">10 dtk mundur, 30 dtk maju</string>
+    <string name="settings_sleep_timer">Timer Tidur</string>
+    <string name="settings_sleep_timer_subtitle">Jeda otomatis setelah durasi</string>
+    <string name="settings_default_speed">Kecepatan Default</string>
+    <string name="settings_skip_silences">Lewati Keheningan</string>
+    <string name="settings_auto_play">Putar Otomatis Berikutnya</string>
+    <string name="settings_support">Dukungan</string>
+    <string name="settings_usage">Penggunaan &amp; Kuota</string>
+    <string name="settings_usage_subtitle">Lihat penggunaan dan batas</string>
+    <string name="settings_help">Pusat Bantuan</string>
+    <string name="settings_help_subtitle">FAQ dan panduan</string>
+    <string name="settings_feedback">Kirim Masukan</string>
+    <string name="settings_feedback_subtitle">Laporkan masalah atau saran</string>
+    <string name="settings_rate_us">Suka? Beri kami nilai</string>
+    <string name="settings_contact">Hubungi Dukungan</string>
+    <string name="settings_about">Tentang</string>
+    <string name="settings_version">Versi</string>
+    <string name="settings_privacy">Kebijakan Privasi</string>
+    <string name="settings_privacy_subtitle">Lihat kebijakan privasi kami</string>
+    <string name="settings_terms">Ketentuan Layanan</string>
+    <string name="settings_terms_subtitle">Lihat syarat dan ketentuan</string>
+
+    <!-- Playback -->
+    <string name="now_playing">Sedang Diputar</string>
+    <string name="up_next">Berikutnya</string>
+    <string name="minutes_left">%d mnt tersisa</string>
+    <string name="speed_format">%sx</string>
+    <string name="skip_backward">Mundur</string>
+    <string name="skip_forward">Maju</string>
+    <string name="sleep_timer">Timer tidur</string>
+
+    <!-- Import Screen -->
+    <string name="import_title">Tambah Konten</string>
+    <string name="import_mode_url">URL</string>
+    <string name="import_mode_document">Dok</string>
+    <string name="import_mode_text">Teks</string>
+    <string name="import_mode_scan">Pindai</string>
+    <string name="import_url_title">Impor dari URL</string>
+    <string name="import_url_description">Tempel tautan web untuk mengekstrak dan mengubah artikel menjadi audio.</string>
+    <string name="import_url_placeholder">https://example.com/article</string>
+    <string name="import_document_title">Impor Dokumen</string>
+    <string name="import_document_description">Unggah file PDF, EPUB, DOCX, atau TXT untuk diubah menjadi audio.</string>
+    <string name="import_document_tap">Ketuk untuk memilih file</string>
+    <string name="import_document_formats">PDF, EPUB, DOCX, TXT didukung</string>
+    <string name="import_text_title">Masukkan Teks</string>
+    <string name="import_text_title_placeholder">Judul (opsional)</string>
+    <string name="import_text_content_placeholder">Tempel atau ketik teks Anda di sini...</string>
+    <string name="import_scan_title">Pindai Dokumen</string>
+    <string name="import_scan_description">Gunakan kamera untuk memindai teks cetak dan mengubahnya menjadi audio.</string>
+    <string name="import_scan_tap">Ketuk untuk memindai</string>
+    <string name="import_button">Impor</string>
+
+    <!-- Import Screen (additional) -->
+    <string name="import_mode_clipboard">Papan Klip</string>
+    <string name="import_mode_email">Email</string>
+    <string name="clear">Hapus</string>
+    <string name="importing">Mengimpor…</string>
+    <string name="clipboard_import_title">Impor dari Papan Klip</string>
+    <string name="clipboard_import_description">Impor teks atau URL yang telah Anda salin</string>
+    <string name="clipboard_url_detected">URL terdeteksi</string>
+    <string name="clipboard_text_content">Konten teks</string>
+    <string name="clipboard_empty">Papan klip kosong</string>
+    <string name="word_count_format">%d kata</string>
+    <string name="pdf_selected">PDF dipilih</string>
+    <string name="epub_selected">EPUB</string>    <string name="remove">Hapus</string>
+
+    <!-- Library Screen (additional) -->
+    <string name="library_empty_in_progress_title">Tidak Ada yang Berlangsung</string>
+    <string name="library_empty_in_progress_description">Mulai mendengarkan untuk melihat item yang sedang berlangsung di sini</string>
+    <string name="library_empty_favorites_title">Tidak Ada Favorit</string>
+    <string name="library_empty_favorites_description">Tandai artikel sebagai favorit untuk menemukannya dengan cepat</string>
+    <string name="library_empty_email_title">Tidak Ada Email</string>
+    <string name="library_empty_email_description">Impor email dari Gmail untuk didengarkan</string>
+    <string name="library_empty_archived_title">Tidak Ada Artikel Diarsipkan</string>
+    <string name="library_empty_archived_description">Arsipkan artikel yang telah selesai untuk menjaga pustaka Anda tetap rapi</string>
+    <string name="library_add_content_button">Tambah Konten</string>
+    <string name="filter_email">Email</string>
+    <string name="remove_from_favorites">Hapus dari Favorit</string>
+    <string name="add_to_favorites">Tambah ke Favorit</string>
+    <string name="unarchive">Batalkan Arsip</string>
+    <string name="archive">Arsipkan</string>
+    <string name="duration_left_minutes">%d mnt %d dtk tersisa</string>
+    <string name="duration_left_seconds">%d dtk tersisa</string>
+
+    <!-- Feedback Dialog -->
+    <string name="feedback_title">Menikmati ReadAloud?</string>
+    <string name="feedback_subtitle">Masukan Anda membantu kami meningkatkan aplikasi untuk semua orang.</string>
+    <string name="feedback_button_negative">Tidak Juga</string>
+    <string name="feedback_button_positive">Ya!</string>
+
+    <!-- Mail Import -->
+    <string name="mail_import_title">Gmail</string>
+    <string name="back">Kembali</string>
+    <string name="refresh">Segarkan</string>
+    <string name="loading_emails">Memuat email…</string>
+    <string name="load_more">Muat Lebih Banyak</string>
+    <string name="loading_email">Memuat email…</string>
+    <string name="no_subject">(Tanpa Subjek)</string>
+    <string name="email_from_format">Dari: %s &lt;%s&gt;</string>
+    <string name="no_content">(Tidak ada konten)</string>
+    <string name="email_import_button">Impor &amp; Dengarkan</string>
+    <string name="gmail_connect_title">Hubungkan Gmail</string>
+    <string name="gmail_connect_description">Masuk dengan Google untuk mengimpor dan mendengarkan email Anda</string>
+    <string name="gmail_signin_button">Masuk dengan Google</string>
+    <string name="gmail_privacy_notice">Kami hanya meminta akses baca ke email Anda. Data Anda tetap pribadi.</string>
+    <string name="mail_search_placeholder">Cari di email</string>
+    <string name="no_emails_found">Email tidak ditemukan</string>
+    <string name="no_emails_search_suggestion">Coba istilah pencarian yang berbeda</string>
+    <string name="clear_search">Hapus Pencarian</string>
+    <string name="inbox_empty">Kotak masuk Anda tampaknya kosong</string>
+
+    <!-- Voice Marketplace -->
+    <string name="marketplace_title">Pasar Suara</string>
+    <string name="my_shares">Berbagi Saya</string>
+    <string name="rewards">Hadiah</string>
+    <string name="marketplace_search_placeholder">Cari suara…</string>
+    <string name="no_voices_found">Suara tidak ditemukan</string>
+    <string name="no_voices_suggestion">Coba sesuaikan filter Anda</string>
+    <string name="voice_uses_format">%d penggunaan</string>
+
+    <!-- Voice Detail -->
+    <string name="voice_detail_title">Detail Suara</string>
+    <string name="report">Laporkan</string>
+    <string name="retry">Coba Lagi</string>
+    <string name="rate_voice_prompt">Bagaimana penilaian Anda terhadap suara ini?</string>
+    <string name="star_rating_format">%d bintang</string>
+    <string name="review_optional">Ulasan (opsional)</string>
+    <string name="rate_voice">Nilai Suara</string>
+    <string name="submit">Kirim</string>
+    <string name="report_voice_title">Laporkan Suara</string>
+    <string name="report_voice_prompt">Mengapa Anda melaporkan suara ini?</string>
+    <string name="description_label">Deskripsi</string>
+    <string name="submit_report">Kirim Laporan</string>
+    <string name="rating_count_format">%d penilaian</string>
+    <string name="uses_label">penggunaan</string>
+    <string name="created_label">dibuat</string>
+    <string name="stop_preview">Hentikan Pratinjau</string>
+    <string name="play_preview">Putar Pratinjau</string>
+
+    <!-- Share Voice -->
+    <string name="share_voice_title">Bagikan Suara</string>
+    <string name="no_cloned_voices">Tidak ada suara kloning</string>
+    <string name="no_cloned_voices_hint">Buat suara kloning terlebih dahulu untuk dibagikan</string>
+    <string name="select_voice">Pilih Suara</string>
+    <string name="voice_sample_duration">Sampel %.1f dtk</string>
+    <string name="display_name">Nama Tampilan</string>
+    <string name="display_name_hint">Bagaimana suara ini akan muncul di pasar</string>
+    <string name="description_optional">Deskripsi (opsional)</string>
+    <string name="describe_voice_placeholder">Jelaskan suara Anda…</string>
+    <string name="tags_label">Tag</string>
+    <string name="tags_description">Pilih tag yang menjelaskan suara Anda</string>
+    <string name="voice_attestation">Saya mengonfirmasi ini adalah suara saya sendiri dan saya berhak membagikannya</string>
+    <string name="marketplace_terms">Saya menyetujui Ketentuan Layanan Pasar Suara</string>
+    <string name="share_voice_button">Bagikan Suara</string>
+
+    <!-- My Shared Voices -->
+    <string name="my_shared_voices_title">Suara yang Saya Bagikan</string>
+    <string name="no_shared_voices_title">Belum ada suara yang dibagikan</string>
+    <string name="no_shared_voices_description">Bagikan suara kloning Anda dengan komunitas dan dapatkan hadiah saat orang lain menggunakannya!</string>
+    <string name="share_a_voice">Bagikan Suara</string>
+    <string name="revoke_voice_title">Cabut Suara</string>
+    <string name="revoke_voice_prompt">Apakah Anda yakin ingin berhenti membagikan \"%s\"? Orang lain tidak akan dapat menggunakan suara ini lagi.</string>
+    <string name="revoke">Cabut</string>
+    <string name="status_active">aktif</string>
+    <string name="status_pending">menunggu</string>
+    <string name="status_revoked">dicabut</string>
+    <string name="revoked_reason_format">Dicabut: %s</string>
+
+    <!-- Rewards -->
+    <string name="rewards_title">Hadiah</string>
+    <string name="total_earned">Total Diperoleh</string>
+    <string name="pending">Menunggu</string>
+    <string name="uses">Penggunaan</string>
+    <string name="claim_rewards">Klaim Hadiah</string>
+    <string name="claim_success_format">Berhasil mengklaim %.1f menit!</string>
+    <string name="how_rewards_work">Cara Kerja Hadiah</string>
+    <string name="reward_step1_title">Bagikan Suara Anda</string>
+    <string name="reward_step1_description">Bagikan suara kloning Anda dengan komunitas</string>
+    <string name="reward_step2_title">Orang Lain Menggunakannya</string>
+    <string name="reward_step2_description">Saat orang menggunakan suara Anda untuk TTS, Anda mendapat hadiah</string>
+    <string name="reward_step3_title">Klaim Menit</string>
+    <string name="reward_step3_description">Klaim hadiah yang tertunda sebagai menit mendengarkan gratis</string>
+    <string name="reward_history">Riwayat Hadiah</string>
+    <string name="no_rewards_title">Belum ada hadiah</string>
+    <string name="no_rewards_description">Bagikan suara Anda untuk mulai mendapatkan!</string>
+    <string name="characters_generated_format">%d karakter</string>
+    <string name="credited">Dikreditkan</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_back">Kembali</string>
+    <string name="skip">Lewati</string>
+    <string name="onboarding_continue">Lanjutkan</string>
+    <string name="next">Berikutnya</string>
+    <string name="onboarding_terms">Dengan melanjutkan, Anda menyetujui Kebijakan Privasi dan Ketentuan Penggunaan kami.</string>
+    <string name="privacy_policy">Kebijakan Privasi</string>
+    <string name="terms_of_use">Ketentuan Penggunaan</string>
+    <string name="onboarding_welcome_prefix">Selamat datang di</string>
+    <string name="onboarding_welcome_description">Ubah dokumen apa pun menjadi audio bersuara alami. Dengarkan artikel, PDF, dan lainnya saat bepergian.</string>
+    <string name="feature_pdf">PDF</string>
+    <string name="feature_web">Web</string>
+    <string name="feature_epub">ePUB</string>
+    <string name="feature_text">Teks</string>
+    <string name="onboarding_import_title">Impor dari Mana Saja</string>
+    <string name="onboarding_import_description">Tempel tautan, unggah PDF, atau ketik teks langsung</string>
+    <string name="import_method_web_links">Tautan Web</string>
+    <string name="import_method_web_links_subtitle">Tempel URL artikel apa pun</string>
+    <string name="import_method_pdf">Dokumen PDF</string>
+    <string name="import_method_pdf_subtitle">Unggah PDF dari perangkat Anda</string>
+    <string name="import_method_text">Teks Langsung</string>
+    <string name="import_method_text_subtitle">Ketik atau tempel teks apa pun</string>
+    <string name="import_method_clipboard">Papan Klip</string>
+    <string name="import_method_clipboard_subtitle">Deteksi otomatis konten yang disalin</string>
+    <string name="onboarding_notes_title">Buat Catatan Saat Mendengarkan</string>
+    <string name="onboarding_notes_description">Tangkap wawasan penting tanpa mengganggu pemutaran</string>
+    <string name="add_note_placeholder">Tambah catatan di 2:34…</string>
+    <string name="onboarding_productivity_title">Tingkatkan Produktivitas Anda</string>
+    <string name="onboarding_productivity_description">Suara alami dan kecepatan yang dapat disesuaikan untuk pembelajaran efisien</string>
+    <string name="playback_speed_title">Kecepatan Putar</string>
+    <string name="speed_075x">0.75x</string>
+    <string name="speed_1x">1x</string>
+    <string name="speed_15x">1.5x</string>
+    <string name="speed_2x">2x</string>
+    <string name="feature_background_playback">Pemutaran latar belakang</string>
+    <string name="feature_sleep_timer">Timer tidur</string>
+    <string name="feature_bookmarks">Penanda &amp; bab</string>
+    <string name="onboarding_voice_title">Pilih Suara Anda</string>
+    <string name="onboarding_voice_description">Pilih suara yang sesuai dengan gaya mendengarkan Anda</string>
+    <string name="stop_preview_description">Hentikan pratinjau</string>
+    <string name="preview_voice_description">Pratinjau suara</string>
+    <string name="selected">Dipilih</string>
+    <string name="signin_optional_title">Masuk (Opsional)</string>
+    <string name="signin_optional_description">Masuk untuk membuka semua fitur termasuk berbagi suara dan sinkronisasi lintas perangkat.</string>
+    <string name="signin_benefit_share">Bagikan Suara Anda</string>
+    <string name="signin_benefit_share_description">Bagikan suara kloning dengan komunitas</string>
+    <string name="signin_benefit_community">Suara Komunitas</string>
+    <string name="signin_benefit_community_description">Gunakan suara yang dibagikan orang lain</string>
+    <string name="signin_benefit_rewards">Dapatkan Hadiah</string>
+    <string name="signin_benefit_rewards_description">Dapatkan menit mendengarkan saat orang lain menggunakan suara Anda</string>
+    <string name="signin_benefit_sync">Sinkronkan Antar Perangkat</string>
+    <string name="signin_benefit_sync_description">Data Anda mengikuti Anda ke mana saja</string>
+    <string name="continue_without_signin">Lanjutkan Tanpa Masuk</string>
+
+    <!-- Voice Picker -->
+    <string name="choose_voice">Pilih Suara</string>
+    <string name="quality_high_title">Suara Berkualitas Tinggi</string>
+    <string name="quality_high_description">Suara alami berakselerasi GPU - penggunaan tak terbatas</string>
+    <string name="quality_free">GRATIS</string>
+
+    <!-- Settings (additional) -->
+    <string name="settings_voice_cloning_subtitle">Buat suara kustom dari rekaman Anda</string>
+    <string name="settings_voice_marketplace">Pasar Suara</string>
+    <string name="settings_voice_marketplace_subtitle">Jelajahi dan bagikan suara komunitas</string>
+
+    <!-- General -->
+    <string name="pro">PRO</string>
+    <string name="connect">Hubungkan</string>
+    <string name="disconnect">Putuskan</string>
+    <string name="cancel">Batal</string>
+    <string name="done">Selesai</string>
+    <string name="delete">Hapus</string>
+    <string name="play">Putar</string>
+    <string name="pause">Jeda</string>
+    <string name="close">Tutup</string>
+    <string name="add_to_queue">Tambah ke Antrean</string>
+    <string name="favorite">Favorit</string>
+    <string name="share">Bagikan</string>
+
+    <!-- Settings Subscription -->
+    <string name="settings_subscription">Langganan</string>
+    <string name="settings_upgrade_to_pro">Upgrade ke Pro</string>
+    <string name="settings_upgrade_to_pro_subtitle">Dengarkan tanpa batas, semua suara &amp; lainnya</string>
+    <string name="settings_readaloud_pro">ReadAloud AI Pro</string>
+    <string name="settings_pro_member_subtitle">Anda anggota Pro</string>
+    <string name="settings_audio_quality_hd">Kualitas Tinggi (HD)</string>
+
+    <!-- Settings Dialogs -->
+    <string name="dialog_playback_speed">Kecepatan Putar</string>
+    <string name="dialog_appearance">Tampilan</string>
+    <string name="dialog_skip_interval">Interval Lewati</string>
+    <string name="dialog_sleep_timer_default">Default Timer Tidur</string>
+    <string name="selected_check">Dipilih</string>
+    <string name="seconds_format">%d detik</string>
+    <string name="sleep_timer_off">Mati</string>
+    <string name="sleep_timer_minutes_format">%d menit</string>
+    <string name="sleep_timer_15_min">15 menit</string>
+    <string name="sleep_timer_30_min">30 menit</string>
+    <string name="sleep_timer_45_min">45 menit</string>
+    <string name="sleep_timer_1_hour">1 jam</string>
+    <string name="appearance_system">Sistem</string>
+    <string name="appearance_light">Terang</string>
+    <string name="appearance_dark">Gelap</string>
+
+    <!-- Share Intent -->
+    <string name="share_subject">Coba ListenAI</string>
+    <string name="share_body">Dengarkan artikel apa pun dengan suara AI alami! Unduh ListenAI: https://play.google.com/store/apps/details?id=com.listenai</string>
+    <string name="share_chooser_title">Bagikan ListenAI</string>
+    <string name="feedback_email_subject">Masukan ListenAI</string>
+
+    <!-- Player Screen -->
+    <string name="player_loading_article">Memuat artikel…</string>
+    <string name="player_article_not_found">Artikel tidak ditemukan</string>
+    <string name="player_no_text_content">Tidak ada konten teks untuk disintesis.</string>
+    <string name="player_no_voice_available">Suara tidak tersedia. Silakan periksa koneksi layanan TTS Anda.</string>
+    <string name="player_network_error">Kesalahan jaringan. Silakan periksa koneksi internet Anda.</string>
+    <string name="player_timeout_error">Permintaan waktu habis. Server mungkin sibuk.</string>
+    <string name="player_rate_limit_error">Server sibuk. Silakan coba lagi sebentar.</string>
+    <string name="player_synthesis_failed">Sintesis gagal</string>
+    <string name="player_regeneration_failed">Regenerasi gagal</string>
+    <string name="player_something_went_wrong">Terjadi kesalahan</string>
+    <string name="player_go_back">Kembali</string>
+    <string name="player_try_again">Coba Lagi</string>
+    <string name="player_preparing_audio">Menyiapkan audio…</string>
+    <string name="player_percent_complete">%d%% selesai</string>
+    <string name="player_back">Kembali</string>
+    <string name="player_change_voice">Ubah Suara</string>
+    <string name="player_more_options">Lainnya</string>
+    <string name="player_skip_back_10">Mundur 10 detik</string>
+    <string name="player_skip_forward_10">Maju 10 detik</string>
+    <string name="player_select_speed">Pilih kecepatan</string>
+    <string name="player_change_voice_button">Ubah suara</string>
+    <string name="player_added_to_queue">Ditambahkan ke antrean</string>
+    <string name="player_marked_finished">Ditandai selesai</string>
+    <string name="player_removed_from_favorites">Dihapus dari favorit</string>
+    <string name="player_added_to_favorites">Ditambahkan ke favorit</string>
+    <string name="player_export_audio">Ekspor Audio</string>
+    <string name="player_audio_not_found">File audio tidak ditemukan</string>
+    <string name="player_export_failed">Gagal mengekspor: %s</string>
+    <string name="player_sleep_timer_set">Timer tidur diatur %d menit</string>
+    <string name="player_sleep_timer_cancelled">Timer tidur dibatalkan</string>
+    <string name="player_by_author">oleh %s</string>
+    <string name="player_words_count">%d kata</string>
+    <string name="player_untitled">Tanpa Judul</string>
+    <string name="player_article_fallback">Artikel</string>
+    <string name="player_from_label">Dari:</string>
+    <string name="player_unknown_sender">Tidak diketahui</string>
+
+    <!-- Player Source Badges -->
+    <string name="source_web">Web</string>
+    <string name="source_pdf">PDF</string>
+    <string name="source_clipboard">Papan Klip</string>
+    <string name="source_file">File</string>
+    <string name="source_text">Teks</string>
+    <string name="source_email">Email</string>
+
+    <!-- Player Mode Badge -->
+    <string name="player_mode_loading_full">Memuat Penuh…</string>
+    <string name="player_mode_preview">Pratinjau</string>
+    <string name="player_mode_full">Penuh</string>
+
+    <!-- Player Voice Indicator -->
+    <string name="player_cloned_voice">Kloning</string>
+    <string name="player_voice_fallback">Suara</string>
+
+    <!-- Quota Exceeded -->
+    <string name="quota_exceeded_title">Kuota Harian Terlampaui</string>
+    <string name="quota_exceeded_message">Anda memiliki %1$d karakter tersisa hari ini,\ntetapi artikel ini membutuhkan %2$d karakter.</string>
+    <string name="quota_upgrade_to_pro">Upgrade ke Pro</string>
+    <string name="quota_benefit_chars_day">100 ribu karakter per hari (25x lebih banyak)</string>
+    <string name="quota_benefit_chars_month">1 juta karakter per bulan</string>
+    <string name="quota_benefit_premium_voices">Suara AI premium</string>
+    <string name="quota_benefit_priority">Antrean sintesis prioritas</string>
+    <string name="quota_maybe_later">Mungkin Nanti</string>
+    <string name="quota_reset_info">Kuota harian Anda direset pada tengah malam</string>
+
+    <!-- More Options Sheet -->
+    <string name="more_options_download_audio">Unduh Audio</string>
+    <string name="more_options_download_subtitle">Memungkinkan Anda mendengarkan offline dalam aplikasi.</string>
+    <string name="more_options_add_to_queue">Tambah ke Antrean</string>
+    <string name="more_options_mark_finished">Tandai Selesai</string>
+    <string name="more_options_sleep_timer">Timer Tidur</string>
+    <string name="more_options_export_audio">Ekspor Audio</string>
+    <string name="more_options_export_subtitle">Simpan audio ke perangkat atau bagikan langsung.</string>
+    <string name="more_options_delete_article">Hapus Artikel</string>
+    <string name="more_options_timer_active">Timer aktif: %s</string>
+    <string name="more_options_current">Saat ini</string>
+
+    <!-- Sleep Timer Picker -->
+    <string name="sleep_timer_picker_title">Timer Tidur</string>
+    <string name="sleep_timer_5_min">5 menit</string>
+    <string name="sleep_timer_10_min">10 menit</string>
+    <string name="sleep_timer_1_5_hours">1,5 jam</string>
+    <string name="sleep_timer_2_hours">2 jam</string>
+
+    <!-- Duration Formats -->
+    <string name="duration_hr_min">%1$d jam %2$d mnt</string>
+    <string name="duration_hr">%d jam</string>
+    <string name="duration_min">%d mnt</string>
+    <string name="duration_sec">%d dtk</string>
+
+    <!-- Language Picker -->
+    <string name="language">Bahasa</string>
+    <string name="language_picker_title">Pilih Bahasa</string>
+    <string name="language_english">English</string>
+    <string name="language_spanish">Español</string>
+    <string name="language_french">Français</string>
+    <string name="language_german">Deutsch</string>
+    <string name="language_japanese">日本語</string>
+    <string name="language_chinese">中文(简体)</string>
+    <string name="language_korean">한국어</string>
+    <string name="language_portuguese">Português</string>
+    <string name="language_italian">Italiano</string>
+    <string name="language_hindi">हिन्दी</string>
+</resources>

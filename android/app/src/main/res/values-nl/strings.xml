@@ -1,0 +1,469 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">ReadAloud AI</string>
+
+    <!-- Tab Labels -->
+    <string name="tab_home">Home</string>
+    <string name="tab_library">Mijn Bibliotheek</string>
+    <string name="tab_settings">Instellingen</string>
+
+    <!-- Home Screen -->
+    <string name="promo_title">Download en luister altijd en overal</string>
+    <string name="promo_button">Gratis proberen</string>
+    <string name="quick_actions_title">Waar wil je vandaag naar luisteren?</string>
+    <string name="action_document">Document</string>
+    <string name="action_document_subtitle">Upload bestanden van Drive of apparaat</string>
+    <string name="action_scan">Tekst Scannen</string>
+    <string name="action_scan_subtitle">Gescande documenten of afbeeldingen</string>
+    <string name="action_web_link">Weblink</string>
+    <string name="action_web_link_subtitle">Zet URL\'s om naar audio</string>
+    <string name="action_text">Typ of Plak Tekst</string>
+    <string name="action_text_subtitle">Voer tekst in of plak om te luisteren</string>
+    <string name="action_mail">E-mail</string>
+    <string name="action_mail_subtitle">Luister gemakkelijk naar e-mails</string>
+
+    <!-- Library Screen -->
+    <string name="library_title">Mijn Bibliotheek</string>
+    <string name="filter_all">Alles</string>
+    <string name="filter_in_progress">Bezig</string>
+    <string name="filter_continue">Doorgaan</string>
+    <string name="filter_finished">Voltooid</string>
+    <string name="filter_favorites">Favorieten</string>
+    <string name="filter_archived">Gearchiveerd</string>
+    <string name="filter_folders">Mappen</string>
+    <string name="filter_downloaded">Gedownload</string>
+    <string name="empty_library">Nog Geen Artikelen</string>
+    <string name="empty_library_description">Voeg artikelen toe via weblinks, documenten of plak tekst.</string>
+    <string name="more_options">Meer opties</string>
+
+    <!-- Settings Screen -->
+    <string name="settings_title">Instellingen</string>
+    <string name="settings_preferences">Voorkeuren</string>
+    <string name="settings_voice">Stem</string>
+    <string name="settings_voice_subtitle">Kies je voorkeursstem</string>
+    <string name="settings_speed">Afspeelsnelheid</string>
+    <string name="settings_speed_subtitle">Standaard 1.0x</string>
+    <string name="settings_appearance">Uiterlijk</string>
+    <string name="settings_appearance_subtitle">Licht, Donker of Systeem</string>
+    <string name="settings_voice_cloning">Stem Klonen</string>
+    <string name="settings_change_voice">Stem Wijzigen</string>
+    <string name="settings_app_language">App-taal</string>
+    <string name="settings_request_feature">Functie Aanvragen</string>
+    <string name="settings_linked_accounts">Gekoppelde Accounts</string>
+    <string name="settings_google">Google</string>
+    <string name="settings_google_subtitle">Synchroniseer artikelen tussen apparaten</string>
+    <string name="settings_google_connected">Verbonden</string>
+    <string name="settings_connect">Verbinden</string>
+    <string name="settings_disconnect">Verbreken</string>
+    <string name="settings_share">Delen</string>
+    <string name="settings_share_app">Deel ReadAloud AI</string>
+    <string name="settings_share_app_subtitle">Vertel vrienden over ReadAloud AI</string>
+    <string name="settings_rate_app">App Beoordelen</string>
+    <string name="settings_rate_app_subtitle">Help ons met een 5-sterrenbeoordeling</string>
+    <string name="settings_playback">Afspelen</string>
+    <string name="settings_audio_quality">Audiokwaliteit</string>
+    <string name="settings_audio_quality_subtitle">Hoogwaardige synthese</string>
+    <string name="settings_skip_interval">Overslaan Interval</string>
+    <string name="settings_skip_interval_subtitle">10s terug, 30s vooruit</string>
+    <string name="settings_sleep_timer">Slaaptimer</string>
+    <string name="settings_sleep_timer_subtitle">Automatisch pauzeren na duur</string>
+    <string name="settings_default_speed">Standaardsnelheid</string>
+    <string name="settings_skip_silences">Stiltes Overslaan</string>
+    <string name="settings_auto_play">Automatisch Volgend Afspelen</string>
+    <string name="settings_support">Ondersteuning</string>
+    <string name="settings_usage">Gebruik &amp; Quota</string>
+    <string name="settings_usage_subtitle">Bekijk gebruik en limieten</string>
+    <string name="settings_help">Helpcentrum</string>
+    <string name="settings_help_subtitle">FAQ\'s en handleidingen</string>
+    <string name="settings_feedback">Feedback Sturen</string>
+    <string name="settings_feedback_subtitle">Meld problemen of suggesties</string>
+    <string name="settings_rate_us">Vind je ons leuk? Beoordeel ons</string>
+    <string name="settings_contact">Contact Opnemen</string>
+    <string name="settings_about">Over</string>
+    <string name="settings_version">Versie</string>
+    <string name="settings_privacy">Privacybeleid</string>
+    <string name="settings_privacy_subtitle">Bekijk ons privacybeleid</string>
+    <string name="settings_terms">Servicevoorwaarden</string>
+    <string name="settings_terms_subtitle">Bekijk voorwaarden en condities</string>
+
+    <!-- Playback -->
+    <string name="now_playing">Nu Aan Het Spelen</string>
+    <string name="up_next">Volgende</string>
+    <string name="minutes_left">%d min over</string>
+    <string name="speed_format">%sx</string>
+    <string name="skip_backward">Terugspoelen</string>
+    <string name="skip_forward">Vooruitspoelen</string>
+    <string name="sleep_timer">Slaaptimer</string>
+
+    <!-- Import Screen -->
+    <string name="import_title">Inhoud Toevoegen</string>
+    <string name="import_mode_url">URL</string>
+    <string name="import_mode_document">Doc</string>
+    <string name="import_mode_text">Tekst</string>
+    <string name="import_mode_scan">Scan</string>
+    <string name="import_url_title">Importeren via URL</string>
+    <string name="import_url_description">Plak een weblink om het artikel te extraheren en om te zetten naar audio.</string>
+    <string name="import_url_placeholder">https://example.com/article</string>
+    <string name="import_document_title">Document Importeren</string>
+    <string name="import_document_description">Upload PDF, EPUB, DOCX of TXT bestanden om naar audio te converteren.</string>
+    <string name="import_document_tap">Tik om bestand te selecteren</string>
+    <string name="import_document_formats">PDF, EPUB, DOCX, TXT ondersteund</string>
+    <string name="import_text_title">Tekst Invoeren</string>
+    <string name="import_text_title_placeholder">Titel (optioneel)</string>
+    <string name="import_text_content_placeholder">Plak of typ hier je tekst...</string>
+    <string name="import_scan_title">Document Scannen</string>
+    <string name="import_scan_description">Gebruik je camera om gedrukte tekst te scannen en om te zetten naar audio.</string>
+    <string name="import_scan_tap">Tik om te scannen</string>
+    <string name="import_button">Importeren</string>
+
+    <!-- Import Screen (additional) -->
+    <string name="import_mode_clipboard">Klembord</string>
+    <string name="import_mode_email">E-mail</string>
+    <string name="clear">Wissen</string>
+    <string name="importing">Importeren…</string>
+    <string name="clipboard_import_title">Importeren van Klembord</string>
+    <string name="clipboard_import_description">Importeer gekopieerde tekst of URL\'s</string>
+    <string name="clipboard_url_detected">URL gedetecteerd</string>
+    <string name="clipboard_text_content">Tekstinhoud</string>
+    <string name="clipboard_empty">Klembord is leeg</string>
+    <string name="word_count_format">%d woorden</string>
+    <string name="pdf_selected">PDF geselecteerd</string>
+    <string name="epub_selected">EPUB</string>    <string name="remove">Verwijderen</string>
+
+    <!-- Library Screen (additional) -->
+    <string name="library_empty_in_progress_title">Niets Bezig</string>
+    <string name="library_empty_in_progress_description">Begin met luisteren om je lopende items hier te zien</string>
+    <string name="library_empty_favorites_title">Geen Favorieten</string>
+    <string name="library_empty_favorites_description">Markeer artikelen als favoriet om ze snel te vinden</string>
+    <string name="library_empty_email_title">Geen E-mails</string>
+    <string name="library_empty_email_description">Importeer e-mails van Gmail om ernaar te luisteren</string>
+    <string name="library_empty_archived_title">Geen Gearchiveerde Artikelen</string>
+    <string name="library_empty_archived_description">Archiveer voltooide artikelen om je bibliotheek overzichtelijk te houden</string>
+    <string name="library_add_content_button">Inhoud Toevoegen</string>
+    <string name="filter_email">E-mails</string>
+    <string name="remove_from_favorites">Verwijderen uit Favorieten</string>
+    <string name="add_to_favorites">Toevoegen aan Favorieten</string>
+    <string name="unarchive">Dearchiveren</string>
+    <string name="archive">Archiveren</string>
+    <string name="duration_left_minutes">%d min %d sec over</string>
+    <string name="duration_left_seconds">%d sec over</string>
+
+    <!-- Feedback Dialog -->
+    <string name="feedback_title">Geniet je van ReadAloud?</string>
+    <string name="feedback_subtitle">Je feedback helpt ons de app te verbeteren voor iedereen.</string>
+    <string name="feedback_button_negative">Niet echt</string>
+    <string name="feedback_button_positive">Ja!</string>
+
+    <!-- Mail Import -->
+    <string name="mail_import_title">Gmail</string>
+    <string name="back">Terug</string>
+    <string name="refresh">Vernieuwen</string>
+    <string name="loading_emails">E-mails laden…</string>
+    <string name="load_more">Meer Laden</string>
+    <string name="loading_email">E-mail laden…</string>
+    <string name="no_subject">(Geen Onderwerp)</string>
+    <string name="email_from_format">Van: %s &lt;%s&gt;</string>
+    <string name="no_content">(Geen inhoud)</string>
+    <string name="email_import_button">Importeren &amp; Luisteren</string>
+    <string name="gmail_connect_title">Gmail Verbinden</string>
+    <string name="gmail_connect_description">Log in met Google om je e-mails te importeren en te beluisteren</string>
+    <string name="gmail_signin_button">Inloggen met Google</string>
+    <string name="gmail_privacy_notice">We vragen alleen leestoegang tot je e-mails. Je gegevens blijven privé.</string>
+    <string name="mail_search_placeholder">Zoeken in mail</string>
+    <string name="no_emails_found">Geen e-mails gevonden</string>
+    <string name="no_emails_search_suggestion">Probeer een andere zoekterm</string>
+    <string name="clear_search">Zoekopdracht Wissen</string>
+    <string name="inbox_empty">Je inbox lijkt leeg te zijn</string>
+
+    <!-- Voice Marketplace -->
+    <string name="marketplace_title">Stemmenmarkt</string>
+    <string name="my_shares">Mijn Delingen</string>
+    <string name="rewards">Beloningen</string>
+    <string name="marketplace_search_placeholder">Stemmen zoeken…</string>
+    <string name="no_voices_found">Geen stemmen gevonden</string>
+    <string name="no_voices_suggestion">Probeer je filters aan te passen</string>
+    <string name="voice_uses_format">%d keer gebruikt</string>
+
+    <!-- Voice Detail -->
+    <string name="voice_detail_title">Stemdetails</string>
+    <string name="report">Rapporteren</string>
+    <string name="retry">Opnieuw Proberen</string>
+    <string name="rate_voice_prompt">Hoe zou je deze stem beoordelen?</string>
+    <string name="star_rating_format">%d sterren</string>
+    <string name="review_optional">Recensie (optioneel)</string>
+    <string name="rate_voice">Stem Beoordelen</string>
+    <string name="submit">Versturen</string>
+    <string name="report_voice_title">Stem Rapporteren</string>
+    <string name="report_voice_prompt">Waarom rapporteer je deze stem?</string>
+    <string name="description_label">Beschrijving</string>
+    <string name="submit_report">Rapport Versturen</string>
+    <string name="rating_count_format">%d beoordelingen</string>
+    <string name="uses_label">keer gebruikt</string>
+    <string name="created_label">aangemaakt</string>
+    <string name="stop_preview">Stop Voorbeeld</string>
+    <string name="play_preview">Voorbeeld Afspelen</string>
+
+    <!-- Share Voice -->
+    <string name="share_voice_title">Stem Delen</string>
+    <string name="no_cloned_voices">Geen gekloonde stemmen</string>
+    <string name="no_cloned_voices_hint">Maak eerst een gekloonde stem om te delen</string>
+    <string name="select_voice">Stem Selecteren</string>
+    <string name="voice_sample_duration">%.1fs voorbeeld</string>
+    <string name="display_name">Weergavenaam</string>
+    <string name="display_name_hint">Hoe deze stem verschijnt op de markt</string>
+    <string name="description_optional">Beschrijving (optioneel)</string>
+    <string name="describe_voice_placeholder">Beschrijf je stem…</string>
+    <string name="tags_label">Tags</string>
+    <string name="tags_description">Selecteer tags die je stem beschrijven</string>
+    <string name="voice_attestation">Ik bevestig dat dit mijn eigen stem is en dat ik het recht heb om te delen</string>
+    <string name="marketplace_terms">Ik ga akkoord met de Servicevoorwaarden van de Stemmenmarkt</string>
+    <string name="share_voice_button">Stem Delen</string>
+
+    <!-- My Shared Voices -->
+    <string name="my_shared_voices_title">Mijn Gedeelde Stemmen</string>
+    <string name="no_shared_voices_title">Nog geen gedeelde stemmen</string>
+    <string name="no_shared_voices_description">Deel je gekloonde stemmen met de gemeenschap en verdien beloningen wanneer anderen ze gebruiken!</string>
+    <string name="share_a_voice">Een Stem Delen</string>
+    <string name="revoke_voice_title">Stem Intrekken</string>
+    <string name="revoke_voice_prompt">Weet je zeker dat je wilt stoppen met het delen van \"%s\"? Anderen kunnen deze stem niet meer gebruiken.</string>
+    <string name="revoke">Intrekken</string>
+    <string name="status_active">actief</string>
+    <string name="status_pending">in afwachting</string>
+    <string name="status_revoked">ingetrokken</string>
+    <string name="revoked_reason_format">Ingetrokken: %s</string>
+
+    <!-- Rewards -->
+    <string name="rewards_title">Beloningen</string>
+    <string name="total_earned">Totaal Verdiend</string>
+    <string name="pending">In Afwachting</string>
+    <string name="uses">Keer Gebruikt</string>
+    <string name="claim_rewards">Beloningen Claimen</string>
+    <string name="claim_success_format">%.1f minuten succesvol geclaimd!</string>
+    <string name="how_rewards_work">Hoe Beloningen Werken</string>
+    <string name="reward_step1_title">Deel Je Stem</string>
+    <string name="reward_step1_description">Deel je gekloonde stemmen met de gemeenschap</string>
+    <string name="reward_step2_title">Anderen Gebruiken Het</string>
+    <string name="reward_step2_description">Wanneer mensen je stem gebruiken voor TTS, verdien je beloningen</string>
+    <string name="reward_step3_title">Claim Minuten</string>
+    <string name="reward_step3_description">Claim je wachtende beloningen als gratis luisterminuten</string>
+    <string name="reward_history">Beloningsgeschiedenis</string>
+    <string name="no_rewards_title">Nog geen beloningen</string>
+    <string name="no_rewards_description">Deel je stemmen om te beginnen met verdienen!</string>
+    <string name="characters_generated_format">%d tekens</string>
+    <string name="credited">Bijgeschreven</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_back">Terug</string>
+    <string name="skip">Overslaan</string>
+    <string name="onboarding_continue">Doorgaan</string>
+    <string name="next">Volgende</string>
+    <string name="onboarding_terms">Door door te gaan ga je akkoord met ons Privacybeleid en Gebruiksvoorwaarden.</string>
+    <string name="privacy_policy">Privacybeleid</string>
+    <string name="terms_of_use">Gebruiksvoorwaarden</string>
+    <string name="onboarding_welcome_prefix">Welkom bij</string>
+    <string name="onboarding_welcome_description">Zet elk document om in natuurlijk klinkende audio. Luister naar artikelen, PDF\'s en meer onderweg.</string>
+    <string name="feature_pdf">PDF</string>
+    <string name="feature_web">Web</string>
+    <string name="feature_epub">ePUB</string>
+    <string name="feature_text">Tekst</string>
+    <string name="onboarding_import_title">Importeer Van Overal</string>
+    <string name="onboarding_import_description">Plak een link, upload een PDF of typ tekst direct</string>
+    <string name="import_method_web_links">Weblinks</string>
+    <string name="import_method_web_links_subtitle">Plak elke artikel-URL</string>
+    <string name="import_method_pdf">PDF-documenten</string>
+    <string name="import_method_pdf_subtitle">Upload PDF\'s van je apparaat</string>
+    <string name="import_method_text">Directe Tekst</string>
+    <string name="import_method_text_subtitle">Typ of plak elke tekst</string>
+    <string name="import_method_clipboard">Klembord</string>
+    <string name="import_method_clipboard_subtitle">Automatisch gekopieerde inhoud detecteren</string>
+    <string name="onboarding_notes_title">Maak Notities Tijdens Het Luisteren</string>
+    <string name="onboarding_notes_description">Leg belangrijke inzichten vast zonder het afspelen te onderbreken</string>
+    <string name="add_note_placeholder">Voeg notitie toe bij 2:34…</string>
+    <string name="onboarding_productivity_title">Verhoog Je Productiviteit</string>
+    <string name="onboarding_productivity_description">Natuurlijke stemmen en instelbare snelheid voor efficiënt leren</string>
+    <string name="playback_speed_title">Afspeelsnelheid</string>
+    <string name="speed_075x">0.75x</string>
+    <string name="speed_1x">1x</string>
+    <string name="speed_15x">1.5x</string>
+    <string name="speed_2x">2x</string>
+    <string name="feature_background_playback">Achtergrond afspelen</string>
+    <string name="feature_sleep_timer">Slaaptimer</string>
+    <string name="feature_bookmarks">Bladwijzers &amp; hoofdstukken</string>
+    <string name="onboarding_voice_title">Kies Je Stem</string>
+    <string name="onboarding_voice_description">Kies een stem die past bij je luisterstijl</string>
+    <string name="stop_preview_description">Stop voorbeeld</string>
+    <string name="preview_voice_description">Voorbeeld stem</string>
+    <string name="selected">Geselecteerd</string>
+    <string name="signin_optional_title">Inloggen (Optioneel)</string>
+    <string name="signin_optional_description">Log in om alle functies te ontgrendelen, inclusief stem delen en synchronisatie tussen apparaten.</string>
+    <string name="signin_benefit_share">Deel Je Stem</string>
+    <string name="signin_benefit_share_description">Deel gekloonde stemmen met de gemeenschap</string>
+    <string name="signin_benefit_community">Gemeenschapsstemmen</string>
+    <string name="signin_benefit_community_description">Gebruik stemmen die door anderen zijn gedeeld</string>
+    <string name="signin_benefit_rewards">Verdien Beloningen</string>
+    <string name="signin_benefit_rewards_description">Krijg luisterminuten wanneer anderen je stemmen gebruiken</string>
+    <string name="signin_benefit_sync">Synchroniseer Tussen Apparaten</string>
+    <string name="signin_benefit_sync_description">Je gegevens volgen je overal</string>
+    <string name="continue_without_signin">Doorgaan Zonder Inloggen</string>
+
+    <!-- Voice Picker -->
+    <string name="choose_voice">Kies Stem</string>
+    <string name="quality_high_title">Hoogwaardige Stemmen</string>
+    <string name="quality_high_description">GPU-versnelde, natuurlijke stemmen - onbeperkt gebruik</string>
+    <string name="quality_free">GRATIS</string>
+
+    <!-- Settings (additional) -->
+    <string name="settings_voice_cloning_subtitle">Maak een aangepaste stem van je opname</string>
+    <string name="settings_voice_marketplace">Stemmenmarkt</string>
+    <string name="settings_voice_marketplace_subtitle">Blader door en deel gemeenschapsstemmen</string>
+
+    <!-- General -->
+    <string name="pro">PRO</string>
+    <string name="connect">Verbinden</string>
+    <string name="disconnect">Verbreken</string>
+    <string name="cancel">Annuleren</string>
+    <string name="done">Klaar</string>
+    <string name="delete">Verwijderen</string>
+    <string name="play">Afspelen</string>
+    <string name="pause">Pauzeren</string>
+    <string name="close">Sluiten</string>
+    <string name="add_to_queue">Aan Wachtrij Toevoegen</string>
+    <string name="favorite">Favoriet</string>
+    <string name="share">Delen</string>
+
+    <!-- Settings Subscription -->
+    <string name="settings_subscription">Abonnement</string>
+    <string name="settings_upgrade_to_pro">Upgraden naar Pro</string>
+    <string name="settings_upgrade_to_pro_subtitle">Onbeperkt luisteren, alle stemmen &amp; meer</string>
+    <string name="settings_readaloud_pro">ReadAloud AI Pro</string>
+    <string name="settings_pro_member_subtitle">Je bent een Pro-lid</string>
+    <string name="settings_audio_quality_hd">Hoge Kwaliteit (HD)</string>
+
+    <!-- Settings Dialogs -->
+    <string name="dialog_playback_speed">Afspeelsnelheid</string>
+    <string name="dialog_appearance">Uiterlijk</string>
+    <string name="dialog_skip_interval">Overslaan Interval</string>
+    <string name="dialog_sleep_timer_default">Standaard Slaaptimer</string>
+    <string name="selected_check">Geselecteerd</string>
+    <string name="seconds_format">%d seconden</string>
+    <string name="sleep_timer_off">Uit</string>
+    <string name="sleep_timer_minutes_format">%d minuten</string>
+    <string name="sleep_timer_15_min">15 minuten</string>
+    <string name="sleep_timer_30_min">30 minuten</string>
+    <string name="sleep_timer_45_min">45 minuten</string>
+    <string name="sleep_timer_1_hour">1 uur</string>
+    <string name="appearance_system">Systeem</string>
+    <string name="appearance_light">Licht</string>
+    <string name="appearance_dark">Donker</string>
+
+    <!-- Share Intent -->
+    <string name="share_subject">Probeer ListenAI</string>
+    <string name="share_body">Luister naar elk artikel met natuurlijke AI-stemmen! Download ListenAI: https://play.google.com/store/apps/details?id=com.listenai</string>
+    <string name="share_chooser_title">ListenAI Delen</string>
+    <string name="feedback_email_subject">ListenAI Feedback</string>
+
+    <!-- Player Screen -->
+    <string name="player_loading_article">Artikel laden…</string>
+    <string name="player_article_not_found">Artikel niet gevonden</string>
+    <string name="player_no_text_content">Geen tekstinhoud om te synthetiseren.</string>
+    <string name="player_no_voice_available">Geen stem beschikbaar. Controleer je TTS-serviceverbinding.</string>
+    <string name="player_network_error">Netwerkfout. Controleer je internetverbinding.</string>
+    <string name="player_timeout_error">Verzoek verlopen. De server is mogelijk bezet.</string>
+    <string name="player_rate_limit_error">Server is bezet. Probeer het over een moment opnieuw.</string>
+    <string name="player_synthesis_failed">Synthese mislukt</string>
+    <string name="player_regeneration_failed">Regeneratie mislukt</string>
+    <string name="player_something_went_wrong">Er is iets misgegaan</string>
+    <string name="player_go_back">Ga Terug</string>
+    <string name="player_try_again">Opnieuw Proberen</string>
+    <string name="player_preparing_audio">Audio voorbereiden…</string>
+    <string name="player_percent_complete">%d%% voltooid</string>
+    <string name="player_back">Terug</string>
+    <string name="player_change_voice">Stem Wijzigen</string>
+    <string name="player_more_options">Meer</string>
+    <string name="player_skip_back_10">10 seconden terug</string>
+    <string name="player_skip_forward_10">10 seconden vooruit</string>
+    <string name="player_select_speed">Snelheid selecteren</string>
+    <string name="player_change_voice_button">Stem wijzigen</string>
+    <string name="player_added_to_queue">Aan wachtrij toegevoegd</string>
+    <string name="player_marked_finished">Gemarkeerd als voltooid</string>
+    <string name="player_removed_from_favorites">Verwijderd uit favorieten</string>
+    <string name="player_added_to_favorites">Toegevoegd aan favorieten</string>
+    <string name="player_export_audio">Audio Exporteren</string>
+    <string name="player_audio_not_found">Audiobestand niet gevonden</string>
+    <string name="player_export_failed">Export mislukt: %s</string>
+    <string name="player_sleep_timer_set">Slaaptimer ingesteld op %d minuten</string>
+    <string name="player_sleep_timer_cancelled">Slaaptimer geannuleerd</string>
+    <string name="player_by_author">door %s</string>
+    <string name="player_words_count">%d woorden</string>
+    <string name="player_untitled">Naamloos</string>
+    <string name="player_article_fallback">Artikel</string>
+    <string name="player_from_label">Van:</string>
+    <string name="player_unknown_sender">Onbekend</string>
+
+    <!-- Player Source Badges -->
+    <string name="source_web">Web</string>
+    <string name="source_pdf">PDF</string>
+    <string name="source_clipboard">Klembord</string>
+    <string name="source_file">Bestand</string>
+    <string name="source_text">Tekst</string>
+    <string name="source_email">E-mail</string>
+
+    <!-- Player Mode Badge -->
+    <string name="player_mode_loading_full">Volledig Laden…</string>
+    <string name="player_mode_preview">Voorbeeld</string>
+    <string name="player_mode_full">Volledig</string>
+
+    <!-- Player Voice Indicator -->
+    <string name="player_cloned_voice">Gekloond</string>
+    <string name="player_voice_fallback">Stem</string>
+
+    <!-- Quota Exceeded -->
+    <string name="quota_exceeded_title">Dagelijkse Quota Overschreden</string>
+    <string name="quota_exceeded_message">Je hebt vandaag nog %1$d tekens over,\nmaar dit artikel vereist %2$d tekens.</string>
+    <string name="quota_upgrade_to_pro">Upgraden naar Pro</string>
+    <string name="quota_benefit_chars_day">100K tekens per dag (25x meer)</string>
+    <string name="quota_benefit_chars_month">1M tekens per maand</string>
+    <string name="quota_benefit_premium_voices">Premium AI-stemmen</string>
+    <string name="quota_benefit_priority">Prioriteit synthesewachtrij</string>
+    <string name="quota_maybe_later">Misschien Later</string>
+    <string name="quota_reset_info">Je dagelijkse quota wordt om middernacht gereset</string>
+
+    <!-- More Options Sheet -->
+    <string name="more_options_download_audio">Audio Downloaden</string>
+    <string name="more_options_download_subtitle">Hiermee kun je offline luisteren in de app.</string>
+    <string name="more_options_add_to_queue">Aan Wachtrij Toevoegen</string>
+    <string name="more_options_mark_finished">Markeren als Voltooid</string>
+    <string name="more_options_sleep_timer">Slaaptimer</string>
+    <string name="more_options_export_audio">Audio Exporteren</string>
+    <string name="more_options_export_subtitle">Sla audio op op je apparaat of deel direct.</string>
+    <string name="more_options_delete_article">Artikel Verwijderen</string>
+    <string name="more_options_timer_active">Timer actief: %s</string>
+    <string name="more_options_current">Huidig</string>
+
+    <!-- Sleep Timer Picker -->
+    <string name="sleep_timer_picker_title">Slaaptimer</string>
+    <string name="sleep_timer_5_min">5 minuten</string>
+    <string name="sleep_timer_10_min">10 minuten</string>
+    <string name="sleep_timer_1_5_hours">1,5 uur</string>
+    <string name="sleep_timer_2_hours">2 uur</string>
+
+    <!-- Duration Formats -->
+    <string name="duration_hr_min">%1$d uur %2$d min</string>
+    <string name="duration_hr">%d uur</string>
+    <string name="duration_min">%d min</string>
+    <string name="duration_sec">%d sec</string>
+
+    <!-- Language Picker -->
+    <string name="language">Taal</string>
+    <string name="language_picker_title">Selecteer Taal</string>
+    <string name="language_english">English</string>
+    <string name="language_spanish">Español</string>
+    <string name="language_french">Français</string>
+    <string name="language_german">Deutsch</string>
+    <string name="language_japanese">日本語</string>
+    <string name="language_chinese">中文(简体)</string>
+    <string name="language_korean">한국어</string>
+    <string name="language_portuguese">Português</string>
+    <string name="language_italian">Italiano</string>
+    <string name="language_hindi">हिन्दी</string>
+</resources>

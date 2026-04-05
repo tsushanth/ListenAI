@@ -7,6 +7,7 @@ import com.listenai.data.local.ListenAIDatabase
 import com.listenai.data.repository.ArticleRepository
 import com.listenai.data.repository.UsageRepository
 import com.listenai.service.import_content.GmailService
+import com.listenai.service.import_content.EpubImportService
 import com.listenai.service.import_content.PDFImportService
 import com.listenai.service.import_content.TextCleaningService
 import com.listenai.service.import_content.WebImportService
@@ -67,7 +68,7 @@ val dataModule = module {
 
     // ViewModels
     viewModel { LibraryViewModel(get()) }
-    viewModel { ImportViewModel(get(), get(), get()) }
+    viewModel { ImportViewModel(get(), get(), get(), get()) }
 }
 
 /**
@@ -78,6 +79,7 @@ val serviceModule = module {
     single { TextCleaningService() }
     single { WebImportService() }
     single { PDFImportService(androidContext()) }
+    single { EpubImportService(androidContext()) }
 
     // Usage Services
     single { UsageTrackerService(androidContext(), get()) }

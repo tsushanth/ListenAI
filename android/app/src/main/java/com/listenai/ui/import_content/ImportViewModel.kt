@@ -8,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import com.listenai.data.models.Article
 import com.listenai.data.models.SourceType
 import com.listenai.data.repository.ArticleRepository
+import com.listenai.service.import_content.EpubImportService
 import com.listenai.service.import_content.PDFImportService
 import com.listenai.service.import_content.WebImportService
 import kotlinx.coroutines.Dispatchers
@@ -16,6 +17,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.yield
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.File
@@ -32,7 +34,8 @@ sealed class ImportState {
 class ImportViewModel(
     private val articleRepository: ArticleRepository,
     private val webImportService: WebImportService,
-    private val pdfImportService: PDFImportService
+    private val pdfImportService: PDFImportService,
+    private val epubImportService: EpubImportService
 ) : ViewModel() {
 
     private val _importState = MutableStateFlow<ImportState>(ImportState.Idle)
@@ -46,6 +49,9 @@ class ImportViewModel(
         .readTimeout(60, TimeUnit.SECONDS)
         .followRedirects(true)
         .build()
+
+    // Maximum text length for TTS backend (~5 min of audio per chunk)
+    private val MAX_CHUNK_LENGTH = 10_000
 
     // Maximum text length to store (SQLite cursor window limit is ~2MB)
     // Limiting to ~500K characters to be safe with UTF-8 encoding
@@ -296,6 +302,84 @@ class ImportViewModel(
     }
 
     /**
+     * Import content from an EPUB file — creates one article per chapter
+     */
+    fun importFromEpub(context: Context, uri: Uri) {
+        viewModelScope.launch {
+            _importState.value = ImportState.Loading
+            _progress.value = 0.1f
+
+            try {
+                _progress.value = 0.3f
+                val extractedContent = epubImportService.extractContent(uri)
+
+                if (extractedContent == null || extractedContent.chapters.isEmpty()) {
+                    _importState.value = ImportState.Error("Failed to extract text from EPUB")
+                    return@launch
+                }
+
+                val fileName = getFileName(context, uri) ?: "book.epub"
+                val bookTitle = extractedContent.bookTitle.ifBlank { fileName.removeSuffix(".epub") }
+                val chapters = extractedContent.chapters
+
+                // Split oversized chapters into parts
+                val parts = mutableListOf<Pair<String, String>>() // title to content
+                for (chapter in chapters) {
+                    android.util.Log.d("EpubImport", "Chapter '${chapter.title}': ${chapter.content.length} chars")
+                    if (chapter.content.length <= MAX_CHUNK_LENGTH) {
+                        parts.add(chapter.title to chapter.content)
+                    } else {
+                        val chunks = splitTextAtSentences(chapter.content, MAX_CHUNK_LENGTH)
+                        android.util.Log.d("EpubImport", "  Split into ${chunks.size} parts: ${chunks.map { it.length }}")
+                        if (chunks.size == 1) {
+                            parts.add(chapter.title to chunks[0])
+                        } else {
+                            chunks.forEachIndexed { i, chunk ->
+                                parts.add("${chapter.title} (Part ${i + 1})" to chunk)
+                            }
+                        }
+                    }
+                }
+                android.util.Log.d("EpubImport", "Total parts: ${parts.size}, sizes: ${parts.map { it.second.length }}")
+
+                var firstArticleId: String? = null
+                for ((index, part) in parts.withIndex()) {
+                    _progress.value = 0.3f + 0.7f * (index.toFloat() / parts.size)
+                    yield() // let UI update
+
+                    val (partTitle, partContent) = part
+                    val articleId = UUID.randomUUID().toString()
+                    if (firstArticleId == null) firstArticleId = articleId
+
+                    val article = Article(
+                        id = articleId,
+                        title = "$bookTitle — $partTitle",
+                        author = extractedContent.author,
+                        siteName = null,
+                        publishDate = null,
+                        rawText = partContent,
+                        wordCount = partContent.split(Regex("\\s+")).size,
+                        language = "en",
+                        heroImageUrl = null,
+                        sourceType = SourceType.EPUB,
+                        sourceUrl = null,
+                        sourceFileName = fileName,
+                        audioFileUrl = null,
+                        selectedVoiceId = null
+                    )
+
+                    articleRepository.saveArticle(article)
+                }
+
+                _progress.value = 1f
+                _importState.value = ImportState.Success(firstArticleId!!)
+            } catch (e: Exception) {
+                _importState.value = ImportState.Error(e.message ?: "Failed to import EPUB")
+            }
+        }
+    }
+
+    /**
      * Import content from manually entered text
      */
     fun importFromText(title: String, content: String) {
@@ -399,6 +483,22 @@ class ImportViewModel(
     fun resetState() {
         _importState.value = ImportState.Idle
         _progress.value = 0f
+    }
+
+    private fun splitTextAtSentences(text: String, maxLen: Int): List<String> {
+        if (text.length <= maxLen) return listOf(text)
+        val chunks = mutableListOf<String>()
+        var remaining = text
+        while (remaining.length > maxLen) {
+            val cut = remaining.substring(0, maxLen)
+            // Find last sentence boundary
+            val lastPeriod = cut.lastIndexOf(". ")
+            val splitAt = if (lastPeriod > maxLen / 2) lastPeriod + 2 else maxLen
+            chunks.add(remaining.substring(0, splitAt).trim())
+            remaining = remaining.substring(splitAt).trim()
+        }
+        if (remaining.isNotBlank()) chunks.add(remaining)
+        return chunks
     }
 
     private fun getFileName(context: Context, uri: Uri): String? {

@@ -1,0 +1,469 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">ReadAloud AI</string>
+
+    <!-- Tab Labels -->
+    <string name="tab_home">หน้าแรก</string>
+    <string name="tab_library">ห้องสมุดของฉัน</string>
+    <string name="tab_settings">การตั้งค่า</string>
+
+    <!-- Home Screen -->
+    <string name="promo_title">ดาวน์โหลดและฟังได้ทุกที่ทุกเวลา</string>
+    <string name="promo_button">ทดลองใช้ฟรี</string>
+    <string name="quick_actions_title">วันนี้คุณอยากฟังอะไร?</string>
+    <string name="action_document">เอกสาร</string>
+    <string name="action_document_subtitle">อัปโหลดไฟล์จาก Drive หรืออุปกรณ์</string>
+    <string name="action_scan">สแกนข้อความ</string>
+    <string name="action_scan_subtitle">เอกสารหรือรูปภาพที่สแกน</string>
+    <string name="action_web_link">ลิงก์เว็บ</string>
+    <string name="action_web_link_subtitle">แปลง URL เป็นเสียง</string>
+    <string name="action_text">พิมพ์หรือวางข้อความ</string>
+    <string name="action_text_subtitle">ป้อนหรือวางข้อความเพื่อฟัง</string>
+    <string name="action_mail">เมล</string>
+    <string name="action_mail_subtitle">ฟังอีเมลได้ง่ายๆ</string>
+
+    <!-- Library Screen -->
+    <string name="library_title">ห้องสมุดของฉัน</string>
+    <string name="filter_all">ทั้งหมด</string>
+    <string name="filter_in_progress">กำลังดำเนินการ</string>
+    <string name="filter_continue">ดำเนินต่อ</string>
+    <string name="filter_finished">เสร็จแล้ว</string>
+    <string name="filter_favorites">รายการโปรด</string>
+    <string name="filter_archived">เก็บถาวร</string>
+    <string name="filter_folders">โฟลเดอร์</string>
+    <string name="filter_downloaded">ดาวน์โหลดแล้ว</string>
+    <string name="empty_library">ยังไม่มีบทความ</string>
+    <string name="empty_library_description">เพิ่มบทความจากลิงก์เว็บ เอกสาร หรือวางข้อความ</string>
+    <string name="more_options">ตัวเลือกเพิ่มเติม</string>
+
+    <!-- Settings Screen -->
+    <string name="settings_title">การตั้งค่า</string>
+    <string name="settings_preferences">ค่ากำหนด</string>
+    <string name="settings_voice">เสียง</string>
+    <string name="settings_voice_subtitle">เลือกเสียงที่คุณชอบ</string>
+    <string name="settings_speed">ความเร็วการเล่น</string>
+    <string name="settings_speed_subtitle">ค่าเริ่มต้น 1.0x</string>
+    <string name="settings_appearance">ธีม</string>
+    <string name="settings_appearance_subtitle">สว่าง มืด หรือระบบ</string>
+    <string name="settings_voice_cloning">โคลนเสียง</string>
+    <string name="settings_change_voice">เปลี่ยนเสียง</string>
+    <string name="settings_app_language">ภาษาแอป</string>
+    <string name="settings_request_feature">ขอฟีเจอร์</string>
+    <string name="settings_linked_accounts">บัญชีที่เชื่อมต่อ</string>
+    <string name="settings_google">Google</string>
+    <string name="settings_google_subtitle">ซิงค์บทความข้ามอุปกรณ์</string>
+    <string name="settings_google_connected">เชื่อมต่อแล้ว</string>
+    <string name="settings_connect">เชื่อมต่อ</string>
+    <string name="settings_disconnect">ยกเลิกการเชื่อมต่อ</string>
+    <string name="settings_share">แชร์</string>
+    <string name="settings_share_app">แชร์ ReadAloud AI</string>
+    <string name="settings_share_app_subtitle">บอกเพื่อนเกี่ยวกับ ReadAloud AI</string>
+    <string name="settings_rate_app">ให้คะแนนแอป</string>
+    <string name="settings_rate_app_subtitle">ช่วยเราด้วยการให้คะแนน 5 ดาว</string>
+    <string name="settings_playback">การเล่น</string>
+    <string name="settings_audio_quality">คุณภาพเสียง</string>
+    <string name="settings_audio_quality_subtitle">การสังเคราะห์คุณภาพสูง</string>
+    <string name="settings_skip_interval">ช่วงเวลาข้าม</string>
+    <string name="settings_skip_interval_subtitle">ถอยหลัง 10 วิ เดินหน้า 30 วิ</string>
+    <string name="settings_sleep_timer">ตั้งเวลานอน</string>
+    <string name="settings_sleep_timer_subtitle">หยุดอัตโนมัติหลังระยะเวลา</string>
+    <string name="settings_default_speed">ความเร็วเริ่มต้น</string>
+    <string name="settings_skip_silences">ข้ามความเงียบ</string>
+    <string name="settings_auto_play">เล่นรายการถัดไปอัตโนมัติ</string>
+    <string name="settings_support">สนับสนุน</string>
+    <string name="settings_usage">การใช้งาน &amp; โควตา</string>
+    <string name="settings_usage_subtitle">ดูการใช้งานและขีดจำกัด</string>
+    <string name="settings_help">ศูนย์ช่วยเหลือ</string>
+    <string name="settings_help_subtitle">คำถามที่พบบ่อยและคู่มือ</string>
+    <string name="settings_feedback">ส่งความคิดเห็น</string>
+    <string name="settings_feedback_subtitle">รายงานปัญหาหรือข้อเสนอแนะ</string>
+    <string name="settings_rate_us">ชอบเรา ให้คะแนนเรา</string>
+    <string name="settings_contact">ติดต่อฝ่ายสนับสนุน</string>
+    <string name="settings_about">เกี่ยวกับ</string>
+    <string name="settings_version">เวอร์ชัน</string>
+    <string name="settings_privacy">นโยบายความเป็นส่วนตัว</string>
+    <string name="settings_privacy_subtitle">ดูนโยบายความเป็นส่วนตัว</string>
+    <string name="settings_terms">ข้อกำหนดในการให้บริการ</string>
+    <string name="settings_terms_subtitle">ดูข้อกำหนดและเงื่อนไข</string>
+
+    <!-- Playback -->
+    <string name="now_playing">กำลังเล่น</string>
+    <string name="up_next">ถัดไป</string>
+    <string name="minutes_left">เหลือ %d นาที</string>
+    <string name="speed_format">%sx</string>
+    <string name="skip_backward">ข้ามถอยหลัง</string>
+    <string name="skip_forward">ข้ามไปข้างหน้า</string>
+    <string name="sleep_timer">ตั้งเวลานอน</string>
+
+    <!-- Import Screen -->
+    <string name="import_title">เพิ่มเนื้อหา</string>
+    <string name="import_mode_url">URL</string>
+    <string name="import_mode_document">เอกสาร</string>
+    <string name="import_mode_text">ข้อความ</string>
+    <string name="import_mode_scan">สแกน</string>
+    <string name="import_url_title">นำเข้าจาก URL</string>
+    <string name="import_url_description">วางลิงก์เว็บเพื่อดึงและแปลงบทความเป็นเสียง</string>
+    <string name="import_url_placeholder">https://example.com/article</string>
+    <string name="import_document_title">นำเข้าเอกสาร</string>
+    <string name="import_document_description">อัปโหลดไฟล์ PDF, EPUB, DOCX หรือ TXT เพื่อแปลงเป็นเสียง</string>
+    <string name="import_document_tap">แตะเพื่อเลือกไฟล์</string>
+    <string name="import_document_formats">รองรับ PDF, EPUB, DOCX, TXT</string>
+    <string name="import_text_title">ป้อนข้อความ</string>
+    <string name="import_text_title_placeholder">ชื่อเรื่อง (ไม่บังคับ)</string>
+    <string name="import_text_content_placeholder">วางหรือพิมพ์ข้อความของคุณที่นี่...</string>
+    <string name="import_scan_title">สแกนเอกสาร</string>
+    <string name="import_scan_description">ใช้กล้องสแกนข้อความที่พิมพ์และแปลงเป็นเสียง</string>
+    <string name="import_scan_tap">แตะเพื่อสแกน</string>
+    <string name="import_button">นำเข้า</string>
+
+    <!-- Import Screen (additional) -->
+    <string name="import_mode_clipboard">คลิปบอร์ด</string>
+    <string name="import_mode_email">อีเมล</string>
+    <string name="clear">ล้าง</string>
+    <string name="importing">กำลังนำเข้า…</string>
+    <string name="clipboard_import_title">นำเข้าจากคลิปบอร์ด</string>
+    <string name="clipboard_import_description">นำเข้าข้อความหรือ URL ที่คุณคัดลอก</string>
+    <string name="clipboard_url_detected">ตรวจพบ URL</string>
+    <string name="clipboard_text_content">เนื้อหาข้อความ</string>
+    <string name="clipboard_empty">คลิปบอร์ดว่างเปล่า</string>
+    <string name="word_count_format">%d คำ</string>
+    <string name="pdf_selected">เลือก PDF แล้ว</string>
+    <string name="epub_selected">EPUB</string>    <string name="remove">ลบ</string>
+
+    <!-- Library Screen (additional) -->
+    <string name="library_empty_in_progress_title">ไม่มีรายการที่กำลังดำเนินการ</string>
+    <string name="library_empty_in_progress_description">เริ่มฟังเพื่อดูรายการที่กำลังดำเนินการที่นี่</string>
+    <string name="library_empty_favorites_title">ไม่มีรายการโปรด</string>
+    <string name="library_empty_favorites_description">ทำเครื่องหมายบทความเป็นรายการโปรดเพื่อค้นหาได้อย่างรวดเร็ว</string>
+    <string name="library_empty_email_title">ไม่มีอีเมล</string>
+    <string name="library_empty_email_description">นำเข้าอีเมลจาก Gmail เพื่อฟัง</string>
+    <string name="library_empty_archived_title">ไม่มีบทความที่เก็บถาวร</string>
+    <string name="library_empty_archived_description">เก็บถาวรบทความที่อ่านเสร็จแล้วเพื่อรักษาห้องสมุดให้เป็นระเบียบ</string>
+    <string name="library_add_content_button">เพิ่มเนื้อหา</string>
+    <string name="filter_email">อีเมล</string>
+    <string name="remove_from_favorites">ลบออกจากรายการโปรด</string>
+    <string name="add_to_favorites">เพิ่มในรายการโปรด</string>
+    <string name="unarchive">ยกเลิกการเก็บถาวร</string>
+    <string name="archive">เก็บถาวร</string>
+    <string name="duration_left_minutes">เหลือ %d นาที %d วินาที</string>
+    <string name="duration_left_seconds">เหลือ %d วินาที</string>
+
+    <!-- Feedback Dialog -->
+    <string name="feedback_title">ชอบ ReadAloud ไหม?</string>
+    <string name="feedback_subtitle">ความคิดเห็นของคุณช่วยให้เราปรับปรุงแอปสำหรับทุกคน</string>
+    <string name="feedback_button_negative">ไม่ค่อย</string>
+    <string name="feedback_button_positive">ใช่!</string>
+
+    <!-- Mail Import -->
+    <string name="mail_import_title">Gmail</string>
+    <string name="back">กลับ</string>
+    <string name="refresh">รีเฟรช</string>
+    <string name="loading_emails">กำลังโหลดอีเมล…</string>
+    <string name="load_more">โหลดเพิ่ม</string>
+    <string name="loading_email">กำลังโหลดอีเมล…</string>
+    <string name="no_subject">(ไม่มีหัวข้อ)</string>
+    <string name="email_from_format">จาก: %s &lt;%s&gt;</string>
+    <string name="no_content">(ไม่มีเนื้อหา)</string>
+    <string name="email_import_button">นำเข้า &amp; ฟัง</string>
+    <string name="gmail_connect_title">เชื่อมต่อ Gmail</string>
+    <string name="gmail_connect_description">ลงชื่อเข้าใช้ด้วย Google เพื่อนำเข้าและฟังอีเมลของคุณ</string>
+    <string name="gmail_signin_button">ลงชื่อเข้าใช้ด้วย Google</string>
+    <string name="gmail_privacy_notice">เราขอเฉพาะสิทธิ์อ่านอีเมลของคุณเท่านั้น ข้อมูลของคุณยังคงเป็นส่วนตัว</string>
+    <string name="mail_search_placeholder">ค้นหาในเมล</string>
+    <string name="no_emails_found">ไม่พบอีเมล</string>
+    <string name="no_emails_search_suggestion">ลองใช้คำค้นหาอื่น</string>
+    <string name="clear_search">ล้างการค้นหา</string>
+    <string name="inbox_empty">กล่องจดหมายของคุณว่างเปล่า</string>
+
+    <!-- Voice Marketplace -->
+    <string name="marketplace_title">ตลาดเสียง</string>
+    <string name="my_shares">การแชร์ของฉัน</string>
+    <string name="rewards">รางวัล</string>
+    <string name="marketplace_search_placeholder">ค้นหาเสียง…</string>
+    <string name="no_voices_found">ไม่พบเสียง</string>
+    <string name="no_voices_suggestion">ลองปรับตัวกรองของคุณ</string>
+    <string name="voice_uses_format">%d ครั้งที่ใช้</string>
+
+    <!-- Voice Detail -->
+    <string name="voice_detail_title">รายละเอียดเสียง</string>
+    <string name="report">รายงาน</string>
+    <string name="retry">ลองอีกครั้ง</string>
+    <string name="rate_voice_prompt">คุณจะให้คะแนนเสียงนี้อย่างไร?</string>
+    <string name="star_rating_format">%d ดาว</string>
+    <string name="review_optional">รีวิว (ไม่บังคับ)</string>
+    <string name="rate_voice">ให้คะแนนเสียง</string>
+    <string name="submit">ส่ง</string>
+    <string name="report_voice_title">รายงานเสียง</string>
+    <string name="report_voice_prompt">ทำไมคุณถึงรายงานเสียงนี้?</string>
+    <string name="description_label">คำอธิบาย</string>
+    <string name="submit_report">ส่งรายงาน</string>
+    <string name="rating_count_format">%d คะแนน</string>
+    <string name="uses_label">ครั้งที่ใช้</string>
+    <string name="created_label">สร้างเมื่อ</string>
+    <string name="stop_preview">หยุดตัวอย่าง</string>
+    <string name="play_preview">เล่นตัวอย่าง</string>
+
+    <!-- Share Voice -->
+    <string name="share_voice_title">แชร์เสียง</string>
+    <string name="no_cloned_voices">ไม่มีเสียงโคลน</string>
+    <string name="no_cloned_voices_hint">สร้างเสียงโคลนก่อนเพื่อแชร์</string>
+    <string name="select_voice">เลือกเสียง</string>
+    <string name="voice_sample_duration">ตัวอย่าง %.1f วิ</string>
+    <string name="display_name">ชื่อที่แสดง</string>
+    <string name="display_name_hint">เสียงนี้จะแสดงอย่างไรในตลาด</string>
+    <string name="description_optional">คำอธิบาย (ไม่บังคับ)</string>
+    <string name="describe_voice_placeholder">อธิบายเสียงของคุณ…</string>
+    <string name="tags_label">แท็ก</string>
+    <string name="tags_description">เลือกแท็กที่อธิบายเสียงของคุณ</string>
+    <string name="voice_attestation">ฉันยืนยันว่านี่เป็นเสียงของฉันเองและฉันมีสิทธิ์แชร์</string>
+    <string name="marketplace_terms">ฉันยอมรับข้อกำหนดในการให้บริการของตลาดเสียง</string>
+    <string name="share_voice_button">แชร์เสียง</string>
+
+    <!-- My Shared Voices -->
+    <string name="my_shared_voices_title">เสียงที่ฉันแชร์</string>
+    <string name="no_shared_voices_title">ยังไม่มีเสียงที่แชร์</string>
+    <string name="no_shared_voices_description">แชร์เสียงโคลนของคุณกับชุมชนและรับรางวัลเมื่อคนอื่นใช้!</string>
+    <string name="share_a_voice">แชร์เสียง</string>
+    <string name="revoke_voice_title">เพิกถอนเสียง</string>
+    <string name="revoke_voice_prompt">คุณแน่ใจหรือไม่ว่าต้องการหยุดแชร์ \"%s\"? คนอื่นจะไม่สามารถใช้เสียงนี้ได้อีก</string>
+    <string name="revoke">เพิกถอน</string>
+    <string name="status_active">ใช้งานอยู่</string>
+    <string name="status_pending">รอดำเนินการ</string>
+    <string name="status_revoked">เพิกถอนแล้ว</string>
+    <string name="revoked_reason_format">เพิกถอนแล้ว: %s</string>
+
+    <!-- Rewards -->
+    <string name="rewards_title">รางวัล</string>
+    <string name="total_earned">รวมที่ได้รับ</string>
+    <string name="pending">รอดำเนินการ</string>
+    <string name="uses">ครั้งที่ใช้</string>
+    <string name="claim_rewards">รับรางวัล</string>
+    <string name="claim_success_format">รับ %.1f นาทีสำเร็จ!</string>
+    <string name="how_rewards_work">รางวัลทำงานอย่างไร</string>
+    <string name="reward_step1_title">แชร์เสียงของคุณ</string>
+    <string name="reward_step1_description">แชร์เสียงโคลนของคุณกับชุมชน</string>
+    <string name="reward_step2_title">คนอื่นใช้งาน</string>
+    <string name="reward_step2_description">เมื่อผู้คนใช้เสียงของคุณสำหรับ TTS คุณจะได้รับรางวัล</string>
+    <string name="reward_step3_title">รับนาที</string>
+    <string name="reward_step3_description">รับรางวัลที่รอดำเนินการเป็นนาทีฟังฟรี</string>
+    <string name="reward_history">ประวัติรางวัล</string>
+    <string name="no_rewards_title">ยังไม่มีรางวัล</string>
+    <string name="no_rewards_description">แชร์เสียงของคุณเพื่อเริ่มรับ!</string>
+    <string name="characters_generated_format">%d ตัวอักษร</string>
+    <string name="credited">เครดิตแล้ว</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_back">กลับ</string>
+    <string name="skip">ข้าม</string>
+    <string name="onboarding_continue">ดำเนินต่อ</string>
+    <string name="next">ถัดไป</string>
+    <string name="onboarding_terms">เมื่อดำเนินต่อ คุณยอมรับนโยบายความเป็นส่วนตัวและข้อกำหนดการใช้งานของเรา</string>
+    <string name="privacy_policy">นโยบายความเป็นส่วนตัว</string>
+    <string name="terms_of_use">ข้อกำหนดการใช้งาน</string>
+    <string name="onboarding_welcome_prefix">ยินดีต้อนรับสู่</string>
+    <string name="onboarding_welcome_description">แปลงเอกสารใดๆ ให้เป็นเสียงธรรมชาติ ฟังบทความ PDF และอื่นๆ ขณะเดินทาง</string>
+    <string name="feature_pdf">PDF</string>
+    <string name="feature_web">เว็บ</string>
+    <string name="feature_epub">ePUB</string>
+    <string name="feature_text">ข้อความ</string>
+    <string name="onboarding_import_title">นำเข้าจากทุกที่</string>
+    <string name="onboarding_import_description">วางลิงก์ อัปโหลด PDF หรือพิมพ์ข้อความโดยตรง</string>
+    <string name="import_method_web_links">ลิงก์เว็บ</string>
+    <string name="import_method_web_links_subtitle">วาง URL บทความใดก็ได้</string>
+    <string name="import_method_pdf">เอกสาร PDF</string>
+    <string name="import_method_pdf_subtitle">อัปโหลด PDF จากอุปกรณ์ของคุณ</string>
+    <string name="import_method_text">ข้อความโดยตรง</string>
+    <string name="import_method_text_subtitle">พิมพ์หรือวางข้อความใดก็ได้</string>
+    <string name="import_method_clipboard">คลิปบอร์ด</string>
+    <string name="import_method_clipboard_subtitle">ตรวจจับเนื้อหาที่คัดลอกอัตโนมัติ</string>
+    <string name="onboarding_notes_title">จดบันทึกขณะฟัง</string>
+    <string name="onboarding_notes_description">จับข้อมูลสำคัญโดยไม่ขัดจังหวะการเล่น</string>
+    <string name="add_note_placeholder">เพิ่มบันทึกที่ 2:34…</string>
+    <string name="onboarding_productivity_title">เพิ่มประสิทธิภาพของคุณ</string>
+    <string name="onboarding_productivity_description">เสียงธรรมชาติและความเร็วที่ปรับได้สำหรับการเรียนรู้ที่มีประสิทธิภาพ</string>
+    <string name="playback_speed_title">ความเร็วการเล่น</string>
+    <string name="speed_075x">0.75x</string>
+    <string name="speed_1x">1x</string>
+    <string name="speed_15x">1.5x</string>
+    <string name="speed_2x">2x</string>
+    <string name="feature_background_playback">เล่นในพื้นหลัง</string>
+    <string name="feature_sleep_timer">ตั้งเวลานอน</string>
+    <string name="feature_bookmarks">บุ๊กมาร์ก &amp; บท</string>
+    <string name="onboarding_voice_title">เลือกเสียงของคุณ</string>
+    <string name="onboarding_voice_description">เลือกเสียงที่เหมาะกับสไตล์การฟังของคุณ</string>
+    <string name="stop_preview_description">หยุดตัวอย่าง</string>
+    <string name="preview_voice_description">ฟังตัวอย่างเสียง</string>
+    <string name="selected">เลือกแล้ว</string>
+    <string name="signin_optional_title">ลงชื่อเข้าใช้ (ไม่บังคับ)</string>
+    <string name="signin_optional_description">ลงชื่อเข้าใช้เพื่อปลดล็อกฟีเจอร์ทั้งหมด รวมถึงการแชร์เสียงและซิงค์ข้ามอุปกรณ์</string>
+    <string name="signin_benefit_share">แชร์เสียงของคุณ</string>
+    <string name="signin_benefit_share_description">แชร์เสียงโคลนกับชุมชน</string>
+    <string name="signin_benefit_community">เสียงชุมชน</string>
+    <string name="signin_benefit_community_description">ใช้เสียงที่คนอื่นแชร์</string>
+    <string name="signin_benefit_rewards">รับรางวัล</string>
+    <string name="signin_benefit_rewards_description">รับนาทีฟังเมื่อคนอื่นใช้เสียงของคุณ</string>
+    <string name="signin_benefit_sync">ซิงค์ข้ามอุปกรณ์</string>
+    <string name="signin_benefit_sync_description">ข้อมูลของคุณตามคุณไปทุกที่</string>
+    <string name="continue_without_signin">ดำเนินต่อโดยไม่ลงชื่อเข้าใช้</string>
+
+    <!-- Voice Picker -->
+    <string name="choose_voice">เลือกเสียง</string>
+    <string name="quality_high_title">เสียงคุณภาพสูง</string>
+    <string name="quality_high_description">เสียงธรรมชาติเร่งความเร็วด้วย GPU - ใช้ได้ไม่จำกัด</string>
+    <string name="quality_free">ฟรี</string>
+
+    <!-- Settings (additional) -->
+    <string name="settings_voice_cloning_subtitle">สร้างเสียงกำหนดเองจากการบันทึกของคุณ</string>
+    <string name="settings_voice_marketplace">ตลาดเสียง</string>
+    <string name="settings_voice_marketplace_subtitle">เรียกดูและแชร์เสียงชุมชน</string>
+
+    <!-- General -->
+    <string name="pro">PRO</string>
+    <string name="connect">เชื่อมต่อ</string>
+    <string name="disconnect">ยกเลิกการเชื่อมต่อ</string>
+    <string name="cancel">ยกเลิก</string>
+    <string name="done">เสร็จ</string>
+    <string name="delete">ลบ</string>
+    <string name="play">เล่น</string>
+    <string name="pause">หยุดชั่วคราว</string>
+    <string name="close">ปิด</string>
+    <string name="add_to_queue">เพิ่มในคิว</string>
+    <string name="favorite">รายการโปรด</string>
+    <string name="share">แชร์</string>
+
+    <!-- Settings Subscription -->
+    <string name="settings_subscription">การสมัครสมาชิก</string>
+    <string name="settings_upgrade_to_pro">อัปเกรดเป็น Pro</string>
+    <string name="settings_upgrade_to_pro_subtitle">ฟังไม่จำกัด เสียงทั้งหมด &amp; อื่นๆ</string>
+    <string name="settings_readaloud_pro">ReadAloud AI Pro</string>
+    <string name="settings_pro_member_subtitle">คุณเป็นสมาชิก Pro</string>
+    <string name="settings_audio_quality_hd">คุณภาพสูง (HD)</string>
+
+    <!-- Settings Dialogs -->
+    <string name="dialog_playback_speed">ความเร็วการเล่น</string>
+    <string name="dialog_appearance">ธีม</string>
+    <string name="dialog_skip_interval">ช่วงเวลาข้าม</string>
+    <string name="dialog_sleep_timer_default">ค่าเริ่มต้นตั้งเวลานอน</string>
+    <string name="selected_check">เลือกแล้ว</string>
+    <string name="seconds_format">%d วินาที</string>
+    <string name="sleep_timer_off">ปิด</string>
+    <string name="sleep_timer_minutes_format">%d นาที</string>
+    <string name="sleep_timer_15_min">15 นาที</string>
+    <string name="sleep_timer_30_min">30 นาที</string>
+    <string name="sleep_timer_45_min">45 นาที</string>
+    <string name="sleep_timer_1_hour">1 ชั่วโมง</string>
+    <string name="appearance_system">ระบบ</string>
+    <string name="appearance_light">สว่าง</string>
+    <string name="appearance_dark">มืด</string>
+
+    <!-- Share Intent -->
+    <string name="share_subject">ลองใช้ ListenAI</string>
+    <string name="share_body">ฟังบทความใดก็ได้ด้วยเสียง AI ธรรมชาติ! ดาวน์โหลด ListenAI: https://play.google.com/store/apps/details?id=com.listenai</string>
+    <string name="share_chooser_title">แชร์ ListenAI</string>
+    <string name="feedback_email_subject">ความคิดเห็น ListenAI</string>
+
+    <!-- Player Screen -->
+    <string name="player_loading_article">กำลังโหลดบทความ…</string>
+    <string name="player_article_not_found">ไม่พบบทความ</string>
+    <string name="player_no_text_content">ไม่มีเนื้อหาข้อความสำหรับสังเคราะห์</string>
+    <string name="player_no_voice_available">ไม่มีเสียงพร้อมใช้งาน กรุณาตรวจสอบการเชื่อมต่อบริการ TTS</string>
+    <string name="player_network_error">ข้อผิดพลาดเครือข่าย กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ต</string>
+    <string name="player_timeout_error">คำขอหมดเวลา เซิร์ฟเวอร์อาจกำลังยุ่ง</string>
+    <string name="player_rate_limit_error">เซิร์ฟเวอร์กำลังยุ่ง กรุณาลองอีกครั้งในอีกสักครู่</string>
+    <string name="player_synthesis_failed">การสังเคราะห์ล้มเหลว</string>
+    <string name="player_regeneration_failed">การสร้างใหม่ล้มเหลว</string>
+    <string name="player_something_went_wrong">เกิดข้อผิดพลาด</string>
+    <string name="player_go_back">กลับ</string>
+    <string name="player_try_again">ลองอีกครั้ง</string>
+    <string name="player_preparing_audio">กำลังเตรียมเสียง…</string>
+    <string name="player_percent_complete">%d%% เสร็จ</string>
+    <string name="player_back">กลับ</string>
+    <string name="player_change_voice">เปลี่ยนเสียง</string>
+    <string name="player_more_options">เพิ่มเติม</string>
+    <string name="player_skip_back_10">ถอยหลัง 10 วินาที</string>
+    <string name="player_skip_forward_10">เดินหน้า 10 วินาที</string>
+    <string name="player_select_speed">เลือกความเร็ว</string>
+    <string name="player_change_voice_button">เปลี่ยนเสียง</string>
+    <string name="player_added_to_queue">เพิ่มในคิวแล้ว</string>
+    <string name="player_marked_finished">ทำเครื่องหมายเสร็จแล้ว</string>
+    <string name="player_removed_from_favorites">ลบออกจากรายการโปรดแล้ว</string>
+    <string name="player_added_to_favorites">เพิ่มในรายการโปรดแล้ว</string>
+    <string name="player_export_audio">ส่งออกเสียง</string>
+    <string name="player_audio_not_found">ไม่พบไฟล์เสียง</string>
+    <string name="player_export_failed">ส่งออกล้มเหลว: %s</string>
+    <string name="player_sleep_timer_set">ตั้งเวลานอน %d นาที</string>
+    <string name="player_sleep_timer_cancelled">ยกเลิกตั้งเวลานอนแล้ว</string>
+    <string name="player_by_author">โดย %s</string>
+    <string name="player_words_count">%d คำ</string>
+    <string name="player_untitled">ไม่มีชื่อ</string>
+    <string name="player_article_fallback">บทความ</string>
+    <string name="player_from_label">จาก:</string>
+    <string name="player_unknown_sender">ไม่ทราบ</string>
+
+    <!-- Player Source Badges -->
+    <string name="source_web">เว็บ</string>
+    <string name="source_pdf">PDF</string>
+    <string name="source_clipboard">คลิปบอร์ด</string>
+    <string name="source_file">ไฟล์</string>
+    <string name="source_text">ข้อความ</string>
+    <string name="source_email">อีเมล</string>
+
+    <!-- Player Mode Badge -->
+    <string name="player_mode_loading_full">กำลังโหลดเต็ม…</string>
+    <string name="player_mode_preview">ตัวอย่าง</string>
+    <string name="player_mode_full">เต็ม</string>
+
+    <!-- Player Voice Indicator -->
+    <string name="player_cloned_voice">โคลน</string>
+    <string name="player_voice_fallback">เสียง</string>
+
+    <!-- Quota Exceeded -->
+    <string name="quota_exceeded_title">โควตารายวันเกินแล้ว</string>
+    <string name="quota_exceeded_message">คุณมี %1$d ตัวอักษรเหลือวันนี้\nแต่บทความนี้ต้องการ %2$d ตัวอักษร</string>
+    <string name="quota_upgrade_to_pro">อัปเกรดเป็น Pro</string>
+    <string name="quota_benefit_chars_day">100,000 ตัวอักษรต่อวัน (มากกว่า 25 เท่า)</string>
+    <string name="quota_benefit_chars_month">1 ล้านตัวอักษรต่อเดือน</string>
+    <string name="quota_benefit_premium_voices">เสียง AI พรีเมียม</string>
+    <string name="quota_benefit_priority">คิวสังเคราะห์ลำดับความสำคัญ</string>
+    <string name="quota_maybe_later">ไว้ทีหลัง</string>
+    <string name="quota_reset_info">โควตารายวันของคุณรีเซ็ตตอนเที่ยงคืน</string>
+
+    <!-- More Options Sheet -->
+    <string name="more_options_download_audio">ดาวน์โหลดเสียง</string>
+    <string name="more_options_download_subtitle">ให้คุณฟังแบบออฟไลน์ในแอป</string>
+    <string name="more_options_add_to_queue">เพิ่มในคิว</string>
+    <string name="more_options_mark_finished">ทำเครื่องหมายเสร็จ</string>
+    <string name="more_options_sleep_timer">ตั้งเวลานอน</string>
+    <string name="more_options_export_audio">ส่งออกเสียง</string>
+    <string name="more_options_export_subtitle">บันทึกเสียงลงอุปกรณ์หรือแชร์โดยตรง</string>
+    <string name="more_options_delete_article">ลบบทความ</string>
+    <string name="more_options_timer_active">ตั้งเวลาทำงาน: %s</string>
+    <string name="more_options_current">ปัจจุบัน</string>
+
+    <!-- Sleep Timer Picker -->
+    <string name="sleep_timer_picker_title">ตั้งเวลานอน</string>
+    <string name="sleep_timer_5_min">5 นาที</string>
+    <string name="sleep_timer_10_min">10 นาที</string>
+    <string name="sleep_timer_1_5_hours">1.5 ชั่วโมง</string>
+    <string name="sleep_timer_2_hours">2 ชั่วโมง</string>
+
+    <!-- Duration Formats -->
+    <string name="duration_hr_min">%1$d ชม. %2$d นาที</string>
+    <string name="duration_hr">%d ชม.</string>
+    <string name="duration_min">%d นาที</string>
+    <string name="duration_sec">%d วินาที</string>
+
+    <!-- Language Picker -->
+    <string name="language">ภาษา</string>
+    <string name="language_picker_title">เลือกภาษา</string>
+    <string name="language_english">English</string>
+    <string name="language_spanish">Español</string>
+    <string name="language_french">Français</string>
+    <string name="language_german">Deutsch</string>
+    <string name="language_japanese">日本語</string>
+    <string name="language_chinese">中文(简体)</string>
+    <string name="language_korean">한국어</string>
+    <string name="language_portuguese">Português</string>
+    <string name="language_italian">Italiano</string>
+    <string name="language_hindi">हिन्दी</string>
+</resources>

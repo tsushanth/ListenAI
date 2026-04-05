@@ -1,0 +1,4 @@
+- EPUB book support: Import and listen to your favorite books
+- Books are automatically split into chapters for easy navigation
+- Improved rate limit handling with better user feedback
+- Increased synthesis reliability for longer content

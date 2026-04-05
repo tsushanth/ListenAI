@@ -135,28 +135,28 @@ private fun EmptyLibraryState(
             val (icon, title, description) = when (selectedFilter) {
                 LibraryFilter.ALL -> Triple(
                     Icons.Default.Article,
-                    "No Articles Yet",
-                    "Add articles from web links, documents, or paste text"
+                    stringResource(R.string.empty_library),
+                    stringResource(R.string.empty_library_description)
                 )
                 LibraryFilter.IN_PROGRESS -> Triple(
                     Icons.Default.PlayCircle,
-                    "Nothing in Progress",
-                    "Start listening to see your in-progress items here"
+                    stringResource(R.string.library_empty_in_progress_title),
+                    stringResource(R.string.library_empty_in_progress_description)
                 )
                 LibraryFilter.FAVORITES -> Triple(
                     Icons.Default.Favorite,
-                    "No Favorites",
-                    "Mark articles as favorites to find them quickly"
+                    stringResource(R.string.library_empty_favorites_title),
+                    stringResource(R.string.library_empty_favorites_description)
                 )
                 LibraryFilter.EMAIL -> Triple(
                     Icons.Default.Email,
-                    "No Emails",
-                    "Import emails from Gmail to listen to them"
+                    stringResource(R.string.library_empty_email_title),
+                    stringResource(R.string.library_empty_email_description)
                 )
                 LibraryFilter.ARCHIVED -> Triple(
                     Icons.Default.Archive,
-                    "No Archived Articles",
-                    "Archive articles you've finished to keep your library clean"
+                    stringResource(R.string.library_empty_archived_title),
+                    stringResource(R.string.library_empty_archived_description)
                 )
             }
 
@@ -193,7 +193,7 @@ private fun EmptyLibraryState(
                         modifier = Modifier.size(18.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Add Content")
+                    Text(stringResource(R.string.library_add_content_button))
                 }
             }
         }
@@ -303,7 +303,7 @@ private fun FilterChipsRow(
             FilterChip(
                 selected = selectedFilter == LibraryFilter.EMAIL,
                 onClick = { onFilterSelected(LibraryFilter.EMAIL) },
-                label = { Text("Emails") },
+                label = { Text(stringResource(R.string.filter_email)) },
                 leadingIcon = if (selectedFilter == LibraryFilter.EMAIL) {
                     { Icon(Icons.Default.Email, contentDescription = null, modifier = Modifier.size(18.dp)) }
                 } else null
@@ -447,7 +447,7 @@ private fun ArticleCard(
                 ) {
                     DropdownMenuItem(
                         text = {
-                            Text(if (article.isFavorite) "Remove from Favorites" else "Add to Favorites")
+                            Text(if (article.isFavorite) stringResource(R.string.remove_from_favorites) else stringResource(R.string.add_to_favorites))
                         },
                         onClick = {
                             onFavorite()
@@ -462,7 +462,7 @@ private fun ArticleCard(
                     )
                     DropdownMenuItem(
                         text = {
-                            Text(if (article.isArchived) "Unarchive" else "Archive")
+                            Text(if (article.isArchived) stringResource(R.string.unarchive) else stringResource(R.string.archive))
                         },
                         onClick = {
                             onArchive()
@@ -477,7 +477,7 @@ private fun ArticleCard(
                     )
                     Divider()
                     DropdownMenuItem(
-                        text = { Text("Delete") },
+                        text = { Text(stringResource(R.string.delete)) },
                         onClick = {
                             onDelete()
                             showMenu = false
@@ -499,6 +499,7 @@ private fun ArticleCard(
 private fun getSourceTypeIcon(sourceType: SourceType) = when (sourceType) {
     SourceType.WEB -> Icons.Default.Language
     SourceType.PDF -> Icons.Default.PictureAsPdf
+    SourceType.EPUB -> Icons.Default.Book
     SourceType.CLIPBOARD -> Icons.Default.ContentPaste
     SourceType.FILE -> Icons.Default.Folder
     SourceType.MANUAL -> Icons.Default.EditNote
@@ -508,6 +509,7 @@ private fun getSourceTypeIcon(sourceType: SourceType) = when (sourceType) {
 private fun getSourceTypeColor(sourceType: SourceType) = when (sourceType) {
     SourceType.WEB -> Orange
     SourceType.PDF -> Red
+    SourceType.EPUB -> Blue
     SourceType.CLIPBOARD -> Purple
     SourceType.FILE -> Blue
     SourceType.MANUAL -> Green

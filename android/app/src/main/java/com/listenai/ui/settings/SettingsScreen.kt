@@ -2,6 +2,7 @@ package com.listenai.ui.settings
 
 import android.content.Intent
 import android.net.Uri
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -22,10 +23,14 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.core.os.LocaleListCompat
 import com.listenai.R
 import com.listenai.service.billing.RevenueCatManager
 import com.listenai.service.settings.SettingsManager
 import com.listenai.ui.theme.*
+import com.kreativekoala.paywallkit.models.PaywallFeature
+import com.kreativekoala.paywallkit.models.PaywallTheme
+import com.kreativekoala.paywallkit.view.PaywallPreview
 import org.koin.compose.koinInject
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -46,6 +51,9 @@ fun SettingsScreen(
     var showAppearanceDialog by remember { mutableStateOf(false) }
     var showSkipIntervalDialog by remember { mutableStateOf(false) }
     var showSleepTimerDialog by remember { mutableStateOf(false) }
+    var showLanguageDialog by remember { mutableStateOf(false) }
+    var tapCount by remember { mutableIntStateOf(0) }
+    var showPaywallPreview by remember { mutableStateOf(false) }
 
     // Settings state from SettingsManager (persisted)
     val playbackSpeed by settingsManager.playbackSpeed.collectAsState()
@@ -56,6 +64,47 @@ fun SettingsScreen(
     // Subscription state
     val revenueCatManager = remember { RevenueCatManager.getInstance() }
     val isPremium by revenueCatManager.isPremium.collectAsState()
+
+    // Language picker state
+    val languages = remember {
+        listOf(
+            "en" to R.string.language_english,
+            "es" to R.string.language_spanish,
+            "fr" to R.string.language_french,
+            "de" to R.string.language_german,
+            "ja" to R.string.language_japanese,
+            "zh-CN" to R.string.language_chinese,
+            "ko" to R.string.language_korean,
+            "pt-BR" to R.string.language_portuguese,
+            "it" to R.string.language_italian,
+            "hi" to R.string.language_hindi
+        )
+    }
+    val currentLocaleTag = AppCompatDelegate.getApplicationLocales().toLanguageTags().ifEmpty { "en" }
+    val currentLanguageRes = languages.firstOrNull { it.first == currentLocaleTag }?.second ?: R.string.language_english
+
+    // Localized share strings (resolved here so they can be used in Intent)
+    val shareSubject = stringResource(R.string.share_subject)
+    val shareBody = stringResource(R.string.share_body)
+    val shareChooserTitle = stringResource(R.string.share_chooser_title)
+    val feedbackEmailSubject = stringResource(R.string.feedback_email_subject)
+
+    if (showPaywallPreview) {
+        PaywallPreview(
+            appId = "readaloudai",
+            appName = "ReadAloud AI",
+            features = listOf(
+                PaywallFeature("\uD83D\uDD0A", "Unlimited Listening"),
+                PaywallFeature("\uD83C\uDFA4", "Premium Voices"),
+                PaywallFeature("\uD83D\uDCC4", "Any Document"),
+                PaywallFeature("⚡", "Speed Controls"),
+                PaywallFeature("\uD83D\uDCE5", "Offline Mode")
+            ),
+            theme = PaywallTheme(accent = Color(0xFF6C63FF), accent2 = Color(0xFF9C27B0)),
+            onDone = { showPaywallPreview = false }
+        )
+        return
+    }
 
     Scaffold(
         topBar = {
@@ -82,22 +131,22 @@ fun SettingsScreen(
         ) {
             // Subscription Section
             if (!isPremium) {
-                SettingsSection(title = "Subscription") {
+                SettingsSection(title = stringResource(R.string.settings_subscription)) {
                     SettingsRow(
                         icon = Icons.Default.WorkspacePremium,
                         iconColor = Purple,
-                        title = "Upgrade to Pro",
-                        subtitle = "Unlimited listening, all voices & more",
+                        title = stringResource(R.string.settings_upgrade_to_pro),
+                        subtitle = stringResource(R.string.settings_upgrade_to_pro_subtitle),
                         onClick = onNavigateToSubscription
                     )
                 }
             } else {
-                SettingsSection(title = "Subscription") {
+                SettingsSection(title = stringResource(R.string.settings_subscription)) {
                     SettingsRow(
                         icon = Icons.Default.WorkspacePremium,
                         iconColor = Green,
-                        title = "ReadAloud AI Pro",
-                        subtitle = "You're a Pro member",
+                        title = stringResource(R.string.settings_readaloud_pro),
+                        subtitle = stringResource(R.string.settings_pro_member_subtitle),
                         onClick = onNavigateToSubscription
                     )
                 }
@@ -118,8 +167,8 @@ fun SettingsScreen(
                 SettingsRow(
                     icon = Icons.Default.Mic,
                     iconColor = Purple,
-                    title = "Voice Cloning",
-                    subtitle = "Create a custom voice from your recording",
+                    title = stringResource(R.string.settings_voice_cloning),
+                    subtitle = stringResource(R.string.settings_voice_cloning_subtitle),
                     onClick = onNavigateToVoiceCloning
                 )
 
@@ -128,8 +177,8 @@ fun SettingsScreen(
                 SettingsRow(
                     icon = Icons.Default.Store,
                     iconColor = Green,
-                    title = "Voice Marketplace",
-                    subtitle = "Browse and share community voices",
+                    title = stringResource(R.string.settings_voice_marketplace),
+                    subtitle = stringResource(R.string.settings_voice_marketplace_subtitle),
                     onClick = onNavigateToMarketplace
                 )
 
@@ -152,6 +201,16 @@ fun SettingsScreen(
                     subtitle = appearanceMode,
                     onClick = { showAppearanceDialog = true }
                 )
+
+                HorizontalDivider(modifier = Modifier.padding(start = 56.dp))
+
+                SettingsRow(
+                    icon = Icons.Default.Language,
+                    iconColor = Blue,
+                    title = stringResource(R.string.language),
+                    subtitle = stringResource(currentLanguageRes),
+                    onClick = { showLanguageDialog = true }
+                )
             }
 
             // Linked Accounts Section
@@ -169,10 +228,10 @@ fun SettingsScreen(
                     onClick = {
                         val shareIntent = Intent(Intent.ACTION_SEND).apply {
                             type = "text/plain"
-                            putExtra(Intent.EXTRA_SUBJECT, "Check out ListenAI")
-                            putExtra(Intent.EXTRA_TEXT, "Listen to any article with natural AI voices! Download ListenAI: https://play.google.com/store/apps/details?id=com.listenai")
+                            putExtra(Intent.EXTRA_SUBJECT, shareSubject)
+                            putExtra(Intent.EXTRA_TEXT, shareBody)
                         }
-                        context.startActivity(Intent.createChooser(shareIntent, "Share ListenAI"))
+                        context.startActivity(Intent.createChooser(shareIntent, shareChooserTitle))
                     }
                 )
 
@@ -201,7 +260,7 @@ fun SettingsScreen(
                     icon = Icons.Default.Headphones,
                     iconColor = Blue,
                     title = stringResource(R.string.settings_audio_quality),
-                    subtitle = "High Quality (HD)",
+                    subtitle = stringResource(R.string.settings_audio_quality_hd),
                     onClick = { /* Audio quality is always HD with self-hosted TTS */ }
                 )
 
@@ -211,7 +270,7 @@ fun SettingsScreen(
                     icon = Icons.Default.SkipNext,
                     iconColor = Purple,
                     title = stringResource(R.string.settings_skip_interval),
-                    subtitle = "${skipInterval} seconds",
+                    subtitle = stringResource(R.string.seconds_format, skipInterval),
                     onClick = { showSkipIntervalDialog = true }
                 )
 
@@ -221,7 +280,7 @@ fun SettingsScreen(
                     icon = Icons.Default.Timer,
                     iconColor = Green,
                     title = stringResource(R.string.settings_sleep_timer),
-                    subtitle = if (sleepTimerDefault == 0) "Off" else "$sleepTimerDefault minutes",
+                    subtitle = if (sleepTimerDefault == 0) stringResource(R.string.sleep_timer_off) else stringResource(R.string.sleep_timer_minutes_format, sleepTimerDefault),
                     onClick = { showSleepTimerDialog = true }
                 )
             }
@@ -246,7 +305,7 @@ fun SettingsScreen(
                     onClick = {
                         val intent = Intent(Intent.ACTION_SENDTO).apply {
                             data = Uri.parse("mailto:support@kreativekoala.llc")
-                            putExtra(Intent.EXTRA_SUBJECT, "ListenAI Feedback")
+                            putExtra(Intent.EXTRA_SUBJECT, feedbackEmailSubject)
                         }
                         context.startActivity(intent)
                     }
@@ -260,8 +319,19 @@ fun SettingsScreen(
                     iconColor = Blue,
                     title = stringResource(R.string.settings_version),
                     subtitle = "1.0.0",
-                    onClick = { /* Version info - no action needed */ }
+                    onClick = { tapCount++ }
                 )
+
+                if (tapCount >= 5) {
+                    Button(
+                        onClick = { showPaywallPreview = true },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp)
+                    ) {
+                        Text("Preview Paywalls")
+                    }
+                }
 
                 HorizontalDivider(modifier = Modifier.padding(start = 56.dp))
 
@@ -340,6 +410,41 @@ fun SettingsScreen(
                 onDismiss = { showSleepTimerDialog = false }
             )
         }
+
+        // Language Picker Dialog
+        if (showLanguageDialog) {
+            AlertDialog(
+                onDismissRequest = { showLanguageDialog = false },
+                title = { Text(stringResource(R.string.language_picker_title)) },
+                text = {
+                    Column {
+                        languages.forEach { (code, nameRes) ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                RadioButton(
+                                    selected = currentLocaleTag == code,
+                                    onClick = {
+                                        AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags(code))
+                                        showLanguageDialog = false
+                                    }
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(stringResource(nameRes), style = MaterialTheme.typography.bodyLarge)
+                            }
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = { showLanguageDialog = false }) {
+                        Text(stringResource(R.string.cancel))
+                    }
+                }
+            )
+        }
     }
 }
 
@@ -353,7 +458,7 @@ private fun SpeedSelectionDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Playback Speed") },
+        title = { Text(stringResource(R.string.dialog_playback_speed)) },
         text = {
             Column {
                 speeds.forEach { speed ->
@@ -372,7 +477,7 @@ private fun SpeedSelectionDialog(
                         if (speed == currentSpeed) {
                             Icon(
                                 Icons.Default.Check,
-                                contentDescription = "Selected",
+                                contentDescription = stringResource(R.string.selected_check),
                                 tint = Blue
                             )
                         }
@@ -382,7 +487,7 @@ private fun SpeedSelectionDialog(
         },
         confirmButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(stringResource(R.string.cancel))
             }
         }
     )
@@ -398,7 +503,7 @@ private fun AppearanceSelectionDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Appearance") },
+        title = { Text(stringResource(R.string.dialog_appearance)) },
         text = {
             Column {
                 modes.forEach { mode ->
@@ -431,7 +536,7 @@ private fun AppearanceSelectionDialog(
                         if (mode == currentMode) {
                             Icon(
                                 Icons.Default.Check,
-                                contentDescription = "Selected",
+                                contentDescription = stringResource(R.string.selected_check),
                                 tint = Blue
                             )
                         }
@@ -441,7 +546,7 @@ private fun AppearanceSelectionDialog(
         },
         confirmButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(stringResource(R.string.cancel))
             }
         }
     )
@@ -457,7 +562,7 @@ private fun SkipIntervalSelectionDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Skip Interval") },
+        title = { Text(stringResource(R.string.dialog_skip_interval)) },
         text = {
             Column {
                 intervals.forEach { interval ->
@@ -470,13 +575,13 @@ private fun SkipIntervalSelectionDialog(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "$interval seconds",
+                            text = stringResource(R.string.seconds_format, interval),
                             style = MaterialTheme.typography.bodyLarge
                         )
                         if (interval == currentInterval) {
                             Icon(
                                 Icons.Default.Check,
-                                contentDescription = "Selected",
+                                contentDescription = stringResource(R.string.selected_check),
                                 tint = Blue
                             )
                         }
@@ -486,7 +591,7 @@ private fun SkipIntervalSelectionDialog(
         },
         confirmButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(stringResource(R.string.cancel))
             }
         }
     )
@@ -498,14 +603,20 @@ private fun SleepTimerSelectionDialog(
     onMinutesSelected: (Int) -> Unit,
     onDismiss: () -> Unit
 ) {
-    val options = listOf(0 to "Off", 15 to "15 minutes", 30 to "30 minutes", 45 to "45 minutes", 60 to "1 hour")
+    val options = listOf(
+        0 to R.string.sleep_timer_off,
+        15 to R.string.sleep_timer_15_min,
+        30 to R.string.sleep_timer_30_min,
+        45 to R.string.sleep_timer_45_min,
+        60 to R.string.sleep_timer_1_hour
+    )
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Sleep Timer Default") },
+        title = { Text(stringResource(R.string.dialog_sleep_timer_default)) },
         text = {
             Column {
-                options.forEach { (minutes, label) ->
+                options.forEach { (minutes, labelRes) ->
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -515,13 +626,13 @@ private fun SleepTimerSelectionDialog(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = label,
+                            text = stringResource(labelRes),
                             style = MaterialTheme.typography.bodyLarge
                         )
                         if (minutes == currentMinutes) {
                             Icon(
                                 Icons.Default.Check,
-                                contentDescription = "Selected",
+                                contentDescription = stringResource(R.string.selected_check),
                                 tint = Blue
                             )
                         }
@@ -531,7 +642,7 @@ private fun SleepTimerSelectionDialog(
         },
         confirmButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(stringResource(R.string.cancel))
             }
         }
     )

@@ -250,7 +250,7 @@ class SelfHostedTTSService(private val context: Context) : TTSService {
 
             // Poll for job status with real progress updates
             var pollCount = 0
-            val maxPolls = 120  // 4 minutes max (2 sec intervals)
+            val maxPolls = 300  // 10 minutes max (2 sec intervals) — long text like EPUB chapters need more time
             val pollInterval = 2000L  // 2 seconds like iOS
 
             while (pollCount < maxPolls) {
@@ -345,7 +345,7 @@ class SelfHostedTTSService(private val context: Context) : TTSService {
 
     // Track consecutive poll failures for graceful degradation
     private var consecutivePollFailures = 0
-    private val maxConsecutivePollFailures = 5
+    private val maxConsecutivePollFailures = 15
 
     /**
      * Poll job status with retry logic for transient network errors.

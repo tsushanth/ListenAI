@@ -1,0 +1,1 @@
+Unterstützung für 10 Sprachen hinzugefügt: Englisch, Spanisch, Französisch, Deutsch, Japanisch, Chinesisch, Koreanisch, Portugiesisch, Italienisch und Hindi. Fehlerbehebungen und Leistungsverbesserungen.

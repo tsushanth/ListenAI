@@ -1,0 +1,469 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">ReadAloud AI</string>
+
+    <!-- Tab Labels -->
+    <string name="tab_home">الرئيسية</string>
+    <string name="tab_library">مكتبتي</string>
+    <string name="tab_settings">الإعدادات</string>
+
+    <!-- Home Screen -->
+    <string name="promo_title">حمّل واستمع في أي وقت وأي مكان</string>
+    <string name="promo_button">جرّب مجانًا</string>
+    <string name="quick_actions_title">ماذا تريد أن تستمع اليوم؟</string>
+    <string name="action_document">مستند</string>
+    <string name="action_document_subtitle">ارفع ملفات من Drive أو الجهاز</string>
+    <string name="action_scan">مسح نص</string>
+    <string name="action_scan_subtitle">مستندات أو صور ممسوحة ضوئيًا</string>
+    <string name="action_web_link">رابط ويب</string>
+    <string name="action_web_link_subtitle">حوّل الروابط إلى صوت</string>
+    <string name="action_text">اكتب أو الصق نصًا</string>
+    <string name="action_text_subtitle">أدخل أو الصق نصًا للاستماع</string>
+    <string name="action_mail">البريد</string>
+    <string name="action_mail_subtitle">استمع إلى رسائل البريد الإلكتروني بسهولة</string>
+
+    <!-- Library Screen -->
+    <string name="library_title">مكتبتي</string>
+    <string name="filter_all">الكل</string>
+    <string name="filter_in_progress">قيد التقدم</string>
+    <string name="filter_continue">متابعة</string>
+    <string name="filter_finished">مكتمل</string>
+    <string name="filter_favorites">المفضلة</string>
+    <string name="filter_archived">المؤرشف</string>
+    <string name="filter_folders">المجلدات</string>
+    <string name="filter_downloaded">المحمّل</string>
+    <string name="empty_library">لا توجد مقالات بعد</string>
+    <string name="empty_library_description">أضف مقالات من روابط الويب أو المستندات أو الصق نصًا.</string>
+    <string name="more_options">خيارات إضافية</string>
+
+    <!-- Settings Screen -->
+    <string name="settings_title">الإعدادات</string>
+    <string name="settings_preferences">التفضيلات</string>
+    <string name="settings_voice">الصوت</string>
+    <string name="settings_voice_subtitle">اختر صوتك المفضل</string>
+    <string name="settings_speed">سرعة التشغيل</string>
+    <string name="settings_speed_subtitle">الافتراضي 1.0x</string>
+    <string name="settings_appearance">المظهر</string>
+    <string name="settings_appearance_subtitle">فاتح أو داكن أو النظام</string>
+    <string name="settings_voice_cloning">استنساخ الصوت</string>
+    <string name="settings_change_voice">تغيير الصوت</string>
+    <string name="settings_app_language">لغة التطبيق</string>
+    <string name="settings_request_feature">طلب ميزة</string>
+    <string name="settings_linked_accounts">الحسابات المرتبطة</string>
+    <string name="settings_google">Google</string>
+    <string name="settings_google_subtitle">مزامنة المقالات عبر الأجهزة</string>
+    <string name="settings_google_connected">متصل</string>
+    <string name="settings_connect">اتصال</string>
+    <string name="settings_disconnect">قطع الاتصال</string>
+    <string name="settings_share">مشاركة</string>
+    <string name="settings_share_app">شارك ReadAloud AI</string>
+    <string name="settings_share_app_subtitle">أخبر أصدقاءك عن ReadAloud AI</string>
+    <string name="settings_rate_app">قيّم التطبيق</string>
+    <string name="settings_rate_app_subtitle">ساعدنا بتقييم 5 نجوم</string>
+    <string name="settings_playback">التشغيل</string>
+    <string name="settings_audio_quality">جودة الصوت</string>
+    <string name="settings_audio_quality_subtitle">توليف صوتي عالي الجودة</string>
+    <string name="settings_skip_interval">فترة التخطي</string>
+    <string name="settings_skip_interval_subtitle">10 ثوانٍ للخلف، 30 ثانية للأمام</string>
+    <string name="settings_sleep_timer">مؤقت النوم</string>
+    <string name="settings_sleep_timer_subtitle">إيقاف تلقائي بعد مدة</string>
+    <string name="settings_default_speed">السرعة الافتراضية</string>
+    <string name="settings_skip_silences">تخطي الصمت</string>
+    <string name="settings_auto_play">تشغيل تلقائي للتالي</string>
+    <string name="settings_support">الدعم</string>
+    <string name="settings_usage">الاستخدام والحصة</string>
+    <string name="settings_usage_subtitle">عرض الاستخدام والحدود</string>
+    <string name="settings_help">مركز المساعدة</string>
+    <string name="settings_help_subtitle">الأسئلة الشائعة والأدلة</string>
+    <string name="settings_feedback">إرسال ملاحظات</string>
+    <string name="settings_feedback_subtitle">الإبلاغ عن مشاكل أو اقتراحات</string>
+    <string name="settings_rate_us">أعجبك التطبيق؟ قيّمنا</string>
+    <string name="settings_contact">تواصل مع الدعم</string>
+    <string name="settings_about">حول</string>
+    <string name="settings_version">الإصدار</string>
+    <string name="settings_privacy">سياسة الخصوصية</string>
+    <string name="settings_privacy_subtitle">عرض سياسة الخصوصية</string>
+    <string name="settings_terms">شروط الخدمة</string>
+    <string name="settings_terms_subtitle">عرض الشروط والأحكام</string>
+
+    <!-- Playback -->
+    <string name="now_playing">يعمل الآن</string>
+    <string name="up_next">التالي</string>
+    <string name="minutes_left">%d د متبقية</string>
+    <string name="speed_format">%sx</string>
+    <string name="skip_backward">تخطي للخلف</string>
+    <string name="skip_forward">تخطي للأمام</string>
+    <string name="sleep_timer">مؤقت النوم</string>
+
+    <!-- Import Screen -->
+    <string name="import_title">إضافة محتوى</string>
+    <string name="import_mode_url">رابط</string>
+    <string name="import_mode_document">مستند</string>
+    <string name="import_mode_text">نص</string>
+    <string name="import_mode_scan">مسح</string>
+    <string name="import_url_title">استيراد من رابط</string>
+    <string name="import_url_description">الصق رابط ويب لاستخراج المقال وتحويله إلى صوت.</string>
+    <string name="import_url_placeholder">https://example.com/article</string>
+    <string name="import_document_title">استيراد مستند</string>
+    <string name="import_document_description">ارفع ملفات PDF أو DOCX أو TXT لتحويلها إلى صوت.</string>
+    <string name="import_document_tap">انقر لاختيار ملف</string>
+    <string name="import_document_formats">PDF, EPUB, DOCX, TXT مدعومة</string>
+    <string name="import_text_title">أدخل نصًا</string>
+    <string name="import_text_title_placeholder">العنوان (اختياري)</string>
+    <string name="import_text_content_placeholder">الصق أو اكتب نصك هنا...</string>
+    <string name="import_scan_title">مسح مستند</string>
+    <string name="import_scan_description">استخدم الكاميرا لمسح نص مطبوع وتحويله إلى صوت.</string>
+    <string name="import_scan_tap">انقر للمسح</string>
+    <string name="import_button">استيراد</string>
+
+    <!-- Import Screen (additional) -->
+    <string name="import_mode_clipboard">الحافظة</string>
+    <string name="import_mode_email">البريد الإلكتروني</string>
+    <string name="clear">مسح</string>
+    <string name="importing">جارٍ الاستيراد…</string>
+    <string name="clipboard_import_title">استيراد من الحافظة</string>
+    <string name="clipboard_import_description">استيراد نص أو روابط قمت بنسخها</string>
+    <string name="clipboard_url_detected">تم اكتشاف رابط</string>
+    <string name="clipboard_text_content">محتوى نصي</string>
+    <string name="clipboard_empty">الحافظة فارغة</string>
+    <string name="word_count_format">%d كلمة</string>
+    <string name="pdf_selected">تم اختيار PDF</string>
+    <string name="epub_selected">EPUB</string>    <string name="remove">إزالة</string>
+
+    <!-- Library Screen (additional) -->
+    <string name="library_empty_in_progress_title">لا شيء قيد التقدم</string>
+    <string name="library_empty_in_progress_description">ابدأ الاستماع لرؤية عناصرك قيد التقدم هنا</string>
+    <string name="library_empty_favorites_title">لا توجد مفضلة</string>
+    <string name="library_empty_favorites_description">ضع علامة على المقالات كمفضلة للعثور عليها بسرعة</string>
+    <string name="library_empty_email_title">لا توجد رسائل بريد</string>
+    <string name="library_empty_email_description">استورد رسائل البريد من Gmail للاستماع إليها</string>
+    <string name="library_empty_archived_title">لا توجد مقالات مؤرشفة</string>
+    <string name="library_empty_archived_description">أرشف المقالات التي أنهيتها للحفاظ على مكتبتك نظيفة</string>
+    <string name="library_add_content_button">إضافة محتوى</string>
+    <string name="filter_email">البريد الإلكتروني</string>
+    <string name="remove_from_favorites">إزالة من المفضلة</string>
+    <string name="add_to_favorites">إضافة إلى المفضلة</string>
+    <string name="unarchive">إلغاء الأرشفة</string>
+    <string name="archive">أرشفة</string>
+    <string name="duration_left_minutes">%d د %d ث متبقية</string>
+    <string name="duration_left_seconds">%d ث متبقية</string>
+
+    <!-- Feedback Dialog -->
+    <string name="feedback_title">هل تستمتع بـ ReadAloud؟</string>
+    <string name="feedback_subtitle">ملاحظاتك تساعدنا في تحسين التطبيق للجميع.</string>
+    <string name="feedback_button_negative">ليس حقًا</string>
+    <string name="feedback_button_positive">نعم!</string>
+
+    <!-- Mail Import -->
+    <string name="mail_import_title">Gmail</string>
+    <string name="back">رجوع</string>
+    <string name="refresh">تحديث</string>
+    <string name="loading_emails">جارٍ تحميل الرسائل…</string>
+    <string name="load_more">تحميل المزيد</string>
+    <string name="loading_email">جارٍ تحميل الرسالة…</string>
+    <string name="no_subject">(بدون موضوع)</string>
+    <string name="email_from_format">من: %s &lt;%s&gt;</string>
+    <string name="no_content">(لا يوجد محتوى)</string>
+    <string name="email_import_button">استيراد واستماع</string>
+    <string name="gmail_connect_title">ربط Gmail</string>
+    <string name="gmail_connect_description">سجّل الدخول بحساب Google لاستيراد رسائل البريد والاستماع إليها</string>
+    <string name="gmail_signin_button">تسجيل الدخول بحساب Google</string>
+    <string name="gmail_privacy_notice">نطلب فقط إذن القراءة لرسائلك. بياناتك تبقى خاصة.</string>
+    <string name="mail_search_placeholder">البحث في البريد</string>
+    <string name="no_emails_found">لم يتم العثور على رسائل</string>
+    <string name="no_emails_search_suggestion">جرّب مصطلح بحث مختلف</string>
+    <string name="clear_search">مسح البحث</string>
+    <string name="inbox_empty">يبدو أن صندوق الوارد فارغ</string>
+
+    <!-- Voice Marketplace -->
+    <string name="marketplace_title">سوق الأصوات</string>
+    <string name="my_shares">مشاركاتي</string>
+    <string name="rewards">المكافآت</string>
+    <string name="marketplace_search_placeholder">البحث عن أصوات…</string>
+    <string name="no_voices_found">لم يتم العثور على أصوات</string>
+    <string name="no_voices_suggestion">جرّب تعديل الفلاتر</string>
+    <string name="voice_uses_format">%d استخدام</string>
+
+    <!-- Voice Detail -->
+    <string name="voice_detail_title">تفاصيل الصوت</string>
+    <string name="report">إبلاغ</string>
+    <string name="retry">إعادة المحاولة</string>
+    <string name="rate_voice_prompt">كيف تقيّم هذا الصوت؟</string>
+    <string name="star_rating_format">%d نجوم</string>
+    <string name="review_optional">مراجعة (اختياري)</string>
+    <string name="rate_voice">قيّم الصوت</string>
+    <string name="submit">إرسال</string>
+    <string name="report_voice_title">الإبلاغ عن صوت</string>
+    <string name="report_voice_prompt">لماذا تبلغ عن هذا الصوت؟</string>
+    <string name="description_label">الوصف</string>
+    <string name="submit_report">إرسال البلاغ</string>
+    <string name="rating_count_format">%d تقييم</string>
+    <string name="uses_label">استخدامات</string>
+    <string name="created_label">تاريخ الإنشاء</string>
+    <string name="stop_preview">إيقاف المعاينة</string>
+    <string name="play_preview">تشغيل المعاينة</string>
+
+    <!-- Share Voice -->
+    <string name="share_voice_title">مشاركة صوت</string>
+    <string name="no_cloned_voices">لا توجد أصوات مستنسخة</string>
+    <string name="no_cloned_voices_hint">أنشئ صوتًا مستنسخًا أولًا لمشاركته</string>
+    <string name="select_voice">اختيار صوت</string>
+    <string name="voice_sample_duration">عينة %.1f ث</string>
+    <string name="display_name">الاسم المعروض</string>
+    <string name="display_name_hint">كيف سيظهر هذا الصوت في السوق</string>
+    <string name="description_optional">الوصف (اختياري)</string>
+    <string name="describe_voice_placeholder">صف صوتك…</string>
+    <string name="tags_label">العلامات</string>
+    <string name="tags_description">اختر علامات تصف صوتك</string>
+    <string name="voice_attestation">أؤكد أن هذا صوتي الخاص ولدي الحق في مشاركته</string>
+    <string name="marketplace_terms">أوافق على شروط خدمة سوق الأصوات</string>
+    <string name="share_voice_button">مشاركة الصوت</string>
+
+    <!-- My Shared Voices -->
+    <string name="my_shared_voices_title">أصواتي المشاركة</string>
+    <string name="no_shared_voices_title">لا توجد أصوات مشاركة بعد</string>
+    <string name="no_shared_voices_description">شارك أصواتك المستنسخة مع المجتمع واكسب مكافآت عندما يستخدمها الآخرون!</string>
+    <string name="share_a_voice">مشاركة صوت</string>
+    <string name="revoke_voice_title">إلغاء مشاركة الصوت</string>
+    <string name="revoke_voice_prompt">هل أنت متأكد من رغبتك في إيقاف مشاركة \"%s\"؟ لن يتمكن الآخرون من استخدام هذا الصوت بعد الآن.</string>
+    <string name="revoke">إلغاء</string>
+    <string name="status_active">نشط</string>
+    <string name="status_pending">قيد الانتظار</string>
+    <string name="status_revoked">ملغى</string>
+    <string name="revoked_reason_format">ملغى: %s</string>
+
+    <!-- Rewards -->
+    <string name="rewards_title">المكافآت</string>
+    <string name="total_earned">إجمالي المكتسب</string>
+    <string name="pending">قيد الانتظار</string>
+    <string name="uses">الاستخدامات</string>
+    <string name="claim_rewards">المطالبة بالمكافآت</string>
+    <string name="claim_success_format">تم المطالبة بـ %.1f دقيقة بنجاح!</string>
+    <string name="how_rewards_work">كيف تعمل المكافآت</string>
+    <string name="reward_step1_title">شارك صوتك</string>
+    <string name="reward_step1_description">شارك أصواتك المستنسخة مع المجتمع</string>
+    <string name="reward_step2_title">يستخدمه الآخرون</string>
+    <string name="reward_step2_description">عندما يستخدم الناس صوتك لتحويل النص إلى كلام، تكسب مكافآت</string>
+    <string name="reward_step3_title">اطلب دقائق</string>
+    <string name="reward_step3_description">اطلب مكافآتك المعلقة كدقائق استماع مجانية</string>
+    <string name="reward_history">سجل المكافآت</string>
+    <string name="no_rewards_title">لا توجد مكافآت بعد</string>
+    <string name="no_rewards_description">شارك أصواتك لبدء الكسب!</string>
+    <string name="characters_generated_format">%d حرف</string>
+    <string name="credited">مضاف</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_back">رجوع</string>
+    <string name="skip">تخطي</string>
+    <string name="onboarding_continue">متابعة</string>
+    <string name="next">التالي</string>
+    <string name="onboarding_terms">بالمتابعة، فإنك توافق على سياسة الخصوصية وشروط الاستخدام.</string>
+    <string name="privacy_policy">سياسة الخصوصية</string>
+    <string name="terms_of_use">شروط الاستخدام</string>
+    <string name="onboarding_welcome_prefix">مرحبًا بك في</string>
+    <string name="onboarding_welcome_description">حوّل أي مستند إلى صوت طبيعي. استمع إلى المقالات وملفات PDF والمزيد أثناء التنقل.</string>
+    <string name="feature_pdf">PDF</string>
+    <string name="feature_web">ويب</string>
+    <string name="feature_epub">ePUB</string>
+    <string name="feature_text">نص</string>
+    <string name="onboarding_import_title">استورد من أي مكان</string>
+    <string name="onboarding_import_description">الصق رابطًا أو ارفع ملف PDF أو اكتب نصًا مباشرة</string>
+    <string name="import_method_web_links">روابط الويب</string>
+    <string name="import_method_web_links_subtitle">الصق أي رابط مقال</string>
+    <string name="import_method_pdf">مستندات PDF</string>
+    <string name="import_method_pdf_subtitle">ارفع ملفات PDF من جهازك</string>
+    <string name="import_method_text">نص مباشر</string>
+    <string name="import_method_text_subtitle">اكتب أو الصق أي نص</string>
+    <string name="import_method_clipboard">الحافظة</string>
+    <string name="import_method_clipboard_subtitle">اكتشاف تلقائي للمحتوى المنسوخ</string>
+    <string name="onboarding_notes_title">دوّن ملاحظات أثناء الاستماع</string>
+    <string name="onboarding_notes_description">التقط الأفكار الرئيسية دون مقاطعة التشغيل</string>
+    <string name="add_note_placeholder">أضف ملاحظة عند 2:34…</string>
+    <string name="onboarding_productivity_title">عزّز إنتاجيتك</string>
+    <string name="onboarding_productivity_description">أصوات طبيعية وسرعة قابلة للتعديل للتعلم الفعال</string>
+    <string name="playback_speed_title">سرعة التشغيل</string>
+    <string name="speed_075x">0.75x</string>
+    <string name="speed_1x">1x</string>
+    <string name="speed_15x">1.5x</string>
+    <string name="speed_2x">2x</string>
+    <string name="feature_background_playback">التشغيل في الخلفية</string>
+    <string name="feature_sleep_timer">مؤقت النوم</string>
+    <string name="feature_bookmarks">الإشارات المرجعية والفصول</string>
+    <string name="onboarding_voice_title">اختر صوتك</string>
+    <string name="onboarding_voice_description">اختر صوتًا يناسب أسلوب استماعك</string>
+    <string name="stop_preview_description">إيقاف المعاينة</string>
+    <string name="preview_voice_description">معاينة الصوت</string>
+    <string name="selected">محدد</string>
+    <string name="signin_optional_title">تسجيل الدخول (اختياري)</string>
+    <string name="signin_optional_description">سجّل الدخول لفتح جميع الميزات بما في ذلك مشاركة الصوت والمزامنة عبر الأجهزة.</string>
+    <string name="signin_benefit_share">شارك صوتك</string>
+    <string name="signin_benefit_share_description">شارك الأصوات المستنسخة مع المجتمع</string>
+    <string name="signin_benefit_community">أصوات المجتمع</string>
+    <string name="signin_benefit_community_description">استخدم الأصوات التي شاركها الآخرون</string>
+    <string name="signin_benefit_rewards">اكسب مكافآت</string>
+    <string name="signin_benefit_rewards_description">احصل على دقائق استماع عندما يستخدم الآخرون أصواتك</string>
+    <string name="signin_benefit_sync">المزامنة عبر الأجهزة</string>
+    <string name="signin_benefit_sync_description">بياناتك تتبعك في كل مكان</string>
+    <string name="continue_without_signin">المتابعة بدون تسجيل الدخول</string>
+
+    <!-- Voice Picker -->
+    <string name="choose_voice">اختيار صوت</string>
+    <string name="quality_high_title">أصوات عالية الجودة</string>
+    <string name="quality_high_description">أصوات طبيعية معجّلة بـ GPU - استخدام غير محدود</string>
+    <string name="quality_free">مجاني</string>
+
+    <!-- Settings (additional) -->
+    <string name="settings_voice_cloning_subtitle">أنشئ صوتًا مخصصًا من تسجيلك</string>
+    <string name="settings_voice_marketplace">سوق الأصوات</string>
+    <string name="settings_voice_marketplace_subtitle">تصفح وشارك أصوات المجتمع</string>
+
+    <!-- General -->
+    <string name="pro">PRO</string>
+    <string name="connect">اتصال</string>
+    <string name="disconnect">قطع الاتصال</string>
+    <string name="cancel">إلغاء</string>
+    <string name="done">تم</string>
+    <string name="delete">حذف</string>
+    <string name="play">تشغيل</string>
+    <string name="pause">إيقاف مؤقت</string>
+    <string name="close">إغلاق</string>
+    <string name="add_to_queue">إضافة إلى قائمة الانتظار</string>
+    <string name="favorite">مفضلة</string>
+    <string name="share">مشاركة</string>
+
+    <!-- Settings Subscription -->
+    <string name="settings_subscription">الاشتراك</string>
+    <string name="settings_upgrade_to_pro">الترقية إلى Pro</string>
+    <string name="settings_upgrade_to_pro_subtitle">استماع غير محدود وجميع الأصوات والمزيد</string>
+    <string name="settings_readaloud_pro">ReadAloud AI Pro</string>
+    <string name="settings_pro_member_subtitle">أنت عضو Pro</string>
+    <string name="settings_audio_quality_hd">جودة عالية (HD)</string>
+
+    <!-- Settings Dialogs -->
+    <string name="dialog_playback_speed">سرعة التشغيل</string>
+    <string name="dialog_appearance">المظهر</string>
+    <string name="dialog_skip_interval">فترة التخطي</string>
+    <string name="dialog_sleep_timer_default">مؤقت النوم الافتراضي</string>
+    <string name="selected_check">محدد</string>
+    <string name="seconds_format">%d ثانية</string>
+    <string name="sleep_timer_off">إيقاف</string>
+    <string name="sleep_timer_minutes_format">%d دقيقة</string>
+    <string name="sleep_timer_15_min">15 دقيقة</string>
+    <string name="sleep_timer_30_min">30 دقيقة</string>
+    <string name="sleep_timer_45_min">45 دقيقة</string>
+    <string name="sleep_timer_1_hour">ساعة واحدة</string>
+    <string name="appearance_system">النظام</string>
+    <string name="appearance_light">فاتح</string>
+    <string name="appearance_dark">داكن</string>
+
+    <!-- Share Intent -->
+    <string name="share_subject">تعرّف على ListenAI</string>
+    <string name="share_body">استمع إلى أي مقال بأصوات ذكاء اصطناعي طبيعية! حمّل ListenAI: https://play.google.com/store/apps/details?id=com.listenai</string>
+    <string name="share_chooser_title">مشاركة ListenAI</string>
+    <string name="feedback_email_subject">ملاحظات ListenAI</string>
+
+    <!-- Player Screen -->
+    <string name="player_loading_article">جارٍ تحميل المقال…</string>
+    <string name="player_article_not_found">المقال غير موجود</string>
+    <string name="player_no_text_content">لا يوجد محتوى نصي للتوليف.</string>
+    <string name="player_no_voice_available">لا يوجد صوت متاح. يرجى التحقق من اتصال خدمة TTS.</string>
+    <string name="player_network_error">خطأ في الشبكة. يرجى التحقق من اتصال الإنترنت.</string>
+    <string name="player_timeout_error">انتهت مهلة الطلب. قد يكون الخادم مشغولًا.</string>
+    <string name="player_rate_limit_error">الخادم مشغول. يرجى المحاولة مرة أخرى بعد قليل.</string>
+    <string name="player_synthesis_failed">فشل التوليف</string>
+    <string name="player_regeneration_failed">فشلت إعادة التوليد</string>
+    <string name="player_something_went_wrong">حدث خطأ ما</string>
+    <string name="player_go_back">رجوع</string>
+    <string name="player_try_again">حاول مرة أخرى</string>
+    <string name="player_preparing_audio">جارٍ تحضير الصوت…</string>
+    <string name="player_percent_complete">%d%% مكتمل</string>
+    <string name="player_back">رجوع</string>
+    <string name="player_change_voice">تغيير الصوت</string>
+    <string name="player_more_options">المزيد</string>
+    <string name="player_skip_back_10">رجوع 10 ثوانٍ</string>
+    <string name="player_skip_forward_10">تقديم 10 ثوانٍ</string>
+    <string name="player_select_speed">اختيار السرعة</string>
+    <string name="player_change_voice_button">تغيير الصوت</string>
+    <string name="player_added_to_queue">تمت الإضافة إلى قائمة الانتظار</string>
+    <string name="player_marked_finished">تم وضع علامة مكتمل</string>
+    <string name="player_removed_from_favorites">تمت الإزالة من المفضلة</string>
+    <string name="player_added_to_favorites">تمت الإضافة إلى المفضلة</string>
+    <string name="player_export_audio">تصدير الصوت</string>
+    <string name="player_audio_not_found">ملف الصوت غير موجود</string>
+    <string name="player_export_failed">فشل التصدير: %s</string>
+    <string name="player_sleep_timer_set">تم ضبط مؤقت النوم لمدة %d دقيقة</string>
+    <string name="player_sleep_timer_cancelled">تم إلغاء مؤقت النوم</string>
+    <string name="player_by_author">بواسطة %s</string>
+    <string name="player_words_count">%d كلمة</string>
+    <string name="player_untitled">بدون عنوان</string>
+    <string name="player_article_fallback">مقال</string>
+    <string name="player_from_label">من:</string>
+    <string name="player_unknown_sender">غير معروف</string>
+
+    <!-- Player Source Badges -->
+    <string name="source_web">ويب</string>
+    <string name="source_pdf">PDF</string>
+    <string name="source_clipboard">الحافظة</string>
+    <string name="source_file">ملف</string>
+    <string name="source_text">نص</string>
+    <string name="source_email">بريد إلكتروني</string>
+
+    <!-- Player Mode Badge -->
+    <string name="player_mode_loading_full">جارٍ تحميل الكامل…</string>
+    <string name="player_mode_preview">معاينة</string>
+    <string name="player_mode_full">كامل</string>
+
+    <!-- Player Voice Indicator -->
+    <string name="player_cloned_voice">مستنسخ</string>
+    <string name="player_voice_fallback">صوت</string>
+
+    <!-- Quota Exceeded -->
+    <string name="quota_exceeded_title">تم تجاوز الحصة اليومية</string>
+    <string name="quota_exceeded_message">لديك %1$d حرف متبقٍ اليوم،\nلكن هذا المقال يتطلب %2$d حرف.</string>
+    <string name="quota_upgrade_to_pro">الترقية إلى Pro</string>
+    <string name="quota_benefit_chars_day">100 ألف حرف يوميًا (25 ضعفًا أكثر)</string>
+    <string name="quota_benefit_chars_month">مليون حرف شهريًا</string>
+    <string name="quota_benefit_premium_voices">أصوات ذكاء اصطناعي متميزة</string>
+    <string name="quota_benefit_priority">أولوية في قائمة التوليف</string>
+    <string name="quota_maybe_later">ربما لاحقًا</string>
+    <string name="quota_reset_info">يتم إعادة تعيين حصتك اليومية عند منتصف الليل</string>
+
+    <!-- More Options Sheet -->
+    <string name="more_options_download_audio">تحميل الصوت</string>
+    <string name="more_options_download_subtitle">يتيح لك الاستماع بدون اتصال داخل التطبيق.</string>
+    <string name="more_options_add_to_queue">إضافة إلى قائمة الانتظار</string>
+    <string name="more_options_mark_finished">وضع علامة مكتمل</string>
+    <string name="more_options_sleep_timer">مؤقت النوم</string>
+    <string name="more_options_export_audio">تصدير الصوت</string>
+    <string name="more_options_export_subtitle">حفظ الصوت على الجهاز أو مشاركته مباشرة.</string>
+    <string name="more_options_delete_article">حذف المقال</string>
+    <string name="more_options_timer_active">المؤقت نشط: %s</string>
+    <string name="more_options_current">الحالي</string>
+
+    <!-- Sleep Timer Picker -->
+    <string name="sleep_timer_picker_title">مؤقت النوم</string>
+    <string name="sleep_timer_5_min">5 دقائق</string>
+    <string name="sleep_timer_10_min">10 دقائق</string>
+    <string name="sleep_timer_1_5_hours">ساعة ونصف</string>
+    <string name="sleep_timer_2_hours">ساعتان</string>
+
+    <!-- Duration Formats -->
+    <string name="duration_hr_min">%1$d س %2$d د</string>
+    <string name="duration_hr">%d س</string>
+    <string name="duration_min">%d د</string>
+    <string name="duration_sec">%d ث</string>
+
+    <!-- Language Picker -->
+    <string name="language">اللغة</string>
+    <string name="language_picker_title">اختيار اللغة</string>
+    <string name="language_english">English</string>
+    <string name="language_spanish">Español</string>
+    <string name="language_french">Français</string>
+    <string name="language_german">Deutsch</string>
+    <string name="language_japanese">日本語</string>
+    <string name="language_chinese">中文(简体)</string>
+    <string name="language_korean">한국어</string>
+    <string name="language_portuguese">Português</string>
+    <string name="language_italian">Italiano</string>
+    <string name="language_hindi">हिन्दी</string>
+</resources>

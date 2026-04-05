@@ -55,8 +55,8 @@ fun ImportScreen(
 
     val scrollState = rememberScrollState()
 
-    // PDF file picker launcher
-    val pdfPickerLauncher = rememberLauncherForActivityResult(
+    // Document file picker launcher (PDF + EPUB)
+    val documentPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
     ) { uri ->
         uri?.let {
@@ -155,11 +155,19 @@ fun ImportScreen(
 
             // Progress indicator
             if (importState is ImportState.Loading) {
-                LinearProgressIndicator(
-                    progress = progress,
-                    modifier = Modifier.fillMaxWidth(),
-                    color = Blue
-                )
+                if (progress <= 0.1f) {
+                    // Indeterminate while parsing
+                    LinearProgressIndicator(
+                        modifier = Modifier.fillMaxWidth(),
+                        color = Blue
+                    )
+                } else {
+                    LinearProgressIndicator(
+                        progress = { progress },
+                        modifier = Modifier.fillMaxWidth(),
+                        color = Blue
+                    )
+                }
             }
 
             // Content area based on selected mode
@@ -175,7 +183,10 @@ fun ImportScreen(
                     selectedFileName = selectedPdfName,
                     isLoading = importState is ImportState.Loading,
                     onSelectDocument = {
-                        pdfPickerLauncher.launch(arrayOf("application/pdf"))
+                        documentPickerLauncher.launch(arrayOf(
+                            "application/pdf",
+                            "application/epub+zip"
+                        ))
                     },
                     onClearSelection = {
                         selectedPdfUri = null
@@ -183,7 +194,12 @@ fun ImportScreen(
                     },
                     onImport = {
                         selectedPdfUri?.let { uri ->
-                            viewModel.importFromPdf(context, uri)
+                            val name = selectedPdfName?.lowercase() ?: ""
+                            if (name.endsWith(".epub")) {
+                                viewModel.importFromEpub(context, uri)
+                            } else {
+                                viewModel.importFromPdf(context, uri)
+                            }
                         }
                     }
                 )
@@ -266,7 +282,7 @@ private fun ImportModeSelector(
         ) {
             ImportModeChip(
                 icon = Icons.Default.ContentPaste,
-                label = "Clipboard",
+                label = stringResource(R.string.import_mode_clipboard),
                 isSelected = selectedMode == ImportMode.CLIPBOARD,
                 color = Purple,
                 onClick = { onModeSelected(ImportMode.CLIPBOARD) },
@@ -275,7 +291,7 @@ private fun ImportModeSelector(
 
             ImportModeChip(
                 icon = Icons.Default.Email,
-                label = "Email",
+                label = stringResource(R.string.import_mode_email),
                 isSelected = false,
                 color = Red,
                 onClick = onEmailClick,
@@ -373,7 +389,7 @@ private fun UrlImportCard(
                         IconButton(onClick = { onUrlChange("") }) {
                             Icon(
                                 imageVector = Icons.Default.Clear,
-                                contentDescription = "Clear"
+                                contentDescription = stringResource(R.string.clear)
                             )
                         }
                     }
@@ -391,7 +407,7 @@ private fun UrlImportCard(
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = Orange)
             ) {
-                Text(if (isLoading) "Importing..." else stringResource(R.string.import_button))
+                Text(if (isLoading) stringResource(R.string.importing) else stringResource(R.string.import_button))
             }
         }
     }
@@ -439,10 +455,11 @@ private fun DocumentImportCard(
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    val isEpub = selectedFileName.lowercase().endsWith(".epub")
                     Icon(
-                        imageVector = Icons.Default.PictureAsPdf,
+                        imageVector = if (isEpub) Icons.Default.Book else Icons.Default.PictureAsPdf,
                         contentDescription = null,
-                        tint = Red,
+                        tint = if (isEpub) Blue else Red,
                         modifier = Modifier.size(32.dp)
                     )
                     Column(modifier = Modifier.weight(1f)) {
@@ -452,7 +469,7 @@ private fun DocumentImportCard(
                             fontWeight = FontWeight.Medium
                         )
                         Text(
-                            text = "PDF selected",
+                            text = if (isEpub) stringResource(R.string.epub_selected) else stringResource(R.string.pdf_selected),
                             style = MaterialTheme.typography.bodySmall,
                             color = Green
                         )
@@ -460,7 +477,7 @@ private fun DocumentImportCard(
                     IconButton(onClick = onClearSelection) {
                         Icon(
                             imageVector = Icons.Default.Close,
-                            contentDescription = "Remove"
+                            contentDescription = stringResource(R.string.remove)
                         )
                     }
                 }
@@ -512,7 +529,7 @@ private fun DocumentImportCard(
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Blue)
                 ) {
-                    Text(if (isLoading) "Importing..." else stringResource(R.string.import_button))
+                    Text(if (isLoading) stringResource(R.string.importing) else stringResource(R.string.import_button))
                 }
             }
         }
@@ -576,7 +593,7 @@ private fun TextImportCard(
             if (content.isNotBlank()) {
                 val wordCount = content.split(Regex("\\s+")).size
                 Text(
-                    text = "$wordCount words",
+                    text = stringResource(R.string.word_count_format, wordCount),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -590,7 +607,7 @@ private fun TextImportCard(
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = Green)
             ) {
-                Text(if (isLoading) "Importing..." else stringResource(R.string.import_button))
+                Text(if (isLoading) stringResource(R.string.importing) else stringResource(R.string.import_button))
             }
         }
     }
@@ -620,7 +637,7 @@ private fun ClipboardImportCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Import from Clipboard",
+                    text = stringResource(R.string.clipboard_import_title),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold
                 )
@@ -633,7 +650,7 @@ private fun ClipboardImportCard(
             }
 
             Text(
-                text = "Import text or URLs you've copied",
+                text = stringResource(R.string.clipboard_import_description),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -661,7 +678,7 @@ private fun ClipboardImportCard(
                                 modifier = Modifier.size(20.dp)
                             )
                             Text(
-                                text = if (clipboardContent.startsWith("http")) "URL detected" else "Text content",
+                                text = if (clipboardContent.startsWith("http")) stringResource(R.string.clipboard_url_detected) else stringResource(R.string.clipboard_text_content),
                                 style = MaterialTheme.typography.labelMedium,
                                 color = Purple
                             )
@@ -687,7 +704,7 @@ private fun ClipboardImportCard(
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "Clipboard is empty",
+                            text = stringResource(R.string.clipboard_empty),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -703,7 +720,7 @@ private fun ClipboardImportCard(
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = Purple)
             ) {
-                Text(if (isLoading) "Importing..." else stringResource(R.string.import_button))
+                Text(if (isLoading) stringResource(R.string.importing) else stringResource(R.string.import_button))
             }
         }
     }

@@ -7,7 +7,7 @@ struct HomeView: View {
     @EnvironmentObject var playbackService: AudioPlaybackService
     @EnvironmentObject var queueManager: QueueManager
     @Environment(\.colorScheme) private var colorScheme
-    @ObservedObject private var revenueCat = RevenueCatManager.shared
+    private var premiumManager: PremiumManager { PremiumManager.shared }
 
     @State private var showingImportSheet = false
     @State private var selectedImportType: ImportType?
@@ -17,7 +17,7 @@ struct HomeView: View {
         ScrollView {
             VStack(spacing: 24) {
                 // Promotional Banner (hide for premium users)
-                if !revenueCat.isPremium {
+                if !premiumManager.isPremium {
                     promoBanner
                 }
 
@@ -312,7 +312,7 @@ struct ContinueListeningCard: View {
 // MARK: - PRO Badge Button
 
 struct ProBadgeButton: View {
-    @ObservedObject private var revenueCat = RevenueCatManager.shared
+    private var premiumManager: PremiumManager { PremiumManager.shared }
     @State private var showingSubscription = false
 
     var body: some View {
@@ -323,7 +323,7 @@ struct ProBadgeButton: View {
                 .font(.caption.bold())
                 .padding(.horizontal, 12)
                 .padding(.vertical, 6)
-                .background(revenueCat.isPremium ? Color.green.gradient : Color.orange.gradient)
+                .background(premiumManager.isPremium ? Color.green.gradient : Color.orange.gradient)
                 .foregroundStyle(.white)
                 .clipShape(Capsule())
         }

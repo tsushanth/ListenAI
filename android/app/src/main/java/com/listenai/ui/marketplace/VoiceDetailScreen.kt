@@ -18,6 +18,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
+import com.listenai.R
 import com.listenai.service.marketplace.VoiceMarketplaceService
 import com.listenai.service.marketplace.VoiceMarketplaceService.SharedVoice
 import com.listenai.service.marketplace.VoiceMarketplaceService.ReportReason
@@ -137,16 +139,16 @@ fun VoiceDetailScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Voice Details") },
+                title = { Text(stringResource(R.string.voice_detail_title)) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.Default.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                 },
                 actions = {
                     if (voice?.isOwn == false) {
                         IconButton(onClick = { showReportDialog = true }) {
-                            Icon(Icons.Default.Flag, contentDescription = "Report")
+                            Icon(Icons.Default.Flag, contentDescription = stringResource(R.string.report))
                         }
                     }
                 }
@@ -175,7 +177,7 @@ fun VoiceDetailScreen(
                         Text(errorMessage ?: "Error", color = MaterialTheme.colorScheme.error)
                         Spacer(modifier = Modifier.height(16.dp))
                         Button(onClick = { loadVoice() }) {
-                            Text("Retry")
+                            Text(stringResource(R.string.retry))
                         }
                     }
                 }
@@ -238,13 +240,13 @@ fun VoiceDetailScreen(
                         StatItem(
                             icon = Icons.Default.PlayArrow,
                             value = "${voice!!.usageCount}",
-                            label = "uses"
+                            label = stringResource(R.string.uses_label)
                         )
                         voice!!.createdAt?.let { date ->
                             StatItem(
                                 icon = Icons.Default.DateRange,
                                 value = dateFormat.format(date),
-                                label = "created"
+                                label = stringResource(R.string.created_label)
                             )
                         }
                     }
@@ -289,7 +291,7 @@ fun VoiceDetailScreen(
                                 contentDescription = null
                             )
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text(if (isPlaying) "Stop Preview" else "Play Preview")
+                            Text(if (isPlaying) stringResource(R.string.stop_preview) else stringResource(R.string.play_preview))
                         }
 
                         Spacer(modifier = Modifier.height(16.dp))
@@ -318,10 +320,10 @@ fun VoiceDetailScreen(
     if (showRatingDialog) {
         AlertDialog(
             onDismissRequest = { showRatingDialog = false },
-            title = { Text("Rate Voice") },
+            title = { Text(stringResource(R.string.rate_voice)) },
             text = {
                 Column {
-                    Text("How would you rate this voice?")
+                    Text(stringResource(R.string.rate_voice_prompt))
                     Spacer(modifier = Modifier.height(16.dp))
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -342,7 +344,7 @@ fun VoiceDetailScreen(
                     OutlinedTextField(
                         value = userReview,
                         onValueChange = { userReview = it },
-                        label = { Text("Review (optional)") },
+                        label = { Text(stringResource(R.string.review_optional)) },
                         modifier = Modifier.fillMaxWidth(),
                         maxLines = 3
                     )
@@ -353,12 +355,12 @@ fun VoiceDetailScreen(
                     onClick = { submitRating() },
                     enabled = userRating > 0
                 ) {
-                    Text("Submit")
+                    Text(stringResource(R.string.submit))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showRatingDialog = false }) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.cancel))
                 }
             }
         )
@@ -368,10 +370,10 @@ fun VoiceDetailScreen(
     if (showReportDialog) {
         AlertDialog(
             onDismissRequest = { showReportDialog = false },
-            title = { Text("Report Voice") },
+            title = { Text(stringResource(R.string.report_voice_title)) },
             text = {
                 Column {
-                    Text("Why are you reporting this voice?")
+                    Text(stringResource(R.string.report_voice_prompt))
                     Spacer(modifier = Modifier.height(16.dp))
                     ReportReason.values().forEach { reason ->
                         Row(
@@ -391,7 +393,7 @@ fun VoiceDetailScreen(
                     OutlinedTextField(
                         value = reportDescription,
                         onValueChange = { reportDescription = it },
-                        label = { Text("Description") },
+                        label = { Text(stringResource(R.string.description_label)) },
                         modifier = Modifier.fillMaxWidth(),
                         maxLines = 3
                     )
@@ -402,12 +404,12 @@ fun VoiceDetailScreen(
                     onClick = { submitReport() },
                     enabled = reportDescription.isNotEmpty()
                 ) {
-                    Text("Submit Report")
+                    Text(stringResource(R.string.submit_report))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showReportDialog = false }) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.cancel))
                 }
             }
         )

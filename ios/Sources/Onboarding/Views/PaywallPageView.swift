@@ -1,5 +1,5 @@
 import SwiftUI
-import RevenueCat
+import PaywallKit
 
 // MARK: - Paywall Page View
 
@@ -13,14 +13,14 @@ import RevenueCat
 /// - Functional links to Privacy Policy and Terms of Use (EULA)
 struct LegacyPaywallPageView: View {
     @ObservedObject private var manager = OnboardingManager.shared
-    @ObservedObject private var revenueCat = RevenueCatManager.shared
-    @State private var selectedPlan: SubscriptionPlan = .annual
+    @ObservedObject private var store = StoreManager.shared
+    @State private var selectedPlan: LegacySubscriptionPlan = .annual
     @State private var isPurchasing = false
     @State private var showError = false
     @State private var errorMessage = ""
     @Environment(\.dismiss) private var dismiss
 
-    enum SubscriptionPlan {
+    enum LegacySubscriptionPlan {
         case annual
         case weekly
     }
@@ -34,61 +34,59 @@ struct LegacyPaywallPageView: View {
 
     // MARK: - Computed Properties
 
-    /// Get the weekly package from RevenueCat
-    private var weeklyPackage: Package? {
-        revenueCat.weeklyPackage
+    /// Get the weekly product from StoreManager
+    private var weeklyProduct: PaywallProduct? {
+        store.paywallProducts.first { $0.period == .weekly }
     }
 
-    /// Get the annual package from RevenueCat
-    private var annualPackage: Package? {
-        revenueCat.annualPackage
+    /// Get the annual product from StoreManager
+    private var annualProduct: PaywallProduct? {
+        store.paywallProducts.first { $0.period == .yearly }
     }
 
-    /// Currently selected package
-    private var selectedPackage: Package? {
-        selectedPlan == .annual ? annualPackage : weeklyPackage
+    /// Currently selected product ID
+    private var selectedProductId: String? {
+        selectedPlan == .annual ? annualProduct?.id : weeklyProduct?.id
     }
 
-    /// Price string from RevenueCat or fallback
+    /// Price string or fallback
     private var weeklyPrice: String {
-        weeklyPackage?.localizedPriceString ?? "$7.99"
+        weeklyProduct?.localizedPrice ?? "$7.99"
     }
 
     /// Annual price string
     private var annualPrice: String {
-        annualPackage?.localizedPriceString ?? "$39.99"
+        annualProduct?.localizedPrice ?? "$39.99"
     }
 
-    /// Check if the selected package has a free trial
+    /// Check if the selected product has a free trial
     private var hasFreeTrial: Bool {
-        selectedPackage?.hasFreeTrial ?? (selectedPlan == .annual)
+        let product = selectedPlan == .annual ? annualProduct : weeklyProduct
+        return (product?.trialDays ?? 0) > 0
     }
 
     /// Free trial duration string
     private var trialDuration: String {
-        selectedPackage?.freeTrialDuration ?? "7 days"
+        let product = selectedPlan == .annual ? annualProduct : weeklyProduct
+        if let days = product?.trialDays, days > 0 {
+            return "\(days) days"
+        }
+        return "7 days"
     }
 
     /// Trial days as integer for date calculation
     private var trialDays: Int {
-        // Parse from trial duration or default to 7
-        if let duration = selectedPackage?.freeTrialDuration {
-            let components = duration.components(separatedBy: " ")
-            if let days = Int(components.first ?? "") {
-                return days
-            }
-        }
-        return 7
+        let product = selectedPlan == .annual ? annualProduct : weeklyProduct
+        return product?.trialDays ?? 7
     }
 
     /// Calculate weekly equivalent for annual plan
     private var annualWeeklyEquivalent: String {
-        if let package = annualPackage {
-            let price = package.storeProduct.price as Decimal
-            let weeklyPrice = price / 52
+        if let product = annualProduct {
+            let weeklyPrice = product.price / 52
             let formatter = NumberFormatter()
             formatter.numberStyle = .currency
-            formatter.locale = package.storeProduct.priceFormatter?.locale ?? Locale.current
+            formatter.currencyCode = product.currencyCode
             return formatter.string(from: weeklyPrice as NSDecimalNumber) ?? "$0.77"
         }
         return "$0.77"
@@ -184,7 +182,7 @@ struct LegacyPaywallPageView: View {
                         .clipShape(RoundedRectangle(cornerRadius: 16))
                         .contentShape(RoundedRectangle(cornerRadius: 16))
                     }
-                    .disabled(isPurchasing || selectedPackage == nil)
+                    .disabled(isPurchasing || selectedProductId == nil)
 
                     // Subscription terms (required by App Store)
                     Text(subscriptionTermsText)
@@ -229,9 +227,9 @@ struct LegacyPaywallPageView: View {
             Text(errorMessage)
         }
         .task {
-            // Load offerings if not already loaded
-            if revenueCat.packages.isEmpty {
-                await revenueCat.loadOfferings()
+            // Load products if not already loaded
+            if store.paywallProducts.isEmpty {
+                await store.loadProducts()
             }
         }
     }
@@ -253,7 +251,7 @@ struct LegacyPaywallPageView: View {
     // MARK: - Purchase Actions
 
     private func purchaseSubscription() {
-        guard let package = selectedPackage else {
+        guard let productId = selectedProductId else {
             errorMessage = "Subscription not available. Please try again later."
             showError = true
             return
@@ -262,22 +260,20 @@ struct LegacyPaywallPageView: View {
         isPurchasing = true
 
         Task {
-            do {
-                try await revenueCat.purchase(package)
-                // Purchase successful - move to next page
-                await MainActor.run {
-                    isPurchasing = false
+            let result = await store.purchase(productId: productId)
+            await MainActor.run {
+                isPurchasing = false
+                switch result {
+                case .purchased:
+                    Task { await PremiumManager.shared.validateSubscriptionState() }
                     manager.nextPage()
-                }
-            } catch PurchaseError.userCancelled {
-                // User cancelled - just dismiss loading
-                await MainActor.run {
-                    isPurchasing = false
-                }
-            } catch {
-                await MainActor.run {
-                    isPurchasing = false
+                case .cancelled:
+                    break
+                case .failed(let error):
                     errorMessage = error.localizedDescription
+                    showError = true
+                case .pending:
+                    errorMessage = "Purchase is pending approval"
                     showError = true
                 }
             }
@@ -288,11 +284,11 @@ struct LegacyPaywallPageView: View {
         isPurchasing = true
 
         Task {
-            await revenueCat.restorePurchases()
+            await store.restore()
+            await PremiumManager.shared.validateSubscriptionState()
             await MainActor.run {
                 isPurchasing = false
-                if revenueCat.isPremium {
-                    // Restored successfully - move to next page
+                if PremiumManager.shared.isPremium {
                     manager.nextPage()
                 }
             }
@@ -405,8 +401,8 @@ struct LegacyPaywallPageView: View {
                 period: "/year",
                 subtitle: "Just \(annualWeeklyEquivalent)/week",
                 badge: "SAVE 90%",
-                hasFreeTrial: annualPackage?.hasFreeTrial ?? true,
-                trialDuration: annualPackage?.freeTrialDuration ?? "7 days",
+                hasFreeTrial: (annualProduct?.trialDays ?? 0) > 0,
+                trialDuration: annualProduct.map { "\($0.trialDays ?? 7) days" } ?? "7 days",
                 isSelected: selectedPlan == .annual
             ) {
                 selectedPlan = .annual

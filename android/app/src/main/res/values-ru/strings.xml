@@ -1,0 +1,469 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">ReadAloud AI</string>
+
+    <!-- Tab Labels -->
+    <string name="tab_home">Главная</string>
+    <string name="tab_library">Моя библиотека</string>
+    <string name="tab_settings">Настройки</string>
+
+    <!-- Home Screen -->
+    <string name="promo_title">Скачайте и слушайте в любое время и в любом месте</string>
+    <string name="promo_button">Попробовать бесплатно</string>
+    <string name="quick_actions_title">Что вы хотите послушать сегодня?</string>
+    <string name="action_document">Документ</string>
+    <string name="action_document_subtitle">Загрузите файлы с Drive или устройства</string>
+    <string name="action_scan">Сканировать текст</string>
+    <string name="action_scan_subtitle">Отсканированные документы или изображения</string>
+    <string name="action_web_link">Веб-ссылка</string>
+    <string name="action_web_link_subtitle">Преобразуйте URL в аудио</string>
+    <string name="action_text">Введите или вставьте текст</string>
+    <string name="action_text_subtitle">Введите или вставьте текст для прослушивания</string>
+    <string name="action_mail">Почта</string>
+    <string name="action_mail_subtitle">Легко слушайте электронные письма</string>
+
+    <!-- Library Screen -->
+    <string name="library_title">Моя библиотека</string>
+    <string name="filter_all">Все</string>
+    <string name="filter_in_progress">В процессе</string>
+    <string name="filter_continue">Продолжить</string>
+    <string name="filter_finished">Завершённые</string>
+    <string name="filter_favorites">Избранное</string>
+    <string name="filter_archived">Архив</string>
+    <string name="filter_folders">Папки</string>
+    <string name="filter_downloaded">Загруженные</string>
+    <string name="empty_library">Пока нет статей</string>
+    <string name="empty_library_description">Добавьте статьи из веб-ссылок, документов или вставьте текст.</string>
+    <string name="more_options">Дополнительные параметры</string>
+
+    <!-- Settings Screen -->
+    <string name="settings_title">Настройки</string>
+    <string name="settings_preferences">Предпочтения</string>
+    <string name="settings_voice">Голос</string>
+    <string name="settings_voice_subtitle">Выберите предпочтительный голос</string>
+    <string name="settings_speed">Скорость воспроизведения</string>
+    <string name="settings_speed_subtitle">По умолчанию 1.0x</string>
+    <string name="settings_appearance">Оформление</string>
+    <string name="settings_appearance_subtitle">Светлая, тёмная или системная</string>
+    <string name="settings_voice_cloning">Клонирование голоса</string>
+    <string name="settings_change_voice">Сменить голос</string>
+    <string name="settings_app_language">Язык приложения</string>
+    <string name="settings_request_feature">Запросить функцию</string>
+    <string name="settings_linked_accounts">Связанные аккаунты</string>
+    <string name="settings_google">Google</string>
+    <string name="settings_google_subtitle">Синхронизация статей между устройствами</string>
+    <string name="settings_google_connected">Подключено</string>
+    <string name="settings_connect">Подключить</string>
+    <string name="settings_disconnect">Отключить</string>
+    <string name="settings_share">Поделиться</string>
+    <string name="settings_share_app">Поделиться ReadAloud AI</string>
+    <string name="settings_share_app_subtitle">Расскажите друзьям о ReadAloud AI</string>
+    <string name="settings_rate_app">Оценить приложение</string>
+    <string name="settings_rate_app_subtitle">Помогите нам оценкой в 5 звёзд</string>
+    <string name="settings_playback">Воспроизведение</string>
+    <string name="settings_audio_quality">Качество звука</string>
+    <string name="settings_audio_quality_subtitle">Высококачественный синтез</string>
+    <string name="settings_skip_interval">Интервал перемотки</string>
+    <string name="settings_skip_interval_subtitle">10 сек назад, 30 сек вперёд</string>
+    <string name="settings_sleep_timer">Таймер сна</string>
+    <string name="settings_sleep_timer_subtitle">Автопауза после указанного времени</string>
+    <string name="settings_default_speed">Скорость по умолчанию</string>
+    <string name="settings_skip_silences">Пропускать тишину</string>
+    <string name="settings_auto_play">Автовоспроизведение следующего</string>
+    <string name="settings_support">Поддержка</string>
+    <string name="settings_usage">Использование и квота</string>
+    <string name="settings_usage_subtitle">Просмотр использования и лимитов</string>
+    <string name="settings_help">Справочный центр</string>
+    <string name="settings_help_subtitle">Часто задаваемые вопросы и руководства</string>
+    <string name="settings_feedback">Отправить отзыв</string>
+    <string name="settings_feedback_subtitle">Сообщить о проблемах или предложениях</string>
+    <string name="settings_rate_us">Нравится? Оцените нас</string>
+    <string name="settings_contact">Связаться с поддержкой</string>
+    <string name="settings_about">О приложении</string>
+    <string name="settings_version">Версия</string>
+    <string name="settings_privacy">Политика конфиденциальности</string>
+    <string name="settings_privacy_subtitle">Просмотреть политику конфиденциальности</string>
+    <string name="settings_terms">Условия использования</string>
+    <string name="settings_terms_subtitle">Просмотреть условия и положения</string>
+
+    <!-- Playback -->
+    <string name="now_playing">Сейчас играет</string>
+    <string name="up_next">Далее</string>
+    <string name="minutes_left">%d мин осталось</string>
+    <string name="speed_format">%sx</string>
+    <string name="skip_backward">Перемотка назад</string>
+    <string name="skip_forward">Перемотка вперёд</string>
+    <string name="sleep_timer">Таймер сна</string>
+
+    <!-- Import Screen -->
+    <string name="import_title">Добавить контент</string>
+    <string name="import_mode_url">URL</string>
+    <string name="import_mode_document">Док</string>
+    <string name="import_mode_text">Текст</string>
+    <string name="import_mode_scan">Скан</string>
+    <string name="import_url_title">Импорт по URL</string>
+    <string name="import_url_description">Вставьте веб-ссылку для извлечения и преобразования статьи в аудио.</string>
+    <string name="import_url_placeholder">https://example.com/article</string>
+    <string name="import_document_title">Импорт документа</string>
+    <string name="import_document_description">Загрузите файлы PDF, EPUB, DOCX или TXT для преобразования в аудио.</string>
+    <string name="import_document_tap">Нажмите для выбора файла</string>
+    <string name="import_document_formats">Поддерживаются PDF, EPUB, DOCX, TXT</string>
+    <string name="import_text_title">Введите текст</string>
+    <string name="import_text_title_placeholder">Заголовок (необязательно)</string>
+    <string name="import_text_content_placeholder">Вставьте или введите текст здесь...</string>
+    <string name="import_scan_title">Сканировать документ</string>
+    <string name="import_scan_description">Используйте камеру для сканирования печатного текста и преобразования в аудио.</string>
+    <string name="import_scan_tap">Нажмите для сканирования</string>
+    <string name="import_button">Импортировать</string>
+
+    <!-- Import Screen (additional) -->
+    <string name="import_mode_clipboard">Буфер обмена</string>
+    <string name="import_mode_email">Эл. почта</string>
+    <string name="clear">Очистить</string>
+    <string name="importing">Импорт…</string>
+    <string name="clipboard_import_title">Импорт из буфера обмена</string>
+    <string name="clipboard_import_description">Импортируйте скопированный текст или ссылки</string>
+    <string name="clipboard_url_detected">Обнаружен URL</string>
+    <string name="clipboard_text_content">Текстовое содержимое</string>
+    <string name="clipboard_empty">Буфер обмена пуст</string>
+    <string name="word_count_format">%d слов</string>
+    <string name="pdf_selected">PDF выбран</string>
+    <string name="epub_selected">EPUB</string>    <string name="remove">Удалить</string>
+
+    <!-- Library Screen (additional) -->
+    <string name="library_empty_in_progress_title">Нет элементов в процессе</string>
+    <string name="library_empty_in_progress_description">Начните слушать, чтобы увидеть здесь элементы в процессе</string>
+    <string name="library_empty_favorites_title">Нет избранного</string>
+    <string name="library_empty_favorites_description">Отмечайте статьи как избранные для быстрого доступа</string>
+    <string name="library_empty_email_title">Нет писем</string>
+    <string name="library_empty_email_description">Импортируйте письма из Gmail, чтобы слушать их</string>
+    <string name="library_empty_archived_title">Нет архивных статей</string>
+    <string name="library_empty_archived_description">Архивируйте прочитанные статьи, чтобы поддерживать порядок в библиотеке</string>
+    <string name="library_add_content_button">Добавить контент</string>
+    <string name="filter_email">Письма</string>
+    <string name="remove_from_favorites">Удалить из избранного</string>
+    <string name="add_to_favorites">Добавить в избранное</string>
+    <string name="unarchive">Разархивировать</string>
+    <string name="archive">Архивировать</string>
+    <string name="duration_left_minutes">%d мин %d сек осталось</string>
+    <string name="duration_left_seconds">%d сек осталось</string>
+
+    <!-- Feedback Dialog -->
+    <string name="feedback_title">Вам нравится ReadAloud?</string>
+    <string name="feedback_subtitle">Ваш отзыв помогает нам улучшить приложение для всех.</string>
+    <string name="feedback_button_negative">Не совсем</string>
+    <string name="feedback_button_positive">Да!</string>
+
+    <!-- Mail Import -->
+    <string name="mail_import_title">Gmail</string>
+    <string name="back">Назад</string>
+    <string name="refresh">Обновить</string>
+    <string name="loading_emails">Загрузка писем…</string>
+    <string name="load_more">Загрузить ещё</string>
+    <string name="loading_email">Загрузка письма…</string>
+    <string name="no_subject">(Без темы)</string>
+    <string name="email_from_format">От: %s &lt;%s&gt;</string>
+    <string name="no_content">(Нет содержимого)</string>
+    <string name="email_import_button">Импорт и прослушивание</string>
+    <string name="gmail_connect_title">Подключить Gmail</string>
+    <string name="gmail_connect_description">Войдите через Google, чтобы импортировать и слушать письма</string>
+    <string name="gmail_signin_button">Войти через Google</string>
+    <string name="gmail_privacy_notice">Мы запрашиваем только доступ на чтение ваших писем. Ваши данные остаются конфиденциальными.</string>
+    <string name="mail_search_placeholder">Поиск в почте</string>
+    <string name="no_emails_found">Письма не найдены</string>
+    <string name="no_emails_search_suggestion">Попробуйте другой поисковый запрос</string>
+    <string name="clear_search">Очистить поиск</string>
+    <string name="inbox_empty">Ваш почтовый ящик пуст</string>
+
+    <!-- Voice Marketplace -->
+    <string name="marketplace_title">Магазин голосов</string>
+    <string name="my_shares">Мои публикации</string>
+    <string name="rewards">Награды</string>
+    <string name="marketplace_search_placeholder">Поиск голосов…</string>
+    <string name="no_voices_found">Голоса не найдены</string>
+    <string name="no_voices_suggestion">Попробуйте изменить фильтры</string>
+    <string name="voice_uses_format">%d использований</string>
+
+    <!-- Voice Detail -->
+    <string name="voice_detail_title">Детали голоса</string>
+    <string name="report">Пожаловаться</string>
+    <string name="retry">Повторить</string>
+    <string name="rate_voice_prompt">Как бы вы оценили этот голос?</string>
+    <string name="star_rating_format">%d звёзд</string>
+    <string name="review_optional">Отзыв (необязательно)</string>
+    <string name="rate_voice">Оценить голос</string>
+    <string name="submit">Отправить</string>
+    <string name="report_voice_title">Пожаловаться на голос</string>
+    <string name="report_voice_prompt">Почему вы жалуетесь на этот голос?</string>
+    <string name="description_label">Описание</string>
+    <string name="submit_report">Отправить жалобу</string>
+    <string name="rating_count_format">%d оценок</string>
+    <string name="uses_label">использований</string>
+    <string name="created_label">создан</string>
+    <string name="stop_preview">Остановить предпросмотр</string>
+    <string name="play_preview">Предпросмотр</string>
+
+    <!-- Share Voice -->
+    <string name="share_voice_title">Поделиться голосом</string>
+    <string name="no_cloned_voices">Нет клонированных голосов</string>
+    <string name="no_cloned_voices_hint">Сначала создайте клонированный голос, чтобы поделиться им</string>
+    <string name="select_voice">Выбрать голос</string>
+    <string name="voice_sample_duration">Образец %.1f сек</string>
+    <string name="display_name">Отображаемое имя</string>
+    <string name="display_name_hint">Как этот голос будет отображаться в магазине</string>
+    <string name="description_optional">Описание (необязательно)</string>
+    <string name="describe_voice_placeholder">Опишите свой голос…</string>
+    <string name="tags_label">Теги</string>
+    <string name="tags_description">Выберите теги, описывающие ваш голос</string>
+    <string name="voice_attestation">Я подтверждаю, что это мой собственный голос и у меня есть право им делиться</string>
+    <string name="marketplace_terms">Я принимаю Условия использования магазина голосов</string>
+    <string name="share_voice_button">Поделиться голосом</string>
+
+    <!-- My Shared Voices -->
+    <string name="my_shared_voices_title">Мои опубликованные голоса</string>
+    <string name="no_shared_voices_title">Пока нет опубликованных голосов</string>
+    <string name="no_shared_voices_description">Делитесь клонированными голосами с сообществом и получайте награды, когда другие их используют!</string>
+    <string name="share_a_voice">Поделиться голосом</string>
+    <string name="revoke_voice_title">Отозвать голос</string>
+    <string name="revoke_voice_prompt">Вы уверены, что хотите прекратить делиться \"%s\"? Другие больше не смогут использовать этот голос.</string>
+    <string name="revoke">Отозвать</string>
+    <string name="status_active">активен</string>
+    <string name="status_pending">ожидание</string>
+    <string name="status_revoked">отозван</string>
+    <string name="revoked_reason_format">Отозван: %s</string>
+
+    <!-- Rewards -->
+    <string name="rewards_title">Награды</string>
+    <string name="total_earned">Всего заработано</string>
+    <string name="pending">Ожидание</string>
+    <string name="uses">Использования</string>
+    <string name="claim_rewards">Получить награды</string>
+    <string name="claim_success_format">Успешно получено %.1f минут!</string>
+    <string name="how_rewards_work">Как работают награды</string>
+    <string name="reward_step1_title">Поделитесь голосом</string>
+    <string name="reward_step1_description">Поделитесь клонированными голосами с сообществом</string>
+    <string name="reward_step2_title">Другие используют его</string>
+    <string name="reward_step2_description">Когда люди используют ваш голос для TTS, вы получаете награды</string>
+    <string name="reward_step3_title">Получите минуты</string>
+    <string name="reward_step3_description">Обменяйте ожидающие награды на бесплатные минуты прослушивания</string>
+    <string name="reward_history">История наград</string>
+    <string name="no_rewards_title">Пока нет наград</string>
+    <string name="no_rewards_description">Делитесь голосами, чтобы начать зарабатывать!</string>
+    <string name="characters_generated_format">%d символов</string>
+    <string name="credited">Зачислено</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_back">Назад</string>
+    <string name="skip">Пропустить</string>
+    <string name="onboarding_continue">Продолжить</string>
+    <string name="next">Далее</string>
+    <string name="onboarding_terms">Продолжая, вы соглашаетесь с нашей Политикой конфиденциальности и Условиями использования.</string>
+    <string name="privacy_policy">Политика конфиденциальности</string>
+    <string name="terms_of_use">Условия использования</string>
+    <string name="onboarding_welcome_prefix">Добро пожаловать в</string>
+    <string name="onboarding_welcome_description">Преобразуйте любой документ в естественно звучащее аудио. Слушайте статьи, PDF и многое другое на ходу.</string>
+    <string name="feature_pdf">PDF</string>
+    <string name="feature_web">Веб</string>
+    <string name="feature_epub">ePUB</string>
+    <string name="feature_text">Текст</string>
+    <string name="onboarding_import_title">Импортируйте откуда угодно</string>
+    <string name="onboarding_import_description">Вставьте ссылку, загрузите PDF или введите текст напрямую</string>
+    <string name="import_method_web_links">Веб-ссылки</string>
+    <string name="import_method_web_links_subtitle">Вставьте любой URL статьи</string>
+    <string name="import_method_pdf">PDF-документы</string>
+    <string name="import_method_pdf_subtitle">Загрузите PDF с устройства</string>
+    <string name="import_method_text">Прямой ввод текста</string>
+    <string name="import_method_text_subtitle">Введите или вставьте любой текст</string>
+    <string name="import_method_clipboard">Буфер обмена</string>
+    <string name="import_method_clipboard_subtitle">Автоопределение скопированного контента</string>
+    <string name="onboarding_notes_title">Делайте заметки во время прослушивания</string>
+    <string name="onboarding_notes_description">Фиксируйте ключевые идеи, не прерывая воспроизведение</string>
+    <string name="add_note_placeholder">Добавить заметку на 2:34…</string>
+    <string name="onboarding_productivity_title">Повысьте продуктивность</string>
+    <string name="onboarding_productivity_description">Естественные голоса и настраиваемая скорость для эффективного обучения</string>
+    <string name="playback_speed_title">Скорость воспроизведения</string>
+    <string name="speed_075x">0.75x</string>
+    <string name="speed_1x">1x</string>
+    <string name="speed_15x">1.5x</string>
+    <string name="speed_2x">2x</string>
+    <string name="feature_background_playback">Фоновое воспроизведение</string>
+    <string name="feature_sleep_timer">Таймер сна</string>
+    <string name="feature_bookmarks">Закладки и главы</string>
+    <string name="onboarding_voice_title">Выберите свой голос</string>
+    <string name="onboarding_voice_description">Выберите голос, подходящий вашему стилю прослушивания</string>
+    <string name="stop_preview_description">Остановить предпросмотр</string>
+    <string name="preview_voice_description">Предпросмотр голоса</string>
+    <string name="selected">Выбрано</string>
+    <string name="signin_optional_title">Вход (необязательно)</string>
+    <string name="signin_optional_description">Войдите, чтобы разблокировать все функции, включая обмен голосами и синхронизацию между устройствами.</string>
+    <string name="signin_benefit_share">Делитесь голосом</string>
+    <string name="signin_benefit_share_description">Делитесь клонированными голосами с сообществом</string>
+    <string name="signin_benefit_community">Голоса сообщества</string>
+    <string name="signin_benefit_community_description">Используйте голоса, опубликованные другими</string>
+    <string name="signin_benefit_rewards">Получайте награды</string>
+    <string name="signin_benefit_rewards_description">Получайте минуты прослушивания, когда другие используют ваши голоса</string>
+    <string name="signin_benefit_sync">Синхронизация между устройствами</string>
+    <string name="signin_benefit_sync_description">Ваши данные следуют за вами повсюду</string>
+    <string name="continue_without_signin">Продолжить без входа</string>
+
+    <!-- Voice Picker -->
+    <string name="choose_voice">Выбрать голос</string>
+    <string name="quality_high_title">Высококачественные голоса</string>
+    <string name="quality_high_description">Естественные голоса с GPU-ускорением — неограниченное использование</string>
+    <string name="quality_free">БЕСПЛАТНО</string>
+
+    <!-- Settings (additional) -->
+    <string name="settings_voice_cloning_subtitle">Создайте собственный голос из вашей записи</string>
+    <string name="settings_voice_marketplace">Магазин голосов</string>
+    <string name="settings_voice_marketplace_subtitle">Просматривайте и делитесь голосами сообщества</string>
+
+    <!-- General -->
+    <string name="pro">PRO</string>
+    <string name="connect">Подключить</string>
+    <string name="disconnect">Отключить</string>
+    <string name="cancel">Отмена</string>
+    <string name="done">Готово</string>
+    <string name="delete">Удалить</string>
+    <string name="play">Воспроизвести</string>
+    <string name="pause">Пауза</string>
+    <string name="close">Закрыть</string>
+    <string name="add_to_queue">Добавить в очередь</string>
+    <string name="favorite">Избранное</string>
+    <string name="share">Поделиться</string>
+
+    <!-- Settings Subscription -->
+    <string name="settings_subscription">Подписка</string>
+    <string name="settings_upgrade_to_pro">Перейти на Pro</string>
+    <string name="settings_upgrade_to_pro_subtitle">Безлимитное прослушивание, все голоса и многое другое</string>
+    <string name="settings_readaloud_pro">ReadAloud AI Pro</string>
+    <string name="settings_pro_member_subtitle">Вы участник Pro</string>
+    <string name="settings_audio_quality_hd">Высокое качество (HD)</string>
+
+    <!-- Settings Dialogs -->
+    <string name="dialog_playback_speed">Скорость воспроизведения</string>
+    <string name="dialog_appearance">Оформление</string>
+    <string name="dialog_skip_interval">Интервал перемотки</string>
+    <string name="dialog_sleep_timer_default">Таймер сна по умолчанию</string>
+    <string name="selected_check">Выбрано</string>
+    <string name="seconds_format">%d секунд</string>
+    <string name="sleep_timer_off">Выкл</string>
+    <string name="sleep_timer_minutes_format">%d минут</string>
+    <string name="sleep_timer_15_min">15 минут</string>
+    <string name="sleep_timer_30_min">30 минут</string>
+    <string name="sleep_timer_45_min">45 минут</string>
+    <string name="sleep_timer_1_hour">1 час</string>
+    <string name="appearance_system">Системная</string>
+    <string name="appearance_light">Светлая</string>
+    <string name="appearance_dark">Тёмная</string>
+
+    <!-- Share Intent -->
+    <string name="share_subject">Попробуйте ListenAI</string>
+    <string name="share_body">Слушайте любую статью с естественными голосами ИИ! Скачайте ListenAI: https://play.google.com/store/apps/details?id=com.listenai</string>
+    <string name="share_chooser_title">Поделиться ListenAI</string>
+    <string name="feedback_email_subject">Отзыв о ListenAI</string>
+
+    <!-- Player Screen -->
+    <string name="player_loading_article">Загрузка статьи…</string>
+    <string name="player_article_not_found">Статья не найдена</string>
+    <string name="player_no_text_content">Нет текстового содержимого для синтеза.</string>
+    <string name="player_no_voice_available">Голос недоступен. Проверьте подключение к TTS-сервису.</string>
+    <string name="player_network_error">Ошибка сети. Проверьте подключение к интернету.</string>
+    <string name="player_timeout_error">Время ожидания истекло. Сервер может быть занят.</string>
+    <string name="player_rate_limit_error">Сервер занят. Попробуйте через некоторое время.</string>
+    <string name="player_synthesis_failed">Ошибка синтеза</string>
+    <string name="player_regeneration_failed">Ошибка повторной генерации</string>
+    <string name="player_something_went_wrong">Что-то пошло не так</string>
+    <string name="player_go_back">Назад</string>
+    <string name="player_try_again">Попробовать снова</string>
+    <string name="player_preparing_audio">Подготовка аудио…</string>
+    <string name="player_percent_complete">%d%% завершено</string>
+    <string name="player_back">Назад</string>
+    <string name="player_change_voice">Сменить голос</string>
+    <string name="player_more_options">Ещё</string>
+    <string name="player_skip_back_10">Перемотка на 10 секунд назад</string>
+    <string name="player_skip_forward_10">Перемотка на 10 секунд вперёд</string>
+    <string name="player_select_speed">Выбрать скорость</string>
+    <string name="player_change_voice_button">Сменить голос</string>
+    <string name="player_added_to_queue">Добавлено в очередь</string>
+    <string name="player_marked_finished">Отмечено как завершённое</string>
+    <string name="player_removed_from_favorites">Удалено из избранного</string>
+    <string name="player_added_to_favorites">Добавлено в избранное</string>
+    <string name="player_export_audio">Экспорт аудио</string>
+    <string name="player_audio_not_found">Аудиофайл не найден</string>
+    <string name="player_export_failed">Ошибка экспорта: %s</string>
+    <string name="player_sleep_timer_set">Таймер сна установлен на %d минут</string>
+    <string name="player_sleep_timer_cancelled">Таймер сна отменён</string>
+    <string name="player_by_author">автор: %s</string>
+    <string name="player_words_count">%d слов</string>
+    <string name="player_untitled">Без названия</string>
+    <string name="player_article_fallback">Статья</string>
+    <string name="player_from_label">От:</string>
+    <string name="player_unknown_sender">Неизвестный</string>
+
+    <!-- Player Source Badges -->
+    <string name="source_web">Веб</string>
+    <string name="source_pdf">PDF</string>
+    <string name="source_clipboard">Буфер обмена</string>
+    <string name="source_file">Файл</string>
+    <string name="source_text">Текст</string>
+    <string name="source_email">Эл. почта</string>
+
+    <!-- Player Mode Badge -->
+    <string name="player_mode_loading_full">Загрузка полной версии…</string>
+    <string name="player_mode_preview">Предпросмотр</string>
+    <string name="player_mode_full">Полная</string>
+
+    <!-- Player Voice Indicator -->
+    <string name="player_cloned_voice">Клонированный</string>
+    <string name="player_voice_fallback">Голос</string>
+
+    <!-- Quota Exceeded -->
+    <string name="quota_exceeded_title">Дневная квота превышена</string>
+    <string name="quota_exceeded_message">У вас осталось %1$d символов на сегодня,\nно для этой статьи требуется %2$d символов.</string>
+    <string name="quota_upgrade_to_pro">Перейти на Pro</string>
+    <string name="quota_benefit_chars_day">100 тыс. символов в день (в 25 раз больше)</string>
+    <string name="quota_benefit_chars_month">1 млн символов в месяц</string>
+    <string name="quota_benefit_premium_voices">Премиум голоса ИИ</string>
+    <string name="quota_benefit_priority">Приоритетная очередь синтеза</string>
+    <string name="quota_maybe_later">Может быть позже</string>
+    <string name="quota_reset_info">Ваша дневная квота обновляется в полночь</string>
+
+    <!-- More Options Sheet -->
+    <string name="more_options_download_audio">Скачать аудио</string>
+    <string name="more_options_download_subtitle">Позволяет слушать офлайн в приложении.</string>
+    <string name="more_options_add_to_queue">Добавить в очередь</string>
+    <string name="more_options_mark_finished">Отметить как завершённое</string>
+    <string name="more_options_sleep_timer">Таймер сна</string>
+    <string name="more_options_export_audio">Экспорт аудио</string>
+    <string name="more_options_export_subtitle">Сохраните аудио на устройство или поделитесь напрямую.</string>
+    <string name="more_options_delete_article">Удалить статью</string>
+    <string name="more_options_timer_active">Таймер активен: %s</string>
+    <string name="more_options_current">Текущий</string>
+
+    <!-- Sleep Timer Picker -->
+    <string name="sleep_timer_picker_title">Таймер сна</string>
+    <string name="sleep_timer_5_min">5 минут</string>
+    <string name="sleep_timer_10_min">10 минут</string>
+    <string name="sleep_timer_1_5_hours">1,5 часа</string>
+    <string name="sleep_timer_2_hours">2 часа</string>
+
+    <!-- Duration Formats -->
+    <string name="duration_hr_min">%1$d ч %2$d мин</string>
+    <string name="duration_hr">%d ч</string>
+    <string name="duration_min">%d мин</string>
+    <string name="duration_sec">%d сек</string>
+
+    <!-- Language Picker -->
+    <string name="language">Язык</string>
+    <string name="language_picker_title">Выберите язык</string>
+    <string name="language_english">English</string>
+    <string name="language_spanish">Español</string>
+    <string name="language_french">Français</string>
+    <string name="language_german">Deutsch</string>
+    <string name="language_japanese">日本語</string>
+    <string name="language_chinese">中文(简体)</string>
+    <string name="language_korean">한국어</string>
+    <string name="language_portuguese">Português</string>
+    <string name="language_italian">Italiano</string>
+    <string name="language_hindi">हिन्दी</string>
+</resources>

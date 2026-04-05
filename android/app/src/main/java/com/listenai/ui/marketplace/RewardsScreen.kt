@@ -15,9 +15,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.listenai.R
 import com.listenai.service.marketplace.VoiceMarketplaceService
 import com.listenai.service.marketplace.VoiceMarketplaceService.RewardHistoryEntry
 import com.listenai.service.marketplace.VoiceMarketplaceService.RewardsSummary
@@ -81,10 +83,10 @@ fun RewardsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Rewards") },
+                title = { Text(stringResource(R.string.rewards_title)) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.Default.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                 }
             )
@@ -112,7 +114,7 @@ fun RewardsScreen(
                         Text(errorMessage ?: "Error", color = MaterialTheme.colorScheme.error)
                         Spacer(modifier = Modifier.height(16.dp))
                         Button(onClick = { loadData() }) {
-                            Text("Retry")
+                            Text(stringResource(R.string.retry))
                         }
                     }
                 }
@@ -150,7 +152,7 @@ fun RewardsScreen(
                                 Spacer(modifier = Modifier.height(16.dp))
 
                                 Text(
-                                    "Total Earned",
+                                    stringResource(R.string.total_earned),
                                     style = MaterialTheme.typography.titleMedium,
                                     color = MaterialTheme.colorScheme.onPrimaryContainer
                                 )
@@ -180,7 +182,7 @@ fun RewardsScreen(
                                             color = MaterialTheme.colorScheme.onPrimaryContainer
                                         )
                                         Text(
-                                            "Pending",
+                                            stringResource(R.string.pending),
                                             style = MaterialTheme.typography.bodySmall,
                                             color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
                                         )
@@ -194,7 +196,7 @@ fun RewardsScreen(
                                             color = MaterialTheme.colorScheme.onPrimaryContainer
                                         )
                                         Text(
-                                            "Uses",
+                                            stringResource(R.string.uses),
                                             style = MaterialTheme.typography.bodySmall,
                                             color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
                                         )
@@ -220,7 +222,7 @@ fun RewardsScreen(
                                         } else {
                                             Icon(Icons.Default.CardGiftcard, contentDescription = null)
                                             Spacer(modifier = Modifier.width(8.dp))
-                                            Text("Claim Rewards")
+                                            Text(stringResource(R.string.claim_rewards))
                                         }
                                     }
                                 }
@@ -265,7 +267,7 @@ fun RewardsScreen(
                         ) {
                             Column(modifier = Modifier.padding(16.dp)) {
                                 Text(
-                                    "How Rewards Work",
+                                    stringResource(R.string.how_rewards_work),
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.SemiBold
                                 )
@@ -273,22 +275,22 @@ fun RewardsScreen(
 
                                 RewardInfoRow(
                                     icon = Icons.Default.Share,
-                                    title = "Share Your Voice",
-                                    description = "Share your cloned voices with the community"
+                                    title = stringResource(R.string.reward_step1_title),
+                                    description = stringResource(R.string.reward_step1_description)
                                 )
                                 Spacer(modifier = Modifier.height(8.dp))
 
                                 RewardInfoRow(
                                     icon = Icons.Default.People,
-                                    title = "Others Use It",
-                                    description = "When people use your voice for TTS, you earn rewards"
+                                    title = stringResource(R.string.reward_step2_title),
+                                    description = stringResource(R.string.reward_step2_description)
                                 )
                                 Spacer(modifier = Modifier.height(8.dp))
 
                                 RewardInfoRow(
                                     icon = Icons.Default.CardGiftcard,
-                                    title = "Claim Minutes",
-                                    description = "Claim your pending rewards as free listening minutes"
+                                    title = stringResource(R.string.reward_step3_title),
+                                    description = stringResource(R.string.reward_step3_description)
                                 )
                             }
                         }
@@ -298,7 +300,7 @@ fun RewardsScreen(
                     if (history.isNotEmpty()) {
                         item {
                             Text(
-                                "Reward History",
+                                stringResource(R.string.reward_history),
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.SemiBold
                             )
@@ -330,12 +332,12 @@ fun RewardsScreen(
                                     )
                                     Spacer(modifier = Modifier.height(16.dp))
                                     Text(
-                                        "No rewards yet",
+                                        stringResource(R.string.no_rewards_title),
                                         style = MaterialTheme.typography.titleMedium,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                     Text(
-                                        "Share your voices to start earning!",
+                                        stringResource(R.string.no_rewards_description),
                                         style = MaterialTheme.typography.bodyMedium,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         textAlign = TextAlign.Center
@@ -450,7 +452,7 @@ private fun HistoryCard(
                     color = if (entry.credited) Color(0xFF4CAF50) else MaterialTheme.colorScheme.primary
                 )
                 Text(
-                    if (entry.credited) "Credited" else "Pending",
+                    if (entry.credited) stringResource(R.string.credited) else stringResource(R.string.pending),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

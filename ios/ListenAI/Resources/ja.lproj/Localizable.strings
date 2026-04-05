@@ -1,0 +1,444 @@
+/* ReadAloud AI - Japanese (ja) */
+
+/* ===== Tab Bar ===== */
+"Home" = "ホーム";
+"Library" = "ライブラリ";
+"Queue" = "キュー";
+"Settings" = "設定";
+
+/* ===== Home View ===== */
+"Download and listen anytime, anywhere" = "いつでもどこでもダウンロードして聴く";
+"Try for free" = "無料で試す";
+"What do you want to listen today?" = "今日は何を聴きますか？";
+"Document" = "ドキュメント";
+"Upload files from Drive or device" = "ドライブまたはデバイスからファイルをアップロード";
+"Scan Text" = "テキストをスキャン";
+"Scanned documents or images" = "スキャンした書類や画像";
+"Web Link" = "ウェブリンク";
+"Convert URLs to audio" = "URLを音声に変換";
+"Type or Paste Text" = "テキストを入力または貼り付け";
+"Input or paste text to listen" = "テキストを入力または貼り付けて聴く";
+"Mail" = "メール";
+"Listen to e-mails easily" = "メールを簡単に聴く";
+"Double tap to import" = "ダブルタップでインポート";
+"Welcome to ReadAloud AI" = "ReadAloud AIへようこそ";
+"1 min" = "1分";
+"Welcome to ReadAloud AI. 1 minute introduction" = "ReadAloud AIへようこそ。1分間の紹介";
+
+/* ===== Import Picker Sheet ===== */
+"Add Content" = "コンテンツを追加";
+"PDF, ePub, TXT & more" = "PDF、ePub、TXTなど";
+"Use camera to scan documents" = "カメラで書類をスキャン";
+"Convert any URL to audio" = "あらゆるURLを音声に変換";
+"Enter text manually" = "テキストを手動入力";
+"Import emails from Gmail" = "Gmailからメールをインポート";
+"Cancel" = "キャンセル";
+
+/* ===== Import View ===== */
+"Import from Web" = "ウェブからインポート";
+"Enter a URL to extract article content" = "URLを入力して記事の内容を抽出";
+"Paste from Clipboard" = "クリップボードから貼り付け";
+"Import from Clipboard" = "クリップボードからインポート";
+"Import text or links you've copied" = "コピーしたテキストやリンクをインポート";
+"Refresh Clipboard" = "クリップボードを更新";
+"Clipboard is empty" = "クリップボードが空です";
+"This content type cannot be imported" = "このコンテンツタイプはインポートできません";
+"Checking clipboard..." = "クリップボードを確認中...";
+"Import PDF" = "PDFをインポート";
+"Extract text from PDF documents" = "PDF書類からテキストを抽出";
+"PDF selected" = "PDF選択済み";
+"Choose PDF File" = "PDFファイルを選択";
+"Choose Different File" = "別のファイルを選択";
+"Select from Files app" = "ファイルアプリから選択";
+"Enter Text" = "テキストを入力";
+"Type or paste text directly" = "テキストを直接入力または貼り付け";
+"Title (optional)" = "タイトル（任意）";
+"Paste or type your text here..." = "ここにテキストを貼り付けまたは入力...";
+"%d words" = "%d語";
+"Generating audio..." = "音声を生成中...";
+"Import" = "インポート";
+"Import Error" = "インポートエラー";
+"OK" = "OK";
+"Done" = "完了";
+"Tips" = "ヒント";
+"Works best with article pages from news sites and blogs" = "ニュースサイトやブログの記事ページで最適に動作";
+"Paywalled content may not be accessible" = "有料コンテンツにはアクセスできない場合があります";
+"JavaScript-heavy sites may have limited extraction" = "JavaScript多用のサイトは抽出が制限される場合があります";
+"Works best with text-based PDFs" = "テキストベースのPDFで最適に動作";
+"Scanned documents may have limited text extraction" = "スキャンした書類はテキスト抽出が制限される場合があります";
+"Password-protected PDFs are not supported" = "パスワード保護されたPDFはサポートされていません";
+"No PDF file selected" = "PDFファイルが選択されていません";
+"Preview" = "プレビュー";
+"Add to Library" = "ライブラリに追加";
+"Title" = "タイトル";
+"words" = "語";
+"listen time" = "再生時間";
+"sections" = "セクション";
+"Content Preview" = "コンテンツプレビュー";
+
+/* ===== Simple Web Link View ===== */
+"Paste any URL to listen" = "URLを貼り付けて聴く";
+"Continue" = "続ける";
+
+/* ===== Simple Text Input View ===== */
+"Type or paste your text here..." = "ここにテキストを入力または貼り付け...";
+"Save & Listen" = "保存して聴く";
+
+/* ===== Scan Text View ===== */
+"Checking camera access..." = "カメラへのアクセスを確認中...";
+"Camera Access Required" = "カメラへのアクセスが必要です";
+"ReadAloud AI needs camera access to scan documents and extract text for listening." = "ReadAloud AIは書類をスキャンしてテキストを抽出するためにカメラへのアクセスが必要です。";
+"Allow Camera Access" = "カメラへのアクセスを許可";
+"Camera Access Denied" = "カメラへのアクセスが拒否されました";
+"Please enable camera access in Settings to scan documents." = "書類をスキャンするには設定でカメラへのアクセスを有効にしてください。";
+"Open Settings" = "設定を開く";
+"Processing..." = "処理中...";
+"This may take a moment..." = "少々お待ちください...";
+"Extracting text..." = "テキストを抽出中...";
+"Creating article..." = "記事を作成中...";
+"No images scanned" = "スキャンされた画像がありません";
+"No text detected in the scanned images. Please try scanning again with clearer text." = "スキャンした画像からテキストが検出されませんでした。より鮮明なテキストで再度スキャンしてください。";
+"Scanned Document" = "スキャンした書類";
+
+/* ===== Mail Import View ===== */
+"Search in mail" = "メールを検索";
+"Gmail" = "Gmail";
+"Connect Gmail" = "Gmailに接続";
+"Sign in with Google to import and listen to your emails" = "Googleでサインインしてメールをインポートして聴く";
+"Loading email..." = "メールを読み込み中...";
+
+/* ===== Library View ===== */
+"My Library" = "マイライブラリ";
+"Usage" = "使用量";
+"PRO" = "PRO";
+"Search articles" = "記事を検索";
+"Add new content" = "新しいコンテンツを追加";
+"Double tap to import articles" = "ダブルタップで記事をインポート";
+"All" = "すべて";
+"Finished" = "完了";
+"Favorites" = "お気に入り";
+"Folders" = "フォルダ";
+"Downloaded" = "ダウンロード済み";
+"No Articles Yet" = "記事がまだありません";
+"Nothing in Progress" = "進行中のものがありません";
+"Nothing Finished" = "完了したものがありません";
+"No Favorites" = "お気に入りがありません";
+"No Folders" = "フォルダがありません";
+"Nothing Downloaded" = "ダウンロードがありません";
+"Add articles from web links, documents, or paste text." = "ウェブリンク、ドキュメント、またはテキストの貼り付けで記事を追加。";
+"Start listening to see your in-progress items here." = "聴き始めると進行中のアイテムがここに表示されます。";
+"Completed articles will appear here." = "完了した記事がここに表示されます。";
+"Mark articles as favorites to find them quickly." = "記事をお気に入りに追加してすばやく見つけられます。";
+"Organize your articles into folders." = "記事をフォルダに整理しましょう。";
+"Download articles for offline listening." = "記事をダウンロードしてオフラインで聴く。";
+"Edit Title" = "タイトルを編集";
+"Enter a new title for this article" = "この記事の新しいタイトルを入力";
+"Save" = "保存";
+"Play" = "再生";
+"Add to Queue" = "キューに追加";
+"Favorite" = "お気に入り";
+"Unfavorite" = "お気に入りから削除";
+"Share" = "共有";
+"Delete" = "削除";
+"Preparing audio..." = "音声を準備中...";
+"left" = "残り";
+"< 1 min" = "< 1分";
+"Date Added" = "追加日";
+"Author" = "著者";
+"Duration" = "再生時間";
+
+/* ===== Audio Player View ===== */
+"Not Playing" = "再生停止中";
+"Not playing" = "再生停止中";
+"Playback position" = "再生位置";
+"Adjust to seek through the audio" = "調整して音声をシークする";
+"Skip back 15 seconds" = "15秒巻き戻す";
+"Double tap to go back" = "ダブルタップで巻き戻す";
+"Pause" = "一時停止";
+"Double tap to pause" = "ダブルタップで一時停止";
+"Double tap to play" = "ダブルタップで再生";
+"Skip forward 15 seconds" = "15秒早送り";
+"Double tap to skip ahead" = "ダブルタップで早送り";
+"Double tap to change speed" = "ダブルタップで速度を変更";
+"Sleep timer off" = "スリープタイマーオフ";
+"Sleep timer on" = "スリープタイマーオン";
+"Double tap to set sleep timer" = "ダブルタップでスリープタイマーを設定";
+"Double tap to change repeat mode" = "ダブルタップでリピートモードを変更";
+"Double tap to view and manage queue" = "ダブルタップでキューを表示・管理";
+"Playback Speed" = "再生速度";
+"Sleep Timer" = "スリープタイマー";
+
+/* ===== Queue View ===== */
+"Now Playing" = "再生中";
+"Up Next" = "次に再生";
+"Recently Played" = "最近再生したもの";
+"Now playing" = "再生中";
+"Play Queue" = "再生キュー";
+"Playing" = "再生中";
+"Shuffle On" = "シャッフルオン";
+"Shuffle Off" = "シャッフルオフ";
+"Clear Completed" = "完了済みを消去";
+"Clear All" = "すべて消去";
+"Clear Queue?" = "キューを消去しますか？";
+"This will remove all items from your queue." = "キューからすべてのアイテムが削除されます。";
+
+/* ===== Settings View ===== */
+"Voice Cloning" = "ボイスクローン";
+"Voice Marketplace" = "ボイスマーケットプレイス";
+"Cloning Speed" = "クローン速度";
+"Change Voice" = "ボイスを変更";
+"App Language" = "アプリの言語";
+"Request Feature" = "機能をリクエスト";
+"Preferences" = "環境設定";
+"Default Speed" = "デフォルト速度";
+"Skip Silences" = "無音をスキップ";
+"Auto-Play Next" = "次を自動再生";
+"Playback" = "再生";
+"Linked Accounts" = "連携アカウント";
+"Apple" = "Apple";
+"Google" = "Google";
+"Disconnect" = "接続解除";
+"Connect" = "接続";
+"Connect Apple to sync data across devices. Connect Google to import emails from Gmail." = "Appleに接続してデバイス間でデータを同期。Googleに接続してGmailからメールをインポート。";
+"Connect Google to import emails from Gmail and listen to them." = "Googleに接続してGmailからメールをインポートして聴く。";
+"Google Sign-In Error" = "Googleサインインエラー";
+"Apple Sign-In Error" = "Appleサインインエラー";
+"Share ReadAloud AI" = "ReadAloud AIを共有";
+"Like us, Rate us" = "評価してください";
+"Contact Support" = "サポートに連絡";
+"Usage & Quota" = "使用量とクォータ";
+"Support" = "サポート";
+"Manage Subscription" = "サブスクリプションを管理";
+"Upgrade to Pro" = "Proにアップグレード";
+"Active" = "有効";
+"Subscription" = "サブスクリプション";
+"AI Data Sharing" = "AIデータ共有";
+"Allowed" = "許可済み";
+"Not Allowed" = "未許可";
+"Delete Account & Data" = "アカウントとデータを削除";
+"Data & Privacy" = "データとプライバシー";
+"Cloud voices and AI summaries send your text to external services. Tap to review details or revoke consent." = "クラウドボイスとAI要約はテキストを外部サービスに送信します。タップして詳細を確認または同意を撤回。";
+"Cloud voices are disabled. Only on-device Apple voices are available. Tap to enable cloud features." = "クラウドボイスは無効です。デバイス上のAppleボイスのみ利用可能です。タップしてクラウド機能を有効にしてください。";
+"Delete Account" = "アカウントを削除";
+"This will permanently delete your account, all saved data, cloned voices, and library items. This action cannot be undone." = "アカウント、保存済みデータ、クローンボイス、ライブラリのアイテムがすべて完全に削除されます。この操作は取り消せません。";
+"Account Deleted" = "アカウント削除済み";
+"Your account and all associated data have been successfully deleted." = "アカウントと関連するすべてのデータが正常に削除されました。";
+"Version" = "バージョン";
+"Privacy Policy" = "プライバシーポリシー";
+"Terms of Service" = "利用規約";
+"About" = "このアプリについて";
+"Connected" = "接続済み";
+"Not connected" = "未接続";
+"Error" = "エラー";
+
+/* ===== Language Picker ===== */
+"English (US)" = "英語（米国）";
+"English (UK)" = "英語（英国）";
+"Spanish" = "スペイン語";
+"French" = "フランス語";
+"German" = "ドイツ語";
+"Italian" = "イタリア語";
+"Portuguese (Brazil)" = "ポルトガル語（ブラジル）";
+"Japanese" = "日本語";
+"Korean" = "韓国語";
+"Chinese (Simplified)" = "中国語（簡体字）";
+
+/* ===== Feature Request ===== */
+"Describe your feature idea" = "機能のアイデアを説明してください";
+"We read every suggestion and use them to improve ReadAloud AI." = "すべてのご提案を拝読し、ReadAloud AIの改善に活用しています。";
+"Submit" = "送信";
+
+/* ===== Onboarding: Welcome ===== */
+"Welcome to\nReadAloud AI!" = "ReadAloud AIへ\nようこそ！";
+"Read anything aloud in the highest quality voices." = "最高品質のボイスであらゆるものを読み上げ。";
+"Get Started" = "始める";
+"PDF, ePUB & more" = "PDF、ePUBなど";
+"Top Text to\nSpeech App" = "最高のテキスト\n読み上げアプリ";
+
+/* ===== Onboarding: Document to Audio ===== */
+"Turn any document to audio" = "あらゆるドキュメントを音声に変換";
+"Listen to PDFs, articles, news and more" = "PDF、記事、ニュースなどを聴く";
+"Type & Paste Text" = "テキストを入力＆貼り付け";
+
+/* ===== Onboarding: Take Notes ===== */
+"Take notes on key concepts" = "重要なコンセプトのメモを取る";
+"Take notes on key ideas with a single tap" = "ワンタップで重要なアイデアのメモを取る";
+"Take Note" = "メモを取る";
+"Key Insight" = "重要な洞察";
+"Focus on deep work and deliberate practice for better outcomes." = "より良い成果のために深い仕事と意図的な練習に集中しましょう。";
+
+/* ===== Onboarding: Productivity ===== */
+"Increase your productivity" = "生産性を向上させる";
+"Listen to texts faster, learn more" = "テキストをより速く聴いて、より多く学ぶ";
+"50% increase in" = "50%向上する";
+" productivity" = "生産性";
+
+/* ===== Onboarding: Voice Selection ===== */
+"Choose Your Voice" = "ボイスを選択";
+"You can change selected voice later." = "選択したボイスは後から変更できます。";
+"Professional Narrator" = "プロのナレーター";
+"Calm & Soothing" = "穏やかで癒される";
+"Deep British" = "深みのあるイギリス英語";
+"Storyteller" = "ストーリーテラー";
+"Elegant & Articulate" = "エレガントで明瞭";
+"Multilingual" = "多言語対応";
+"English" = "英語";
+
+/* ===== Onboarding: Sign In ===== */
+"Skip" = "スキップ";
+"Sign In (Optional)" = "サインイン（任意）";
+"Sign in to unlock all features including voice sharing and cross-device sync." = "ボイス共有やデバイス間同期を含むすべての機能をサインインで解放。";
+"Share Your Voice" = "ボイスを共有";
+"Share cloned voices with the community" = "クローンボイスをコミュニティと共有";
+"Community Voices" = "コミュニティボイス";
+"Use voices shared by others" = "他の人が共有したボイスを使用";
+"Earn Rewards" = "リワードを獲得";
+"Get listening minutes when others use your voices" = "他の人があなたのボイスを使うとリスニング時間を獲得";
+"Sync Across Devices" = "デバイス間で同期";
+"Your data follows you everywhere" = "データはどこでもあなたと一緒";
+"Continue Without Signing In" = "サインインせずに続ける";
+"Signing in..." = "サインイン中...";
+"Sign In Error" = "サインインエラー";
+
+/* ===== Onboarding: Paywall ===== */
+"Restore" = "復元";
+"Get Unlimited Access" = "無制限アクセスを取得";
+"Read anything aloud in top-quality voices" = "最高品質のボイスであらゆるものを読み上げ";
+"Unlimited text-to-speech with cloud voices" = "クラウドボイスで無制限のテキスト読み上げ";
+"Premium AI voices from ElevenLabs" = "ElevenLabsのプレミアムAIボイス";
+"Create custom voice clones" = "カスタムボイスクローンを作成";
+"AI-powered article summaries" = "AI搭載の記事要約";
+"Speed control up to 3x" = "最大3倍速の速度調整";
+"Annual" = "年間";
+"/year" = "/年";
+"SAVE 90%" = "90%お得";
+"Weekly" = "週間";
+"/week" = "/週";
+"Due today" = "本日お支払い";
+"free" = "無料";
+"Processing..." = "処理中...";
+"Start Free Trial" = "無料トライアルを開始";
+"Subscribe Now" = "今すぐ登録";
+"Terms of Use" = "利用規約";
+"Secured with Apple" = "Appleで保護";
+"Subscription not available. Please try again later." = "サブスクリプションが利用できません。後でもう一度お試しください。";
+"free trial" = "無料トライアル";
+
+/* ===== Voice Cloning View ===== */
+"Clone Voice" = "ボイスをクローン";
+"No cloned voice here" = "クローンボイスがありません";
+"You haven't created any voice clones yet." = "まだボイスクローンを作成していません。";
+"Edit" = "編集";
+"Get Notified When Ready" = "準備ができたら通知を受け取る";
+"Enable Notifications" = "通知を有効にする";
+"Not Now" = "今はしない";
+"Voice cloning usually completes in seconds, but can take longer for high-quality results.\n\nWe'll send you ONE notification when your voice is ready. We never send marketing or promotional notifications." = "ボイスクローンは通常数秒で完了しますが、高品質な結果のためにはより長い時間がかかることがあります。\n\nボイスの準備ができたら1件の通知をお送りします。マーケティングやプロモーションの通知は一切送信しません。";
+
+/* ===== Select Voice View ===== */
+"Select Voice" = "ボイスを選択";
+"Popular" = "人気";
+"Cloned" = "クローン";
+"Your Voices" = "あなたのボイス";
+"Popular Voices" = "人気のボイス";
+"All Voices" = "すべてのボイス";
+"No cloned voices yet" = "クローンボイスがまだありません";
+"Create a voice clone in Settings to see it here." = "設定でボイスクローンを作成するとここに表示されます。";
+"About Voices" = "ボイスについて";
+"Premium voices offer high-quality, natural-sounding speech with multilingual support. Cloned voices let you listen to content in your own voice or voices you've created." = "プレミアムボイスは多言語対応の高品質で自然な音声を提供します。クローンボイスでは自分の声や作成した声でコンテンツを聴くことができます。";
+
+/* ===== Voice Picker View ===== */
+"Choose Voice" = "ボイスを選ぶ";
+"Search voices" = "ボイスを検索";
+"Speed" = "速度";
+"Voice Quality" = "ボイスの品質";
+"Standard" = "スタンダード";
+"Fast & Unlimited" = "高速＆無制限";
+"Premium" = "プレミアム";
+"Highest Quality" = "最高品質";
+
+/* ===== Usage Views ===== */
+"Current Plan" = "現在のプラン";
+"Free" = "無料";
+"Unlimited" = "無制限";
+"remaining" = "残り";
+"Upgrade" = "アップグレード";
+"Upgrade Plan" = "プランをアップグレード";
+"View Pricing" = "料金を見る";
+"Refresh Usage" = "使用量を更新";
+"More options" = "その他のオプション";
+"Double tap to view upgrade and pricing options" = "ダブルタップでアップグレードと料金オプションを表示";
+"Cloud (Monthly)" = "クラウド（月間）";
+"Daily (Local)" = "日次（ローカル）";
+"Monthly (Local)" = "月次（ローカル）";
+"View Details" = "詳細を見る";
+"Tip: Use on-device voices to save your cloud quota" = "ヒント：デバイスボイスを使ってクラウドクォータを節約";
+"Quota Exceeded" = "クォータ超過";
+"Almost at Limit" = "制限に近づいています";
+"Quota Warning" = "クォータ警告";
+"Usage Update" = "使用量の更新";
+"Dismiss warning" = "警告を閉じる";
+"Double tap to hide this warning banner" = "ダブルタップでこの警告バナーを非表示";
+"Double tap to collapse" = "ダブルタップで折りたたむ";
+"Double tap to expand for more details" = "ダブルタップで展開して詳細を表示";
+"Content Size" = "コンテンツサイズ";
+"Est. Duration" = "推定時間";
+"Daily Remaining After" = "処理後の日次残量";
+"Monthly Remaining After" = "処理後の月次残量";
+"Proceed" = "続行";
+"Use On-Device" = "デバイスボイスを使用";
+"Usage Estimate" = "使用量の見積もり";
+"Approaching Limit" = "制限に近づいています";
+"Confirm Synthesis" = "合成を確認";
+"Quota Impact" = "クォータへの影響";
+"Daily Remaining" = "日次残量";
+"Monthly Remaining" = "月次残量";
+"Use Cloud Voice" = "クラウドボイスを使用";
+"Use On-Device Voice (Free)" = "デバイスボイスを使用（無料）";
+"Unlock Premium Voices" = "プレミアムボイスをアンロック";
+"Unlimited AI Voices" = "無制限のAIボイス";
+"Access all premium cloud voices" = "すべてのプレミアムクラウドボイスにアクセス";
+"No Daily Limits" = "日次制限なし";
+"Listen as much as you want" = "好きなだけ聴ける";
+"Priority Processing" = "優先処理";
+"Faster audio generation" = "より速い音声生成";
+"New Voices First" = "新しいボイスを最初に";
+"Early access to new voice releases" = "新しいボイスへの早期アクセス";
+"Upgrade to Premium" = "プレミアムにアップグレード";
+"Starting at $4.99/month" = "$4.99/月から";
+"Continue with On-Device Voice" = "デバイスボイスで続ける";
+"Maybe Later" = "また後で";
+"Daily limit reached. Upgrade or try tomorrow." = "日次制限に達しました。アップグレードするか明日再試行してください。";
+
+/* ===== AI Data Consent View ===== */
+"Your Data & AI Services" = "あなたのデータとAIサービス";
+"ReadAloud AI uses cloud-based AI services to convert your text to speech and provide content summaries. Here's exactly what data is shared and with whom." = "ReadAloud AIはクラウドベースのAIサービスを使用してテキストを音声に変換し、コンテンツの要約を提供します。どのデータが誰と共有されるかをご説明します。";
+"Text-to-Speech" = "テキスト読み上げ";
+"AI Content Summaries" = "AIコンテンツ要約";
+"What Stays on Your Device" = "デバイスに残るもの";
+"The following never leaves your device:" = "以下のデータはデバイスの外に出ません：";
+"On-device Apple voices work without any data sharing. You can switch to on-device voices anytime in Settings." = "デバイス上のAppleボイスはデータ共有なしで動作します。設定でいつでもデバイスボイスに切り替えられます。";
+"Read our full Privacy Policy" = "プライバシーポリシー全文を読む";
+"I Understand & Agree" = "理解して同意する";
+"Use On-Device Voices Only" = "デバイスボイスのみ使用";
+
+/* ===== Sign In Prompt View ===== */
+"Sign In Required" = "サインインが必要です";
+"Continue without signing in" = "サインインせずに続ける";
+"Benefits of signing in:" = "サインインのメリット：";
+"Share your cloned voices" = "クローンボイスを共有";
+"Use voices from the community" = "コミュニティのボイスを使用";
+"Earn rewards when others use your voices" = "他の人があなたのボイスを使うとリワードを獲得";
+"Sync your data across devices" = "デバイス間でデータを同期";
+"Sign in to continue" = "続けるにはサインインしてください";
+"Sign in to access this feature" = "この機能にアクセスするにはサインインしてください";
+
+/* ===== Voice Marketplace ===== */
+"Search voices..." = "ボイスを検索...";
+
+/* ===== Onboarding Footer ===== */
+"By continuing, you agree to our [Privacy Policy](%@) and [Terms of Use](%@)." = "続けることで、[プライバシーポリシー](%@)と[利用規約](%@)に同意したことになります。";
+
+/* ===== ContentView / Tab Bar Labels ===== */
+"Voices" = "ボイス";
+"Continue" = "続ける";
+"Voice Cloning" = "ボイスクローニング";

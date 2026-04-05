@@ -1,0 +1,469 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">ReadAloud AI</string>
+
+    <!-- Tab Labels -->
+    <string name="tab_home">Trang chủ</string>
+    <string name="tab_library">Thư viện</string>
+    <string name="tab_settings">Cài đặt</string>
+
+    <!-- Home Screen -->
+    <string name="promo_title">Tải xuống và nghe mọi lúc, mọi nơi</string>
+    <string name="promo_button">Dùng thử miễn phí</string>
+    <string name="quick_actions_title">Hôm nay bạn muốn nghe gì?</string>
+    <string name="action_document">Tài liệu</string>
+    <string name="action_document_subtitle">Tải lên tệp từ Drive hoặc thiết bị</string>
+    <string name="action_scan">Quét văn bản</string>
+    <string name="action_scan_subtitle">Tài liệu hoặc hình ảnh đã quét</string>
+    <string name="action_web_link">Liên kết web</string>
+    <string name="action_web_link_subtitle">Chuyển URL thành âm thanh</string>
+    <string name="action_text">Nhập hoặc dán văn bản</string>
+    <string name="action_text_subtitle">Nhập hoặc dán văn bản để nghe</string>
+    <string name="action_mail">Thư</string>
+    <string name="action_mail_subtitle">Nghe email dễ dàng</string>
+
+    <!-- Library Screen -->
+    <string name="library_title">Thư viện</string>
+    <string name="filter_all">Tất cả</string>
+    <string name="filter_in_progress">Đang nghe</string>
+    <string name="filter_continue">Tiếp tục</string>
+    <string name="filter_finished">Đã xong</string>
+    <string name="filter_favorites">Yêu thích</string>
+    <string name="filter_archived">Lưu trữ</string>
+    <string name="filter_folders">Thư mục</string>
+    <string name="filter_downloaded">Đã tải</string>
+    <string name="empty_library">Chưa có bài viết</string>
+    <string name="empty_library_description">Thêm bài viết từ liên kết web, tài liệu hoặc dán văn bản.</string>
+    <string name="more_options">Tùy chọn khác</string>
+
+    <!-- Settings Screen -->
+    <string name="settings_title">Cài đặt</string>
+    <string name="settings_preferences">Tùy chọn</string>
+    <string name="settings_voice">Giọng nói</string>
+    <string name="settings_voice_subtitle">Chọn giọng nói ưa thích</string>
+    <string name="settings_speed">Tốc độ phát</string>
+    <string name="settings_speed_subtitle">Mặc định 1.0x</string>
+    <string name="settings_appearance">Giao diện</string>
+    <string name="settings_appearance_subtitle">Sáng, Tối hoặc Hệ thống</string>
+    <string name="settings_voice_cloning">Nhân bản giọng nói</string>
+    <string name="settings_change_voice">Đổi giọng nói</string>
+    <string name="settings_app_language">Ngôn ngữ ứng dụng</string>
+    <string name="settings_request_feature">Yêu cầu tính năng</string>
+    <string name="settings_linked_accounts">Tài khoản liên kết</string>
+    <string name="settings_google">Google</string>
+    <string name="settings_google_subtitle">Đồng bộ bài viết giữa các thiết bị</string>
+    <string name="settings_google_connected">Đã kết nối</string>
+    <string name="settings_connect">Kết nối</string>
+    <string name="settings_disconnect">Ngắt kết nối</string>
+    <string name="settings_share">Chia sẻ</string>
+    <string name="settings_share_app">Chia sẻ ReadAloud AI</string>
+    <string name="settings_share_app_subtitle">Giới thiệu ReadAloud AI cho bạn bè</string>
+    <string name="settings_rate_app">Đánh giá ứng dụng</string>
+    <string name="settings_rate_app_subtitle">Hỗ trợ chúng tôi bằng đánh giá 5 sao</string>
+    <string name="settings_playback">Phát lại</string>
+    <string name="settings_audio_quality">Chất lượng âm thanh</string>
+    <string name="settings_audio_quality_subtitle">Tổng hợp chất lượng cao</string>
+    <string name="settings_skip_interval">Khoảng bỏ qua</string>
+    <string name="settings_skip_interval_subtitle">Lùi 10 giây, tiến 30 giây</string>
+    <string name="settings_sleep_timer">Hẹn giờ ngủ</string>
+    <string name="settings_sleep_timer_subtitle">Tự động tạm dừng sau thời gian</string>
+    <string name="settings_default_speed">Tốc độ mặc định</string>
+    <string name="settings_skip_silences">Bỏ qua im lặng</string>
+    <string name="settings_auto_play">Tự động phát tiếp</string>
+    <string name="settings_support">Hỗ trợ</string>
+    <string name="settings_usage">Sử dụng &amp; Hạn mức</string>
+    <string name="settings_usage_subtitle">Xem mức sử dụng và giới hạn</string>
+    <string name="settings_help">Trung tâm trợ giúp</string>
+    <string name="settings_help_subtitle">Câu hỏi thường gặp và hướng dẫn</string>
+    <string name="settings_feedback">Gửi phản hồi</string>
+    <string name="settings_feedback_subtitle">Báo cáo vấn đề hoặc đề xuất</string>
+    <string name="settings_rate_us">Thích chúng tôi, hãy đánh giá</string>
+    <string name="settings_contact">Liên hệ hỗ trợ</string>
+    <string name="settings_about">Giới thiệu</string>
+    <string name="settings_version">Phiên bản</string>
+    <string name="settings_privacy">Chính sách quyền riêng tư</string>
+    <string name="settings_privacy_subtitle">Xem chính sách quyền riêng tư</string>
+    <string name="settings_terms">Điều khoản dịch vụ</string>
+    <string name="settings_terms_subtitle">Xem điều khoản và điều kiện</string>
+
+    <!-- Playback -->
+    <string name="now_playing">Đang phát</string>
+    <string name="up_next">Tiếp theo</string>
+    <string name="minutes_left">Còn %d phút</string>
+    <string name="speed_format">%sx</string>
+    <string name="skip_backward">Tua lùi</string>
+    <string name="skip_forward">Tua tiến</string>
+    <string name="sleep_timer">Hẹn giờ ngủ</string>
+
+    <!-- Import Screen -->
+    <string name="import_title">Thêm nội dung</string>
+    <string name="import_mode_url">URL</string>
+    <string name="import_mode_document">Tài liệu</string>
+    <string name="import_mode_text">Văn bản</string>
+    <string name="import_mode_scan">Quét</string>
+    <string name="import_url_title">Nhập từ URL</string>
+    <string name="import_url_description">Dán liên kết web để trích xuất và chuyển bài viết thành âm thanh.</string>
+    <string name="import_url_placeholder">https://example.com/article</string>
+    <string name="import_document_title">Nhập tài liệu</string>
+    <string name="import_document_description">Tải lên tệp PDF, EPUB, DOCX hoặc TXT để chuyển thành âm thanh.</string>
+    <string name="import_document_tap">Chạm để chọn tệp</string>
+    <string name="import_document_formats">Hỗ trợ PDF, EPUB, DOCX, TXT</string>
+    <string name="import_text_title">Nhập văn bản</string>
+    <string name="import_text_title_placeholder">Tiêu đề (tùy chọn)</string>
+    <string name="import_text_content_placeholder">Dán hoặc nhập văn bản của bạn ở đây...</string>
+    <string name="import_scan_title">Quét tài liệu</string>
+    <string name="import_scan_description">Sử dụng camera để quét văn bản in và chuyển thành âm thanh.</string>
+    <string name="import_scan_tap">Chạm để quét</string>
+    <string name="import_button">Nhập</string>
+
+    <!-- Import Screen (additional) -->
+    <string name="import_mode_clipboard">Bộ nhớ tạm</string>
+    <string name="import_mode_email">Email</string>
+    <string name="clear">Xóa</string>
+    <string name="importing">Đang nhập…</string>
+    <string name="clipboard_import_title">Nhập từ bộ nhớ tạm</string>
+    <string name="clipboard_import_description">Nhập văn bản hoặc URL bạn đã sao chép</string>
+    <string name="clipboard_url_detected">Đã phát hiện URL</string>
+    <string name="clipboard_text_content">Nội dung văn bản</string>
+    <string name="clipboard_empty">Bộ nhớ tạm trống</string>
+    <string name="word_count_format">%d từ</string>
+    <string name="pdf_selected">Đã chọn PDF</string>
+    <string name="epub_selected">EPUB</string>    <string name="remove">Xóa</string>
+
+    <!-- Library Screen (additional) -->
+    <string name="library_empty_in_progress_title">Không có gì đang nghe</string>
+    <string name="library_empty_in_progress_description">Bắt đầu nghe để xem các mục đang nghe ở đây</string>
+    <string name="library_empty_favorites_title">Không có yêu thích</string>
+    <string name="library_empty_favorites_description">Đánh dấu bài viết là yêu thích để tìm nhanh</string>
+    <string name="library_empty_email_title">Không có email</string>
+    <string name="library_empty_email_description">Nhập email từ Gmail để nghe</string>
+    <string name="library_empty_archived_title">Không có bài lưu trữ</string>
+    <string name="library_empty_archived_description">Lưu trữ bài viết đã xong để giữ thư viện gọn gàng</string>
+    <string name="library_add_content_button">Thêm nội dung</string>
+    <string name="filter_email">Email</string>
+    <string name="remove_from_favorites">Xóa khỏi yêu thích</string>
+    <string name="add_to_favorites">Thêm vào yêu thích</string>
+    <string name="unarchive">Bỏ lưu trữ</string>
+    <string name="archive">Lưu trữ</string>
+    <string name="duration_left_minutes">Còn %d phút %d giây</string>
+    <string name="duration_left_seconds">Còn %d giây</string>
+
+    <!-- Feedback Dialog -->
+    <string name="feedback_title">Bạn thích ReadAloud?</string>
+    <string name="feedback_subtitle">Phản hồi của bạn giúp chúng tôi cải thiện ứng dụng cho mọi người.</string>
+    <string name="feedback_button_negative">Không hẳn</string>
+    <string name="feedback_button_positive">Có!</string>
+
+    <!-- Mail Import -->
+    <string name="mail_import_title">Gmail</string>
+    <string name="back">Quay lại</string>
+    <string name="refresh">Làm mới</string>
+    <string name="loading_emails">Đang tải email…</string>
+    <string name="load_more">Tải thêm</string>
+    <string name="loading_email">Đang tải email…</string>
+    <string name="no_subject">(Không có chủ đề)</string>
+    <string name="email_from_format">Từ: %s &lt;%s&gt;</string>
+    <string name="no_content">(Không có nội dung)</string>
+    <string name="email_import_button">Nhập &amp; Nghe</string>
+    <string name="gmail_connect_title">Kết nối Gmail</string>
+    <string name="gmail_connect_description">Đăng nhập bằng Google để nhập và nghe email của bạn</string>
+    <string name="gmail_signin_button">Đăng nhập bằng Google</string>
+    <string name="gmail_privacy_notice">Chúng tôi chỉ yêu cầu quyền đọc email. Dữ liệu của bạn luôn riêng tư.</string>
+    <string name="mail_search_placeholder">Tìm trong thư</string>
+    <string name="no_emails_found">Không tìm thấy email</string>
+    <string name="no_emails_search_suggestion">Thử từ khóa tìm kiếm khác</string>
+    <string name="clear_search">Xóa tìm kiếm</string>
+    <string name="inbox_empty">Hộp thư đến của bạn có vẻ trống</string>
+
+    <!-- Voice Marketplace -->
+    <string name="marketplace_title">Chợ giọng nói</string>
+    <string name="my_shares">Chia sẻ của tôi</string>
+    <string name="rewards">Phần thưởng</string>
+    <string name="marketplace_search_placeholder">Tìm giọng nói…</string>
+    <string name="no_voices_found">Không tìm thấy giọng nói</string>
+    <string name="no_voices_suggestion">Thử điều chỉnh bộ lọc</string>
+    <string name="voice_uses_format">%d lượt sử dụng</string>
+
+    <!-- Voice Detail -->
+    <string name="voice_detail_title">Chi tiết giọng nói</string>
+    <string name="report">Báo cáo</string>
+    <string name="retry">Thử lại</string>
+    <string name="rate_voice_prompt">Bạn đánh giá giọng nói này thế nào?</string>
+    <string name="star_rating_format">%d sao</string>
+    <string name="review_optional">Nhận xét (tùy chọn)</string>
+    <string name="rate_voice">Đánh giá giọng nói</string>
+    <string name="submit">Gửi</string>
+    <string name="report_voice_title">Báo cáo giọng nói</string>
+    <string name="report_voice_prompt">Tại sao bạn báo cáo giọng nói này?</string>
+    <string name="description_label">Mô tả</string>
+    <string name="submit_report">Gửi báo cáo</string>
+    <string name="rating_count_format">%d đánh giá</string>
+    <string name="uses_label">lượt dùng</string>
+    <string name="created_label">tạo lúc</string>
+    <string name="stop_preview">Dừng xem trước</string>
+    <string name="play_preview">Phát xem trước</string>
+
+    <!-- Share Voice -->
+    <string name="share_voice_title">Chia sẻ giọng nói</string>
+    <string name="no_cloned_voices">Không có giọng nhân bản</string>
+    <string name="no_cloned_voices_hint">Tạo giọng nhân bản trước để chia sẻ</string>
+    <string name="select_voice">Chọn giọng nói</string>
+    <string name="voice_sample_duration">Mẫu %.1f giây</string>
+    <string name="display_name">Tên hiển thị</string>
+    <string name="display_name_hint">Giọng nói này sẽ hiển thị thế nào trong chợ</string>
+    <string name="description_optional">Mô tả (tùy chọn)</string>
+    <string name="describe_voice_placeholder">Mô tả giọng nói của bạn…</string>
+    <string name="tags_label">Thẻ</string>
+    <string name="tags_description">Chọn thẻ mô tả giọng nói của bạn</string>
+    <string name="voice_attestation">Tôi xác nhận đây là giọng nói của tôi và tôi có quyền chia sẻ</string>
+    <string name="marketplace_terms">Tôi đồng ý với Điều khoản dịch vụ Chợ giọng nói</string>
+    <string name="share_voice_button">Chia sẻ giọng nói</string>
+
+    <!-- My Shared Voices -->
+    <string name="my_shared_voices_title">Giọng nói đã chia sẻ</string>
+    <string name="no_shared_voices_title">Chưa có giọng nói chia sẻ</string>
+    <string name="no_shared_voices_description">Chia sẻ giọng nhân bản với cộng đồng và nhận phần thưởng khi người khác sử dụng!</string>
+    <string name="share_a_voice">Chia sẻ giọng nói</string>
+    <string name="revoke_voice_title">Thu hồi giọng nói</string>
+    <string name="revoke_voice_prompt">Bạn có chắc muốn ngừng chia sẻ \"%s\"? Người khác sẽ không thể sử dụng giọng nói này nữa.</string>
+    <string name="revoke">Thu hồi</string>
+    <string name="status_active">hoạt động</string>
+    <string name="status_pending">đang chờ</string>
+    <string name="status_revoked">đã thu hồi</string>
+    <string name="revoked_reason_format">Đã thu hồi: %s</string>
+
+    <!-- Rewards -->
+    <string name="rewards_title">Phần thưởng</string>
+    <string name="total_earned">Tổng đã nhận</string>
+    <string name="pending">Đang chờ</string>
+    <string name="uses">Lượt dùng</string>
+    <string name="claim_rewards">Nhận phần thưởng</string>
+    <string name="claim_success_format">Đã nhận %.1f phút thành công!</string>
+    <string name="how_rewards_work">Cách hoạt động phần thưởng</string>
+    <string name="reward_step1_title">Chia sẻ giọng nói</string>
+    <string name="reward_step1_description">Chia sẻ giọng nhân bản với cộng đồng</string>
+    <string name="reward_step2_title">Người khác sử dụng</string>
+    <string name="reward_step2_description">Khi mọi người sử dụng giọng nói của bạn cho TTS, bạn nhận phần thưởng</string>
+    <string name="reward_step3_title">Nhận phút</string>
+    <string name="reward_step3_description">Đổi phần thưởng đang chờ thành phút nghe miễn phí</string>
+    <string name="reward_history">Lịch sử phần thưởng</string>
+    <string name="no_rewards_title">Chưa có phần thưởng</string>
+    <string name="no_rewards_description">Chia sẻ giọng nói để bắt đầu nhận!</string>
+    <string name="characters_generated_format">%d ký tự</string>
+    <string name="credited">Đã ghi có</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_back">Quay lại</string>
+    <string name="skip">Bỏ qua</string>
+    <string name="onboarding_continue">Tiếp tục</string>
+    <string name="next">Tiếp</string>
+    <string name="onboarding_terms">Bằng việc tiếp tục, bạn đồng ý với Chính sách quyền riêng tư và Điều khoản sử dụng.</string>
+    <string name="privacy_policy">Chính sách quyền riêng tư</string>
+    <string name="terms_of_use">Điều khoản sử dụng</string>
+    <string name="onboarding_welcome_prefix">Chào mừng đến với</string>
+    <string name="onboarding_welcome_description">Chuyển đổi bất kỳ tài liệu nào thành âm thanh tự nhiên. Nghe bài viết, PDF và nhiều hơn nữa khi di chuyển.</string>
+    <string name="feature_pdf">PDF</string>
+    <string name="feature_web">Web</string>
+    <string name="feature_epub">ePUB</string>
+    <string name="feature_text">Văn bản</string>
+    <string name="onboarding_import_title">Nhập từ mọi nơi</string>
+    <string name="onboarding_import_description">Dán liên kết, tải PDF hoặc nhập văn bản trực tiếp</string>
+    <string name="import_method_web_links">Liên kết web</string>
+    <string name="import_method_web_links_subtitle">Dán bất kỳ URL bài viết nào</string>
+    <string name="import_method_pdf">Tài liệu PDF</string>
+    <string name="import_method_pdf_subtitle">Tải PDF từ thiết bị</string>
+    <string name="import_method_text">Văn bản trực tiếp</string>
+    <string name="import_method_text_subtitle">Nhập hoặc dán bất kỳ văn bản nào</string>
+    <string name="import_method_clipboard">Bộ nhớ tạm</string>
+    <string name="import_method_clipboard_subtitle">Tự động phát hiện nội dung đã sao chép</string>
+    <string name="onboarding_notes_title">Ghi chú khi nghe</string>
+    <string name="onboarding_notes_description">Ghi lại ý chính mà không gián đoạn phát lại</string>
+    <string name="add_note_placeholder">Thêm ghi chú tại 2:34…</string>
+    <string name="onboarding_productivity_title">Tăng năng suất</string>
+    <string name="onboarding_productivity_description">Giọng nói tự nhiên và tốc độ điều chỉnh được cho việc học hiệu quả</string>
+    <string name="playback_speed_title">Tốc độ phát</string>
+    <string name="speed_075x">0.75x</string>
+    <string name="speed_1x">1x</string>
+    <string name="speed_15x">1.5x</string>
+    <string name="speed_2x">2x</string>
+    <string name="feature_background_playback">Phát nền</string>
+    <string name="feature_sleep_timer">Hẹn giờ ngủ</string>
+    <string name="feature_bookmarks">Đánh dấu &amp; chương</string>
+    <string name="onboarding_voice_title">Chọn giọng nói</string>
+    <string name="onboarding_voice_description">Chọn giọng nói phù hợp với phong cách nghe của bạn</string>
+    <string name="stop_preview_description">Dừng xem trước</string>
+    <string name="preview_voice_description">Xem trước giọng nói</string>
+    <string name="selected">Đã chọn</string>
+    <string name="signin_optional_title">Đăng nhập (Tùy chọn)</string>
+    <string name="signin_optional_description">Đăng nhập để mở khóa tất cả tính năng bao gồm chia sẻ giọng nói và đồng bộ giữa các thiết bị.</string>
+    <string name="signin_benefit_share">Chia sẻ giọng nói</string>
+    <string name="signin_benefit_share_description">Chia sẻ giọng nhân bản với cộng đồng</string>
+    <string name="signin_benefit_community">Giọng nói cộng đồng</string>
+    <string name="signin_benefit_community_description">Sử dụng giọng nói do người khác chia sẻ</string>
+    <string name="signin_benefit_rewards">Nhận phần thưởng</string>
+    <string name="signin_benefit_rewards_description">Nhận phút nghe khi người khác sử dụng giọng nói của bạn</string>
+    <string name="signin_benefit_sync">Đồng bộ giữa các thiết bị</string>
+    <string name="signin_benefit_sync_description">Dữ liệu theo bạn mọi nơi</string>
+    <string name="continue_without_signin">Tiếp tục không đăng nhập</string>
+
+    <!-- Voice Picker -->
+    <string name="choose_voice">Chọn giọng nói</string>
+    <string name="quality_high_title">Giọng nói chất lượng cao</string>
+    <string name="quality_high_description">Giọng nói tự nhiên tăng tốc GPU - sử dụng không giới hạn</string>
+    <string name="quality_free">MIỄN PHÍ</string>
+
+    <!-- Settings (additional) -->
+    <string name="settings_voice_cloning_subtitle">Tạo giọng nói tùy chỉnh từ bản ghi âm của bạn</string>
+    <string name="settings_voice_marketplace">Chợ giọng nói</string>
+    <string name="settings_voice_marketplace_subtitle">Duyệt và chia sẻ giọng nói cộng đồng</string>
+
+    <!-- General -->
+    <string name="pro">PRO</string>
+    <string name="connect">Kết nối</string>
+    <string name="disconnect">Ngắt kết nối</string>
+    <string name="cancel">Hủy</string>
+    <string name="done">Xong</string>
+    <string name="delete">Xóa</string>
+    <string name="play">Phát</string>
+    <string name="pause">Tạm dừng</string>
+    <string name="close">Đóng</string>
+    <string name="add_to_queue">Thêm vào hàng đợi</string>
+    <string name="favorite">Yêu thích</string>
+    <string name="share">Chia sẻ</string>
+
+    <!-- Settings Subscription -->
+    <string name="settings_subscription">Đăng ký</string>
+    <string name="settings_upgrade_to_pro">Nâng cấp Pro</string>
+    <string name="settings_upgrade_to_pro_subtitle">Nghe không giới hạn, tất cả giọng nói &amp; hơn nữa</string>
+    <string name="settings_readaloud_pro">ReadAloud AI Pro</string>
+    <string name="settings_pro_member_subtitle">Bạn là thành viên Pro</string>
+    <string name="settings_audio_quality_hd">Chất lượng cao (HD)</string>
+
+    <!-- Settings Dialogs -->
+    <string name="dialog_playback_speed">Tốc độ phát</string>
+    <string name="dialog_appearance">Giao diện</string>
+    <string name="dialog_skip_interval">Khoảng bỏ qua</string>
+    <string name="dialog_sleep_timer_default">Hẹn giờ ngủ mặc định</string>
+    <string name="selected_check">Đã chọn</string>
+    <string name="seconds_format">%d giây</string>
+    <string name="sleep_timer_off">Tắt</string>
+    <string name="sleep_timer_minutes_format">%d phút</string>
+    <string name="sleep_timer_15_min">15 phút</string>
+    <string name="sleep_timer_30_min">30 phút</string>
+    <string name="sleep_timer_45_min">45 phút</string>
+    <string name="sleep_timer_1_hour">1 giờ</string>
+    <string name="appearance_system">Hệ thống</string>
+    <string name="appearance_light">Sáng</string>
+    <string name="appearance_dark">Tối</string>
+
+    <!-- Share Intent -->
+    <string name="share_subject">Thử ListenAI</string>
+    <string name="share_body">Nghe bất kỳ bài viết nào bằng giọng AI tự nhiên! Tải ListenAI: https://play.google.com/store/apps/details?id=com.listenai</string>
+    <string name="share_chooser_title">Chia sẻ ListenAI</string>
+    <string name="feedback_email_subject">Phản hồi ListenAI</string>
+
+    <!-- Player Screen -->
+    <string name="player_loading_article">Đang tải bài viết…</string>
+    <string name="player_article_not_found">Không tìm thấy bài viết</string>
+    <string name="player_no_text_content">Không có nội dung văn bản để tổng hợp.</string>
+    <string name="player_no_voice_available">Không có giọng nói. Vui lòng kiểm tra kết nối dịch vụ TTS.</string>
+    <string name="player_network_error">Lỗi mạng. Vui lòng kiểm tra kết nối internet.</string>
+    <string name="player_timeout_error">Yêu cầu hết thời gian. Máy chủ có thể đang bận.</string>
+    <string name="player_rate_limit_error">Máy chủ đang bận. Vui lòng thử lại sau.</string>
+    <string name="player_synthesis_failed">Tổng hợp thất bại</string>
+    <string name="player_regeneration_failed">Tạo lại thất bại</string>
+    <string name="player_something_went_wrong">Đã xảy ra lỗi</string>
+    <string name="player_go_back">Quay lại</string>
+    <string name="player_try_again">Thử lại</string>
+    <string name="player_preparing_audio">Đang chuẩn bị âm thanh…</string>
+    <string name="player_percent_complete">Hoàn thành %d%%</string>
+    <string name="player_back">Quay lại</string>
+    <string name="player_change_voice">Đổi giọng nói</string>
+    <string name="player_more_options">Thêm</string>
+    <string name="player_skip_back_10">Lùi 10 giây</string>
+    <string name="player_skip_forward_10">Tiến 10 giây</string>
+    <string name="player_select_speed">Chọn tốc độ</string>
+    <string name="player_change_voice_button">Đổi giọng nói</string>
+    <string name="player_added_to_queue">Đã thêm vào hàng đợi</string>
+    <string name="player_marked_finished">Đã đánh dấu xong</string>
+    <string name="player_removed_from_favorites">Đã xóa khỏi yêu thích</string>
+    <string name="player_added_to_favorites">Đã thêm vào yêu thích</string>
+    <string name="player_export_audio">Xuất âm thanh</string>
+    <string name="player_audio_not_found">Không tìm thấy tệp âm thanh</string>
+    <string name="player_export_failed">Xuất thất bại: %s</string>
+    <string name="player_sleep_timer_set">Đã đặt hẹn giờ ngủ %d phút</string>
+    <string name="player_sleep_timer_cancelled">Đã hủy hẹn giờ ngủ</string>
+    <string name="player_by_author">bởi %s</string>
+    <string name="player_words_count">%d từ</string>
+    <string name="player_untitled">Không tiêu đề</string>
+    <string name="player_article_fallback">Bài viết</string>
+    <string name="player_from_label">Từ:</string>
+    <string name="player_unknown_sender">Không rõ</string>
+
+    <!-- Player Source Badges -->
+    <string name="source_web">Web</string>
+    <string name="source_pdf">PDF</string>
+    <string name="source_clipboard">Bộ nhớ tạm</string>
+    <string name="source_file">Tệp</string>
+    <string name="source_text">Văn bản</string>
+    <string name="source_email">Email</string>
+
+    <!-- Player Mode Badge -->
+    <string name="player_mode_loading_full">Đang tải đầy đủ…</string>
+    <string name="player_mode_preview">Xem trước</string>
+    <string name="player_mode_full">Đầy đủ</string>
+
+    <!-- Player Voice Indicator -->
+    <string name="player_cloned_voice">Nhân bản</string>
+    <string name="player_voice_fallback">Giọng nói</string>
+
+    <!-- Quota Exceeded -->
+    <string name="quota_exceeded_title">Đã vượt hạn mức hàng ngày</string>
+    <string name="quota_exceeded_message">Bạn còn %1$d ký tự hôm nay,\nnhưng bài viết này cần %2$d ký tự.</string>
+    <string name="quota_upgrade_to_pro">Nâng cấp Pro</string>
+    <string name="quota_benefit_chars_day">100 nghìn ký tự mỗi ngày (gấp 25 lần)</string>
+    <string name="quota_benefit_chars_month">1 triệu ký tự mỗi tháng</string>
+    <string name="quota_benefit_premium_voices">Giọng nói AI cao cấp</string>
+    <string name="quota_benefit_priority">Hàng đợi tổng hợp ưu tiên</string>
+    <string name="quota_maybe_later">Để sau</string>
+    <string name="quota_reset_info">Hạn mức hàng ngày được đặt lại lúc nửa đêm</string>
+
+    <!-- More Options Sheet -->
+    <string name="more_options_download_audio">Tải âm thanh</string>
+    <string name="more_options_download_subtitle">Cho phép nghe ngoại tuyến trong ứng dụng.</string>
+    <string name="more_options_add_to_queue">Thêm vào hàng đợi</string>
+    <string name="more_options_mark_finished">Đánh dấu xong</string>
+    <string name="more_options_sleep_timer">Hẹn giờ ngủ</string>
+    <string name="more_options_export_audio">Xuất âm thanh</string>
+    <string name="more_options_export_subtitle">Lưu âm thanh vào thiết bị hoặc chia sẻ trực tiếp.</string>
+    <string name="more_options_delete_article">Xóa bài viết</string>
+    <string name="more_options_timer_active">Hẹn giờ đang chạy: %s</string>
+    <string name="more_options_current">Hiện tại</string>
+
+    <!-- Sleep Timer Picker -->
+    <string name="sleep_timer_picker_title">Hẹn giờ ngủ</string>
+    <string name="sleep_timer_5_min">5 phút</string>
+    <string name="sleep_timer_10_min">10 phút</string>
+    <string name="sleep_timer_1_5_hours">1,5 giờ</string>
+    <string name="sleep_timer_2_hours">2 giờ</string>
+
+    <!-- Duration Formats -->
+    <string name="duration_hr_min">%1$d giờ %2$d phút</string>
+    <string name="duration_hr">%d giờ</string>
+    <string name="duration_min">%d phút</string>
+    <string name="duration_sec">%d giây</string>
+
+    <!-- Language Picker -->
+    <string name="language">Ngôn ngữ</string>
+    <string name="language_picker_title">Chọn ngôn ngữ</string>
+    <string name="language_english">English</string>
+    <string name="language_spanish">Español</string>
+    <string name="language_french">Français</string>
+    <string name="language_german">Deutsch</string>
+    <string name="language_japanese">日本語</string>
+    <string name="language_chinese">中文(简体)</string>
+    <string name="language_korean">한국어</string>
+    <string name="language_portuguese">Português</string>
+    <string name="language_italian">Italiano</string>
+    <string name="language_hindi">हिन्दी</string>
+</resources>

@@ -1,0 +1,444 @@
+/* ReadAloud AI - English (Base) Localizable Strings */
+
+/* ===== Tab Bar ===== */
+"Home" = "Home";
+"Library" = "Library";
+"Queue" = "Queue";
+"Settings" = "Settings";
+
+/* ===== Home View ===== */
+"Download and listen anytime, anywhere" = "Download and listen anytime, anywhere";
+"Try for free" = "Try for free";
+"What do you want to listen today?" = "What do you want to listen today?";
+"Document" = "Document";
+"Upload files from Drive or device" = "Upload files from Drive or device";
+"Scan Text" = "Scan Text";
+"Scanned documents or images" = "Scanned documents or images";
+"Web Link" = "Web Link";
+"Convert URLs to audio" = "Convert URLs to audio";
+"Type or Paste Text" = "Type or Paste Text";
+"Input or paste text to listen" = "Input or paste text to listen";
+"Mail" = "Mail";
+"Listen to e-mails easily" = "Listen to e-mails easily";
+"Double tap to import" = "Double tap to import";
+"Welcome to ReadAloud AI" = "Welcome to ReadAloud AI";
+"1 min" = "1 min";
+"Welcome to ReadAloud AI. 1 minute introduction" = "Welcome to ReadAloud AI. 1 minute introduction";
+
+/* ===== Import Picker Sheet ===== */
+"Add Content" = "Add Content";
+"PDF, ePub, TXT & more" = "PDF, ePub, TXT & more";
+"Use camera to scan documents" = "Use camera to scan documents";
+"Convert any URL to audio" = "Convert any URL to audio";
+"Enter text manually" = "Enter text manually";
+"Import emails from Gmail" = "Import emails from Gmail";
+"Cancel" = "Cancel";
+
+/* ===== Import View ===== */
+"Import from Web" = "Import from Web";
+"Enter a URL to extract article content" = "Enter a URL to extract article content";
+"Paste from Clipboard" = "Paste from Clipboard";
+"Import from Clipboard" = "Import from Clipboard";
+"Import text or links you've copied" = "Import text or links you've copied";
+"Refresh Clipboard" = "Refresh Clipboard";
+"Clipboard is empty" = "Clipboard is empty";
+"This content type cannot be imported" = "This content type cannot be imported";
+"Checking clipboard..." = "Checking clipboard...";
+"Import PDF" = "Import PDF";
+"Extract text from PDF documents" = "Extract text from PDF documents";
+"PDF selected" = "PDF selected";
+"Choose PDF File" = "Choose PDF File";
+"Choose Different File" = "Choose Different File";
+"Select from Files app" = "Select from Files app";
+"Enter Text" = "Enter Text";
+"Type or paste text directly" = "Type or paste text directly";
+"Title (optional)" = "Title (optional)";
+"Paste or type your text here..." = "Paste or type your text here...";
+"%d words" = "%d words";
+"Generating audio..." = "Generating audio...";
+"Import" = "Import";
+"Import Error" = "Import Error";
+"OK" = "OK";
+"Done" = "Done";
+"Tips" = "Tips";
+"Works best with article pages from news sites and blogs" = "Works best with article pages from news sites and blogs";
+"Paywalled content may not be accessible" = "Paywalled content may not be accessible";
+"JavaScript-heavy sites may have limited extraction" = "JavaScript-heavy sites may have limited extraction";
+"Works best with text-based PDFs" = "Works best with text-based PDFs";
+"Scanned documents may have limited text extraction" = "Scanned documents may have limited text extraction";
+"Password-protected PDFs are not supported" = "Password-protected PDFs are not supported";
+"No PDF file selected" = "No PDF file selected";
+"Preview" = "Preview";
+"Add to Library" = "Add to Library";
+"Title" = "Title";
+"words" = "words";
+"listen time" = "listen time";
+"sections" = "sections";
+"Content Preview" = "Content Preview";
+
+/* ===== Simple Web Link View ===== */
+"Paste any URL to listen" = "Paste any URL to listen";
+"Continue" = "Continue";
+
+/* ===== Simple Text Input View ===== */
+"Type or paste your text here..." = "Type or paste your text here...";
+"Save & Listen" = "Save & Listen";
+
+/* ===== Scan Text View ===== */
+"Checking camera access..." = "Checking camera access...";
+"Camera Access Required" = "Camera Access Required";
+"ReadAloud AI needs camera access to scan documents and extract text for listening." = "ReadAloud AI needs camera access to scan documents and extract text for listening.";
+"Allow Camera Access" = "Allow Camera Access";
+"Camera Access Denied" = "Camera Access Denied";
+"Please enable camera access in Settings to scan documents." = "Please enable camera access in Settings to scan documents.";
+"Open Settings" = "Open Settings";
+"Processing..." = "Processing...";
+"This may take a moment..." = "This may take a moment...";
+"Extracting text..." = "Extracting text...";
+"Creating article..." = "Creating article...";
+"No images scanned" = "No images scanned";
+"No text detected in the scanned images. Please try scanning again with clearer text." = "No text detected in the scanned images. Please try scanning again with clearer text.";
+"Scanned Document" = "Scanned Document";
+
+/* ===== Mail Import View ===== */
+"Search in mail" = "Search in mail";
+"Gmail" = "Gmail";
+"Connect Gmail" = "Connect Gmail";
+"Sign in with Google to import and listen to your emails" = "Sign in with Google to import and listen to your emails";
+"Loading email..." = "Loading email...";
+
+/* ===== Library View ===== */
+"My Library" = "My Library";
+"Usage" = "Usage";
+"PRO" = "PRO";
+"Search articles" = "Search articles";
+"Add new content" = "Add new content";
+"Double tap to import articles" = "Double tap to import articles";
+"All" = "All";
+"Continue" = "Continue";
+"Finished" = "Finished";
+"Favorites" = "Favorites";
+"Folders" = "Folders";
+"Downloaded" = "Downloaded";
+"No Articles Yet" = "No Articles Yet";
+"Nothing in Progress" = "Nothing in Progress";
+"Nothing Finished" = "Nothing Finished";
+"No Favorites" = "No Favorites";
+"No Folders" = "No Folders";
+"Nothing Downloaded" = "Nothing Downloaded";
+"Add articles from web links, documents, or paste text." = "Add articles from web links, documents, or paste text.";
+"Start listening to see your in-progress items here." = "Start listening to see your in-progress items here.";
+"Completed articles will appear here." = "Completed articles will appear here.";
+"Mark articles as favorites to find them quickly." = "Mark articles as favorites to find them quickly.";
+"Organize your articles into folders." = "Organize your articles into folders.";
+"Download articles for offline listening." = "Download articles for offline listening.";
+"Edit Title" = "Edit Title";
+"Enter a new title for this article" = "Enter a new title for this article";
+"Save" = "Save";
+"Play" = "Play";
+"Add to Queue" = "Add to Queue";
+"Favorite" = "Favorite";
+"Unfavorite" = "Unfavorite";
+"Share" = "Share";
+"Delete" = "Delete";
+"Preparing audio..." = "Preparing audio...";
+"left" = "left";
+"< 1 min" = "< 1 min";
+"Date Added" = "Date Added";
+"Author" = "Author";
+"Duration" = "Duration";
+
+/* ===== Audio Player View ===== */
+"Not Playing" = "Not Playing";
+"Not playing" = "Not playing";
+"Playback position" = "Playback position";
+"Adjust to seek through the audio" = "Adjust to seek through the audio";
+"Skip back 15 seconds" = "Skip back 15 seconds";
+"Double tap to go back" = "Double tap to go back";
+"Pause" = "Pause";
+"Double tap to pause" = "Double tap to pause";
+"Double tap to play" = "Double tap to play";
+"Skip forward 15 seconds" = "Skip forward 15 seconds";
+"Double tap to skip ahead" = "Double tap to skip ahead";
+"Double tap to change speed" = "Double tap to change speed";
+"Sleep timer off" = "Sleep timer off";
+"Sleep timer on" = "Sleep timer on";
+"Double tap to set sleep timer" = "Double tap to set sleep timer";
+"Double tap to change repeat mode" = "Double tap to change repeat mode";
+"Double tap to view and manage queue" = "Double tap to view and manage queue";
+"Playback Speed" = "Playback Speed";
+"Sleep Timer" = "Sleep Timer";
+
+/* ===== Queue View ===== */
+"Now Playing" = "Now Playing";
+"Up Next" = "Up Next";
+"Recently Played" = "Recently Played";
+"Now playing" = "Now playing";
+"Play Queue" = "Play Queue";
+"Playing" = "Playing";
+"Shuffle On" = "Shuffle On";
+"Shuffle Off" = "Shuffle Off";
+"Clear Completed" = "Clear Completed";
+"Clear All" = "Clear All";
+"Clear Queue?" = "Clear Queue?";
+"This will remove all items from your queue." = "This will remove all items from your queue.";
+
+/* ===== Settings View ===== */
+"Voice Cloning" = "Voice Cloning";
+"Voice Marketplace" = "Voice Marketplace";
+"Cloning Speed" = "Cloning Speed";
+"Change Voice" = "Change Voice";
+"App Language" = "App Language";
+"Request Feature" = "Request Feature";
+"Preferences" = "Preferences";
+"Default Speed" = "Default Speed";
+"Skip Silences" = "Skip Silences";
+"Auto-Play Next" = "Auto-Play Next";
+"Playback" = "Playback";
+"Linked Accounts" = "Linked Accounts";
+"Apple" = "Apple";
+"Google" = "Google";
+"Disconnect" = "Disconnect";
+"Connect" = "Connect";
+"Connect Apple to sync data across devices. Connect Google to import emails from Gmail." = "Connect Apple to sync data across devices. Connect Google to import emails from Gmail.";
+"Connect Google to import emails from Gmail and listen to them." = "Connect Google to import emails from Gmail and listen to them.";
+"Google Sign-In Error" = "Google Sign-In Error";
+"Apple Sign-In Error" = "Apple Sign-In Error";
+"Share ReadAloud AI" = "Share ReadAloud AI";
+"Like us, Rate us" = "Like us, Rate us";
+"Contact Support" = "Contact Support";
+"Usage & Quota" = "Usage & Quota";
+"Support" = "Support";
+"Manage Subscription" = "Manage Subscription";
+"Upgrade to Pro" = "Upgrade to Pro";
+"Active" = "Active";
+"Subscription" = "Subscription";
+"AI Data Sharing" = "AI Data Sharing";
+"Allowed" = "Allowed";
+"Not Allowed" = "Not Allowed";
+"Delete Account & Data" = "Delete Account & Data";
+"Data & Privacy" = "Data & Privacy";
+"Cloud voices and AI summaries send your text to external services. Tap to review details or revoke consent." = "Cloud voices and AI summaries send your text to external services. Tap to review details or revoke consent.";
+"Cloud voices are disabled. Only on-device Apple voices are available. Tap to enable cloud features." = "Cloud voices are disabled. Only on-device Apple voices are available. Tap to enable cloud features.";
+"Delete Account" = "Delete Account";
+"This will permanently delete your account, all saved data, cloned voices, and library items. This action cannot be undone." = "This will permanently delete your account, all saved data, cloned voices, and library items. This action cannot be undone.";
+"Account Deleted" = "Account Deleted";
+"Your account and all associated data have been successfully deleted." = "Your account and all associated data have been successfully deleted.";
+"Version" = "Version";
+"Privacy Policy" = "Privacy Policy";
+"Terms of Service" = "Terms of Service";
+"About" = "About";
+"Connected" = "Connected";
+"Not connected" = "Not connected";
+"Error" = "Error";
+
+/* ===== Language Picker ===== */
+"English (US)" = "English (US)";
+"English (UK)" = "English (UK)";
+"Spanish" = "Spanish";
+"French" = "French";
+"German" = "German";
+"Italian" = "Italian";
+"Portuguese (Brazil)" = "Portuguese (Brazil)";
+"Japanese" = "Japanese";
+"Korean" = "Korean";
+"Chinese (Simplified)" = "Chinese (Simplified)";
+
+/* ===== Feature Request ===== */
+"Describe your feature idea" = "Describe your feature idea";
+"We read every suggestion and use them to improve ReadAloud AI." = "We read every suggestion and use them to improve ReadAloud AI.";
+"Submit" = "Submit";
+
+/* ===== Onboarding: Welcome ===== */
+"Welcome to\nReadAloud AI!" = "Welcome to\nReadAloud AI!";
+"Read anything aloud in the highest quality voices." = "Read anything aloud in the highest quality voices.";
+"Get Started" = "Get Started";
+"PDF, ePUB & more" = "PDF, ePUB & more";
+"Top Text to\nSpeech App" = "Top Text to\nSpeech App";
+
+/* ===== Onboarding: Document to Audio ===== */
+"Turn any document to audio" = "Turn any document to audio";
+"Listen to PDFs, articles, news and more" = "Listen to PDFs, articles, news and more";
+"Type & Paste Text" = "Type & Paste Text";
+
+/* ===== Onboarding: Take Notes ===== */
+"Take notes on key concepts" = "Take notes on key concepts";
+"Take notes on key ideas with a single tap" = "Take notes on key ideas with a single tap";
+"Take Note" = "Take Note";
+"Key Insight" = "Key Insight";
+"Focus on deep work and deliberate practice for better outcomes." = "Focus on deep work and deliberate practice for better outcomes.";
+
+/* ===== Onboarding: Productivity ===== */
+"Increase your productivity" = "Increase your productivity";
+"Listen to texts faster, learn more" = "Listen to texts faster, learn more";
+"50% increase in" = "50% increase in";
+" productivity" = " productivity";
+
+/* ===== Onboarding: Voice Selection ===== */
+"Choose Your Voice" = "Choose Your Voice";
+"You can change selected voice later." = "You can change selected voice later.";
+"Professional Narrator" = "Professional Narrator";
+"Calm & Soothing" = "Calm & Soothing";
+"Deep British" = "Deep British";
+"Storyteller" = "Storyteller";
+"Elegant & Articulate" = "Elegant & Articulate";
+"Multilingual" = "Multilingual";
+"English" = "English";
+
+/* ===== Onboarding: Sign In ===== */
+"Skip" = "Skip";
+"Sign In (Optional)" = "Sign In (Optional)";
+"Sign in to unlock all features including voice sharing and cross-device sync." = "Sign in to unlock all features including voice sharing and cross-device sync.";
+"Share Your Voice" = "Share Your Voice";
+"Share cloned voices with the community" = "Share cloned voices with the community";
+"Community Voices" = "Community Voices";
+"Use voices shared by others" = "Use voices shared by others";
+"Earn Rewards" = "Earn Rewards";
+"Get listening minutes when others use your voices" = "Get listening minutes when others use your voices";
+"Sync Across Devices" = "Sync Across Devices";
+"Your data follows you everywhere" = "Your data follows you everywhere";
+"Continue Without Signing In" = "Continue Without Signing In";
+"Signing in..." = "Signing in...";
+"Sign In Error" = "Sign In Error";
+
+/* ===== Onboarding: Paywall ===== */
+"Restore" = "Restore";
+"Get Unlimited Access" = "Get Unlimited Access";
+"Read anything aloud in top-quality voices" = "Read anything aloud in top-quality voices";
+"Unlimited text-to-speech with cloud voices" = "Unlimited text-to-speech with cloud voices";
+"Premium AI voices from ElevenLabs" = "Premium AI voices from ElevenLabs";
+"Create custom voice clones" = "Create custom voice clones";
+"AI-powered article summaries" = "AI-powered article summaries";
+"Speed control up to 3x" = "Speed control up to 3x";
+"Annual" = "Annual";
+"/year" = "/year";
+"SAVE 90%" = "SAVE 90%";
+"Weekly" = "Weekly";
+"/week" = "/week";
+"Due today" = "Due today";
+"free" = "free";
+"Processing..." = "Processing...";
+"Start Free Trial" = "Start Free Trial";
+"Subscribe Now" = "Subscribe Now";
+"Terms of Use" = "Terms of Use";
+"Secured with Apple" = "Secured with Apple";
+"Subscription not available. Please try again later." = "Subscription not available. Please try again later.";
+"free trial" = "free trial";
+
+/* ===== Voice Cloning View ===== */
+"Clone Voice" = "Clone Voice";
+"No cloned voice here" = "No cloned voice here";
+"You haven't created any voice clones yet." = "You haven't created any voice clones yet.";
+"Edit" = "Edit";
+"Get Notified When Ready" = "Get Notified When Ready";
+"Enable Notifications" = "Enable Notifications";
+"Not Now" = "Not Now";
+"Voice cloning usually completes in seconds, but can take longer for high-quality results.\n\nWe'll send you ONE notification when your voice is ready. We never send marketing or promotional notifications." = "Voice cloning usually completes in seconds, but can take longer for high-quality results.\n\nWe'll send you ONE notification when your voice is ready. We never send marketing or promotional notifications.";
+
+/* ===== Select Voice View ===== */
+"Select Voice" = "Select Voice";
+"Popular" = "Popular";
+"Cloned" = "Cloned";
+"Your Voices" = "Your Voices";
+"Popular Voices" = "Popular Voices";
+"All Voices" = "All Voices";
+"No cloned voices yet" = "No cloned voices yet";
+"Create a voice clone in Settings to see it here." = "Create a voice clone in Settings to see it here.";
+"About Voices" = "About Voices";
+"Premium voices offer high-quality, natural-sounding speech with multilingual support. Cloned voices let you listen to content in your own voice or voices you've created." = "Premium voices offer high-quality, natural-sounding speech with multilingual support. Cloned voices let you listen to content in your own voice or voices you've created.";
+
+/* ===== Voice Picker View ===== */
+"Choose Voice" = "Choose Voice";
+"Search voices" = "Search voices";
+"Speed" = "Speed";
+"Voice Quality" = "Voice Quality";
+"Standard" = "Standard";
+"Fast & Unlimited" = "Fast & Unlimited";
+"Premium" = "Premium";
+"Highest Quality" = "Highest Quality";
+
+/* ===== Usage Views ===== */
+"Current Plan" = "Current Plan";
+"Free" = "Free";
+"Unlimited" = "Unlimited";
+"remaining" = "remaining";
+"Upgrade" = "Upgrade";
+"Upgrade Plan" = "Upgrade Plan";
+"View Pricing" = "View Pricing";
+"Refresh Usage" = "Refresh Usage";
+"More options" = "More options";
+"Double tap to view upgrade and pricing options" = "Double tap to view upgrade and pricing options";
+"Cloud (Monthly)" = "Cloud (Monthly)";
+"Daily (Local)" = "Daily (Local)";
+"Monthly (Local)" = "Monthly (Local)";
+"View Details" = "View Details";
+"Tip: Use on-device voices to save your cloud quota" = "Tip: Use on-device voices to save your cloud quota";
+"Quota Exceeded" = "Quota Exceeded";
+"Almost at Limit" = "Almost at Limit";
+"Quota Warning" = "Quota Warning";
+"Usage Update" = "Usage Update";
+"Dismiss warning" = "Dismiss warning";
+"Double tap to hide this warning banner" = "Double tap to hide this warning banner";
+"Double tap to collapse" = "Double tap to collapse";
+"Double tap to expand for more details" = "Double tap to expand for more details";
+"Content Size" = "Content Size";
+"Est. Duration" = "Est. Duration";
+"Daily Remaining After" = "Daily Remaining After";
+"Monthly Remaining After" = "Monthly Remaining After";
+"Proceed" = "Proceed";
+"Use On-Device" = "Use On-Device";
+"Usage Estimate" = "Usage Estimate";
+"Approaching Limit" = "Approaching Limit";
+"Confirm Synthesis" = "Confirm Synthesis";
+"Quota Impact" = "Quota Impact";
+"Daily Remaining" = "Daily Remaining";
+"Monthly Remaining" = "Monthly Remaining";
+"Use Cloud Voice" = "Use Cloud Voice";
+"Use On-Device Voice (Free)" = "Use On-Device Voice (Free)";
+"Unlock Premium Voices" = "Unlock Premium Voices";
+"Unlimited AI Voices" = "Unlimited AI Voices";
+"Access all premium cloud voices" = "Access all premium cloud voices";
+"No Daily Limits" = "No Daily Limits";
+"Listen as much as you want" = "Listen as much as you want";
+"Priority Processing" = "Priority Processing";
+"Faster audio generation" = "Faster audio generation";
+"New Voices First" = "New Voices First";
+"Early access to new voice releases" = "Early access to new voice releases";
+"Upgrade to Premium" = "Upgrade to Premium";
+"Starting at $4.99/month" = "Starting at $4.99/month";
+"Continue with On-Device Voice" = "Continue with On-Device Voice";
+"Maybe Later" = "Maybe Later";
+"Daily limit reached. Upgrade or try tomorrow." = "Daily limit reached. Upgrade or try tomorrow.";
+
+/* ===== AI Data Consent View ===== */
+"Your Data & AI Services" = "Your Data & AI Services";
+"ReadAloud AI uses cloud-based AI services to convert your text to speech and provide content summaries. Here's exactly what data is shared and with whom." = "ReadAloud AI uses cloud-based AI services to convert your text to speech and provide content summaries. Here's exactly what data is shared and with whom.";
+"Text-to-Speech" = "Text-to-Speech";
+"Voice Cloning" = "Voice Cloning";
+"AI Content Summaries" = "AI Content Summaries";
+"What Stays on Your Device" = "What Stays on Your Device";
+"The following never leaves your device:" = "The following never leaves your device:";
+"On-device Apple voices work without any data sharing. You can switch to on-device voices anytime in Settings." = "On-device Apple voices work without any data sharing. You can switch to on-device voices anytime in Settings.";
+"Read our full Privacy Policy" = "Read our full Privacy Policy";
+"I Understand & Agree" = "I Understand & Agree";
+"Use On-Device Voices Only" = "Use On-Device Voices Only";
+
+/* ===== Sign In Prompt View ===== */
+"Sign In Required" = "Sign In Required";
+"Continue without signing in" = "Continue without signing in";
+"Benefits of signing in:" = "Benefits of signing in:";
+"Share your cloned voices" = "Share your cloned voices";
+"Use voices from the community" = "Use voices from the community";
+"Earn rewards when others use your voices" = "Earn rewards when others use your voices";
+"Sync your data across devices" = "Sync your data across devices";
+"Sign in to continue" = "Sign in to continue";
+"Sign in to access this feature" = "Sign in to access this feature";
+
+/* ===== Voice Marketplace ===== */
+"Search voices..." = "Search voices...";
+
+/* ===== Onboarding Footer ===== */
+"By continuing, you agree to our [Privacy Policy](%@) and [Terms of Use](%@)." = "By continuing, you agree to our [Privacy Policy](%@) and [Terms of Use](%@).";
+
+/* ===== ContentView / Tab Bar Labels ===== */
+"Voices" = "Voices";

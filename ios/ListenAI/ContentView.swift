@@ -13,6 +13,11 @@ struct ContentView: View {
     @State private var articleToOpen: Article?
     @State private var showingQueue = false
     @State private var showingFeedbackPrompt = false
+    @State private var showAppOpenPaywall = false
+
+    // Show paywall on 2nd, 4th, 7th app open (then every 5th after)
+    private static let paywallTriggerOpens: Set<Int> = [2, 4, 7]
+    private static let paywallRecurringInterval = 5
 
     /// Whether any playback is active (from either player)
     private var hasActivePlayback: Bool {
@@ -119,6 +124,12 @@ struct ContentView: View {
         .onReceive(NotificationCenter.default.publisher(for: AppReviewService.shouldShowFeedbackPromptNotification)) { _ in
             showingFeedbackPrompt = true
         }
+        .fullScreenCover(isPresented: $showAppOpenPaywall) {
+            RemotePaywallView(triggerSource: "app_open")
+        }
+        .onAppear {
+            checkAppOpenPaywall()
+        }
         .sheet(isPresented: $showingFeedbackPrompt) {
             FeedbackPromptView(
                 onYes: {
@@ -134,6 +145,24 @@ struct ContentView: View {
     }
 
     // MARK: - Actions
+
+    /// Check if app-open paywall should be shown
+    private func checkAppOpenPaywall() {
+        guard !PremiumManager.shared.isPremium else { return }
+
+        let key = "com.readaloud.appOpenCount"
+        let count = UserDefaults.standard.integer(forKey: key) + 1
+        UserDefaults.standard.set(count, forKey: key)
+
+        let shouldShow = Self.paywallTriggerOpens.contains(count)
+            || (count > 7 && (count - 7) % Self.paywallRecurringInterval == 0)
+
+        if shouldShow {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                showAppOpenPaywall = true
+            }
+        }
+    }
 
     /// Handle mini player tap - always opens ArticleReaderView for the current article
     private func handleMiniPlayerTap() {

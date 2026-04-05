@@ -38,6 +38,8 @@ import com.listenai.data.repository.ArticleRepository
 import com.listenai.service.auth.GoogleAuthService
 import com.listenai.service.import_content.GmailMessage
 import com.listenai.service.import_content.GmailService
+import androidx.compose.ui.res.stringResource
+import com.listenai.R
 import com.listenai.ui.theme.*
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
@@ -62,6 +64,8 @@ fun MailImportScreen(
     val isLoading by gmailService.isLoading.collectAsState()
     val hasMorePages by gmailService.hasMorePages.collectAsState()
     val gmailError by gmailService.error.collectAsState()
+
+    val noSubjectText = stringResource(R.string.no_subject)
 
     var searchText by remember { mutableStateOf("") }
     var isConnecting by remember { mutableStateOf(false) }
@@ -110,10 +114,10 @@ fun MailImportScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Gmail", fontWeight = FontWeight.Bold) },
+                title = { Text(stringResource(R.string.mail_import_title), fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.Default.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                 },
                 actions = {
@@ -121,7 +125,7 @@ fun MailImportScreen(
                         IconButton(onClick = {
                             scope.launch { gmailService.fetchEmails(refresh = true) }
                         }) {
-                            Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                            Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.refresh))
                         }
                     }
                 }
@@ -204,7 +208,7 @@ fun MailImportScreen(
                             ) {
                                 CircularProgressIndicator()
                                 Text(
-                                    "Loading emails...",
+                                    stringResource(R.string.loading_emails),
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -270,7 +274,7 @@ fun MailImportScreen(
                                             TextButton(onClick = {
                                                 scope.launch { gmailService.loadMore() }
                                             }) {
-                                                Text("Load More")
+                                                Text(stringResource(R.string.load_more))
                                             }
                                         }
                                     }
@@ -299,7 +303,7 @@ fun MailImportScreen(
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
                         CircularProgressIndicator()
-                        Text("Loading email...")
+                        Text(stringResource(R.string.loading_email))
                     }
                 }
             }
@@ -314,7 +318,7 @@ fun MailImportScreen(
                     scope.launch {
                         val article = Article(
                             id = UUID.randomUUID().toString(),
-                            title = email.subject.ifEmpty { "(No Subject)" },
+                            title = email.subject.ifEmpty { noSubjectText },
                             author = email.senderName,
                             siteName = null,
                             publishDate = null,
@@ -440,7 +444,7 @@ private fun EmailPreviewDialog(
             ) {
                 // Subject
                 Text(
-                    text = email.subject.ifEmpty { "(No Subject)" },
+                    text = email.subject.ifEmpty { stringResource(R.string.no_subject) },
                     fontWeight = FontWeight.Bold,
                     style = MaterialTheme.typography.titleMedium,
                     maxLines = 2,
@@ -448,7 +452,7 @@ private fun EmailPreviewDialog(
                 )
                 // From
                 Text(
-                    text = "From: ${email.senderName} <${email.senderEmail}>",
+                    text = stringResource(R.string.email_from_format, email.senderName, email.senderEmail),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
@@ -532,7 +536,7 @@ private fun EmailPreviewDialog(
                             .verticalScroll(rememberScrollState())
                     ) {
                         Text(
-                            text = email.body.ifEmpty { "(No content)" },
+                            text = email.body.ifEmpty { stringResource(R.string.no_content) },
                             style = MaterialTheme.typography.bodyMedium,
                             lineHeight = MaterialTheme.typography.bodyMedium.lineHeight * 1.4f
                         )
@@ -551,12 +555,12 @@ private fun EmailPreviewDialog(
                     modifier = Modifier.size(18.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Import & Listen")
+                Text(stringResource(R.string.email_import_button))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(stringResource(R.string.cancel))
             }
         }
     )
@@ -594,13 +598,13 @@ private fun NotConnectedView(
             )
 
             Text(
-                text = "Connect Gmail",
+                text = stringResource(R.string.gmail_connect_title),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
             )
 
             Text(
-                text = "Sign in with Google to import and listen to your emails",
+                text = stringResource(R.string.gmail_connect_description),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(horizontal = 16.dp)
@@ -622,14 +626,14 @@ private fun NotConnectedView(
                         modifier = Modifier.size(20.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Sign in with Google", fontWeight = FontWeight.SemiBold)
+                    Text(stringResource(R.string.gmail_signin_button), fontWeight = FontWeight.SemiBold)
                 }
             }
 
             Spacer(modifier = Modifier.height(32.dp))
 
             Text(
-                text = "We only request read access to your emails. Your data stays private.",
+                text = stringResource(R.string.gmail_privacy_notice),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                 modifier = Modifier.padding(horizontal = 24.dp)
@@ -650,14 +654,14 @@ private fun SearchBar(
         value = searchText,
         onValueChange = onSearchChange,
         modifier = modifier.fillMaxWidth(),
-        placeholder = { Text("Search in mail") },
+        placeholder = { Text(stringResource(R.string.mail_search_placeholder)) },
         leadingIcon = {
             Icon(Icons.Default.Search, contentDescription = null)
         },
         trailingIcon = {
             if (searchText.isNotEmpty()) {
                 IconButton(onClick = onClear) {
-                    Icon(Icons.Default.Clear, contentDescription = "Clear")
+                    Icon(Icons.Default.Clear, contentDescription = stringResource(R.string.clear))
                 }
             }
         },
@@ -690,23 +694,23 @@ private fun EmptyEmailsView(
             )
 
             Text(
-                text = "No emails found",
+                text = stringResource(R.string.no_emails_found),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Medium
             )
 
             if (hasSearchQuery) {
                 Text(
-                    text = "Try a different search term",
+                    text = stringResource(R.string.no_emails_search_suggestion),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 TextButton(onClick = onClearSearch) {
-                    Text("Clear Search")
+                    Text(stringResource(R.string.clear_search))
                 }
             } else {
                 Text(
-                    text = "Your inbox appears to be empty",
+                    text = stringResource(R.string.inbox_empty),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -803,7 +807,7 @@ private fun EmailRow(
             Spacer(modifier = Modifier.height(2.dp))
 
             Text(
-                text = email.subject.ifEmpty { "(No Subject)" },
+                text = email.subject.ifEmpty { stringResource(R.string.no_subject) },
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = if (email.isRead) FontWeight.Normal else FontWeight.Medium,
                 maxLines = 1,

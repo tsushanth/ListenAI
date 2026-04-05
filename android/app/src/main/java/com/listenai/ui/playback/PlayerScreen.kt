@@ -14,6 +14,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInParent
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -26,11 +27,13 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
+import com.listenai.R
 import java.io.File
 import com.listenai.data.models.Article
 import com.listenai.data.models.Plan
@@ -62,6 +65,7 @@ sealed class PlayerState {
     data class Playing(val article: Article) : PlayerState()
     data class Error(val message: String, val article: Article? = null) : PlayerState()
     data class QuotaExceeded(val remaining: Int, val required: Int, val article: Article) : PlayerState()
+    data class RateLimited(val retryAfterSeconds: Int, val article: Article) : PlayerState()
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -101,7 +105,7 @@ fun PlayerScreen(
         playerState = PlayerState.Loading
         val article = articleRepository.getArticleById(articleId)
         if (article == null) {
-            playerState = PlayerState.Error("Article not found")
+            playerState = PlayerState.Error(context.getString(R.string.player_article_not_found))
         } else {
             playerState = PlayerState.Ready(article)
             // Set selectedVoice from article if it has one, otherwise use first available
@@ -132,6 +136,7 @@ fun PlayerScreen(
         is PlayerState.Playing -> state.article
         is PlayerState.Error -> state.article
         is PlayerState.QuotaExceeded -> state.article
+        is PlayerState.RateLimited -> state.article
         else -> null
     }
 
@@ -160,7 +165,7 @@ fun PlayerScreen(
         // Check if there's text to synthesize
         if (article.rawText.isBlank()) {
             android.util.Log.e("PlayerScreen", "No text to synthesize")
-            playerState = PlayerState.Error("No text content to synthesize.", article)
+            playerState = PlayerState.Error(context.getString(R.string.player_no_text_content), article)
             return
         }
 
@@ -176,7 +181,7 @@ fun PlayerScreen(
 
                 if (voice == null) {
                     android.util.Log.e("PlayerScreen", "No voice available")
-                    playerState = PlayerState.Error("No voice available. Please check your TTS service connection.", article)
+                    playerState = PlayerState.Error(context.getString(R.string.player_no_voice_available), article)
                     return@launch
                 }
 
@@ -227,10 +232,10 @@ fun PlayerScreen(
                 )
 
                 // Show notification that TTS is complete
-                val durationFormatted = formatDuration(durationMs)
+                val durationFormatted = formatDuration(durationMs, context)
                 ttsNotificationService.showArticleTTSComplete(
                     articleId = articleId,
-                    articleTitle = article.title ?: "Article",
+                    articleTitle = article.title ?: context.getString(R.string.player_article_fallback),
                     durationFormatted = durationFormatted
                 )
 
@@ -259,15 +264,19 @@ fun PlayerScreen(
                         android.util.Log.d("PlayerScreen", "Quota exceeded: remaining=${e.remaining}, required=${e.required}")
                         playerState = PlayerState.QuotaExceeded(e.remaining, e.required, article)
                     }
+                    is TTSError.RateLimited -> {
+                        android.util.Log.d("PlayerScreen", "Rate limited: retryAfter=${e.retryAfterSeconds}")
+                        playerState = PlayerState.RateLimited(e.retryAfterSeconds.toInt(), article)
+                    }
                     else -> {
                         val errorMessage = when {
                             e.message?.contains("Network", ignoreCase = true) == true ->
-                                "Network error. Please check your internet connection."
+                                context.getString(R.string.player_network_error)
                             e.message?.contains("timeout", ignoreCase = true) == true ->
-                                "Request timed out. The server might be busy."
+                                context.getString(R.string.player_timeout_error)
                             e.message?.contains("rate limit", ignoreCase = true) == true ->
-                                "Server is busy. Please try again in a moment."
-                            else -> e.message ?: "Synthesis failed"
+                                context.getString(R.string.player_rate_limit_error)
+                            else -> e.message ?: context.getString(R.string.player_synthesis_failed)
                         }
                         playerState = PlayerState.Error(errorMessage, article)
                     }
@@ -342,10 +351,10 @@ fun PlayerScreen(
                 )
 
                 // Show notification that TTS is complete
-                val durationFormatted = formatDuration(durationMs)
+                val durationFormatted = formatDuration(durationMs, context)
                 ttsNotificationService.showArticleTTSComplete(
                     articleId = article.id,
-                    articleTitle = article.title ?: "Article",
+                    articleTitle = article.title ?: context.getString(R.string.player_article_fallback),
                     durationFormatted = durationFormatted
                 )
 
@@ -365,7 +374,7 @@ fun PlayerScreen(
 
             } catch (e: Exception) {
                 android.util.Log.e("PlayerScreen", "Regeneration failed", e)
-                playerState = PlayerState.Error(e.message ?: "Regeneration failed", article)
+                playerState = PlayerState.Error(e.message ?: context.getString(R.string.player_regeneration_failed), article)
             }
         }
     }
@@ -378,18 +387,18 @@ fun PlayerScreen(
                     IconButton(onClick = onNavigateBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back"
+                            contentDescription = stringResource(R.string.player_back)
                         )
                     }
                 },
                 actions = {
                     // Voice picker
                     IconButton(onClick = { showVoicePicker = true }) {
-                        Icon(Icons.Default.RecordVoiceOver, contentDescription = "Change Voice")
+                        Icon(Icons.Default.RecordVoiceOver, contentDescription = stringResource(R.string.player_change_voice))
                     }
                     // More options
                     IconButton(onClick = { showMoreOptions = true }) {
-                        Icon(Icons.Default.MoreVert, contentDescription = "More")
+                        Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.player_more_options))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -469,7 +478,7 @@ fun PlayerScreen(
                 sleepTimerRemaining = playbackState.sleepTimerRemaining,
                 onAddToQueue = {
                     // TODO: Implement queue functionality
-                    Toast.makeText(context, "Added to queue", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, context.getString(R.string.player_added_to_queue), Toast.LENGTH_SHORT).show()
                     showMoreOptions = false
                 },
                 onMarkAsFinished = {
@@ -480,7 +489,7 @@ fun PlayerScreen(
                             lastPosition = (playbackState.duration * 1000).toLong(),
                             isCompleted = true
                         )
-                        Toast.makeText(context, "Marked as finished", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, context.getString(R.string.player_marked_finished), Toast.LENGTH_SHORT).show()
                     }
                     showMoreOptions = false
                 },
@@ -497,7 +506,7 @@ fun PlayerScreen(
                                 else -> playerState
                             }
                         }
-                        val message = if (currentArticle.isFavorite) "Removed from favorites" else "Added to favorites"
+                        val message = if (currentArticle.isFavorite) context.getString(R.string.player_removed_from_favorites) else context.getString(R.string.player_added_to_favorites)
                         Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
                     }
                     showMoreOptions = false
@@ -521,12 +530,12 @@ fun PlayerScreen(
                                     putExtra(Intent.EXTRA_STREAM, uri)
                                     addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                                 }
-                                context.startActivity(Intent.createChooser(shareIntent, "Export Audio"))
+                                context.startActivity(Intent.createChooser(shareIntent, context.getString(R.string.player_export_audio)))
                             } else {
-                                Toast.makeText(context, "Audio file not found", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, context.getString(R.string.player_audio_not_found), Toast.LENGTH_SHORT).show()
                             }
                         } catch (e: Exception) {
-                            Toast.makeText(context, "Failed to export: ${e.message}", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, context.getString(R.string.player_export_failed, e.message ?: ""), Toast.LENGTH_SHORT).show()
                         }
                     }
                     showMoreOptions = false
@@ -548,7 +557,7 @@ fun PlayerScreen(
                 currentTimerRemaining = playbackState.sleepTimerRemaining,
                 onTimerSet = { minutes ->
                     playbackService.setSleepTimer(minutes)
-                    val message = if (minutes > 0) "Sleep timer set for $minutes minutes" else "Sleep timer cancelled"
+                    val message = if (minutes > 0) context.getString(R.string.player_sleep_timer_set, minutes) else context.getString(R.string.player_sleep_timer_cancelled)
                     Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
                     showSleepTimerPicker = false
                 },
@@ -571,7 +580,7 @@ fun PlayerScreen(
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
-                            text = "Loading article...",
+                            text = stringResource(R.string.player_loading_article),
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -598,7 +607,7 @@ fun PlayerScreen(
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
-                            text = "Something went wrong",
+                            text = stringResource(R.string.player_something_went_wrong),
                             style = MaterialTheme.typography.headlineSmall
                         )
                         Spacer(modifier = Modifier.height(8.dp))
@@ -610,7 +619,7 @@ fun PlayerScreen(
                         Spacer(modifier = Modifier.height(24.dp))
                         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                             OutlinedButton(onClick = onNavigateBack) {
-                                Text("Go Back")
+                                Text(stringResource(R.string.player_go_back))
                             }
                             Button(
                                 onClick = {
@@ -640,7 +649,7 @@ fun PlayerScreen(
                                 },
                                 colors = ButtonDefaults.buttonColors(containerColor = Blue)
                             ) {
-                                Text("Try Again")
+                                Text(stringResource(R.string.player_try_again))
                             }
                         }
                     }
@@ -648,10 +657,41 @@ fun PlayerScreen(
             }
 
             is PlayerState.QuotaExceeded -> {
+                // Auto-retry if user becomes premium (e.g. just purchased)
+                val revenueCatManager = remember { com.listenai.service.billing.RevenueCatManager.getInstance() }
+                val isPremiumNow by revenueCatManager.isPremium.collectAsState()
+                val hasTriggeredRetry = remember { mutableStateOf(false) }
+                if (isPremiumNow && !hasTriggeredRetry.value) {
+                    hasTriggeredRetry.value = true
+                    LaunchedEffect(Unit) {
+                        playerState = PlayerState.Synthesizing(state.article, 0f)
+                        startSynthesisAndPlay(state.article)
+                    }
+                }
+
                 QuotaExceededContent(
                     remaining = state.remaining,
                     required = state.required,
                     onUpgrade = onUpgrade,
+                    onGoBack = onNavigateBack,
+                    modifier = Modifier.padding(padding)
+                )
+            }
+
+            is PlayerState.RateLimited -> {
+                val revenueCatManager = remember { com.listenai.service.billing.RevenueCatManager.getInstance() }
+                val isPremiumNow by revenueCatManager.isPremium.collectAsState()
+
+                RateLimitedContent(
+                    retryAfterSeconds = state.retryAfterSeconds,
+                    isPremium = isPremiumNow,
+                    onUpgrade = onUpgrade,
+                    onRetry = {
+                        scope.launch {
+                            playerState = PlayerState.Synthesizing(state.article, 0f)
+                            startSynthesisAndPlay(state.article)
+                        }
+                    },
                     onGoBack = onNavigateBack,
                     modifier = Modifier.padding(padding)
                 )
@@ -755,7 +795,7 @@ private fun ArticleHeader(article: Article) {
 
                 // Author
                 Text(
-                    text = "by ${article.displayAuthor}",
+                    text = stringResource(R.string.player_by_author, article.displayAuthor),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -778,7 +818,7 @@ private fun ArticleHeader(article: Article) {
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
-                    text = "${article.wordCount} words",
+                    text = stringResource(R.string.player_words_count, article.wordCount),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -863,15 +903,16 @@ private fun EmailMetadataHeader(article: Article) {
             modifier = Modifier.fillMaxWidth()
         ) {
             Text(
-                text = "From:",
+                text = stringResource(R.string.player_from_label),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontWeight = FontWeight.Medium
             )
 
             // Sender name and email
+            val unknownSender = stringResource(R.string.player_unknown_sender)
             val senderDisplay = buildString {
-                append(article.author ?: "Unknown")
+                append(article.author ?: unknownSender)
                 article.senderEmail?.let { email ->
                     if (email != article.author) {
                         append(" <$email>")
@@ -893,12 +934,13 @@ private fun EmailMetadataHeader(article: Article) {
 @Composable
 private fun SourceBadge(sourceType: SourceType) {
     val (icon, label) = when (sourceType) {
-        SourceType.WEB -> Icons.Default.Link to "Web"
-        SourceType.PDF -> Icons.Default.Description to "PDF"
-        SourceType.CLIPBOARD -> Icons.Default.ContentPaste to "Clipboard"
-        SourceType.FILE -> Icons.Default.Folder to "File"
-        SourceType.MANUAL -> Icons.Default.Edit to "Text"
-        SourceType.EMAIL -> Icons.Default.Email to "Email"
+        SourceType.WEB -> Icons.Default.Link to stringResource(R.string.source_web)
+        SourceType.PDF -> Icons.Default.Description to stringResource(R.string.source_pdf)
+        SourceType.EPUB -> Icons.Default.Book to stringResource(R.string.source_epub)
+        SourceType.CLIPBOARD -> Icons.Default.ContentPaste to stringResource(R.string.source_clipboard)
+        SourceType.FILE -> Icons.Default.Folder to stringResource(R.string.source_file)
+        SourceType.MANUAL -> Icons.Default.Edit to stringResource(R.string.source_text)
+        SourceType.EMAIL -> Icons.Default.Email to stringResource(R.string.source_email)
     }
 
     Surface(
@@ -994,12 +1036,12 @@ private fun SynthesisBanner(progress: Float) {
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "Preparing audio...",
+                    text = stringResource(R.string.player_preparing_audio),
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Medium
                 )
                 Text(
-                    text = "${(progress * 100).toInt()}% complete",
+                    text = stringResource(R.string.player_percent_complete, (progress * 100).toInt()),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -1116,7 +1158,7 @@ private fun PlayerBar(
                 ) {
                     Icon(
                         Icons.Default.Replay10,
-                        contentDescription = "Skip back 10 seconds",
+                        contentDescription = stringResource(R.string.player_skip_back_10),
                         modifier = Modifier.size(32.dp)
                     )
                 }
@@ -1137,7 +1179,7 @@ private fun PlayerBar(
                     } else {
                         Icon(
                             imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                            contentDescription = if (isPlaying) "Pause" else "Play",
+                            contentDescription = if (isPlaying) stringResource(R.string.pause) else stringResource(R.string.play),
                             modifier = Modifier.size(32.dp),
                             tint = Color.Black
                         )
@@ -1151,7 +1193,7 @@ private fun PlayerBar(
                 ) {
                     Icon(
                         Icons.Default.Forward10,
-                        contentDescription = "Skip forward 10 seconds",
+                        contentDescription = stringResource(R.string.player_skip_forward_10),
                         modifier = Modifier.size(32.dp)
                     )
                 }
@@ -1178,21 +1220,35 @@ private fun formatTime(seconds: Double): String {
 /**
  * Format duration in milliseconds to a human-readable string (e.g., "5 min", "1 hr 23 min")
  */
-private fun formatDuration(durationMs: Long): String {
+private fun formatDuration(durationMs: Long, context: android.content.Context? = null): String {
     val totalSeconds = (durationMs / 1000).toInt()
     val hours = totalSeconds / 3600
     val minutes = (totalSeconds % 3600) / 60
     val seconds = totalSeconds % 60
 
-    return when {
-        hours > 0 -> {
-            if (minutes > 0) "$hours hr $minutes min" else "$hours hr"
+    return if (context != null) {
+        when {
+            hours > 0 -> {
+                if (minutes > 0) context.getString(R.string.duration_hr_min, hours, minutes) else context.getString(R.string.duration_hr, hours)
+            }
+            minutes > 0 -> {
+                context.getString(R.string.duration_min, minutes)
+            }
+            else -> {
+                context.getString(R.string.duration_sec, seconds)
+            }
         }
-        minutes > 0 -> {
-            "$minutes min"
-        }
-        else -> {
-            "$seconds sec"
+    } else {
+        when {
+            hours > 0 -> {
+                if (minutes > 0) "$hours hr $minutes min" else "$hours hr"
+            }
+            minutes > 0 -> {
+                "$minutes min"
+            }
+            else -> {
+                "$seconds sec"
+            }
         }
     }
 }
@@ -1206,21 +1262,25 @@ private fun PlayerModeBadge(
     mode: PlayerMode,
     isAwaitingFullAudio: Boolean
 ) {
+    val loadingFullText = stringResource(R.string.player_mode_loading_full)
+    val previewText = stringResource(R.string.player_mode_preview)
+    val fullText = stringResource(R.string.player_mode_full)
+
     val (backgroundColor, textColor, text) = when {
         isAwaitingFullAudio -> Triple(
             Blue.copy(alpha = 0.15f),
             Blue,
-            "Loading Full..."
+            loadingFullText
         )
         mode == PlayerMode.PREVIEW -> Triple(
             Orange.copy(alpha = 0.15f),
             Orange,
-            "Preview"
+            previewText
         )
         mode == PlayerMode.FULL -> Triple(
             Green.copy(alpha = 0.15f),
             Green,
-            "Full"
+            fullText
         )
         else -> return // Don't show badge for NONE mode
     }
@@ -1272,7 +1332,7 @@ private fun SpeedSelector(
             )
             Icon(
                 Icons.Default.ArrowDropDown,
-                contentDescription = "Select speed",
+                contentDescription = stringResource(R.string.player_select_speed),
                 modifier = Modifier.size(20.dp)
             )
         }
@@ -1296,7 +1356,7 @@ private fun SpeedSelector(
                             if (speed == currentSpeed) {
                                 Icon(
                                     Icons.Default.Check,
-                                    contentDescription = "Selected",
+                                    contentDescription = stringResource(R.string.selected_check),
                                     tint = Blue,
                                     modifier = Modifier.size(20.dp)
                                 )
@@ -1352,7 +1412,7 @@ private fun VoiceIndicatorButton(
                 }
                 // Just show "Cloned" text
                 Text(
-                    text = "Cloned",
+                    text = stringResource(R.string.player_cloned_voice),
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.Medium,
                     maxLines = 1,
@@ -1376,7 +1436,7 @@ private fun VoiceIndicatorButton(
 
                 // Voice name
                 Text(
-                    text = voice?.name ?: "Voice",
+                    text = voice?.name ?: stringResource(R.string.player_voice_fallback),
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.Medium,
                     maxLines = 1,
@@ -1387,7 +1447,7 @@ private fun VoiceIndicatorButton(
             // Dropdown arrow
             Icon(
                 Icons.Default.ArrowDropDown,
-                contentDescription = "Change voice",
+                contentDescription = stringResource(R.string.player_change_voice_button),
                 modifier = Modifier.size(16.dp),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -1429,7 +1489,7 @@ private fun QuotaExceededContent(
             Spacer(modifier = Modifier.height(24.dp))
 
             Text(
-                text = "Daily Quota Exceeded",
+                text = stringResource(R.string.quota_exceeded_title),
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold
             )
@@ -1437,7 +1497,7 @@ private fun QuotaExceededContent(
             Spacer(modifier = Modifier.height(12.dp))
 
             Text(
-                text = "You have $remaining characters remaining today,\nbut this article requires $required characters.",
+                text = stringResource(R.string.quota_exceeded_message, remaining, required),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(horizontal = 16.dp),
@@ -1456,7 +1516,7 @@ private fun QuotaExceededContent(
                     modifier = Modifier.padding(20.dp)
                 ) {
                     Text(
-                        text = "Upgrade to Pro",
+                        text = stringResource(R.string.quota_upgrade_to_pro),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold,
                         color = Color(0xFF8B5CF6) // Purple
@@ -1464,10 +1524,10 @@ private fun QuotaExceededContent(
                     Spacer(modifier = Modifier.height(12.dp))
 
                     // Benefits list
-                    QuotaBenefit(text = "100K characters per day (25x more)")
-                    QuotaBenefit(text = "1M characters per month")
-                    QuotaBenefit(text = "Premium AI voices")
-                    QuotaBenefit(text = "Priority synthesis queue")
+                    QuotaBenefit(text = stringResource(R.string.quota_benefit_chars_day))
+                    QuotaBenefit(text = stringResource(R.string.quota_benefit_chars_month))
+                    QuotaBenefit(text = stringResource(R.string.quota_benefit_premium_voices))
+                    QuotaBenefit(text = stringResource(R.string.quota_benefit_priority))
                 }
             }
 
@@ -1491,7 +1551,7 @@ private fun QuotaExceededContent(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "Upgrade to Pro",
+                    text = stringResource(R.string.quota_upgrade_to_pro),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold
                 )
@@ -1501,7 +1561,7 @@ private fun QuotaExceededContent(
 
             TextButton(onClick = onGoBack) {
                 Text(
-                    text = "Maybe Later",
+                    text = stringResource(R.string.quota_maybe_later),
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
@@ -1510,10 +1570,168 @@ private fun QuotaExceededContent(
 
             // Quota reset info
             Text(
-                text = "Your daily quota resets at midnight",
+                text = stringResource(R.string.quota_reset_info),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+        }
+    }
+}
+
+@Composable
+private fun RateLimitedContent(
+    retryAfterSeconds: Int,
+    isPremium: Boolean = false,
+    onUpgrade: () -> Unit,
+    onRetry: () -> Unit,
+    onGoBack: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    // Countdown timer
+    var secondsLeft by remember { mutableStateOf(retryAfterSeconds) }
+    LaunchedEffect(retryAfterSeconds) {
+        while (secondsLeft > 0) {
+            delay(1000L)
+            secondsLeft--
+        }
+    }
+
+    // Auto-retry when countdown finishes for premium users
+    LaunchedEffect(secondsLeft, isPremium) {
+        if (secondsLeft == 0 && isPremium) {
+            onRetry()
+        }
+    }
+
+    Box(
+        modifier = modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.padding(24.dp)
+        ) {
+            // Timer icon
+            Surface(
+                shape = CircleShape,
+                color = if (isPremium) Color(0xFFE8F5E9) else Color(0xFFEDE9FE)
+            ) {
+                Icon(
+                    if (isPremium) Icons.Default.HourglassBottom else Icons.Default.Timer,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .padding(16.dp)
+                        .size(48.dp),
+                    tint = if (isPremium) Color(0xFF4CAF50) else Color(0xFF8B5CF6)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Text(
+                text = if (isPremium) "Hang tight!" else "You're on fire!",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Text(
+                text = if (isPremium)
+                    "The server is briefly busy. Retrying automatically..."
+                else
+                    "Free accounts are limited to 10 requests per minute. Upgrade for unlimited listening with no wait times.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 16.dp),
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            )
+
+            if (!isPremium) {
+                Spacer(modifier = Modifier.height(32.dp))
+
+                // Pro benefits card
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(20.dp)
+                    ) {
+                        Text(
+                            text = "Upgrade to Pro",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color(0xFF8B5CF6)
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        QuotaBenefit(text = "Unlimited requests — no rate limits")
+                        QuotaBenefit(text = "30 articles per day")
+                        QuotaBenefit(text = "Premium HD voices")
+                        QuotaBenefit(text = "Priority synthesis queue")
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // Upgrade button
+                Button(
+                    onClick = onUpgrade,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(52.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF8B5CF6)
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Icon(
+                        Icons.Default.Star,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Upgrade to Pro",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Retry button with countdown
+            if (secondsLeft > 0) {
+                if (isPremium) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        color = Color(0xFF4CAF50),
+                        strokeWidth = 2.dp
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Retrying in ${secondsLeft}s...",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                } else {
+                    TextButton(onClick = {}, enabled = false) {
+                        Text(
+                            text = "Try again in ${secondsLeft}s",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            } else {
+                TextButton(onClick = onRetry) {
+                    Text(
+                        text = "Try Again",
+                        color = Blue
+                    )
+                }
+            }
         }
     }
 }
@@ -1597,7 +1815,7 @@ private fun MoreOptionsSheet(
 
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = article.title ?: "Untitled",
+                        text = article.title ?: stringResource(R.string.player_untitled),
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Medium,
                         maxLines = 2,
@@ -1617,8 +1835,8 @@ private fun MoreOptionsSheet(
             if (hasAudio) {
                 MoreOptionsRow(
                     icon = Icons.Default.Download,
-                    title = "Download Audio",
-                    subtitle = "Allows you to listen offline within the app.",
+                    title = stringResource(R.string.more_options_download_audio),
+                    subtitle = stringResource(R.string.more_options_download_subtitle),
                     trailing = selectedVoice?.name
                 ) { }
                 HorizontalDivider(modifier = Modifier.padding(start = 60.dp))
@@ -1627,19 +1845,19 @@ private fun MoreOptionsSheet(
             // Add to Queue
             MoreOptionsRow(
                 icon = Icons.Default.PlaylistAdd,
-                title = "Add to Queue"
+                title = stringResource(R.string.more_options_add_to_queue)
             ) { onAddToQueue() }
 
             // Mark as Finished
             MoreOptionsRow(
                 icon = Icons.Default.CheckCircleOutline,
-                title = "Mark as Finished"
+                title = stringResource(R.string.more_options_mark_finished)
             ) { onMarkAsFinished() }
 
             // Add to/Remove from Favorites
             MoreOptionsRow(
                 icon = if (article.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                title = if (article.isFavorite) "Remove from Favorites" else "Add to Favorites"
+                title = if (article.isFavorite) stringResource(R.string.remove_from_favorites) else stringResource(R.string.add_to_favorites)
             ) { onToggleFavorite() }
 
             HorizontalDivider(modifier = Modifier.padding(start = 60.dp))
@@ -1647,7 +1865,7 @@ private fun MoreOptionsSheet(
             // Sleep Timer
             MoreOptionsRow(
                 icon = Icons.Default.Bedtime,
-                title = "Sleep Timer",
+                title = stringResource(R.string.more_options_sleep_timer),
                 trailing = sleepTimerRemaining?.let { formatSleepTimer(it) }
             ) { onSleepTimer() }
 
@@ -1655,8 +1873,8 @@ private fun MoreOptionsSheet(
             if (hasAudio) {
                 MoreOptionsRow(
                     icon = Icons.Default.Share,
-                    title = "Export Audio",
-                    subtitle = "Save audio to device or share it directly."
+                    title = stringResource(R.string.more_options_export_audio),
+                    subtitle = stringResource(R.string.more_options_export_subtitle)
                 ) { onExportAudio() }
             }
 
@@ -1665,7 +1883,7 @@ private fun MoreOptionsSheet(
             // Delete File
             MoreOptionsRow(
                 icon = Icons.Default.Delete,
-                title = "Delete Article",
+                title = stringResource(R.string.more_options_delete_article),
                 isDestructive = true
             ) { onDeleteArticle() }
         }
@@ -1746,22 +1964,22 @@ private fun SleepTimerPickerDialog(
     onDismiss: () -> Unit
 ) {
     val timerOptions = listOf(
-        0 to "Off",
-        5 to "5 minutes",
-        10 to "10 minutes",
-        15 to "15 minutes",
-        30 to "30 minutes",
-        45 to "45 minutes",
-        60 to "1 hour",
-        90 to "1.5 hours",
-        120 to "2 hours"
+        0 to R.string.sleep_timer_off,
+        5 to R.string.sleep_timer_5_min,
+        10 to R.string.sleep_timer_10_min,
+        15 to R.string.sleep_timer_15_min,
+        30 to R.string.sleep_timer_30_min,
+        45 to R.string.sleep_timer_45_min,
+        60 to R.string.sleep_timer_1_hour,
+        90 to R.string.sleep_timer_1_5_hours,
+        120 to R.string.sleep_timer_2_hours
     )
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                text = "Sleep Timer",
+                text = stringResource(R.string.sleep_timer_picker_title),
                 fontWeight = FontWeight.Bold
             )
         },
@@ -1787,7 +2005,7 @@ private fun SleepTimerPickerDialog(
                                 modifier = Modifier.size(20.dp)
                             )
                             Text(
-                                text = "Timer active: ${formatSleepTimer(currentTimerRemaining)}",
+                                text = stringResource(R.string.more_options_timer_active, formatSleepTimer(currentTimerRemaining)),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = Blue
                             )
@@ -1795,7 +2013,7 @@ private fun SleepTimerPickerDialog(
                     }
                 }
 
-                timerOptions.forEach { (minutes, label) ->
+                timerOptions.forEach { (minutes, labelRes) ->
                     Surface(
                         onClick = { onTimerSet(minutes) },
                         color = Color.Transparent,
@@ -1809,7 +2027,7 @@ private fun SleepTimerPickerDialog(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = label,
+                                text = stringResource(labelRes),
                                 style = MaterialTheme.typography.bodyLarge
                             )
                             if (currentTimerRemaining != null && currentTimerRemaining > 0 && minutes == 0) {
@@ -1817,7 +2035,7 @@ private fun SleepTimerPickerDialog(
                             } else if (currentTimerRemaining == null && minutes == 0) {
                                 Icon(
                                     Icons.Default.Check,
-                                    contentDescription = "Current",
+                                    contentDescription = stringResource(R.string.more_options_current),
                                     tint = Blue,
                                     modifier = Modifier.size(20.dp)
                                 )
@@ -1829,7 +2047,7 @@ private fun SleepTimerPickerDialog(
         },
         confirmButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(stringResource(R.string.cancel))
             }
         }
     )

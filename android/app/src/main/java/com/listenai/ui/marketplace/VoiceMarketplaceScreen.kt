@@ -20,6 +20,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
+import com.listenai.R
 import com.listenai.service.marketplace.VoiceMarketplaceService
 import com.listenai.service.marketplace.VoiceMarketplaceService.SharedVoice
 import com.listenai.service.marketplace.VoiceMarketplaceService.SortOption
@@ -71,18 +73,18 @@ fun VoiceMarketplaceScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Voice Marketplace") },
+                title = { Text(stringResource(R.string.marketplace_title)) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.Default.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                 },
                 actions = {
                     IconButton(onClick = onNavigateToMyShares) {
-                        Icon(Icons.Default.Share, contentDescription = "My Shares")
+                        Icon(Icons.Default.Share, contentDescription = stringResource(R.string.my_shares))
                     }
                     IconButton(onClick = onNavigateToRewards) {
-                        Icon(Icons.Default.Star, contentDescription = "Rewards")
+                        Icon(Icons.Default.Star, contentDescription = stringResource(R.string.rewards))
                     }
                 }
             )
@@ -100,12 +102,12 @@ fun VoiceMarketplaceScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 8.dp),
-                placeholder = { Text("Search voices...") },
+                placeholder = { Text(stringResource(R.string.marketplace_search_placeholder)) },
                 leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                 trailingIcon = {
                     if (searchQuery.isNotEmpty()) {
                         IconButton(onClick = { searchQuery = ""; loadVoices() }) {
-                            Icon(Icons.Default.Clear, contentDescription = "Clear")
+                            Icon(Icons.Default.Clear, contentDescription = stringResource(R.string.clear))
                         }
                     }
                 },
@@ -193,12 +195,12 @@ fun VoiceMarketplaceScreen(
                             )
                             Spacer(modifier = Modifier.height(16.dp))
                             Text(
-                                "No voices found",
+                                stringResource(R.string.no_voices_found),
                                 style = MaterialTheme.typography.titleMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Text(
-                                "Try adjusting your filters",
+                                stringResource(R.string.no_voices_suggestion),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )

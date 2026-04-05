@@ -1,0 +1,444 @@
+/* ReadAloud AI - Chinese Simplified (zh-Hans) */
+
+/* ===== Tab Bar ===== */
+"Home" = "首页";
+"Library" = "资料库";
+"Queue" = "队列";
+"Settings" = "设置";
+
+/* ===== Home View ===== */
+"Download and listen anytime, anywhere" = "随时随地下载并收听";
+"Try for free" = "免费试用";
+"What do you want to listen today?" = "今天想听些什么？";
+"Document" = "文档";
+"Upload files from Drive or device" = "从网盘或设备上传文件";
+"Scan Text" = "扫描文字";
+"Scanned documents or images" = "扫描的文档或图片";
+"Web Link" = "网页链接";
+"Convert URLs to audio" = "将网址转换为音频";
+"Type or Paste Text" = "输入或粘贴文本";
+"Input or paste text to listen" = "输入或粘贴文本来收听";
+"Mail" = "邮件";
+"Listen to e-mails easily" = "轻松收听电子邮件";
+"Double tap to import" = "双击导入";
+"Welcome to ReadAloud AI" = "欢迎使用 ReadAloud AI";
+"1 min" = "1 分钟";
+"Welcome to ReadAloud AI. 1 minute introduction" = "欢迎使用 ReadAloud AI。1 分钟介绍";
+
+/* ===== Import Picker Sheet ===== */
+"Add Content" = "添加内容";
+"PDF, ePub, TXT & more" = "PDF、ePub、TXT 等";
+"Use camera to scan documents" = "使用相机扫描文档";
+"Convert any URL to audio" = "将任何网址转换为音频";
+"Enter text manually" = "手动输入文本";
+"Import emails from Gmail" = "从 Gmail 导入邮件";
+"Cancel" = "取消";
+
+/* ===== Import View ===== */
+"Import from Web" = "从网页导入";
+"Enter a URL to extract article content" = "输入网址以提取文章内容";
+"Paste from Clipboard" = "从剪贴板粘贴";
+"Import from Clipboard" = "从剪贴板导入";
+"Import text or links you've copied" = "导入已复制的文本或链接";
+"Refresh Clipboard" = "刷新剪贴板";
+"Clipboard is empty" = "剪贴板为空";
+"This content type cannot be imported" = "此内容类型无法导入";
+"Checking clipboard..." = "正在检查剪贴板...";
+"Import PDF" = "导入 PDF";
+"Extract text from PDF documents" = "从 PDF 文档中提取文本";
+"PDF selected" = "已选择 PDF";
+"Choose PDF File" = "选择 PDF 文件";
+"Choose Different File" = "选择其他文件";
+"Select from Files app" = "从文件应用中选择";
+"Enter Text" = "输入文本";
+"Type or paste text directly" = "直接输入或粘贴文本";
+"Title (optional)" = "标题（可选）";
+"Paste or type your text here..." = "在此粘贴或输入文本...";
+"%d words" = "%d 字";
+"Generating audio..." = "正在生成音频...";
+"Import" = "导入";
+"Import Error" = "导入错误";
+"OK" = "确定";
+"Done" = "完成";
+"Tips" = "提示";
+"Works best with article pages from news sites and blogs" = "在新闻网站和博客的文章页面上效果最佳";
+"Paywalled content may not be accessible" = "付费内容可能无法访问";
+"JavaScript-heavy sites may have limited extraction" = "大量使用 JavaScript 的网站可能提取有限";
+"Works best with text-based PDFs" = "在基于文本的 PDF 上效果最佳";
+"Scanned documents may have limited text extraction" = "扫描文档的文本提取可能有限";
+"Password-protected PDFs are not supported" = "不支持受密码保护的 PDF";
+"No PDF file selected" = "未选择 PDF 文件";
+"Preview" = "预览";
+"Add to Library" = "添加到资料库";
+"Title" = "标题";
+"words" = "字";
+"listen time" = "收听时间";
+"sections" = "章节";
+"Content Preview" = "内容预览";
+
+/* ===== Simple Web Link View ===== */
+"Paste any URL to listen" = "粘贴任何网址来收听";
+"Continue" = "继续";
+
+/* ===== Simple Text Input View ===== */
+"Type or paste your text here..." = "在此输入或粘贴文本...";
+"Save & Listen" = "保存并收听";
+
+/* ===== Scan Text View ===== */
+"Checking camera access..." = "正在检查相机权限...";
+"Camera Access Required" = "需要相机权限";
+"ReadAloud AI needs camera access to scan documents and extract text for listening." = "ReadAloud AI 需要相机权限来扫描文档并提取文本以供收听。";
+"Allow Camera Access" = "允许相机访问";
+"Camera Access Denied" = "相机访问被拒绝";
+"Please enable camera access in Settings to scan documents." = "请在设置中启用相机权限以扫描文档。";
+"Open Settings" = "打开设置";
+"Processing..." = "处理中...";
+"This may take a moment..." = "这可能需要一点时间...";
+"Extracting text..." = "正在提取文本...";
+"Creating article..." = "正在创建文章...";
+"No images scanned" = "没有扫描到图像";
+"No text detected in the scanned images. Please try scanning again with clearer text." = "在扫描的图像中未检测到文本。请使用更清晰的文字重新扫描。";
+"Scanned Document" = "扫描的文档";
+
+/* ===== Mail Import View ===== */
+"Search in mail" = "在邮件中搜索";
+"Gmail" = "Gmail";
+"Connect Gmail" = "连接 Gmail";
+"Sign in with Google to import and listen to your emails" = "使用 Google 登录以导入并收听您的邮件";
+"Loading email..." = "正在加载邮件...";
+
+/* ===== Library View ===== */
+"My Library" = "我的资料库";
+"Usage" = "用量";
+"PRO" = "PRO";
+"Search articles" = "搜索文章";
+"Add new content" = "添加新内容";
+"Double tap to import articles" = "双击导入文章";
+"All" = "全部";
+"Finished" = "已完成";
+"Favorites" = "收藏";
+"Folders" = "文件夹";
+"Downloaded" = "已下载";
+"No Articles Yet" = "暂无文章";
+"Nothing in Progress" = "没有进行中的内容";
+"Nothing Finished" = "没有已完成的内容";
+"No Favorites" = "没有收藏";
+"No Folders" = "没有文件夹";
+"Nothing Downloaded" = "没有下载内容";
+"Add articles from web links, documents, or paste text." = "通过网页链接、文档或粘贴文本添加文章。";
+"Start listening to see your in-progress items here." = "开始收听后，进行中的项目将显示在这里。";
+"Completed articles will appear here." = "已完成的文章将显示在这里。";
+"Mark articles as favorites to find them quickly." = "将文章标记为收藏以快速找到。";
+"Organize your articles into folders." = "将文章整理到文件夹中。";
+"Download articles for offline listening." = "下载文章以离线收听。";
+"Edit Title" = "编辑标题";
+"Enter a new title for this article" = "为此文章输入新标题";
+"Save" = "保存";
+"Play" = "播放";
+"Add to Queue" = "添加到队列";
+"Favorite" = "收藏";
+"Unfavorite" = "取消收藏";
+"Share" = "分享";
+"Delete" = "删除";
+"Preparing audio..." = "正在准备音频...";
+"left" = "剩余";
+"< 1 min" = "< 1 分钟";
+"Date Added" = "添加日期";
+"Author" = "作者";
+"Duration" = "时长";
+
+/* ===== Audio Player View ===== */
+"Not Playing" = "未播放";
+"Not playing" = "未播放";
+"Playback position" = "播放位置";
+"Adjust to seek through the audio" = "调整以在音频中定位";
+"Skip back 15 seconds" = "后退 15 秒";
+"Double tap to go back" = "双击后退";
+"Pause" = "暂停";
+"Double tap to pause" = "双击暂停";
+"Double tap to play" = "双击播放";
+"Skip forward 15 seconds" = "快进 15 秒";
+"Double tap to skip ahead" = "双击快进";
+"Double tap to change speed" = "双击更改速度";
+"Sleep timer off" = "睡眠定时器关闭";
+"Sleep timer on" = "睡眠定时器开启";
+"Double tap to set sleep timer" = "双击设置睡眠定时器";
+"Double tap to change repeat mode" = "双击更改重复模式";
+"Double tap to view and manage queue" = "双击查看和管理队列";
+"Playback Speed" = "播放速度";
+"Sleep Timer" = "睡眠定时器";
+
+/* ===== Queue View ===== */
+"Now Playing" = "正在播放";
+"Up Next" = "接下来播放";
+"Recently Played" = "最近播放";
+"Now playing" = "正在播放";
+"Play Queue" = "播放队列";
+"Playing" = "播放中";
+"Shuffle On" = "随机播放开启";
+"Shuffle Off" = "随机播放关闭";
+"Clear Completed" = "清除已完成";
+"Clear All" = "全部清除";
+"Clear Queue?" = "清除队列？";
+"This will remove all items from your queue." = "这将从您的队列中删除所有项目。";
+
+/* ===== Settings View ===== */
+"Voice Cloning" = "语音克隆";
+"Voice Marketplace" = "语音市场";
+"Cloning Speed" = "克隆速度";
+"Change Voice" = "更换语音";
+"App Language" = "应用语言";
+"Request Feature" = "功能请求";
+"Preferences" = "偏好设置";
+"Default Speed" = "默认速度";
+"Skip Silences" = "跳过静音";
+"Auto-Play Next" = "自动播放下一个";
+"Playback" = "播放";
+"Linked Accounts" = "关联账户";
+"Apple" = "Apple";
+"Google" = "Google";
+"Disconnect" = "断开连接";
+"Connect" = "连接";
+"Connect Apple to sync data across devices. Connect Google to import emails from Gmail." = "连接 Apple 以跨设备同步数据。连接 Google 以从 Gmail 导入邮件。";
+"Connect Google to import emails from Gmail and listen to them." = "连接 Google 以从 Gmail 导入邮件并收听。";
+"Google Sign-In Error" = "Google 登录错误";
+"Apple Sign-In Error" = "Apple 登录错误";
+"Share ReadAloud AI" = "分享 ReadAloud AI";
+"Like us, Rate us" = "给我们评分";
+"Contact Support" = "联系支持";
+"Usage & Quota" = "用量与配额";
+"Support" = "支持";
+"Manage Subscription" = "管理订阅";
+"Upgrade to Pro" = "升级到 Pro";
+"Active" = "已激活";
+"Subscription" = "订阅";
+"AI Data Sharing" = "AI 数据共享";
+"Allowed" = "已允许";
+"Not Allowed" = "未允许";
+"Delete Account & Data" = "删除账户和数据";
+"Data & Privacy" = "数据与隐私";
+"Cloud voices and AI summaries send your text to external services. Tap to review details or revoke consent." = "云端语音和 AI 摘要会将您的文本发送到外部服务。点击查看详情或撤销同意。";
+"Cloud voices are disabled. Only on-device Apple voices are available. Tap to enable cloud features." = "云端语音已禁用。仅本地 Apple 语音可用。点击启用云端功能。";
+"Delete Account" = "删除账户";
+"This will permanently delete your account, all saved data, cloned voices, and library items. This action cannot be undone." = "这将永久删除您的账户、所有已保存的数据、克隆语音和资料库项目。此操作无法撤销。";
+"Account Deleted" = "账户已删除";
+"Your account and all associated data have been successfully deleted." = "您的账户和所有相关数据已成功删除。";
+"Version" = "版本";
+"Privacy Policy" = "隐私政策";
+"Terms of Service" = "服务条款";
+"About" = "关于";
+"Connected" = "已连接";
+"Not connected" = "未连接";
+"Error" = "错误";
+
+/* ===== Language Picker ===== */
+"English (US)" = "英语（美国）";
+"English (UK)" = "英语（英国）";
+"Spanish" = "西班牙语";
+"French" = "法语";
+"German" = "德语";
+"Italian" = "意大利语";
+"Portuguese (Brazil)" = "葡萄牙语（巴西）";
+"Japanese" = "日语";
+"Korean" = "韩语";
+"Chinese (Simplified)" = "中文（简体）";
+
+/* ===== Feature Request ===== */
+"Describe your feature idea" = "描述您的功能想法";
+"We read every suggestion and use them to improve ReadAloud AI." = "我们会阅读每一条建议，并用于改进 ReadAloud AI。";
+"Submit" = "提交";
+
+/* ===== Onboarding: Welcome ===== */
+"Welcome to\nReadAloud AI!" = "欢迎使用\nReadAloud AI！";
+"Read anything aloud in the highest quality voices." = "用最高质量的语音朗读任何内容。";
+"Get Started" = "开始使用";
+"PDF, ePUB & more" = "PDF、ePUB 等";
+"Top Text to\nSpeech App" = "顶级文本\n转语音应用";
+
+/* ===== Onboarding: Document to Audio ===== */
+"Turn any document to audio" = "将任何文档转换为音频";
+"Listen to PDFs, articles, news and more" = "收听 PDF、文章、新闻等";
+"Type & Paste Text" = "输入和粘贴文本";
+
+/* ===== Onboarding: Take Notes ===== */
+"Take notes on key concepts" = "记录关键概念";
+"Take notes on key ideas with a single tap" = "一键记录关键想法";
+"Take Note" = "做笔记";
+"Key Insight" = "关键洞察";
+"Focus on deep work and deliberate practice for better outcomes." = "专注于深度工作和刻意练习以获得更好的成果。";
+
+/* ===== Onboarding: Productivity ===== */
+"Increase your productivity" = "提高您的生产力";
+"Listen to texts faster, learn more" = "更快地听文本，学到更多";
+"50% increase in" = "提高 50%";
+" productivity" = "生产力";
+
+/* ===== Onboarding: Voice Selection ===== */
+"Choose Your Voice" = "选择您的语音";
+"You can change selected voice later." = "您可以稍后更改所选语音。";
+"Professional Narrator" = "专业解说";
+"Calm & Soothing" = "平静舒缓";
+"Deep British" = "深沉英式";
+"Storyteller" = "讲故事的人";
+"Elegant & Articulate" = "优雅清晰";
+"Multilingual" = "多语言";
+"English" = "英语";
+
+/* ===== Onboarding: Sign In ===== */
+"Skip" = "跳过";
+"Sign In (Optional)" = "登录（可选）";
+"Sign in to unlock all features including voice sharing and cross-device sync." = "登录以解锁所有功能，包括语音共享和跨设备同步。";
+"Share Your Voice" = "分享您的语音";
+"Share cloned voices with the community" = "与社区分享克隆语音";
+"Community Voices" = "社区语音";
+"Use voices shared by others" = "使用他人分享的语音";
+"Earn Rewards" = "赚取奖励";
+"Get listening minutes when others use your voices" = "当他人使用您的语音时获取收听分钟数";
+"Sync Across Devices" = "跨设备同步";
+"Your data follows you everywhere" = "您的数据随时跟随您";
+"Continue Without Signing In" = "不登录继续";
+"Signing in..." = "正在登录...";
+"Sign In Error" = "登录错误";
+
+/* ===== Onboarding: Paywall ===== */
+"Restore" = "恢复购买";
+"Get Unlimited Access" = "获取无限访问";
+"Read anything aloud in top-quality voices" = "用顶级语音朗读任何内容";
+"Unlimited text-to-speech with cloud voices" = "使用云端语音的无限文本转语音";
+"Premium AI voices from ElevenLabs" = "来自 ElevenLabs 的高级 AI 语音";
+"Create custom voice clones" = "创建自定义语音克隆";
+"AI-powered article summaries" = "AI 驱动的文章摘要";
+"Speed control up to 3x" = "速度控制最高 3 倍";
+"Annual" = "年度";
+"/year" = "/年";
+"SAVE 90%" = "节省 90%";
+"Weekly" = "每周";
+"/week" = "/周";
+"Due today" = "今日应付";
+"free" = "免费";
+"Processing..." = "处理中...";
+"Start Free Trial" = "开始免费试用";
+"Subscribe Now" = "立即订阅";
+"Terms of Use" = "使用条款";
+"Secured with Apple" = "由 Apple 保护";
+"Subscription not available. Please try again later." = "订阅暂不可用。请稍后再试。";
+"free trial" = "免费试用";
+
+/* ===== Voice Cloning View ===== */
+"Clone Voice" = "克隆语音";
+"No cloned voice here" = "这里没有克隆语音";
+"You haven't created any voice clones yet." = "您还没有创建任何语音克隆。";
+"Edit" = "编辑";
+"Get Notified When Ready" = "准备就绪时通知我";
+"Enable Notifications" = "启用通知";
+"Not Now" = "暂时不";
+"Voice cloning usually completes in seconds, but can take longer for high-quality results.\n\nWe'll send you ONE notification when your voice is ready. We never send marketing or promotional notifications." = "语音克隆通常在几秒钟内完成，但高质量结果可能需要更长时间。\n\n当您的语音准备就绪时，我们会发送一条通知。我们不会发送营销或促销通知。";
+
+/* ===== Select Voice View ===== */
+"Select Voice" = "选择语音";
+"Popular" = "热门";
+"Cloned" = "已克隆";
+"Your Voices" = "我的语音";
+"Popular Voices" = "热门语音";
+"All Voices" = "所有语音";
+"No cloned voices yet" = "暂无克隆语音";
+"Create a voice clone in Settings to see it here." = "在设置中创建语音克隆后将在此显示。";
+"About Voices" = "关于语音";
+"Premium voices offer high-quality, natural-sounding speech with multilingual support. Cloned voices let you listen to content in your own voice or voices you've created." = "高级语音提供高质量、自然的多语言语音。克隆语音让您用自己的声音或创建的声音收听内容。";
+
+/* ===== Voice Picker View ===== */
+"Choose Voice" = "选择语音";
+"Search voices" = "搜索语音";
+"Speed" = "速度";
+"Voice Quality" = "语音质量";
+"Standard" = "标准";
+"Fast & Unlimited" = "快速且无限";
+"Premium" = "高级";
+"Highest Quality" = "最高质量";
+
+/* ===== Usage Views ===== */
+"Current Plan" = "当前方案";
+"Free" = "免费";
+"Unlimited" = "无限";
+"remaining" = "剩余";
+"Upgrade" = "升级";
+"Upgrade Plan" = "升级方案";
+"View Pricing" = "查看价格";
+"Refresh Usage" = "刷新用量";
+"More options" = "更多选项";
+"Double tap to view upgrade and pricing options" = "双击查看升级和价格选项";
+"Cloud (Monthly)" = "云端（每月）";
+"Daily (Local)" = "每日（本地）";
+"Monthly (Local)" = "每月（本地）";
+"View Details" = "查看详情";
+"Tip: Use on-device voices to save your cloud quota" = "提示：使用本地语音以节省云端配额";
+"Quota Exceeded" = "配额已超出";
+"Almost at Limit" = "即将达到上限";
+"Quota Warning" = "配额警告";
+"Usage Update" = "用量更新";
+"Dismiss warning" = "关闭警告";
+"Double tap to hide this warning banner" = "双击隐藏此警告横幅";
+"Double tap to collapse" = "双击折叠";
+"Double tap to expand for more details" = "双击展开查看更多详情";
+"Content Size" = "内容大小";
+"Est. Duration" = "预计时长";
+"Daily Remaining After" = "处理后每日剩余";
+"Monthly Remaining After" = "处理后每月剩余";
+"Proceed" = "继续";
+"Use On-Device" = "使用本地语音";
+"Usage Estimate" = "用量估算";
+"Approaching Limit" = "接近上限";
+"Confirm Synthesis" = "确认合成";
+"Quota Impact" = "配额影响";
+"Daily Remaining" = "每日剩余";
+"Monthly Remaining" = "每月剩余";
+"Use Cloud Voice" = "使用云端语音";
+"Use On-Device Voice (Free)" = "使用本地语音（免费）";
+"Unlock Premium Voices" = "解锁高级语音";
+"Unlimited AI Voices" = "无限 AI 语音";
+"Access all premium cloud voices" = "访问所有高级云端语音";
+"No Daily Limits" = "无每日限制";
+"Listen as much as you want" = "想听多少听多少";
+"Priority Processing" = "优先处理";
+"Faster audio generation" = "更快的音频生成";
+"New Voices First" = "优先体验新语音";
+"Early access to new voice releases" = "抢先体验新语音发布";
+"Upgrade to Premium" = "升级到高级版";
+"Starting at $4.99/month" = "起价 $4.99/月";
+"Continue with On-Device Voice" = "继续使用本地语音";
+"Maybe Later" = "以后再说";
+"Daily limit reached. Upgrade or try tomorrow." = "已达到每日限制。请升级或明天再试。";
+
+/* ===== AI Data Consent View ===== */
+"Your Data & AI Services" = "您的数据与 AI 服务";
+"ReadAloud AI uses cloud-based AI services to convert your text to speech and provide content summaries. Here's exactly what data is shared and with whom." = "ReadAloud AI 使用基于云端的 AI 服务将您的文本转换为语音并提供内容摘要。以下是共享的数据详情及对象。";
+"Text-to-Speech" = "文本转语音";
+"AI Content Summaries" = "AI 内容摘要";
+"What Stays on Your Device" = "留在您设备上的数据";
+"The following never leaves your device:" = "以下数据永远不会离开您的设备：";
+"On-device Apple voices work without any data sharing. You can switch to on-device voices anytime in Settings." = "本地 Apple 语音无需共享任何数据即可使用。您可以随时在设置中切换到本地语音。";
+"Read our full Privacy Policy" = "阅读完整的隐私政策";
+"I Understand & Agree" = "我理解并同意";
+"Use On-Device Voices Only" = "仅使用本地语音";
+
+/* ===== Sign In Prompt View ===== */
+"Sign In Required" = "需要登录";
+"Continue without signing in" = "不登录继续";
+"Benefits of signing in:" = "登录的好处：";
+"Share your cloned voices" = "分享您的克隆语音";
+"Use voices from the community" = "使用社区语音";
+"Earn rewards when others use your voices" = "当他人使用您的语音时获取奖励";
+"Sync your data across devices" = "跨设备同步数据";
+"Sign in to continue" = "登录以继续";
+"Sign in to access this feature" = "登录以访问此功能";
+
+/* ===== Voice Marketplace ===== */
+"Search voices..." = "搜索语音...";
+
+/* ===== Onboarding Footer ===== */
+"By continuing, you agree to our [Privacy Policy](%@) and [Terms of Use](%@)." = "继续即表示您同意我们的[隐私政策](%@)和[使用条款](%@)。";
+
+/* ===== ContentView / Tab Bar Labels ===== */
+"Voices" = "语音";
+"Continue" = "继续";
+"Voice Cloning" = "声音克隆";

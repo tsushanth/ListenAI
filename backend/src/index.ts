@@ -20,6 +20,7 @@ import { subscriptionRouter } from './routes/subscription.js';
 import { latencyRouter } from './routes/latency.js';
 import { aiRouter } from './routes/ai.js';
 import { adminRouter } from './routes/admin.js';
+import { workerPushRouter } from './routes/workerPush.js';
 import { clonedVoicesRouter } from './routes/clonedVoices.js';
 import { voiceMarketplaceRouter } from './routes/voiceMarketplace.js';
 import { stripeWebhookRouter } from './routes/stripeWebhook.js';
@@ -184,6 +185,9 @@ app.use('/api/ai', requireAuth, aiRouter);
 // Admin routes (requires admin API key) - for rollout control and metrics
 app.use('/api/admin', adminRouter);
 
+// Pub/Sub push worker endpoint (auth via ?token= query param)
+app.use('/api/tts', workerPushRouter);
+
 // Cloned voices routes (requires auth) - for voice cloning with Chatterbox
 app.use('/api/cloned-voices', clonedVoicesRouter);
 
@@ -229,10 +233,10 @@ const server = app.listen(PORT, () => {
     });
   }, SIX_HOURS_MS);
 
-  // Start TTS job worker if enabled
-  // Set TTS_WORKER_ENABLED=true to process jobs in this instance
+  // Pull-based worker disabled — jobs are now delivered via Pub/Sub push
+  // to /api/tts/worker/push. Set TTS_WORKER_ENABLED=true only for local dev.
   if (process.env.TTS_WORKER_ENABLED === 'true') {
-    logger.info('Starting embedded TTS job worker');
+    logger.info('Starting embedded TTS pull worker (dev mode)');
     startWorker({
       maxRetries: parseInt(process.env.WORKER_MAX_RETRIES ?? '3', 10),
       enabled: true,

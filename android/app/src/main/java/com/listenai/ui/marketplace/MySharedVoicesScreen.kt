@@ -15,9 +15,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.listenai.R
 import com.listenai.service.marketplace.VoiceMarketplaceService
 import com.listenai.service.marketplace.VoiceMarketplaceService.MySharedVoice
 import kotlinx.coroutines.launch
@@ -74,10 +76,10 @@ fun MySharedVoicesScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("My Shared Voices") },
+                title = { Text(stringResource(R.string.my_shared_voices_title)) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.Default.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                 }
             )
@@ -87,7 +89,7 @@ fun MySharedVoicesScreen(
                 onClick = onNavigateToShare,
                 containerColor = MaterialTheme.colorScheme.primary
             ) {
-                Icon(Icons.Default.Add, contentDescription = "Share Voice")
+                Icon(Icons.Default.Add, contentDescription = stringResource(R.string.share_voice_title))
             }
         }
     ) { paddingValues ->
@@ -113,7 +115,7 @@ fun MySharedVoicesScreen(
                         Text(errorMessage ?: "Error", color = MaterialTheme.colorScheme.error)
                         Spacer(modifier = Modifier.height(16.dp))
                         Button(onClick = { loadShares() }) {
-                            Text("Retry")
+                            Text(stringResource(R.string.retry))
                         }
                     }
                 }
@@ -137,13 +139,13 @@ fun MySharedVoicesScreen(
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
-                            "No shared voices yet",
+                            stringResource(R.string.no_shared_voices_title),
                             style = MaterialTheme.typography.titleMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            "Share your cloned voices with the community and earn rewards when others use them!",
+                            stringResource(R.string.no_shared_voices_description),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(horizontal = 16.dp)
@@ -152,7 +154,7 @@ fun MySharedVoicesScreen(
                         Button(onClick = onNavigateToShare) {
                             Icon(Icons.Default.Add, contentDescription = null)
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Share a Voice")
+                            Text(stringResource(R.string.share_a_voice))
                         }
                     }
                 }
@@ -181,21 +183,21 @@ fun MySharedVoicesScreen(
     voiceToRevoke?.let { voice ->
         AlertDialog(
             onDismissRequest = { voiceToRevoke = null },
-            title = { Text("Revoke Voice") },
+            title = { Text(stringResource(R.string.revoke_voice_title)) },
             text = {
-                Text("Are you sure you want to stop sharing \"${voice.displayName}\"? Others will no longer be able to use this voice.")
+                Text(stringResource(R.string.revoke_voice_prompt, voice.displayName))
             },
             confirmButton = {
                 TextButton(
                     onClick = { revokeVoice(voice) },
                     colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
                 ) {
-                    Text("Revoke")
+                    Text(stringResource(R.string.revoke))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { voiceToRevoke = null }) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.cancel))
                 }
             }
         )
@@ -263,7 +265,12 @@ private fun SharedVoiceCard(
                             color = statusColor.copy(alpha = 0.2f)
                         ) {
                             Text(
-                                text = share.status.replaceFirstChar { it.uppercase() },
+                                text = when (share.status) {
+                                    "active" -> stringResource(R.string.status_active)
+                                    "pending" -> stringResource(R.string.status_pending)
+                                    "revoked" -> stringResource(R.string.status_revoked)
+                                    else -> share.status
+                                }.replaceFirstChar { it.uppercase() },
                                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = statusColor
@@ -285,7 +292,7 @@ private fun SharedVoiceCard(
                     IconButton(onClick = onRevoke) {
                         Icon(
                             Icons.Default.Delete,
-                            contentDescription = "Revoke",
+                            contentDescription = stringResource(R.string.revoke),
                             tint = MaterialTheme.colorScheme.error
                         )
                     }

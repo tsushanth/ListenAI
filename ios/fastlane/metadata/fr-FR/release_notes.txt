@@ -1,0 +1,1 @@
+Ajout de la prise en charge de 10 langues : anglais, espagnol, français, allemand, japonais, chinois, coréen, portugais, italien et hindi. Corrections de bugs et améliorations des performances.

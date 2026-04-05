@@ -11,8 +11,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.listenai.R
 import com.listenai.service.marketplace.VoiceMarketplaceService
 import com.listenai.service.voice.VoiceCloningService
 import com.listenai.service.voice.VoiceCloningService.ClonedVoice
@@ -109,10 +111,10 @@ fun ShareVoiceScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Share Voice") },
+                title = { Text(stringResource(R.string.share_voice_title)) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.Default.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                 }
             )
@@ -148,11 +150,11 @@ fun ShareVoiceScreen(
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
-                            "No cloned voices",
+                            stringResource(R.string.no_cloned_voices),
                             style = MaterialTheme.typography.titleMedium
                         )
                         Text(
-                            "Create a cloned voice first to share it",
+                            stringResource(R.string.no_cloned_voices_hint),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -169,7 +171,7 @@ fun ShareVoiceScreen(
                 ) {
                     // Select voice
                     Text(
-                        "Select Voice",
+                        stringResource(R.string.select_voice),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold
                     )
@@ -223,8 +225,8 @@ fun ShareVoiceScreen(
                     OutlinedTextField(
                         value = displayName,
                         onValueChange = { displayName = it },
-                        label = { Text("Display Name") },
-                        placeholder = { Text("How this voice will appear in the marketplace") },
+                        label = { Text(stringResource(R.string.display_name)) },
+                        placeholder = { Text(stringResource(R.string.display_name_hint)) },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true
                     )
@@ -235,8 +237,8 @@ fun ShareVoiceScreen(
                     OutlinedTextField(
                         value = description,
                         onValueChange = { description = it },
-                        label = { Text("Description (optional)") },
-                        placeholder = { Text("Describe your voice...") },
+                        label = { Text(stringResource(R.string.description_optional)) },
+                        placeholder = { Text(stringResource(R.string.describe_voice_placeholder)) },
                         modifier = Modifier.fillMaxWidth(),
                         maxLines = 3
                     )
@@ -245,12 +247,12 @@ fun ShareVoiceScreen(
 
                     // Tags
                     Text(
-                        "Tags",
+                        stringResource(R.string.tags_label),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold
                     )
                     Text(
-                        "Select tags that describe your voice",
+                        stringResource(R.string.tags_description),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -296,7 +298,7 @@ fun ShareVoiceScreen(
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
-                                    "I confirm this is my own voice and I have the right to share it",
+                                    stringResource(R.string.voice_attestation),
                                     style = MaterialTheme.typography.bodyMedium
                                 )
                             }
@@ -310,7 +312,7 @@ fun ShareVoiceScreen(
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
-                                    "I agree to the Voice Marketplace Terms of Service",
+                                    stringResource(R.string.marketplace_terms),
                                     style = MaterialTheme.typography.bodyMedium
                                 )
                             }
@@ -366,7 +368,7 @@ fun ShareVoiceScreen(
                         } else {
                             Icon(Icons.Default.Share, contentDescription = null)
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Share Voice")
+                            Text(stringResource(R.string.share_voice_button))
                         }
                     }
 

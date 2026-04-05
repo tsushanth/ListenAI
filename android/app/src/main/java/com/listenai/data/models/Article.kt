@@ -13,6 +13,7 @@ import java.util.UUID
 enum class SourceType {
     WEB,
     PDF,
+    EPUB,
     CLIPBOARD,
     FILE,
     MANUAL,
@@ -22,6 +23,7 @@ enum class SourceType {
         get() = when (this) {
             WEB -> "Web Link"
             PDF -> "File"
+            EPUB -> "Book"
             CLIPBOARD -> "Clipboard"
             FILE -> "File"
             MANUAL -> "Text"
@@ -32,6 +34,7 @@ enum class SourceType {
         get() = when (this) {
             WEB -> "link"
             PDF -> "description"
+            EPUB -> "book"
             CLIPBOARD -> "content_paste"
             FILE -> "folder"
             MANUAL -> "edit_note"

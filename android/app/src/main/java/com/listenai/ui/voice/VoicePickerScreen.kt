@@ -15,9 +15,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.listenai.R
 import com.listenai.data.models.PremiumUsageSummary
 import com.listenai.data.models.VoiceGender
 import com.listenai.data.models.VoicePreset
@@ -45,13 +47,13 @@ fun VoicePickerScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = "Choose Voice",
+                        text = stringResource(R.string.choose_voice),
                         fontWeight = FontWeight.Bold
                     )
                 },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.Default.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                 }
             )
@@ -109,12 +111,12 @@ private fun QualityInfoCard(modifier: Modifier = Modifier) {
             )
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "High Quality Voices",
+                    text = stringResource(R.string.quality_high_title),
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.SemiBold
                 )
                 Text(
-                    text = "GPU-accelerated, natural voices - unlimited usage",
+                    text = stringResource(R.string.quality_high_description),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -124,7 +126,7 @@ private fun QualityInfoCard(modifier: Modifier = Modifier) {
                 color = Green.copy(alpha = 0.15f)
             ) {
                 Text(
-                    text = "FREE",
+                    text = stringResource(R.string.quality_free),
                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.Bold,
@@ -212,7 +214,7 @@ private fun VoiceCard(
             IconButton(onClick = onPreview) {
                 Icon(
                     imageVector = Icons.Default.PlayCircle,
-                    contentDescription = "Preview voice",
+                    contentDescription = stringResource(R.string.preview_voice_description),
                     tint = if (isSelected) borderColor else MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
@@ -221,7 +223,7 @@ private fun VoiceCard(
             if (isSelected) {
                 Icon(
                     imageVector = Icons.Default.CheckCircle,
-                    contentDescription = "Selected",
+                    contentDescription = stringResource(R.string.selected),
                     tint = borderColor
                 )
             }
