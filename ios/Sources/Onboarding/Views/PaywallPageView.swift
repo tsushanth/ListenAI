@@ -265,7 +265,7 @@ struct LegacyPaywallPageView: View {
                 isPurchasing = false
                 switch result {
                 case .purchased:
-                    Task { await PremiumManager.shared.validateSubscriptionState() }
+                    Task { await PremiumManager.shared.handlePurchase(productID: productId) }
                     manager.nextPage()
                 case .cancelled:
                     break

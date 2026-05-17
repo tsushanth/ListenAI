@@ -11,109 +11,141 @@ struct WinbackOfferView: View {
     @State private var errorMessage = ""
 
     private let valueProps: [(icon: String, text: String)] = [
-        ("doc.text.fill", "Listen to any document"),
-        ("waveform", "Natural AI voices"),
-        ("gauge.with.dots.needle.33percent", "Speed controls"),
-        ("arrow.down.circle.fill", "Offline playback")
+        ("headphones", "Unlimited articles & documents"),
+        ("waveform", "Premium AI voices"),
+        ("arrow.down.circle.fill", "Offline playback"),
+        ("globe", "50+ languages supported")
     ]
 
     var body: some View {
-        VStack(spacing: 24) {
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: 28) {
+                    // Special offer badge
+                    Text("SPECIAL OFFER")
+                        .font(.caption)
+                        .fontWeight(.heavy)
+                        .tracking(1.5)
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 6)
+                        .background(
+                            LinearGradient(
+                                colors: [.orange, .red],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .clipShape(Capsule())
+                        .padding(.top, 24)
 
-            // Close button
-            HStack {
-                Spacer()
-                Button {
-                    dismiss()
-                } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.title2)
-                        .foregroundStyle(.secondary)
+                    // Headline
+                    VStack(spacing: 8) {
+                        Text("Listen to Anything, Anywhere")
+                            .font(.largeTitle)
+                            .fontWeight(.bold)
+                            .multilineTextAlignment(.center)
+
+                        Text("You're this close to unlocking the full ReadAloud AI experience.")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal)
+                    }
+
+                    // Value propositions
+                    VStack(spacing: 16) {
+                        ForEach(valueProps, id: \.text) { prop in
+                            HStack(spacing: 14) {
+                                Image(systemName: prop.icon)
+                                    .font(.title3)
+                                    .foregroundStyle(.blue)
+                                    .frame(width: 32)
+
+                                Text(prop.text)
+                                    .font(.body)
+                                    .fontWeight(.medium)
+
+                                Spacer()
+
+                                Image(systemName: "checkmark.circle.fill")
+                                    .foregroundStyle(.green)
+                            }
+                        }
+                    }
+                    .padding()
+                    .background(Color(.systemBackground))
+                    .clipShape(RoundedRectangle(cornerRadius: 14))
+
+                    // CTA Button
+                    Button {
+                        Task { await startTrial() }
+                    } label: {
+                        HStack {
+                            if isPurchasing {
+                                ProgressView()
+                                    .tint(.white)
+                            } else {
+                                Text(ctaText)
+                                    .fontWeight(.semibold)
+                            }
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(
+                            LinearGradient(
+                                colors: [.blue, .purple],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .foregroundStyle(.white)
+                        .clipShape(RoundedRectangle(cornerRadius: 14))
+                    }
+                    .disabled(isPurchasing)
+
+                    // No thanks
+                    Button {
+                        dismiss()
+                    } label: {
+                        Text("No thanks")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    // Legal
+                    Text("Subscription automatically renews unless cancelled at least 24 hours before the end of the current period.")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal)
+
+                    Spacer(minLength: 0)
                 }
+                .padding(.horizontal)
             }
-            .padding(.horizontal)
-
-            Spacer()
-
-            // Badge
-            Text("SPECIAL OFFER")
-                .font(.caption.bold())
-                .foregroundStyle(.white)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 6)
-                .background(Color.orange)
-                .clipShape(Capsule())
-
-            // Headline
-            Text("We miss you!")
-                .font(.largeTitle.bold())
-
-            Text("Come back and unlock everything ReadAloud AI has to offer.")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 32)
-
-            // Value props
-            VStack(alignment: .leading, spacing: 16) {
-                ForEach(valueProps, id: \.text) { prop in
-                    HStack(spacing: 14) {
-                        Image(systemName: prop.icon)
-                            .font(.title3)
-                            .foregroundStyle(.blue)
-                            .frame(width: 28)
-                        Text(prop.text)
-                            .font(.body)
+            .background(Color(.systemGroupedBackground))
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundStyle(.secondary)
+                            .font(.title2)
                     }
                 }
             }
-            .padding()
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color(.secondarySystemGroupedBackground))
-            .clipShape(RoundedRectangle(cornerRadius: 16))
-            .padding(.horizontal, 24)
-
-            Spacer()
-
-            // CTA
-            Button {
-                Task { await startTrial() }
-            } label: {
-                HStack {
-                    if isPurchasing {
-                        ProgressView().tint(.white)
-                    } else {
-                        Text(ctaText)
-                            .fontWeight(.semibold)
-                    }
+            .task {
+                if store.paywallProducts.isEmpty {
+                    await store.loadProducts()
                 }
-                .frame(maxWidth: .infinity)
-                .padding()
-                .background(
-                    LinearGradient(colors: [.blue, .purple],
-                                   startPoint: .leading, endPoint: .trailing)
-                )
-                .foregroundStyle(.white)
-                .clipShape(RoundedRectangle(cornerRadius: 14))
             }
-            .disabled(isPurchasing)
-            .padding(.horizontal, 24)
-
-            // No thanks
-            Button {
-                dismiss()
-            } label: {
-                Text("No thanks")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+            .alert("Error", isPresented: $showError) {
+                Button("OK") { showError = false }
+            } message: {
+                Text(errorMessage)
             }
-            .padding(.bottom, 16)
-        }
-        .padding(.top)
-        .alert("Error", isPresented: $showError) {
-            Button("OK") {}
-        } message: {
-            Text(errorMessage)
         }
     }
 
@@ -130,15 +162,22 @@ struct WinbackOfferView: View {
     }
 
     private func startTrial() async {
-        let annualId = ProductID.annual.rawValue
+        let annualId = "com.kreativekoala.listenai.annual"
+        // ASC-configured promotional offer: 50% off the first year for users
+        // returning after their subscription expired. Server-signed via
+        // PaywallKit-API → /redeem-promo, then redeemed against StoreKit.
+        let winbackOfferCode = "annual_winback_50off"
 
         isPurchasing = true
         defer { isPurchasing = false }
 
-        let result = await store.purchase(productId: annualId)
+        let result = await store.purchaseWithPromoOffer(
+            productId: annualId,
+            offerCode: winbackOfferCode
+        )
         switch result {
         case .purchased:
-            await PremiumManager.shared.validateSubscriptionState()
+            await PremiumManager.shared.handlePurchase(productID: annualId)
             dismiss()
         case .cancelled:
             break
@@ -150,4 +189,8 @@ struct WinbackOfferView: View {
             showError = true
         }
     }
+}
+
+#Preview {
+    WinbackOfferView()
 }

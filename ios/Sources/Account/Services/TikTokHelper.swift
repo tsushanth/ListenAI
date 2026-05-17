@@ -37,6 +37,10 @@ final class TikTokHelper {
                 @unknown default:
                     break
                 }
+                // Forward ATT result to Facebook SDK
+                Task { @MainActor in
+                    FacebookSDKManager.shared.updateTrackingAuthorization(enabled: status == .authorized)
+                }
             }
         }
     }
@@ -48,5 +52,19 @@ final class TikTokHelper {
             event.addProperty(withKey: key, value: value)
         }
         TikTokBusiness.trackTTEvent(event)
+    }
+
+    func logSubscription(price: Double, currency: String, productId: String) {
+        trackEvent("Subscribe", properties: [
+            "content_id": productId,
+            "currency": currency,
+            "value": price
+        ])
+    }
+
+    func logTrialStarted(productId: String) {
+        trackEvent("StartTrial", properties: [
+            "content_id": productId
+        ])
     }
 }

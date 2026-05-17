@@ -6,6 +6,9 @@ import StoreKit
 /// Available subscription plans
 enum SubscriptionPlan: String, CaseIterable, Identifiable {
     case weekly = "com.kreativekoala.listenai.weekly"
+    case monthly = "com.kreativekoala.listenai.monthly"
+    case quarterly = "com.kreativekoala.listenai.quarterly"
+    case semiannual = "com.kreativekoala.listenai.semiannual"
     case annual = "com.kreativekoala.listenai.annual"
 
     var id: String { rawValue }
@@ -13,6 +16,9 @@ enum SubscriptionPlan: String, CaseIterable, Identifiable {
     var displayName: String {
         switch self {
         case .weekly: return "Weekly"
+        case .monthly: return "Monthly"
+        case .quarterly: return "3 Months"
+        case .semiannual: return "6 Months"
         case .annual: return "Annual"
         }
     }
@@ -20,6 +26,9 @@ enum SubscriptionPlan: String, CaseIterable, Identifiable {
     var description: String {
         switch self {
         case .weekly: return "Billed weekly"
+        case .monthly: return "Billed monthly"
+        case .quarterly: return "Billed every 3 months"
+        case .semiannual: return "Billed every 6 months"
         case .annual: return "Best value - Save 90%"
         }
     }

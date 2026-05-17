@@ -2,9 +2,39 @@ import SwiftUI
 import UserNotifications
 import FirebaseCore
 import PaywallKit
+import RatingKit
+import FacebookCore
+
+// MARK: - App Delegate for Facebook SDK deep link handling
+
+class AppDelegate: NSObject, UIApplicationDelegate {
+    func application(_ application: UIApplication,
+                     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
+        ApplicationDelegate.shared.initializeSDK()
+        // Required for Meta to register the install/launch and emit a SKAdNetwork
+        // conversion postback. Without this call, Meta sees zero attributed installs
+        // regardless of how many users tapped on FB ads.
+        // Per Meta docs: must be invoked on every app launch AND when the app
+        // returns to foreground (handled in `applicationDidBecomeActive`).
+        AppEvents.shared.activateApp()
+        return true
+    }
+
+    func applicationDidBecomeActive(_ application: UIApplication) {
+        // Re-arm session attribution on every foreground transition.
+        AppEvents.shared.activateApp()
+    }
+
+    func application(_ app: UIApplication, open url: URL,
+                     options: [UIApplication.OpenURLOptionsKey: Any] = [:]) -> Bool {
+        ApplicationDelegate.shared.application(app, open: url, options: options)
+    }
+}
 
 @main
 struct ListenAIApp: App {
+
+    @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
     init() {
         print("[App] ListenAIApp.init() starting")
@@ -12,17 +42,38 @@ struct ListenAIApp: App {
         FirebaseApp.configure()
         print("[App] Firebase configured")
 
-        // Configure StoreKit 2 via PaywallKit (replaces RevenueCat)
-        StoreManager.shared.configure(productIds: ProductID.allIDs)
-        print("[App] StoreManager configured")
+        // Configure StoreKit 2 and referral system via PaywallKit
+        PaywallKitSDK.shared.configure(
+            appId: "ReadAloud AI",
+            appName: "ReadAloud AI",
+            productIds: ProductID.allIDs
+        )
+        // Disable post-dismiss offer prompts to comply with Apple guideline 5.6
+        StoreManager.shared.offerAfterDismissEnabled = false
+        print("[App] PaywallKit configured")
 
         // Avoid any MainActor singleton access here
         print("[App] ListenAIApp.init() completed")
+    
+        // Server-driven rating prompts (variant testing + analytics).
+        // Currently in simple mode — uses native SKStoreReviewController, no UI overlay.
+        RatingKit.configure(appId: "readaloudai", apiUrl: "https://paywallkit-api.fly.dev")
+        RatingKit.shared.trackAppOpen()
     }
 
     var body: some Scene {
         WindowGroup {
             RootView()
+                .ratingPrompt()
+                .onOpenURL { url in
+                    // Forward to Facebook SDK for deferred deep link / attribution
+                    ApplicationDelegate.shared.application(
+                        UIApplication.shared,
+                        open: url,
+                        options: [:]
+                    )
+                    PromoCodeManager.shared.handleURL(url)
+                }
         }
     }
 }
@@ -40,7 +91,6 @@ struct RootView: View {
         Group {
             if isReady {
                 MainContentView()
-                    .reviewPrompt()
             } else {
                 // Launch screen while initializing
                 LaunchScreenView()
@@ -65,11 +115,11 @@ struct RootView: View {
     private func configureServices() async {
         print("[App] Configuring services...")
 
-        // Record app launch for review prompt
-        ReviewManager.shared.recordAppLaunch()
+        // Check clipboard for promo code once per install
+        await PromoCodeManager.shared.checkClipboard()
 
         // Configure ListenAI Cloud Service with deployed backend
-        let backendURL = URL(string: "https://listenai-backend-917362189743.us-central1.run.app")!
+        let backendURL = URL(string: "https://listenai-backend.fly.dev")!
 
         // Auth token provider (replace with actual Supabase auth in production)
         let authTokenProvider: @Sendable () async throws -> String = {
@@ -100,6 +150,9 @@ struct RootView: View {
 
         // Configure AuthService for Apple/Google Sign In
         AuthService.shared.configure(backendURL: backendURL)
+
+        // Fetch server-controlled paywall mode (soft vs aggressive)
+        await PaywallConfigService.shared.refresh()
 
         // Validate subscription state via StoreKit 2 / PaywallKit
         await PremiumManager.shared.validateSubscriptionState()
@@ -132,6 +185,11 @@ struct RootView: View {
         let notificationManager = NotificationManager.shared
         let notificationAuthorized = await notificationManager.requestAuthorization()
         print("[App] Notification permission: \(notificationAuthorized ? "granted" : "denied")")
+
+        // Kick off the on-device Kokoro download if the user has Offline AI on
+        // and the network policy allows. Idempotent — no-ops if already loaded
+        // or already in flight. Defers to WiFi when cellular is disallowed.
+        OfflineAIDownloadCoordinator.shared.prepareIfPossible()
 
         print("[App] Services configured")
     }
@@ -176,23 +234,23 @@ struct MainContentView: View {
         Group {
             if onboarding.hasCompletedOnboarding || ProcessInfo.processInfo.arguments.contains("FASTLANE_SNAPSHOT") {
                 ContentView()
-                    .reviewPrompt()
                     .environmentObject(playback)
                     .environmentObject(queue)
                     .environmentObject(usage)
             } else {
                 OnboardingView()
-                    .reviewPrompt()
                     .environmentObject(playback)
                     .environmentObject(queue)
                     .environmentObject(usage)
             }
         }
+        .paywallKitReferral()
         .sheet(isPresented: $paywallCoordinator.showWinbackOffer) {
             WinbackOfferView()
         }
         .onChange(of: scenePhase) { _, newPhase in
             if newPhase == .active && !ProcessInfo.processInfo.arguments.contains("FASTLANE_SNAPSHOT") {
+                Task { await PaywallConfigService.shared.refresh() }
                 paywallCoordinator.checkWinbackEligibility()
             }
         }

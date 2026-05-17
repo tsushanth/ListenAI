@@ -17,7 +17,7 @@ let package = Package(
     ],
     dependencies: [
         // Facebook SDK for Meta Ads attribution and CAPI
-        .package(url: "https://github.com/facebook/facebook-ios-sdk.git", from: "17.0.0"),
+        .package(url: "https://github.com/facebook/facebook-ios-sdk.git", from: "18.0.0"),
     ],
     targets: [
         .target(

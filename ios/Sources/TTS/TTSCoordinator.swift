@@ -527,6 +527,16 @@ final class TTSCoordinator: ObservableObject {
 
         print("[TTS] Using voiceToUse: \(voiceToUse.name), kokoroID: \(voiceToUse.kokoroVoiceID ?? "nil")")
 
+        // Offline AI: route to on-device Kokoro 82M (FluidAudio) when the toggle
+        // is on AND the device is eligible AND the voice has a Kokoro mapping.
+        // Bypasses the cloud path entirely — no quota check, no network.
+        if let kokoroOverlay = presetManager.offlineAIOverlay(for: voiceToUse) {
+            return try await synthesizeOnDeviceKokoro(
+                text: text,
+                voice: kokoroOverlay
+            )
+        }
+
         // Check AI data consent for cloud synthesis
         if voiceToUse.provider != .apple && !AIDataConsentManager.shared.hasConsented {
             print("[TTS] Cloud voice requested but AI data consent not granted, falling back to on-device")
@@ -744,6 +754,47 @@ final class TTSCoordinator: ObservableObject {
         }
     }
 
+    // MARK: - Offline AI (On-Device Kokoro)
+
+    /// Synthesize via the on-device FluidAudio Kokoro service. Caches the result
+    /// under the same key scheme as cloud synthesis so cache hits are shared.
+    /// Caller must pass an overlay preset (provider == .kokoroOnDevice).
+    private func synthesizeOnDeviceKokoro(
+        text: String,
+        voice: VoicePreset
+    ) async throws -> URL {
+        let voiceIdentifier = voice.kokoroVoiceID ?? voice.providerVoiceID
+        let cacheKey = "kokoro_local_\(voiceIdentifier)_\(text.hashValue)"
+        if let cached = await cacheManager.getCachedAudio(for: cacheKey) {
+            print("[TTS] Offline AI cache hit for \(voiceIdentifier)")
+            return cached
+        }
+
+        isSynthesizing = true
+        defer { isSynthesizing = false }
+
+        var options = SynthesisOptions.default
+        options.speed = defaultSpeed
+        options.pitch = defaultPitch
+
+        let result = try await ttsManager.synthesize(
+            text: text,
+            voice: voice,
+            options: options
+        )
+        return await cacheManager.cacheAudio(at: result.audioFileURL, for: cacheKey)
+    }
+
+    /// Trigger Kokoro model download/load. Safe to call repeatedly — FluidAudio
+    /// no-ops if already initialized. Status is surfaced via `KokoroModelManager`.
+    func prepareOfflineAI() async {
+        do {
+            try await KokoroOnDeviceTTSService.shared.downloadVoice(.defaultPreset)
+        } catch {
+            print("[TTS] Offline AI prepare failed: \(error)")
+        }
+    }
+
     /// Switch to standard quality (self-hosted Kokoro, unlimited)
     func switchToStandardQuality() {
         selectedQuality = .standard
@@ -763,7 +814,9 @@ final class TTSCoordinator: ObservableObject {
         voice: VoicePreset? = nil,
         options: SynthesisOptions? = nil
     ) async throws -> SynthesisResult {
-        let voiceToUse = voice ?? selectedVoice ?? availableVoices.first!
+        let initialVoice = voice ?? selectedVoice ?? availableVoices.first!
+        // Apply Offline AI overlay so sectioned playback also routes on-device.
+        let voiceToUse = presetManager.presetForSynthesis(initialVoice)
         var optionsToUse = options ?? .default
         optionsToUse.speed = defaultSpeed
         optionsToUse.pitch = defaultPitch

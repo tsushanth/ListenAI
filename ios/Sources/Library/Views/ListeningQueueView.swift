@@ -109,7 +109,11 @@ struct ListeningQueueView: View {
             Text("Add articles to your queue to listen later.")
         } actions: {
             Button("Browse Library") {
-                // Navigate to library
+                NotificationCenter.default.post(
+                    name: .switchTab,
+                    object: nil,
+                    userInfo: ["tab": 1]
+                )
             }
             .buttonStyle(.borderedProminent)
         }

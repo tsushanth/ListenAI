@@ -70,8 +70,19 @@ final class QueuePlaybackCoordinator: ObservableObject {
     func playQueueItem(_ item: QueueItem) async {
         // Get the article from ArticleStore
         guard let article = ArticleStore.shared.article(withID: item.articleID) else {
-            print("[QueueCoordinator] Article not found: \(item.articleID)")
-            // Try next item
+            // Item points to an article that was never saved to the library
+            // (e.g., legacy email imports before the saveToLibrary fix). The
+            // user just tapped "Play" and would otherwise see nothing happen,
+            // so surface the failure visibly.
+            print("[QueueCoordinator] Article not found in library: \(item.articleID)")
+            NotificationCenter.default.post(
+                name: .queuePlaybackFailed,
+                object: nil,
+                userInfo: [
+                    "title": item.title,
+                    "reason": "This item is no longer in your library."
+                ]
+            )
             advanceToNextItem()
             return
         }
@@ -91,6 +102,17 @@ final class QueuePlaybackCoordinator: ObservableObject {
                         Task { @MainActor in
                             self?.handlePlaybackComplete()
                         }
+                    },
+                    onError: { [weak self] message in
+                        // AVFoundation failed asynchronously — typically a
+                        // cached .mp3 that was truncated or never finished
+                        // writing (we've seen Code=-17913 / duration=0 on
+                        // these). Clear the broken URL and re-route through
+                        // synthesis so the user sees real progress instead
+                        // of a stuck "playing 0.0s".
+                        Task { @MainActor in
+                            self?.handleBrokenCachedAudio(article: article, item: item, message: message)
+                        }
                     }
                 )
                 print("[QueueCoordinator] Playing cached audio: \(article.displayTitle)")
@@ -99,13 +121,18 @@ final class QueuePlaybackCoordinator: ObservableObject {
                 advanceToNextItem()
             }
         } else {
-            // No cached audio - need to navigate to article for synthesis
-            print("[QueueCoordinator] Article needs synthesis, posting notification")
-            isPlayingFromQueue = false
+            // No cached audio yet — open the reader and tell it to start
+            // playback automatically (which kicks off synthesis). The user
+            // tapping "Play Queue" is the play intent; popping up the reader
+            // without auto-starting is what made this look broken before.
+            print("[QueueCoordinator] Article needs synthesis, opening reader with autoPlay")
             NotificationCenter.default.post(
                 name: .openArticleForPlayback,
                 object: nil,
-                userInfo: ["articleId": article.id.uuidString]
+                userInfo: [
+                    "articleId": article.id.uuidString,
+                    "autoPlay": true
+                ]
             )
         }
     }
@@ -141,6 +168,32 @@ final class QueuePlaybackCoordinator: ObservableObject {
         // itemCompleted() handles auto-advance via next() which triggers onCurrentItemChanged
     }
 
+    /// AVFoundation reported that the cached audio for `article` is unusable.
+    /// Reset the article's synthesis state so the next play attempt re-runs
+    /// synthesis, then open the reader so the user sees something happening
+    /// instead of a silent stall. Also delete the broken file from disk —
+    /// otherwise the cache lookup will keep handing it back.
+    private func handleBrokenCachedAudio(article: Article, item: QueueItem, message: String) {
+        print("[QueueCoordinator] Broken cached audio for \(article.displayTitle): \(message). Clearing and re-routing through synthesis.")
+
+        if let brokenURL = article.audioFileURL, brokenURL.isFileURL {
+            try? FileManager.default.removeItem(at: brokenURL)
+        }
+
+        ArticleStore.shared.clearAudioFile(for: article.id)
+
+        urlPlayer.stop()
+
+        NotificationCenter.default.post(
+            name: .openArticleForPlayback,
+            object: nil,
+            userInfo: [
+                "articleId": article.id.uuidString,
+                "autoPlay": true
+            ]
+        )
+    }
+
     private func advanceToNextItem() {
         // This calls next() which triggers onCurrentItemChanged if there's a next item
         if queueManager.next() == nil {
@@ -155,4 +208,10 @@ final class QueuePlaybackCoordinator: ObservableObject {
 extension Notification.Name {
     /// Posted when user needs to open an article for playback (e.g., queue item needs synthesis)
     static let openArticleForPlayback = Notification.Name("openArticleForPlayback")
+    /// Posted when a child view wants to switch the parent TabView to a specific tab.
+    /// userInfo: ["tab": Int] — 0=Home, 1=Library, 2=Queue, 3=Settings.
+    static let switchTab = Notification.Name("switchTab")
+    /// Posted when a queue item can't be played (article gone, audio missing, etc.).
+    /// userInfo: ["title": String, "reason": String]. Listened for by the Queue view.
+    static let queuePlaybackFailed = Notification.Name("queuePlaybackFailed")
 }

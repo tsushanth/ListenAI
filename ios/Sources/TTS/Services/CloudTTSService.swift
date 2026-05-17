@@ -80,6 +80,8 @@ struct CloudTTSConfiguration: Sendable {
             return .amazonPolly
         case .selfhosted:
             return .selfhosted
+        case .kokoroOnDevice:
+            throw CloudTTSError.unsupportedProvider("Kokoro on-device should use KokoroOnDeviceTTSService")
         }
     }
 }
@@ -526,9 +528,8 @@ actor CloudTTSService: TTSService {
                 request.setValue(apiKey, forHTTPHeaderField: "X-API-Key")
             }
 
-        case .apple:
-            // Apple provider should use OnDeviceTTSService - return a dummy request
-            // This case should never be reached in practice
+        case .apple, .kokoroOnDevice:
+            // On-device providers don't validate against a network endpoint.
             request = URLRequest(url: URL(string: "about:blank")!)
         }
 
@@ -783,6 +784,8 @@ actor CloudTTSService: TTSService {
         case .apple:
             // Apple provider should use OnDeviceTTSService
             throw TTSError.invalidConfiguration(reason: "Apple provider should use OnDeviceTTSService, not CloudTTSService")
+        case .kokoroOnDevice:
+            throw TTSError.invalidConfiguration(reason: "Kokoro on-device provider should use KokoroOnDeviceTTSService, not CloudTTSService")
         }
 
         return request
@@ -1091,7 +1094,7 @@ actor CloudTTSService: TTSService {
             return Decimal(string: "0.000016")! // ~$16 per 1M chars (neural)
         case .selfhosted:
             return Decimal(string: "0.000001")! // ~$1 per 1M chars (infrastructure cost only)
-        case .apple:
+        case .apple, .kokoroOnDevice:
             return Decimal.zero
         }
     }
@@ -1272,8 +1275,8 @@ actor CloudTTSService: TTSService {
                 )
             ]
 
-        case .apple:
-            return [] // Should use OnDeviceTTSService
+        case .apple, .kokoroOnDevice:
+            return [] // Use OnDeviceTTSService / KokoroOnDeviceTTSService instead
         }
     }
 }

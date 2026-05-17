@@ -47,8 +47,16 @@ struct SettingsView: View {
     // Current voice from preset manager
     @StateObject private var voicePresetManager = VoicePresetManager.shared
 
+    // Offline AI (Kokoro on-device) state
+    @StateObject private var kokoroManager = KokoroModelManager.shared
+    @StateObject private var downloadCoordinator = OfflineAIDownloadCoordinator.shared
+
     var body: some View {
         List {
+            Section {
+                CrossPromoBanner()
+                    .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+            }
             // Preferences Section (matches reference order)
             preferencesSection
 
@@ -72,11 +80,11 @@ struct SettingsView: View {
                 appId: "readaloud",
                 appName: "ReadAloud Premium",
                 features: [
+                    PaywallFeature(icon: "\u{1F4F1}", title: "Offline AI", description: "Generate audio on-device — no internet required"),
                     PaywallFeature(icon: "\u{1F5E3}", title: "Premium Voices", description: "Natural-sounding AI voices"),
                     PaywallFeature(icon: "\u{1F4D6}", title: "Unlimited Articles", description: "No reading limits"),
-                    PaywallFeature(icon: "\u{26A1}", title: "Faster Processing", description: "Priority text-to-speech"),
+                    PaywallFeature(icon: "\u{26A1}", title: "Instant Playback", description: "Skip the queue with on-device TTS"),
                     PaywallFeature(icon: "\u{1F30D}", title: "All Languages", description: "50+ language support"),
-                    PaywallFeature(icon: "\u{1F4E5}", title: "Offline Playback", description: "Download for later"),
                 ],
                 theme: PaywallTheme(accent: Color(red: 1.0, green: 0.5, blue: 0.0), accent2: Color(red: 0.9, green: 0.2, blue: 0.3))
             )
@@ -178,6 +186,9 @@ struct SettingsView: View {
                     .padding(.leading, 36)
             }
 
+            // Offline AI (on-device Kokoro)
+            offlineAIRow
+
             // Change Voice
             Button {
                 showingVoicePicker = true
@@ -224,6 +235,112 @@ struct SettingsView: View {
     private var languageDisplayName: String {
         let locale = Locale(identifier: appLanguage)
         return locale.localizedString(forIdentifier: appLanguage) ?? appLanguage
+    }
+
+    // MARK: - Offline AI Row
+
+    @ViewBuilder
+    private var offlineAIRow: some View {
+        let eligible = KokoroModelManager.isDeviceEligible
+
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                SettingsIconView(icon: "iphone.gen3", color: .teal)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Offline AI")
+                    Text(offlineAIStatusText(eligible: eligible))
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                Spacer()
+                Toggle("", isOn: Binding(
+                    get: { voicePresetManager.useOfflineAI },
+                    set: { newValue in
+                        voicePresetManager.useOfflineAI = newValue
+                        if newValue && eligible {
+                            OfflineAIDownloadCoordinator.shared.prepareIfPossible()
+                        } else {
+                            OfflineAIDownloadCoordinator.shared.cancelPending()
+                        }
+                    }
+                ))
+                .labelsHidden()
+                .disabled(!eligible)
+            }
+
+            if voicePresetManager.useOfflineAI && eligible,
+               case .preparing = kokoroManager.state {
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 8) {
+                        ProgressView(value: kokoroManager.downloadProgress)
+                            .progressViewStyle(.linear)
+                        Text("\(Int(kokoroManager.downloadProgress * 100))%")
+                            .font(.caption.monospacedDigit())
+                            .foregroundColor(.secondary)
+                    }
+                    Text("Downloading on-device model…")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                .padding(.leading, 36)
+            }
+
+            if voicePresetManager.useOfflineAI && eligible
+                && downloadCoordinator.isWaitingForWiFi {
+                Text("Waiting for WiFi…")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .padding(.leading, 36)
+            }
+
+            if let error = kokoroManager.lastError, voicePresetManager.useOfflineAI {
+                Text(error)
+                    .font(.caption)
+                    .foregroundColor(.red)
+                    .padding(.leading, 36)
+            }
+
+            // Cellular policy — only meaningful when offline AI is on AND
+            // model isn't already downloaded (afterwards there's nothing to
+            // gate). Hide it once `ready` to keep Settings tidy.
+            if voicePresetManager.useOfflineAI && eligible && !kokoroManager.isReady {
+                HStack {
+                    Text("Allow cellular download")
+                        .font(.caption)
+                    Spacer()
+                    Toggle("", isOn: $voicePresetManager.allowCellularModelDownload)
+                        .labelsHidden()
+                        .scaleEffect(0.85)
+                        .onChange(of: voicePresetManager.allowCellularModelDownload) { _, _ in
+                            OfflineAIDownloadCoordinator.shared.prepareIfPossible()
+                        }
+                }
+                .foregroundColor(.secondary)
+                .padding(.leading, 36)
+                .padding(.top, 4)
+            }
+        }
+    }
+
+    private func offlineAIStatusText(eligible: Bool) -> String {
+        guard eligible else {
+            return "Requires iOS 17 or later"
+        }
+        if !voicePresetManager.useOfflineAI {
+            return "Run TTS on device — no internet needed"
+        }
+        switch kokoroManager.state {
+        case .notReady:
+            return downloadCoordinator.isWaitingForWiFi
+                ? "Queued — waiting for WiFi"
+                : "Will download (~250 MB, one time)"
+        case .preparing:
+            return "Preparing model…"
+        case .ready:
+            return "Ready — synthesis runs locally"
+        case .failed:
+            return "Download failed — toggle off and on to retry"
+        }
     }
 
     // MARK: - Playback Section
@@ -641,13 +758,17 @@ struct SettingsView: View {
     }
 
     private func shareApp() {
-        // TODO: Replace with actual App Store URL after app is published
         let url = URL(string: "https://apps.apple.com/app/readaloud-ai")!
         let activityVC = UIActivityViewController(activityItems: [url], applicationActivities: nil)
 
         if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
            let window = windowScene.windows.first,
            let rootVC = window.rootViewController {
+            if let popover = activityVC.popoverPresentationController {
+                popover.sourceView = window
+                popover.sourceRect = CGRect(x: window.bounds.midX, y: window.bounds.midY, width: 0, height: 0)
+                popover.permittedArrowDirections = []
+            }
             rootVC.present(activityVC, animated: true)
         }
     }

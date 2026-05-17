@@ -38,9 +38,6 @@ final class FacebookSDKManager: ObservableObject {
         // Enable advertiser ID collection for better attribution
         Settings.shared.isAdvertiserIDCollectionEnabled = true
 
-        // Enable advertiser tracking (respects ATT status)
-        Settings.shared.isAdvertiserTrackingEnabled = true
-
         isConfigured = true
         print("[FacebookSDK] Configured successfully")
     }
@@ -52,10 +49,8 @@ final class FacebookSDKManager: ObservableObject {
         _ application: Any,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
     ) -> Bool {
-        return ApplicationDelegate.shared.application(
-            UIApplication.shared,
-            didFinishLaunchingWithOptions: launchOptions
-        )
+        ApplicationDelegate.shared.initializeSDK()
+        return true
     }
 
     /// Handle URL open for Facebook SDK
@@ -67,9 +62,18 @@ final class FacebookSDKManager: ObservableObject {
         return ApplicationDelegate.shared.application(
             UIApplication.shared,
             open: url,
-            sourceApplication: options[.sourceApplication] as? String,
-            annotation: options[.annotation]
+            options: options
         )
+    }
+
+    // MARK: - Event Logging
+
+    // MARK: - Tracking Authorization
+
+    /// Update advertiser tracking based on ATT authorization result
+    func updateTrackingAuthorization(enabled: Bool) {
+        Settings.shared.isAdvertiserTrackingEnabled = enabled
+        print("[FacebookSDK] Advertiser tracking set to: \(enabled)")
     }
 
     // MARK: - Event Logging

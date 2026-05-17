@@ -162,7 +162,7 @@ final class BackgroundStreamingSynthesisService: ObservableObject {
 
             // Call self-hosted TTS directly (bypassing backend proxy to avoid Cloud Run timeout)
             // The backend proxy has a 300s timeout which isn't enough for long articles
-            let selfHostedURL = URL(string: "https://readaloud-tts-917362189743.us-central1.run.app")!
+            let selfHostedURL = URL(string: "https://readaloud-tts.fly.dev")!
             let streamURL = selfHostedURL.appendingPathComponent("synthesize-stream")
             var request = URLRequest(url: streamURL)
             request.httpMethod = "POST"

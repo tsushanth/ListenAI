@@ -7,6 +7,10 @@ import AVFoundation
 /// Design with yellow text highlighting and bottom player bar.
 struct ArticleReaderView: View {
     let article: Article
+    /// When true, the reader fires `startPlayback()` shortly after appearing.
+    /// Used by the queue's "needs synthesis" path so the user doesn't have to
+    /// tap play after the reader pops up — the queue tap is the play intent.
+    var autoPlayOnAppear: Bool = false
 
     @EnvironmentObject var playbackService: AudioPlaybackService
     @EnvironmentObject var queueManager: QueueManager
@@ -412,6 +416,16 @@ struct ArticleReaderView: View {
 
             // Check for persisted job and resume polling if needed
             checkAndResumePersistedJob()
+
+            // Auto-start when the reader was opened by the queue (the user tapped
+            // "Play Queue" expecting audio, not a reader pop-up). Slight delay
+            // so the view's state observers settle before startPlayback consults
+            // synthesis state.
+            if autoPlayOnAppear {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                    startPlayback()
+                }
+            }
         }
         .onDisappear {
             // Show global mini player again when leaving
@@ -683,23 +697,55 @@ struct ArticleReaderView: View {
                 }
             }
 
-            // Linear progress bar for better visual feedback
-            if effectiveProgress > 0 && !isGeneratingInBackground {
-                GeometryReader { geometry in
-                    ZStack(alignment: .leading) {
-                        // Background track
-                        RoundedRectangle(cornerRadius: 2)
-                            .fill(Color.blue.opacity(0.2))
-                            .frame(height: 4)
-
-                        // Progress fill
-                        RoundedRectangle(cornerRadius: 2)
-                            .fill(Color.blue)
-                            .frame(width: geometry.size.width * CGFloat(effectiveProgress), height: 4)
-                            .animation(.easeInOut(duration: 0.3), value: effectiveProgress)
+            // Rich Cloud TTS progress: chunk strip + queue position + "use offline AI"
+            // CTA when queue_depth > 5. Falls back to a thin linear bar if no
+            // backend status payload is cached yet.
+            if isJobBased && !isGeneratingInBackground {
+                if let latest = currentJobInfo?.latestStatus {
+                    CloudTTSProgressView(
+                        response: latest,
+                        onUseOffline: { switchToOfflineSynthesis() }
+                    )
+                } else if effectiveProgress > 0 {
+                    // Pre-status fallback (first poll hasn't returned yet)
+                    GeometryReader { geometry in
+                        ZStack(alignment: .leading) {
+                            RoundedRectangle(cornerRadius: 2)
+                                .fill(Color.blue.opacity(0.2))
+                                .frame(height: 4)
+                            RoundedRectangle(cornerRadius: 2)
+                                .fill(Color.blue)
+                                .frame(width: geometry.size.width * CGFloat(effectiveProgress), height: 4)
+                                .animation(.easeInOut(duration: 0.3), value: effectiveProgress)
+                        }
                     }
+                    .frame(height: 4)
                 }
-                .frame(height: 4)
+            }
+
+            // Offline synthesis indicator + "Switch to cloud" CTA. Mirrors the
+            // CloudTTSProgressView's "Use offline AI" CTA so users always know
+            // which path they're on and can flip if the on-device run is
+            // taking too long (e.g. mid-playback OOM, no GPU on this device).
+            if !isJobBased && isSynthesizing && voicePresetManager.isOfflineAIActive && !isGeneratingInBackground {
+                HStack(spacing: 8) {
+                    Image(systemName: "iphone.gen3")
+                        .font(.caption)
+                        .foregroundStyle(.purple)
+                    Text("Generating on-device")
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Button {
+                        switchToCloudSynthesis()
+                    } label: {
+                        Text("Switch to cloud")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.blue)
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.top, 2)
             }
 
             // "Notify when ready" option - shown after synthesis takes a while
@@ -1656,6 +1702,17 @@ struct ArticleReaderView: View {
 
     private func synthesizeAndPlay() {
         let currentVoice = voicePresetManager.selectedPreset
+
+        // Offline AI: when the toggle is on and the device is eligible, route
+        // through TTSCoordinator (which applies the Kokoro overlay) instead of
+        // the cloud job API. The legacy path calls TTSCoordinator.synthesize
+        // and plays the resulting URL — exactly what we need.
+        if voicePresetManager.isOfflineAIActive,
+           let kokoroID = currentVoice.kokoroVoiceID, !kokoroID.isEmpty {
+            print("[ArticleReader] Offline AI active — routing synthesis on-device (voice: \(kokoroID))")
+            performLegacySynthesis()
+            return
+        }
 
         // For on-device Apple voices, use the legacy synthesis path
         if currentVoice.provider == .apple {
@@ -2671,8 +2728,54 @@ struct ArticleReaderView: View {
         // Clear notify option state
         showNotifyWhenReadyOption = false
         isGeneratingInBackground = false
-        
+
         print("[ArticleReader] TTS job cancelled by user")
+    }
+
+    /// Bail out of the cloud queue and switch to on-device Kokoro synthesis.
+    /// Triggered by the "Use offline AI instead" CTA on `CloudTTSProgressView`
+    /// when `queue_depth > 5` and the device is eligible (≥4GB RAM, iOS 17+).
+    private func switchToOfflineSynthesis() {
+        guard KokoroModelManager.isDeviceEligible else {
+            synthesisError = "This device can't run offline synthesis. Please wait for the cloud queue."
+            return
+        }
+
+        // Cancel current cloud job — same teardown path as user-tap cancel.
+        cancelTTSJob()
+
+        // Re-trigger generation; the existing TTSCoordinator will use whatever
+        // provider Settings is configured for. If user has Offline AI enabled,
+        // Kokoro picks up automatically. Otherwise, we surface a hint.
+        Task { @MainActor in
+            // Tiny delay so the cancel teardown lands before we kick off a new job.
+            try? await Task.sleep(nanoseconds: 200_000_000)
+            switchToOnDeviceAndSynthesize()
+        }
+        print("[ArticleReader] User opted into offline synthesis from busy-queue CTA")
+    }
+
+    /// Bail out of an in-flight on-device run and route the same article
+    /// through the cloud TTS pipeline. Used when offline synthesis is too slow
+    /// or hits a per-chunk failure on a low-RAM device.
+    private func switchToCloudSynthesis() {
+        // Tear down the current Kokoro generation. KokoroOnDeviceTTSService
+        // hears this via TTSCoordinator's cancel path — same path the cancel
+        // button uses.
+        TTSCoordinator.shared.cancelSynthesis()
+        isSynthesizing = false
+
+        // Flip the toggle off so the cloud path takes over. Persists into
+        // UserDefaults; the user can re-enable Offline AI in Settings later.
+        // Tapping "Switch to cloud" mid-job is a deliberate vote against
+        // on-device for this device.
+        voicePresetManager.useOfflineAI = false
+
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 200_000_000)
+            synthesizeAndPlay()
+        }
+        print("[ArticleReader] User opted out of offline synthesis → cloud path")
     }
 
     /// Enable background notification for when synthesis completes
@@ -3188,6 +3291,11 @@ struct ArticleReaderView: View {
         if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
            let window = windowScene.windows.first,
            let rootVC = window.rootViewController {
+            if let popover = activityVC.popoverPresentationController {
+                popover.sourceView = window
+                popover.sourceRect = CGRect(x: window.bounds.midX, y: window.bounds.midY, width: 0, height: 0)
+                popover.permittedArrowDirections = []
+            }
             rootVC.present(activityVC, animated: true)
         }
     }
@@ -3207,6 +3315,11 @@ struct ArticleReaderView: View {
         if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
            let window = windowScene.windows.first,
            let rootVC = window.rootViewController {
+            if let popover = activityVC.popoverPresentationController {
+                popover.sourceView = window
+                popover.sourceRect = CGRect(x: window.bounds.midX, y: window.bounds.midY, width: 0, height: 0)
+                popover.permittedArrowDirections = []
+            }
             rootVC.present(activityVC, animated: true)
         }
     }

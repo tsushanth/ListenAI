@@ -82,8 +82,15 @@ final class PremiumManager {
     }
 
     /// Handle successful purchase
-    func handlePurchase(productID: String) async {
+    func handlePurchase(productID: String, price: Double = 0, currency: String = "USD", isTrial: Bool = false) async {
         await validateSubscriptionState()
+        if isTrial {
+            TikTokHelper.shared.logTrialStarted(productId: productID)
+            FacebookSDKManager.shared.logTrialStarted(productId: productID)
+        } else {
+            TikTokHelper.shared.logSubscription(price: price, currency: currency, productId: productID)
+            FacebookSDKManager.shared.logSubscription(price: price, currency: currency, productId: productID)
+        }
     }
 
     /// Check if subscription is expiring soon (within 3 days)

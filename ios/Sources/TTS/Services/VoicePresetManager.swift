@@ -89,6 +89,27 @@ final class VoicePresetManager: ObservableObject {
     @Published var voiceCloningModel: VoiceCloningModel = .chatterbox
     @Published var userStyleOverrides: StyleParameters?
 
+    /// When true, route synthesis to on-device Kokoro 82M (FluidAudio) instead of
+    /// the ListenAI cloud backend. Persisted across launches. Only takes effect on
+    /// eligible devices (`KokoroModelManager.isDeviceEligible`) and presets that
+    /// declare a `kokoroVoiceID`. Defaults to true on fresh installs of eligible
+    /// devices (set in `loadUseOfflineAI`).
+    @Published var useOfflineAI: Bool = false {
+        didSet {
+            guard oldValue != useOfflineAI else { return }
+            saveUseOfflineAI()
+        }
+    }
+
+    /// When true, the model download may use cellular. When false (default),
+    /// the download is deferred until the device is on WiFi. Persisted.
+    @Published var allowCellularModelDownload: Bool = false {
+        didSet {
+            guard oldValue != allowCellularModelDownload else { return }
+            UserDefaults.standard.set(allowCellularModelDownload, forKey: allowCellularDownloadKey)
+        }
+    }
+
     // Cloud configuration
     @Published var hasCloudAccess: Bool = false
     @Published var availableCloudProviders: Set<VoiceProvider> = []
@@ -104,6 +125,9 @@ final class VoicePresetManager: ObservableObject {
     private let voiceModeKey = "ReadAloudAI.VoiceMode"
     private let voiceCloningModelKey = "ReadAloudAI.VoiceCloningModel"
     private let styleOverridesKey = "ReadAloudAI.StyleOverrides"
+    private let useOfflineAIKey = "ReadAloudAI.UseOfflineAI"
+    private let useOfflineAIWasSetKey = "ReadAloudAI.UseOfflineAIWasSet"
+    private let allowCellularDownloadKey = "ReadAloudAI.AllowCellularModelDownload"
 
     private var cancellables = Set<AnyCancellable>()
 
@@ -140,12 +164,72 @@ final class VoicePresetManager: ObservableObject {
         loadVoiceMode()
         loadVoiceCloningModel()
         loadStyleOverrides()
+        loadUseOfflineAI()
 
         // Discover available Apple voices
         refreshAppleVoices()
 
         // Monitor for voice changes
         setupVoiceChangeObserver()
+    }
+
+    // MARK: - Offline AI Overlay
+
+    /// True when "Offline AI" is enabled AND the device can run Kokoro on-device.
+    /// Distinct from `useOfflineAI` (the user's stored toggle) so callers can ask
+    /// the routing question without re-checking eligibility.
+    var isOfflineAIActive: Bool {
+        useOfflineAI && KokoroModelManager.isDeviceEligible
+    }
+
+    /// Returns a preset overlay routed to `.kokoroOnDevice` when offline AI applies
+    /// for the given preset, or `nil` if the preset should keep its original
+    /// provider (cloud / Apple). Used by `TTSCoordinator` to redirect synthesis
+    /// without persisting a synthetic preset.
+    func offlineAIOverlay(for preset: VoicePreset) -> VoicePreset? {
+        guard isOfflineAIActive,
+              let kokoroID = preset.kokoroVoiceID,
+              !kokoroID.isEmpty,
+              KokoroVoiceCatalog.allIDs.contains(kokoroID)
+        else { return nil }
+
+        return VoicePreset(
+            id: preset.id,
+            name: preset.name,
+            isBuiltIn: preset.isBuiltIn,
+            isCharacterVoice: preset.isCharacterVoice,
+            provider: .kokoroOnDevice,
+            providerVoiceID: kokoroID,
+            providerModelID: nil,
+            kokoroVoiceID: kokoroID,
+            onDeviceMapping: preset.onDeviceMapping,
+            language: preset.language,
+            supportedLanguages: preset.supportedLanguages,
+            gender: preset.gender,
+            age: preset.age,
+            style: preset.style,
+            category: preset.category,
+            voiceDescription: preset.voiceDescription,
+            tier: .free,
+            requiresDownload: false,
+            downloadSizeBytes: nil,
+            isDownloaded: KokoroModelManager.shared.isReady,
+            styleParameters: preset.styleParameters,
+            emotion: preset.emotion,
+            cloudSettings: nil,
+            characterID: preset.characterID,
+            characterDescription: preset.characterDescription,
+            specialInstructions: preset.specialInstructions,
+            iconName: preset.iconName,
+            accentColorHex: preset.accentColorHex,
+            sampleAudioURL: preset.sampleAudioURL,
+            sampleText: preset.sampleText
+        )
+    }
+
+    /// Convenience: returns the overlay if applicable, otherwise the original preset.
+    func presetForSynthesis(_ preset: VoicePreset) -> VoicePreset {
+        offlineAIOverlay(for: preset) ?? preset
     }
 
     // MARK: - Voice Resolution
@@ -530,6 +614,24 @@ final class VoicePresetManager: ObservableObject {
         voiceCloningModel = model
         saveVoiceCloningModel()
         print("[VoicePresetManager] Voice cloning model set to: \(model.displayName)")
+    }
+
+    private func saveUseOfflineAI() {
+        UserDefaults.standard.set(useOfflineAI, forKey: useOfflineAIKey)
+        UserDefaults.standard.set(true, forKey: useOfflineAIWasSetKey)
+    }
+
+    private func loadUseOfflineAI() {
+        // Fresh install: default to ON for eligible devices so the offline
+        // path becomes the default for most users. The onboarding screen
+        // gives them a chance to opt out before download starts.
+        let wasSet = UserDefaults.standard.bool(forKey: useOfflineAIWasSetKey)
+        if wasSet {
+            useOfflineAI = UserDefaults.standard.bool(forKey: useOfflineAIKey)
+        } else {
+            useOfflineAI = KokoroModelManager.isDeviceEligible
+        }
+        allowCellularModelDownload = UserDefaults.standard.bool(forKey: allowCellularDownloadKey)
     }
 
     private func saveStyleOverrides() {

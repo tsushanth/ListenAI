@@ -11,13 +11,17 @@ struct ContentView: View {
     @State private var selectedTab = 0
     @State private var showingPlayer = false
     @State private var articleToOpen: Article?
+    /// True when the next reader presentation should auto-start playback
+    /// (set when the queue requests playback for an unsynthesized article).
+    @State private var autoPlayWhenOpening: Bool = false
     @State private var showingQueue = false
     @State private var showingFeedbackPrompt = false
     @State private var showAppOpenPaywall = false
+    @ObservedObject private var paywallCoordinator = PaywallCoordinator.shared
 
-    // Show paywall on 2nd, 4th, 7th app open (then every 5th after)
-    private static let paywallTriggerOpens: Set<Int> = [2, 4, 7]
-    private static let paywallRecurringInterval = 5
+    // Aggressive mode: show paywall on 3rd, 7th app open (then every 10th after 17th)
+    private static let paywallTriggerOpens: Set<Int> = [3, 7]
+    private static let paywallRecurringInterval = 10
 
     /// Whether any playback is active (from either player)
     private var hasActivePlayback: Bool {
@@ -83,13 +87,15 @@ struct ContentView: View {
             }
         }
         .fullScreenCover(item: $articleToOpen) { article in
-            // Open ArticleReaderView when tapping mini player during URL playback
+            // Open ArticleReaderView when tapping mini player during URL playback,
+            // or when the queue needs synthesis for the next item.
             NavigationStack {
-                ArticleReaderView(article: article)
+                ArticleReaderView(article: article, autoPlayOnAppear: autoPlayWhenOpening)
                     .toolbar {
                         ToolbarItem(placement: .topBarLeading) {
                             Button("Done") {
                                 articleToOpen = nil
+                                autoPlayWhenOpening = false
                             }
                         }
                     }
@@ -118,7 +124,14 @@ struct ContentView: View {
             if let articleIdString = notification.userInfo?["articleId"] as? String,
                let articleId = UUID(uuidString: articleIdString),
                let article = ArticleStore.shared.article(withID: articleId) {
+                let autoPlay = (notification.userInfo?["autoPlay"] as? Bool) ?? false
+                autoPlayWhenOpening = autoPlay
                 articleToOpen = article
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .switchTab)) { notification in
+            if let tab = notification.userInfo?["tab"] as? Int, (0...3).contains(tab) {
+                selectedTab = tab
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: AppReviewService.shouldShowFeedbackPromptNotification)) { _ in
@@ -126,6 +139,13 @@ struct ContentView: View {
         }
         .fullScreenCover(isPresented: $showAppOpenPaywall) {
             RemotePaywallView(triggerSource: "app_open")
+                .onDisappear {
+                    PaywallCoordinator.shared.trackDismiss()
+                    // Winback check deferred — will trigger on next paywall dismiss after cooldown
+                }
+        }
+        .fullScreenCover(isPresented: $paywallCoordinator.showWinbackOffer) {
+            WinbackOfferView()
         }
         .onAppear {
             checkAppOpenPaywall()
@@ -154,8 +174,18 @@ struct ContentView: View {
         let count = UserDefaults.standard.integer(forKey: key) + 1
         UserDefaults.standard.set(count, forKey: key)
 
-        let shouldShow = Self.paywallTriggerOpens.contains(count)
-            || (count > 7 && (count - 7) % Self.paywallRecurringInterval == 0)
+        let mode = PaywallConfigService.shared.mode
+
+        let shouldShow: Bool
+        if mode == .soft {
+            // Soft mode: show only once, on the very first app open.
+            shouldShow = count == 1
+        } else {
+            // Aggressive mode: 3rd, 7th, then every 10 opens after 17th.
+            let recurringBase = 17
+            shouldShow = Self.paywallTriggerOpens.contains(count)
+                || (count >= recurringBase && (count - recurringBase) % Self.paywallRecurringInterval == 0)
+        }
 
         if shouldShow {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {

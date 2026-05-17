@@ -1,5 +1,6 @@
 import Foundation
 import Combine
+import RatingKit
 
 // MARK: - Article Store
 
@@ -123,6 +124,18 @@ final class ArticleStore: ObservableObject {
         saveArticles()
     }
 
+    /// Drop a cached audio reference (file truncated, AVFoundation rejected
+    /// it, etc.) so the next play attempt re-runs synthesis instead of
+    /// handing back the same broken URL.
+    func clearAudioFile(for articleID: UUID) {
+        guard let index = articles.firstIndex(where: { $0.id == articleID }) else { return }
+        articles[index].audioFileURL = nil
+        articles[index].synthesisStatus = .notStarted
+        articles[index].pendingTTSJobId = nil
+        articles[index].pendingTTSVoiceId = nil
+        saveArticles()
+    }
+
     /// Update pending TTS job for background synthesis tracking
     func updatePendingTTSJob(for articleID: UUID, jobId: String?, voiceId: String?) {
         guard let index = articles.firstIndex(where: { $0.id == articleID }) else { return }
@@ -156,6 +169,7 @@ final class ArticleStore: ObservableObject {
         articles[index].isCompleted = true
         articles[index].lastPlayedAt = Date()
         saveArticles()
+        RatingKit.shared.trackAction()
     }
 
     /// Convenience delete method

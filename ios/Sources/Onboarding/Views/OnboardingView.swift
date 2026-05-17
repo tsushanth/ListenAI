@@ -36,6 +36,9 @@ struct OnboardingView: View {
                     VoiceSelectionPageView()
                         .tag(OnboardingPage.voiceSelection)
 
+                    OfflineAIPageView()
+                        .tag(OnboardingPage.offlineAI)
+
                     AIDataConsentView(isOnboarding: true)
                         .tag(OnboardingPage.dataConsent)
 

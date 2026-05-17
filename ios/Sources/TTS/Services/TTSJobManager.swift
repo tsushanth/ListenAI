@@ -41,6 +41,11 @@ final class TTSJobManager: ObservableObject {
         var localPreviewPath: URL?    // Downloaded preview (optional cache)
         var previewDurationSec: Double?  // Preview duration from backend
 
+        /// Latest full job-status response from the backend (chunks, queue, etc.).
+        /// Stored verbatim so the rich progress UI (`CloudTTSProgressView`) can
+        /// access chunk + queue context without re-polling.
+        var latestStatus: TTSJobStatusResponse?
+
         // Timing metrics
         let jobStartTime: Date
         var firstAudioAvailableTime: Date?
@@ -475,6 +480,11 @@ final class TTSJobManager: ObservableObject {
         if let previewDuration = response.previewDurationSec {
             jobInfo.previewDurationSec = previewDuration
         }
+
+        // Cache the full status payload so the rich progress UI can read
+        // chunks_total/chunks_completed/queue_depth/queue_position without
+        // re-fetching.
+        jobInfo.latestStatus = response
 
         activeJobs[articleId] = jobInfo
 

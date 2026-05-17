@@ -10,6 +10,7 @@ enum VoiceProvider: String, Codable, CaseIterable, Sendable {
     case googleCloud
     case amazonPolly
     case selfhosted  // Self-hosted TTS (Coqui XTTS v2)
+    case kokoroOnDevice  // Kokoro 82M neural TTS running on-device via Sherpa-ONNX
 
     var displayName: String {
         switch self {
@@ -19,11 +20,12 @@ enum VoiceProvider: String, Codable, CaseIterable, Sendable {
         case .googleCloud: return "Google Cloud"
         case .amazonPolly: return "Amazon Polly"
         case .selfhosted: return "ReadAloud AI"
+        case .kokoroOnDevice: return "Offline AI"
         }
     }
 
     var isCloudBased: Bool {
-        self != .apple
+        self != .apple && self != .kokoroOnDevice
     }
 
     /// Whether this provider is our own infrastructure (not third-party)
@@ -39,6 +41,7 @@ enum VoiceProvider: String, Codable, CaseIterable, Sendable {
         case .googleCloud: return "cloud"
         case .amazonPolly: return "speaker.wave.3"
         case .selfhosted: return "server.rack"
+        case .kokoroOnDevice: return "iphone.gen3"
         }
     }
 }

@@ -114,16 +114,39 @@ enum OnboardingPage: Int, CaseIterable {
     case takeNotes = 2
     case productivity = 3
     case voiceSelection = 4
-    case dataConsent = 5
-    case paywall = 6
-    case signIn = 7
+    case offlineAI = 5
+    case dataConsent = 6
+    case paywall = 7
+    case signIn = 8
 
+    /// Walk forward over `next`/`previous`, skipping pages that aren't
+    /// available on this device. Used so ineligible devices never see the
+    /// Offline AI screen.
     var next: OnboardingPage? {
-        OnboardingPage(rawValue: rawValue + 1)
+        var candidate = OnboardingPage(rawValue: rawValue + 1)
+        while let c = candidate, !c.isAvailableOnThisDevice {
+            candidate = OnboardingPage(rawValue: c.rawValue + 1)
+        }
+        return candidate
     }
 
     var previous: OnboardingPage? {
-        OnboardingPage(rawValue: rawValue - 1)
+        var candidate = OnboardingPage(rawValue: rawValue - 1)
+        while let c = candidate, !c.isAvailableOnThisDevice {
+            candidate = OnboardingPage(rawValue: c.rawValue - 1)
+        }
+        return candidate
+    }
+
+    /// Some pages are conditionally shown. Currently only `.offlineAI` —
+    /// hidden on devices that can't run Kokoro 82M on-device.
+    var isAvailableOnThisDevice: Bool {
+        switch self {
+        case .offlineAI:
+            return KokoroModelManager.isDeviceEligible
+        default:
+            return true
+        }
     }
 
     var isFirst: Bool {
@@ -139,6 +162,6 @@ enum OnboardingPage: Int, CaseIterable {
     }
 
     var showsSkipButton: Bool {
-        self != .paywall && self != .voiceSelection && self != .signIn && self != .dataConsent
+        self != .paywall && self != .voiceSelection && self != .signIn && self != .dataConsent && self != .offlineAI
     }
 }

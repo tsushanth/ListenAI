@@ -49,6 +49,18 @@ final class ImportCoordinator: ObservableObject {
 
     /// Pre-synthesize audio for an article in the background
     func preSynthesizeAudio(for article: Article) {
+        // When Offline AI is on, do NOT pre-synthesize via the cloud. The
+        // pre-synth path posts to /api/tts/job — but the user explicitly
+        // wants on-device, so a cloud round-trip wastes a server job (and
+        // we've seen those hang at partial_ready). On-device synthesis is
+        // lazy — it kicks off when the user actually taps play — so no
+        // pre-warm is needed here. If we ever want pre-warming for offline,
+        // it should run Kokoro locally, not POST to the cloud.
+        if VoicePresetManager.shared.isOfflineAIActive {
+            print("[Import] Offline AI active — skipping cloud pre-synthesis for '\(article.title.prefix(30))'. Synthesis will run on-device when the user taps play.")
+            return
+        }
+
         // Check if audio already exists and is valid
         let currentArticle = articleStore.article(withID: article.id) ?? article
 

@@ -60,6 +60,11 @@ final class URLAudioPlayer: NSObject, ObservableObject {
     // Completion handler
     private var onPlaybackComplete: (() -> Void)?
 
+    /// Called when AVPlayerItem moves to `.failed` (corrupt cache, network
+    /// error, unsupported codec). Lets the caller surface a real failure
+    /// instead of leaving the user staring at a stuck "playing 0.0s" state.
+    private var onPlaybackError: ((String) -> Void)?
+
     /// Tracks if playback reached the end naturally (not paused/stopped by user)
     /// Used to detect when preview finished so we can auto-resume with full audio
     private var didReachEndOfPlayback: Bool = false
@@ -99,7 +104,8 @@ final class URLAudioPlayer: NSObject, ObservableObject {
         startPosition: TimeInterval? = nil,
         mode: URLPlayerMode = .none,
         previewDuration: TimeInterval? = nil,
-        onComplete: (() -> Void)? = nil
+        onComplete: (() -> Void)? = nil,
+        onError: ((String) -> Void)? = nil
     ) async throws {
         print("[URLAudioPlayer] Playing: \(url.lastPathComponent), mode: \(mode)")
 
@@ -113,6 +119,7 @@ final class URLAudioPlayer: NSObject, ObservableObject {
         // Store article ID
         currentArticleID = articleID
         onPlaybackComplete = onComplete
+        onPlaybackError = onError
 
         // Configure audio session
         try configureAudioSession()
@@ -261,6 +268,7 @@ final class URLAudioPlayer: NSObject, ObservableObject {
         state = .idle
         currentArticleID = nil
         onPlaybackComplete = nil
+        onPlaybackError = nil
         playerMode = .none
         previewDuration = nil
         didReachEndOfPlayback = false
@@ -545,6 +553,11 @@ final class URLAudioPlayer: NSObject, ObservableObject {
             state = .error(message: error)
             isPlaying = false
             print("[URLAudioPlayer] Failed: \(error)")
+            // Surface the failure to whoever started playback so they can
+            // recover (e.g. queue clears the broken cached URL and re-routes
+            // through synthesis). Without this, AVFoundation failures look
+            // like "playing 0.0s" forever to the caller.
+            onPlaybackError?(error)
 
         case .unknown:
             break

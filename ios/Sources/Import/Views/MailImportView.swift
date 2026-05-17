@@ -508,8 +508,7 @@ struct MailImportView: View {
                 let article = try await coordinator.importFromText(
                     email.body,
                     title: email.subject,
-                    options: .email,
-                    saveToLibrary: false
+                    options: .email
                 )
                 await MainActor.run {
                     importedArticle = article

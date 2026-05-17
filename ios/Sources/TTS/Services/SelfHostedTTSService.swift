@@ -25,7 +25,7 @@ actor SelfHostedTTSService {
 
     init(baseURL: URL? = nil) {
         // Default to production URL, can be overridden for testing
-        self.baseURL = baseURL ?? URL(string: "https://readaloud-tts-917362189743.us-central1.run.app")!
+        self.baseURL = baseURL ?? URL(string: "https://readaloud-tts.fly.dev")!
 
         let config = URLSessionConfiguration.default
         config.timeoutIntervalForRequest = 120 // TTS can take time for long text

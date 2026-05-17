@@ -474,6 +474,14 @@ struct TTSJobStatusResponse: Codable, Sendable {
     /// Progress information (nested object from backend)
     let progress: TTSJobProgress
 
+    /// Total jobs in queued+processing across ALL users (system-wide load).
+    /// Used to surface the "Use offline AI" CTA when the queue is busy.
+    let queueDepth: Int?
+
+    /// 1-based position of THIS job in the global queue.
+    /// nil once the job leaves queued/processing (ready/failed/canceled).
+    let queuePosition: Int?
+
     /// URL to preview audio (available when status is partial_ready or ready)
     let previewUrl: String?
 
@@ -496,6 +504,8 @@ struct TTSJobStatusResponse: Codable, Sendable {
         case status
         case jobId = "job_id"
         case progress
+        case queueDepth = "queue_depth"
+        case queuePosition = "queue_position"
         case previewUrl = "preview_url"
         case audioUrl = "audio_url"
         case previewDurationSec = "preview_duration_sec"

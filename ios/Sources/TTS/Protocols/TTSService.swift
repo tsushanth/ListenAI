@@ -244,6 +244,10 @@ enum TTSServiceFactory {
             // Self-hosted uses SelfHostedTTSService actor directly
             // Return a wrapper that conforms to TTSService
             return SelfHostedTTSWrapper()
+        case .kokoroOnDevice:
+            // Kokoro 82M neural TTS running on-device via FluidAudio (Core ML / ANE).
+            // Shared singleton so the loaded models stay resident across calls.
+            return KokoroOnDeviceTTSService.shared
         }
     }
 

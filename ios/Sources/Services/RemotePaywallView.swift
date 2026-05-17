@@ -1,5 +1,6 @@
 import SwiftUI
 import PaywallKit
+import RatingKit
 
 /// PaywallKit-powered paywall with StoreKit 2 purchases.
 struct RemotePaywallView: View {
@@ -21,26 +22,34 @@ struct RemotePaywallView: View {
         }
     }
 
+    private var placement: String {
+        PromoCodeManager.shared.activeCode != nil ? "promo_code_onboarding" : "app_open"
+    }
+
     var body: some View {
         PaywallKit.PaywallView(
             appId: "readaloud",
+            placement: placement,
             appName: "ReadAloud Premium",
             features: [
+                PaywallFeature(icon: "\u{1F4F1}", title: "Offline AI", description: "Generate audio on-device — no internet required"),
                 PaywallFeature(icon: "\u{1F5E3}", title: "Premium Voices", description: "Natural-sounding AI voices"),
                 PaywallFeature(icon: "\u{1F4D6}", title: "Unlimited Articles", description: "No reading limits"),
-                PaywallFeature(icon: "\u{26A1}", title: "Faster Processing", description: "Priority text-to-speech"),
-                PaywallFeature(icon: "\u{1F30D}", title: "All Languages", description: "50+ language support"),
-                PaywallFeature(icon: "\u{1F4E5}", title: "Offline Playback", description: "Download for later")
+                PaywallFeature(icon: "\u{26A1}", title: "Instant Playback", description: "Skip the queue with on-device TTS"),
+                PaywallFeature(icon: "\u{1F30D}", title: "All Languages", description: "50+ language support")
             ],
             products: store.paywallProducts,
             theme: PaywallTheme(accent: Color(red: 1.0, green: 0.5, blue: 0.0), accent2: Color(red: 0.9, green: 0.2, blue: 0.3)),
-            showWinback: true,
+            showWinback: false,
             onPurchase: { productId in
                 let result = await store.purchase(productId: productId)
                 if case .purchased = result {
                     didPurchaseOrRestore = true
-                    await PremiumManager.shared.validateSubscriptionState()
-                    await MainActor.run { handleDismiss() }
+                    await PremiumManager.shared.handlePurchase(productID: productId)
+                    await MainActor.run {
+                        RatingKit.shared.trackPurchase()
+                        handleDismiss()
+                    }
                     return true
                 }
                 return false
