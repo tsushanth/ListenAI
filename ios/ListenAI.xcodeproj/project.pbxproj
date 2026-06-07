@@ -57,15 +57,15 @@
 		001500000000000000000005 /* TTSService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002500000000000000000005 /* TTSService.swift */; };
 		001500000000000000000006 /* VoicePresetManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002500000000000000000006 /* VoicePresetManager.swift */; };
 		001500000000000000000007 /* OnDeviceTTSService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002500000000000000000007 /* OnDeviceTTSService.swift */; };
-		001500000000000000000050 /* KokoroModelManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002500000000000000000050 /* KokoroModelManager.swift */; };
-		001500000000000000000051 /* KokoroOnDeviceTTSService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002500000000000000000051 /* KokoroOnDeviceTTSService.swift */; };
-		001500000000000000000052 /* OfflineAIDownloadCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002500000000000000000052 /* OfflineAIDownloadCoordinator.swift */; };
 		001500000000000000000008 /* CloudTTSService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002500000000000000000008 /* CloudTTSService.swift */; };
 		001500000000000000000009 /* ListenAICloudService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002500000000000000000009 /* ListenAICloudService.swift */; };
 		00150000000000000000000A /* SpeechSynthesisHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00250000000000000000000A /* SpeechSynthesisHelper.swift */; };
 		00150000000000000000000B /* SelectVoiceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00250000000000000000000B /* SelectVoiceView.swift */; };
 		00150000000000000000000C /* SelfHostedTTSService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00250000000000000000000C /* SelfHostedTTSService.swift */; };
 		00150000000000000000000D /* TTSJobManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00250000000000000000000D /* TTSJobManager.swift */; };
+		001500000000000000000050 /* KokoroModelManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002500000000000000000050 /* KokoroModelManager.swift */; };
+		001500000000000000000051 /* KokoroOnDeviceTTSService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002500000000000000000051 /* KokoroOnDeviceTTSService.swift */; };
+		001500000000000000000052 /* OfflineAIDownloadCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002500000000000000000052 /* OfflineAIDownloadCoordinator.swift */; };
 		001600000000000000000001 /* UsageModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002600000000000000000001 /* UsageModels.swift */; };
 		001600000000000000000002 /* UsageQuotaView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002600000000000000000002 /* UsageQuotaView.swift */; };
 		001600000000000000000003 /* UsageWarningBanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002600000000000000000003 /* UsageWarningBanner.swift */; };
@@ -86,7 +86,6 @@
 		001800000000000000000004 /* CrossPromoBanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002800000000000000000004 /* CrossPromoBanner.swift */; };
 		001900000000000000000001 /* VoiceCloningService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002900000000000000000001 /* VoiceCloningService.swift */; };
 		001900000000000000000002 /* VoiceCloningView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002900000000000000000002 /* VoiceCloningView.swift */; };
-		00CTPV0000000000000001 /* CloudTTSProgressView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00CTPV0000000000000002 /* CloudTTSProgressView.swift */; };
 		001A00000000000000000001 /* VoiceMarketplaceService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002A00000000000000000001 /* VoiceMarketplaceService.swift */; };
 		001A00000000000000000002 /* VoiceMarketplaceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002A00000000000000000002 /* VoiceMarketplaceView.swift */; };
 		001A00000000000000000003 /* VoiceDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002A00000000000000000003 /* VoiceDetailView.swift */; };
@@ -104,6 +103,9 @@
 		00A000000000000000000009 /* OnboardingAudioPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00B000000000000000000009 /* OnboardingAudioPlayer.swift */; };
 		00A00000000000000000000A /* SignInPageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00B00000000000000000000A /* SignInPageView.swift */; };
 		00A00000000000000000000B /* OfflineAIPageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00B00000000000000000000B /* OfflineAIPageView.swift */; };
+		00A00000000000000000000C /* TTSSampleComparisonView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00B00000000000000000000C /* TTSSampleComparisonView.swift */; };
+		00A00000000000000000000D /* OfflineDownloadPageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00B00000000000000000000D /* OfflineDownloadPageView.swift */; };
+		00CTPV0000000000000001 /* CloudTTSProgressView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00CTPV0000000000000002 /* CloudTTSProgressView.swift */; };
 		00D000000000000000000001 /* voice_sample_rachel.wav in Resources */ = {isa = PBXBuildFile; fileRef = 00E000000000000000000001 /* voice_sample_rachel.wav */; };
 		00D000000000000000000002 /* voice_sample_adam.wav in Resources */ = {isa = PBXBuildFile; fileRef = 00E000000000000000000002 /* voice_sample_adam.wav */; };
 		00D000000000000000000003 /* voice_sample_brian.wav in Resources */ = {isa = PBXBuildFile; fileRef = 00E000000000000000000003 /* voice_sample_brian.wav */; };
@@ -115,15 +117,16 @@
 		60053F2DC49846065D6EBC7B /* BackgroundStreamingSynthesisService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03A60CC8B1DA9D34FA981604 /* BackgroundStreamingSynthesisService.swift */; };
 		69BE24266856BA3C114CA072 /* ScreenshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E35473729D80F586FBE12069 /* ScreenshotTests.swift */; };
 		C7A1B2D3E4F5061728394A5B /* PaywallCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = E9C3D4F5A6B7081939405B6D /* PaywallCoordinator.swift */; };
+		D0BDA85233991940B119C980 /* AdServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 152C089795BB2E1E388DE4DB /* AdServices.framework */; };
 		D8B2C3E4F5061728394A5B6C /* WinbackOfferView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0D4E5A6B7C8192A40516C7E /* WinbackOfferView.swift */; };
 		DE50B42EBD871523FFEBE4AD /* RemotePaywallView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 832329FA4EB08897919EEED5 /* RemotePaywallView.swift */; };
 		EEA2F3CEA9C7A70D82C2AE89 /* SnapshotHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD2AC80C015A9C67A3BFD0E7 /* SnapshotHelper.swift */; };
+		FAD0000000000000000003 /* FluidAudio in Frameworks */ = {isa = PBXBuildFile; productRef = FAD0000000000000000002 /* FluidAudio */; };
 		FB0000000000000000000002 /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = FB0000000000000000000001 /* FirebaseAnalytics */; };
 		FC8D4518BE88A2E5699ED58A /* StreamingTTSService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F474471A9365C7F8F2BD6DD9 /* StreamingTTSService.swift */; };
+		FCF4C089A6B31D9A0D48BC19 /* RatingKit in Frameworks */ = {isa = PBXBuildFile; productRef = 6DA17ED7172061A9E77E352D /* RatingKit */; };
 		PM00000000000000000000B1 /* PremiumManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = PM00000000000000000000F1 /* PremiumManager.swift */; };
 		PRA000000000003 /* PaywallKit in Frameworks */ = {isa = PBXBuildFile; productRef = PRA000000000002 /* PaywallKit */; };
-		FCF4C089A6B31D9A0D48BC19 /* RatingKit in Frameworks */ = {isa = PBXBuildFile; productRef = 6DA17ED7172061A9E77E352D /* RatingKit */; };
-		FAD0000000000000000003 /* FluidAudio in Frameworks */ = {isa = PBXBuildFile; productRef = FAD0000000000000000002 /* FluidAudio */; };
 		TT0000000000000000000001 /* TikTokBusinessSDK in Frameworks */ = {isa = PBXBuildFile; productRef = TT0000000000000000000002 /* TikTokBusinessSDK */; };
 		TT0000000000000000000010 /* TikTokHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = TT0000000000000000000011 /* TikTokHelper.swift */; };
 /* End PBXBuildFile section */
@@ -192,15 +195,15 @@
 		002500000000000000000005 /* TTSService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TTSService.swift; sourceTree = "<group>"; };
 		002500000000000000000006 /* VoicePresetManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoicePresetManager.swift; sourceTree = "<group>"; };
 		002500000000000000000007 /* OnDeviceTTSService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnDeviceTTSService.swift; sourceTree = "<group>"; };
-		002500000000000000000050 /* KokoroModelManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KokoroModelManager.swift; sourceTree = "<group>"; };
-		002500000000000000000051 /* KokoroOnDeviceTTSService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KokoroOnDeviceTTSService.swift; sourceTree = "<group>"; };
-		002500000000000000000052 /* OfflineAIDownloadCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfflineAIDownloadCoordinator.swift; sourceTree = "<group>"; };
 		002500000000000000000008 /* CloudTTSService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudTTSService.swift; sourceTree = "<group>"; };
 		002500000000000000000009 /* ListenAICloudService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ListenAICloudService.swift; sourceTree = "<group>"; };
 		00250000000000000000000A /* SpeechSynthesisHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechSynthesisHelper.swift; sourceTree = "<group>"; };
 		00250000000000000000000B /* SelectVoiceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelectVoiceView.swift; sourceTree = "<group>"; };
 		00250000000000000000000C /* SelfHostedTTSService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelfHostedTTSService.swift; sourceTree = "<group>"; };
 		00250000000000000000000D /* TTSJobManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TTSJobManager.swift; sourceTree = "<group>"; };
+		002500000000000000000050 /* KokoroModelManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KokoroModelManager.swift; sourceTree = "<group>"; };
+		002500000000000000000051 /* KokoroOnDeviceTTSService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KokoroOnDeviceTTSService.swift; sourceTree = "<group>"; };
+		002500000000000000000052 /* OfflineAIDownloadCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfflineAIDownloadCoordinator.swift; sourceTree = "<group>"; };
 		002600000000000000000001 /* UsageModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UsageModels.swift; sourceTree = "<group>"; };
 		002600000000000000000002 /* UsageQuotaView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UsageQuotaView.swift; sourceTree = "<group>"; };
 		002600000000000000000003 /* UsageWarningBanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UsageWarningBanner.swift; sourceTree = "<group>"; };
@@ -222,7 +225,6 @@
 		002800000000000000000004 /* CrossPromoBanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrossPromoBanner.swift; sourceTree = "<group>"; };
 		002900000000000000000001 /* VoiceCloningService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceCloningService.swift; sourceTree = "<group>"; };
 		002900000000000000000002 /* VoiceCloningView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceCloningView.swift; sourceTree = "<group>"; };
-		00CTPV0000000000000002 /* CloudTTSProgressView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudTTSProgressView.swift; sourceTree = "<group>"; };
 		002A00000000000000000001 /* VoiceMarketplaceService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceMarketplaceService.swift; sourceTree = "<group>"; };
 		002A00000000000000000002 /* VoiceMarketplaceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceMarketplaceView.swift; sourceTree = "<group>"; };
 		002A00000000000000000003 /* VoiceDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceDetailView.swift; sourceTree = "<group>"; };
@@ -241,6 +243,9 @@
 		00B000000000000000000009 /* OnboardingAudioPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingAudioPlayer.swift; sourceTree = "<group>"; };
 		00B00000000000000000000A /* SignInPageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignInPageView.swift; sourceTree = "<group>"; };
 		00B00000000000000000000B /* OfflineAIPageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfflineAIPageView.swift; sourceTree = "<group>"; };
+		00B00000000000000000000C /* TTSSampleComparisonView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TTSSampleComparisonView.swift; sourceTree = "<group>"; };
+		00B00000000000000000000D /* OfflineDownloadPageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfflineDownloadPageView.swift; sourceTree = "<group>"; };
+		00CTPV0000000000000002 /* CloudTTSProgressView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudTTSProgressView.swift; sourceTree = "<group>"; };
 		00E000000000000000000001 /* voice_sample_rachel.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = voice_sample_rachel.wav; sourceTree = "<group>"; };
 		00E000000000000000000002 /* voice_sample_adam.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = voice_sample_adam.wav; sourceTree = "<group>"; };
 		00E000000000000000000003 /* voice_sample_brian.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = voice_sample_brian.wav; sourceTree = "<group>"; };
@@ -249,6 +254,7 @@
 		00E000000000000000000006 /* voice_sample_charlotte.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = voice_sample_charlotte.wav; sourceTree = "<group>"; };
 		03A60CC8B1DA9D34FA981604 /* BackgroundStreamingSynthesisService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = BackgroundStreamingSynthesisService.swift; path = Sources/TTS/Services/BackgroundStreamingSynthesisService.swift; sourceTree = SOURCE_ROOT; };
 		0E5EFBD077EDCD7EFC25471F /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
+		152C089795BB2E1E388DE4DB /* AdServices.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AdServices.framework; path = System/Library/Frameworks/AdServices.framework; sourceTree = SDKROOT; };
 		832329FA4EB08897919EEED5 /* RemotePaywallView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = RemotePaywallView.swift; path = Services/RemotePaywallView.swift; sourceTree = "<group>"; };
 		A050BFDDD15ACB0B8529F6E8 /* FacebookSDKManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FacebookSDKManager.swift; sourceTree = "<group>"; };
 		DD2AC80C015A9C67A3BFD0E7 /* SnapshotHelper.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SnapshotHelper.swift; sourceTree = "<group>"; };
@@ -271,6 +277,7 @@
 				PRA000000000003 /* PaywallKit in Frameworks */,
 				FCF4C089A6B31D9A0D48BC19 /* RatingKit in Frameworks */,
 				FAD0000000000000000003 /* FluidAudio in Frameworks */,
+				D0BDA85233991940B119C980 /* AdServices.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -754,6 +761,8 @@
 				00B000000000000000000008 /* PaywallPageView.swift */,
 				00B00000000000000000000A /* SignInPageView.swift */,
 				00B00000000000000000000B /* OfflineAIPageView.swift */,
+				00B00000000000000000000C /* TTSSampleComparisonView.swift */,
+				00B00000000000000000000D /* OfflineDownloadPageView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -791,6 +800,7 @@
 			isa = PBXGroup;
 			children = (
 				17CC84C5B294F92FF61C8F04 /* iOS */,
+				152C089795BB2E1E388DE4DB /* AdServices.framework */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -1021,6 +1031,8 @@
 				00A000000000000000000009 /* OnboardingAudioPlayer.swift in Sources */,
 				00A00000000000000000000A /* SignInPageView.swift in Sources */,
 				00A00000000000000000000B /* OfflineAIPageView.swift in Sources */,
+				00A00000000000000000000C /* TTSSampleComparisonView.swift in Sources */,
+				00A00000000000000000000D /* OfflineDownloadPageView.swift in Sources */,
 				60053F2DC49846065D6EBC7B /* BackgroundStreamingSynthesisService.swift in Sources */,
 				FC8D4518BE88A2E5699ED58A /* StreamingTTSService.swift in Sources */,
 				001A00000000000000000001 /* VoiceMarketplaceService.swift in Sources */,
@@ -1185,7 +1197,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = ListenAI/ListenAI.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 37;
+				CURRENT_PROJECT_VERSION = 41;
 				DEVELOPMENT_TEAM = 7RS696YC75;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -1201,7 +1213,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 7.9;
+				MARKETING_VERSION = 7.9.4;
 				PRODUCT_BUNDLE_IDENTIFIER = com.kreativekoala.listenai;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -1220,7 +1232,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = ListenAI/ListenAI.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 37;
+				CURRENT_PROJECT_VERSION = 41;
 				DEVELOPMENT_TEAM = 7RS696YC75;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -1236,7 +1248,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 7.9;
+				MARKETING_VERSION = 7.9.4;
 				PRODUCT_BUNDLE_IDENTIFIER = com.kreativekoala.listenai;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -1319,12 +1331,12 @@
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCRemoteSwiftPackageReference section */
-		FAD0000000000000000001 /* XCRemoteSwiftPackageReference "FluidAudio" */ = {
+		2178F11694B60A661F78A890 /* XCRemoteSwiftPackageReference "RatingKit" */ = {
 			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/FluidInference/FluidAudio";
+			repositoryURL = "https://github.com/tsushanth/RatingKit.git";
 			requirement = {
 				kind = upToNextMajorVersion;
-				minimumVersion = 0.14.4;
+				minimumVersion = 2.0.1;
 			};
 		};
 		89DE07E60035A1E7F2108C93 /* XCRemoteSwiftPackageReference "facebook-ios-sdk" */ = {
@@ -1333,6 +1345,14 @@
 			requirement = {
 				kind = upToNextMajorVersion;
 				minimumVersion = 18.0.0;
+			};
+		};
+		FAD0000000000000000001 /* XCRemoteSwiftPackageReference "FluidAudio" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/FluidInference/FluidAudio";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.14.4;
 			};
 		};
 		FB0000000000000000000003 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
@@ -1351,26 +1371,23 @@
 				minimumVersion = 1.0.0;
 			};
 		};
-		2178F11694B60A661F78A890 /* XCRemoteSwiftPackageReference "RatingKit" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/tsushanth/RatingKit.git";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = "2.0.1";
-			};
-		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		FAD0000000000000000002 /* FluidAudio */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = FAD0000000000000000001 /* XCRemoteSwiftPackageReference "FluidAudio" */;
-			productName = FluidAudio;
-		};
 		43290B12B1A10604BD12FD98 /* FacebookCore */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 89DE07E60035A1E7F2108C93 /* XCRemoteSwiftPackageReference "facebook-ios-sdk" */;
 			productName = FacebookCore;
+		};
+		6DA17ED7172061A9E77E352D /* RatingKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 2178F11694B60A661F78A890 /* XCRemoteSwiftPackageReference "RatingKit" */;
+			productName = RatingKit;
+		};
+		FAD0000000000000000002 /* FluidAudio */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = FAD0000000000000000001 /* XCRemoteSwiftPackageReference "FluidAudio" */;
+			productName = FluidAudio;
 		};
 		FB0000000000000000000001 /* FirebaseAnalytics */ = {
 			isa = XCSwiftPackageProductDependency;
@@ -1386,11 +1403,6 @@
 			isa = XCSwiftPackageProductDependency;
 			package = TT0000000000000000000003 /* XCRemoteSwiftPackageReference "tiktok-business-ios-sdk" */;
 			productName = TikTokBusinessSDK;
-		};
-		6DA17ED7172061A9E77E352D /* RatingKit */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 2178F11694B60A661F78A890 /* XCRemoteSwiftPackageReference "RatingKit" */;
-			productName = RatingKit;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
