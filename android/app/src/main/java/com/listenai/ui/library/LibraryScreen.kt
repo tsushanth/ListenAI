@@ -1,9 +1,12 @@
 package com.listenai.ui.library
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -12,9 +15,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -37,7 +42,7 @@ fun LibraryScreen(
     onArticleClick: (String) -> Unit = {},
     onAddContent: () -> Unit = {}
 ) {
-    val articles by viewModel.articles.collectAsState()
+    val entries by viewModel.entries.collectAsState()
     val articleCount by viewModel.articleCount.collectAsState()
     val selectedFilter by viewModel.selectedFilter.collectAsState()
 
@@ -92,7 +97,7 @@ fun LibraryScreen(
             )
 
             // Articles List or Empty State
-            if (articles.isEmpty()) {
+            if (entries.isEmpty()) {
                 EmptyLibraryState(
                     selectedFilter = selectedFilter,
                     onAddContent = onAddContent
@@ -103,15 +108,15 @@ fun LibraryScreen(
                     contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 88.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    items(articles, key = { it.id }) { article ->
-                        ArticleCard(
-                            article = article,
-                            onClick = { onArticleClick(article.id) },
-                            onFavorite = { viewModel.toggleFavorite(article) },
-                            onArchive = { viewModel.toggleArchive(article) },
-                            onDelete = { viewModel.deleteArticle(article) }
-                        )
-                    }
+                    renderLibraryEntries(
+                        entries = entries,
+                        onArticleClick = onArticleClick,
+                        onFavorite = { viewModel.toggleFavorite(it) },
+                        onArchive = { viewModel.toggleArchive(it) },
+                        onDelete = { viewModel.deleteArticle(it) },
+                        onBookArchive = { viewModel.setBookGroupArchived(it, !it.chapters.all { c -> c.isArchived }) },
+                        onBookDelete = { viewModel.deleteBookGroup(it) }
+                    )
                 }
             }
         }
@@ -321,23 +326,239 @@ private fun FilterChipsRow(
     Spacer(modifier = Modifier.height(8.dp))
 }
 
+/**
+ * Render a mixed list of single articles and book groups. EPUB chapters in a
+ * group render as one collapsible header card; non-EPUB articles render as
+ * individual rows (unchanged behavior).
+ */
+private fun LazyListScope.renderLibraryEntries(
+    entries: List<LibraryListEntry>,
+    onArticleClick: (String) -> Unit,
+    onFavorite: (Article) -> Unit,
+    onArchive: (Article) -> Unit,
+    onDelete: (Article) -> Unit,
+    onBookArchive: (LibraryListEntry.BookGroup) -> Unit,
+    onBookDelete: (LibraryListEntry.BookGroup) -> Unit
+) {
+    items(entries, key = { it.key }) { entry ->
+        when (entry) {
+            is LibraryListEntry.SingleArticle -> ArticleCard(
+                article = entry.article,
+                onClick = { onArticleClick(entry.article.id) },
+                onFavorite = { onFavorite(entry.article) },
+                onArchive = { onArchive(entry.article) },
+                onDelete = { onDelete(entry.article) }
+            )
+            is LibraryListEntry.BookGroup -> BookGroupCard(
+                group = entry,
+                onChapterClick = { onArticleClick(it.id) },
+                onChapterFavorite = onFavorite,
+                onChapterArchive = onArchive,
+                onChapterDelete = onDelete,
+                onBookArchive = { onBookArchive(entry) },
+                onBookDelete = { onBookDelete(entry) }
+            )
+        }
+    }
+}
+
+@Composable
+private fun BookGroupCard(
+    group: LibraryListEntry.BookGroup,
+    onChapterClick: (Article) -> Unit,
+    onChapterFavorite: (Article) -> Unit,
+    onChapterArchive: (Article) -> Unit,
+    onChapterDelete: (Article) -> Unit,
+    onBookArchive: () -> Unit,
+    onBookDelete: () -> Unit
+) {
+    var expanded by rememberSaveable(group.sourceFileName) { mutableStateOf(false) }
+    var showMenu by remember { mutableStateOf(false) }
+    val chevronRotation by animateFloatAsState(
+        targetValue = if (expanded) 180f else 0f,
+        label = "bookGroupChevron"
+    )
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        )
+    ) {
+        Column(modifier = Modifier.fillMaxWidth()) {
+            // Header row: tap to expand/collapse
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { expanded = !expanded }
+                    .padding(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(getSourceTypeColor(SourceType.EPUB).copy(alpha = 0.15f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Book,
+                        contentDescription = null,
+                        tint = getSourceTypeColor(SourceType.EPUB),
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text(
+                        text = group.bookTitle,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    val subtitle = buildString {
+                        val chapterLabel = if (group.chapterCount == 1) "1 chapter" else "${group.chapterCount} chapters"
+                        append(chapterLabel)
+                        if (group.completedCount > 0) {
+                            append(" • ${group.completedCount}/${group.chapterCount} done")
+                        }
+                        group.author?.takeIf { it.isNotBlank() }?.let { append(" • $it") }
+                    }
+                    Text(
+                        text = subtitle,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+
+                Icon(
+                    imageVector = Icons.Default.ExpandMore,
+                    contentDescription = if (expanded) "Collapse" else "Expand",
+                    modifier = Modifier
+                        .size(24.dp)
+                        .rotate(chevronRotation),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                Box {
+                    IconButton(
+                        onClick = { showMenu = true },
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.MoreVert,
+                            contentDescription = stringResource(R.string.more_options),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    DropdownMenu(
+                        expanded = showMenu,
+                        onDismissRequest = { showMenu = false }
+                    ) {
+                        val allArchived = group.chapters.all { it.isArchived }
+                        DropdownMenuItem(
+                            text = { Text(if (allArchived) stringResource(R.string.unarchive) else stringResource(R.string.archive)) },
+                            onClick = {
+                                onBookArchive()
+                                showMenu = false
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = if (allArchived) Icons.Default.Unarchive else Icons.Default.Archive,
+                                    contentDescription = null
+                                )
+                            }
+                        )
+                        Divider()
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.delete)) },
+                            onClick = {
+                                onBookDelete()
+                                showMenu = false
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Default.Delete,
+                                    contentDescription = null,
+                                    tint = Red
+                                )
+                            }
+                        )
+                    }
+                }
+            }
+
+            // Chapter list, shown when expanded
+            AnimatedVisibility(visible = expanded) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 12.dp, end = 12.dp, bottom = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    group.chapters.forEach { chapter ->
+                        ArticleCard(
+                            article = chapter,
+                            onClick = { onChapterClick(chapter) },
+                            onFavorite = { onChapterFavorite(chapter) },
+                            onArchive = { onChapterArchive(chapter) },
+                            onDelete = { onChapterDelete(chapter) },
+                            titleOverride = chapterDisplayTitle(chapter.title, group.bookTitle),
+                            indent = true
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * For chapter rows nested inside a BookGroup, strip the repeated book-title
+ * prefix so each row shows just the chapter/part name.
+ */
+private fun chapterDisplayTitle(rawTitle: String?, bookTitle: String): String {
+    val title = rawTitle?.takeIf { it.isNotBlank() } ?: return "Untitled"
+    val sep = " — "
+    val idx = title.indexOf(sep)
+    if (idx >= 0) {
+        val prefix = title.substring(0, idx)
+        if (prefix.equals(bookTitle, ignoreCase = true)) {
+            return title.substring(idx + sep.length).trim().ifEmpty { title }
+        }
+    }
+    return title
+}
+
 @Composable
 private fun ArticleCard(
     article: Article,
     onClick: () -> Unit,
     onFavorite: () -> Unit,
     onArchive: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    titleOverride: String? = null,
+    indent: Boolean = false
 ) {
     var showMenu by remember { mutableStateOf(false) }
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
+            .then(if (indent) Modifier.padding(start = 16.dp) else Modifier)
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
+            containerColor = if (indent) MaterialTheme.colorScheme.surface
+            else MaterialTheme.colorScheme.surfaceVariant
         )
     ) {
         Row(
@@ -378,7 +599,7 @@ private fun ArticleCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
-                        text = article.displayTitle,
+                        text = titleOverride ?: article.displayTitle,
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Medium,
                         maxLines = 2,
