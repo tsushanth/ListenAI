@@ -8,7 +8,10 @@ This repo is part of a portfolio shared between Sushanth (`t.sushanth@gmail.com`
 
 | Fly app | Location in repo |
 |---------|------------------|
-
+| `listenai-backend` | `backend/` |
+| `listenai-tts-worker` | `tts-service-cpu-test/` |
+| `readaloud-tts` | `tts-service/` |
+| `readaloud-web` | `web/` |
 
 Authoritative deploy steps (run from inside the Fly app's subdir, where the `fly.toml` lives):
 
