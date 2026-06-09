@@ -1,27 +1,31 @@
-# CLAUDE.md — instructions for Claude running in this repo
+# CLAUDE.md — instructions for any Claude session in this repo
 
-This file is read at the start of every Claude Code session. The rules below override default Claude behavior. **Always follow them.**
+Read this at the start of every session. The rules below override default Claude behavior.
 
-This repo is part of a portfolio shared between Sushanth (`t.sushanth@gmail.com`) and his wife. Multiple Claudes may be operating in parallel. The conventions exist to prevent one Claude from clobbering work, leaking secrets, or breaking a deploy because it didn't know the rules of the shared environment.
+This repo is part of a portfolio shared between Sushanth (`t.sushanth@gmail.com`) and his wife. Multiple Claudes may operate in parallel across these repos. The conventions exist to prevent one Claude from clobbering work, leaking secrets, or breaking a deploy because it didn't know the rules of the shared environment.
 
-## Fly.io app for this repo
+## Fly.io app(s) in this repo
 
-This repo deploys to Fly app **`listenai-backend`**. Authoritative deploy steps:
+| Fly app | Location in repo |
+|---------|------------------|
+
+
+Authoritative deploy steps (run from inside the Fly app's subdir, where the `fly.toml` lives):
 
 ```bash
-# Verify auth (do this first if anything goes sideways)
+# 1. Confirm you're authed
 flyctl auth whoami
 
-# List the secrets currently configured on Fly (source of truth — names only)
-flyctl secrets list -a listenai-backend
+# 2. List the secrets currently configured on Fly — this is the source of truth
+flyctl secrets list -a <fly-app-name>
 
-# Deploy
+# 3. Deploy
 flyctl deploy
 ```
 
 ## Hard rules for Fly secrets
 
-1. **Fly.io is the source of truth for secrets.** `.env.example` (if present in this repo) is for local-dev hinting only. If `.env.example` and `flyctl secrets list` disagree, trust Fly.
+1. **Fly.io is the source of truth for secrets.** `.env.example` (if present) is for local-dev hinting only and may be stale. If `.env.example` and `flyctl secrets list` disagree, trust Fly.
 
 2. **NEVER `flyctl secrets set` to overwrite or rotate an existing secret unless the user explicitly asks.** Overwriting destroys the prior value — there is no undo. This applies even when "fixing" a name (e.g. renaming `ANTHROPIC_KEY` → `ANTHROPIC_API_KEY`).
 
@@ -31,21 +35,21 @@ flyctl deploy
 
 5. **Don't guess secret names from code.** If `process.env.X` doesn't appear in `flyctl secrets list`, three things are possible: (a) the code is dead, (b) the env var name in Fly differs from what the code reads (there may be a wrapper that aliases), or (c) there's a real gap. Ask the user before assuming (c) and adding it.
 
-6. **`flyctl deploy` from a fresh clone is safe** — Fly's server-side secret store persists across deploys and across machines. Your push doesn't need to "ship" the secrets.
+6. **`flyctl deploy` from a fresh clone is safe** — Fly's server-side secret store persists across deploys and machines. Your push doesn't need to "ship" the secrets.
 
-7. **Build-time vars are different.** If the `Dockerfile` declares `ARG XYZ` and uses `$XYZ` in `RUN`, that needs `--build-arg` or `--build-secret` at build time, NOT a Fly runtime secret. Check `Dockerfile` for `ARG` first.
+7. **Build-time vars are different.** If a `Dockerfile` declares `ARG XYZ` and uses `$XYZ` in `RUN`, that needs `--build-arg` or `--build-secret` at build time, NOT a Fly runtime secret. Check the `Dockerfile` for `ARG` first.
 
-## Pre-push secrets-scan hook (install once per machine)
+## Pre-push secrets-scan hook
 
-This repo has a global `pre-push` hook that blocks commits containing API keys, private keys, OAuth secrets, etc. If you don't have it installed yet, run this one-time setup:
+This repo includes a one-time installer for a machine-wide pre-push hook that blocks commits containing API keys, private keys, OAuth secrets, etc. **If you haven't installed it yet on this machine, run:**
 
 ```bash
 bash scripts/install-secrets-hook.sh
 ```
 
-The script writes `~/.git-hooks/pre-push` and points git's global `core.hooksPath` at it. The hook then runs on every `git push` from every repo on this machine.
+This writes `~/.git-hooks/pre-push` and sets git's global `core.hooksPath`. After install, the hook runs on every `git push` from every repo on this machine. The script is idempotent — safe to re-run.
 
-**Do not disable or bypass the hook without explicit user permission.** If a push is blocked, read the output — it points at the offending line/file/pattern. Fix the secret, don't work around the scanner. Bypass syntax exists (`SKIP_SECRETS_SCAN=1 git push`) but should only be used after confirming the match is a true false positive.
+**Do not disable or bypass the hook without explicit user permission.** If a push is blocked, read the output — it points at the offending line, file, or pattern. Fix the secret; don't work around the scanner. A bypass exists (`SKIP_SECRETS_SCAN=1 git push`) but use it only after confirming the match is a true false positive.
 
 ## LLM API keys
 
