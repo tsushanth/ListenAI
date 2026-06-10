@@ -14,6 +14,7 @@ import {
   upsertCacheEntry,
   uploadAudioToCache,
   updateTTSJobProgress,
+  getQueueInfo,
   supabase,
 } from '../lib/supabaseClient.js';
 import {
@@ -24,6 +25,19 @@ import {
 import { ttsProvider, estimateCost, estimateDurationMs } from '../lib/ttsProviderClient.js';
 import { hasRequiredTier } from '../lib/auth.js';
 import { MAX_TEXT_LENGTH, TIER_LIMITS, CHARS_PER_SECOND } from '../lib/config.js';
+
+/**
+ * Coerce a voice identifier to a UUID-safe value for the `tts_usage.voice_id`
+ * column. Built-in voice IDs are strings like `af_bella` / `am_michael` and
+ * can't be inserted into a UUID column without raising Postgres error 22P02
+ * ("invalid input syntax for type uuid"). The provider-side identifier is
+ * still preserved via `provider_voice_id`, so we don't lose information.
+ */
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+function toUuidOrNull(value: string | null | undefined): string | null {
+  return value && UUID_RE.test(value) ? value : null;
+}
 import {
   normalizeVoiceId,
   getVoiceInfo,
@@ -305,7 +319,7 @@ ttsRouter.post('/', asyncHandler(async (req: AuthenticatedRequest, res: Response
 
   await logTTSUsage({
     user_id: userId,
-    voice_id: voice_id,
+    voice_id: toUuidOrNull(voice_id),
     provider: 'selfhosted',
     provider_voice_id: voice.provider_voice_id,
     characters_used: characterCount,
@@ -529,7 +543,7 @@ ttsRouter.post('/stream', asyncHandler(async (req: AuthenticatedRequest, res: Re
 
   await logTTSUsage({
     user_id: userId,
-    voice_id: voice_id,
+    voice_id: toUuidOrNull(voice_id),
     provider: 'selfhosted',
     provider_voice_id: kokoroVoiceId,
     characters_used: characterCount,
@@ -847,6 +861,10 @@ ttsRouter.get('/job/:jobId', asyncHandler(async (req: AuthenticatedRequest, res:
     const percentage = calculatePercentage(cachedProgress);
     const estimatedRemainingSec = calculateEstimatedRemaining(cachedProgress);
 
+    // Cheap two-COUNT query for global queue context (used by client to show
+    // "Use offline AI instead" CTA when queue_depth > 5).
+    const { queueDepth, queuePosition } = await getQueueInfo(jobId);
+
     const response: TTSJobStatusResponse = {
       job_id: jobId,
       status: cachedProgress.status,  // 'processing' or 'partial_ready'
@@ -858,13 +876,15 @@ ttsRouter.get('/job/:jobId', asyncHandler(async (req: AuthenticatedRequest, res:
         percentage,
         estimated_remaining_sec: estimatedRemainingSec ?? undefined,
       },
+      queue_depth: queueDepth,
+      queue_position: queuePosition,
       preview_url: cachedProgress.previewUrl,
       preview_duration_sec: cachedProgress.previewDurationSec,
       created_at: new Date(cachedProgress.startedAt).toISOString(),
       updated_at: new Date().toISOString(),
     };
 
-    ttsLogger.debug({ jobId, status: cachedProgress.status, percentage }, 'Job progress from memory cache');
+    ttsLogger.debug({ jobId, status: cachedProgress.status, percentage, queueDepth, queuePosition }, 'Job progress from memory cache');
     res.json(response);
     return;
   }
@@ -972,6 +992,10 @@ ttsRouter.get('/job/:jobId', asyncHandler(async (req: AuthenticatedRequest, res:
     }
   }
 
+  // Compute queue context (only meaningful while job is queued/processing).
+  // For terminal states queue_position is null; queue_depth still reflects current system load.
+  const { queueDepth, queuePosition } = await getQueueInfo(jobId);
+
   // Build response
   const response: TTSJobStatusResponse = {
     job_id: job.id,
@@ -984,6 +1008,8 @@ ttsRouter.get('/job/:jobId', asyncHandler(async (req: AuthenticatedRequest, res:
       percentage,
       estimated_remaining_sec: estimatedRemainingSec,  // Estimated synthesis time remaining
     },
+    queue_depth: queueDepth,
+    queue_position: queuePosition,
     audio_url: audioUrl,
     preview_url: previewUrl,
     preview_duration_sec: previewDurationSec,
@@ -1084,15 +1110,15 @@ ttsRouter.post('/cloned', asyncHandler(async (req: AuthenticatedRequest, res: Re
     'Cloned voice synthesis request'
   );
 
-  // 2. Get GPU TTS service URL from config
-  const gpuTtsUrl = process.env.GPU_TTS_URL;
-  if (!gpuTtsUrl) {
-    ttsLogger.error('GPU_TTS_URL not configured');
-    throw new Error('GPU TTS service not configured');
+  // 2. Get cloning TTS service URL (Chatterbox/XTTS host, separate from Kokoro)
+  const cloningTtsUrl = process.env.CHATTERBOX_URL || process.env.GPU_TTS_URL;
+  if (!cloningTtsUrl) {
+    ttsLogger.error('CHATTERBOX_URL (or GPU_TTS_URL) not configured');
+    throw new Error('Cloning TTS service not configured');
   }
 
   // 3. Forward request to tts-service /synthesize-cloned endpoint
-  const ttsServiceUrl = `${gpuTtsUrl}/synthesize-cloned`;
+  const ttsServiceUrl = `${cloningTtsUrl}/synthesize-cloned`;
 
   ttsLogger.info(
     { ttsServiceUrl, voiceId, voiceUrl: voiceUrl.substring(0, 50) + '...', textLen: characterCount },
