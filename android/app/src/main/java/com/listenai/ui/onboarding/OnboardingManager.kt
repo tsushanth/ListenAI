@@ -9,7 +9,7 @@ import kotlinx.coroutines.flow.StateFlow
  * Manages onboarding state and completion tracking for ListenAI.
  * Ensures onboarding only shows on first launch or when version increments.
  */
-class OnboardingManager(context: Context) {
+class OnboardingManager(private val context: Context) {
 
     private val prefs: SharedPreferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
@@ -72,20 +72,43 @@ class OnboardingManager(context: Context) {
     }
 
     /**
-     * Navigate to the next page.
+     * Navigate to the next page. `OFFLINE_DOWNLOAD` is skipped automatically
+     * when the user opted for cloud TTS on the voice picker — there's
+     * nothing to download in that case.
      */
     fun nextPage() {
-        _currentPage.value.next?.let {
-            _currentPage.value = it
+        var candidate = _currentPage.value.next
+        while (candidate != null && !shouldShow(candidate)) {
+            candidate = candidate.next
         }
+        candidate?.let { _currentPage.value = it }
     }
 
     /**
-     * Navigate to the previous page.
+     * Navigate to the previous page. Mirrors `nextPage` skip logic.
      */
     fun previousPage() {
-        _currentPage.value.previous?.let {
-            _currentPage.value = it
+        var candidate = _currentPage.value.previous
+        while (candidate != null && !shouldShow(candidate)) {
+            candidate = candidate.previous
+        }
+        candidate?.let { _currentPage.value = it }
+    }
+
+    /**
+     * Whether a given page should be shown in the current onboarding state.
+     * Reads directly from SharedPreferences so we don't need a separate
+     * VoicePresetManager-shaped dependency on Android.
+     */
+    private fun shouldShow(page: OnboardingPage): Boolean {
+        return when (page) {
+            OnboardingPage.OFFLINE_DOWNLOAD -> {
+                // Only show the model-download page if the user picked
+                // on-device Kokoro on the previous picker.
+                val settingsPrefs = context.getSharedPreferences("listenai_settings", Context.MODE_PRIVATE)
+                settingsPrefs.getBoolean("use_offline_kokoro", false)
+            }
+            else -> true
         }
     }
 
@@ -129,7 +152,18 @@ enum class OnboardingPage(val index: Int) {
     TAKE_NOTES(2),
     PRODUCTIVITY(3),
     VOICE_SELECTION(4),
-    PAYWALL(5);
+    /**
+     * "Choose your voice" — Premium (Cloud Kokoro) vs On-device Kokoro.
+     * Two audibly different samples; selection writes
+     * `SettingsManager.useOfflineKokoro`.
+     */
+    VOICE_PICKER(5),
+    /**
+     * "Download Kokoro for offline?" — only shown when the user picked
+     * on-device Kokoro on VOICE_PICKER. Kicks off the model download.
+     */
+    OFFLINE_DOWNLOAD(6),
+    PAYWALL(7);
 
     val next: OnboardingPage?
         get() = entries.find { it.index == index + 1 }
@@ -148,4 +182,5 @@ enum class OnboardingPage(val index: Int) {
 
     val showsSkipButton: Boolean
         get() = this != PAYWALL && this != VOICE_SELECTION
+            && this != VOICE_PICKER && this != OFFLINE_DOWNLOAD
 }

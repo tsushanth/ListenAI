@@ -2,6 +2,10 @@
 <resources>
     <string name="app_name">ReadAloud AI</string>
 
+    <!-- Meta / Facebook SDK -->
+    <string name="facebook_app_id">1550416256518249</string>
+    <string name="facebook_client_token">f910f6a8466611d75d4f612740c5e8a8</string>
+
     <!-- Tab Labels -->
     <string name="tab_home">Home</string>
     <string name="tab_library">My Library</string>
@@ -317,6 +321,13 @@
     <string name="settings_voice_cloning_subtitle">Create a custom voice from your recording</string>
     <string name="settings_voice_marketplace">Voice Marketplace</string>
     <string name="settings_voice_marketplace_subtitle">Browse and share community voices</string>
+    <string name="settings_offline_ai">Offline AI</string>
+    <string name="settings_offline_ai_subtitle_ready">On-device model ready · works without internet</string>
+    <string name="settings_offline_ai_subtitle_not_ready">Generate audio on-device, no internet required</string>
+    <string name="settings_offline_ai_subtitle_ineligible">Not supported on this device (needs Android 8+ and 3 GB RAM)</string>
+    <string name="settings_offline_ai_downloading">Downloading on-device model…</string>
+    <string name="settings_offline_ai_waiting_wifi">Waiting for Wi-Fi…</string>
+    <string name="settings_offline_ai_allow_cellular">Allow cellular download</string>
 
     <!-- General -->
     <string name="pro">PRO</string>

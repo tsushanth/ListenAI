@@ -287,23 +287,25 @@ private fun VoiceCard(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     // Rating
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            Icons.Default.Star,
-                            contentDescription = null,
-                            modifier = Modifier.size(16.dp),
-                            tint = Color(0xFFFFB800)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = String.format("%.1f", voice.avgRating),
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                        Text(
-                            text = " (${voice.ratingCount})",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                    if (voice.ratingCount > 0) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                Icons.Default.Star,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                                tint = Color(0xFFFFB800)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = String.format("%.1f", voice.avgRating),
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                            Text(
+                                text = " (${voice.ratingCount})",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
 
                     // Usage count

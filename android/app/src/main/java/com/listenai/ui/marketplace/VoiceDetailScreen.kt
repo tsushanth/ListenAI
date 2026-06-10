@@ -233,9 +233,9 @@ fun VoiceDetailScreen(
                     ) {
                         StatItem(
                             icon = Icons.Default.Star,
-                            value = String.format("%.1f", voice!!.avgRating),
-                            label = "${voice!!.ratingCount} ratings",
-                            iconTint = Color(0xFFFFB800)
+                            value = if (voice!!.ratingCount > 0) String.format("%.1f", voice!!.avgRating) else "—",
+                            label = if (voice!!.ratingCount > 0) "${voice!!.ratingCount} ratings" else "No ratings yet",
+                            iconTint = if (voice!!.ratingCount > 0) Color(0xFFFFB800) else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         StatItem(
                             icon = Icons.Default.PlayArrow,

@@ -50,7 +50,7 @@ class AuthService(private val context: Context) {
     val error: StateFlow<AuthError?> = _error.asStateFlow()
 
     // Configuration
-    private var backendUrl: String = "https://listenai-backend-917362189743.us-central1.run.app"
+    private var backendUrl: String = "https://listenai-backend.fly.dev"
 
     // HTTP client
     private val httpClient = OkHttpClient.Builder()

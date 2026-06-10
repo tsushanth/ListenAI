@@ -36,7 +36,7 @@ class CloudTTSService(private val context: Context) : TTSService {
         .build()
 
     // Backend URL - should be configured from settings
-    private var baseUrl: String = "https://listenai-backend-917362189743.us-central1.run.app"
+    private var baseUrl: String = "https://listenai-backend.fly.dev"
 
     fun configure(baseUrl: String) {
         this.baseUrl = baseUrl

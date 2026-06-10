@@ -92,6 +92,7 @@ object TTSServiceFactory {
 
     private var onDeviceService: OnDeviceTTSService? = null
     private var cloudService: CloudTTSService? = null
+    private var kokoroOnDeviceService: KokoroOnDeviceService? = null
 
     /**
      * Get or create the on-device TTS service
@@ -112,17 +113,71 @@ object TTSServiceFactory {
     }
 
     /**
-     * Get the appropriate service for a voice
+     * Get or create the on-device Kokoro service (ONNX Runtime).
+     */
+    fun getKokoroOnDeviceService(context: android.content.Context): KokoroOnDeviceService {
+        return kokoroOnDeviceService ?: KokoroOnDeviceService(context).also {
+            kokoroOnDeviceService = it
+        }
+    }
+
+    /**
+     * Get the appropriate service for a voice.
+     *
+     * For Kokoro voices (`VoiceProvider.SELF_HOSTED`), the routing now
+     * consults the user's onboarding pick:
+     *   - If they opted into on-device Kokoro **and** the model is on
+     *     disk, route to [KokoroOnDeviceService].
+     *   - Otherwise, route to the cloud (existing `listenai-tts-worker`).
+     *
+     * This makes the onboarding picker honest: if the user picked
+     * on-device but the model hasn't finished downloading yet, the cloud
+     * worker keeps serving audio in the interim — no broken state.
      */
     fun getServiceForVoice(
         context: android.content.Context,
         voice: VoicePreset,
         preferCloud: Boolean = true
     ): TTSService {
+        // Honor explicit on-device routing for any voice tagged Kokoro
+        // when the model is ready.
+        if (voice.provider == VoiceProvider.KOKORO_ON_DEVICE ||
+            (voice.provider == VoiceProvider.SELF_HOSTED &&
+                shouldUseOnDeviceKokoro(context))) {
+            val svc = getKokoroOnDeviceService(context)
+            val onDisk = KokoroModelDownloader.getInstance(context).isModelOnDisk()
+            val ready = svc.isInferenceReady()
+            android.util.Log.i(
+                "TTSServiceFactory",
+                "getServiceForVoice: voice=${voice.providerVoiceId} provider=${voice.provider} onDisk=$onDisk ready=$ready"
+            )
+            // Block the on-device path until the inference engine is wired
+            // up *and* the model is on disk. Until then, fall through to
+            // cloud — the user's picker preference is preserved, just the
+            // delivery uses cloud as the silent fallback.
+            if (onDisk && ready) {
+                android.util.Log.i("TTSServiceFactory", "Routing to on-device Kokoro")
+                return svc
+            } else {
+                android.util.Log.i(
+                    "TTSServiceFactory",
+                    "On-device gate failed → falling back to cloud (onDisk=$onDisk, ready=$ready)"
+                )
+            }
+        }
         return when {
             voice.provider == VoiceProvider.ANDROID -> getOnDeviceService(context)
             voice.provider.isCloud && preferCloud -> getCloudService(context)
             else -> getOnDeviceService(context)
+        }
+    }
+
+    private fun shouldUseOnDeviceKokoro(context: android.content.Context): Boolean {
+        return try {
+            com.listenai.service.settings.SettingsManager.getInstance(context)
+                .useOfflineKokoro.value
+        } catch (e: Exception) {
+            false
         }
     }
 

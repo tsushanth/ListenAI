@@ -147,7 +147,7 @@ class GoogleAuthService(private val context: Context) {
         .readTimeout(30, TimeUnit.SECONDS)
         .build()
 
-    private var baseUrl: String = "https://listenai-backend-917362189743.us-central1.run.app"
+    private var baseUrl: String = "https://listenai-backend.fly.dev"
 
     init {
         loadStoredCredentials()

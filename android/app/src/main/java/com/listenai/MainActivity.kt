@@ -2,7 +2,9 @@ package com.listenai
 
 import android.app.Activity
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
+import com.kreativekoala.paywallkit.manager.PromoCodeManager
 import android.util.Log
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -32,6 +34,7 @@ import com.kreativekoala.paywallkit.models.PaywallFeature
 import com.kreativekoala.paywallkit.models.PaywallProduct
 import com.kreativekoala.paywallkit.models.PaywallTheme
 import com.kreativekoala.paywallkit.view.PaywallView
+import com.kreativekoala.ratingkit.RatingKit
 import com.revenuecat.purchases.PackageType
 import kotlinx.coroutines.launch
 import org.koin.android.ext.android.inject
@@ -49,7 +52,25 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        PromoCodeManager.handleIntent(intent)
         enableEdgeToEdge()
+
+        // Track app open for RatingKit
+        RatingKit.trackAppOpen(this)
+
+        // Fire RatingKit's purchase peak whenever isPremium flips true during
+        // this session — catches every paywall path (onboarding, soft, hard,
+        // settings). Skip the initial emission so already-subscribed users
+        // don't get re-prompted on every cold start.
+        lifecycleScope.launch {
+            var first = true
+            RevenueCatManager.getInstance().isPremium.collect { premium ->
+                if (premium && !first) {
+                    RatingKit.trackPurchase(this@MainActivity)
+                }
+                first = false
+            }
+        }
 
         // Initialize onboarding manager
         onboardingManager = OnboardingManager.getInstance(this)
@@ -125,6 +146,7 @@ class MainActivity : AppCompatActivity() {
 
                                 PaywallView(
                                     appId = "readaloudai",
+                                    placement = if (com.kreativekoala.paywallkit.manager.PromoCodeManager.activeCode != null) "promo_code_onboarding" else "onboarding",
                                     appName = "ReadAloud AI",
                                     features = features,
                                     products = paywallProducts,
@@ -139,6 +161,8 @@ class MainActivity : AppCompatActivity() {
                                         if (pkg != null) {
                                             lifecycleScope.launch {
                                                 revenueCatManager.purchase(activity, pkg)
+                                                // trackPurchase fires from the isPremium observer above —
+                                                // catches all paywall paths, not just this one.
                                             }
                                         }
                                     },
@@ -146,6 +170,11 @@ class MainActivity : AppCompatActivity() {
                                         lifecycleScope.launch {
                                             revenueCatManager.restorePurchases()
                                         }
+                                    },
+                                    onRedeemCode = {
+                                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/redeem?code=promo-1month-free"))
+                                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                        try { startActivity(intent) } catch (_: Exception) {}
                                     },
                                     onDismiss = {
                                         paywallDismissed = true

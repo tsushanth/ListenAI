@@ -71,10 +71,31 @@ android {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
+        // 16 KB page-size support — required by Google Play for new uploads.
+        // We don't ship any of our own NDK libs but we want to keep
+        // legacy packaging off so AGP doesn't fall back to the 4 KB path
+        // for any AAR-bundled .so we pull in.
+        jniLibs {
+            useLegacyPackaging = false
+        }
     }
 }
 
 dependencies {
+    // ONNX Runtime for on-device Kokoro TTS inference (Android v2 path).
+    // Use `onnxruntime-android` ≥ 1.22.0 — earlier 1.20.x and 1.21.x ship
+    // `libonnxruntime.so` 16 KB-aligned but the JNI bridge
+    // `libonnxruntime4j_jni.so` is still 4 KB-aligned, which trips the
+    // Android PageSizeMismatchDialog on 16 KB-page devices (Pixel 9 family)
+    // and blocks Play Store uploads. 1.22.0 is the first release that
+    // ships *both* .so files 16 KB-aligned.
+    implementation("com.microsoft.onnxruntime:onnxruntime-android:1.22.0")
+
+    // WorkManager — used to run the ~80 MB Kokoro model download as a
+    // foreground-promoted background task so it survives app
+    // backgrounding, process death, network changes, and screen-off.
+    implementation("androidx.work:work-runtime-ktx:2.9.1")
+
     // Core Android
     implementation("androidx.core:core-ktx:1.12.0")
     implementation("androidx.appcompat:appcompat:1.7.0")
@@ -153,8 +174,14 @@ dependencies {
     // PaywallKit
     implementation(project(":paywallkit"))
 
+    // RatingKit
+    implementation(project(":ratingkit"))
+
     // TikTok Events SDK (install attribution & event tracking)
     implementation("com.github.tiktok:tiktok-business-android-sdk:1.6.0")
+
+    // Meta / Facebook SDK (app events for Meta Ads attribution)
+    implementation("com.facebook.android:facebook-android-sdk:17.0.1")
 
     // Chrome Custom Tabs for OAuth
     implementation("androidx.browser:browser:1.8.0")

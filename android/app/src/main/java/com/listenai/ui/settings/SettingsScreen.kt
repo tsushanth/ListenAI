@@ -17,6 +17,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -27,6 +28,8 @@ import androidx.core.os.LocaleListCompat
 import com.listenai.R
 import com.listenai.service.billing.RevenueCatManager
 import com.listenai.service.settings.SettingsManager
+import com.listenai.service.tts.KokoroModelDownloader
+import com.listenai.service.tts.KokoroOnDeviceService
 import com.listenai.ui.theme.*
 import com.kreativekoala.paywallkit.models.PaywallFeature
 import com.kreativekoala.paywallkit.models.PaywallTheme
@@ -60,6 +63,13 @@ fun SettingsScreen(
     val appearanceMode by settingsManager.appearanceMode.collectAsState()
     val skipInterval by settingsManager.skipInterval.collectAsState()
     val sleepTimerDefault by settingsManager.sleepTimerDefault.collectAsState()
+
+    // Offline AI (on-device Kokoro) state
+    val useOfflineKokoro by settingsManager.useOfflineKokoro.collectAsState()
+    val allowCellularDownload by settingsManager.allowCellularModelDownload.collectAsState()
+    val kokoroDownloader = remember { KokoroModelDownloader.getInstance(context) }
+    val kokoroState by kokoroDownloader.state.collectAsState()
+    val isOnDeviceEligible = remember { KokoroOnDeviceService.isDeviceEligible(context) }
 
     // Subscription state
     val revenueCatManager = remember { RevenueCatManager.getInstance() }
@@ -180,6 +190,29 @@ fun SettingsScreen(
                     title = stringResource(R.string.settings_voice_marketplace),
                     subtitle = stringResource(R.string.settings_voice_marketplace_subtitle),
                     onClick = onNavigateToMarketplace
+                )
+
+                HorizontalDivider(modifier = Modifier.padding(start = 56.dp))
+
+                OfflineAIRow(
+                    eligible = isOnDeviceEligible,
+                    enabled = useOfflineKokoro,
+                    state = kokoroState,
+                    allowCellularDownload = allowCellularDownload,
+                    onToggle = { newValue ->
+                        settingsManager.setUseOfflineKokoro(newValue)
+                        if (newValue && isOnDeviceEligible) {
+                            kokoroDownloader.startIfPossible()
+                        } else {
+                            kokoroDownloader.cancel()
+                        }
+                    },
+                    onToggleCellular = { newValue ->
+                        settingsManager.setAllowCellularModelDownload(newValue)
+                        if (useOfflineKokoro && isOnDeviceEligible) {
+                            kokoroDownloader.startIfPossible()
+                        }
+                    }
                 )
 
                 HorizontalDivider(modifier = Modifier.padding(start = 56.dp))
@@ -688,6 +721,149 @@ private fun SettingsSection(
         ) {
             Column {
                 content()
+            }
+        }
+    }
+}
+
+/**
+ * Settings row for the on-device Kokoro (Offline AI) toggle. Mirrors the
+ * iOS `offlineAIRow` shape:
+ *   - Always-visible icon + title + status subtitle + toggle
+ *   - Toggle disabled when the device isn't eligible
+ *   - Progress bar + percent label while the model is downloading
+ *   - "Waiting for Wi-Fi" hint when WorkManager is gating the download
+ *   - Inline error message under the toggle when the last download failed
+ *   - "Allow cellular download" sub-toggle, hidden once the model is on disk
+ */
+@Composable
+private fun OfflineAIRow(
+    eligible: Boolean,
+    enabled: Boolean,
+    state: KokoroModelDownloader.State,
+    allowCellularDownload: Boolean,
+    onToggle: (Boolean) -> Unit,
+    onToggleCellular: (Boolean) -> Unit
+) {
+    val subtitleRes = when {
+        !eligible -> R.string.settings_offline_ai_subtitle_ineligible
+        state is KokoroModelDownloader.State.Ready -> R.string.settings_offline_ai_subtitle_ready
+        else -> R.string.settings_offline_ai_subtitle_not_ready
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(Teal.copy(alpha = 0.15f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.PhoneAndroid,
+                    contentDescription = null,
+                    tint = Teal,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
+                Text(
+                    text = stringResource(R.string.settings_offline_ai),
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium
+                )
+                Text(
+                    text = stringResource(subtitleRes),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Switch(
+                checked = enabled && eligible,
+                onCheckedChange = onToggle,
+                enabled = eligible
+            )
+        }
+
+        if (enabled && eligible && state is KokoroModelDownloader.State.Downloading) {
+            Column(
+                modifier = Modifier.padding(start = 48.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    LinearProgressIndicator(
+                        progress = { state.percent / 100f },
+                        modifier = Modifier.weight(1f)
+                    )
+                    Text(
+                        text = "${state.percent}%",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Text(
+                    text = stringResource(R.string.settings_offline_ai_downloading),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+
+        if (enabled && eligible && state is KokoroModelDownloader.State.WaitingForWifi) {
+            Text(
+                text = stringResource(R.string.settings_offline_ai_waiting_wifi),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 48.dp)
+            )
+        }
+
+        if (enabled && eligible && state is KokoroModelDownloader.State.Failed) {
+            Text(
+                text = state.message,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(start = 48.dp)
+            )
+        }
+
+        // Cellular policy sub-toggle. Only meaningful when offline AI is on
+        // AND the model isn't already downloaded. Hide once Ready to keep
+        // the row tidy — matches iOS behavior.
+        if (enabled && eligible && state !is KokoroModelDownloader.State.Ready) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 48.dp, top = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = stringResource(R.string.settings_offline_ai_allow_cellular),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.weight(1f)
+                )
+                Switch(
+                    checked = allowCellularDownload,
+                    onCheckedChange = onToggleCellular,
+                    modifier = Modifier.scale(0.85f)
+                )
             }
         }
     }

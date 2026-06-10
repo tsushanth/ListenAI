@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.DisposableEffect
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -44,10 +45,13 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.ui.res.stringResource
 import com.listenai.R
 import com.listenai.data.models.VoicePreset
+import com.kreativekoala.paywallkit.models.PaywallFeature
+import com.kreativekoala.paywallkit.models.PaywallProduct
+import com.kreativekoala.paywallkit.models.PaywallTheme
+import com.kreativekoala.paywallkit.view.PaywallView
 import com.listenai.service.billing.RevenueCatManager
 import com.listenai.ui.theme.*
-import com.revenuecat.purchases.ui.revenuecatui.Paywall
-import com.revenuecat.purchases.ui.revenuecatui.PaywallOptions
+import com.revenuecat.purchases.PackageType
 
 // Theme colors for onboarding - Light mode
 private val WarmBackgroundLight = Color(0xFFFFF8E7)
@@ -114,6 +118,10 @@ fun OnboardingScreen(
                         onVoiceSelected = { voiceId ->
                             onboardingManager.setSelectedVoice(voiceId)
                         }
+                    )
+                    OnboardingPage.VOICE_PICKER -> VoicePickerPage()
+                    OnboardingPage.OFFLINE_DOWNLOAD -> OfflineDownloadPage(
+                        onContinue = { onboardingManager.nextPage() }
                     )
                     OnboardingPage.PAYWALL -> PaywallPage(
                         onComplete = {
@@ -881,41 +889,83 @@ private fun parseHexColor(hex: String): Color {
 private fun PaywallPage(
     onComplete: () -> Unit
 ) {
+    val context = LocalContext.current
+    val activity = context as? android.app.Activity
     val revenueCatManager = remember { RevenueCatManager.getInstance() }
     val isPremium by revenueCatManager.isPremium.collectAsState()
+    val packages by revenueCatManager.packages.collectAsState()
     val wasPremiumOnOpen = remember { isPremium }
+    val scope = rememberCoroutineScope()
 
-    // If user becomes premium during this page (new purchase), advance
     LaunchedEffect(isPremium) {
         if (isPremium && !wasPremiumOnOpen) {
             onComplete()
         }
     }
 
-    // Use RevenueCat's dashboard-configured paywall
-    Box(modifier = Modifier.fillMaxSize()) {
-        Paywall(
-            options = PaywallOptions.Builder(dismissRequest = { onComplete() })
-                .setShouldDisplayDismissButton(true)
-                .build()
-        )
-
-        // Close button overlay (top-right)
-        IconButton(
-            onClick = onComplete,
+    if (packages.isEmpty()) {
+        Box(
             modifier = Modifier
-                .align(Alignment.TopEnd)
-                .statusBarsPadding()
-                .padding(8.dp)
-                .size(40.dp)
-                .background(Color.Black.copy(alpha = 0.3f), CircleShape)
+                .fillMaxSize()
+                .background(Color(0xFF0A0A0F)),
+            contentAlignment = Alignment.Center
         ) {
-            Icon(
-                imageVector = Icons.Default.Close,
-                contentDescription = stringResource(R.string.skip),
-                tint = Color.White,
-                modifier = Modifier.size(20.dp)
+            CircularProgressIndicator(color = Color(0xFF6C63FF))
+        }
+    } else {
+        // Only show packages PaywallKit can properly represent (skip 3-month, 6-month, etc.)
+        val supportedPackages = packages.filter { pkg ->
+            pkg.packageType in listOf(PackageType.WEEKLY, PackageType.MONTHLY, PackageType.ANNUAL)
+        }
+        val paywallProducts = supportedPackages.map { pkg ->
+            PaywallProduct(
+                id = pkg.product.id,
+                localizedPrice = pkg.product.price.formatted,
+                price = pkg.product.price.amountMicros / 1_000_000.0,
+                currencyCode = pkg.product.price.currencyCode,
+                trialDays = 3,
+                period = when (pkg.packageType) {
+                    PackageType.WEEKLY -> PaywallProduct.Period.WEEKLY
+                    PackageType.MONTHLY -> PaywallProduct.Period.MONTHLY
+                    PackageType.ANNUAL -> PaywallProduct.Period.YEARLY
+                    else -> PaywallProduct.Period.MONTHLY
+                }
             )
         }
+
+        val features = listOf(
+            PaywallFeature("\uD83D\uDD0A", "Unlimited Listening", "Listen without limits"),
+            PaywallFeature("\uD83C\uDF99\uFE0F", "Premium Voices", "Natural AI voices"),
+            PaywallFeature("\uD83D\uDCC4", "Any Document", "PDF, ePub, web pages"),
+            PaywallFeature("\u26A1", "Speed Controls", "Adjust playback speed"),
+            PaywallFeature("\uD83D\uDCE5", "Offline Mode", "Download for offline")
+        )
+
+        PaywallView(
+            appId = "readaloudai",
+            appName = "ReadAloud AI",
+            features = features,
+            products = paywallProducts,
+            theme = PaywallTheme(
+                accent = Color(0xFF6C63FF),
+                accent2 = Color(0xFF9C27B0)
+            ),
+            showWinback = true,
+            isDismissible = true,
+            onPurchase = { productId ->
+                val pkg = supportedPackages.firstOrNull { it.product.id == productId }
+                if (pkg != null && activity != null) {
+                    scope.launch {
+                        revenueCatManager.purchase(activity, pkg)
+                    }
+                }
+            },
+            onRestore = {
+                scope.launch {
+                    revenueCatManager.restorePurchases()
+                }
+            },
+            onDismiss = { onComplete() }
+        )
     }
 }

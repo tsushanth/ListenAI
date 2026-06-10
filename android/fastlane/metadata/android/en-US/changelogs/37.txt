@@ -1,0 +1,3 @@
+• New: on-device offline voice. Listen with no internet, no usage caps.
+• Higher-quality pronunciation with full CMU dictionary on-device.
+• Polish + bug fixes.

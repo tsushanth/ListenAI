@@ -103,7 +103,7 @@ val serviceModule = module {
     // Voice Cloning Service (configured with backend URL)
     single {
         VoiceCloningService.getInstance(androidContext()).apply {
-            configure("https://listenai-backend-917362189743.us-central1.run.app")
+            configure("https://listenai-backend.fly.dev")
         }
     }
 

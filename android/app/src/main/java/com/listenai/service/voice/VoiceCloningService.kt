@@ -159,7 +159,7 @@ class VoiceCloningService private constructor(private val context: Context) {
     // MARK: - Properties
 
     // Default backend URL - same as iOS and SelfHostedTTSService
-    private var baseUrl: String? = "https://listenai-backend-917362189743.us-central1.run.app"
+    private var baseUrl: String? = "https://listenai-backend.fly.dev"
     private val clonedVoicesKey = "com.listenai.clonedVoices"
 
     private val httpClient = OkHttpClient.Builder()

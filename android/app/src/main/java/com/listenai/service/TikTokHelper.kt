@@ -24,7 +24,7 @@ object TikTokHelper {
         }
     }
 
-    fun trackEvent(eventName: String) {
+    fun trackEvent(eventName: String, properties: Map<String, Any> = emptyMap()) {
         try {
             TikTokBusinessSdk.trackEvent(eventName)
             Log.d(TAG, "Tracked event: $eventName")

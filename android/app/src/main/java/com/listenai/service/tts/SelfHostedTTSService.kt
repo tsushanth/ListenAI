@@ -98,7 +98,7 @@ class SelfHostedTTSService(private val context: Context) : TTSService {
         .build()
 
     // ListenAI backend URL - route through backend like iOS for quota tracking and reliability
-    private var baseUrl: String = "https://listenai-backend-917362189743.us-central1.run.app"
+    private var baseUrl: String = "https://listenai-backend.fly.dev"
 
     /**
      * Configure the backend URL

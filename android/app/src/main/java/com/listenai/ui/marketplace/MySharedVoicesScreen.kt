@@ -334,9 +334,9 @@ private fun SharedVoiceCard(
             ) {
                 StatColumn(
                     icon = Icons.Default.Star,
-                    value = String.format("%.1f", share.avgRating),
-                    label = "${share.ratingCount} ratings",
-                    iconTint = Color(0xFFFFB800)
+                    value = if (share.ratingCount > 0) String.format("%.1f", share.avgRating) else "—",
+                    label = if (share.ratingCount > 0) "${share.ratingCount} ratings" else "No ratings yet",
+                    iconTint = if (share.ratingCount > 0) Color(0xFFFFB800) else MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 StatColumn(
                     icon = Icons.Default.PlayArrow,

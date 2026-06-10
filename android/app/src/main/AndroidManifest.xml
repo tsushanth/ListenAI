@@ -7,6 +7,10 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <!-- Android 14+ requires a specific foreground-service type for
+         WorkManager's setForeground. The Kokoro model download is a
+         long-running data transfer, so `dataSync` is the correct type. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
@@ -66,6 +70,14 @@
             </intent-filter>
         </receiver>
 
+        <!-- Meta / Facebook SDK -->
+        <meta-data
+            android:name="com.facebook.sdk.ApplicationId"
+            android:value="@string/facebook_app_id" />
+        <meta-data
+            android:name="com.facebook.sdk.ClientToken"
+            android:value="@string/facebook_client_token" />
+
         <!-- FileProvider for sharing audio files -->
         <provider
             android:name="androidx.core.content.FileProvider"
@@ -76,6 +88,16 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths" />
         </provider>
+
+        <!-- WorkManager's bundled SystemForegroundService doesn't declare a
+             foregroundServiceType in its own manifest. On Android 14+ that
+             causes a crash when our Kokoro download worker calls
+             setForeground with type=dataSync. Override the merged service
+             entry so the Android FW sees a matching type declaration. -->
+        <service
+            android:name="androidx.work.impl.foreground.SystemForegroundService"
+            android:foregroundServiceType="dataSync"
+            tools:replace="android:foregroundServiceType" />
 
     </application>
 

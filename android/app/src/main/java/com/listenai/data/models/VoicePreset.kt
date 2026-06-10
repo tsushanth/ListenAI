@@ -8,13 +8,15 @@ import java.util.UUID
 enum class VoiceProvider {
     APPLE,
     ANDROID,
-    SELF_HOSTED;  // Kokoro GPU-accelerated TTS
+    SELF_HOSTED,        // Kokoro running on the Fly cloud worker (listenai-tts-worker)
+    KOKORO_ON_DEVICE;   // Kokoro running locally via ONNX Runtime — Android v2 path
 
     val displayName: String
         get() = when (this) {
             APPLE -> "Apple"
             ANDROID -> "Android"
             SELF_HOSTED -> "ReadAloud AI"
+            KOKORO_ON_DEVICE -> "Kokoro (on-device)"
         }
 
     val isCloud: Boolean

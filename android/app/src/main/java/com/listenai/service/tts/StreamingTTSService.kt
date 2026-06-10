@@ -25,7 +25,7 @@ import java.util.concurrent.TimeUnit
  */
 class StreamingTTSService(
     private val context: Context,
-    private val baseUrl: String = "https://listenai-backend-917362189743.us-central1.run.app"
+    private val baseUrl: String = "https://listenai-backend.fly.dev"
 ) {
     companion object {
         private const val TAG = "StreamingTTS"

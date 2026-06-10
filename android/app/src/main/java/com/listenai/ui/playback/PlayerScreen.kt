@@ -95,6 +95,11 @@ fun PlayerScreen(
     // Mutable mirror of the navigation arg so auto-advance can move us to the
     // next EPUB chapter without leaving the player.
     var currentArticleId by remember(articleId) { mutableStateOf(articleId) }
+    // When auto-advance loads the next chapter, we also want to kick off
+    // synthesis automatically (matches audiobook behavior — the next chapter
+    // just starts). Stores the article id we're waiting to auto-play. The
+    // observer below clears it once the article has loaded into PlayerState.Ready.
+    var pendingAutoStartId by remember { mutableStateOf<String?>(null) }
 
     val playbackState by playbackService.playbackState.collectAsState()
     val scrollState = rememberScrollState()
@@ -157,6 +162,11 @@ fun PlayerScreen(
         if (playbackState.status != AudioPlaybackStatus.COMPLETED) return@LaunchedEffect
         val finishedArticle = currentArticle ?: return@LaunchedEffect
 
+        android.util.Log.i(
+            "PlayerScreen",
+            "Auto-advance: chapter completed id=${finishedArticle.id} title='${finishedArticle.title}' sourceType=${finishedArticle.sourceType} sourceFileName=${finishedArticle.sourceFileName}"
+        )
+
         articleRepository.updatePlaybackProgress(
             id = finishedArticle.id,
             listenedDuration = (playbackState.duration * 1000).toLong(),
@@ -164,9 +174,15 @@ fun PlayerScreen(
             isCompleted = true
         )
 
-        if (finishedArticle.sourceType != SourceType.EPUB) return@LaunchedEffect
+        if (finishedArticle.sourceType != SourceType.EPUB) {
+            android.util.Log.i("PlayerScreen", "Auto-advance: not an EPUB chapter, stopping at end")
+            return@LaunchedEffect
+        }
         val sourceFileName = finishedArticle.sourceFileName?.takeIf { it.isNotBlank() }
-            ?: return@LaunchedEffect
+        if (sourceFileName == null) {
+            android.util.Log.i("PlayerScreen", "Auto-advance: EPUB chapter has no sourceFileName, stopping at end")
+            return@LaunchedEffect
+        }
 
         val nextChapter = articleRepository.allArticles.first()
             .filter {
@@ -176,8 +192,17 @@ fun PlayerScreen(
                     && !it.isArchived
             }
             .minByOrNull { it.createdAt.time }
-            ?: return@LaunchedEffect
 
+        if (nextChapter == null) {
+            android.util.Log.i("PlayerScreen", "Auto-advance: end of book reached, no next chapter")
+            return@LaunchedEffect
+        }
+
+        android.util.Log.i(
+            "PlayerScreen",
+            "Auto-advance: advancing to next chapter id=${nextChapter.id} title='${nextChapter.title}'"
+        )
+        pendingAutoStartId = nextChapter.id
         currentArticleId = nextChapter.id
     }
 
@@ -265,9 +290,13 @@ fun PlayerScreen(
 
                 android.util.Log.d("PlayerScreen", "Synthesis complete: file=${audioFile.absolutePath}, duration=$durationMs ms")
 
-                // Update article with audio URL and voice ID
+                // Update article with audio URL and voice ID. Use article.id
+                // (the local parameter) NOT articleId (the outer navigation
+                // arg) — when auto-advance loads a different chapter,
+                // articleId still points at the original chapter and writing
+                // to it would corrupt that chapter's cached audio path.
                 articleRepository.updateSynthesisStatus(
-                    id = articleId,
+                    id = article.id,
                     status = "completed",
                     audioUrl = audioFile.absolutePath,
                     duration = durationMs,
@@ -277,7 +306,7 @@ fun PlayerScreen(
                 // Show notification that TTS is complete
                 val durationFormatted = formatDuration(durationMs, context)
                 ttsNotificationService.showArticleTTSComplete(
-                    articleId = articleId,
+                    articleId = article.id,
                     articleTitle = article.title ?: context.getString(R.string.player_article_fallback),
                     durationFormatted = durationFormatted
                 )
@@ -326,6 +355,25 @@ fun PlayerScreen(
                     }
                 }
             }
+        }
+    }
+
+    // Auto-start synthesis for chapters loaded by the auto-advance flow.
+    // When chapter N+1 was queued by the COMPLETED-state observer above,
+    // `pendingAutoStartId` was set. Once the article-loading LaunchedEffect
+    // transitions PlayerState to Ready for that id, kick off synthesis so
+    // playback continues seamlessly (no user tap required). Cleared after
+    // firing so we don't re-trigger if the screen recomposes.
+    LaunchedEffect(playerState) {
+        val state = playerState
+        val targetId = pendingAutoStartId
+        if (targetId != null && state is PlayerState.Ready && state.article.id == targetId) {
+            android.util.Log.i(
+                "PlayerScreen",
+                "Auto-advance: PlayerState.Ready reached for queued chapter, starting synthesis id=$targetId"
+            )
+            pendingAutoStartId = null
+            startSynthesisAndPlay(state.article)
         }
     }
 

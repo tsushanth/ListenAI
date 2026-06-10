@@ -1,8 +1,10 @@
 package com.listenai.service.billing
 
 import android.app.Activity
+import com.kreativekoala.paywallkit.manager.PromoCodeManager
 import android.app.Application
 import android.util.Log
+import com.listenai.service.FacebookSDKHelper
 import com.listenai.service.FirebaseAnalyticsHelper
 import com.listenai.service.TikTokHelper
 import com.revenuecat.purchases.CustomerInfo
@@ -92,7 +94,7 @@ class RevenueCatManager private constructor() : UpdatedCustomerInfoListener {
 
         Log.d(TAG, "Configuring RevenueCat...")
 
-        Purchases.logLevel = LogLevel.DEBUG // Set to WARN for production
+        Purchases.logLevel = LogLevel.WARN
 
         val configuration = PurchasesConfiguration.Builder(application, API_KEY)
             .build()
@@ -178,13 +180,22 @@ class RevenueCatManager private constructor() : UpdatedCustomerInfoListener {
             val result = Purchases.sharedInstance.awaitPurchase(purchaseParams)
 
             updateCustomerInfo(result.customerInfo)
+            PromoCodeManager.clearAfterConversion()
             Log.d(TAG, "Purchase successful: ${pkg.identifier}")
 
             // Track purchase events for ad attribution
             val productId = pkg.product.id
             val price = pkg.product.price.amountMicros / 1_000_000.0
+            val currency = pkg.product.price.currencyCode
+            val isTrial = pkg.hasFreeTrial
             FirebaseAnalyticsHelper.logPurchaseCompleted(productId, price)
-            TikTokHelper.trackEvent("purchase_success")
+            if (isTrial) {
+                TikTokHelper.trackEvent("StartTrial", mapOf("content_id" to productId))
+                FacebookSDKHelper.logTrialStarted(productId)
+            } else {
+                TikTokHelper.trackEvent("Subscribe", mapOf("content_id" to productId, "value" to price, "currency" to currency))
+                FacebookSDKHelper.logSubscription(price, currency, productId)
+            }
 
             Result.success(result.customerInfo)
         } catch (e: PurchasesException) {

@@ -30,6 +30,21 @@ class SettingsManager(context: Context) {
     private val _selectedVoiceId = MutableStateFlow(prefs.getString(KEY_SELECTED_VOICE_ID, null))
     val selectedVoiceId: StateFlow<String?> = _selectedVoiceId.asStateFlow()
 
+    // ---- On-device Kokoro (Android v2 path) ----------------------------------
+    // The onboarding picker presents two options: Cloud Kokoro vs On-device
+    // Kokoro. The user's pick is stored as `useOfflineKokoro` and consulted
+    // at TTS dispatch time. When false → cloud (selfhosted listenai-tts-worker).
+    // When true AND the model has been downloaded → on-device ONNX. If the
+    // model isn't ready yet, TTSServiceFactory transparently falls back to
+    // cloud so the picker is honest *and* the app keeps working.
+    private val _useOfflineKokoro = MutableStateFlow(prefs.getBoolean(KEY_USE_OFFLINE_KOKORO, false))
+    val useOfflineKokoro: StateFlow<Boolean> = _useOfflineKokoro.asStateFlow()
+
+    // Cellular download policy for the ~80 MB Kokoro model. Default off; we
+    // wait for WiFi.
+    private val _allowCellularModelDownload = MutableStateFlow(prefs.getBoolean(KEY_ALLOW_CELLULAR_DOWNLOAD, false))
+    val allowCellularModelDownload: StateFlow<Boolean> = _allowCellularModelDownload.asStateFlow()
+
     /**
      * Set playback speed (0.5x to 2.0x)
      */
@@ -86,6 +101,20 @@ class SettingsManager(context: Context) {
     fun getSkipIntervalDisplay(): String = "${_skipInterval.value} seconds"
 
     /**
+     * Toggle on-device Kokoro preference. Onboarding writes this from the
+     * voice picker; Settings exposes it for later changes.
+     */
+    fun setUseOfflineKokoro(enabled: Boolean) {
+        _useOfflineKokoro.value = enabled
+        prefs.edit().putBoolean(KEY_USE_OFFLINE_KOKORO, enabled).apply()
+    }
+
+    fun setAllowCellularModelDownload(enabled: Boolean) {
+        _allowCellularModelDownload.value = enabled
+        prefs.edit().putBoolean(KEY_ALLOW_CELLULAR_DOWNLOAD, enabled).apply()
+    }
+
+    /**
      * Get the formatted display string for sleep timer default
      */
     fun getSleepTimerDefaultDisplay(): String = when (_sleepTimerDefault.value) {
@@ -102,6 +131,8 @@ class SettingsManager(context: Context) {
         private const val KEY_SLEEP_TIMER_DEFAULT = "sleep_timer_default"
         private const val KEY_APPEARANCE_MODE = "appearance_mode"
         private const val KEY_SELECTED_VOICE_ID = "selected_voice_id"
+        private const val KEY_USE_OFFLINE_KOKORO = "use_offline_kokoro"
+        private const val KEY_ALLOW_CELLULAR_DOWNLOAD = "allow_cellular_model_download"
 
         // Defaults
         const val DEFAULT_PLAYBACK_SPEED = 1.0f

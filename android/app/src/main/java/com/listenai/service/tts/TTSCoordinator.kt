@@ -137,7 +137,16 @@ class TTSCoordinator(
             characterRange = 0 until text.length
         )
 
-        val result = selfHostedService.synthesize(
+        // Route through TTSServiceFactory so the on-device Kokoro path is
+        // honored when the user opted in AND the ONNX session is loaded.
+        // The factory transparently falls back to the cloud worker if not.
+        val service = TTSServiceFactory.getServiceForVoice(context, synthVoice)
+        android.util.Log.d(
+            "TTSCoordinator",
+            "Picked service=${service::class.java.simpleName} for voiceId=$voiceId"
+        )
+
+        val result = service.synthesize(
             sections = listOf(section),
             voice = synthVoice,
             options = options,

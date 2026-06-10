@@ -1,42 +1,101 @@
 package com.listenai.ui.subscription
 
-import androidx.compose.foundation.layout.*
+import android.app.Activity
+import android.content.Intent
+import android.net.Uri
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import com.kreativekoala.paywallkit.models.PaywallFeature
+import com.kreativekoala.paywallkit.models.PaywallProduct
+import com.kreativekoala.paywallkit.models.PaywallTheme
+import com.kreativekoala.paywallkit.view.PaywallView
 import com.listenai.service.billing.RevenueCatManager
-import com.revenuecat.purchases.ui.revenuecatui.Paywall
-import com.revenuecat.purchases.ui.revenuecatui.PaywallOptions
+import com.listenai.service.billing.hasFreeTrial
+import com.revenuecat.purchases.PackageType
+import kotlinx.coroutines.launch
 
-/**
- * Subscription/Paywall screen - uses RevenueCat's dashboard-configured paywall.
- * Shown from Settings or any "Upgrade" entry point.
- */
 @Composable
 fun SubscriptionScreen(
     onNavigateBack: () -> Unit = {},
     onPurchaseComplete: (() -> Unit)? = null
 ) {
-    val revenueCatManager = remember { RevenueCatManager.getInstance() }
-    val isPremium by revenueCatManager.isPremium.collectAsState()
-    val wasPremiumOnOpen = remember { isPremium }
+    BackHandler { onNavigateBack() }
 
-    // If user becomes premium during this screen (new purchase), navigate away
+    val revenueCatManager = remember { RevenueCatManager.getInstance() }
+    val packages by revenueCatManager.packages.collectAsState()
+    val isPremium by revenueCatManager.isPremium.collectAsState()
+    val context = LocalContext.current
+    val activity = context as? Activity
+    val scope = rememberCoroutineScope()
+
     LaunchedEffect(isPremium) {
-        if (isPremium && !wasPremiumOnOpen) {
-            if (onPurchaseComplete != null) {
-                onPurchaseComplete()
-            } else {
-                onNavigateBack()
-            }
+        if (isPremium) {
+            onPurchaseComplete?.invoke() ?: onNavigateBack()
         }
     }
 
-    // Use RevenueCat's dashboard-configured paywall
-    Box(modifier = Modifier.fillMaxSize()) {
-        Paywall(
-            options = PaywallOptions.Builder(dismissRequest = { onNavigateBack() })
-                .setShouldDisplayDismissButton(true)
-                .build()
+    if (packages.isEmpty()) {
+        Box(
+            modifier = Modifier.fillMaxSize().background(Color(0xFF0A0A0F)),
+            contentAlignment = Alignment.Center
+        ) {
+            CircularProgressIndicator(color = Color(0xFF6C63FF))
+        }
+        return
+    }
+
+    val paywallProducts = packages.map { pkg ->
+        PaywallProduct(
+            id = pkg.product.id,
+            localizedPrice = pkg.product.price.formatted,
+            price = pkg.product.price.amountMicros / 1_000_000.0,
+            currencyCode = pkg.product.price.currencyCode,
+            trialDays = if (pkg.hasFreeTrial) 3 else null,
+            period = when (pkg.packageType) {
+                PackageType.WEEKLY -> PaywallProduct.Period.WEEKLY
+                PackageType.MONTHLY -> PaywallProduct.Period.MONTHLY
+                PackageType.ANNUAL -> PaywallProduct.Period.YEARLY
+                else -> PaywallProduct.Period.MONTHLY
+            }
         )
     }
+
+    PaywallView(
+        appId = "readaloudai",
+        appName = "ReadAloud AI",
+        features = listOf(
+            PaywallFeature("\uD83D\uDD0A", "Unlimited Listening", "Listen without limits"),
+            PaywallFeature("\uD83C\uDF99\uFE0F", "Premium Voices", "Natural AI voices"),
+            PaywallFeature("\uD83D\uDCC4", "Any Document", "PDF, ePub, web pages"),
+            PaywallFeature("\u26A1", "Speed Controls", "Adjust playback speed"),
+            PaywallFeature("\uD83D\uDCE5", "Offline Mode", "Download for offline")
+        ),
+        products = paywallProducts,
+        theme = PaywallTheme(accent = Color(0xFF6C63FF), accent2 = Color(0xFF9C27B0)),
+        showWinback = true,
+        isDismissible = true,
+        onPurchase = { productId ->
+            val pkg = packages.firstOrNull { it.product.id == productId }
+            if (pkg != null && activity != null) {
+                scope.launch { revenueCatManager.purchase(activity, pkg) }
+            }
+        },
+        onRestore = {
+            scope.launch { revenueCatManager.restorePurchases() }
+        },
+        onRedeemCode = {
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/redeem?code=promo-1month-free"))
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            try { activity?.startActivity(intent) } catch (_: Exception) {}
+        },
+        onDismiss = onNavigateBack
+    )
 }

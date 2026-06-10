@@ -107,9 +107,21 @@ class AudioPlaybackService(private val context: Context) {
         }
 
         override fun onIsPlayingChanged(isPlaying: Boolean) {
-            _playbackState.value = _playbackState.value.copy(
-                status = if (isPlaying) AudioPlaybackStatus.PLAYING else AudioPlaybackStatus.PAUSED
+            // ExoPlayer fires `onIsPlayingChanged(false)` immediately after
+            // STATE_ENDED, which would otherwise overwrite the terminal
+            // COMPLETED status (set by `updatePlaybackState`) with PAUSED.
+            // Auto-advance in PlayerScreen observes `status == COMPLETED`,
+            // so we must preserve it.
+            val current = _playbackState.value.status
+            val terminalStatuses = setOf(
+                AudioPlaybackStatus.COMPLETED,
+                AudioPlaybackStatus.ERROR
             )
+            if (current !in terminalStatuses) {
+                _playbackState.value = _playbackState.value.copy(
+                    status = if (isPlaying) AudioPlaybackStatus.PLAYING else AudioPlaybackStatus.PAUSED
+                )
+            }
 
             if (isPlaying) {
                 startProgressUpdates()
