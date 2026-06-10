@@ -21,6 +21,7 @@ import kotlinx.coroutines.yield
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.File
+import java.util.Date
 import java.util.UUID
 import java.util.concurrent.TimeUnit
 
@@ -343,6 +344,13 @@ class ImportViewModel(
                 android.util.Log.d("EpubImport", "Total parts: ${parts.size}, sizes: ${parts.map { it.second.length }}")
 
                 var firstArticleId: String? = null
+                // Stamp each chapter with a unique sequential createdAt so the
+                // library can sort chapters back into reading order. Without
+                // the +index offset, the tight save loop gives all chapters
+                // the same millisecond timestamp and the DAO's createdAt-based
+                // ordering ends up reversed (see issue reported by Warren on
+                // beta build 2.13.1).
+                val baseImportTime = System.currentTimeMillis()
                 for ((index, part) in parts.withIndex()) {
                     _progress.value = 0.3f + 0.7f * (index.toFloat() / parts.size)
                     yield() // let UI update
@@ -365,7 +373,8 @@ class ImportViewModel(
                         sourceUrl = null,
                         sourceFileName = fileName,
                         audioFileUrl = null,
-                        selectedVoiceId = null
+                        selectedVoiceId = null,
+                        createdAt = Date(baseImportTime + index)
                     )
 
                     articleRepository.saveArticle(article)

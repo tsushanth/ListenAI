@@ -1,0 +1,3 @@
+• Imported book chapters now appear in reading order in the library (Introduction at the top, last chapter at the bottom). Books imported on older builds may still show the old order until you re-import.
+• Auto-advance: when a chapter finishes, the next chapter starts automatically.
+• Accessibility fixes from beta tester feedback.

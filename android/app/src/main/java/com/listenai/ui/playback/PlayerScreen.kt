@@ -15,6 +15,7 @@ import androidx.compose.ui.layout.positionInParent
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -26,7 +27,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import android.app.Activity
 import androidx.compose.ui.platform.LocalContext
+import com.kreativekoala.ratingkit.RatingKit
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -89,6 +92,9 @@ fun PlayerScreen(
     var showSleepTimerPicker by remember { mutableStateOf(false) }
     var selectedVoice by remember { mutableStateOf<VoicePreset?>(null) }
     var availableVoices by remember { mutableStateOf<List<VoicePreset>>(emptyList()) }
+    // Mutable mirror of the navigation arg so auto-advance can move us to the
+    // next EPUB chapter without leaving the player.
+    var currentArticleId by remember(articleId) { mutableStateOf(articleId) }
 
     val playbackState by playbackService.playbackState.collectAsState()
     val scrollState = rememberScrollState()
@@ -101,9 +107,9 @@ fun PlayerScreen(
     }
 
     // Load article and set initial voice from article's selectedVoiceId
-    LaunchedEffect(articleId) {
+    LaunchedEffect(currentArticleId) {
         playerState = PlayerState.Loading
-        val article = articleRepository.getArticleById(articleId)
+        val article = articleRepository.getArticleById(currentArticleId)
         if (article == null) {
             playerState = PlayerState.Error(context.getString(R.string.player_article_not_found))
         } else {
@@ -140,6 +146,41 @@ fun PlayerScreen(
         else -> null
     }
 
+    // Auto-advance to the next EPUB chapter when playback completes. Triggered
+    // by ExoPlayer hitting STATE_ENDED for the current article's media. Marks
+    // the finished article as completed in the DB, then if the article is an
+    // EPUB chapter, swaps currentArticleId to the next chapter in the same
+    // book (ordered by createdAt ASC, which is reading order for books
+    // imported on 2.13.2+). Non-EPUB articles stay stopped — the user
+    // controls what plays next there.
+    LaunchedEffect(playbackState.status) {
+        if (playbackState.status != AudioPlaybackStatus.COMPLETED) return@LaunchedEffect
+        val finishedArticle = currentArticle ?: return@LaunchedEffect
+
+        articleRepository.updatePlaybackProgress(
+            id = finishedArticle.id,
+            listenedDuration = (playbackState.duration * 1000).toLong(),
+            lastPosition = (playbackState.duration * 1000).toLong(),
+            isCompleted = true
+        )
+
+        if (finishedArticle.sourceType != SourceType.EPUB) return@LaunchedEffect
+        val sourceFileName = finishedArticle.sourceFileName?.takeIf { it.isNotBlank() }
+            ?: return@LaunchedEffect
+
+        val nextChapter = articleRepository.allArticles.first()
+            .filter {
+                it.sourceType == SourceType.EPUB
+                    && it.sourceFileName == sourceFileName
+                    && it.createdAt.time > finishedArticle.createdAt.time
+                    && !it.isArchived
+            }
+            .minByOrNull { it.createdAt.time }
+            ?: return@LaunchedEffect
+
+        currentArticleId = nextChapter.id
+    }
+
     // Track whether we've started preview playback (to avoid duplicates)
     var hasStartedPreviewPlayback by remember { mutableStateOf(false) }
 
@@ -159,6 +200,7 @@ fun PlayerScreen(
             // Record TTS playback success for app review prompt
             appReviewService.recordTTSPlaybackSuccess()
             appReviewService.checkAndTriggerFeedbackPrompt()
+            (context as? Activity)?.let { RatingKit.trackAction(it) }
             return
         }
 
@@ -211,6 +253,7 @@ fun PlayerScreen(
                                 // Record TTS playback success for app review prompt
                                 appReviewService.recordTTSPlaybackSuccess()
                                 appReviewService.checkAndTriggerFeedbackPrompt()
+                                (context as? Activity)?.let { RatingKit.trackAction(it) }
                             }
                         }
                     }
@@ -253,6 +296,7 @@ fun PlayerScreen(
                         // Record TTS playback success for app review prompt (only if not already triggered by preview)
                         appReviewService.recordTTSPlaybackSuccess()
                         appReviewService.checkAndTriggerFeedbackPrompt()
+                        (context as? Activity)?.let { RatingKit.trackAction(it) }
                     }
                     playerState = PlayerState.Playing(article)
                 }
