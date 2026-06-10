@@ -103,6 +103,53 @@ fun VoiceCloningFlowScreen(
         hasRecordPermission = granted
     }
 
+    // File picker for the "upload an existing audio clip" path. Mirrors the
+    // record flow but lets users hand us audio they recorded elsewhere — the
+    // intended use case is screen-reader users (the on-screen read-aloud
+    // sample isn't usable for them since TalkBack speaks the prompt and the
+    // mic picks it up). Selecting a file populates `recordedFileUri` and
+    // `recordingDuration` so the existing Continue button + createClone
+    // path work unchanged.
+    val audioFilePicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri: Uri? ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        try {
+            // Persist read access so we can pass the URI to the service layer
+            // after returning from the picker activity.
+            context.contentResolver.takePersistableUriPermission(
+                uri,
+                android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
+            )
+        } catch (_: SecurityException) {
+            // Some pickers (e.g., third-party file managers) don't grant
+            // persistable permission. The transient grant is enough for the
+            // immediate upload since we read the bytes inline.
+        }
+
+        // Pull duration from the picked file so the existing "minimum 30s"
+        // gating + the recommended-length copy keep working.
+        val retriever = android.media.MediaMetadataRetriever()
+        val durationSec: Int = try {
+            retriever.setDataSource(context, uri)
+            val durationMs = retriever
+                .extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_DURATION)
+                ?.toLongOrNull() ?: 0L
+            (durationMs / 1000L).toInt()
+        } catch (e: Exception) {
+            errorMessage = "Could not read the selected audio file. Try a different file (WAV, M4A, or MP3)."
+            currentStep = VoiceCloningStep.ERROR
+            return@rememberLauncherForActivityResult
+        } finally {
+            try { retriever.release() } catch (_: Exception) {}
+        }
+
+        recordedFileUri = uri
+        recordingDuration = durationSec
+        isRecording = false
+        isPaused = false
+    }
+
     // Recording timer
     LaunchedEffect(isRecording, isPaused) {
         if (isRecording && !isPaused) {
@@ -274,6 +321,9 @@ fun VoiceCloningFlowScreen(
                     onPauseRecording = { pauseRecording() },
                     onResumeRecording = { resumeRecording() },
                     onStopRecording = { stopRecording() },
+                    onSelectAudioFile = {
+                        audioFilePicker.launch(arrayOf("audio/*"))
+                    },
                     onContinue = { createClone() }
                 )
                 VoiceCloningStep.PROCESSING -> ProcessingStep()
@@ -515,6 +565,7 @@ private fun RecordingStep(
     onPauseRecording: () -> Unit,
     onResumeRecording: () -> Unit,
     onStopRecording: () -> Unit,
+    onSelectAudioFile: () -> Unit,
     onContinue: () -> Unit
 ) {
     // Get sample paragraphs for reading
@@ -679,6 +730,31 @@ private fun RecordingStep(
                             modifier = Modifier.size(32.dp)
                         )
                     }
+                }
+            }
+
+            // Upload-an-existing-clip alternative path. Surfaced only when
+            // we're not actively recording so the two options aren't
+            // competing for attention mid-take. Screen-reader users
+            // specifically can't use the live-recording path (a screen
+            // reader speaks the prompt and the mic captures both voices),
+            // so this is the supported way for them to clone.
+            if (!isRecording) {
+                Spacer(modifier = Modifier.height(20.dp))
+                TextButton(
+                    onClick = onSelectAudioFile,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(
+                        Icons.Default.UploadFile,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = if (hasRecording) "Replace with an audio file" else "Or upload an existing audio file",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
                 }
             }
 

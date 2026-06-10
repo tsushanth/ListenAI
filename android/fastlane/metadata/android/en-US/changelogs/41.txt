@@ -1,0 +1,2 @@
+• Voice Cloning: added an "Upload an existing audio file" option as an alternative to live recording. Live recording while a screen reader speaks the sample prompt was impossible — the mic captured both voices. You can now record cleanly on any other device and upload the clip.
+• Auto-advance polish + audio-cache correctness fixes carried forward from 2.13.2.

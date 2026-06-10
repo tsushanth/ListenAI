@@ -1061,6 +1061,15 @@ private struct VoiceRecordingView: View {
     let onResumeRecording: () -> Void
     let onContinue: () -> Void
 
+    // File-import alternative path. Required for VoiceOver users — the
+    // live-recording flow assumes the user can read the sample text
+    // silently, but VoiceOver speaks the prompt out loud and the mic
+    // captures both voices, corrupting the clone sample. The fileImporter
+    // sheet writes through to recordingDuration + recordedAudioURL so the
+    // existing Continue path works unchanged.
+    @State private var showFileImporter = false
+    @State private var fileImportError: String?
+
     private let sampleParagraphs = [
         "Welcome to ReadAloud. I'm recording my voice so the app can create a personalized voice clone that sounds just like me. This is an exciting feature that uses advanced artificial intelligence to capture the unique qualities of my voice.",
 
@@ -1235,6 +1244,32 @@ private struct VoiceRecordingView: View {
                     }
                 }
 
+                // Upload-an-existing-clip alternative path. Hidden while
+                // actively recording so the two options aren't competing.
+                if !isRecording {
+                    Button {
+                        showFileImporter = true
+                    } label: {
+                        HStack(spacing: 8) {
+                            Image(systemName: "square.and.arrow.up")
+                            Text(recordedAudioURL == nil
+                                 ? "Or upload an existing audio file"
+                                 : "Replace with an audio file")
+                        }
+                        .font(.subheadline)
+                    }
+                    .padding(.top, 12)
+                    .accessibilityHint("Pick an audio file from Files instead of recording live")
+                }
+
+                if let importError = fileImportError {
+                    Text(importError)
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 24)
+                }
+
                 // Continue button (when recording is done)
                 if canContinue && !isRecording {
                     VStack(spacing: 8) {
@@ -1260,12 +1295,63 @@ private struct VoiceRecordingView: View {
             .padding(.vertical, 24)
         }
         .background(Color(.systemBackground))
+        .fileImporter(
+            isPresented: $showFileImporter,
+            allowedContentTypes: [.audio],
+            allowsMultipleSelection: false
+        ) { result in
+            handleAudioFileImport(result)
+        }
     }
 
     private func formatDuration(_ duration: TimeInterval) -> String {
         let minutes = Int(duration) / 60
         let seconds = Int(duration) % 60
         return String(format: "%d:%02d", minutes, seconds)
+    }
+
+    /// Hand-off from the system Files picker. Copies the picked file into
+    /// the app's caches directory so we own the URL through the upload,
+    /// then probes its duration via AVAudioPlayer. On success populates
+    /// the same state the live recording flow does so the existing
+    /// "Continue" button just works.
+    private func handleAudioFileImport(_ result: Result<[URL], Error>) {
+        fileImportError = nil
+        do {
+            guard let pickedURL = try result.get().first else { return }
+
+            // Security-scoped resource — picker hands us a URL we have to
+            // explicitly start/stop access on.
+            let didStartAccess = pickedURL.startAccessingSecurityScopedResource()
+            defer {
+                if didStartAccess { pickedURL.stopAccessingSecurityScopedResource() }
+            }
+
+            let cachesDir = FileManager.default.urls(
+                for: .cachesDirectory,
+                in: .userDomainMask
+            ).first ?? FileManager.default.temporaryDirectory
+            let destURL = cachesDir.appendingPathComponent(
+                "voice_clone_upload_\(Int(Date().timeIntervalSince1970)).\(pickedURL.pathExtension.isEmpty ? "m4a" : pickedURL.pathExtension)"
+            )
+            if FileManager.default.fileExists(atPath: destURL.path) {
+                try? FileManager.default.removeItem(at: destURL)
+            }
+            try FileManager.default.copyItem(at: pickedURL, to: destURL)
+
+            let player = try AVAudioPlayer(contentsOf: destURL)
+            let duration = player.duration
+            guard duration > 0 else {
+                fileImportError = "Could not read audio length from that file. Try a WAV, M4A, or MP3."
+                return
+            }
+
+            recordedAudioURL = destURL
+            recordingDuration = duration
+            isRecording = false
+        } catch {
+            fileImportError = "Could not import that audio file: \(error.localizedDescription)"
+        }
     }
 }
 
