@@ -159,6 +159,13 @@ dependencies {
 
     // Google Sign-In / Auth
     implementation("com.google.android.gms:play-services-auth:21.0.0")
+
+    // ML Kit Text Recognition — used by the Read Text screen for on-device
+    // OCR. Play-Services-hosted variant (model shared across apps via Play
+    // Services, ~0 APK overhead) rather than the bundled variant which
+    // would add ~3 MB. Latin script only for v0; can layer Chinese /
+    // Devanagari / Japanese / Korean modules later if Warren / BAU asks.
+    implementation("com.google.android.gms:play-services-mlkit-text-recognition:19.0.1")
     implementation("androidx.credentials:credentials:1.3.0")
     implementation("androidx.credentials:credentials-play-services-auth:1.3.0")
     implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")

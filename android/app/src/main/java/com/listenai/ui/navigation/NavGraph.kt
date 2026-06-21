@@ -11,6 +11,7 @@ import com.listenai.ui.import_content.ImportScreen
 import com.listenai.ui.import_content.MailImportScreen
 import com.listenai.ui.library.LibraryScreen
 import com.listenai.ui.playback.PlayerScreen
+import com.listenai.ui.read_text.ReadTextScreen
 import com.listenai.ui.settings.SettingsScreen
 import com.listenai.ui.subscription.SubscriptionScreen
 import com.listenai.ui.queue.QueueScreen
@@ -30,6 +31,7 @@ import com.listenai.ui.marketplace.RewardsScreen
 sealed class Screen(val route: String) {
     object Home : Screen("home")
     object Library : Screen("library")
+    object ReadText : Screen("read_text")
     object Settings : Screen("settings")
     object Player : Screen("player/{articleId}") {
         fun createRoute(articleId: String) = "player/$articleId"
@@ -82,6 +84,10 @@ fun NavGraph(
                     navController.navigate(Screen.Import.route)
                 }
             )
+        }
+
+        composable(Screen.ReadText.route) {
+            ReadTextScreen()
         }
 
         composable(Screen.Settings.route) {

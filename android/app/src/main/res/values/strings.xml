@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">ReadAloud AI</string>
+    <string name="system_tts_engine_name">ReadAloud AI Voices</string>
 
     <!-- Meta / Facebook SDK -->
     <string name="facebook_app_id">1550416256518249</string>
@@ -9,7 +10,15 @@
     <!-- Tab Labels -->
     <string name="tab_home">Home</string>
     <string name="tab_library">My Library</string>
+    <string name="tab_read_text">Read Text</string>
     <string name="tab_settings">Settings</string>
+
+    <!-- Read Text screen (Feature: OCR + Read Aloud) -->
+    <string name="read_text_title">Read Text</string>
+    <string name="read_text_subtitle">Point your camera at printed text or pick a photo — ReadAloud will speak it.</string>
+    <string name="read_text_take_photo">Take a photo</string>
+    <string name="read_text_pick_gallery">Pick from gallery</string>
+    <string name="read_text_coming_soon">Camera and on-device text recognition land in the next update — this is the scaffolding.</string>
 
     <!-- Home Screen -->
     <string name="promo_title">Download and listen anytime, anywhere</string>

@@ -1,11 +1,13 @@
 package com.listenai.ui.navigation
 
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.CameraAlt
 import androidx.compose.material.icons.outlined.Description
+import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -38,6 +40,12 @@ val bottomNavItems = listOf(
         labelResId = R.string.tab_library,
         selectedIcon = Icons.Filled.Description,
         unselectedIcon = Icons.Outlined.Description
+    ),
+    BottomNavItem(
+        route = Screen.ReadText.route,
+        labelResId = R.string.tab_read_text,
+        selectedIcon = Icons.Filled.CameraAlt,
+        unselectedIcon = Icons.Outlined.CameraAlt
     ),
     BottomNavItem(
         route = Screen.Settings.route,
