@@ -23,8 +23,8 @@ android {
         applicationId = "com.listenai"
         minSdk = 26
         targetSdk = 35
-        versionCode = 41
-        versionName = "2.13.3"
+        versionCode = 42
+        versionName = "2.14.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -173,6 +173,7 @@ dependencies {
 
     // PaywallKit
     implementation(project(":paywallkit"))
+    implementation(project(":crosspromokit"))
 
     // RatingKit
     implementation(project(":ratingkit"))
