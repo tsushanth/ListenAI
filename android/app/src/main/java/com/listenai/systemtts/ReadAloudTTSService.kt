@@ -1,12 +1,21 @@
 package com.listenai.systemtts
 
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.content.Context
+import android.content.Intent
+import android.content.pm.PackageManager
 import android.media.AudioFormat
+import android.os.Build
 import android.speech.tts.SynthesisCallback
 import android.speech.tts.SynthesisRequest
 import android.speech.tts.TextToSpeech
 import android.speech.tts.TextToSpeechService
 import android.speech.tts.Voice
 import android.util.Log
+import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
 import com.listenai.data.models.VoicePreset
 import com.listenai.service.tts.ChatterboxModelDownloader
 import com.listenai.service.tts.ChatterboxOnDeviceService
@@ -65,6 +74,16 @@ class ReadAloudTTSService : TextToSpeechService() {
     private var stopRequested: Boolean = false
 
     /**
+     * Tracks whether we've already kicked off a model download this service
+     * lifecycle. Without this every TalkBack call would re-call
+     * `startIfPossible()`, which is harmless (WorkManager dedupes) but would
+     * spam the log + re-post the user-facing notification every couple of
+     * seconds. Reset on `onCreate` (new lifecycle = new chance to notify).
+     */
+    @Volatile
+    private var downloadKickedThisLifecycle: Boolean = false
+
+    /**
      * Scope for fire-and-forget background work tied to the service lifetime.
      * Cancelled in [onDestroy] so warmup / refresh coroutines don't outlive
      * the service. SupervisorJob means one failure doesn't poison siblings.
@@ -84,6 +103,8 @@ class ReadAloudTTSService : TextToSpeechService() {
         // ReadAloud as the system TTS engine — doesn't pay the cold-start
         // cost of model load + G2P lexicon parse (typically 500-3000 ms).
         warmupKokoroInBackground()
+        // Notification channel must exist before we ever post to it.
+        ensureDownloadNotificationChannel()
     }
 
     override fun onDestroy() {
@@ -111,6 +132,80 @@ class ReadAloudTTSService : TextToSpeechService() {
             } catch (e: Exception) {
                 Log.w(tag, "warmupKokoro: non-fatal — ${e.message}")
             }
+        }
+    }
+
+    /**
+     * Ensure the notification channel used by [notifyDownloadStarted] exists.
+     * Idempotent: ``createNotificationChannel`` is a no-op for already-created
+     * channels with the same id. API 26+ only (matches the app's minSdk).
+     */
+    private fun ensureDownloadNotificationChannel() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+        val mgr = getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager ?: return
+        val channel = NotificationChannel(
+            DOWNLOAD_CHANNEL_ID,
+            "ReadAloud voice model download",
+            NotificationManager.IMPORTANCE_LOW,
+        ).apply {
+            description = "Notifies when ReadAloud begins downloading a TTS voice model in the background."
+        }
+        mgr.createNotificationChannel(channel)
+    }
+
+    /**
+     * Post a one-shot notification telling the user the voice model has
+     * started downloading. Suppressed silently if the user has revoked the
+     * POST_NOTIFICATIONS permission on Android 13+ — a missing notification
+     * is strictly better UX than a permission prompt mid-TalkBack.
+     *
+     * The notification taps through to the main ReadAloud app via the
+     * package's launch intent.
+     */
+    private fun notifyDownloadStarted(isClonedVoice: Boolean) {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                val granted = ContextCompat.checkSelfPermission(
+                    this, android.Manifest.permission.POST_NOTIFICATIONS
+                ) == PackageManager.PERMISSION_GRANTED
+                if (!granted) {
+                    Log.i(tag, "notifyDownloadStarted: POST_NOTIFICATIONS not granted — suppressing")
+                    return
+                }
+            }
+            val openApp = packageManager.getLaunchIntentForPackage(packageName)?.apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+            }
+            val pi = if (openApp != null) {
+                PendingIntent.getActivity(
+                    this, 0, openApp,
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+                )
+            } else null
+
+            val title = if (isClonedVoice) {
+                "ReadAloud is downloading the voice cloning model"
+            } else {
+                "ReadAloud is downloading its voice model"
+            }
+            val body = "Downloading ~250 MB in the background. " +
+                "Once it's ready your phone will speak with ReadAloud's voices."
+
+            val notif = NotificationCompat.Builder(this, DOWNLOAD_CHANNEL_ID)
+                .setSmallIcon(android.R.drawable.stat_sys_download)
+                .setContentTitle(title)
+                .setContentText(body)
+                .setStyle(NotificationCompat.BigTextStyle().bigText(body))
+                .setPriority(NotificationCompat.PRIORITY_LOW)
+                .setAutoCancel(true)
+                .also { if (pi != null) it.setContentIntent(pi) }
+                .build()
+
+            val mgr = getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
+            mgr?.notify(DOWNLOAD_NOTIFICATION_ID, notif)
+            Log.i(tag, "notifyDownloadStarted: posted (isCloned=$isClonedVoice)")
+        } catch (e: Exception) {
+            Log.w(tag, "notifyDownloadStarted: failed (non-fatal) — ${e.message}")
         }
     }
 
@@ -221,10 +316,27 @@ class ReadAloudTTSService : TextToSpeechService() {
         }
 
         if (!modelReady) {
-            if (isClonedVoice) {
-                Log.w(tag, "Refusing cloned voice — Chatterbox engine not on disk. Open ReadAloud → TTS settings → Enable cloned voices system-wide.")
-            } else {
-                Log.w(tag, "Refusing — Kokoro voice model not on disk. Open ReadAloud → TTS settings → Download voice model.")
+            // Auto-trigger the model download in the background so a user who
+            // simply selected ReadAloud as their system TTS engine ends up
+            // working without having to also open the app + manually start a
+            // download. The first few TalkBack / Maps / Kindle calls will
+            // still error (we have nothing to speak yet) — but the model will
+            // download, and subsequent calls will succeed once it lands.
+            //
+            // KokoroModelDownloader / ChatterboxModelDownloader both use
+            // WorkManager with ExistingWorkPolicy.KEEP, so re-invoking from
+            // every onSynthesizeText is safe and idempotent — the WorkManager
+            // queue does the deduping for us.
+            if (!downloadKickedThisLifecycle) {
+                downloadKickedThisLifecycle = true
+                if (isClonedVoice) {
+                    Log.w(tag, "Chatterbox engine not on disk — kicking off background download. Subsequent calls will retry until ready.")
+                    ChatterboxModelDownloader.getInstance(applicationContext).startIfPossible()
+                } else {
+                    Log.w(tag, "Kokoro voice model not on disk — kicking off background download. Subsequent calls will retry until ready.")
+                    KokoroModelDownloader.getInstance(applicationContext).startIfPossible()
+                }
+                notifyDownloadStarted(isClonedVoice)
             }
             callback.error()
             return
@@ -414,5 +526,14 @@ class ReadAloudTTSService : TextToSpeechService() {
             null -> null
             else -> iso3
         }
+    }
+
+    companion object {
+        private const val DOWNLOAD_CHANNEL_ID = "readaloud_tts_model_download"
+        // 0x52 0x41 0x54 = "RAT" (ReadAloud TTS). Pick anything unique within
+        // the app's notification ID namespace — KokoroDownloadWorker uses
+        // NOTIFICATION_ID inside its own foreground service notification, so
+        // they don't collide.
+        private const val DOWNLOAD_NOTIFICATION_ID = 0x52415401
     }
 }
