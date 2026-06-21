@@ -38,4 +38,17 @@ platform :android do
       release_status: "completed"
     )
   end
+
+  desc "Push current AAB to Closed Testing (alpha track). Use this when an Open Testing release is still 'In review' but you need a specific tester to get the build now — closed test review is materially faster than the first-time Open Testing review."
+  lane :closed_testing do
+    upload_to_play_store(
+      track: "alpha",
+      aab: "app/build/outputs/bundle/release/app-release.aab",
+      skip_upload_metadata: true,
+      skip_upload_images: true,
+      skip_upload_screenshots: true,
+      skip_upload_changelogs: true,
+      release_status: "completed"
+    )
+  end
 end
