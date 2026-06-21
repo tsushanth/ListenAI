@@ -8,6 +8,8 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.media.AudioFormat
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.speech.tts.SynthesisCallback
 import android.speech.tts.SynthesisRequest
 import android.speech.tts.TextToSpeech
@@ -82,6 +84,15 @@ class ReadAloudTTSService : TextToSpeechService() {
      */
     @Volatile
     private var downloadKickedThisLifecycle: Boolean = false
+
+    /**
+     * Main-thread handler used to hop `startIfPossible()` calls onto the
+     * UI looper — the downloader chains into `LiveData.observeForever`
+     * which `assertMainThread()`s. `onSynthesizeText` runs on Android's
+     * TTS SynthThread, so calling the downloader directly from there
+     * crashes the entire service.
+     */
+    private val mainHandler = Handler(Looper.getMainLooper())
 
     /**
      * Scope for fire-and-forget background work tied to the service lifetime.
@@ -331,12 +342,25 @@ class ReadAloudTTSService : TextToSpeechService() {
                 downloadKickedThisLifecycle = true
                 if (isClonedVoice) {
                     Log.w(tag, "Chatterbox engine not on disk — kicking off background download. Subsequent calls will retry until ready.")
-                    ChatterboxModelDownloader.getInstance(applicationContext).startIfPossible()
                 } else {
                     Log.w(tag, "Kokoro voice model not on disk — kicking off background download. Subsequent calls will retry until ready.")
-                    KokoroModelDownloader.getInstance(applicationContext).startIfPossible()
                 }
-                notifyDownloadStarted(isClonedVoice)
+                // Both downloaders chain into LiveData.observeForever(), which
+                // requires the main thread. onSynthesizeText runs on the TTS
+                // SynthThread, so hop onto the UI looper before invoking.
+                // Notification posting is thread-safe so we batch it here too.
+                mainHandler.post {
+                    try {
+                        if (isClonedVoice) {
+                            ChatterboxModelDownloader.getInstance(applicationContext).startIfPossible()
+                        } else {
+                            KokoroModelDownloader.getInstance(applicationContext).startIfPossible()
+                        }
+                        notifyDownloadStarted(isClonedVoice)
+                    } catch (e: Exception) {
+                        Log.e(tag, "auto-download start failed (non-fatal) — ${e.message}", e)
+                    }
+                }
             }
             callback.error()
             return
