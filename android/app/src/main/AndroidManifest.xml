@@ -99,6 +99,56 @@
             android:foregroundServiceType="dataSync"
             tools:replace="android:foregroundServiceType" />
 
+        <!--
+            System TTS engine. Once installed and selected in
+            Settings → Accessibility → Text-to-speech output, this service
+            exposes ReadAloud's voices to every other app on the device —
+            TalkBack, Google Maps, Kindle, etc.
+
+            See SYSTEM_TTS_ENGINE_ROADMAP.md for the full plan.
+        -->
+        <service
+            android:name=".systemtts.ReadAloudTTSService"
+            android:label="@string/system_tts_engine_name"
+            android:exported="true"
+            android:permission="android.permission.BIND_TEXT_TO_SPEECH_SERVICE">
+            <intent-filter>
+                <action android:name="android.intent.action.TTS_SERVICE" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+            <meta-data
+                android:name="android.speech.tts"
+                android:resource="@xml/tts_engine" />
+        </service>
+
+        <!-- Settings UI launched from the system TTS engine row (⚙ icon). -->
+        <activity
+            android:name=".systemtts.TTSEngineSettingsActivity"
+            android:label="@string/system_tts_engine_name"
+            android:exported="true"
+            android:theme="@style/Theme.ListenAI" />
+
+        <!-- Diagnostic activity (M2.6 development). Loads each Chatterbox
+             ONNX session and shows its input/output tensor names so we can
+             verify the inference wiring against the real export.
+             Launch: adb shell am start -n com.listenai/.systemtts.ChatterboxDebugActivity -->
+        <activity
+            android:name=".systemtts.ChatterboxDebugActivity"
+            android:label="Chatterbox tensor inspector"
+            android:exported="true"
+            android:theme="@style/Theme.ListenAI" />
+
+        <!-- Headless benchmark for the system TTS path. Invokes our engine
+             via the public TextToSpeech client API and logs precise
+             timestamps for every stage. Pair with scrcpy audio capture to
+             derive speak()-to-first-audible-sound latency.
+             See BenchmartActivity.kt for the launch incantation. -->
+        <activity
+            android:name=".systemtts.BenchmarkActivity"
+            android:label="TTS latency benchmark"
+            android:exported="true"
+            android:theme="@style/Theme.ListenAI" />
+
     </application>
 
 </manifest>

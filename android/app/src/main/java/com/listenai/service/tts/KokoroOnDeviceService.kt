@@ -221,7 +221,7 @@ class KokoroOnDeviceService(private val context: Context) : TTSService {
      * worse to break mid-clause than to overflow the model and lose the
      * tail of a sentence.
      */
-    private fun chunkTextForModel(text: String): List<String> {
+    private fun chunkTextForModel(text: String, charCap: Int = CHUNK_CHAR_CAP): List<String> {
         val trimmed = text.trim()
         if (trimmed.isEmpty()) return emptyList()
         val sentences = SENTENCE_SPLIT.split(trimmed).map { it.trim() }.filter { it.isNotEmpty() }
@@ -235,10 +235,10 @@ class KokoroOnDeviceService(private val context: Context) : TTSService {
         }
         for (s in sentences) {
             // Sentence itself too long? Split further by comma or hard cap.
-            val pieces = if (s.length > CHUNK_CHAR_CAP) splitOverlongSentence(s) else listOf(s)
+            val pieces = if (s.length > charCap) splitOverlongSentence(s, charCap) else listOf(s)
             for (piece in pieces) {
                 val pieceLen = piece.length
-                if (current.length + pieceLen + 1 > CHUNK_CHAR_CAP) {
+                if (current.length + pieceLen + 1 > charCap) {
                     flushCurrent()
                 }
                 if (current.isNotEmpty()) current.append(' ')
@@ -249,21 +249,21 @@ class KokoroOnDeviceService(private val context: Context) : TTSService {
         return chunks
     }
 
-    private fun splitOverlongSentence(s: String): List<String> {
+    private fun splitOverlongSentence(s: String, charCap: Int = CHUNK_CHAR_CAP): List<String> {
         val byComma = s.split(",").map { it.trim() }.filter { it.isNotEmpty() }
         val out = ArrayList<String>()
         val cur = StringBuilder()
         for (part in byComma) {
-            if (cur.length + part.length + 2 > CHUNK_CHAR_CAP) {
+            if (cur.length + part.length + 2 > charCap) {
                 if (cur.isNotEmpty()) {
                     out.add(cur.toString().trim())
                     cur.clear()
                 }
-                if (part.length > CHUNK_CHAR_CAP) {
+                if (part.length > charCap) {
                     // Truly pathological — hard cap.
                     var i = 0
                     while (i < part.length) {
-                        val end = minOf(i + CHUNK_CHAR_CAP, part.length)
+                        val end = minOf(i + charCap, part.length)
                         out.add(part.substring(i, end))
                         i = end
                     }
@@ -303,6 +303,75 @@ class KokoroOnDeviceService(private val context: Context) : TTSService {
                 chunkIndex = 0,
             )
         )
+    }
+
+    /**
+     * Chunk-by-chunk synthesis that pushes 16-bit PCM directly to a
+     * caller-supplied sink — no WAV header, no disk round-trip.
+     *
+     * Why this exists: the system TTS path (TalkBack, Maps, Kindle) doesn't
+     * need a file on disk — it owns its own AudioTrack and just wants raw
+     * PCM frames as fast as we can produce them. The old path here was
+     * "synthesize all chunks → write WAV to disk → read it back → stream
+     * to callback", which serialized every chunk behind the slowest one
+     * and added 50-150ms of disk round-trip on top.
+     *
+     * For long input (book paragraphs, N chunks), the user now hears audio
+     * after the FIRST chunk completes instead of after the LAST. Per the
+     * 2026-06-22 dev-device telemetry, single-chunk Kokoro inference is
+     * ~1.9s p50 / ~6.6s p95 on Pixel 9 Pro, so cutting the
+     * wait-for-everything pattern is the largest UX lever we have without
+     * touching the model itself.
+     *
+     * For single-chunk input (typical TalkBack utterance), this still
+     * saves the ~50-100ms disk round-trip but won't move the needle on
+     * Warren's "several seconds before TalkBack speaks" — that needs the
+     * sess.run fix (NNAPI/XNNPACK debugging) next session.
+     *
+     * @param onChunk receives `(pcm, sampleRate)` for each chunk in order.
+     *   Return `false` to stop synthesis (e.g., the framework signaled
+     *   stop). Synthesis aborts cleanly without writing further chunks.
+     * @return true if all chunks completed, false if cancelled.
+     */
+    suspend fun synthesizeChunkedPcm(
+        text: String,
+        voice: VoicePreset,
+        options: SynthesisOptions,
+        onChunk: (ShortArray, Int) -> Boolean,
+    ): Boolean = withContext(Dispatchers.IO) {
+        val taskId = UUID.randomUUID()
+        activeTasks.add(taskId)
+        try {
+            val startMs = System.currentTimeMillis()
+            // Use a smaller cap for the streaming path — first audio reaches
+            // the ear after only one chunk of compute, so making chunks
+            // smaller directly cuts first-audio latency. Trade-off is more
+            // total compute due to per-call fixed overhead, but the system
+            // TTS path optimizes for time-to-first-audio over total time.
+            val chunks = chunkTextForModel(text, charCap = STREAMING_CHUNK_CHAR_CAP)
+            Log.i(TAG, "synthesizeChunkedPcm: split ${text.length} chars into ${chunks.size} chunks (cap=$STREAMING_CHUNK_CHAR_CAP)")
+            for ((i, chunk) in chunks.withIndex()) {
+                if (!activeTasks.contains(taskId)) {
+                    Log.i(TAG, "synthesizeChunkedPcm: task cancelled at chunk $i/${chunks.size}")
+                    return@withContext false
+                }
+                val chunkStart = System.currentTimeMillis()
+                val pcm = runInference(chunk, voice, options.speed)
+                val chunkMs = System.currentTimeMillis() - chunkStart
+                Log.i(TAG, "synthesizeChunkedPcm: chunk ${i + 1}/${chunks.size} (${chunk.length} chars) → ${pcm.size} samples in ${chunkMs}ms")
+                if (pcm.isNotEmpty()) {
+                    val keepGoing = onChunk(pcm, 24_000)
+                    if (!keepGoing) {
+                        Log.i(TAG, "synthesizeChunkedPcm: sink signalled stop after chunk ${i + 1}")
+                        return@withContext false
+                    }
+                }
+            }
+            Log.i(TAG, "synthesizeChunkedPcm: all ${chunks.size} chunks done in ${System.currentTimeMillis() - startMs}ms")
+            true
+        } finally {
+            activeTasks.remove(taskId)
+        }
     }
 
     override suspend fun cancelSynthesis(taskId: UUID) {
@@ -477,6 +546,15 @@ class KokoroOnDeviceService(private val context: Context) : TTSService {
         // 350 chars keeps us comfortably under the limit even on
         // phoneme-dense passages.
         private const val CHUNK_CHAR_CAP = 350
+
+        // System TTS streaming path uses a much smaller cap so the FIRST
+        // audio reaches the ear after only one chunk of compute. 2026-06-22
+        // benchmark: a single 170-char chunk took 23.9s on Pixel 9 Pro;
+        // splitting into ~6 chunks of ~30 chars each is expected to bring
+        // first-audio under 5s. Trade-off: more total compute due to
+        // per-chunk fixed overhead — but for TalkBack / Maps / Kindle the
+        // user-perceived latency is what matters.
+        private const val STREAMING_CHUNK_CHAR_CAP = 60
 
         private val SENTENCE_SPLIT = Regex("(?<=[.!?])\\s+")
 

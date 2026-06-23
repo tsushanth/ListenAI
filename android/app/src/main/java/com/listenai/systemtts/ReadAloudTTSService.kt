@@ -22,8 +22,11 @@ import com.listenai.data.models.VoicePreset
 import com.listenai.service.tts.ChatterboxModelDownloader
 import com.listenai.service.tts.ChatterboxOnDeviceService
 import com.listenai.service.tts.KokoroModelDownloader
+import com.listenai.service.tts.KokoroOnDeviceService
 import com.listenai.service.tts.SynthesisOptions
 import com.listenai.service.tts.TTSServiceFactory
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -378,15 +381,18 @@ class ReadAloudTTSService : TextToSpeechService() {
 
         runBlocking {
             try {
-                val result = service.synthesize(
-                    text = text,
-                    voice = preset,
-                    options = SynthesisOptions.DEFAULT.copy(
-                        speed = request.speechRate / 100f,    // Android rate is 100 = normal
-                        pitch = request.pitch / 100f          // Android pitch is 100 = normal
-                    )
+                val opts = SynthesisOptions.DEFAULT.copy(
+                    speed = request.speechRate / 100f,    // Android rate is 100 = normal
+                    pitch = request.pitch / 100f          // Android pitch is 100 = normal
                 )
-                streamWavToCallback(result.audioFile, callback)
+                if (service is KokoroOnDeviceService) {
+                    streamKokoroChunksToCallback(service, text, preset, opts, callback)
+                } else {
+                    // Cloned voices still go through cloud round-trip + WAV file
+                    // — keep the existing path until on-device Chatterbox lands.
+                    val result = service.synthesize(text = text, voice = preset, options = opts)
+                    streamWavToCallback(result.audioFile, callback)
+                }
             } catch (e: NotImplementedError) {
                 // Chatterbox inference still has TODOs (M2.6-5, M2.6-6).
                 // Surface as a clean error so the caller falls through to
@@ -398,6 +404,71 @@ class ReadAloudTTSService : TextToSpeechService() {
                 callback.error()
             }
         }
+    }
+
+    /**
+     * Built-in voice fast path: synth chunk-by-chunk and push each chunk's
+     * PCM frames straight to [SynthesisCallback.audioAvailable] as soon as
+     * the chunk completes. No WAV file ever lands on disk, and for
+     * multi-chunk text TalkBack starts speaking the first chunk while the
+     * second is still synthesizing.
+     *
+     * 24 kHz mono signed 16-bit LE PCM — Kokoro's native output format.
+     */
+    private suspend fun streamKokoroChunksToCallback(
+        service: KokoroOnDeviceService,
+        text: String,
+        preset: VoicePreset,
+        opts: SynthesisOptions,
+        callback: SynthesisCallback,
+    ) {
+        val startRc = callback.start(
+            24_000,
+            AudioFormat.ENCODING_PCM_16BIT,
+            /* channelCount = */ 1,
+        )
+        if (startRc != TextToSpeech.SUCCESS) {
+            Log.w(tag, "streamKokoroChunksToCallback: callback.start returned $startRc — abort")
+            return
+        }
+        val maxBuf = callback.maxBufferSize.coerceAtLeast(2)
+        val svcEntryMs = System.currentTimeMillis()
+        Log.i(tag, "T_SVC_ENTRY=$svcEntryMs chars=${text.length}")
+        var pushedSomething = false
+        val completed = service.synthesizeChunkedPcm(text, preset, opts) { pcm, _ ->
+            if (stopRequested) return@synthesizeChunkedPcm false
+            // ShortArray (signed 16-bit LE PCM) → ByteArray for audioAvailable.
+            val bytes = ByteArray(pcm.size * 2)
+            ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN).asShortBuffer().put(pcm)
+            // The TTS framework caps each audioAvailable() write at
+            // SynthesisCallback.getMaxBufferSize() — split larger chunks.
+            var offset = 0
+            while (offset < bytes.size) {
+                val len = minOf(maxBuf, bytes.size - offset)
+                val rc = callback.audioAvailable(bytes, offset, len)
+                if (rc != TextToSpeech.SUCCESS) {
+                    Log.w(tag, "audioAvailable() returned $rc — abort streaming")
+                    return@synthesizeChunkedPcm false
+                }
+                offset += len
+            }
+            if (!pushedSomething) {
+                Log.i(tag, "T_FIRST_AUDIO_PUSH=${System.currentTimeMillis()} dt_from_entry=${System.currentTimeMillis() - svcEntryMs}ms")
+            }
+            pushedSomething = true
+            true
+        }
+        if (completed && pushedSomething) {
+            callback.done()
+        } else if (!pushedSomething) {
+            // synthesis returned no audio (e.g. all chunks empty after tokenization)
+            Log.w(tag, "streamKokoroChunksToCallback: no PCM produced — signalling error")
+            callback.error()
+        }
+        // If cancelled mid-stream (completed=false but pushedSomething=true),
+        // the framework already has partial audio — we deliberately skip
+        // callback.done() so AudioTrack stops cleanly rather than playing
+        // remnant bytes after a stop request.
     }
 
     /**
