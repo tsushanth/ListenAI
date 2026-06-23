@@ -3,6 +3,8 @@ package com.listenai.service.tts
 import ai.onnxruntime.OnnxTensor
 import ai.onnxruntime.OrtEnvironment
 import ai.onnxruntime.OrtSession
+import ai.onnxruntime.providers.NNAPIFlags
+import java.util.EnumSet
 import android.content.Context
 import android.util.Log
 import com.listenai.data.models.VoicePreset
@@ -52,6 +54,27 @@ class KokoroOnDeviceService(private val context: Context) : TTSService {
 
     @Volatile private var nnapiAvailable: Boolean = false
 
+    /**
+     * Execution provider config for the ORT session. Switchable at runtime
+     * via SharedPreferences so we can A/B different EPs without rebuilding:
+     *   adb shell am broadcast -a com.listenai.SET_EP --es ep NNAPI_FP16
+     * (handled by EpConfigReceiver). Falls back to NNAPI_FP16 — the
+     * benchmark on 2026-06-22 will decide what becomes the new default.
+     */
+    enum class EpConfig {
+        NNAPI_DEFAULT,     // addNnapi() — what shipped through v53
+        NNAPI_FP16,        // addNnapi(USE_FP16)
+        NNAPI_FP16_NO_CPU, // addNnapi(USE_FP16, CPU_DISABLED)
+        XNNPACK,           // addXnnpack(emptyMap()) — CPU vectorized
+        CPU_ONLY,          // no EP — pure ORT default CPU
+    }
+
+    private fun readEpConfig(): EpConfig {
+        val prefs = context.getSharedPreferences("kokoro_ep", Context.MODE_PRIVATE)
+        val name = prefs.getString("ep", null) ?: return EpConfig.NNAPI_FP16
+        return runCatching { EpConfig.valueOf(name) }.getOrDefault(EpConfig.NNAPI_FP16)
+    }
+
     override suspend fun isAvailable(): Boolean = withContext(Dispatchers.IO) {
         try {
             ensureSession() != null
@@ -93,20 +116,57 @@ class KokoroOnDeviceService(private val context: Context) : TTSService {
             // what we got per device.
             val availableCpus = Runtime.getRuntime().availableProcessors()
             val intraOpThreads = (availableCpus - 2).coerceIn(2, 8)
+            val epConfig = readEpConfig()
             val opts = OrtSession.SessionOptions().apply {
-                // Try NNAPI first. Log success / failure so we know whether
-                // the device is actually getting accelerated inference or
-                // silently fell back to CPU.
-                try {
-                    addNnapi()
-                    nnapiAvailable = true
-                    Log.i(TAG, "ensureSession: NNAPI execution provider added")
-                } catch (t: Throwable) {
-                    nnapiAvailable = false
-                    Log.w(TAG, "ensureSession: NNAPI EP unavailable, falling back to CPU — ${t.message}")
+                when (epConfig) {
+                    EpConfig.NNAPI_DEFAULT -> {
+                        try {
+                            addNnapi()
+                            nnapiAvailable = true
+                            Log.i(TAG, "ensureSession: NNAPI (default flags) attached")
+                        } catch (t: Throwable) {
+                            nnapiAvailable = false
+                            Log.w(TAG, "ensureSession: NNAPI unavailable — ${t.message}")
+                        }
+                    }
+                    EpConfig.NNAPI_FP16 -> {
+                        try {
+                            addNnapi(EnumSet.of(NNAPIFlags.USE_FP16))
+                            nnapiAvailable = true
+                            Log.i(TAG, "ensureSession: NNAPI + USE_FP16 attached")
+                        } catch (t: Throwable) {
+                            nnapiAvailable = false
+                            Log.w(TAG, "ensureSession: NNAPI+FP16 unavailable — ${t.message}")
+                        }
+                    }
+                    EpConfig.NNAPI_FP16_NO_CPU -> {
+                        try {
+                            addNnapi(EnumSet.of(NNAPIFlags.USE_FP16, NNAPIFlags.CPU_DISABLED))
+                            nnapiAvailable = true
+                            Log.i(TAG, "ensureSession: NNAPI + USE_FP16 + CPU_DISABLED attached")
+                        } catch (t: Throwable) {
+                            nnapiAvailable = false
+                            Log.w(TAG, "ensureSession: NNAPI+FP16+CPU_DISABLED unavailable — ${t.message}")
+                        }
+                    }
+                    EpConfig.XNNPACK -> {
+                        try {
+                            addXnnpack(emptyMap())
+                            nnapiAvailable = false
+                            Log.i(TAG, "ensureSession: XNNPACK attached")
+                        } catch (t: Throwable) {
+                            nnapiAvailable = false
+                            Log.w(TAG, "ensureSession: XNNPACK unavailable — ${t.message}")
+                        }
+                    }
+                    EpConfig.CPU_ONLY -> {
+                        nnapiAvailable = false
+                        Log.i(TAG, "ensureSession: CPU-only baseline (no EP)")
+                    }
                 }
                 setIntraOpNumThreads(intraOpThreads)
             }
+            Log.i(TAG, "ensureSession: epConfig=$epConfig")
             Log.i(TAG, "ensureSession: availableProcessors=$availableCpus, intraOpThreads=$intraOpThreads")
             val createStart = System.currentTimeMillis()
             val s = env.createSession(modelFile.absolutePath, opts)

@@ -23,8 +23,8 @@ android {
         applicationId = "com.listenai"
         minSdk = 26
         targetSdk = 35
-        versionCode = 53
-        versionName = "2.14.10"
+        versionCode = 55
+        versionName = "2.14.12"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {

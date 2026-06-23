@@ -149,6 +149,17 @@
             android:exported="true"
             android:theme="@style/Theme.ListenAI" />
 
+        <!-- Sets the Kokoro EP pref synchronously. Pair with force-stop
+             before launching BenchmarkActivity so the next session uses
+             the new EP. -->
+        <receiver
+            android:name=".systemtts.SetEpReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.listenai.SET_EP" />
+            </intent-filter>
+        </receiver>
+
     </application>
 
 </manifest>

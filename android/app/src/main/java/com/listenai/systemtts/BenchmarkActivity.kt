@@ -40,6 +40,14 @@ class BenchmarkActivity : Activity() {
         super.onCreate(savedInstanceState)
         val benchText = intent.getStringExtra("text") ?: DEFAULT_TEXT
         val rate = intent.getFloatExtra("rate", 1.0f)
+        // Allow caller to switch the Kokoro execution provider for this
+        // benchmark run via `--es ep NNAPI_FP16` (etc). KokoroOnDeviceService
+        // reads this pref inside ensureSession, so callers also need to
+        // force-stop the app first so the session re-creates with the new EP.
+        intent.getStringExtra("ep")?.let { epName ->
+            getSharedPreferences("kokoro_ep", MODE_PRIVATE).edit().putString("ep", epName).apply()
+            Log.i(TAG, "Set kokoro_ep.ep=$epName")
+        }
 
         val status = TextView(this).apply {
             text = "Benchmark running…\nText (${benchText.length} chars):\n$benchText"
