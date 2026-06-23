@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    voice-flavor string overrides. AGP merges resources from the active
+    flavor source-set over main, so app_name here wins for assembleVoice*.
+-->
+<resources>
+    <string name="app_name">ReadAloud Voice</string>
+    <string name="system_tts_engine_name">ReadAloud Voice</string>
+</resources>

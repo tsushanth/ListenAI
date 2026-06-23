@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    voice-flavor manifest overlay.
+    Merged on top of src/main/AndroidManifest.xml when assembleVoice* runs.
+    Purpose: launch into the TTS voice picker instead of the reader's
+    MainActivity. The reader UI is still in the APK but the user never
+    sees it from the launcher.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <application>
+
+        <!-- Strip MainActivity's intent filters so it's no longer a
+             launcher entry. tools:node="removeAll" applied here removes
+             ALL children (the LAUNCHER intent-filter, the OAuth deep-link
+             filter). MainActivity itself remains so internal start
+             attempts don't NPE. -->
+        <activity android:name=".MainActivity">
+            <intent-filter tools:node="removeAll" />
+        </activity>
+
+        <!-- Activity-alias forwards the LAUNCHER intent to the TTS voice
+             picker. No new Kotlin needed — Android handles the
+             redirect at component-resolution time. -->
+        <activity-alias
+            android:name=".VoicePickerLauncher"
+            android:targetActivity=".systemtts.TTSEngineSettingsActivity"
+            android:label="@string/app_name"
+            android:exported="true"
+            android:enabled="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+    </application>
+
+</manifest>

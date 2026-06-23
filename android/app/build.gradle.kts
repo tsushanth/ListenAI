@@ -46,6 +46,30 @@ android {
         }
     }
 
+    // 2026-06-23: two product flavors out of the same codebase.
+    //   reader — the full ReadAloud AI ebook reader (default; ships as
+    //            com.listenai, current Play listing).
+    //   voice  — a standalone TTS engine app (com.listenai.voice). Same
+    //            APK content (the reader code is dead code from this
+    //            flavor's perspective) but launches into the system TTS
+    //            voice picker instead of the reader.
+    //
+    // This is the cheap path to a separate Play listing for the BVI
+    // audience. Real source-set stripping comes later as Option B/C.
+    flavorDimensions += "product"
+    productFlavors {
+        create("reader") {
+            dimension = "product"
+            // Inherits the default applicationId "com.listenai".
+        }
+        create("voice") {
+            dimension = "product"
+            applicationIdSuffix = ".voice"
+            versionNameSuffix = "-voice"
+            manifestPlaceholders["appNameOverride"] = "ReadAloud Voice"
+        }
+    }
+
     externalNativeBuild {
         cmake {
             path = file("src/main/cpp/CMakeLists.txt")
@@ -233,4 +257,17 @@ dependencies {
     // Firebase Analytics (for Google Ads conversion tracking)
     implementation(platform("com.google.firebase:firebase-bom:33.7.0"))
     implementation("com.google.firebase:firebase-analytics")
+}
+
+
+// The voice flavor (com.listenai.voice) doesn't have a Firebase
+// client entry in google-services.json — and the standalone TTS
+// engine doesn't need Firebase Analytics anyway. Skip the
+// process*GoogleServices task for any voice* variant so the build
+// doesn't fail at config time.
+afterEvaluate {
+    tasks.matching {
+        it.name.startsWith("processVoice") &&
+            it.name.endsWith("GoogleServices")
+    }.configureEach { enabled = false }
 }
