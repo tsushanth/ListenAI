@@ -155,7 +155,28 @@ object OpusDecoder {
             System.arraycopy(c, 0, merged, off, c.size)
             off += c.size
         }
-        return DecodedPcm(merged, sampleRate, channels)
+        // Strip Opus codec edge artifacts. The encoder writes ~80 ms of
+        // priming samples at the start (the "pre-skip" in the OpusHead
+        // header) and pads the final frame up to its full duration
+        // (60 ms with our `-frame_duration 60` ffmpeg setting). MediaCodec
+        // on Android is supposed to honor pre-skip and trim automatically
+        // but its Opus decoder commonly doesn't — the user hears a
+        // grating click/noise at the start and tail of every cache hit.
+        // Trim defensively. 16-bit mono → 2 bytes/sample. Cap the trim
+        // at 30 % of total so a very short clip can't be erased entirely.
+        val bytesPerSample = 2 * channels
+        val frontTrimMs = 80
+        val tailTrimMs = 30
+        val frontTrim = (frontTrimMs * sampleRate / 1000) * bytesPerSample
+        val tailTrim = (tailTrimMs * sampleRate / 1000) * bytesPerSample
+        val maxTrim = (merged.size * 30 / 100) and bytesPerSample.inv() + bytesPerSample
+        val safeFront = minOf(frontTrim, maxTrim / 2).coerceAtLeast(0)
+        val safeTail = minOf(tailTrim, maxTrim / 2).coerceAtLeast(0)
+        val trimmedSize = (merged.size - safeFront - safeTail).coerceAtLeast(0)
+        val finalPcm = if (safeFront == 0 && safeTail == 0) merged else {
+            ByteArray(trimmedSize).also { System.arraycopy(merged, safeFront, it, 0, trimmedSize) }
+        }
+        return DecodedPcm(finalPcm, sampleRate, channels)
     }
 
     /**
