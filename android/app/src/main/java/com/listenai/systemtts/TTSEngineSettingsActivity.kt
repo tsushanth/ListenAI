@@ -398,7 +398,107 @@ private fun VoiceCatalogScreen(padding: PaddingValues) {
                     onPreview = { preview(voiceName, preset) }
                 )
             }
+            item("diagnostics") {
+                DiagnosticsCard()
+            }
         }
+    }
+}
+
+/**
+ * Per-stage Kokoro inference latency aggregate — surfaced here (rather than
+ * a separate activity) so beta testers can read the numbers back in a single
+ * screenshot, no new manifest entry, and TalkBack users can simply skip past
+ * the card by virtue of it being below the voice list.
+ *
+ * Polls [com.listenai.service.tts.LatencyTelemetry] every 2 s so a fresh
+ * sample appears here without the user re-entering the screen.
+ */
+@Composable
+private fun DiagnosticsCard() {
+    var aggregate by remember {
+        mutableStateOf(com.listenai.service.tts.LatencyTelemetry.aggregate())
+    }
+    LaunchedEffect(Unit) {
+        while (true) {
+            kotlinx.coroutines.delay(2_000)
+            aggregate = com.listenai.service.tts.LatencyTelemetry.aggregate()
+        }
+    }
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        )
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = "On-device synthesis diagnostics",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold
+            )
+            Text(
+                text = "Per-call latency from the most recent on-device Kokoro runs. Used to find what to optimize before shipping fixes.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 4.dp)
+            )
+            val a = aggregate
+            if (a == null) {
+                Text(
+                    text = "No samples yet. Trigger a synthesis (preview a voice above, or use TalkBack) and the numbers will appear here.",
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(top = 12.dp)
+                )
+            } else {
+                Column(modifier = Modifier.padding(top = 12.dp)) {
+                    DiagnosticsRow("Calls recorded", a.n.toString())
+                    DiagnosticsRow("Total p50 / p95 / max", "${a.p50Total} / ${a.p95Total} / ${a.maxTotal} ms")
+                    DiagnosticsRow("Model sess.run p50 / p95", "${a.p50SessRun} / ${a.p95SessRun} ms")
+                    DiagnosticsRow("Tokenize p50 / p95", "${a.p50Tokenize} / ${a.p95Tokenize} ms")
+                    DiagnosticsRow("WAV pack p50 / p95", "${a.p50WavPack} / ${a.p95WavPack} ms")
+                    DiagnosticsRow("Median real-time factor", "%.2fx".format(a.medianRtf))
+                    DiagnosticsRow("NNAPI EP attached", "${a.nnapiRatePct}% of calls")
+                    DiagnosticsRow("Cold-start calls", "${a.coldCalls} of ${a.n}")
+                    DiagnosticsRow("Median input length", "${a.medianChars} chars")
+                }
+                Row(
+                    modifier = Modifier.padding(top = 12.dp),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    AssistChip(
+                        onClick = {
+                            com.listenai.service.tts.LatencyTelemetry.clear()
+                            aggregate = null
+                        },
+                        label = { Text("Reset") }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DiagnosticsRow(label: String, value: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 2.dp),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodySmall,
+            fontWeight = FontWeight.Medium
+        )
     }
 }
 

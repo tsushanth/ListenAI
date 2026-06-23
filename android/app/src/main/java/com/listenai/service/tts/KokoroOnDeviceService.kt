@@ -50,6 +50,8 @@ class KokoroOnDeviceService(private val context: Context) : TTSService {
     private val g2p by lazy { KokoroG2P(context) }
     private val activeTasks = mutableSetOf<UUID>()
 
+    @Volatile private var nnapiAvailable: Boolean = false
+
     override suspend fun isAvailable(): Boolean = withContext(Dispatchers.IO) {
         try {
             ensureSession() != null
@@ -88,8 +90,10 @@ class KokoroOnDeviceService(private val context: Context) : TTSService {
                 // silently fell back to CPU.
                 try {
                     addNnapi()
+                    nnapiAvailable = true
                     Log.i(TAG, "ensureSession: NNAPI execution provider added")
                 } catch (t: Throwable) {
+                    nnapiAvailable = false
                     Log.w(TAG, "ensureSession: NNAPI EP unavailable, falling back to CPU — ${t.message}")
                 }
                 setIntraOpNumThreads(intraOpThreads)
@@ -336,11 +340,17 @@ class KokoroOnDeviceService(private val context: Context) : TTSService {
     // ---- Inference internals ------------------------------------------------
 
     private fun runInference(text: String, voice: VoicePreset, speed: Float): ShortArray {
+        val callStartMs = System.currentTimeMillis()
+        // Detect cold-start BEFORE ensureSession() materializes the session
+        // — once it's loaded the next call won't pay createSession cost.
+        val wasCold = session == null
         val sess = ensureSession()
             ?: throw IllegalStateException("Kokoro model not loaded — callers should check isInferenceReady()")
 
         // 1. Text → token IDs (G2P + tokenizer)
+        val tokenizeStartMs = System.currentTimeMillis()
         val tokens = g2p.tokenize(text)
+        val tokenizeMs = System.currentTimeMillis() - tokenizeStartMs
         if (tokens.isEmpty()) {
             return ShortArray(0)
         }
@@ -349,8 +359,10 @@ class KokoroOnDeviceService(private val context: Context) : TTSService {
         // 2. Voice embedding (256-dim fp32) — kokoro-onnx indexes the voice
         // pack by `len(tokens) - 1`, i.e. leading $ + phonemes, excluding
         // the trailing $. Picking the wrong slice produces silence or noise.
+        val embeddingStartMs = System.currentTimeMillis()
         val phonemeCount = tokens.size - 1
         val styleVec = g2p.voiceEmbedding(voice.providerVoiceId ?: "af_heart", phonemeCount)
+        val embeddingMs = System.currentTimeMillis() - embeddingStartMs
 
         // 3. Build tensors. The kokoro-onnx export uses these input names;
         // if the user's specific model variant differs we throw and fall
@@ -377,9 +389,10 @@ class KokoroOnDeviceService(private val context: Context) : TTSService {
         )
 
         try {
-            val startMs = System.currentTimeMillis()
+            val sessRunStartMs = System.currentTimeMillis()
             sess.run(inputs).use { result ->
-                Log.i(TAG, "runInference: sess.run completed in ${System.currentTimeMillis() - startMs}ms, outputs=${result.size()}")
+                val sessRunMs = System.currentTimeMillis() - sessRunStartMs
+                Log.i(TAG, "runInference: sess.run completed in ${sessRunMs}ms, outputs=${result.size()}")
                 val audioTensor = result.get(0)
                 val raw = when (val v = audioTensor.value) {
                     is FloatArray -> v
@@ -393,11 +406,28 @@ class KokoroOnDeviceService(private val context: Context) : TTSService {
                 }
                 Log.i(TAG, "runInference: audio samples=${raw.size} (~${"%.2f".format(raw.size / 24_000.0)}s)")
                 // Convert FP32 [-1.0, 1.0] PCM → Int16 PCM.
+                val wavPackStartMs = System.currentTimeMillis()
                 val out = ShortArray(raw.size)
                 for (i in raw.indices) {
                     val v = (raw[i] * 32_767f).coerceIn(-32_768f, 32_767f)
                     out[i] = v.toInt().toShort()
                 }
+                val wavPackMs = System.currentTimeMillis() - wavPackStartMs
+                LatencyTelemetry.record(
+                    LatencyTelemetry.Sample(
+                        timestamp = callStartMs,
+                        chars = text.length,
+                        tokens = tokens.size,
+                        tokenizeMs = tokenizeMs,
+                        embeddingMs = embeddingMs,
+                        sessRunMs = sessRunMs,
+                        wavPackMs = wavPackMs,
+                        totalMs = System.currentTimeMillis() - callStartMs,
+                        audioMs = (raw.size * 1000L) / 24_000L,
+                        nnapiAvailable = nnapiAvailable,
+                        coldStart = wasCold,
+                    )
+                )
                 return out
             }
         } finally {
