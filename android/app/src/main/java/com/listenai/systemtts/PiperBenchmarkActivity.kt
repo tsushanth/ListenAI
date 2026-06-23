@@ -19,147 +19,153 @@ import java.nio.LongBuffer
 import kotlin.concurrent.thread
 
 /**
- * Pixel-side validation of the 2026-06-22 Piper spike.
+ * End-to-end Piper TTS on Pixel: text → IPA via [EspeakBridge] → Piper
+ * phoneme IDs via the voice config's `phoneme_id_map` → VITS inference
+ * via ONNX Runtime → 16-bit PCM → AudioTrack.
  *
- * Loads en_US-amy-low.onnx (60MB Piper VITS model) + a pre-dumped
- * phoneme ID array (same 170-char benchmark text as KokoroOnDeviceTTS,
- * pre-phonemized on Mac via espeak-ng to skip the on-device phonemizer
- * dependency). Runs a single forward pass, measures wall-clock per
- * stage, then plays the output through AudioTrack.
+ * This is the full live pipeline — no pre-computed IDs, no hardcoded
+ * phonemes. The eSpeak bridge and Piper model are bundled in APK
+ * assets; on first launch both are extracted to cache dir so
+ * MediaExtractor / ORT can mmap them.
  *
- * Files expected at /sdcard/Android/data/com.listenai/files/piper/:
- *   en_US-amy-low.onnx
- *   phoneme_ids.json   (text/ids/scales/sample_rate)
+ * Launch (any text):
+ *   adb shell am start -n com.listenai/.systemtts.PiperBenchmarkActivity \
+ *     --es text "your text here"
  *
- * Launch:
- *   adb shell am start -n com.listenai/.systemtts.PiperBenchmarkActivity
+ * Logs: `adb logcat -s PiperBench:I PiperBench:E EspeakBridge:I espeak_bridge:I`
  *
- * Logs (filter with `adb logcat -s PiperBench:I`):
- *   T_LOAD_START
- *   T_SESSION_READY      session created
- *   T_WARMUP_DONE        warmup inference done (tiny synthetic, JITs kernels)
- *   T_INFER_DONE         real benchmark inference done
- *   T_PLAY_START         AudioTrack.play() called
- *   T_PLAY_DONE          last sample written
- *
- * Whole activity is throwaway — exists only to validate that Piper on
- * Pixel hardware is fast enough to justify the full integration work
- * (eSpeak NG NDK build, PiperOnDeviceService, voice catalog, routing
- * for short utterances). If inference is >1.5s here we kill the idea
- * cleanly; if <800ms we go.
+ * Timing breakdown emitted:
+ *   T_LOAD_START         activity onCreate + thread start
+ *   T_ESPEAK_READY       eSpeak NG initialized
+ *   T_MODEL_COPY_DONE    Piper model extracted to cache
+ *   T_SESSION_READY      ORT session created
+ *   T_PHONEMIZE_DONE     text → IPA
+ *   T_IDS_DONE           IPA → Piper IDs
+ *   T_WARMUP_DONE        throwaway 5-token inference (JIT)
+ *   T_INFER_DONE         real timed inference (with RTF)
+ *   T_PLAY_DONE          AudioTrack drained
  */
 class PiperBenchmarkActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val text = intent.getStringExtra("text")
+            ?: "Hello world. This is Piper running live on a Pixel."
         val status = TextView(this).apply {
-            text = "Piper benchmark running… see `adb logcat -s PiperBench:I`"
-            textSize = 16f
+            setText("Piper LIVE benchmark\ntext (${text.length} chars):\n$text\n\nSee `adb logcat -s PiperBench:I`")
+            textSize = 14f
             setPadding(48, 96, 48, 48)
         }
         setContentView(status)
 
-        thread(start = true, name = "PiperBench") {
-            try {
-                runBenchmark { status.post { status.text = it } }
-            } catch (t: Throwable) {
+        thread(start = true, name = "PiperLive") {
+            try { runBenchmark(text) { status.post { status.setText(it) } } }
+            catch (t: Throwable) {
                 Log.e(TAG, "benchmark threw", t)
-                status.post { status.text = "ERROR: ${t.message}" }
+                status.post { status.setText("ERROR: ${t.message}") }
             }
         }
     }
 
-    private fun runBenchmark(onStatus: (String) -> Unit) {
-        // Throwaway-spike approach: model is bundled in APK assets and
-        // copied to cache dir on first launch. (For real product use
-        // it'd be downloaded via WorkManager like Kokoro.)
+    private fun runBenchmark(text: String, onStatus: (String) -> Unit) {
+        Log.i(TAG, "T_LOAD_START=${System.currentTimeMillis()} text='${text.take(60)}…'")
+
+        // 1) Initialize eSpeak NG (one-time per process, then ~free)
+        val espeakStart = System.currentTimeMillis()
+        val sr = EspeakBridge.ensureInitialized(applicationContext)
+        if (sr <= 0 || !EspeakBridge.isReady()) {
+            Log.e(TAG, "eSpeak init failed (sr=$sr) — bailing")
+            onStatus("eSpeak init FAILED (sr=$sr)")
+            return
+        }
+        Log.i(TAG, "T_ESPEAK_READY=${System.currentTimeMillis()} dt=${System.currentTimeMillis() - espeakStart}ms")
+
+        // 2) Extract Piper model + config from assets to cache (one-time)
         val cacheRoot = File(cacheDir, "piper")
         cacheRoot.mkdirs()
         val modelFile = File(cacheRoot, "model.onnx")
-        val idsFile = File(cacheRoot, "ids.json")
+        val configFile = File(cacheRoot, "config.json")
+        val copyStart = System.currentTimeMillis()
         if (!modelFile.exists() || modelFile.length() == 0L) {
-            Log.i(TAG, "copying model from assets…")
             assets.open("piper/model.onnx").use { input ->
                 modelFile.outputStream().use { out -> input.copyTo(out) }
             }
-            Log.i(TAG, "model copied (${modelFile.length()} bytes)")
         }
-        if (!idsFile.exists()) {
-            assets.open("piper/ids.json").use { input ->
-                idsFile.outputStream().use { out -> input.copyTo(out) }
+        if (!configFile.exists() || configFile.length() == 0L) {
+            assets.open("piper/config.json").use { input ->
+                configFile.outputStream().use { out -> input.copyTo(out) }
             }
         }
+        Log.i(TAG, "T_MODEL_COPY_DONE=${System.currentTimeMillis()} dt=${System.currentTimeMillis() - copyStart}ms")
 
-        val payload = JSONObject(idsFile.readText())
-        // Allow `--es ids "1,35,0,..."` to override the bundled ids for ad-hoc
-        // short-utterance experiments without re-bundling the APK.
-        val idsOverride = intent.getStringExtra("ids")
-        val ids: LongArray = if (idsOverride != null) {
-            idsOverride.split(",").map { it.trim().toLong() }.toLongArray()
-        } else {
-            val arr = payload.getJSONArray("ids")
-            LongArray(arr.length()) { arr.getLong(it) }
+        // 3) Parse config to get phoneme_id_map + scales + sample_rate
+        val config = JSONObject(configFile.readText())
+        val piperSampleRate = config.getJSONObject("audio").getInt("sample_rate")
+        val infCfg = config.getJSONObject("inference")
+        val scales = floatArrayOf(
+            infCfg.getDouble("noise_scale").toFloat(),
+            infCfg.getDouble("length_scale").toFloat(),
+            infCfg.getDouble("noise_w").toFloat(),
+        )
+        val phonemeMap = config.getJSONObject("phoneme_id_map")
+        val bosId = phonemeMap.getJSONArray("^").getLong(0)
+        val eosId = phonemeMap.getJSONArray("$").getLong(0)
+        val padId = phonemeMap.getJSONArray("_").getLong(0)
+
+        // 4) Phonemize via eSpeak
+        val phonStart = System.currentTimeMillis()
+        val ipa = EspeakBridge.phonemize(text)
+        Log.i(TAG, "T_PHONEMIZE_DONE=${System.currentTimeMillis()} dt=${System.currentTimeMillis() - phonStart}ms ipa='$ipa'")
+
+        // 5) Map IPA chars → Piper phoneme IDs.
+        //    Piper convention: BOS, then for each IPA codepoint emit id + pad, then EOS.
+        val idsStart = System.currentTimeMillis()
+        val ids = mutableListOf(bosId)
+        var skipped = 0
+        for (ch in ipa) {
+            val key = ch.toString()
+            if (phonemeMap.has(key)) {
+                ids.add(phonemeMap.getJSONArray(key).getLong(0))
+                ids.add(padId)
+            } else {
+                skipped++
+            }
         }
-        val scalesArray = payload.getJSONArray("scales")
-        val scales = FloatArray(scalesArray.length()) { scalesArray.getDouble(it).toFloat() }
-        val sampleRate = payload.getInt("sample_rate")
-        Log.i(TAG, "loaded ${ids.size} phoneme ids (override=${idsOverride != null}), sample_rate=$sampleRate")
+        ids.add(eosId)
+        val idArr = ids.toLongArray()
+        Log.i(TAG, "T_IDS_DONE=${System.currentTimeMillis()} dt=${System.currentTimeMillis() - idsStart}ms ids=${idArr.size} skipped=$skipped")
 
-        val loadStart = System.currentTimeMillis()
-        Log.i(TAG, "T_LOAD_START=$loadStart")
+        // 6) ORT session (CPU EP — NNAPI hangs on Piper per 2026-06-22 sweep)
+        val sessStart = System.currentTimeMillis()
         val env = OrtEnvironment.getEnvironment()
-        val epName = intent.getStringExtra("ep") ?: "CPU"
-        val opts = OrtSession.SessionOptions().apply {
-            when (epName) {
-                "NNAPI" -> {
-                    try { addNnapi(); Log.i(TAG, "ep=NNAPI attached") }
-                    catch (t: Throwable) { Log.w(TAG, "NNAPI unavailable: ${t.message}") }
-                }
-                "NNAPI_FP16" -> {
-                    try {
-                        addNnapi(java.util.EnumSet.of(ai.onnxruntime.providers.NNAPIFlags.USE_FP16))
-                        Log.i(TAG, "ep=NNAPI+USE_FP16 attached")
-                    } catch (t: Throwable) { Log.w(TAG, "NNAPI+FP16 unavailable: ${t.message}") }
-                }
-                "XNNPACK" -> {
-                    try { addXnnpack(emptyMap()); Log.i(TAG, "ep=XNNPACK attached") }
-                    catch (t: Throwable) { Log.w(TAG, "XNNPACK unavailable: ${t.message}") }
-                }
-                else -> Log.i(TAG, "ep=CPU (default)")
-            }
-            setIntraOpNumThreads(6)
-        }
+        val opts = OrtSession.SessionOptions().apply { setIntraOpNumThreads(6) }
         val sess = env.createSession(modelFile.absolutePath, opts)
-        val sessionReady = System.currentTimeMillis()
-        Log.i(TAG, "T_SESSION_READY=$sessionReady dt=${sessionReady - loadStart}ms")
+        Log.i(TAG, "T_SESSION_READY=${System.currentTimeMillis()} dt=${System.currentTimeMillis() - sessStart}ms")
 
-        // Warmup with a tiny realistic-ish shape (~10 ids) to JIT-compile
-        // kernels before timing the real run.
-        runInference(env, sess, longArrayOf(1, 0, 14, 0, 18, 0, 21, 0, 2), scales)
-        val warmupDone = System.currentTimeMillis()
-        Log.i(TAG, "T_WARMUP_DONE=$warmupDone dt=${warmupDone - sessionReady}ms")
+        // 7) Warmup with tiny synthetic ids to JIT the graph
+        runInference(env, sess, longArrayOf(bosId, padId, 14, padId, eosId), scales)
+        Log.i(TAG, "T_WARMUP_DONE=${System.currentTimeMillis()}")
 
-        // Real timed inference
+        // 8) Real inference
         val inferStart = System.currentTimeMillis()
-        val audio = runInference(env, sess, ids, scales)
-        val inferDone = System.currentTimeMillis()
-        val inferMs = inferDone - inferStart
-        val audioSeconds = audio.size.toDouble() / sampleRate
-        val rtf = inferMs / 1000.0 / audioSeconds
-        Log.i(TAG, "T_INFER_DONE=$inferDone dt=${inferMs}ms audio=${audio.size}samples=${"%.2f".format(audioSeconds)}s rtf=${"%.3f".format(rtf)}x")
+        val audio = runInference(env, sess, idArr, scales)
+        val inferMs = System.currentTimeMillis() - inferStart
+        val audioSec = audio.size.toDouble() / piperSampleRate
+        val rtf = inferMs / 1000.0 / audioSec
+        Log.i(TAG, "T_INFER_DONE=${System.currentTimeMillis()} dt=${inferMs}ms audio=${audio.size}samples=${"%.2f".format(audioSec)}s rtf=${"%.3f".format(rtf)}x")
 
         onStatus(
-            "Piper benchmark done\n\n" +
-                    "Phonemes: ${ids.size}\n" +
-                    "Inference: ${inferMs}ms\n" +
-                    "Audio: ${"%.2f".format(audioSeconds)}s @ ${sampleRate}Hz\n" +
+            "Piper LIVE benchmark — DONE\n" +
+                    "text: ${text.length} chars\n" +
+                    "IPA chars: ${ipa.length}\n" +
+                    "Piper IDs: ${idArr.size} (skipped=$skipped)\n" +
+                    "Inference: ${inferMs} ms\n" +
+                    "Audio: ${"%.2f".format(audioSec)}s @ ${piperSampleRate}Hz\n" +
                     "RTF: ${"%.3f".format(rtf)}x\n\n" +
                     "Playing through AudioTrack…"
         )
 
-        // Play through AudioTrack so we can hear quality on device (scrcpy
-        // can also capture it for spectrogram analysis).
-        playPcm(audio, sampleRate)
+        playPcm(audio, piperSampleRate)
     }
 
     private fun runInference(env: OrtEnvironment, sess: OrtSession, ids: LongArray, scales: FloatArray): FloatArray {
@@ -168,16 +174,21 @@ class PiperBenchmarkActivity : Activity() {
         val scaleTensor = OnnxTensor.createTensor(env, FloatBuffer.wrap(scales), longArrayOf(scales.size.toLong()))
         try {
             sess.run(mapOf("input" to input, "input_lengths" to lengths, "scales" to scaleTensor)).use { res ->
-                // Piper output is [1, 1, 1, samples] float — unwrap.
                 val raw = res.get(0).value
                 @Suppress("UNCHECKED_CAST")
-                val a = raw as Array<Array<Array<FloatArray>>>
-                return a[0][0][0]
+                return when (raw) {
+                    is FloatArray -> raw
+                    is Array<*> -> {
+                        // Piper outputs [1, 1, 1, samples] — strip wrapping arrays
+                        var cur: Any = raw
+                        while (cur is Array<*>) cur = (cur as Array<*>)[0]!!
+                        cur as FloatArray
+                    }
+                    else -> throw IllegalStateException("unexpected audio type: ${raw?.javaClass}")
+                }
             }
         } finally {
-            input.close()
-            lengths.close()
-            scaleTensor.close()
+            input.close(); lengths.close(); scaleTensor.close()
         }
     }
 
@@ -187,27 +198,15 @@ class PiperBenchmarkActivity : Activity() {
         ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN).asShortBuffer().put(pcm)
         val minBuf = AudioTrack.getMinBufferSize(sampleRate, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT)
         val track = AudioTrack(
-            AudioManager.STREAM_MUSIC,
-            sampleRate,
-            AudioFormat.CHANNEL_OUT_MONO,
-            AudioFormat.ENCODING_PCM_16BIT,
-            maxOf(minBuf, bytes.size),
-            AudioTrack.MODE_STATIC,
+            AudioManager.STREAM_MUSIC, sampleRate, AudioFormat.CHANNEL_OUT_MONO,
+            AudioFormat.ENCODING_PCM_16BIT, maxOf(minBuf, bytes.size), AudioTrack.MODE_STATIC,
         )
-        val playStart = System.currentTimeMillis()
-        Log.i(TAG, "T_PLAY_START=$playStart")
         track.write(bytes, 0, bytes.size)
         track.play()
-        // Block until playback drains. STATIC mode doesn't move the play
-        // head past notification frames the way STREAM does, but for a
-        // throwaway benchmark sleeping the audio length is good enough.
         Thread.sleep((audio.size * 1000L / sampleRate) + 200)
-        val playDone = System.currentTimeMillis()
-        Log.i(TAG, "T_PLAY_DONE=$playDone dt=${playDone - playStart}ms")
+        Log.i(TAG, "T_PLAY_DONE=${System.currentTimeMillis()}")
         track.release()
     }
 
-    companion object {
-        private const val TAG = "PiperBench"
-    }
+    companion object { private const val TAG = "PiperBench" }
 }
