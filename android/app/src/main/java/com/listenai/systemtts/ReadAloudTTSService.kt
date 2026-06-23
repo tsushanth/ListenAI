@@ -272,7 +272,15 @@ class ReadAloudTTSService : TextToSpeechService() {
     override fun onGetDefaultVoiceNameFor(lang: String?, country: String?, variant: String?): String {
         val iso2Lang = iso3ToIso2(lang) ?: "en"
         val iso2Country = iso3ToIso2Country(country) ?: "US"
-        return VoiceCatalog.defaultVoiceName(iso2Lang, iso2Country, variant)
+        // Respect the user's selection from TTSEngineSettingsActivity (or any
+        // other in-app voice picker, since SettingsManager.selectedVoiceId
+        // is the single source of truth). If the user has never picked a
+        // voice, or their pick has been removed from the catalog, fall back
+        // to the locale-specific default.
+        val pref = com.listenai.service.settings.SettingsManager
+            .getInstance(applicationContext).selectedVoiceId.value
+        return com.listenai.systemtts.VoiceCatalog.voiceNameForPresetId(pref)
+            ?: VoiceCatalog.defaultVoiceName(iso2Lang, iso2Country, variant)
     }
 
     // -------------------------------------------------------------------------
