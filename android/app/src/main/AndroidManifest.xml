@@ -160,6 +160,15 @@
             </intent-filter>
         </receiver>
 
+        <!-- Test helper: set the in-app selectedVoiceId via adb broadcast. -->
+        <receiver
+            android:name=".systemtts.SetVoiceReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.listenai.SET_VOICE" />
+            </intent-filter>
+        </receiver>
+
         <!-- 2026-06-22 Piper spike. Loads en_US-amy-low.onnx from
              external app files dir, runs single inference with
              pre-dumped phoneme IDs, plays the audio. Throwaway. -->

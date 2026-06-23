@@ -59,8 +59,16 @@ object PiperLiveSynth {
      * Auto-initializes on first call; subsequent calls reuse the
      * loaded session.
      */
+    /**
+     * Synthesize [text] at the given [speed] (1.0 = normal, 0.5 = half
+     * speed / 2x duration, 2.0 = double speed / half duration). The
+     * Android TTS framework passes speechRate as an integer percentage
+     * (50-400, with 100 = normal); callers convert by `rate / 100f`.
+     *
+     * Returns empty array on failure (caller falls back to Kokoro).
+     */
     @Synchronized
-    fun synthesize(context: Context, text: String): ShortArray {
+    fun synthesize(context: Context, text: String, speed: Float = 1.0f): ShortArray {
         if (!ensureInitialized(context)) return ShortArray(0)
         val sess = session ?: return ShortArray(0)
         val pmap = phonemeMap ?: return ShortArray(0)
@@ -85,19 +93,26 @@ object PiperLiveSynth {
         }
         ids.add(eosId)
         val idArr = LongArray(ids.size) { ids[it] }
-        Log.i(TAG, "synth '${text.take(40)}' ipa.len=${ipa.length} ids=${idArr.size} skipped=$skipped")
 
-        // 3. ORT inference
+        // 3. Build per-call scales array — length_scale (index 1) is the
+        // inverse of speed: a faster speech rate means a SHORTER mel
+        // spectrogram, so length_scale < 1. Clamp to a sane range so
+        // ungated rate sliders don't produce gibberish.
+        val safeSpeed = speed.coerceIn(0.25f, 4.0f)
+        val callScales = floatArrayOf(scales[0], 1f / safeSpeed, scales[2])
+        Log.i(TAG, "synth '${text.take(40)}' ipa.len=${ipa.length} ids=${idArr.size} skipped=$skipped speed=$safeSpeed length_scale=${callScales[1]}")
+
+        // 4. ORT inference
         val inferStart = System.currentTimeMillis()
         val audioF32 = try {
-            runInference(sess, idArr)
+            runInference(sess, idArr, callScales)
         } catch (t: Throwable) {
             Log.e(TAG, "inference threw: ${t.message}", t)
             return ShortArray(0)
         }
         Log.i(TAG, "synth inference: ${System.currentTimeMillis() - inferStart}ms for ${audioF32.size} samples")
 
-        // 4. FP32 [-1, 1] → int16 LE PCM
+        // 5. FP32 [-1, 1] → int16 LE PCM
         return ShortArray(audioF32.size) {
             (audioF32[it] * 32767f).coerceIn(-32768f, 32767f).toInt().toShort()
         }
@@ -170,11 +185,11 @@ object PiperLiveSynth {
         }
     }
 
-    private fun runInference(sess: OrtSession, ids: LongArray): FloatArray {
+    private fun runInference(sess: OrtSession, ids: LongArray, scalesIn: FloatArray = scales): FloatArray {
         val env = OrtEnvironment.getEnvironment()
         val input = OnnxTensor.createTensor(env, LongBuffer.wrap(ids), longArrayOf(1, ids.size.toLong()))
         val lengths = OnnxTensor.createTensor(env, LongBuffer.wrap(longArrayOf(ids.size.toLong())), longArrayOf(1))
-        val scaleTensor = OnnxTensor.createTensor(env, FloatBuffer.wrap(scales), longArrayOf(scales.size.toLong()))
+        val scaleTensor = OnnxTensor.createTensor(env, FloatBuffer.wrap(scalesIn), longArrayOf(scalesIn.size.toLong()))
         try {
             sess.run(mapOf("input" to input, "input_lengths" to lengths, "scales" to scaleTensor)).use { res ->
                 val raw = res.get(0).value

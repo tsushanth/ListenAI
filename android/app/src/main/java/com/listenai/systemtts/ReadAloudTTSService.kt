@@ -294,7 +294,20 @@ class ReadAloudTTSService : TextToSpeechService() {
         // to the locale-specific default.
         val pref = com.listenai.service.settings.SettingsManager
             .getInstance(applicationContext).selectedVoiceId.value
-        return com.listenai.systemtts.VoiceCatalog.voiceNameForPresetId(pref)
+            ?.takeIf { it.isNotBlank() }
+        // When the user hasn't picked a voice yet, default to bella —
+        // it's the preset whose providerVoiceId is af_heart, which is
+        // also the voice the pre-rendered TalkBack label cache was
+        // rendered in. Returning a different default (like rachel,
+        // which maps to af_nicole and isn't bundled) means cache hits
+        // get gated off for everyone who hasn't explicitly chosen
+        // a voice. Bella is bundled, sounds the same as the cache,
+        // and gives unset users the full fast-path benefit.
+        // dorothy is the preset whose providerVoiceId is af_heart — same
+        // voice the bundled TalkBack cache was rendered in. bella maps
+        // to af_bella (different voice) so picking bella as the default
+        // would gate off the entire bundled cache for unset users.
+        return com.listenai.systemtts.VoiceCatalog.voiceNameForPresetId(pref ?: "dorothy")
             ?: VoiceCatalog.defaultVoiceName(iso2Lang, iso2Country, variant)
     }
 
@@ -326,47 +339,12 @@ class ReadAloudTTSService : TextToSpeechService() {
             return
         }
 
-        // Fast path: common TalkBack labels ("Wi-Fi", "Bluetooth", "Settings"…)
-        // are pre-rendered with Piper at build time and shipped in the APK.
-        // Exact-match lookup costs ~1ms; a hit means audio reaches the
-        // speaker ~50ms after this call instead of ~1.9s for live Kokoro
-        // synthesis. On a miss we fall through to the model.
-        val cacheStartMs = System.currentTimeMillis()
-        val cached = try {
-            TalkbackLabelCache.getInstance(applicationContext).lookup(text)
-        } catch (t: Throwable) {
-            Log.w(tag, "cache lookup threw (non-fatal): ${t.message}")
-            null
-        }
-        if (cached != null) {
-            Log.i(tag, "T_CACHE_HIT text='${text.take(40)}' lookup_ms=${System.currentTimeMillis() - cacheStartMs} audio_ms=${cached.audioMs}")
-            servePcmFromCache(cached, callback)
-            return
-        }
-
-        // Cache miss + short text: try Piper (~600-800 ms) before
-        // falling through to Kokoro (~2-3 s). Piper requires eSpeak
-        // NG, so we gate on isReady() — if the bridge failed to load
-        // we skip straight to Kokoro. Long text stays on Kokoro
-        // because Piper's per-token cost grows roughly linearly and
-        // Kokoro is competitive once chunks/streaming kick in.
-        if (text.length <= PIPER_MAX_CHARS) {
-            val piperStart = System.currentTimeMillis()
-            val pcm = try {
-                PiperLiveSynth.synthesize(applicationContext, text)
-            } catch (t: Throwable) {
-                Log.w(tag, "Piper synth threw (non-fatal): ${t.message}")
-                ShortArray(0)
-            }
-            if (pcm.isNotEmpty()) {
-                Log.i(tag, "T_PIPER_DONE text='${text.take(40)}' dt=${System.currentTimeMillis() - piperStart}ms samples=${pcm.size}")
-                servePcmDirect(pcm, PiperLiveSynth.sampleRate(), callback)
-                return
-            }
-            // Otherwise fall through to Kokoro
-            Log.i(tag, "Piper returned empty PCM — falling through to Kokoro")
-        }
-
+        // Resolve voice FIRST so the fast-path gates can honor it. The
+        // cache + Piper fast paths are both single-voice (af_heart for
+        // cache, amy for Piper); if the user picked anything else we
+        // MUST skip them or they hear the wrong voice. Same for rate:
+        // the cache PCM is pre-rendered at 1.0x, and Piper's length_scale
+        // is wired below, so cache hits require rate==100.
         val voiceName = request.voiceName ?: VoiceCatalog.defaultVoiceName(
             iso3ToIso2(request.language), iso3ToIso2Country(request.country), null
         )
@@ -376,8 +354,71 @@ class ReadAloudTTSService : TextToSpeechService() {
             callback.error()
             return
         }
+        Log.i(tag, "voiceResolved request.voiceName='${request.voiceName}' fallback='$voiceName' preset=${preset.id} providerVoiceId=${preset.providerVoiceId}")
 
         val isClonedVoice = preset.id.startsWith("cloned_") || preset.providerModelId == "chatterbox"
+        val voiceKey = preset.providerVoiceId ?: "af_heart"
+        val isDefaultVoice = !isClonedVoice && voiceKey == "af_heart"
+        val isDefaultRate = request.speechRate == 100
+
+        // Voice cache routing strategy:
+        //   1. Per-voice cache (filesDir/voice_cache/<voiceKey>/) — populated
+        //      lazily by every Kokoro live synth completion. Hits give the
+        //      user their chosen voice at near-zero latency. Built up over
+        //      real TalkBack usage; first call for a new label is always
+        //      a live miss that seeds the cache for next time.
+        //   2. Bundled af_heart cache — only valid for the default voice
+        //      at default rate. Otherwise serving it would play af_heart
+        //      audio when the user asked for Josh.
+        //   3. Piper live (amy-only) — only valid for the default voice.
+        //   4. Kokoro live with the user's voice — the always-correct slow
+        //      path, plus the lazy cache writer.
+        if (isDefaultRate && !isClonedVoice) {
+            val perVoiceStart = System.currentTimeMillis()
+            val perVoice = try {
+                PerVoiceCache.getInstance(applicationContext).lookup(text, voiceKey)
+            } catch (t: Throwable) {
+                Log.w(tag, "per-voice cache lookup threw (non-fatal): ${t.message}")
+                null
+            }
+            if (perVoice != null) {
+                Log.i(tag, "T_PER_VOICE_HIT text='${text.take(40)}' voice=$voiceKey lookup_ms=${System.currentTimeMillis() - perVoiceStart}")
+                servePcmDirect(perVoice.pcm, perVoice.sampleRate, callback)
+                return
+            }
+        }
+
+        val canUseBundledCache = isDefaultVoice && isDefaultRate
+        if (canUseBundledCache) {
+            val cacheStartMs = System.currentTimeMillis()
+            val cached = try {
+                TalkbackLabelCache.getInstance(applicationContext).lookup(text)
+            } catch (t: Throwable) {
+                Log.w(tag, "cache lookup threw (non-fatal): ${t.message}")
+                null
+            }
+            if (cached != null) {
+                Log.i(tag, "T_CACHE_HIT text='${text.take(40)}' lookup_ms=${System.currentTimeMillis() - cacheStartMs} audio_ms=${cached.audioMs}")
+                servePcmFromCache(cached, callback)
+                return
+            }
+        }
+
+        if (isDefaultVoice && text.length <= PIPER_MAX_CHARS) {
+            val piperStart = System.currentTimeMillis()
+            val pcm = try {
+                PiperLiveSynth.synthesize(applicationContext, text, request.speechRate / 100f)
+            } catch (t: Throwable) {
+                Log.w(tag, "Piper synth threw (non-fatal): ${t.message}")
+                ShortArray(0)
+            }
+            if (pcm.isNotEmpty()) {
+                Log.i(tag, "T_PIPER_DONE text='${text.take(40)}' dt=${System.currentTimeMillis() - piperStart}ms samples=${pcm.size} rate=${request.speechRate}")
+                servePcmDirect(pcm, PiperLiveSynth.sampleRate(), callback)
+                return
+            }
+            Log.i(tag, "Piper returned empty PCM — falling through to Kokoro")
+        }
 
         // Pick the right on-device path for this voice.
         //   Built-in voice → Kokoro
@@ -610,7 +651,19 @@ class ReadAloudTTSService : TextToSpeechService() {
             }
         }
 
-        val completed = service.synthesizeChunkedPcm(text, preset, opts) { pcm, _ ->
+        // Also accumulate the PCM so we can write it to the per-voice
+        // cache once synthesis completes successfully. Only worth doing
+        // for default-rate, sub-PIPER_MAX_CHARS utterances — TalkBack
+        // labels, basically. Full paragraphs would balloon disk and
+        // aren't repeated verbatim like UI labels are.
+        val voiceKey = preset.providerVoiceId ?: "af_heart"
+        val cacheableForPerVoice = opts.speed == 1.0f &&
+                !preset.id.startsWith("cloned_") &&
+                text.length <= PIPER_MAX_CHARS
+        val accum = if (cacheableForPerVoice) ArrayList<ShortArray>(4) else null
+        var accumSampleRate = 0
+
+        val completed = service.synthesizeChunkedPcm(text, preset, opts) { pcm, sr ->
             if (stopRequested || consumerAborted.get()) return@synthesizeChunkedPcm false
             // ShortArray (signed 16-bit LE PCM) → ByteArray for audioAvailable.
             val bytes = ByteArray(pcm.size * 2)
@@ -620,6 +673,13 @@ class ReadAloudTTSService : TextToSpeechService() {
             } catch (ie: InterruptedException) {
                 return@synthesizeChunkedPcm false
             }
+            // Snapshot the chunk for per-voice caching. ShortArray is mutable
+            // but synthesizeChunkedPcm doesn't reuse it across callbacks, so
+            // capturing the reference is safe.
+            if (accum != null) {
+                accum.add(pcm)
+                accumSampleRate = sr
+            }
             true
         }
         // Signal end-of-stream to consumer, then wait for it to drain.
@@ -628,6 +688,30 @@ class ReadAloudTTSService : TextToSpeechService() {
 
         if (completed && pushedSomething.get() && !consumerAborted.get()) {
             callback.done()
+            // Best-effort: persist this synthesis to the per-voice cache so
+            // the next request for the same label hits disk instead of
+            // running Kokoro again. Fire-and-forget on a background thread —
+            // disk write shouldn't block the synth-thread returning.
+            if (accum != null && accumSampleRate > 0 && accum.isNotEmpty()) {
+                val totalSamples = accum.sumOf { it.size }
+                val merged = ShortArray(totalSamples)
+                var off = 0
+                for (chunk in accum) {
+                    System.arraycopy(chunk, 0, merged, off, chunk.size)
+                    off += chunk.size
+                }
+                val srToWrite = accumSampleRate
+                val voiceToWrite = voiceKey
+                val textToWrite = text
+                serviceScope.launch {
+                    try {
+                        PerVoiceCache.getInstance(applicationContext)
+                            .store(textToWrite, voiceToWrite, merged, srToWrite)
+                    } catch (t: Throwable) {
+                        Log.w(tag, "per-voice cache store threw (non-fatal): ${t.message}")
+                    }
+                }
+            }
         } else if (!pushedSomething.get()) {
             // synthesis returned no audio (e.g. all chunks empty after tokenization)
             Log.w(tag, "streamKokoroChunksToCallback: no PCM produced — signalling error")
