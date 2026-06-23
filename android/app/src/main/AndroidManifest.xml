@@ -160,6 +160,15 @@
             </intent-filter>
         </receiver>
 
+        <!-- 2026-06-22 Piper spike. Loads en_US-amy-low.onnx from
+             external app files dir, runs single inference with
+             pre-dumped phoneme IDs, plays the audio. Throwaway. -->
+        <activity
+            android:name=".systemtts.PiperBenchmarkActivity"
+            android:label="Piper latency benchmark"
+            android:exported="true"
+            android:theme="@style/Theme.ListenAI" />
+
     </application>
 
 </manifest>

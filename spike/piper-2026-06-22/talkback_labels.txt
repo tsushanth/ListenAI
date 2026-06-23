@@ -1,0 +1,111 @@
+Wi-Fi
+Bluetooth
+Settings
+Back
+Home
+Notifications
+Quick settings
+Battery
+Display
+Sound
+Storage
+Apps
+Accounts
+Security
+Privacy
+Location
+Connected devices
+Mobile data
+Hotspot
+Airplane mode
+Do not disturb
+Dark theme
+Brightness
+Volume
+Ringtone
+Vibration
+Lock screen
+Screen timeout
+Auto-rotate
+Font size
+Language
+Keyboard
+Voice input
+Accessibility
+TalkBack
+Magnification
+Captions
+Phone
+Messages
+Camera
+Photos
+Calendar
+Clock
+Calculator
+Maps
+Browser
+Email
+Contacts
+Files
+Music
+Gallery
+On
+Off
+Enabled
+Disabled
+Connected
+Disconnected
+Available
+Unavailable
+Yes
+No
+OK
+Cancel
+Save
+Delete
+Edit
+Share
+Send
+Receive
+Open
+Close
+Stop
+Start
+Pause
+Play
+Next
+Previous
+Skip
+Add
+Remove
+Search
+Refresh
+Update
+Install
+Uninstall
+Loading
+Loading, please wait
+Done
+Failed
+Success
+Error
+Warning
+Information
+Selected
+Not selected
+Checked
+Unchecked
+Expanded
+Collapsed
+Double tap to activate
+Swipe right
+Swipe left
+Heading
+Button
+Link
+Tab
+Image
+List
+List item
+Read aloud
+ReadAloud AI

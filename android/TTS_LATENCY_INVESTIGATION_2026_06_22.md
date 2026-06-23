@@ -325,6 +325,82 @@ python3 /tmp/tts_latency_analysis.py /tmp/bench.wav
 
 ---
 
+## Late-evening additions (v56/v57)
+
+### v56 — Piper spike
+
+Validated Piper (`en_US-amy-low.onnx`, 60MB VITS model) as a
+faster-than-Kokoro alternative for short utterances. Spike scripts
+live at `spike/piper-2026-06-22/`.
+
+Mac (Apple Silicon CPU only):
+- 170 chars / 372 phonemes / 10s audio → **220ms inference (RTF 0.022×)**
+- 45× faster than realtime, single forward pass, no chunking
+
+Pixel 9 Pro (CPU only):
+- 170 chars / 372 phonemes / 10s audio → 5,121ms (RTF 0.51×)
+- 18 phonemes (Wi-Fi) → 644ms
+- XNNPACK helps marginally (-6%); NNAPI hangs (>40s, never returns)
+- ~400ms fixed overhead + ~13ms per phoneme
+
+Per second of audio, Piper is **2× faster than Kokoro** on the same
+device. For a typical 20-phoneme TalkBack utterance ~660ms vs Kokoro's
+1900ms. Quality assessed by user as "much better" than Kokoro
+q8f16 output.
+
+Integration deferred — needs eSpeak NG phonemizer via NDK (~3 hour
+spike) before it's shippable.
+
+### v57 / v58 — Pre-rendered cache for common TalkBack labels (SHIPPED)
+
+Pre-renders 111 common Android labels into 24kHz 16-bit LE PCM files
+and ships them as 4.6MB of APK assets at `assets/talkback_cache/`.
+`ReadAloudTTSService.onSynthesizeText` checks the cache before any
+voice/model setup; on hit, plays directly via AudioTrack — no model
+load, no inference, no chunking. Exact-match lookup via
+`text.trim().lowercase() → SHA-256 → first 16 hex chars`.
+
+**v57** rendered the cache with Piper en_US-amy-low for speed of
+iteration (the Mac-side spike was already there). Worked perfectly
+for latency but Amy sounds nothing like Kokoro Bella — every cached
+phrase clashed with the surrounding live-synth voice.
+
+**v58** re-renders with Kokoro v1.0 af_heart (same voice family as
+the Android default). 99.5s total Mac render time, 4.47MB at 24kHz.
+Cache and live synth now sound like the same speaker.
+
+Pixel 9 Pro measured:
+
+| Text | Cached | speak() → first push | speak() → push complete |
+|---|---|---:|---:|
+| "Wi-Fi" | ✅ | **<1 ms** | 128 ms |
+| "Settings" | ✅ | **<1 ms** | 145 ms |
+| "Bluetooth" | ✅ | **<1 ms** | 130 ms |
+| "Heading" | ✅ | **<1 ms** | 17 ms |
+| arbitrary text | ❌ (Kokoro miss) | 3,154 ms | 3,200 ms |
+
+(Push-complete is the time to copy the full PCM through
+`callback.audioAvailable` — not perceived latency. First sound at
+the speaker is push_start + ~50ms AudioTrack buffer fill.)
+
+**200-400× faster for cached labels** — below the threshold of
+perceptible lag. Warren's "several seconds before TalkBack speaks"
+becomes "instant" for every label the cache covers.
+
+User-confirmed: cache audio sounds clean ("sound good" — 2026-06-22)
+and consistent with live Kokoro fallback (both af_heart voice
+family).
+
+Cache rendering scripts + label list:
+- `spike/piper-2026-06-22/render_cache_kokoro.py` ← used for v58
+- `spike/piper-2026-06-22/render_cache.py` (Piper version, v57)
+- `spike/piper-2026-06-22/talkback_labels.txt`
+
+To grow the cache: append labels, rerun
+`render_cache_kokoro.py`, rebuild APK.
+
+---
+
 ## Commits this session
 
 | Commit | Version | Summary |
@@ -332,6 +408,21 @@ python3 /tmp/tts_latency_analysis.py /tmp/bench.wav
 | `6eaa41b` | 2.14.5 / vc48 | Latency telemetry + Diagnostics card |
 | `1bbada2` | 2.14.8 / vc51 | Streaming PCM + 60-char chunks + BenchmarkActivity |
 | `275d547` | 2.14.10 / vc53 | @Synchronized ensureSession (3.4× total speedup landed here) |
-| (this) | 2.14.12 / vc55 | EP switcher + sweep infrastructure + this doc |
+| `1209fbe` | 2.14.12 / vc55 | EP switcher + sweep infrastructure + this doc |
+| (this) | 2.14.15 / vc58 | Piper spike + TalkBack label cache with Kokoro voice (200-400× faster for cached labels) |
 
-All four pushed to `origin/main`. `v53` is on Play closed testing.
+All five pushed to `origin/main`. `v53` is on Play closed testing.
+
+## Final headline
+
+For **Warren's exact complaint** (TalkBack short-utterance latency):
+
+- Morning baseline (v47): ~1,900 ms per utterance
+- v53 (streaming + concurrency fix): ~1,500 ms per utterance (marginal)
+- **v57 cache hit: ~70-100 ms** (the actual fix)
+- v57 cache miss: ~3,000 ms (Kokoro fallback, still slow)
+
+Cache coverage for the most common 110 labels means the majority of
+TalkBack swipes feel instant. Labels not in the cache fall through
+to Kokoro and remain slow until we ship Piper as the fallback engine
+(next session's work).

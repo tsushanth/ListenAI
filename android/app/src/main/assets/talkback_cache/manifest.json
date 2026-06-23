@@ -1,0 +1,1007 @@
+{
+  "sample_rate": 24000,
+  "channels": 1,
+  "bits_per_sample": 16,
+  "voice": "kokoro-af_heart",
+  "labels": {
+    "f1ea8dbd316e2039": {
+      "text": "Wi-Fi",
+      "norm": "wi-fi",
+      "samples": 20992,
+      "ms": 874,
+      "bytes": 41984,
+      "file": "f1ea8dbd316e2039.pcm",
+      "inf_ms": 829
+    },
+    "a828d1db82af60f9": {
+      "text": "Bluetooth",
+      "norm": "bluetooth",
+      "samples": 21504,
+      "ms": 896,
+      "bytes": 43008,
+      "file": "a828d1db82af60f9.pcm",
+      "inf_ms": 855
+    },
+    "cde0fb0dec1400c5": {
+      "text": "Settings",
+      "norm": "settings",
+      "samples": 21504,
+      "ms": 896,
+      "bytes": 43008,
+      "file": "cde0fb0dec1400c5.pcm",
+      "inf_ms": 856
+    },
+    "3c482346f3750276": {
+      "text": "Back",
+      "norm": "back",
+      "samples": 15872,
+      "ms": 661,
+      "bytes": 31744,
+      "file": "3c482346f3750276.pcm",
+      "inf_ms": 806
+    },
+    "4ea140588150773c": {
+      "text": "Home",
+      "norm": "home",
+      "samples": 16384,
+      "ms": 682,
+      "bytes": 32768,
+      "file": "4ea140588150773c.pcm",
+      "inf_ms": 840
+    },
+    "8bb6922758ad870f": {
+      "text": "Notifications",
+      "norm": "notifications",
+      "samples": 26624,
+      "ms": 1109,
+      "bytes": 53248,
+      "file": "8bb6922758ad870f.pcm",
+      "inf_ms": 891
+    },
+    "30d520511017d02a": {
+      "text": "Quick settings",
+      "norm": "quick settings",
+      "samples": 23040,
+      "ms": 960,
+      "bytes": 46080,
+      "file": "30d520511017d02a.pcm",
+      "inf_ms": 870
+    },
+    "f3d1701e1d575e12": {
+      "text": "Battery",
+      "norm": "battery",
+      "samples": 19968,
+      "ms": 832,
+      "bytes": 39936,
+      "file": "f3d1701e1d575e12.pcm",
+      "inf_ms": 852
+    },
+    "dfbb889cf19bda82": {
+      "text": "Display",
+      "norm": "display",
+      "samples": 22016,
+      "ms": 917,
+      "bytes": 44032,
+      "file": "dfbb889cf19bda82.pcm",
+      "inf_ms": 871
+    },
+    "dd29442deca69f52": {
+      "text": "Sound",
+      "norm": "sound",
+      "samples": 19968,
+      "ms": 832,
+      "bytes": 39936,
+      "file": "dd29442deca69f52.pcm",
+      "inf_ms": 833
+    },
+    "49a25f9feefaffec": {
+      "text": "Storage",
+      "norm": "storage",
+      "samples": 21504,
+      "ms": 896,
+      "bytes": 43008,
+      "file": "49a25f9feefaffec.pcm",
+      "inf_ms": 858
+    },
+    "d56f6359d240f69e": {
+      "text": "Apps",
+      "norm": "apps",
+      "samples": 16384,
+      "ms": 682,
+      "bytes": 32768,
+      "file": "d56f6359d240f69e.pcm",
+      "inf_ms": 800
+    },
+    "bc62a3c14fec277e": {
+      "text": "Accounts",
+      "norm": "accounts",
+      "samples": 20480,
+      "ms": 853,
+      "bytes": 40960,
+      "file": "bc62a3c14fec277e.pcm",
+      "inf_ms": 855
+    },
+    "5d2d3ceb7abe5523": {
+      "text": "Security",
+      "norm": "security",
+      "samples": 24064,
+      "ms": 1002,
+      "bytes": 48128,
+      "file": "5d2d3ceb7abe5523.pcm",
+      "inf_ms": 879
+    },
+    "a4cc6bc01a927e2a": {
+      "text": "Privacy",
+      "norm": "privacy",
+      "samples": 23040,
+      "ms": 960,
+      "bytes": 46080,
+      "file": "a4cc6bc01a927e2a.pcm",
+      "inf_ms": 858
+    },
+    "e6eaea18e885e107": {
+      "text": "Location",
+      "norm": "location",
+      "samples": 19968,
+      "ms": 832,
+      "bytes": 39936,
+      "file": "e6eaea18e885e107.pcm",
+      "inf_ms": 884
+    },
+    "b0b88f8d92967f0a": {
+      "text": "Connected devices",
+      "norm": "connected devices",
+      "samples": 31744,
+      "ms": 1322,
+      "bytes": 63488,
+      "file": "b0b88f8d92967f0a.pcm",
+      "inf_ms": 931
+    },
+    "7cedfc47ef0312fe": {
+      "text": "Mobile data",
+      "norm": "mobile data",
+      "samples": 26112,
+      "ms": 1088,
+      "bytes": 52224,
+      "file": "7cedfc47ef0312fe.pcm",
+      "inf_ms": 880
+    },
+    "18ff2ab635a0be10": {
+      "text": "Hotspot",
+      "norm": "hotspot",
+      "samples": 20992,
+      "ms": 874,
+      "bytes": 41984,
+      "file": "18ff2ab635a0be10.pcm",
+      "inf_ms": 855
+    },
+    "b363385719010ae3": {
+      "text": "Airplane mode",
+      "norm": "airplane mode",
+      "samples": 26624,
+      "ms": 1109,
+      "bytes": 53248,
+      "file": "b363385719010ae3.pcm",
+      "inf_ms": 904
+    },
+    "d16a08bb39421943": {
+      "text": "Do not disturb",
+      "norm": "do not disturb",
+      "samples": 31232,
+      "ms": 1301,
+      "bytes": 62464,
+      "file": "d16a08bb39421943.pcm",
+      "inf_ms": 993
+    },
+    "f9da34dafabb886b": {
+      "text": "Dark theme",
+      "norm": "dark theme",
+      "samples": 22016,
+      "ms": 917,
+      "bytes": 44032,
+      "file": "f9da34dafabb886b.pcm",
+      "inf_ms": 882
+    },
+    "aa6ed6c957fcc380": {
+      "text": "Brightness",
+      "norm": "brightness",
+      "samples": 22016,
+      "ms": 917,
+      "bytes": 44032,
+      "file": "aa6ed6c957fcc380.pcm",
+      "inf_ms": 855
+    },
+    "62d7a6b1211d6276": {
+      "text": "Volume",
+      "norm": "volume",
+      "samples": 22016,
+      "ms": 917,
+      "bytes": 44032,
+      "file": "62d7a6b1211d6276.pcm",
+      "inf_ms": 868
+    },
+    "f13666033187774f": {
+      "text": "Ringtone",
+      "norm": "ringtone",
+      "samples": 19968,
+      "ms": 832,
+      "bytes": 39936,
+      "file": "f13666033187774f.pcm",
+      "inf_ms": 876
+    },
+    "d6740176da76c7e5": {
+      "text": "Vibration",
+      "norm": "vibration",
+      "samples": 23040,
+      "ms": 960,
+      "bytes": 46080,
+      "file": "d6740176da76c7e5.pcm",
+      "inf_ms": 892
+    },
+    "7b3b551425df1370": {
+      "text": "Lock screen",
+      "norm": "lock screen",
+      "samples": 26112,
+      "ms": 1088,
+      "bytes": 52224,
+      "file": "7b3b551425df1370.pcm",
+      "inf_ms": 899
+    },
+    "5bd770322affd86d": {
+      "text": "Screen timeout",
+      "norm": "screen timeout",
+      "samples": 26112,
+      "ms": 1088,
+      "bytes": 52224,
+      "file": "5bd770322affd86d.pcm",
+      "inf_ms": 879
+    },
+    "bc771820aec3a19f": {
+      "text": "Auto-rotate",
+      "norm": "auto-rotate",
+      "samples": 27136,
+      "ms": 1130,
+      "bytes": 54272,
+      "file": "bc771820aec3a19f.pcm",
+      "inf_ms": 859
+    },
+    "f320119eda6dec0a": {
+      "text": "Font size",
+      "norm": "font size",
+      "samples": 24064,
+      "ms": 1002,
+      "bytes": 48128,
+      "file": "f320119eda6dec0a.pcm",
+      "inf_ms": 905
+    },
+    "a4ef304ba42a200b": {
+      "text": "Language",
+      "norm": "language",
+      "samples": 21504,
+      "ms": 896,
+      "bytes": 43008,
+      "file": "a4ef304ba42a200b.pcm",
+      "inf_ms": 873
+    },
+    "91f060a9ad4b39eb": {
+      "text": "Keyboard",
+      "norm": "keyboard",
+      "samples": 13824,
+      "ms": 576,
+      "bytes": 27648,
+      "file": "91f060a9ad4b39eb.pcm",
+      "inf_ms": 809
+    },
+    "1a0dfdf443fb20ea": {
+      "text": "Voice input",
+      "norm": "voice input",
+      "samples": 22016,
+      "ms": 917,
+      "bytes": 44032,
+      "file": "1a0dfdf443fb20ea.pcm",
+      "inf_ms": 843
+    },
+    "714db89df42bdb7c": {
+      "text": "Accessibility",
+      "norm": "accessibility",
+      "samples": 26624,
+      "ms": 1109,
+      "bytes": 53248,
+      "file": "714db89df42bdb7c.pcm",
+      "inf_ms": 899
+    },
+    "1065371c34213a3c": {
+      "text": "TalkBack",
+      "norm": "talkback",
+      "samples": 22016,
+      "ms": 917,
+      "bytes": 44032,
+      "file": "1065371c34213a3c.pcm",
+      "inf_ms": 851
+    },
+    "a0696cb7b5cc05b5": {
+      "text": "Magnification",
+      "norm": "magnification",
+      "samples": 27648,
+      "ms": 1152,
+      "bytes": 55296,
+      "file": "a0696cb7b5cc05b5.pcm",
+      "inf_ms": 904
+    },
+    "dcb3eeed0f2b911b": {
+      "text": "Captions",
+      "norm": "captions",
+      "samples": 21504,
+      "ms": 896,
+      "bytes": 43008,
+      "file": "dcb3eeed0f2b911b.pcm",
+      "inf_ms": 865
+    },
+    "45569da57f4b7bf4": {
+      "text": "Phone",
+      "norm": "phone",
+      "samples": 18432,
+      "ms": 768,
+      "bytes": 36864,
+      "file": "45569da57f4b7bf4.pcm",
+      "inf_ms": 859
+    },
+    "f5cccfb737512bed": {
+      "text": "Messages",
+      "norm": "messages",
+      "samples": 20992,
+      "ms": 874,
+      "bytes": 41984,
+      "file": "f5cccfb737512bed.pcm",
+      "inf_ms": 913
+    },
+    "89e8b9518d922794": {
+      "text": "Camera",
+      "norm": "camera",
+      "samples": 17920,
+      "ms": 746,
+      "bytes": 35840,
+      "file": "89e8b9518d922794.pcm",
+      "inf_ms": 897
+    },
+    "84a6dae49cf04812": {
+      "text": "Photos",
+      "norm": "photos",
+      "samples": 22528,
+      "ms": 938,
+      "bytes": 45056,
+      "file": "84a6dae49cf04812.pcm",
+      "inf_ms": 874
+    },
+    "5152790e278eb890": {
+      "text": "Calendar",
+      "norm": "calendar",
+      "samples": 19968,
+      "ms": 832,
+      "bytes": 39936,
+      "file": "5152790e278eb890.pcm",
+      "inf_ms": 865
+    },
+    "d8198efa3604d164": {
+      "text": "Clock",
+      "norm": "clock",
+      "samples": 16896,
+      "ms": 704,
+      "bytes": 33792,
+      "file": "d8198efa3604d164.pcm",
+      "inf_ms": 838
+    },
+    "d2d4a592700b0920": {
+      "text": "Calculator",
+      "norm": "calculator",
+      "samples": 24064,
+      "ms": 1002,
+      "bytes": 48128,
+      "file": "d2d4a592700b0920.pcm",
+      "inf_ms": 887
+    },
+    "325392e8dd2826a5": {
+      "text": "Maps",
+      "norm": "maps",
+      "samples": 18432,
+      "ms": 768,
+      "bytes": 36864,
+      "file": "325392e8dd2826a5.pcm",
+      "inf_ms": 866
+    },
+    "d4c3e8a11256ab82": {
+      "text": "Browser",
+      "norm": "browser",
+      "samples": 21504,
+      "ms": 896,
+      "bytes": 43008,
+      "file": "d4c3e8a11256ab82.pcm",
+      "inf_ms": 866
+    },
+    "82244417f956ac7c": {
+      "text": "Email",
+      "norm": "email",
+      "samples": 17920,
+      "ms": 746,
+      "bytes": 35840,
+      "file": "82244417f956ac7c.pcm",
+      "inf_ms": 870
+    },
+    "aa5af4084f3746bb": {
+      "text": "Contacts",
+      "norm": "contacts",
+      "samples": 20480,
+      "ms": 853,
+      "bytes": 40960,
+      "file": "aa5af4084f3746bb.pcm",
+      "inf_ms": 875
+    },
+    "3d7db37d08f9140f": {
+      "text": "Files",
+      "norm": "files",
+      "samples": 21504,
+      "ms": 896,
+      "bytes": 43008,
+      "file": "3d7db37d08f9140f.pcm",
+      "inf_ms": 865
+    },
+    "80f189984e5ca702": {
+      "text": "Music",
+      "norm": "music",
+      "samples": 20480,
+      "ms": 853,
+      "bytes": 40960,
+      "file": "80f189984e5ca702.pcm",
+      "inf_ms": 886
+    },
+    "ce387d5e0a2972de": {
+      "text": "Gallery",
+      "norm": "gallery",
+      "samples": 19968,
+      "ms": 832,
+      "bytes": 39936,
+      "file": "ce387d5e0a2972de.pcm",
+      "inf_ms": 876
+    },
+    "b8d31e852725afb1": {
+      "text": "On",
+      "norm": "on",
+      "samples": 16384,
+      "ms": 682,
+      "bytes": 32768,
+      "file": "b8d31e852725afb1.pcm",
+      "inf_ms": 857
+    },
+    "b4dc66dde806261b": {
+      "text": "Off",
+      "norm": "off",
+      "samples": 15872,
+      "ms": 661,
+      "bytes": 31744,
+      "file": "b4dc66dde806261b.pcm",
+      "inf_ms": 842
+    },
+    "fb9cf75606b4070d": {
+      "text": "Enabled",
+      "norm": "enabled",
+      "samples": 20480,
+      "ms": 853,
+      "bytes": 40960,
+      "file": "fb9cf75606b4070d.pcm",
+      "inf_ms": 860
+    },
+    "17eb3c0168d0d7b2": {
+      "text": "Disabled",
+      "norm": "disabled",
+      "samples": 22016,
+      "ms": 917,
+      "bytes": 44032,
+      "file": "17eb3c0168d0d7b2.pcm",
+      "inf_ms": 883
+    },
+    "12a7bd86e0a43032": {
+      "text": "Connected",
+      "norm": "connected",
+      "samples": 21504,
+      "ms": 896,
+      "bytes": 43008,
+      "file": "12a7bd86e0a43032.pcm",
+      "inf_ms": 904
+    },
+    "d0cb8d28fd8ddcf3": {
+      "text": "Disconnected",
+      "norm": "disconnected",
+      "samples": 24576,
+      "ms": 1024,
+      "bytes": 49152,
+      "file": "d0cb8d28fd8ddcf3.pcm",
+      "inf_ms": 891
+    },
+    "ddd9818abacfde7a": {
+      "text": "Available",
+      "norm": "available",
+      "samples": 22016,
+      "ms": 917,
+      "bytes": 44032,
+      "file": "ddd9818abacfde7a.pcm",
+      "inf_ms": 862
+    },
+    "ba691ba042bcedd9": {
+      "text": "Unavailable",
+      "norm": "unavailable",
+      "samples": 22528,
+      "ms": 938,
+      "bytes": 45056,
+      "file": "ba691ba042bcedd9.pcm",
+      "inf_ms": 906
+    },
+    "8a798890fe938171": {
+      "text": "Yes",
+      "norm": "yes",
+      "samples": 17920,
+      "ms": 746,
+      "bytes": 35840,
+      "file": "8a798890fe938171.pcm",
+      "inf_ms": 891
+    },
+    "9390298f3fb0c5b1": {
+      "text": "No",
+      "norm": "no",
+      "samples": 16896,
+      "ms": 704,
+      "bytes": 33792,
+      "file": "9390298f3fb0c5b1.pcm",
+      "inf_ms": 867
+    },
+    "2689367b205c16ce": {
+      "text": "OK",
+      "norm": "ok",
+      "samples": 18432,
+      "ms": 768,
+      "bytes": 36864,
+      "file": "2689367b205c16ce.pcm",
+      "inf_ms": 870
+    },
+    "2374d91794b79f4f": {
+      "text": "Cancel",
+      "norm": "cancel",
+      "samples": 19968,
+      "ms": 832,
+      "bytes": 39936,
+      "file": "2374d91794b79f4f.pcm",
+      "inf_ms": 866
+    },
+    "157dca92e4250458": {
+      "text": "Save",
+      "norm": "save",
+      "samples": 17408,
+      "ms": 725,
+      "bytes": 34816,
+      "file": "157dca92e4250458.pcm",
+      "inf_ms": 869
+    },
+    "6197595503f01ee2": {
+      "text": "Delete",
+      "norm": "delete",
+      "samples": 18944,
+      "ms": 789,
+      "bytes": 37888,
+      "file": "6197595503f01ee2.pcm",
+      "inf_ms": 864
+    },
+    "262121c5372be8af": {
+      "text": "Edit",
+      "norm": "edit",
+      "samples": 17408,
+      "ms": 725,
+      "bytes": 34816,
+      "file": "262121c5372be8af.pcm",
+      "inf_ms": 952
+    },
+    "c3bc45ac352fe43f": {
+      "text": "Share",
+      "norm": "share",
+      "samples": 16384,
+      "ms": 682,
+      "bytes": 32768,
+      "file": "c3bc45ac352fe43f.pcm",
+      "inf_ms": 854
+    },
+    "27ce1d1bf4270020": {
+      "text": "Send",
+      "norm": "send",
+      "samples": 17408,
+      "ms": 725,
+      "bytes": 34816,
+      "file": "27ce1d1bf4270020.pcm",
+      "inf_ms": 899
+    },
+    "95100519be034221": {
+      "text": "Receive",
+      "norm": "receive",
+      "samples": 22528,
+      "ms": 938,
+      "bytes": 45056,
+      "file": "95100519be034221.pcm",
+      "inf_ms": 1013
+    },
+    "2348f99874421257": {
+      "text": "Open",
+      "norm": "open",
+      "samples": 18432,
+      "ms": 768,
+      "bytes": 36864,
+      "file": "2348f99874421257.pcm",
+      "inf_ms": 887
+    },
+    "310ff200149b44a3": {
+      "text": "Close",
+      "norm": "close",
+      "samples": 19456,
+      "ms": 810,
+      "bytes": 38912,
+      "file": "310ff200149b44a3.pcm",
+      "inf_ms": 886
+    },
+    "6c45cb72a36e63d5": {
+      "text": "Stop",
+      "norm": "stop",
+      "samples": 17920,
+      "ms": 746,
+      "bytes": 35840,
+      "file": "6c45cb72a36e63d5.pcm",
+      "inf_ms": 897
+    },
+    "cced28c6dc3f99c2": {
+      "text": "Start",
+      "norm": "start",
+      "samples": 19456,
+      "ms": 810,
+      "bytes": 38912,
+      "file": "cced28c6dc3f99c2.pcm",
+      "inf_ms": 931
+    },
+    "6210c0bf05396716": {
+      "text": "Pause",
+      "norm": "pause",
+      "samples": 17408,
+      "ms": 725,
+      "bytes": 34816,
+      "file": "6210c0bf05396716.pcm",
+      "inf_ms": 878
+    },
+    "aba4cc9b8af82df5": {
+      "text": "Play",
+      "norm": "play",
+      "samples": 16896,
+      "ms": 704,
+      "bytes": 33792,
+      "file": "aba4cc9b8af82df5.pcm",
+      "inf_ms": 859
+    },
+    "c6c1c9a9c8543f1e": {
+      "text": "Next",
+      "norm": "next",
+      "samples": 18944,
+      "ms": 789,
+      "bytes": 37888,
+      "file": "c6c1c9a9c8543f1e.pcm",
+      "inf_ms": 880
+    },
+    "6da0633528deaa01": {
+      "text": "Previous",
+      "norm": "previous",
+      "samples": 22528,
+      "ms": 938,
+      "bytes": 45056,
+      "file": "6da0633528deaa01.pcm",
+      "inf_ms": 964
+    },
+    "42e93b9bb77d8a73": {
+      "text": "Skip",
+      "norm": "skip",
+      "samples": 16896,
+      "ms": 704,
+      "bytes": 33792,
+      "file": "42e93b9bb77d8a73.pcm",
+      "inf_ms": 946
+    },
+    "7e9e5ac30f2216fd": {
+      "text": "Add",
+      "norm": "add",
+      "samples": 15872,
+      "ms": 661,
+      "bytes": 31744,
+      "file": "7e9e5ac30f2216fd.pcm",
+      "inf_ms": 972
+    },
+    "7e5608ab610017af": {
+      "text": "Remove",
+      "norm": "remove",
+      "samples": 19968,
+      "ms": 832,
+      "bytes": 39936,
+      "file": "7e5608ab610017af.pcm",
+      "inf_ms": 911
+    },
+    "2419329067823cab": {
+      "text": "Search",
+      "norm": "search",
+      "samples": 17920,
+      "ms": 746,
+      "bytes": 35840,
+      "file": "2419329067823cab.pcm",
+      "inf_ms": 931
+    },
+    "d6cc0a088c07683c": {
+      "text": "Refresh",
+      "norm": "refresh",
+      "samples": 23040,
+      "ms": 960,
+      "bytes": 46080,
+      "file": "d6cc0a088c07683c.pcm",
+      "inf_ms": 939
+    },
+    "2937013f21818106": {
+      "text": "Update",
+      "norm": "update",
+      "samples": 19968,
+      "ms": 832,
+      "bytes": 39936,
+      "file": "2937013f21818106.pcm",
+      "inf_ms": 909
+    },
+    "1e142e6277b12b7e": {
+      "text": "Install",
+      "norm": "install",
+      "samples": 19968,
+      "ms": 832,
+      "bytes": 39936,
+      "file": "1e142e6277b12b7e.pcm",
+      "inf_ms": 917
+    },
+    "38227bb04e6df14a": {
+      "text": "Uninstall",
+      "norm": "uninstall",
+      "samples": 23552,
+      "ms": 981,
+      "bytes": 47104,
+      "file": "38227bb04e6df14a.pcm",
+      "inf_ms": 979
+    },
+    "b4a070a2d341940c": {
+      "text": "Loading",
+      "norm": "loading",
+      "samples": 19968,
+      "ms": 832,
+      "bytes": 39936,
+      "file": "b4a070a2d341940c.pcm",
+      "inf_ms": 887
+    },
+    "31ea364644ac774e": {
+      "text": "Loading, please wait",
+      "norm": "loading, please wait",
+      "samples": 33280,
+      "ms": 1386,
+      "bytes": 66560,
+      "file": "31ea364644ac774e.pcm",
+      "inf_ms": 995
+    },
+    "a4c3ed04a95a3da1": {
+      "text": "Done",
+      "norm": "done",
+      "samples": 16896,
+      "ms": 704,
+      "bytes": 33792,
+      "file": "a4c3ed04a95a3da1.pcm",
+      "inf_ms": 912
+    },
+    "5d28a90f4498a814": {
+      "text": "Failed",
+      "norm": "failed",
+      "samples": 19456,
+      "ms": 810,
+      "bytes": 38912,
+      "file": "5d28a90f4498a814.pcm",
+      "inf_ms": 918
+    },
+    "aee408847d35e44e": {
+      "text": "Success",
+      "norm": "success",
+      "samples": 21504,
+      "ms": 896,
+      "bytes": 43008,
+      "file": "aee408847d35e44e.pcm",
+      "inf_ms": 962
+    },
+    "ca00fccfb408989e": {
+      "text": "Error",
+      "norm": "error",
+      "samples": 17920,
+      "ms": 746,
+      "bytes": 35840,
+      "file": "ca00fccfb408989e.pcm",
+      "inf_ms": 993
+    },
+    "4bd9354bb6522334": {
+      "text": "Warning",
+      "norm": "warning",
+      "samples": 17920,
+      "ms": 746,
+      "bytes": 35840,
+      "file": "4bd9354bb6522334.pcm",
+      "inf_ms": 900
+    },
+    "dea7111a8406e27c": {
+      "text": "Information",
+      "norm": "information",
+      "samples": 23552,
+      "ms": 981,
+      "bytes": 47104,
+      "file": "dea7111a8406e27c.pcm",
+      "inf_ms": 985
+    },
+    "d7cbbb688b2e506c": {
+      "text": "Selected",
+      "norm": "selected",
+      "samples": 22016,
+      "ms": 917,
+      "bytes": 44032,
+      "file": "d7cbbb688b2e506c.pcm",
+      "inf_ms": 981
+    },
+    "5ad0f897690ef8d0": {
+      "text": "Not selected",
+      "norm": "not selected",
+      "samples": 24576,
+      "ms": 1024,
+      "bytes": 49152,
+      "file": "5ad0f897690ef8d0.pcm",
+      "inf_ms": 968
+    },
+    "e61a3d78c65133c7": {
+      "text": "Checked",
+      "norm": "checked",
+      "samples": 17408,
+      "ms": 725,
+      "bytes": 34816,
+      "file": "e61a3d78c65133c7.pcm",
+      "inf_ms": 889
+    },
+    "54bfa4373eaf9569": {
+      "text": "Unchecked",
+      "norm": "unchecked",
+      "samples": 20992,
+      "ms": 874,
+      "bytes": 41984,
+      "file": "54bfa4373eaf9569.pcm",
+      "inf_ms": 911
+    },
+    "691661b386fd34d0": {
+      "text": "Expanded",
+      "norm": "expanded",
+      "samples": 23040,
+      "ms": 960,
+      "bytes": 46080,
+      "file": "691661b386fd34d0.pcm",
+      "inf_ms": 952
+    },
+    "821f983459b6cfc9": {
+      "text": "Collapsed",
+      "norm": "collapsed",
+      "samples": 19968,
+      "ms": 832,
+      "bytes": 39936,
+      "file": "821f983459b6cfc9.pcm",
+      "inf_ms": 925
+    },
+    "db2efdd92c51d0c2": {
+      "text": "Double tap to activate",
+      "norm": "double tap to activate",
+      "samples": 37888,
+      "ms": 1578,
+      "bytes": 75776,
+      "file": "db2efdd92c51d0c2.pcm",
+      "inf_ms": 1006
+    },
+    "8fefd3c8c0dac1cb": {
+      "text": "Swipe right",
+      "norm": "swipe right",
+      "samples": 22016,
+      "ms": 917,
+      "bytes": 44032,
+      "file": "8fefd3c8c0dac1cb.pcm",
+      "inf_ms": 959
+    },
+    "4d241b9be5a181e7": {
+      "text": "Swipe left",
+      "norm": "swipe left",
+      "samples": 24064,
+      "ms": 1002,
+      "bytes": 48128,
+      "file": "4d241b9be5a181e7.pcm",
+      "inf_ms": 961
+    },
+    "5e60ff5ac0ec0f50": {
+      "text": "Heading",
+      "norm": "heading",
+      "samples": 18432,
+      "ms": 768,
+      "bytes": 36864,
+      "file": "5e60ff5ac0ec0f50.pcm",
+      "inf_ms": 905
+    },
+    "c3e2d78f3ff33572": {
+      "text": "Button",
+      "norm": "button",
+      "samples": 17408,
+      "ms": 725,
+      "bytes": 34816,
+      "file": "c3e2d78f3ff33572.pcm",
+      "inf_ms": 879
+    },
+    "b1b1bdb480c61d07": {
+      "text": "Link",
+      "norm": "link",
+      "samples": 17408,
+      "ms": 725,
+      "bytes": 34816,
+      "file": "b1b1bdb480c61d07.pcm",
+      "inf_ms": 883
+    },
+    "7508386a20565f5c": {
+      "text": "Tab",
+      "norm": "tab",
+      "samples": 16896,
+      "ms": 704,
+      "bytes": 33792,
+      "file": "7508386a20565f5c.pcm",
+      "inf_ms": 911
+    },
+    "6105d6cc76af4003": {
+      "text": "Image",
+      "norm": "image",
+      "samples": 17920,
+      "ms": 746,
+      "bytes": 35840,
+      "file": "6105d6cc76af4003.pcm",
+      "inf_ms": 907
+    },
+    "a330395cc0a53ad1": {
+      "text": "List",
+      "norm": "list",
+      "samples": 18432,
+      "ms": 768,
+      "bytes": 36864,
+      "file": "a330395cc0a53ad1.pcm",
+      "inf_ms": 905
+    },
+    "b5a06b10998bee92": {
+      "text": "List item",
+      "norm": "list item",
+      "samples": 23552,
+      "ms": 981,
+      "bytes": 47104,
+      "file": "b5a06b10998bee92.pcm",
+      "inf_ms": 923
+    },
+    "fddcaffc37948759": {
+      "text": "Read aloud",
+      "norm": "read aloud",
+      "samples": 24064,
+      "ms": 1002,
+      "bytes": 48128,
+      "file": "fddcaffc37948759.pcm",
+      "inf_ms": 927
+    },
+    "faaf7ce1bc530bda": {
+      "text": "ReadAloud AI",
+      "norm": "readaloud ai",
+      "samples": 31744,
+      "ms": 1322,
+      "bytes": 63488,
+      "file": "faaf7ce1bc530bda.pcm",
+      "inf_ms": 980
+    }
+  }
+}
