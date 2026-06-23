@@ -179,6 +179,15 @@
             android:exported="true"
             android:theme="@style/Theme.ListenAI" />
 
+        <!-- eSpeak NG ABI smoke test. Loads libespeak-ng.so +
+             libc++_shared.so to verify ABI compatibility before
+             committing to full Piper integration. -->
+        <activity
+            android:name=".systemtts.EspeakSmokeActivity"
+            android:label="eSpeak NG smoke test"
+            android:exported="true"
+            android:theme="@style/Theme.ListenAI" />
+
     </application>
 
 </manifest>
