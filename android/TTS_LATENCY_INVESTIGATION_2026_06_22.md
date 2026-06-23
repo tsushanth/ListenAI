@@ -401,17 +401,112 @@ To grow the cache: append labels, rerun
 
 ---
 
+### v59 — Kokoro variant test (DEAD END, kept in tree for reproducibility)
+
+Tested whether an alternative ONNX quantization of Kokoro v1.0 would
+engage NNAPI properly (vs the q8f16 silent fallback). Bundled
+`model_quantized.onnx` (88MB, standard QDQ INT8 format) and ran
+the EP sweep against `KokoroVariantBenchmarkActivity`:
+
+| EP | Result |
+|---|---|
+| CPU | 26.7s inference for 3.28s audio (RTF **8.17× — 6.5× SLOWER than q8f16 on same CPU**) |
+| NNAPI / NNAPI_FP16 / NNAPI_FP16_NO_CPU | HUNG indefinitely (>40 s, never returned) |
+| XNNPACK | 33.6s — even worse than ORT default CPU |
+
+Conclusion: `model_quantized.onnx` is *dynamic* quantization
+(per-call requantization), the worst possible format for both NNAPI
+(can't AOT-compile) and CPU (constant re-quant overhead). The 88MB
+asset was REMOVED, but `KokoroVariantBenchmarkActivity` stays in
+the tree so the finding is reproducible if someone else has the
+same hypothesis.
+
+Custom re-export with per-tensor symmetric INT8 (no INT32
+intermediates, calibrated scales) is the only viable path to making
+NNAPI work for Kokoro. That's a Python pipeline build of multiple
+hours — deferred to a separate session.
+
+### v60 — Decouple synth/push threads (SHIPPED)
+
+Open follow-up from v51 closed here. Previously
+`streamKokoroChunksToCallback` called `callback.audioAvailable`
+inline; that call blocks until AudioTrack drains, which serialized
+chunk N+1 inference behind chunk N's full playback. The 2026-06-22
+spectrogram showed 3.3-3.8s silence gaps between chunks — wasted
+inference cycles.
+
+Now: a `LinkedBlockingQueue<ByteArray>(8)` between producer (synth)
+and consumer (AudioTrack push). Producer enqueues each chunk's PCM
+and returns immediately; consumer thread drains the queue into
+AudioTrack at the framework's pace. Bounded at 8 chunks so a slow
+consumer eventually backpressures the producer rather than ballooning
+RAM on book-length input.
+
+Measured on the same 170-char benchmark:
+
+| | v53 (sequential) | v60 (decoupled) |
+|---|---:|---:|
+| 4 chunks synth total | 22.6s | **11.6s** |
+| First-audio (chunk 1) | 7s | 7s (unchanged — bound by chunk 1) |
+| Total wall-clock for utterance | ~24s | ~18s |
+
+**~50% reduction in multi-chunk total synthesis time.** Long-text
+users feel this immediately on book paragraphs and multi-sentence
+reads. Short-utterance behavior unchanged (single chunk = no
+overlap available).
+
+Commit: `e1987e8`.
+
+### v61 — Expanded cache from AOSP-scraped UI strings (IN PROGRESS)
+
+Spike of `assets/talkback_cache/` from 111 hand-curated labels to
+~5900 labels scraped from AOSP `frameworks/base/core/res/values/strings.xml`
+plus `SettingsLib`, `Settings`, `SystemUI`. Filtered to short
+(3-60 char) UI-eligible labels, deduped against existing 111.
+
+Pipeline:
+1. `spike/aosp-strings-2026-06-22/extract_labels.py` — parses 4 AOSP
+   XML files, filters out format placeholders / XLIFF / shouty caps /
+   technical IDs / URLs. Writes `full_labels.txt`.
+2. `spike/piper-2026-06-22/render_cache_parallel.py` — parallel
+   Kokoro Mac render with 6 workers. ~90 min total wall time vs
+   ~90 min sequential (parallelism wins via amortizing ORT model
+   load × 6).
+3. `spike/piper-2026-06-22/compress_to_opus.sh` — ffmpeg batch
+   PCM → Opus (32 kbps, voip profile, 60 ms frames). Cuts asset
+   bundle from ~440 MB raw PCM to ~30 MB Opus.
+4. `systemtts.OpusDecoder` — MediaCodec + MediaExtractor sync
+   decode at cache lookup time. ~5-20 ms decode for a 1-2s clip on
+   Pixel 9 Pro — under the 50ms perceptibility threshold.
+5. `TalkbackLabelCache` updated to detect `format: "opus"` in
+   the manifest and route through the decoder.
+
+Coverage went from "the ~110 most obvious common labels" to
+"~5900 of the strings the AOSP framework + Settings actually use."
+Still doesn't cover dynamic content (phone numbers, contact names,
+message bodies, percentages with numbers), but that's structurally
+uncacheable — the only fix for those is faster live synthesis
+(Piper integration / custom Kokoro re-export).
+
+Voice consistency caveat unchanged: cache is Kokoro af_heart; live
+fallback uses whatever voice the user picked. Cache always hits
+in af_heart regardless of voice preference.
+
+---
+
 ## Commits this session
 
 | Commit | Version | Summary |
 |---|---|---|
 | `6eaa41b` | 2.14.5 / vc48 | Latency telemetry + Diagnostics card |
 | `1bbada2` | 2.14.8 / vc51 | Streaming PCM + 60-char chunks + BenchmarkActivity |
-| `275d547` | 2.14.10 / vc53 | @Synchronized ensureSession (3.4× total speedup landed here) |
-| `1209fbe` | 2.14.12 / vc55 | EP switcher + sweep infrastructure + this doc |
-| (this) | 2.14.15 / vc58 | Piper spike + TalkBack label cache with Kokoro voice (200-400× faster for cached labels) |
+| `275d547` | 2.14.10 / vc53 | @Synchronized ensureSession (3.4× total speedup) |
+| `1209fbe` | 2.14.12 / vc55 | EP switcher + sweep infrastructure + investigation doc |
+| `79c93a6` | 2.14.15 / vc58 | Piper spike + TalkBack label cache (111 labels, Kokoro voice) |
+| `e1987e8` | 2.14.17 / vc60 | Decouple synth/push threads + Kokoro variant test |
+| (next) | 2.14.18 / vc61 | Expand cache to ~5900 AOSP labels + Opus compression |
 
-All five pushed to `origin/main`. `v53` is on Play closed testing.
+All pushed to `origin/main`. `v58` is on Play closed testing.
 
 ## Final headline
 

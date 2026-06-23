@@ -39,6 +39,8 @@ class TalkbackLabelCache private constructor(private val context: Context) {
     private val sampleRate: Int
     private val channels: Int
     private val bitsPerSample: Int
+    /** Either "pcm" (raw, ready to play) or "opus" (needs MediaCodec decode). */
+    private val format: String
 
     init {
         val raw = context.assets.open("talkback_cache/manifest.json").bufferedReader().use { it.readText() }
@@ -46,6 +48,7 @@ class TalkbackLabelCache private constructor(private val context: Context) {
         sampleRate = json.getInt("sample_rate")
         channels = json.getInt("channels")
         bitsPerSample = json.getInt("bits_per_sample")
+        format = json.optString("format", "pcm")
         val labels = json.getJSONObject("labels")
         val parsed = mutableMapOf<String, ManifestEntry>()
         labels.keys().forEach { hash ->
@@ -58,7 +61,7 @@ class TalkbackLabelCache private constructor(private val context: Context) {
             )
         }
         manifestByHash = parsed
-        Log.i(TAG, "loaded ${manifestByHash.size} label entries (${sampleRate}Hz/${channels}ch/${bitsPerSample}-bit)")
+        Log.i(TAG, "loaded ${manifestByHash.size} label entries (${sampleRate}Hz/${channels}ch/${bitsPerSample}-bit, format=$format)")
     }
 
     /** Returns null on miss, the PCM bytes + format on hit. */
@@ -67,12 +70,28 @@ class TalkbackLabelCache private constructor(private val context: Context) {
         if (norm.isEmpty()) return null
         val hash = sha256First16Hex(norm)
         val entry = manifestByHash[hash] ?: return null
-        return try {
-            val bytes = context.assets.open("talkback_cache/${entry.file}").use { it.readBytes() }
-            Hit(bytes, sampleRate, channels, bitsPerSample, entry.text, entry.audioMs)
+        val rawBytes = try {
+            context.assets.open("talkback_cache/${entry.file}").use { it.readBytes() }
         } catch (t: Throwable) {
             Log.w(TAG, "asset open failed for ${entry.file}: ${t.message}")
-            null
+            return null
+        }
+        return when (format) {
+            "pcm" -> Hit(rawBytes, sampleRate, channels, bitsPerSample, entry.text, entry.audioMs)
+            "opus" -> {
+                val decoded = OpusDecoder.decode(rawBytes, context.cacheDir)
+                if (decoded == null) {
+                    Log.w(TAG, "opus decode failed for ${entry.file}, falling through to live synth")
+                    null
+                } else {
+                    // sampleRate from manifest vs from codec — trust the codec
+                    Hit(decoded.pcm, decoded.sampleRate, decoded.channels, 16, entry.text, entry.audioMs)
+                }
+            }
+            else -> {
+                Log.w(TAG, "unknown cache format: $format")
+                null
+            }
         }
     }
 

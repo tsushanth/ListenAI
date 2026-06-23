@@ -1,0 +1,5893 @@
+(disconnected)
+(don\u2019t verify server)
+(Experimental) Run Linux terminal on Android
+(forbidden)
+(Multiple certificates added)
+(Never used)
+(No name)
+(No phone number)
+(not used)
+(received from server)
+(summary)
+(System)
+(unchanged)
+(work)
+, secure
+,\u0020
+/data/eri.xml
+0.2 seconds
+0.2s
+0.4s
+0.6 seconds
+0.6s
+1 CA certificate
+1 day
+1 device selected
+1 minute
+1 month ago
+1 second
+1 user certificate
+1 user key
+1 week ago
+10 seconds
+12 hours
+16 KB Page-agnostic Mode
+2 days ago
+2 minutes
+2 weeks ago
+2-button navigation
+2-finger swipe up from bottom
+2.4 and 5 GHz
+2.4 and 5 GHz / Compatible with most devices
+2.4 GHz
+2.4 GHz / Compatible with most devices
+2.4 GHz Band
+2G-3G
+2G-3G data
+3 hours
+3-button navigation
+30 seconds
+4G (recommended)
+4G Calling
+4G data
+4G+
+5 GHz
+5 GHz / Compatible with many devices
+5 GHz band not available in this country
+5 minutes after screen timeout
+5.0 GHz Band preferred
+5G (recommended)
+5G+
+6 GHz
+6 GHz / Compatible with few devices
+6 hours
+802.1x
+@*android:string/supervised_user_creation_label
+@string/face_acquired_dark_glasses_detected_alt
+@string/face_acquired_mouth_covering_detected_alt
+@string/fingerprint_dialog_use_fingerprint_instead
+@string/quick_settings_casting
+@string/screen_share_permission_dialog_option_entire_screen
+@string/screen_share_permission_dialog_option_single_app
+@string/wifi_security_short_wpa_wpa2
+@string/wifi_security_wpa_wpa2
+\"9 AM - 5 PM weekdays\"
+\u0020and\u0020
+\u2014
+\u2026
+A certificate is missing. Try editing the profile.
+A device wants to access your messages. Tap for details.
+A device wants to access your SIM. Tap for details.
+A device wants to connect. Tap for details.
+A reboot is required to change the system OpenGL ES driver
+A reboot is required to enable freeform window support.
+ABC
+About accessibility button
+About accessibility button & gesture
+About audio output
+About autoclick (dwell timing)
+About Battery Saver
+About caption preferences
+About color contrast
+About color correction
+About color inversion
+About extra dim
+About flash notifications
+About hearing devices
+About magnification
+about Private DNS features
+About time to take action (Accessibility timeout)
+Accept
+Accept call?
+access approximate location only in the foreground
+Access apps that are allowed by the credit provider
+access Bluetooth settings
+Access body sensor data, like heart rate, while in use
+Access Camera
+Access data using mobile network
+Access digital assistant
+access Do Not Disturb
+access DRM certificates
+Access emoji
+access extra location provider commands
+access files on your device
+Access hidden profiles
+access IMS call service
+Access last known cell identity.
+access location in the background
+access music and audio on your device
+access notifications
+access photos and videos on your device
+Access Point Name settings are not available for this user
+Access point names
+Access point temporarily full
+Access power menu
+access precise location only in the foreground
+Access private space when hidden
+Access request
+access sensor data about your vital signs
+access sensor data at a high sampling rate
+access this device\'s location
+Access to work profile notifications is blocked
+Access voice typing
+Access Wallet
+access your calendar
+access your contacts
+Access your IMEI number
+access your physical activity
+accessibility button
+Accessibility button & gesture
+Accessibility button hidden
+Accessibility button shortcut
+accessibility gesture
+Accessibility gesture shortcut
+Accessibility settings
+Accessibility Shortcut
+Accessibility shortcuts
+Accessibility usage
+Account
+Account for content
+Account settings
+Account status
+Account sync
+Account unlock
+Action key
+Action or Meta key icon
+actions
+activate
+Activate device admin app?
+Activate mobile service
+Activate Profile Manager?
+Activate this device admin app
+Activate Wi\u2011Fi Calling
+Activating your SIM…
+Active
+Active (left and right)
+Active (left only)
+Active (media only)
+Active (media only), left and right
+Active (media only), left only
+Active (media only), right only
+Active (right only)
+Active / eSIM
+Active / SIM
+Active apps
+Active input methods
+Active media devices
+Active. Tap to toggle.
+Adaptive
+Adaptive brightness
+Adaptive connectivity
+Adaptive notification feedback
+Adaptive notification priority
+Adaptive notification ranking
+adaptive preferences, adaptive battery
+adb, debug, dev
+Add a device
+Add a language
+Add a network
+Add a SIM.
+Add access point
+Add account
+Add an account
+Add an account to get started
+Add another
+Add another device
+Add another fingerprint
+Add app
+Add apps
+Add controls
+Add device
+Add event schedule
+Add fingerprint
+Add fingerprint to unlock
+Add guest
+Add hearing aids
+add language, add a language
+Add link
+Add more
+Add more widgets
+Add multiple users to your device
+Add network
+Add new user?
+Add outputs
+Add printer
+Add printers
+Add service
+Add supervised user
+Add text on lock screen
+Add tile
+add tile to end
+Add time schedule
+Add to device controls
+Add to dictionary
+Add to note
+Add to the conversation section
+Add user
+Add user or profile
+Add users from lock screen
+add voicemail
+Add VPN profile
+Add watch
+Add widget
+Add widget.
+Add widgets
+Add words to be used in apps such as Spell checker
+Add, remove, and reorder your widgets in this space
+Adding new user\u2026
+Additional preferences
+Additional services
+Additional settings in the app
+Additional system updates
+address
+adjust color
+Adjust power use
+adjust your wallpaper size
+Adjusts the time it takes for a key press to activate
+Admin
+Admin can delete all device data
+Admin can lock the device and reset password
+Admin relinquished device for personal use
+Advanced
+Advanced Calling
+Advanced memory protection
+Advanced memory protection beta
+Advanced options
+Advanced settings
+advertise to nearby Bluetooth devices
+Affects the tone of the synthesized speech
+After your phone connects to a satellite
+Agree
+AIM
+Airplane mode is OFF
+Airplane mode is ON
+Airplane mode.
+Alarm
+Alarm can override end time
+Alarm set
+Alarm sounds
+Alarm vibration
+Alarm volume
+Alarms
+Alarms & other interruptions
+Alarms & reminders
+Alarms and media sounds can interrupt
+Alarms and reminders
+alarms only
+Alerted
+Alerts
+Alerts from your IT admin
+All activity will be deleted on exit
+All apps
+All apps and data in this session will be deleted.
+All apps and data of this user will be deleted.
+All apps and data will be deleted.
+All audio
+All calls can reach you
+All controls removed
+All conversations
+All conversations can bubble
+All conversations can bubble except
+All files access
+All languages
+All messages can reach you
+All modes created by this app will be removed.
+All notifications
+All numbering systems
+All people can interrupt
+All regions
+All restrictions are removed from the device
+All services
+All set!
+All set. Looking good.
+All work apps
+Allow
+Allow  to install certificates on this device?
+Allow 2G
+Allow access to contacts and call history
+Allow access to contacts and call log?
+Allow access to manage all files
+Allow access to messages?
+Allow access to QR code scanner from lock screen
+Allow access to SIM?
+Allow access to wallet from lock screen
+Allow access to your contacts and call history
+Allow all app sources
+Allow all notifications
+Allow any widget on lock screen?
+Allow app to control Wi-Fi
+Allow app to manage media
+Allow app to open supported links
+Allow app to switch media output
+Allow app to use conversation section
+Allow apps and content
+Allow apps to override
+Allow apps to send content to the Android system
+Allow apps to show bubbles
+Allow ART to verify bytecode for debuggable apps
+Allow background usage
+Allow camera software extensions
+Allow connection to this network when in range
+Allow data roaming?
+Allow development settings?
+Allow device to go dimmer than usual
+Allow diagonal scrolling
+Allow display over other apps
+Allow Do Not Disturb
+Allow face unlock
+Allow fingerprint unlock
+Allow from this source
+Allow full-screen notifications
+Allow full-screen notifications from this app
+Allow guest to make phone calls
+Allow interruptions
+Allow interruptions that make sound
+Allow launch on NFC scan
+Allow loading GPU debug layers for debug apps
+Allow long-running background tasks
+Allow mock locations
+Allow Mock Modem
+Allow Modes access
+Allow modification of Bluetooth pairings and settings
+Allow modification of Wi\u2011Fi and Mobile settings
+Allow modifying system settings
+Allow notification access
+Allow notification dot
+Allow notification snoozing
+Allow OEM unlocking?
+Allow one-time access
+Allow only encrypted networks
+Allow picture-in-picture
+Allow repeat callers
+Allow restricted settings
+Allow screen overlays on Settings
+Allow setting alarms and reminders
+Allow supervision?
+Allow the app to run in the background
+Allow the assist app to access an image of the screen
+Allow the assist app to access the screen contents as text
+Allow the bootloader to be unlocked
+Allow this app to modify system preferences on your behalf
+Allow turning the screen on
+Allow unrestricted mobile data access when Data Saver is on
+Allow USB debugging?
+Allow user switch
+Allow visual signals
+Allow WEP
+Allow WEP networks
+allow Wi-Fi Multicast reception
+Allow window-level blurs
+Allow wireless debugging on this network?
+Allow wireless debugging?
+allow, multiple, user, permit, many
+Allowed
+Allows a companion app to manage watches.
+Allows an app to see all installed packages.
+Allows an application to request deletion of packages.
+Allows an application to request installation of packages.
+Allows apps to set the profile owners and the device owner.
+Allows non-resizable apps to be in multi window
+Allows the app to access hidden profiles.
+Allows the app to access the phone numbers of the device.
+Allows the app to access the vibrator state.
+Allows the app to advertise to nearby Bluetooth devices
+Allows the app to answer an incoming phone call.
+Allows the app to be the status bar.
+Allows the app to change the phone\'s time zone.
+Allows the app to change the state of network connectivity.
+Allows the app to change the tablet\'s time zone.
+Allows the app to connect to paired Bluetooth devices
+Allows the app to control the vibrator.
+Allows the app to discover and pair nearby Bluetooth devices
+Allows the app to expand or collapse the status bar.
+Allows the app to keep the car screen turned on.
+Allows the app to make and receive SIP calls.
+Allows the app to make use of foreground services.
+Allows the app to manage telecom connections.
+Allows the app to modify your music collection.
+Allows the app to modify your photo collection.
+Allows the app to modify your video collection.
+Allows the app to prevent the phone from going to sleep.
+Allows the app to prevent the tablet from going to sleep.
+Allows the app to provide an in-call user experience.
+Allows the app to read audio files from your shared storage.
+Allows the app to read image files from your shared storage.
+Allows the app to read locations from your media collection.
+Allows the app to read the contents of your shared storage.
+Allows the app to read video files from your shared storage.
+Allows the app to register new telecom connections.
+Allows the app to register new telecom SIM connections.
+Allows the app to retrieve its code, data, and cache sizes
+Allows the app to set the system wallpaper size hints.
+Allows the app to set the system wallpaper.
+Allows the app to show notifications
+Allows the app to turn on the screen.
+Allows the app to use biometric hardware for authentication
+Allows the app to use the phone\'s infrared transmitter.
+Allows the app to use the tablet\'s infrared transmitter.
+Allows the app to write the contents of your shared storage.
+Also allow access to contacts and call history
+Also use password to unlock this device
+Also use pattern to unlock this device
+Also use PIN to unlock this device
+ALT
+Alt+
+Always
+Always Allow
+Always allow from this computer
+Always allow on this network
+Always on
+always on ambient display, AOD
+Always on for your device
+Always require confirmation
+Always show
+Always show crash dialog
+Always show icon when in vibrate mode
+Always show time and info
+Always use GPU for screen compositing
+Always use this for calls
+Always-on VPN
+Always-on VPN connected
+Always-on VPN connecting\u2026
+Always-on VPN turned on
+Always-on VPN turned on in your personal profile
+Always-on VPN turned on in your work profile
+AMBER alerts
+Ambient display
+Ambient display, Lock screen display
+Amount of time and data spent in each app
+An app can verify links to automatically open in the app.
+An app is draining battery
+An app is still active
+An app wants to turn off Bluetooth
+An app wants to turn on Bluetooth
+an unknown network type
+Analog
+Analog audio accessory detected
+Analyzing media storage
+Android
+Android application
+Android Beam
+Android is starting\u2026
+Android keyboard
+Android OS
+Android security update
+Android System
+Android system update
+Android TV options
+Android TV settings unavailable
+Android USB Peripheral Port
+Android version
+Animator duration scale
+Anniversary
+Anonymous identity
+Another migration is already in progress.
+Answer
+answer phone calls
+Any calendar
+Any weekend plans?
+Anyone
+APN
+APN disabled
+APN enable/disable
+APN enabled
+APN protocol
+APN roaming protocol
+APN type
+APNs
+App & content access
+App battery usage
+App claims to handle following links:
+App Compatibility Changes
+App content
+App content hidden from screen share for security
+App data
+App data usage
+App default
+App details
+App doesn\u2019t exist.
+App icon for a widget being installed
+App icon for disabled widget
+App info
+App is not available
+App is pinned
+App isn\u2019t available
+App language
+App languages
+App location permissions
+App logo
+App notifications
+App opened without being installed.
+App opened without being installed. Tap to learn more.
+App optimization
+App pinned
+App pinning
+App provided sound
+App RAM usage
+App redirected
+App running
+App security, device lock, permissions
+App settings
+App shortcuts
+App size
+App switch
+App sync settings
+App unpinned
+App usage
+App usage for past 24 hr
+App usage since last full charge
+Appearance
+Application branding image
+Application icon
+Application is not installed on your phone.
+Applications
+Applications with restrictions
+Apply
+Apply to work profile apps
+Apply to work profiles
+Apply updates when device restarts
+Applying change
+Apps are running normally
+Apps can access your location
+Apps can sync, send, and receive data at any time
+Apps consuming battery
+Apps installed
+Apps installed in the background
+Apps list
+Apps running in background
+Apps settings
+Apps sharing data
+Apps shown on device
+Apps storage
+Apps that can be cloned.
+Apps that can interrupt
+Apps will use your regional preferences where possible.
+Apps with permission
+Apps with usage access
+apps, default
+apps, download, applications, system
+apps, permissions, security
+Arch A
+Arch B
+Arch C
+Arch D
+Arch E
+Arch E1
+Archive
+Archiving failed
+Are you sure you want to delete this shared data?
+ashmem
+Ask every time
+Ask for password before unpinning
+Ask for PIN before unpinning
+Ask for unlock pattern before unpinning
+ask to ignore battery optimizations
+Ask when launched
+Aspect ratio
+Aspect ratio (experiment)
+Aspect ratio (experimental)
+Aspect ratio (labs)
+Assist
+Assist & voice input
+Assistant
+Associated with account
+Assume apps support modern formats
+Async
+At a contactless terminal, pay with:
+Attention
+Audio
+Audio adjustment
+Audio balance
+Audio changes as you move your head to sound more natural
+Audio description
+audio description, audio, description, low vision,
+Audio device type
+Audio during calls
+Audio from compatible media becomes more immersive
+Audio output
+Audio sharing
+Audio sharing stopped
+Audio sharing supports Auracast™
+Audio stream details
+Audio stream isn\u0027t available
+Audio stream name
+Audio stream password
+Audio stream QR code
+Audio stream settings
+Audio streams
+Audio streams nearby
+Audio will play on
+authenticate
+Authenticated
+Authentication canceled
+Authentication problem
+Authentication type
+Authentication via the proxy server was unsuccessful.
+Auto click time
+Auto connected to satellite
+auto, fill, autofill, data, passkey, password
+auto, fill, autofill, password
+Auto-capitalization
+Auto-confirm correct PIN
+Auto-confirm unlock
+Auto-punctuate
+Auto-replace
+Auto-rotate screen
+Auto-sync personal data
+Auto-sync private data
+Auto-sync work data
+Auto\u2011connect
+auto_brightness_entry
+Autoclick (dwell timing)
+Autoclick can be helpful if clicking the mouse is difficult
+Autoclick off
+Autofill
+Autofill developer options have been reset
+Autofill options
+Autofill service
+Automatic
+Automatic data switching
+Automatic date and time
+Automatic registration\u2026
+Automatic restore
+Automatic system updates
+Automatic time zone
+Automatically caption media
+Automatically capture system heap dumps
+Automatically connected via network rating provider
+Automatically rank notifications by relevance
+Automatically select network
+Automatically set lower priority notifications to Gentle
+Automatically show suggested actions & replies
+Automatically sync app data
+Automatically tint screen every night
+Automatically turn on tomorrow
+AUX
+Available devices
+Available devices for audio output.
+Available hearing devices
+Available On-screen keyboard
+Available watches
+Average memory use
+Azure
+Back Sensitivity
+Back to editing
+Back up my data
+Back up my settings
+Back up settings
+Background
+Background Activity
+Background check
+Background color
+Background data
+Background data is turned off
+Background data restricted
+Background opacity
+Background process limit
+Background time
+background, personalize, customize display
+background, theme, grid, customize, personalize
+Background:
+Background: less than a minute
+Backspace
+Backup
+Backup & restore
+Backup account
+Backup service isn\'t active
+backup, back up
+Baseband version
+Based on percentage
+Based on your activity
+Based on your routine
+Basic info
+battery info, manufacture date, cycle count, first use
+Battery information
+Battery level
+Battery level for past 24 hr
+Battery level low
+Battery level since last full charge
+Battery Manager
+Battery may run out earlier than usual
+Battery optimization
+Battery optimization not available
+Battery percentage
+Battery percentage unknown.
+Battery replacement recommended
+Battery Saver
+Battery Saver is on
+Battery Saver is turned on to extend battery life
+Battery Saver on
+Battery Saver turned off
+Battery Saver turned on
+battery saver, power saver, saver
+battery saver, sticky, persist, power saver, battery
+Battery status
+Battery tips warning icon
+Battery usage
+Battery usage anomaly
+Battery usage chart
+Battery usage since last full charge
+be the status bar
+Bearer
+Bedtime mode settings
+Bedtime routine
+Before 1 month ago
+Behavior
+Being used by
+bind to a carrier messaging service
+bind to a condition provider service
+bind to a dream service
+bind to a notification listener service
+bind to carrier services
+Biometric hardware unavailable
+Biometric required to continue
+Biometrics failed too many times. Try again.
+Birthday
+Birthday soon
+Black
+Blink light
+Block all
+Block connections without VPN
+Block interruptions and distractions
+Block visual disturbances
+Blocked
+Blocked by work policy
+Blocked by your credit provider
+Blocked by your IT admin
+Blue
+Blue-yellow
+Bluetooth & Wi\u2011Fi have been reset
+Bluetooth address
+Bluetooth audio
+Bluetooth Audio Bits Per Sample
+Bluetooth Audio Channel Mode
+Bluetooth Audio Codec
+Bluetooth Audio LDAC Codec: Playback Quality
+Bluetooth Audio Sample Rate
+Bluetooth AVRCP Version
+Bluetooth connected.
+Bluetooth device available
+Bluetooth device icon
+Bluetooth devices
+Bluetooth HCI snoop log filtering
+Bluetooth HCI snoop log filtering MAP
+Bluetooth HCI snoop log filtering PBAP
+Bluetooth in-call volume
+Bluetooth is off
+Bluetooth LE Audio mode
+Bluetooth MAP Version
+Bluetooth on.
+Bluetooth only
+Bluetooth pairing code
+Bluetooth pairing request
+Bluetooth scanning
+Bluetooth tethering
+Bluetooth turned on
+Bluetooth volume
+Bluetooth will stay on during airplane mode
+Bluetooth will turn on
+Bluetooth will turn on to pair
+Bluetooth will turn on tomorrow morning
+Bluetooth, Android Auto
+Bluetooth, Android Auto, driving mode
+Bluetooth, Android Auto, driving mode, NFC
+Bluetooth, Android Auto, NFC
+Bluetooth, driving mode
+Bluetooth, driving mode, NFC
+Bluetooth, Ethernet
+Bluetooth, NFC
+Bluetooth, pairing
+Bluetooth.
+bluetooth_a2dp_audio_route
+Body sensors
+Bold text
+Boosted
+Boot device using 16 KB page size supported kernel
+Boot with 16 KB page size
+Bootloader is already unlocked
+Bootloader Unlock Required
+Bottom handle
+Bottom-right click
+Bounce key threshold
+Bounce keys
+Breakdown since last full charge
+Brighter
+Brightness level
+Broadcast
+Broadcast Name
+Broadcasting
+Broadcasts
+Brother
+Browse media files
+Browser app
+BT microphone
+Bubble this conversation
+Bubbles
+bug
+Bug report
+Bug report handler
+Bug report shortcut
+Build number
+Build number copied to clipboard.
+Built-in display
+Built-in Screen
+Built-in speaker
+Bundled notifications
+Business trip report
+Button navigation
+By an unknown third party
+By default, audio output is determined by individual apps
+By your work profile admin
+Bypass Bluetooth LE Audio Allowlist
+Bypass proxy for
+CA certificate
+CA certificates
+Cache
+Cached
+Cached background process
+Caches
+Calculating\u2026
+Calendar app
+Calendar events
+Call
+Call and SMS history will be shared with this user.
+Call audio
+Call barring
+Call devices
+Call for help
+Call forwarding
+Call from work app?
+Call history will be shared with guest user
+Call logs
+Call notifications can\'t be modified.
+Call over mobile network
+Call over Wi-Fi
+Call over Wi\u2011Fi. If Wi\u2011Fi is lost, call will end.
+Call ringtone & vibrate
+Call settings
+Call Settings error
+Call volume
+Call waiting
+Call with
+Callback
+Caller ID defaults to not restricted. Next call: Restricted
+Caller ID defaults to restricted. Next call: Not restricted
+Caller ID defaults to restricted. Next call: Restricted
+Calling
+Calling number delivery
+Calling number present
+Calling number restricted
+Calling on
+Calling preference
+Calls
+Calls & SMS
+Calls and alarms
+Calls and messages are off
+Calls and notifications will be muted
+Calls and notifications will vibrate
+Calls preference
+Calls that can interrupt
+Camera access
+Camera access is disabled for all apps and services.
+Camera access needed
+Camera and mic are off
+Camera and microphone blocked
+Camera available
+Camera blocked
+Camera flash
+Camera in use
+Camera is blocked
+Camera is enabled for all apps and services.
+Camera is locked
+Camera is off
+Camera Laser Sensor
+Camera must be unlocked for Face Detection
+Camera must be unlocked for Screen Attention
+Camera permissions
+Camera turned off
+Camera turned on
+Camera unavailable
+Can access all files
+Can install other apps
+Can modify system settings
+can show badge
+Can take a screenshot of the display.
+Can\'t call from a personal app
+Can\'t charge via USB
+Can\'t connect
+Can\'t disable PIN.
+Can\'t enable PIN.
+Can\'t erase eSIM
+Can\'t mirror to display
+Can\'t play this video.
+Can\'t save screenshot
+Can\'t scan for networks
+Can\'t switch. Tap to try again.
+Can\'t sync
+Can\u0027t connect. Try again.
+Can\u0027t listen to audio stream
+Can\u2019t activate SIM
+Can\u2019t add more faces
+Can\u2019t add more fingerprints
+Can\u2019t broadcast
+Can\u2019t complete fingerprint setup
+Can\u2019t connect. Try again.
+Can\u2019t create your face model. Try again.
+Can\u2019t erase eSIMs
+Can\u2019t join the broadcast
+Can\u2019t load status
+Can\u2019t manually sync
+Can\u2019t process fingerprint. Try again.
+Can\u2019t reach mobile network
+Can\u2019t save.
+Can\u2019t save. Try again.
+Can\u2019t see your face. Hold your phone at eye level.
+Can\u2019t send MMS message
+Can\u2019t set up Face Unlock
+Can\u2019t set up fingerprint
+Can\u2019t store new face data. Delete an old one first.
+Can\u2019t switch SIMs
+Can\u2019t turn off SIM
+Can\u2019t use fingerprint sensor
+Can\u2019t use fingerprint sensor. Visit a repair provider.
+Can\u2019t verify face. Hardware not available.
+Can\u2019t verify face. Try again.
+Can\’t play downloads here
+Can\’t play on this device
+Can\’t play this media here
+Cancel Authentication
+Cancel invitation?
+Cancel sync
+Cancelled
+Cannot set the time zone automatically
+Can’t change volume
+Can’t make calls
+Can’t open this app
+Can’t remove all languages
+Can’t send SMS messages
+Can’t take screenshots
+Can’t use camera
+Can’t view picture-in-picture while streaming
+Capitalize first letter in sentences
+Caps lock
+Caption preferences
+Caption size
+Caption size and style
+Caption style
+Caption window color
+Caption window opacity
+Captions overlay
+Captions will look like this
+Capture image
+Capture image with
+Capture more
+Capture system heap dump
+Capturing system heap dump
+Car
+Car mode
+card
+Carrier data accounting may differ from device accounting
+Carrier network changing
+Carrier settings
+Carrier settings version
+Carrier switching
+Carrier video calling
+Case
+Cast
+Cast entire screen
+Cast one app
+Cast screen
+Cast screen to device
+Cast volume
+Cast your screen?
+Casting
+Casting screen
+Casting your media
+Categories
+CDMA subscription
+Cell added
+Celsius (\u00B0C)
+Center
+Center your face in the circle
+Certificate management app
+Certificate not installed
+Certificate pinning
+Certificate required.
+Certification
+Change
+Change between RUIM/SIM and NV
+Change cycle\u2026
+Change date, time, and time zones
+Change font size
+Change how text displays
+change input device calibration
+Change language
+Change magnification type
+Change media output
+change network connectivity
+Change network or VPN settings
+Change output
+Change password
+Change PIN
+Change pointer fill style to black
+Change pointer fill style to blue
+Change pointer fill style to green
+Change pointer fill style to pink
+Change pointer fill style to purple
+Change pointer fill style to red
+Change settings
+Change settings for each app that sends notifications
+Change SIM PIN
+Change SMS app?
+Change storage
+change tethered connectivity
+Change the behavior of keys
+Change the CDMA roaming mode
+Change the network operating mode
+Change the position of your finger slightly each time
+Change the position of your head slightly
+Change the screen lock
+Change the screen lock.
+Change the screen to black and white
+Change to alarms only indefinitely
+Change to always interrupt
+Change unlock pattern
+Change unlock PIN
+Change wallpaper
+Change Wi\u2011Fi assistant?
+change WiMAX state
+change your audio settings
+Changed apps
+Changed to new SS request
+Changed to new USSD request
+Changes & settings managed by your organization
+Changes made by your organization\'s admin
+Changes not saved
+Changing the theme requires a restart.
+channel
+character
+Charge connected device
+Charged
+Charging
+Charging connected device
+Charging connected device via USB
+Charging connected device. Tap for more options.
+Charging on hold
+Charging optimized to protect your battery
+Charging rapidly
+Charging slowly
+Charging sounds and vibration
+Charging this device
+Charging this device via USB
+Charging wirelessly
+Chartreuse green
+Check
+Check access settings
+Check active apps
+Check app activity for phishing
+Check apps installed via ADB/ADT for harmful behavior.
+Check charging accessory
+Check connection and try again
+Check for update
+Check password and try again
+Check the password and try again
+Check with your network provider for pricing.
+Checking account\u2026
+Checking for other supported links\u2026
+Checking\u2026
+Checking…
+Child
+Choose a device to disconnect
+Choose a feature
+Choose a lock for work apps
+Choose a lock for your private space
+Choose a new lock for private space?
+Choose a new screen lock
+Choose a new work lock
+Choose a screen lock
+Choose a screen saver
+Choose a SIM to use
+Choose activity
+Choose an account
+Choose an action
+Choose an action for text
+Choose an app
+Choose an app for the USB device
+Choose an icon
+Choose app to add controls
+Choose app to cast
+Choose app to record
+Choose app to share
+Choose apps to install
+Choose Bluetooth device
+Choose device controls to access quickly
+Choose different network
+Choose file
+Choose filter options
+Choose gadget
+Choose game
+Choose how to magnify
+Choose how to open web links for this app
+Choose how you\’re addressed
+Choose input method
+Choose keyboard layout
+Choose modifier key
+Choose network
+Choose new lock
+Choose profile
+Choose schedule type
+Choose screen lock
+Choose SIM for mobile data
+Choose spell checker
+choose user
+Choose wallpaper from
+Choose widget
+Choose your active SIM or use 2 SIMs at once
+Choose your backup screen lock method
+Choose your screen saver
+Choose your watch
+Chou2
+Chou3
+Chou4
+Circle
+Circle to Search
+Clean fingerprint sensor and try again
+Clean sensor and try again
+Clean the top of your screen, including the black bar
+Clean your screen near the sensor and try again
+Clear
+Clear access
+Clear all
+Clear all notifications.
+Clear all silent notifications
+Clear app
+Clear cache
+Clear credentials
+Clear default in System settings > Apps > Downloaded.
+Clear default preferences
+Clear logger persistent storage?
+Clear query
+Clear recent conversations
+Clear search query
+Clear storage
+Click to configure device detail
+Click to pair new device
+Click to see all devices
+Client Expenses
+Clipboard
+Clipboard Editor
+Clock size changes according to lock screen content
+clock, military
+Clone
+Clone profile accounts
+Cloned
+Cloned Apps
+Close app
+Close captions tip
+Close magnification settings
+close other apps
+Close overflow
+Close quick settings.
+Close this app
+Close widgets on lock screen
+Collapse
+Collapse icon
+Color
+Color (used by compatible apps)
+Color and motion
+Color contrast
+Color correction
+Color correction shortcut
+Color inversion
+Color inversion shortcut
+Color preview
+Colors
+com.android.certinstaller
+com.android.settings
+Combine channels when playing audio
+Common name:
+Communal
+Communal settings
+Compact
+Companion Watch profile permission to manage watches
+Company Main
+Compatible controls unavailable
+Complete action
+Complete action using
+Completing sign-up\u2026
+Computer
+Computing\u2026
+Condition provider
+Conference Call
+Configure
+Configure network download rate limit
+Configure physical keyboards
+Configured networks
+Confirm
+Confirm desired PIN code
+Confirm Navigation
+Confirm new PIN
+Confirm to add the second piece of your audio device
+Confirm to pair with the audio device
+Confirm you want to erase your eSIM
+Confirm your pattern
+Confirm your private space pattern
+Confirmed
+Congrats! System UI Tuner has been added to Settings
+Connect
+Connect a compatible device
+Connect a device
+connect and disconnect from Wi-Fi
+connect and disconnect from WiMAX
+Connect compatible headphones
+Connect these apps
+Connect to a LE audio stream
+Connect to an audio stream using QR code
+Connect to Bluetooth device?
+Connect to data services when roaming
+Connect to device
+connect to paired Bluetooth devices
+Connect to the internet or contact your carrier
+Connect to Wi\u2011Fi before erasing
+Connect your stylus to a charger
+Connected (supports audio sharing)
+connected compatible headphones
+Connected device
+Connected devices settings
+Connected Line ID
+Connected Line ID Restriction
+Connected to device for internet access
+Connected to file transfer server
+Connected to hearing aids
+Connected to input device
+Connected to LE audio
+Connected to map
+Connected to media audio
+Connected to multiple devices
+Connected to phone audio
+Connected to SAP
+Connected to unencrypted network
+Connected to your device.
+Connected via ARC
+Connected via eARC
+Connected work & personal apps
+Connected, but not charging
+Connecting
+Connecting to device\u2026
+Connecting...
+Connecting\u2026
+Connection failed
+Connection preferences
+Connection problem or invalid feature code.
+Connection problem or invalid MMI code.
+Connection strength
+Connection successful
+Connection unsuccessful
+Connectivity
+Contact the device manufacturer
+Contact your carrier for details
+Contact your IT admin
+Contact your IT admin to learn more
+Contactless payments
+Contacts app
+Contacts settings
+Contacts storage
+contacts, storage, account
+Content copied
+Content moves up when you scroll down
+Content transfer is done
+Content will show up soon
+Contents can\u2019t be autofilled
+Contextual education
+Continue
+continue a call from another app
+Continue anyway
+Continue on phone
+Continue setup
+Continue using apps on fold
+Continue verifying your fingerprint?
+Continue without Face Unlock
+Continue without fingerprint
+Continue without fingerprint or face
+Control app access to your data
+Control devices from lock screen?
+Control display magnification
+Control how and when the screen locks.
+Control info on lock screen
+Control is unavailable
+control Near Field Communication
+Control notifications from individual apps
+Control the vibration strength for different usages
+control vibration
+Control which apps and devices can read notifications
+Controlled by admin
+Controlled by Restricted Setting
+Controls
+Conversation
+Conversation removed
+Conversation section
+Conversation widgets
+Conversations
+Conversations settings
+Conversations you\u2019ve made changes to
+Convert to eSIM
+Convert videos to AVC
+Converted to eSIM. Remove and discard.
+Cool color temperature
+Copied
+Copy
+copy to clipboard.
+Copy URL
+Copyright
+Correct mistyped words
+Correct!
+Corrupted
+Couldn\'t access the file.
+Couldn\'t add widget.
+Couldn\'t authenticate.
+Couldn\'t communicate with the server. Try again later.
+Couldn\'t connect
+Couldn\'t connect to always-on VPN
+Couldn\'t connect to the server.
+Couldn\'t establish a secure connection.
+Couldn\'t find the requested file.
+Couldn\'t find the URL.
+Couldn\'t open the page because the URL is invalid.
+Couldn\'t save screenshot
+Couldn\'t share audio
+Couldn\'t switch
+Couldn\'t update preset
+Couldn\u2019t add device
+Couldn\u2019t capture system heap dump
+Couldn\u2019t clear storage for app.
+Couldn\u2019t complete sign-up. Tap to try again.
+Couldn\u2019t compute package size.
+Couldn\u2019t connect
+Couldn\u2019t connect.
+Couldn\u2019t find networks. Try again.
+Couldn\u2019t move content
+Couldn\u2019t restore shortcut
+Couldn\u2019t set up a private space
+Couldn\u2019t set up Wi\u2011Fi calling
+Couldn\u2019t turn on this SIM right now
+Couldn\u2019t update preset
+Country Detector
+CPU
+Create
+Create a mode
+Create a PIN for modifying restrictions
+Create custom settings for this schedule
+Create widget and allow access?
+Create your own mode
+Creating new guest…
+Creating new user…
+Creating…
+Credential details
+Credential storage
+Credential storage couldn\u2019t be erased.
+Credential storage is erased.
+Credentials are not available for this user
+credit card
+cross profile connected app apps work and personal
+Cross-profile calendar
+Ctrl
+Ctrl+
+Current app
+Current PIN
+Current screen lock
+Currently connected
+Currently unavailable for your device
+Custom
+Custom app notification
+Custom mode
+Custom navigation button
+Custom options
+Custom restrictions
+Custom settings
+Custom Trace Settings
+custom value
+custom view
+Customize
+Customize button
+Customize caption size and style to make them easier to read
+Customize individual touchpad navigation gestures
+Customize keyboard shortcuts
+Customize lock screen
+Customize widgets
+Customize your phone
+Cut
+Cyan
+Cycle backward through recent apps
+Cycle count
+Cycle forward through recent apps
+Dai Pa Kai
+Daily battery usage chart
+Dark glasses detected. Your face must be fully visible.
+Dark Mode
+Dark theme is currently following your Bedtime mode schedule
+Dark theme, font size, brightness
+Data
+Data & synchronization
+Data is paused
+Data limit
+Data one bar.
+Data only
+Data paused for the rest of your cycle
+Data Saver
+Data Saver is on
+Data sharing updates for location
+Data signal full.
+Data three bars.
+Data two bars.
+Data usage
+Data warning
+Data warning & limit
+data, passkey, password
+Date
+Date & time
+Date of each month:
+Date of first use
+day
+Day and time
+Day of month to reset data usage cycle:
+Daylight savings time
+days
+Deactivate & uninstall
+Deactivate this device admin app
+debit card
+Debug GPU overdraw
+Debug mode when USB is connected
+Debug mode when Wi\u2011Fi is connected
+Debug non-rectangular clip operations
+Debugging
+Decline
+Decrease
+Decrease day
+Decrease height
+Decrease height of magnifier
+Decrease hour
+Decrease minute
+Decrease month
+Decrease pointer scale
+Decrease width of magnifier
+Decrease year
+Default
+Default alarm sound
+Default apps
+Default autofill service
+Default digital assistant app
+Default disabled changes
+Default enabled changes
+Default for calls
+Default for calls & SMS
+Default for mobile data
+Default for SMS
+Default keyboard
+Default language status
+Default notification sound
+Default payment app
+Default ringtone
+Default spell checker
+Default USB configuration
+Default work alarm sound
+Default work notification sound
+default, assistant
+default_audio_route
+Defaults
+Delay before repeat
+delay, dexterity, senior
+Delete all App clones
+Delete all App clones failed
+Delete APN
+Delete app data?
+Delete face model
+Delete face model?
+Delete guest activity
+Delete guest activity?
+delete intent
+Delete limit exceeded
+Delete private space
+Delete private space?
+Delete profile
+Delete schedules
+Delete shared data
+Delete the items
+Delete this user?
+Delete user
+Delete yourself?
+delete, guest, activity, remove, data, visitor, erase
+Deleted by your admin
+Deleting private space\u2026
+Deliver companion messages
+Deny
+Depends on another setting
+Desktop backup password
+Desktop full backups aren\u2019t currently protected
+Dessert Case
+Details
+detect screen captures of app windows
+Detect when apps drain battery
+Detecting when apps drain battery
+determine relative position between nearby devices
+Deuteranomaly
+Deuteranomaly (red-green)
+Developer Driver
+Developer messages
+Developer options
+Developer options are not available for this user
+Device admin
+Device admin app
+Device admin app can\'t be installed on external media
+Device admin apps
+Device admin doesn\'t allow using a recent PIN
+Device admin settings
+Device aspect ratio
+Device audio
+Device audio and microphone
+Device connected as Webcam
+Device controls
+Device default
+Device details
+Device diagnostics
+Device found
+Device has enough charge. Features no longer restricted.
+Device ID accessed
+Device identifiers
+Device is managed
+Device is starting\u2026
+Device is too warm
+Device is updating\u2026
+Device location needed
+Device locked
+Device MAC address
+Device management
+Device memory
+Device must be unlocked before screenshot can be saved
+Device name
+Device not approved to play
+Device only
+Device Policy Manager Service
+Device security
+Device storage
+Device theme
+Device unlock
+Device was locked, too many authentication attempts
+Device Wi\u2011Fi MAC address
+Devices
+Dial pad tones
+Digital assistant
+Digital assistant app
+dim screen, touchscreen, battery, bright
+Dim the wallpaper
+Dimmer
+directly call phone numbers
+Disable
+Disable absolute volume
+Disable adb authorization timeout
+Disable after one day
+Disable always on display
+Disable and enable Bluetooth for the changes to take effect
+Disable animations while entering the PIN
+Disable app
+Disable automatic routing to USB audio peripherals
+Disable background data?
+Disable Bluetooth A2DP hardware offload
+Disable Bluetooth LE audio
+Disable Bluetooth LE audio hardware offload
+Disable cameras
+Disable child process restrictions
+Disable default frame rate for games
+Disable HW overlays
+disable or modify status bar
+Disable screen share protections
+Disable some screen lock features
+Disable the system CA certificate?
+Disable transcoding cache
+Disable USB audio routing
+disable your screen lock
+Disabled apps
+disableNetwork
+Disables after one day
+Disabling
+Disconnect
+Disconnect app
+Disconnect App?
+Disconnect device?
+Disconnect this VPN?
+Disconnect?
+Disconnected from always-on VPN
+Disconnected from VPN
+Disconnecting\u2026
+discover and connect to nearby devices
+discover and pair nearby Bluetooth devices
+dismiss
+Dismiss copied text
+Dismiss Notification Shade
+Dismiss screenshot
+Dismiss work profile message
+Display App Not Responding dialog for background apps
+Display brightness
+Display characters briefly as you type
+Display connected
+Display cutout
+display cutout, notch
+display density, screen zoom, scale, scaling
+Display network name in status bar
+Display only in gray color
+Display options
+Display over other apps
+Display resolution
+Display settings
+Display size
+Display size and text
+Display size and text settings have been reset
+Display trusted CA certificates
+Display white balance
+Display, interaction, audio
+displaying over other apps on your screen
+DNS
+DNS 1 (unless overridden by Private DNS)
+DNS 2 (unless overridden by Private DNS)
+Do it later
+Do not add tile
+Do Not Disturb access
+Do Not Disturb behavior
+Do Not Disturb is off
+Do Not Disturb is on
+Do Not Disturb was turned on by an automatic rule or app.
+Do Not Disturb will stay on until you turn it off
+Do Not Disturb.
+Do not provide
+Do nothing for now
+Do you want to allow this request?
+Do you want to continue your session?
+Do you want to remove this instant app?
+Do you want to shut down?
+Dock speaker
+Dock speaker plays
+Dock speakers
+Docking sounds
+Document
+Documents
+Domain
+Domestic Partner
+Don\'t blink light
+Don\'t pop notifications on screen
+Don\'t turn on screen
+Don\'t wake for notifications
+Don\u2019t allow
+Don\u2019t ask again for this network
+Don\u2019t connect
+Don\u2019t install
+Don\u2019t keep activities
+Don\u2019t open supported links
+Don\u2019t optimize
+Don\u2019t remove
+Don\u2019t see your hearing device?
+Don\u2019t show any notifications
+Don\u2019t show notifications at all
+dont don\u2019t disturb, interrupt, interruption, break
+Don’t allow app to open links
+Don’t turn on
+Double tap power button
+Double twist for camera
+Double-tap anywhere on the screen to wake device
+Down arrow
+Download app
+Download the carrier app to activate your new SIM
+Downloaded
+Downloaded apps
+Downtime
+Dpad Center
+Dpad Down
+Dpad Left
+Dpad Right
+Dpad Up
+Drag 1 finger to move around the screen
+Drag corner to resize
+Drag handle
+Drag here to remove
+Draw an unlock pattern
+Draw pattern again to confirm
+Draw pattern to unlock
+Draw your pattern
+Draw your pattern again
+Draw your pattern to continue
+Draw your work pattern to continue
+Drawing
+Driving app is running
+Drop down list Advanced Options
+DSU is running
+DSU Loader
+Dual multi tone frequency
+Dual screen
+Dual screen is on
+Dual Screen is unavailable
+Duplicate apn entry.
+Duration
+Duration for Quick Settings
+During events for
+During split screen: replace an app from one to another
+During the move:
+Dynamic clock
+E.g., Joe\u2019s Android.
+EAP method
+EDGE
+Edge color
+Edge type
+Edit access point
+Edit accessibility shortcuts
+Edit controls
+Edit copied image
+Edit copied text
+Edit mode
+Edit order of settings.
+Edit profile
+Edit screenshot
+Edit shortcuts
+Edit VPN profile
+Edit widget
+Edit with
+Edit word
+EID
+Eject
+Eject media before removing to avoid losing content
+Ejected
+Ejecting\u2026
+Eliminate all distractions for a quiet environment
+email address
+Emergency
+Emergency address
+Emergency app
+Emergency callback mode
+Emergency calling unavailable
+Emergency calls
+Emergency calls only
+Emergency calls or SOS
+Emergency calls require a mobile network
+Emergency dialing signal
+Emergency information
+Emergency messages test
+Emergency number
+Emergency SOS
+Emergency SOS, medical info, alerts
+Empty
+Empty trash
+Empty trash?
+Enable
+Enable 4x MSAA in OpenGL ES 2.0 apps
+Enable autonomous GO
+Enable Bluetooth HCI snoop log
+Enable Bluetooth LE Audio Broadcast UI preview
+Enable Bluetooth stack log
+enable car mode
+Enable custom setting
+Enable dark theme
+Enable demo mode
+Enable developer options
+Enable Explore by Touch?
+Enable for all apps
+Enable for one more day
+Enable for real-time updates, disable to save battery
+Enable freeform windows
+Enable freeform windows on secondary display
+Enable Gabeldorsche
+Enable GPU debug layers
+Enable listen mode
+Enable memory usage profiling
+Enable more settings options
+Enable MTE for a single session
+Enable MTE until you turn it off
+Enable non-resizable in multi window
+Enable OpenGL traces
+Enable system animations for predictive back.
+Enable terminal app that offers local shell access
+Enable the system CA certificate?
+Enable transcoding
+Enable usage of mobile data in the background
+Enable USB
+Enable verbose vendor logging
+Enable view attribute inspection
+Enable Wi\u2011Fi Verbose Logging
+Enable wireless display
+Enabled for one day
+Enabled indefinitely
+enableNetwork
+Enables the Bluetooth Gabeldorsche feature stack.
+Enables the Enhanced Connectivity feature.
+Enabling
+Encrypted
+Encryption
+Encryption & credentials
+Encryption, credentials, and more
+Encryption, notifications for unencrypted networks
+End
+End resizing
+End session
+End time
+Engine
+Engine settings
+Enhanced notifications
+Enhanced Open
+Enhanced PIN privacy
+Enrollment was not completed
+enter
+Enter a valid time
+Enter admin PIN
+enter audio sharing settings
+Enter desired PIN code
+enter device
+Enter device PIN to disable auto-confirm
+Enter device PIN to enable auto-confirm
+Enter hostname of DNS provider
+Enter output settings
+Enter Password
+Enter password to perform factory reset in demo mode
+Enter Phone number
+Enter Phone numbers
+Enter PIN
+Enter PUK
+Enter schedule name
+enter screen lock
+enter settings
+Enter SIM name
+Enter the SSID
+Enter your device password to continue
+Enter your device PIN to continue
+Enter your password to continue
+Enter your PIN to continue
+Enter your screen lock to continue
+Enter your work password
+Enter your work password to continue
+Enter your work pattern
+Enter your work PIN
+Enter your work PIN to continue
+Equipment ID
+Erase
+Erase all data
+Erase all data (factory reset)
+Erase all data?
+Erase anyway
+Erase eSIM
+Erase eSIMs
+Erase profile data
+Erase this eSIM?
+Erase this user\'s data on this phone without warning.
+Erase this user\'s data on this tablet without warning.
+Erase user data
+Erasing
+Erasing eSIM…
+Erasing shared storage\u2026
+Erasure was successful.
+Error authenticating
+Error saving issue recording
+Error saving screen recording
+Error setting the default account
+Error starting issue recording
+Error starting screen recording
+Error writing content
+Error, try again
+Esc
+eSIM
+eSIMs
+Estimate may change based on usage
+Estimated time left
+Ethernet
+Ethernet data usage
+Ethernet disconnected.
+Ethernet only
+Ethernet tethering
+Ethernet.
+Event
+Event schedule
+events
+Every time device locks
+Everyone listening should hear it
+example.com,mycomp.test.com,localhost
+Except when another payment app is open
+Excludes data used by carrier networks
+Execute
+exempt from audio record restrictions
+Exempt the app from restrictions to record audio.
+Exit
+Exit edit mode
+Exit guest
+Exit guest mode
+Exit guest mode?
+Exit split screen to set up Face Unlock
+Exit split screen to set up Fingerprint Unlock
+Expand
+Expand and show options
+Expand icon
+Expand settings for application
+Expand unlock area.
+expand/collapse status bar
+Experiment
+Experimental
+Experimental MTE enabled
+Experimental. Improves audio quality.
+Experimental: Enable ANGLE
+Expired
+Expires on:
+explanation
+Explore
+Extend battery life
+Extend calls with Wi\u2011Fi
+Extend compatibility
+Extend Unlock disabled
+External Device
+External Display
+External display is disconnected
+external storage
+Extra dim
+Extra dim is now part of the brightness slider
+Extra dim shortcut
+Extra dim shortcuts removed
+Extra left button type
+Extra right button type
+extras
+Extreme
+Extreme threats
+E​ID
+face
+Face & Fingerprint Unlock
+Face & Fingerprint Unlock for private space
+Face & Fingerprint Unlock for work
+Face added
+Face and fingerprint added
+Face and fingerprints added
+Face authenticated
+Face authenticated, please press confirm
+Face covering detected. Your face must be fully visible.
+Face Detection
+Face enrollment didn\'t work.
+Face enrollment time limit reached. Try again.
+Face icon
+Face not recognized
+Face not recognized. Try again.
+Face not recognized. Use fingerprint instead.
+Face operation canceled.
+Face recognized
+Face recognized. Press the unlock icon to continue.
+Face recognized. Press the unlock icon to open.
+Face recognized. Press to continue.
+Face recognized. Press to open.
+Face Unlock
+Face Unlock canceled by user
+Face Unlock for private space
+Face Unlock for work
+Face Unlock isn\u2019t supported on this device
+Face Unlock unavailable
+Face Unlock.
+face, fingerprint, add fingerprint
+face, unlock, auth, sign in
+face, unlock, auth, sign in, fingerprint, biometric
+Factory data reset
+Factory reset is not available for this user
+Factory reset your device if something goes wrong
+Factory test failed
+Fade when not in use
+Fahrenheit (\u00B0F)
+Failed password attempts before deleting all device data
+Failed password attempts before deleting work profile data
+Failed to apply overlay
+Failed to connect to network
+Failed to copy to clipboard
+Failed to create a new guest
+Failed to create a new user
+Failed to reformat and wipe the data partition to ext4.
+Failed to rename device.
+Failed to save network
+Failed to start unsupported VPN.
+Failed to take screenshot with bug report
+Failed to update kernel to 16 KB pages compatible kernel.
+Failure setting backup password
+Fast
+Fast charging
+Fast forward
+Fast speeds. Compatible with many devices.
+Fastest speeds. Compatible with few devices.
+Father
+favorite
+Favorited
+FAX
+Feature code complete.
+Feature flags
+Feature not available
+Feature not supported.
+Features like Quick Share and Find My Device use Bluetooth
+Features restricted
+Feedback
+feedback, bug, time, zone, timezone
+Feminine
+FHD, QHD, resolution, 1080p, 1440p
+File
+File transfer
+File transfer and supplying power
+File transfer options
+Filter
+Filter the brightness of the wallpaper
+Finally, place the right edge of your finger on the sensor
+Financed device info
+Find
+find accounts on the device
+Find an audio stream
+Find broadcasts
+Find next
+Find on page
+Find previous
+Finger moved too slow. Please try again.
+Fingerprint
+Fingerprint added
+Fingerprint authenticated
+Fingerprint for work
+Fingerprint gestures
+Fingerprint hardware not available
+Fingerprint icon
+Fingerprint not recognized
+Fingerprint not recognized. Try again.
+Fingerprint operation canceled
+Fingerprint operation canceled by user
+Fingerprint sensor
+Fingerprint setup timed out
+Fingerprint setup timed out. Try again.
+Fingerprint Unlock
+Fingerprint Unlock for private space
+fingerprint, add fingerprint
+Fingerprints:
+Finishing boot.
+Finishing system update\u2026
+Firmware updates, about, and more
+First day of week
+Fix connectivity
+Fix this
+Fixed
+Flash entire window surfaces when they update
+Flash hardware layers green when they update
+Flash notifications
+Flash screen
+Flash views inside windows when drawn
+flash, light, hard of hearing, hearing loss
+Flashlight
+Flashlight, Light, Torch
+Flip camera for selfie
+Foldable device being flipped around
+Foldable device being unfolded
+folded
+Folder
+Follow the fingerprint icon
+Follow up?
+Font family
+Foolscap
+For added security, enter your device password
+For added security, enter your device PIN
+For added security, enter your work password
+For added security, enter your work PIN
+For added security, set a backup screen lock
+For added security, set a pattern to unlock the device
+For added security, use your device pattern
+For added security, use your work pattern
+For all languages
+For apps & notifications
+For apps and services
+For calls & notifications
+For higher resolution, flip the phone
+For higher resolution, use the rear camera
+For moments when courtesy counts
+For more info, contact your IT admin
+For security, set PIN
+For storing  photos, videos, music and more
+For supported app only
+For You
+For your security, forget this device, then pair it again
+For your security, this setting is currently unavailable.
+Force 4x MSAA
+Force activities to be resizable
+Force allow apps on external
+Force enable Notes role
+Force full GNSS measurements
+Force peak refresh rate
+Force RTL layout direction
+Force screen layout direction to RTL for all locales
+Force Software Secure Crypto
+Force stop
+Force stop?
+Foreground
+Foreground:
+Forget
+Forget device
+Forget device?
+Forget network?
+Forget this group?
+Forget VPN
+Forgot Pattern
+Forgot pattern?
+Forgot your password?
+Forgot your pattern?
+Forgot your PIN?
+Format
+Format another way
+Format as portable
+Format card
+Format SD card for portable storage
+Formatting\u2026
+Forward cell broadcast messages
+forward slash
+Free
+Free up space
+Frequency
+Friday
+Friend
+Friends
+From tasks and reminders
+From the lockscreen
+From timers, alarms, security systems, and other apps
+From upcoming calendar events
+From: Bill
+Front display turns off and locks when you fold your device
+Front display turns on when you fold your device
+Front screen turned on
+Full charge lasts about
+Full hotword and interaction
+Full list
+Full report
+Full screen
+full screen intent
+Full-screen notifications
+Fully Charged
+Fun for some but not for all
+Function+
+Gain focus to get in the zone
+Game Controller
+Game Driver
+Games
+Gateway
+Gboard
+Geeky stats about running processes
+General
+Geofencing Service
+Gesture detection area hints
+Gesture navigation
+gesture navigation, back sensitivity, back gesture
+gestures
+Get started
+Get suggested actions, replies, and more
+Give access
+Global
+Global HTTP proxy set
+Gmail
+GNSS Service
+GNSS Time Update Service
+Go back
+Go home
+Go to browser
+Go to Files app to manage and free up space
+Go to home screen
+Go to identity check
+Go to Settings
+Google Play system update
+Google Play system update licenses
+Got it
+Government Letter
+GPRS
+GPS
+GPU
+Grammatical gender
+Graphics Driver Preferences
+Gray
+Grayscale
+Great job!
+Green
+group
+Group Conversation
+Guest
+Guest (You)
+Guest mode
+Guest mode users cannot format SD cards
+Guided usage to help you stay in good hands
+h:mm
+Hagaki
+Half screen
+Hand the phone to your parent to start setting this up
+Handwriting is not supported in password fields
+Handwriting is not supported in this field
+Hang Up
+Hangouts
+haptics, vibrate, phone, call, ring, gradually
+haptics, vibrate, phone, call, sensitivity, ring
+haptics, vibrate, screen, sensitivity
+haptics, vibrate, sensitivity, alarm
+haptics, vibrate, sensitivity, media
+haptics, vibrate, sensitivity, notification
+haptics, vibrate, vibration
+hard of hearing, hearing loss, captions, Teletype, tty
+Hardware accelerated rendering
+Hardware version
+Harmful app detected
+have full network access
+HD audio
+HDCP checking
+HDMI Screen
+Head Tracking
+Heading to the beach. Want to join?
+Headphone
+Headphone volume has been high for longer than recommended
+Headphone volume has exceeded the safe limit for this week
+Headphones
+Headphones connected
+Headset
+Headset connected
+Headset Hook
+Heap dump collected. Tap to share.
+Hearing aid compatibility
+Hearing aids
+Hearing device
+Hearing device controls
+Hearing device settings
+Hearing device shortcut
+Hearing devices
+Helen, Adam
+Help
+Help & feedback
+help_uri_usb_warm
+Helps extend battery life
+Hidden network
+Hidden SSID:
+Hide
+Hide from pull-down shade
+Hide notification dots on app icons
+hide other apps overlays
+Hide Outgoing Caller ID
+Hide player
+Hide private space
+Hide private space when it\'s locked
+Hide seen notifications
+Hide sensitive work content
+Hide silent conversations and notifications
+Hide silent notifications
+Hide silent notifications in status bar
+Hide status bar icons at top of screen
+Hide system
+Hide unused categories
+High
+High battery usage
+High battery usage in the background
+High battery usage in the foreground
+High battery use
+High contrast text
+High contrast, low vision, bold font, bold face
+High mobile data usage
+High priority SIM status
+High resolution
+Higher battery usage
+Hints
+History
+History details
+Hold & drag to rearrange controls
+Hold and drag to add tiles
+Hold and drag to rearrange displays.
+Hold and drag to rearrange tiles
+Hold Home for Assistant
+Hold volume keys
+Home app
+Home Controls
+Home Fax
+Home, lock screen
+Hotspot & tethering
+Hotspot connection
+Hotspot device details
+Hotspot is active
+Hotspot name
+Hotspot on
+Hotspot on, tethering
+Hotspot only
+Hotspot password
+Hotspot, Bluetooth
+Hotspot, Bluetooth, Ethernet
+Hotspot, Ethernet
+Hotspot, USB
+Hotspot, USB, Bluetooth
+Hotspot, USB, Bluetooth, Ethernet
+Hotspot, USB, Ethernet
+hour
+Hourly battery usage chart
+hours
+Hours circular slider
+How broadcasting works
+How it works
+How to draw an unlock pattern
+How to set up Face Unlock
+How to set up your fingerprint
+HTTP Client Test:
+I agree
+ICCID
+ICCID unlock PIN
+ICCID unlock request unsuccessful.
+ICCID unlock successful.
+icon
+ICQ
+Identity
+Identity Check is on and can’t verify it’s you
+Identity Check is on and requires a biometric
+If mobile network is unavailable, use Wi\u2011Fi
+If Wi\u2011Fi is unavailable, use mobile network
+If you disable, Linux terminal data will be cleared
+If you force stop an app, it may misbehave.
+If you forget this lock, ask your IT admin to reset it
+If you turn off Bluetooth, it turns on again the next day
+If your device is financed, you can\u2019t:
+If your device is locked, you can only use it to:
+Ignore all stylus button presses
+ignore optimizations, doze, app standby
+Illustration with device and fingerprint sensor location
+Image copied
+Image preview
+Images
+Imaging
+IMEI
+IMEI (primary)
+imei, meid, min, prl version, imei sv
+IMPI unlock PIN
+IMPI unlock request unsuccessful.
+IMPI unlock successful.
+importance
+Important developer messages
+Important information
+Improve battery life
+Improve compatibility
+Improve Face Unlock performance
+Improve mobile data coverage?
+Improve security and performance
+In Airplane mode
+in progress
+In Service
+In the app
+In the pull-down shade, collapse notifications to one line
+In the search bar, enter \"private space\"
+In use
+In use by phone call
+In your browser
+In-call volume
+Inactive / eSIM
+Inactive / SIM
+Inactive, check app
+Inactive. Tap to toggle.
+Include app data
+Include link
+Included packages
+Includes high-power background activity
+Incoming call
+Incoming Caller ID
+Incoming MMS message
+incoming notification
+Incorrect
+Incorrect password.
+Incorrect PIN code.
+Increase
+Increase day
+Increase height
+Increase height of magnifier
+Increase hour
+Increase minute
+Increase month
+Increase pointer scale
+Increase width of magnifier
+Increase year
+Increased battery usage
+Index Card 3x5
+Index Card 4x6
+Index Card 5x8
+Info will be used for call announcements and more
+Input
+Input device
+Input method
+Input Peripheral
+Insert
+Insert character
+Insert device again
+Install a certificate
+Install a work phone app
+Install anyway
+Install app
+Install apps from outside the Play Store
+install apps unknown sources
+Install available apps
+Install certificates
+Install location isn\u2019t valid.
+install shortcuts
+Install the voice data required for speech synthesis
+Install unknown apps
+Install voice data
+Install Voices
+Installed
+Installed apps
+Installed for VPN and apps
+Installed for Wi\u2011Fi
+Installed for Wi\u2011Fi (In use)
+Instant app
+Instant apps
+Instant Apps preferences
+Instant hotspot
+Intensity
+intent
+interact with in-call screen
+interact with nearby Wi\u2011Fi devices
+interact with telephony services
+Interaction controls
+Interactive haptics
+Interactive report
+Internal shared storage
+Internal storage
+Internet
+Internet access
+Internet connection sharing
+Internet only available via Wi\u2011Fi
+Internet source
+Invalid username or password.
+invoke the carrier-provided configuration app
+IP address
+IP address \u0026 Port
+IP Configuration Failure
+IP settings
+IPaddr:
+IPSec CA certificate
+IPSec identifier
+IPSec pre-shared key
+IPSec server certificate
+IPSec user certificate
+IPv6 addresses
+Is this message helpful?
+ISDN
+Issue Recorder
+Issue recording saved
+Issue with Face Unlock
+Issue with SIM combination
+Issued by:
+Issued on:
+Issued to:
+It\u2019s on the back of your phone. Use your index finger.
+Jabber
+JIS Exec
+Join Wi\u2011Fi by scanning a QR code
+Joystick
+Junior Legal
+Jurro Ku Kai
+Just a sec\u2026
+Just now
+Just once
+Kahu
+Kaku2
+Keep
+Keep at least one preferred language
+keep car screen turned on
+Keep current language
+Keep in mind
+Keep it on screen while physical keyboard is active
+Keep listening
+Keep on
+Keep on after device restarts
+Keep on while switching apps
+Keep private apps locked and hidden
+Keep screen on when looking at it
+Keep the screen dark
+Keep your device in sync with your day’s events
+Kept unlocked by TrustAgent
+Kernel
+Kernel version
+key
+Key combination already in use. Try another key.
+Keyboard & input methods
+Keyboard backlight
+Keyboard layouts
+Keyboard settings
+Keyboard shortcuts
+Keyboard vibration
+keyboard, haptics, vibrate,
+Keyboards
+kk:mm
+Label
+Label your SIMs
+Labs
+Language not selected
+Language Settings
+Language:
+Languages
+Languages, gestures, time, backup
+Languages, input & gestures
+Languages & input
+Large
+Large mouse pointer
+Larger
+Largest
+Last full charge
+Last month
+Last used
+Launch Assistant
+Launch Browser?
+Launch engine settings
+Launch via NFC
+Layout
+LE Audio
+Learn keyboards shortcuts
+Learn more
+Learn more about accessibility button & gesture
+Learn more about Advanced memory protection.
+Learn more about app languages
+Learn more about auto-rotate
+Learn more about autoclick (dwell timing)
+Learn more about Battery Saver
+Learn more about battery usage options
+Learn more about caption preferences
+Learn more about charging is paused
+Learn more about color correction
+Learn more about color inversion
+Learn more about Fingerprint Unlock
+Learn more about incompatible charging
+Learn more about language preferences.
+Learn more about Location settings
+Learn more about magnification
+Learn more about MTE
+Learn more about private space
+Learn more about Thread
+Learn more about time to take action (Accessibility timeout)
+Learn more about Watch Unlock
+Learn touchpad gestures
+Learn touchpad gestures, keyboards shortcuts, and more
+Lease never expires.
+Leave broadcast
+Leave this Page
+Ledger
+Left
+Left arrow
+Left edge
+Left handle
+Left icon
+Left keycode
+Left shortcut
+Left shortcut also unlocks
+Legal
+Legal & regulatory
+Legal information
+Less options
+Less than 1 day left
+Less than a minute
+Less time.
+Let app always run in background?
+Let apps refresh data automatically
+Let apps use your location information
+Let the developer know your feedback. Was this correct?
+Letter
+Let’s chat tonight!
+License
+Lift finger, then touch sensor again
+Lift to wake
+Lift, then touch again
+Limit background activity?
+Limit interruptions
+Limited connection
+Limiting data usage
+line
+Link speed
+Links can\'t be added from other profiles
+Links to open in this app
+Linux development environment
+Liquid or debris in USB port
+List of apps on your device
+Listen
+Listen channel
+listen for observations on network conditions
+Listen to an example
+Listen to audio stream
+Listen to broadcasts that are playing near you
+Listen to nearby audio
+Listen to stream
+Listening
+Listening now
+Listening to
+Live Caption
+Load a Dynamic System Update Image
+Loading recommendations
+Loading\u2026
+Local terminal
+Location active
+Location for private space
+Location for work profile
+Location is off
+Location or Location Services are off
+Location permissions
+Location request
+Location requests active
+Location Service
+Location services
+Location settings
+Location time zone detection changes are not allowed
+Location time zone detection is disabled
+Location time zone detection is not supported
+Lock
+Lock after screen timeout
+Lock device when unpinning
+Lock display
+Lock private space automatically
+Lock screen notification minimalism
+lock screen notification, notifications
+Lock screen settings
+Lock screen widgets
+Lock screen, Lockscreen, Skip, Bypass
+Lock SIM
+Lock the screen
+Lockdown
+Logger buffer sizes
+Logging level
+Long
+Long background tasks
+long jobs, data transfer, background tasks
+Long press to customize widgets
+Longer
+Longer screen timeout will use more battery.
+Look more directly at your phone
+Looking for your face
+Low
+Low battery
+Low battery use
+Lower volume
+LTE
+LTE (recommended)
+LTE+
+MAC
+MAC addr:
+MAC is randomized
+Magenta
+Magnification settings
+Magnification shortcut
+Magnification switch
+Magnification type
+Magnification Window
+Magnification Window Controls
+Magnifier follows text as you type
+Magnifier size
+Magnifier stays on and zooms out when you switch apps
+Magnifier window settings
+Magnify full screen
+Magnify part of screen
+Magnify typing
+Magnify with shortcut
+Magnify with shortcut & triple-tap
+Main
+Main process in use.
+Make admin
+Make all apps dark
+make and manage phone calls
+Make and receive calls over Wi\u2011Fi
+make app always run
+Make emergency calls
+Make everything bigger or smaller
+Make larger
+Make navigation bar background color transparent by default
+Make pattern visible
+Make profile pattern visible
+Make screen extra dim
+Make smaller
+Make sure the device is connected to the same network.
+Make text bigger or smaller
+Make the mouse pointer more noticeable
+Make this user an admin
+Make this user an admin?
+make/receive SIP calls
+Manage
+Manage access
+Manage app if unused
+Manage apps
+Manage apps automatically
+Manage backup account
+Manage battery usage
+manage fingerprint hardware
+Manage in settings
+manage network policy
+Manage on-screen keyboards
+Manage ongoing calls
+Manage permissions
+manage profile and device owners
+Manage service
+Manage storage
+manage telecom connections
+Manage users
+Managed device info
+Manager
+Manual
+Manufacture date
+Manufactured year
+Map app
+Maps & Navigation
+Masculine
+Max requests per session
+Max resolution
+Max visible datasets
+Maximize
+Maximize text contrast
+Maximize window
+Maximum connected Bluetooth audio devices
+Maximum Face Unlock attempts exceeded
+Maximum memory use
+Maximum usage
+May ring or vibrate based on device settings
+May ring or vibrate based on settings
+MCC
+MCC field must be 3 digits.
+measure app storage space
+Media
+Media and system sounds
+Media audio
+Media audio only
+Media controls
+Media device
+Media devices
+Media DRM settings
+Media management apps
+Media Play/Pause
+Media sounds
+Media transcoding settings
+Media vibration
+Media volume
+Mediaserver
+Medium
+MEID
+MEID (primary)
+Memory
+Memory details
+Memory profiling disabled
+Memory Tagging Extension
+Memory usage
+Memory usage profiling requires additional system resources.
+Memory use
+Memory used by apps
+memory, cache, data, delete, clear, free, space
+Menu
+Menu+
+Messages that can interrupt
+Messaging is included with your account
+Meta+
+Metered
+Mic access
+Mic is off
+Microphone
+Microphone & Camera
+Microphone access
+Microphone and camera available
+Microphone available
+Microphone blocked
+Microphone is available
+Microphone is blocked
+Microphone is enabled for all apps and services.
+Microphone permissions
+Microphone turned off
+Microphone turned on
+Microphone unavailable
+Middle click
+MIDI
+MIDI and supplying power
+MIDI via USB turned on
+Migrate data
+min
+Minimize
+Minimize window
+Minimum TLS version
+mins
+Minus
+minute
+Minutes circular slider
+mirror
+Mirror display
+Mirror to external display?
+Missed call
+MMI complete.
+MMS
+MMS message
+MMS messages
+MMS port
+MMS proxy
+MMSC
+MMSC field must be valid.
+MNC
+MNC field must be 2 or 3 digits.
+Mobile
+Mobile data & Wi\u2011Fi
+Mobile data active
+Mobile data always active
+Mobile data is off
+Mobile data is paused
+Mobile data is unavailable
+Mobile data limit reached
+Mobile data network type
+Mobile data off
+Mobile data status
+Mobile data usage
+Mobile data usage cycle
+Mobile data won\u0027t auto\u2011connect
+Mobile network
+Mobile network has no internet access
+Mobile network security
+Mobile network security settings
+Mobile network state
+Mobile voice network type
+Mobile, Wi\u2011Fi, hotspot
+Mode change
+Mode name
+Mode name cannot be empty
+Mode not found
+Model
+Modes
+Modes access
+Modes settings
+Modifier keys
+Modify
+Modify graphics driver settings
+modify network usage accounting
+modify or delete the contents of your shared storage
+modify system settings
+modify your contacts
+modify your music collection
+modify your photo collection
+modify your video collection
+Monarch
+Monday
+Monitor screen unlock attempts
+Monitoring
+Mono audio
+Monochromacy
+More
+More details
+More information about this printer
+More language settings
+More languages…
+More options
+More privacy settings
+More security & privacy
+More security settings
+More settings
+More settings are available inside this app
+More time.
+More\u2026
+Most frequent
+Most recent
+Most recent bug report
+Most recent network traffic log
+Most recent security log
+Mother
+Mount
+Mouse
+Mouse keys
+Mouse reverse scrolling
+Move
+Move active window between displays
+Move bottom left
+Move bottom right
+Move button to the edge to hide it temporarily
+Move content
+Move content later
+Move down
+Move left
+Move magnifier with 1 finger
+Move out edge and show
+Move phone closer
+Move phone farther away
+Move phone higher
+Move phone lower
+Move phone to your left
+Move phone to your right
+Move right
+Move the magnification area by dragging one finger.
+Move the magnification area by dragging two fingers.
+Move tile
+Move to bottom
+Move to edge and hide
+Move to top
+Move top left
+Move top right
+Move up
+Move window to the left
+Move window to the right
+Movies & Video
+Moving content\u2026
+Moving data
+MSID
+MTE is already enabled
+MTE, Memory Tagging Extension
+multiple, users, profiles, people, accounts, switch, many
+Multitasking
+Music & Audio
+Music and audio
+Music Recognition Manager Service
+Must be 16 digits
+Must draw pattern to unlock screen
+Must specify a domain.
+Must stay turned on because notification access is on
+Mute
+Mute sound and vibration
+Mute until device restarts
+muted
+MVNO type
+MVNO value
+Name
+Native
+Natural
+Navigate home
+Navigate up
+Navigate using your keyboard
+Navigate using your keyboard and touchpad
+Navigate using your touchpad
+Navigation bar
+Navigation bar Edge Panel
+Navigation mode
+navigation, home button
+Nearby audio streams
+Nearby devices
+nearby, location, history, reporting, GPS
+Network
+Network & internet
+Network activation
+Network alerts
+Network available
+Network details
+Network download rate limit
+Network generations
+Network has no internet access
+Network ID:
+Network locked
+Network logging
+Network may be monitored
+Network name
+Network name is too long.
+Network not in range
+Network notifications
+Network operators
+Network or SIM error.
+Network preferences
+Network prefix length
+Network reset is not available for this user
+Network settings have been reset
+Network state:
+Network status
+Network subset service provider unlock PIN
+Network subset service provider unlock request unsuccessful.
+Network subset service provider unlock successful.
+Network type
+Network type, encryption, notification controls
+Network usage
+Networking
+Networks available
+Networks saved
+Networks unavailable
+Neuter
+Neutral
+Never
+Never Allow
+Never expires.
+Never show again
+Never show these notifications
+New
+New backup password set
+New contacts won\'t be synced with an account
+New information
+New magnification settings
+New notification
+New password and confirmation don\u2019t match
+New PIN code
+New profile
+New SIM inserted
+New story
+New user
+News
+News & Magazines
+Next month
+Next track
+NFC
+NFC is disabled
+NFC is enabled
+NFC NCI unfiltered log
+NFC verbose vendor debug log
+nfc, tag, reader
+Nice!
+Nickname
+Night Light
+Night Light is on
+Night Light not currently on
+No account is currently storing backed up data
+No active apps
+No active SIMs available
+No alarm set
+No ANGLE enabled application set
+No application found to handle this action
+No application found to view this contact.
+No apps can interrupt
+No apps can perform this action.
+No apps connected
+No apps have requested location recently
+No apps installed in the background
+No apps recently accessed location
+No apps selected
+No apps used data during this period.
+No apps.
+No autofill suggestions
+No available trust agents
+No battery use since last full charge
+No calling.
+No connected apps
+No connection
+No data in this date range
+No data transfer
+No data used
+No data.
+No debug application set
+No default set
+No defaults set
+No defaults set.
+No description provided by the app.
+No description provided.
+No device admin apps available
+No devices available
+No file chosen
+No fingerprints enrolled
+No hearing devices connected
+No installed apps have requested Do Not Disturb access
+No installed apps have requested Modes access
+No installed apps have requested notification access.
+No installed apps have requested Premium SMS
+No installed apps support Picture-in-picture
+No internet
+No internet access
+No limit
+No matches
+No matching activities found.
+No memory used in last 3 hours
+No mobile data service
+No mock location app set
+No nearby audio streams were found.
+No nearby Bluetooth devices were found.
+No nearby devices were found.
+No need, you are already a developer.
+No networks available
+No networks found.
+No new notifications
+No notifications
+No one can interrupt
+No other networks available
+No paired devices available
+No password
+No password set
+No permissions granted
+No permissions requested
+No permissions required
+No personal apps
+No phone.
+No pin, pattern, or password set
+No printers found
+No priority conversations
+No recent apps.
+No recent notifications
+No recommended people to share with
+No schedule
+No search results
+No service
+No service selected
+No services installed
+No shortcuts found
+No SIM available
+No SIM in phone.
+No SIM in tablet.
+No SIM in your Android TV device.
+No sound from notifications
+No sound or vibration
+No thanks
+No time remaining
+No title
+No usage for past 24 hr
+No usage since last full charge
+No user credentials installed
+No visuals or sound from notifications
+No voice service
+No voice service or emergency calling
+No VPNs added
+No Wi-Fi networks available
+No Wi\u2011Fi or Ethernet connection
+No work apps
+No, don\’t make them an admin
+Noise Control
+Non-carrier data usage
+Non-priority conversations
+Non-transparent
+None
+None selected
+None/Enhanced Open
+None/OWE
+Not a conversation
+Not active
+Not allowed
+Not allowed by your organization
+Not available
+Not available as system language
+Not available in your country or region
+Not available when automatic time zone is off
+Not available with 6 GHz
+Not charging
+not checked
+Not connected
+Not connected to file transfer server
+Not connected.
+Not enough light
+Not enough storage space.
+Not found
+Not in range
+Not inserted
+Not installed for this user
+Not now
+Not optimized
+Not recognized
+Not Roaming
+Not secure
+Not secure. Update to an IKEv2 VPN
+Not set
+Not set to use data
+Not set up
+Not set up - Restricted profile
+Not set up - Work profile
+Not sharing internet or content with other devices
+Not sharing internet with other devices
+Not specified
+Not supported by this app
+Not visible to other Bluetooth devices
+Not working. Tap for info.
+Note
+Note-taking
+Nothing
+Nothing can bubble
+Nothing can interrupt
+Nothing running.
+Notification
+notification alerted
+Notification bundles
+Notification category
+notification controls
+Notification cooldown
+Notification cooldown is now on
+Notification dot on app icon
+Notification filters
+Notification history
+Notification history turned off
+Notification history, conversations
+Notification listener
+Notification log
+Notification ranker service
+Notification read, reply & control
+Notification settings
+Notification shade.
+notification snooze options
+Notification sounds
+Notification vibration
+Notification volume
+Notification volume muted, notifications will vibrate
+Notifications and alarms
+Notifications and settings will appear.
+Notifications hidden
+Notifications on lock screen
+Notifications paused by Do Not Disturb
+Notifications shown
+Notifications that can interrupt
+Notifications that never make sound or vibrations
+Notify for help
+Notify for public networks
+Notify when a high\u2011quality public network is available
+now
+Num Lock
+Number to call for help
+Numbers preferences
+Observe companion device presence
+Observe text you type
+OEM unlocking
+Off after restart
+OK to use USB port
+Older
+On - Face-based
+On / Camera and screen flash
+On / Camera flash
+On / Conversations can appear as floating icons
+On / Screen flash
+On after restart
+On at bedtime
+On at sunset
+On-device recognition
+On-device recognition settings
+On-device speech recognition
+On-screen Accessibility Shortcut
+On-screen Accessibility Shortcut Chooser
+On-screen keyboard
+On-screen keyboard for work
+On-screen keyboard, physical keyboard, tools
+On-screen keyboard, tools
+Once you pay the full amount:
+One more time
+One-Handed mode
+One-handed mode shortcut
+Ongoing call
+Ongoing notification for a screen record session
+Ongoing notification for an issue collection session
+Ongoing phone call
+Online Certificate Status
+Only 2 devices can share audio at a time
+Only after device restarts
+Only games, videos, and more
+Only get notified by important people and apps
+Only the admin users can access developer settings.
+Only visible to paired devices
+Open App
+Open app again
+Open apps
+Open apps list
+Open assistant
+Open by default
+Open Camera
+Open conversation
+Open input method picker
+Open links in apps, even if they’re not installed
+Open links with
+Open magnification settings
+Open Messages
+Open network
+open notification
+Open notifications settings
+Open quick settings.
+Open Settings
+Open settings.
+Open site
+Open SMS app to view
+Open supported links
+Open the camera app by twisting your wrist twice
+Open VPN settings
+Open Wallet
+Open with
+Opening links
+Operating channel
+Operation is restricted to fixed dialing numbers only.
+Operator info
+Optimize
+Optimize based on your usage. Recommended for most apps.
+Optimized
+Optimizing battery use
+Optional shortcut
+Options
+Orange
+Organization:
+Organizational unit:
+Other
+Other apps
+Other apps included in usage
+Other default preferences
+Other device
+Other devices
+Other display controls
+Other Fax
+Other media devices
+Other networks
+other options
+Other options are disabled by your admin
+Other users
+Others
+Oufuku
+Out of Building
+Out of Neighborhood
+Out of Service
+Output
+Over 1 week ago
+Over 2 weeks ago
+Over limit
+Over your mobile data limit
+Over your Wi-Fi data limit
+Override
+Override Do Not Disturb
+Override force-dark
+Override transcoding defaults
+Overrides the force-dark feature to be always-on
+Overview
+OWE
+Owner
+Pa Kai
+Packet
+PAD
+Page Down
+Page Up
+Pager
+Pair
+Pair & connect
+Pair device over Wi\u2011Fi by scanning a QR code
+Pair device with pairing code
+Pair device with QR code
+Pair hearing aids
+Pair hearing device
+Pair left ear
+Pair new device
+Pair new devices using QR code scanner
+Pair new devices using six digit code
+Pair right ear
+pair with Bluetooth devices
+Pair with device
+Pair your other ear
+Paired devices
+Pairing device\u2026
+Pairing request
+Pairing unsuccessful
+Pairing\u2026
+parcel size
+Parent
+Parent needed
+Partial screen
+Partner
+Passpoint
+Password
+Password \u2022 Face
+Password \u2022 Fingerprint
+Password change
+Password has been set
+Password is now set up
+Password required
+Password unlock.
+Passwords
+Passwords & accounts
+Passwords don\u2019t match
+Passwords, passkeys & accounts
+Passwords, passkeys, and data services limit
+Paste
+Paste as plain text
+Pattern
+Pattern \u2022 Face
+Pattern \u2022 Fingerprint
+Pattern area.
+Pattern cleared
+Pattern completed
+Pattern has been set
+Pattern recorded
+Pattern started
+Pattern unlock.
+Pause app activity if unused
+Pause notifications to stay focused
+Paused
+Paused by Do Not Disturb
+Paused by host
+Pay with your phone in stores
+pay, tap, payments
+Paying at the terminal
+payment card
+Payment default
+payment, default
+Peer devices
+Peer requested TTY Mode FULL
+Peer requested TTY Mode HCO
+Peer requested TTY Mode OFF
+Peer requested TTY Mode VCO
+Pending...
+People
+People, apps, and sounds can interrupt
+Perform a factory reset to disable Test Harness Mode.
+Perform gestures
+Performance
+Performance is impacted. To disable, check bootloader.
+Permanently remove the user CA certificate?
+Permission manager
+Permission request suppressed
+Permission requested
+Permissions
+Permissions, account activity, personal data
+Permit usage access
+Personal
+Personal data
+Personal dictionary
+Personal dictionary for work
+Personal profile accounts
+Personal view
+Personalize your screen
+Phase 2 authentication
+Phishing alert
+Phone app
+Phone call
+Phone calls
+Phone four bars.
+Phone has enough charge. Features no longer restricted.
+Phone is starting\u2026
+Phone is updating\u2026
+Phone muted
+Phone no longer detects liquid or debris.
+Phone not allowed for voice
+Phone number
+Phone number is missing.
+Phone one bar.
+Phone options
+Phone ringtone
+Phone settings unavailable
+Phone signal full.
+Phone storage is full. Delete some files to free space.
+Phone three bars.
+Phone two bars.
+Photo ID
+Photos & Images
+Photos and videos
+Phrase
+Physical activity
+Physical keyboard
+Physical keyboard accessibility
+Physical keyboard layout picker
+Physical keyboard layouts
+Physical keyboard options
+Physical keyboard settings
+Physical keyboards configured
+Picture color mode
+Picture-in-picture
+Pin
+PIN \u2022 Face
+PIN \u2022 Fingerprint
+PIN change
+PIN codes does not match
+PIN contains letters or symbols
+PIN has been set
+PIN is too short. Must be at least 4 digits.
+Pin media player
+Pin unlock.
+Ping Hostname(www.google.com) IPv4:
+Pinned app may open other apps.
+PINs don\'t match. Try again.
+PINs don\u2019t match
+pip picture in
+Pitch
+pkg
+place selected widget
+Place the center part of your finger on the sensor
+Place the left edge of your finger
+Place the left edge of your finger on the sensor
+Place the right edge of your finger
+Place the tip of your finger on the sensor
+Play a loud sound when Emergency SOS is starting
+Play a short demonstration of speech synthesis
+Play a test sound
+Play countdown alarm
+Play media to
+Play Store unavailable
+Play/Pause
+Playing
+Playing through Bluetooth
+Please connect to a Wi\u2011Fi network
+Please enable developer options first.
+Please look more directly at your device.
+Please re-enroll your face.
+Please select
+Please try again
+Please wait\u2026
+Plugins
+Plus
+Plus icon
+Pointer & touchpad accessibility
+Pointer color
+Pointer color customization
+Pointer color, pointer size & more
+Pointer location
+Pointer scale
+Pointer speed
+Pointer speed, gestures
+Pointer stroke color
+Poor connection
+Pop on screen
+Popup Window
+Port
+Portable hotspot
+Position invalid.
+Power
+Power button ends call
+Power button instantly locks
+Power button pressed
+Power Dialog
+Power menu
+Power off
+Power on sounds
+Power options
+Power press detected
+power usage, charge
+PRC 1
+PRC 10
+PRC 2
+PRC 3
+PRC 4
+PRC 5
+PRC 6
+PRC 7
+PRC 8
+PRC 9
+Predictive back animations
+preferred
+Preferred engine
+preferred for calls
+preferred for SMS
+Preferred frequency
+Preferred Language
+Preferred language order
+Preferred network mode: CDMA
+Preferred network mode: CDMA / EvDo
+Preferred network mode: CDMA only
+Preferred network mode: CDMA+LTE/EVDO
+Preferred network mode: CDMA/EvDo/GSM/WCDMA
+Preferred network mode: EvDo only
+Preferred network mode: Global
+Preferred network mode: GSM / WCDMA
+Preferred network mode: GSM only
+Preferred network mode: GSM/WCDMA/LTE
+Preferred network mode: LTE
+Preferred network mode: LTE / CDMA
+Preferred network mode: LTE / GSM / UMTS
+Preferred network mode: LTE / TDSCDMA
+Preferred network mode: LTE / WCDMA
+Preferred network mode: LTE/CDMA/EvDo/GSM/WCDMA
+Preferred network mode: LTE/GSM/TDSCDMA
+Preferred network mode: LTE/TDSCDMA/CDMA/EvDo/GSM/WCDMA
+Preferred network mode: LTE/TDSCDMA/GSM/WCDMA
+Preferred network mode: LTE/TDSCDMA/WCDMA
+Preferred network mode: NR / LTE
+Preferred network mode: NR only
+Preferred network mode: NR/LTE/CDMA/EvDo
+Preferred network mode: NR/LTE/CDMA/EvDo/GSM/WCDMA
+Preferred network mode: NR/LTE/GSM/WCDMA
+Preferred network mode: NR/LTE/TDSCDMA
+Preferred network mode: NR/LTE/TDSCDMA/CDMA/EvDo/GSM/WCDMA
+Preferred network mode: NR/LTE/TDSCDMA/GSM
+Preferred network mode: NR/LTE/TDSCDMA/GSM/WCDMA
+Preferred network mode: NR/LTE/TDSCDMA/WCDMA
+Preferred network mode: NR/LTE/WCDMA
+Preferred network mode: TDSCDMA
+Preferred network mode: TDSCDMA / GSM
+Preferred network mode: TDSCDMA / WCDMA
+Preferred network mode: TDSCDMA/CDMA/EvDo/GSM/WCDMA
+Preferred network mode: TDSCDMA/GSM/WCDMA
+Preferred network mode: WCDMA only
+Preferred network mode: WCDMA preferred
+Preferred network type
+Preferred NFC Payment Service Information
+Preferred service
+Preferred service for passwords, passkeys & autofill
+Premium SMS
+Preparing to update\u2026
+Presentation
+Preset
+Press & hold both volume keys
+Press & hold duration
+Press & hold power button
+Press & hold power button to access
+Press firmly on the sensor
+Press key
+Press key to assign shortcut
+Press Menu for help.
+Press Menu to unlock or place emergency call.
+Press Menu to unlock.
+Press Power & Volume Up together to
+Press Space key twice to insert \u0022.\u0022
+Press the action key on your keyboard
+Press the unlock icon to continue
+Press the unlock icon to open
+Prev
+prevent phone from sleeping
+Prevent ringing
+prevent tablet from sleeping
+Prevent use of all device cameras.
+Prevent use of some screen lock features.
+prevent your Android TV device from sleeping
+Preview
+Previous month
+Previous track
+Previously connected
+Previously used with account
+Primary data
+Print job
+Print jobs
+Print service not enabled
+Print services
+printer
+Printing
+Priority
+Priority and modified conversations will appear here
+Priority conversations
+Priority mode
+Priority only
+Privacy dashboard
+Private
+Private DNS
+Private DNS provider hostname
+Private DNS server cannot be accessed
+Private space
+Private space could not be deleted
+Private space deleted
+Private space lock
+Private space removed
+Private space unlocked
+Private space will hide the next time you lock it
+PRL version
+Problem connecting. Turn device off & back on
+Problem reading the battery meter.
+Problem reading your battery meter
+Process Stats
+Processes
+Processing issue recording
+Processing screen recording
+Processing the update package\u2026
+Productivity
+Profile HWUI rendering
+Profile info
+Profile notifications
+Promotions
+Protanomaly
+Protanomaly (red-green)
+provide an in-call user experience
+Provide Bundle Feedback
+Provide Feedback
+Provided by apps
+Proxied notification
+Proxy
+Proxy hostname
+Proxy port
+proxy.example.com
+PTP
+PTP and supplying power
+PTP via USB turned on
+publicVersion
+PUK code
+PUK code should be 8 numbers.
+PUK unlock successful.
+PUK unlock unsuccessful.
+Pull screen into reach
+pulldown menu
+Purple
+Put safety first while on the road
+QR code
+QR code isn\u0027t a valid format
+QR code scanner
+Quarto
+query all packages
+Quick settings and Notification shade.
+Quick settings developer tiles
+Quick settings editor.
+Quick Settings shortcut
+Quick settings.
+Quickly access accessibility features
+Quickly access accessibility features from any screen
+Quickly access your home controls as a screensaver
+Quickly open camera
+Quickly zoom in on the screen to make content larger
+Radio
+Radio Off
+RAM
+RAM use
+RAM use (background)
+Randomized MAC
+Randomized MAC address
+Randomized MAC address (last used)
+Ranking object doesn\'t contain this key.
+Ranking object is missing.
+Re-enable this in System settings > Apps > Downloaded.
+Re-enter your password
+Re-enter your PIN
+Re-enter your private space password
+Re-enter your private space PIN
+Re-enter your work password
+Re-enter your work PIN
+Re\u2011type new PIN
+reachability
+read and write phone call log
+read audio files from shared storage
+read basic telephony status and identity
+Read calendar events and details
+read call log
+read cell broadcast messages
+read historical network usage
+read image files from shared storage
+read install sessions
+read locations from your media collection
+Read more
+read phone numbers
+read phone status and identity
+read subscribed feeds
+read sync settings
+read sync statistics
+read the contents of your shared storage
+read user selected image and video files from shared storage
+read video files from shared storage
+read your contacts
+Read your notifications
+read your text messages (SMS or MMS)
+Read-only
+Ready
+Ready to transmit app content via NFC
+Real-time
+Rearrange
+Reboot
+Reboot later
+Reboot now
+Reboot to safe mode
+Reboot your device into safe mode
+Receive alerts for extreme threats to life and property
+Receive alerts for severe threats to life and property
+receive Android Beam transfer status
+Receive bulletins about child abductions
+Receive link speed
+Receive link speed:
+receive text messages (MMS)
+receive text messages (SMS)
+receive text messages (WAP)
+Recent
+Recent access
+Recent app use
+Recent Apps
+Recent apps, default apps
+Recent conversations
+Recent conversations removed
+Recent location requests
+Recently dismissed
+Recently opened apps
+Recently used in phone call
+Recents
+recognize physical activity
+Recommendations
+Recommended for better battery life
+Recomputing size\u2026
+record audio
+record audio in the background
+Record entire screen
+Record Issue
+Record one app
+Record screen
+Record your screen?
+Recording issue
+Recording screen
+Recording screen and audio
+Red
+Red-green, green weak
+Red-green, red weak
+Redacted
+Redirect vibration
+Redo
+Redraw
+Reduce blur (recommended)
+Reduce flicker
+Reduce movement on the screen
+Reduce screen timeout to extend battery life
+Reduces battery drain & improves network performance
+Reducing battery usage to extend battery life
+Referred by
+Reformat device to ext4? (required for 16 KB mode)
+Refresh stats
+Region
+Region preference
+Regional preferences
+register new telecom connections
+register new telecom SIM connections
+Registration was successful.
+Regulatory labels
+Rejection of undesired annoying calls
+Related
+Relative
+Release finger when done
+Remaining data
+Remember my choice
+Remembered groups
+Remind me
+Remind me later
+Reminders
+Remote Authenticator Unlock
+remote inputs
+Remove account
+Remove account?
+Remove admin privileges?
+Remove all certificates
+Remove all the contents?
+Remove all types of device unlock?
+Remove animations
+Remove anything hiding your face.
+Remove app
+Remove association
+Remove attachment
+Remove bubbles
+Remove custom setting
+remove DRM certificates
+Remove extra dim shortcuts
+Remove from Settings
+Remove from the conversation section
+Remove guest
+Remove guest?
+Remove language
+Remove photos & videos
+Remove profile protection?
+Remove restriction?
+Remove restrictions
+Remove shortcut?
+Remove this app?
+Remove this profile?
+Remove this suggestion?
+remove tile
+Remove user?
+Remove watch
+remove widget
+Remove work profile
+Remove work profile?
+Removed
+Removed apps
+Removed apps and users
+Removed unsafely
+Removed user
+Rename
+Rename device
+Rename storage
+Rename this device
+reorder running apps
+Repeat
+Repeat callers
+Repeat callers can interrupt
+Repeat Keys
+Repeat Rate
+Replace
+Replace existing VPN?
+Replace\u2026
+Reply
+Reply to messages
+Report
+Report rejected touch
+request delete packages
+request install packages
+request screen lock complexity
+Requesting ICCID unlock\u2026
+Requesting IMPI unlock\u2026
+Requesting Network subset service provider unlock\u2026
+Requesting PUK unlock\u2026
+Requesting RUIM corporate unlock\u2026
+Requesting RUIM hrpd unlock\u2026
+Requesting RUIM network1 unlock\u2026
+Requesting RUIM network2 unlock\u2026
+Requesting RUIM unlock\u2026
+Requesting SIM corporate unlock\u2026
+Requesting SIM network unlock\u2026
+Requesting SIM unlock\u2026
+Requesting SP Equivalent Home PLMN unlock\u2026
+Requesting SPN unlock\u2026
+Require device unlock for NFC
+Require eyes to be open
+Require pattern
+Require that stored app data be encrypted.
+Require VPN connection?
+Requires SIM to connect
+reroute outgoing calls
+Reset
+Reset all
+Reset all network settings? You can\u2019t undo this action.
+Reset all tiles?
+Reset app preferences
+Reset app preferences?
+Reset apps
+Reset back to default?
+Reset Bluetooth & Wi\u2011Fi
+Reset default APN settings completed.
+Reset display size and text?
+Reset guest
+Reset guest session
+Reset guest session?
+Reset guest?
+Reset Mobile Network Settings
+Reset Mobile Network Settings?
+Reset notification importance
+Reset notification importance completed.
+Reset options
+Reset settings
+Reset ShortcutManager rate-limiting
+Reset speech pitch
+Reset the pitch at which the text is spoken to default.
+Reset to default
+Reset to default values
+Reset your internet?
+reset, preferences, default
+reset, restore, factory
+Reset?
+Resetting device\u2026
+Resetting guest\u2026
+Resetting your internet\u2026
+Resize
+Restart
+Restart Device?
+Restart for a single session with MTE enabled
+Restart to use 2 SIMs
+Restart your device to access the mobile network.
+Restarting
+Restarting\u2026
+Restore
+Restore Default
+Restore defaults
+Restoring
+Restoring default APN settings.
+Restoring failed
+Restoring.
+Restoring..
+Restoring...
+Restrict
+Restrict background data?
+Restricted
+Restricted apps
+Restricted profile
+Restricted profiles cannot add accounts
+Restricted setting
+restriction, restrict, restricted
+Restrictions
+Resume
+Resume charging
+Retail demo
+retrieve running apps
+Retrieve window content
+Retry
+Retry face authentication
+Return to call
+Retype your new full backup password here
+Reverse scrolling
+Review notification settings
+Review schedule
+Reviewing current content
+Revoke
+Revoke USB debugging authorizations
+Rewind
+Right
+Right arrow
+right click, tap
+Right edge
+Right handle
+Right icon
+Right keycode
+Right shortcut
+Right shortcut also unlocks
+Ring
+Ring & notification volume
+Ring vibration
+Ring volume
+ringer mode
+Ringer muted
+Ringer off
+Ringer on
+Ringer silent
+Ringer silent.
+Ringer vibrate
+Ringer vibrate.
+Ringer volume
+Ringtone and alarms
+Ringtone volume
+Ringtones
+Roaming
+Roaming - Alliance Partner
+Roaming - Available System
+Roaming - Full Service Functionality
+Roaming - Partial Service Functionality
+Roaming - Preferred System
+Roaming - Premium Partner
+Roaming Banner Off
+Roaming Banner On
+Roaming charges may apply.
+Roaming Indicator Flashing
+Roaming Indicator Off
+Roaming Indicator On
+Roaming preference
+Rose
+Rotate for a better view
+Rotate screen
+Rotation
+route calls through the system
+route media output
+Route sounds to your hearing device or phone speaker
+Routine Mode info notification
+RSSI:
+RUIM corporate unlock PIN
+RUIM Corporate unlock request unsuccessful.
+RUIM Corporate unlock successful.
+RUIM hrpd unlock PIN
+RUIM Hrpd unlock request unsuccessful.
+RUIM Hrpd unlock successful.
+RUIM network1 unlock PIN
+RUIM Network1 unlock request unsuccessful.
+RUIM Network1 unlock successful.
+RUIM network2 unlock PIN
+RUIM Network2 unlock request unsuccessful.
+RUIM Network2 unlock successful.
+RUIM service provider unlock PIN
+RUIM unlock PIN
+RUIM unlock request unsuccessful.
+RUIM unlock successful.
+Rule not found.
+Run app with page size compat mode
+run at startup
+run foreground service
+run foreground service with the type \"camera\"
+run foreground service with the type \"connectedDevice\"
+run foreground service with the type \"dataSync\"
+run foreground service with the type \"fileManagement\"
+run foreground service with the type \"health\"
+run foreground service with the type \"location\"
+run foreground service with the type \"mediaPlayback\"
+run foreground service with the type \"mediaProcessing\"
+run foreground service with the type \"mediaProjection\"
+run foreground service with the type \"microphone\"
+run foreground service with the type \"phoneCall\"
+run foreground service with the type \"remoteMessaging\"
+run foreground service with the type \"specialUse\"
+run foreground service with the type \"systemExempted\"
+run in the background
+Run Ping Test
+Run time
+Running
+Running app
+Running services
+Safe mode
+Safety & emergency
+Safety & regulatory manual
+Same as device screen lock
+Same as personal profile
+sans-serif
+sans-serif-medium
+Satellite connectivity
+Satellite messaging
+Satellite messaging available
+Satellite messaging isn\'t supported on this device
+Satellite messaging isn\u2019t included with your account
+Satellite messaging not available
+Satellite messaging not set up
+Satellite messaging not supported
+Satellite messaging, satellite connectivity
+Satellite SOS
+Satellite SOS is now available
+Satellite SOS isn\'t available
+Satellite SOS isn\'t available in this country or region
+Satellite SOS isn\'t set up
+Satellite SOS isn\'t supported
+Satellite SOS isn\'t supported on this device
+Satellite SOS not set up
+Satellite, connection available
+Satellite, good connection
+Satellite, no connection
+Satellite, poor connection
+Saturated
+Saturday
+Save account information
+Save for Autofill
+Save guest activity?
+Save networks?
+Save this network?
+Save to ?
+Saved
+Saved devices
+Saved networks
+Saved via
+Saving screenshot to private
+Saving screenshot to work profile\u2026
+Saving screenshot\u2026
+Saving\u2026
+Scale
+Scale app
+Scan QR code
+Scan results:
+Scanning face
+Scanning for deceptive apps
+Scanning...
+Schedule
+Schedule alarms or event reminders
+Schedule based on
+Schedule name
+Schedule name already in use
+Schedule precisely timed actions
+Schedule turns off when an alarm rings
+schedule, alarm, reminder, clock
+Schedules
+Screen
+Screen attention
+Screen capturing is disabled by device policy
+Screen casting stopped.
+Screen compatibility
+Screen flash
+Screen flash color
+Screen is locked in landscape orientation.
+Screen is locked in portrait orientation.
+Screen lock
+Screen lock options
+Screen lock, Find My Device, app security
+Screen locked.
+Screen locking sound
+Screen overlay showing current touch data
+screen pinning
+Screen reader
+Screen record
+Screen Recorder
+screen recording
+Screen recording saved
+Screen resolution
+Screen saver
+screen size, large screen
+Screen time
+Screen time since last full charge
+Screen time: less than a minute
+Screen tinted amber
+Screen turn-on control
+Screen usage since full charge
+Screen will never sleep while charging
+screen, lock time, timeout, lockscreen
+screen, touchscreen
+Screen, Unlock
+Screen-off Fingerprint Unlock
+Screen-off, Unlock
+Screening an incoming call
+screensaver
+Screenshot
+Screenshot preview
+Screenshot saved
+Screenshot taken with bug report
+Screenshots
+Scroll down to find private space
+Scroll up to move the page down
+SD card
+Search box hidden
+Search box shown
+Search for devices
+Search for work directory contacts in personal apps
+Search query
+Search region
+Search Settings
+Search shortcuts
+Search\u2026
+Searching
+Searching for device\u2026
+Searching for devices\u2026
+Searching for networks\u2026
+Searching for printers
+Searching for Service
+Searching\u2026
+sec
+secs
+Secure Element transaction event
+Secure network
+Secure your phone
+Security & privacy
+Security certificate
+Security status
+security_settings_require_screen_on_to_auth
+security_settings_screen_off_unlock_udfps
+See all
+See all apps
+See all notifications
+see and control calls through the system.
+See apps with highest usage
+See care steps
+See more
+See more devices
+See notifications quickly
+See other apps
+See recent access
+See recent messages, missed calls, and status updates
+See the User Guide or contact Customer Care.
+Seen notifications are removed from the lock screen.
+Select a default notes app to use the notetaking shortcut
+Select a Home app
+Select a SIM for SMS
+Select all
+Select ANGLE enabled app
+Select app
+Select application
+Select Bluetooth AVRCP Version
+Select Bluetooth MAP Version
+Select by region
+Select by UTC offset
+Select debug app
+Select Grammatical gender
+Select Graphics Driver
+Select hours
+Select issue type
+Select log buffers to store persistently on device
+Select Logger sizes per log buffer
+Select maximum number of connected Bluetooth audio devices
+Select minutes
+Select mock location app
+Select month and day
+Select more apps
+Select photo
+Select Private DNS Mode
+Select text
+Select time zone
+Select to disable USB debugging.
+Select to disable wireless debugging.
+Select to set up
+Select USB Configuration
+Select user
+Select UTC offset
+Select which SIMs to use
+Select Wi\u2011Fi
+select widget
+Select year
+Selected apps
+Selected conversations can bubble
+Selection required
+Send & receive when mobile data is off
+Send and receive messages without a mobile or Wi-Fi network
+send and view SMS messages
+send commands to the SIM
+Send contacts to carrier
+Send contacts to your carrier?
+Send device name
+Send feedback
+Send feedback about this device
+Send feedback about time
+send sticky broadcast
+Send to nearby device
+Send using
+Send vibration to game controller when connected
+Sending SMS messages
+Sending\u2026
+Sensitive notification content hidden
+Sensitive notifications
+Sensitive work profile notifications
+Sensor Notification Service
+Sensor Privacy
+Sensor temporarily disabled
+Sensor temporarily disabled.
+Sensors Off
+Sensors off active
+sent an image
+Serial console enabled
+Serial number
+serial number, hardware version
+Serial number:
+Server
+Server address
+Server name
+Service disabled
+Service has been disabled.
+Service not provisioned.
+Service state
+Service was enabled for:
+Service was enabled.
+Services
+Session info
+Set
+Set 2G-3G data limit
+Set 4G data limit
+Set a mode that follows a regular schedule
+Set a mode to sync with calendar events and invite responses
+Set a password
+Set a password for your private space
+Set a password to use face or fingerprint
+Set a pattern
+Set a pattern for your private space
+Set a pattern to use face or fingerprint
+Set a PIN
+Set a PIN for your private space
+Set a PIN to use face or fingerprint
+Set a schedule
+Set a screen lock
+Set a separate work lock
+Set a work password
+Set a work pattern
+Set a work PIN
+Set always-on VPN?
+Set AM
+set an alarm
+Set app restrictions
+Set automatically based on mobile networks near you
+Set automatically using your device location, if available
+Set automatically using your network and wireless signals
+Set backup password
+Set battery usage for apps
+Set behavior when an emergency call is placed
+Set data limit
+Set data usage limit
+Set data usage warning
+Set data warning
+Set date
+Set default
+Set default notes app in Settings
+Set default payment app
+Set Do Not Disturb rules
+Set filters
+Set HDCP checking behavior
+Set lock
+Set mobile data limit
+Set Night Light schedule
+Set options for app development
+Set password rules
+Set PM
+Set screen lock
+Set screen lock password expiration
+Set shortcut
+Set storage encryption
+Set the device global proxy
+Set the language for each app
+Set the language for each app.
+Set time
+set time zone
+Set units and number preferences
+Set unlock pattern
+Set up
+Set up data service
+Set up Face or Fingerprint Unlock first
+Set up Face Unlock
+Set up Face Unlock again
+Set up Face Unlock first
+Set up Face Unlock for private space
+Set up Fingerprint Unlock
+Set up Fingerprint Unlock again
+Set up Fingerprint Unlock first
+Set up Fingerprint Unlock for private space
+Set up keyboard layouts
+Set up later
+Set up now
+Set up profile now?
+Set up screen lock
+Set up user now?
+Set up voicemail, call forwarding, call waiting, caller ID
+Set up your fingerprint
+Set up your other SIM
+Set up your watch
+set wallpaper
+Set WebView implementation
+Set Wi\u2011Fi data limit
+Set work app as default payment app?
+Set your primary SIMs
+Set your SIM preferences
+Sets the language-specific voice for the spoken text
+Setting disabled because device is set to silent
+Setting up private space\u2026
+Settings Home
+Settings managed by your IT admin
+Settings Panel
+Settings shortcut
+Setup
+Setup needed
+Severe threats
+SHA-1 fingerprint:
+SHA-256 fingerprint:
+Share audio
+Share audio with another device
+Share bug report?
+Share entire screen
+Share heap dump?
+Share hotspot
+Share one app
+Share or record an app
+Share screen
+Share screenshot
+Share this app instead
+Share this device\u0027s name with the network
+Share Wi\u2011Fi
+Share with
+Share with other device users
+Share your audio
+Shared data
+Sharing audio
+Sharing bug report\u2026
+Sharing content
+Sharing local internet connection with device
+Sharing location
+Sharing pauses when you switch apps
+Sharing screen
+Sharing Wi\u2011Fi with this device\u2026
+Shift
+Shift gesture detection region above keyboard
+Shift+
+Short
+Shortcut cannot be set.
+Shortcut is disabled
+Shortcut on
+Shortcut settings
+Shortcut to prevent ringing
+Shortcut, hearing aid compatibility
+Shortcut:
+ShortcutManager rate-limiting has been reset
+Shortcuts
+Shorter
+Show
+Show a button in the power menu for taking a bug report
+Show additional information
+Show advanced options
+Show all
+Show all notification content
+Show all work notification content
+Show and control devices from lock screen?
+Show Assistant media recommendations
+Show at top of conversation section
+Show background ANRs
+Show battery percentage in status bar
+Show Bluetooth devices without names
+Show bubble
+Show cached processes
+Show captions
+Show clip bounds, margins, etc.
+Show clipboard access
+Show conversations, default, and silent
+Show demo mode
+Show device controls
+Show dialog every time an app crashes
+Show fewer notifications on lock screen
+Show floating icon on top of apps
+Show for all locations, including network and connectivity
+Show hardware layers updates
+Show HDR/SDR ratio
+Show home controls
+Show home controls button from the screen saver
+Show in Quick Settings
+Show key presses
+Show layout bounds
+Show LE audio toggle in Device Details
+Show list of shortcuts
+Show low-priority notification icons
+Show media on lock screen
+Show more
+Show notification channel warnings
+Show notification dot
+show notifications
+Show only new notifications on lock screen
+Show options for wireless display certification
+Show or hide notification content
+Show password
+Show passwords
+Show percentages
+Show player
+Show pointer while hovering
+Show QR code
+Show QR code scanner
+Show recent and snoozed notifications
+Show refresh rate
+Show running services
+Show screensaver button
+Show sensitive content only when unlocked
+Show sensitive content when locked
+Show sensitive work profile content when locked
+Show shortcuts
+Show surface updates
+Show system
+Show taps
+Show the current display refresh rate
+Show the current HDR/SDR ratio
+Show touches on screen
+Show touchpad input
+Show transcoding notifications
+Show unused categories
+Show verified links list
+Show view updates
+Show visual feedback for physical key presses
+Show visual feedback for taps
+Show wallet
+Show which apps recently used permissions
+Show work events on your personal calendar
+Showing input shortcuts
+Showing search results
+Showing shortcuts for the current app
+Showing shortcuts that open apps
+Showing system shortcuts
+Shutting down\u2026
+Sign in
+Sign in required
+Sign in to an account to use with your private space
+Sign in to network
+Sign in to Wi-Fi network
+Sign-up complete. Connecting\u2026
+Signal strength
+Silence
+Silence phone at certain times
+Silent
+Silent mode
+Silent ringtone set
+SIM
+SIM Access
+SIM access request
+SIM added
+SIM combination
+SIM corporate unlock PIN
+SIM Corporate unlock request unsuccessful.
+SIM Corporate unlock successful.
+SIM is locked.
+Sim is not activated.
+SIM is PUK-locked.
+SIM label
+SIM label and color
+SIM lock
+SIM lock settings
+SIM name & color
+SIM network subset unlock PIN
+SIM Network Subset unlock successful.
+SIM network unlock PIN
+SIM Network unlock request unsuccessful.
+SIM Network unlock successful.
+SIM not allowed for voice
+SIM not provisioned for voice
+SIM PIN changed successfully
+SIM PIN operation failed!
+Sim Pin unlock.
+Sim Puk unlock.
+SIM removed
+SIM selection
+SIM service provider unlock PIN
+SIM status
+SIM toolkit
+SIM unlock PIN
+SIM unlock request unsuccessful.
+SIM unlock successful.
+Simple speech to text
+SIMs
+Simulate color space
+Simulate secondary displays
+since last full charge
+Sister
+Size
+Skip anyway
+Skip fingerprint setup?
+Skip fingerprint?
+Skip lock screen
+Skip password setup?
+Skip pattern setup?
+Skip PIN setup?
+Skip screen lock?
+Skip setup for password and face?
+Skip setup for password and fingerprint?
+Skip setup for password, face, and fingerprint?
+Skip setup for pattern and face?
+Skip setup for pattern and fingerprint?
+Skip setup for pattern, face, and fingerprint?
+Skip setup for PIN and face?
+Skip setup for PIN and fingerprint?
+Skip setup for PIN, face, and fingerprint?
+Skype
+Sleeping
+Slide area.
+slide to unlock, password, pattern, PIN
+Slide unlock.
+Slide up to increase and down to decrease.
+Slow
+Slow keys
+Slower speeds. Compatible with most devices.
+Small
+Smallest width
+Smart Forwarding
+Smart Forwarding Disabled
+Smart Forwarding Enabled
+Smooth display
+SMS
+SMS app
+SMS messages
+SMS preference
+SMS, text messages, and other communications
+Snoozed
+Social
+Social & Communication
+Some apps won\u2019t work
+Some defaults set
+Some features may be limited
+Some functionality may be limited
+Some notifications
+Some people can interrupt
+Some system functions may not work
+Something went wrong
+Something went wrong and your SIM could not be turned off.
+Something went wrong. Can\u2019t switch SIMs.
+Something went wrong. Please try again.
+Something went wrong. Try again.
+Something went wrong. You can set up your fingerprint later.
+Sort by app name
+Sort by avg use
+Sort by last time used
+Sort by max use
+Sort by name
+Sort by size
+Sort by usage time
+Sound & vibration
+Sound and vibration
+Sound from your device, like music, calls, and ringtones
+Sound is OFF
+Sound is ON
+Sound off
+Sound on
+Sound settings
+Sound, vibration, and some visual signs of notifications
+Sound, vibration, and visual signs of notifications
+Sounds from the keyboard and other buttons
+Sounds from videos, games, and other media
+SP Equivalent Home PLMN unlock PIN
+SP Equivalent Home PLMN unlock request unsuccessful.
+SP Equivalent Home PLMN unlock successful.
+space
+Space used
+space, disk, hard drive, device usage
+Spatial Audio
+Speaker
+Speakers & Displays
+Special app access
+Speech
+Speech rate
+Speech rate & pitch
+Speed & compatibility
+Speed at which the text is spoken
+Spell checker
+Spell checker for work
+spelling, dictionary, spellcheck, auto-correct
+Split screen
+SPN unlock PIN
+SPN unlock request unsuccessful.
+SPN unlock successful.
+Spoken Language
+Spouse
+Spreadsheet
+Spring green
+SS request changed to regular call
+SS request changed to USSD request
+SS request changed to video call
+SSID
+SSID:
+Standard
+Standard options
+Standard time
+Standby
+Standby apps
+Starred contacts
+Starred contacts settings
+Start foreground services from background
+Start listening by scanning a stream\u0027s QR code
+Start now
+Start over
+Start recording or casting?
+Start sharing?
+Start time
+start view app features
+start view permission decisions
+start view permission usage
+Started by app.
+Starting apps.
+Starting audio stream\u2026
+Starting demo\u2026
+Starting…
+Stats type
+Status
+Status bar
+Status bar location indicator
+Stay awake
+Stay calm and seek shelter nearby.
+Stay connected to VPN at all times
+Stay on this Page
+Stay on Wi\u2011Fi
+Sticky keys
+Sticky keys, Bounce keys, Mouse keys
+Stop allowing WEP networks?
+Stop casting
+Stop casting?
+Stop listening
+Stop recording
+Stop recording?
+Stop sharing
+Stop sharing screen?
+Stop sharing?
+Stop system service?
+Stop your shared session to move media to another device
+Stopped
+Storage & cache
+Storage manager
+Storage settings
+Storage space running out
+Storage use
+Storage used
+Store
+Store logger data persistently on device
+Strict mode enabled
+Stylus
+Stylus battery low
+Stylus handwriting
+Subject: Hot air balloon designs
+Submit
+Submit query
+Subnet mask
+Subscription
+Subscriptions
+Suggested
+Suggested actions and replies
+Suggested apps
+Suggested Devices
+Suggested languages
+Suggested regions
+Suggestions for sign-in & autofill
+Suite-B-192
+Sunday
+Super B
+Supplicant state:
+Supported links
+Supports audio sharing
+Suspend execution for cached apps
+Suspended
+Swap left and right buttons
+Swipe
+Swipe down to
+Swipe down with three fingers
+Swipe down with three fingers on your home screen
+Swipe fingerprint
+Swipe fingerprint for notifications
+Swipe from icon for camera
+Swipe from icon for phone
+Swipe from icon for voice assist
+Swipe from the left or right with three fingers
+Swipe left or right using three fingers on your touchpad
+Swipe left or right with four fingers
+Swipe left or right with three fingers
+Swipe left to dismiss, right to show menu
+Swipe left to start the communal tutorial
+Swipe right to dismiss, left to show menu
+Swipe to invoke assistant
+Swipe to see more
+Swipe to unlock.
+Swipe up and hold using three fingers on your touchpad
+Swipe up on the lock screen
+Swipe up to continue
+Swipe up to open
+Swipe up to try again
+Swipe up to try Face Unlock again
+Swipe up using three fingers. Tap to learn more gestures.
+Swipe up with 2 fingers
+Swipe up with 3 fingers
+Swipe up with three fingers
+Swipe up with three fingers anywhere on your touchpad
+Swipe up with three fingers on your touchpad
+Swipe up with three fingers, hold, then release
+Swipe up with three fingers, then hold
+Switch
+Switch apps
+Switch back
+Switch between full and partial screen
+Switch from 16 KB mode to 4 KB mode
+Switch from 4 KB mode to 16 KB mode
+Switch input method
+Switch keyboard layout
+Switch mobile data automatically
+Switch output
+Switch screens now
+Switch screens?
+Switch to accessibility button
+Switch to accessibility button?
+Switch to admin user when docked
+Switch to app on left or above while using split screen
+Switch to app on right or below while using split screen
+Switch to clock mode for the time input.
+Switch to full screen
+Switch to mobile
+Switch to mobile data automatically
+Switch to next language
+Switch to personal profile
+Switch to previous language
+Switch to text input mode for the time input.
+Switch to using SIM card?
+Switch to work app?
+Switch to work profile
+Switch user
+Switched to another carrier
+Switching data SIM, this may take up to a minute\u2026
+Switching\u2026
+Sym+
+Sync
+Sync across devices
+Sync active
+Sync disabled
+Sync enabled
+Sync error
+Sync error.
+Sync failed
+Sync is OFF
+Sync is ON
+Sync now
+Sync off for all items
+Sync on for all items
+Sync permissions from phone
+Syncing now
+Syncing now\u2026
+System
+System apps
+System certificate
+System changes
+System controls
+System default
+System enforced
+System Graphics Driver
+System language
+System language change requested by another device
+System Languages
+System select
+System UI
+System UI demo mode
+System UI Tuner
+System updates
+System updates can\u2019t be installed on external media.
+System usage for past 24 hr
+System usage since last full charge
+System WebView License
+Tablet
+Tablet has enough charge. Features no longer restricted.
+Tablet is starting\u2026
+Tablet is updating\u2026
+Tablet options
+Tablet settings unavailable
+Tablet storage is full. Delete some files to free space.
+Tabloid
+Tail button press
+Take a note
+Take call on
+Take control of your attention
+take pictures and record video
+take pictures and videos
+take pictures and videos in the background
+Take screenshot
+Taking bug report\u2026
+Taking screenshots is blocked by your IT admin
+Tap
+Tap & click sounds
+Tap 3 times to zoom
+Tap a button to zoom
+Tap a conversation to add it to your Home screen
+Tap a feature to start using it:
+Tap a network to connect
+Tap a notification
+Tap again
+Tap again to open
+Tap and drag your finger on the touchpad to move objects
+Tap Confirm to complete
+Tap dragging
+Tap for details on battery and data usage
+Tap for more information
+Tap for more options.
+Tap for options
+Tap items on your screen to hear them read aloud
+Tap the floating button
+Tap the switch button to move between both options
+Tap to cancel authentication
+Tap to change ringer mode
+Tap to click
+Tap to connect anyway
+Tap to connect or disconnect a device
+Tap to delete your face model, then add your face again
+Tap to enable
+Tap to exit driving app.
+Tap to fix
+Tap to get the app
+Tap to learn more about this error
+Tap to manage the network.
+Tap to mute sound
+Tap to open
+Tap to remove restriction.
+Tap to return to game
+Tap to schedule Battery Saver
+Tap to select a data SIM
+Tap to select language and layout
+Tap to set it up
+Tap to set up
+Tap to set up .
+Tap to show accessibility button
+Tap to show info
+Tap to sign up
+Tap to turn it on
+Tap to turn off USB debugging
+Tap to turn off wireless debugging
+Tap to unlock work profile
+Tap to update SIM settings
+Tap to view
+Tap to view files
+Tap to view keyboards
+Tap to wake
+Tap twice for zoom control
+TeleTypewriter enabled.
+Telex
+Temperature
+Temporarily connected
+Temporarily disabled due to Battery Saver
+Temporarily turned off by your carrier
+Temporarily turned on due to Battery Saver
+Temporarily unavailable
+Temporary system files
+Terms and conditions
+Test
+Test Harness Mode enabled
+Testing
+Tethering
+Tethering & portable hotspot
+Tethering hardware acceleration
+Tethering settings are not available for this user
+Tethering unavailable
+Text actions
+Text color
+Text copied
+Text Messages
+Text opacity
+Text selection
+text size
+Text will be displayed in another language.
+Text-to-speech output
+Text-to-speech settings
+Texts
+The APN can\u2019t be empty.
+The APN type can\u2019t be empty.
+The app wasn\u2019t found in the list of installed apps.
+The connection to the server timed out.
+The current media session cannot be hidden.
+The hostname you typed isn\u2019t valid.
+The mic & camera are blocked
+The Name field can\u2019t be empty.
+The old PIN you typed isn\'t correct.
+The page contains too many server redirects.
+The PINs you typed don\'t match.
+The port field must be empty if the host field is empty.
+The port you typed isn\u2019t valid.
+The protocol isn\'t supported.
+The PUK you typed isn\'t correct.
+The SIM is missing or not readable. Add a SIM.
+The site authentication scheme isn\'t supported.
+The top of the screen will move into reach of your thumb.
+There are no presets programmed by your audiologist
+There is a problem loading the licenses.
+There is a problem loading the manual.
+There is no network connection. Please try again later.
+There is no shared data for this user.
+There was a network error.
+There was an error deleting the shared data.
+There was an error fetching shared data. Try again.
+Thermal
+These notifications can\'t be modified.
+They can help you reset your PIN, pattern, or password
+Third-party licenses
+This  on your mobile account.
+This APN cannot be changed.
+This app can access camera as Headless System User.
+This app can access your accounts
+This app can appear on top of other apps
+This app can read your call history.
+This app can recognize your physical activity.
+This app can record audio using the microphone at any time.
+This app does not send notifications
+This app doesn\'t support always-on VPN
+This app doesn\u2019t support enhanced settings
+This app has not posted any notifications
+This audio stream isn\u0027t playing anything right now
+This can\'t include an invalid character
+This certificate is valid.
+This change isn\'t allowed by your admin
+This choice is no longer valid. Try again.
+This computer (internal)
+This content can\u2019t be opened with personal apps
+This content can\u2019t be opened with work apps
+This content can\u2019t be shared with personal apps
+This content can\u2019t be shared with work apps
+This device
+This device belongs to your organization
+This device does not have a fingerprint sensor
+This device is connected to the internet through VPNs
+This device is managed by your organization.
+This device is managed by your parent
+This entry contains
+This group of notifications cannot be configured here
+This helps capture more of your fingerprint
+This is a conversation
+This is an example of speech synthesis
+This is important because of the people involved.
+This is required to improve security and performance
+this may cost you money
+This may slow down your keyboard
+This mode may turn on automatically based on its settings
+This mode will never turn on when disabled
+This network has no internet access. Stay connected?
+This notification does not support dragging to split screen
+This notification was ranked lower. Tap to provide feedback.
+This permission allows an app to modify system settings.
+This phone
+This service is malfunctioning.
+This tablet
+This timing preference isn\u2019t supported by all apps
+This TV
+This video isn\'t valid for streaming to this device.
+This Wi\u2011Fi network isn\u2019t available right now
+This will delete all your custom shortcuts permanently.
+This will delete your custom shortcut permanently.
+This will reset all mobile network settings
+This will take a few moments
+This work profile is managed by:
+Thread
+three buttons
+Three way calling
+Thursday
+Tile added
+Tile removed
+Time
+Time format
+Time schedule
+Time to take action
+Time to take action (Accessibility timeout)
+Time zone
+timezone
+Timing controls
+Tips & support
+title
+To apply color change, turn off screen
+To cast this session, please open the app.
+To connect your device, choose a network
+To delete private space, set a screen lock on this device
+To end setup, turn off screen
+To exit, swipe down from the top of your screen
+To go home, swipe up with three fingers on the touchpad
+To make a payment using a work app:
+To see and use available devices, turn on wireless debugging
+To see available networks, turn Wi\u2011Fi on.
+To start listening, center the QR code below
+To switch networks, disconnect ethernet
+To switch, press Control-Spacebar
+To turn off this SIM, remove the SIM card
+To unlock the phone, your eyes must be open
+To unlock, press Menu then 0.
+To unlock, sign in with your Google account.
+To unpin this app, swipe up & hold
+To use Face Unlock, set password
+To use Face Unlock, set pattern
+To use Face Unlock, set PIN
+To use Face Unlock, turn on  in Settings > Privacy
+To use fingerprint, set password
+To use fingerprint, set pattern
+To use fingerprint, set PIN
+To use this feature, press & hold both volume keys
+To use your private space, set a screen lock on this device
+To use, first install a payment app
+To use, first set a screen lock
+To use, first turn on \u0022Show device controls\u0022
+To view all your apps, press the action key on your keyboard
+To view, choose saved network
+toggle
+Toggle app compatibility changes
+toggle expansion
+Toggle Overview
+toggle sync on and off
+Tones
+Too bright
+Too bright. Try gentler lighting.
+Too many attempts. Enter screen lock instead.
+Too many attempts. Face Unlock unavailable.
+Too many attempts. Try again later.
+Too many attempts. Use screen lock instead.
+Too many incorrect attempts. This user will be deleted.
+Too many password attempts
+Too many pattern attempts
+Too many requests are being processed. Try again later.
+Too much motion. Hold phone steady.
+Tools
+Tooltip
+Top handle
+Total
+Total memory
+total silence
+Total silence.  This will also silence screen readers.
+Total: less than a minute
+Touch & hold delay
+Touch & hold shortcut
+Touch & hold the fingerprint sensor
+Touch feedback
+Touch sounds
+Touch the fingerprint sensor
+Touch the power button without pressing it
+Touch the sensor
+Touch to unlock anytime
+Touchpad
+Touchpad & mouse
+Touchpad gestures
+touchpad, trackpad, swipe
+Transfer eSIM to another device
+Transition animation scale
+transmit infrared
+Transmit link speed
+Transmit link speed:
+Transmitted Through Speaker
+Transparency when not in use
+Transparent
+Transparent navigation bar
+Trash
+Trash is empty
+Trigger Bluetooth Audio Codec\u000ASelection
+Trigger Bluetooth Audio Codec\u000ASelection: Channel Mode
+Trigger Bluetooth Audio Codec\u000ASelection: Sample Rate
+Triple tap
+Triple tap screen
+Triple tap shortcut
+Tritanomaly
+Tritanomaly (blue-yellow)
+Trust
+Trust agents
+Trust on First Use
+Trusted credentials
+Trusted credentials in your personal profile
+Trusted credentials in your work profile
+Try adjusting
+Try again
+Try again after the ad
+Try again later
+Try another fingerprint
+Try another PIN
+Try another way to unlock
+Try changing preferred network. Tap to change.
+Try Dark theme
+Try different styles, wallpapers, and more
+Try Face Unlock again
+Try moving content again
+Try taking screenshot again
+Tuesday
+Turn auto-sync data off?
+Turn auto-sync data on?
+Turn off
+Turn off airplane mode
+Turn off airplane mode to use UWB
+Turn off at least 1 service to add another
+Turn off battery saver
+Turn off bubbles for this conversation
+Turn off hotspot automatically
+Turn off mobile data?
+Turn off notifications
+Turn off now
+Turn off screen
+Turn off Shortcut
+Turn off SIM?
+Turn off the storage manager?
+Turn off until sunset
+Turn off VoLTE?
+Turn off when charged
+Turn off wireless
+Turn on
+Turn on \"Automatically select network\"
+Turn on adaptive brightness to extend battery life
+Turn on automatically
+Turn on Battery Manager
+Turn on Battery Saver
+Turn on Battery Saver to extend battery life
+Turn on Battery Saver?
+Turn on Bluetooth to connect to other devices.
+Turn on Bluetooth?
+Turn on bubbles for device?
+Turn on bubbles for this conversation
+Turn on Data Saver?
+Turn on Do Not Disturb
+Turn on during events for
+Turn on Explore by Touch
+Turn on in Settings
+Turn on now
+Turn on phone calls & SMS
+Turn on phone calls & SMS?
+Turn on screen attention
+Turn on shortcut for accessibility features?
+Turn on SIM?
+Turn on sound
+turn on the screen
+Turn on until sunrise
+Turn on when battery is likely to run out
+Turn on Wi\u2011Fi automatically
+Turn on Wi\u2011Fi calling
+Turn on Wi\u2011Fi calling to extend coverage
+Turn on Wi\u2011Fi scanning?
+Turn on wireless
+Turn on your work profile
+turn screen dark, turn screen light
+Turn screen darker
+Turn your device on or off
+Turned off
+Turning hotspot on\u2026
+Turning off a SIM won\u2019t cancel your service
+Turning off hotspot\u2026
+Turning off Wi\u2011Fi\u2026
+Turning on MTE might cause slower device performance.
+Turning on…
+Turning Wi\u2011Fi on\u2026
+Turns light screens dark and dark screens light
+Turns off the audio sharing to config the compatibility
+Turns on at bedtime
+Turns on at custom time
+Turns on from sunset to sunrise
+Tutorial animation, click to pause and resume play.
+TV Audio
+Twilight Service
+Type
+Type a network prefix length between 0 and 32.
+Type a new password for full backups here
+Type a PIN that is 4 to 8 numbers
+Type a PIN that is 4 to 8 numbers.
+Type a PUK that is 8 numbers or longer.
+Type a valid DNS address.
+Type a valid gateway address.
+Type a valid IP address.
+Type a word
+Type in time
+Type language name
+Type password to unlock
+Type PIN code
+Type PIN to unlock
+Type PUK and new PIN code
+Type PUK2 to unblock SIM.
+Type the pairing code then press Return or Enter
+Type your current full backup password here
+Types of information your organization can see
+Ultra-Wideband (UWB)
+Unavailable because bedtime mode is on
+Unavailable because Do Not Disturb is on
+Unavailable because location is turned off. Turn on .
+Unavailable because NFC is off
+Unavailable because NFC is turned off
+Unavailable because ring is muted
+Unavailable during calls
+Unavailable on carrier-locked devices
+Unavailable while only magnifying part of the screen
+Unavailable while using navigation bar button mode.
+Unblock
+Unblock device camera
+Unblock device camera and microphone?
+Unblock device camera?
+Unblock device microphone
+Unblock device microphone?
+Uncategorized
+Undo
+Undo notification snooze
+Undo the deletes
+unfavorite
+Unfavorited
+Unfold phone
+unfolded
+Uninstall app
+Uninstall certificates
+Uninstall for all users
+uninstall shortcuts
+Uninstall updates
+Uninstalled apps
+Unknown
+Unknown app
+Unknown landscape
+Unknown portrait
+Unknown sources
+Unlock
+Unlock area collapsed.
+Unlock area expanded.
+Unlock for all features and data
+Unlock pattern
+Unlock selection
+Unlock SIM
+Unlock to customize lock screen
+Unlock to customize widgets
+Unlock to see older notifications
+Unlock to use
+Unlock to use NFC
+Unlock to view
+Unlock to view networks
+Unlock with a different finger
+Unlock with your face
+Unlock your phone
+Unlock your private space
+Unlocked
+Unlocked by face
+Unlocked by face. Press the unlock icon to open.
+Unlocked by face. Press to continue.
+Unlocked by face. Press to open.
+Unlocked by face. Swipe up to open.
+Unlocked by face. Tap to continue.
+Unlocking SIM\u2026
+Unmetered
+unmute
+Unnamed Bluetooth device
+Unnamed device
+Unpause
+Unpause app
+Unpause work apps
+Unpause work apps?
+Unpin
+Unplug your device
+Unrestricted
+Unrestricted mobile data
+Unrestricted mobile data usage
+unselect widget
+Unspecified
+Unsuccessful, enable SIM/RUIM Lock.
+Unsupported
+Until bedtime ends
+Until fully charged
+Until sunrise
+Until you turn off
+Until you turn off Do Not Disturb
+Unusable SIM.
+Unused app settings
+Unused apps
+Up arrow
+update app without user action
+Update available
+Update default payment app
+Update Do Not Disturb
+Update in ?
+Updated by your admin
+Updated just now
+Updates
+Updating
+Updating Settings...
+Upgrade account to switch
+upgrade, android
+Uptime
+Usage
+Usage access
+Usage cycle reset date
+Usage statistics
+Usage time
+USB
+USB accessory
+USB accessory connected
+USB audio
+USB connection
+USB controlled by
+USB debugging
+USB debugging connected
+USB debugging not allowed
+USB drive
+USB file transfer turned on
+USB microphone
+USB only
+USB Peripheral Port
+USB port disabled
+USB port enabled to detect chargers and accessories
+USB port is automatically disabled. Tap to learn more.
+USB Preferences
+USB storage
+USB storage app
+usb tether, bluetooth tether, wifi hotspot
+USB tethering
+USB tethering and supplying power
+USB tethering turned on
+USB, Bluetooth
+USB, Bluetooth, Ethernet
+USB, Ethernet
+Use 2 SIMs?
+Use 24-hour format
+Use 4G services to improve voice calls (recommended)
+Use 5G for voice calls
+Use a different app
+Use a different cable and try again
+Use a QR code to add a device to this network
+Use accessibility gesture
+Use accessibility setup
+Use Accessibility Shortcut?
+Use adaptive brightness
+Use adaptive connectivity
+Use app pinning
+Use at least 4 characters
+Use auto-rotate
+Use Battery Manager
+Use Battery Saver
+use biometric hardware
+Use biometrics
+Use biometrics or screen lock
+Use Bluetooth
+Use button or gesture
+Use by default for this action.
+Use color correction
+Use color inversion
+Use cooler display colors
+Use Dark theme
+use data in the background
+Use Data Saver
+Use default
+Use default payment app
+Use default settings
+Use details
+Use developer options
+Use device controls
+Use device screen lock
+Use double tap
+Use Emergency SOS
+Use external display
+Use face or fingerprint to
+Use face or screen lock
+Use face or watch to
+Use Face Unlock
+Use Face Unlock for
+Use Face Unlock to unlock your phone
+Use face, fingerprint, or watch to
+Use fingerprint
+use fingerprint hardware
+Use fingerprint instead
+Use fingerprint or screen lock
+Use fingerprint or watch to
+Use fingerprint to open
+Use Fingerprint Unlock even when the screen is off
+Use for file transfer
+Use for hearing aids
+Use for input
+Use for internet access
+Use for LE_AUDIO
+Use for map
+Use for media audio
+Use for phone audio
+Use for SIM access
+Use graphics driver preferences
+Use locale default
+Use location
+Use location for time zone
+Use LTE services to improve voice calls (recommended)
+Use mouse keys
+Use Night Light
+Use notification bundling
+Use notification cooldown
+Use notification history
+Use of data is included with your account
+Use on-screen keyboard
+Use one lock
+Use one lock for work profile and device screen
+Use one lock?
+Use one-handed mode
+Use password
+Use pattern
+Use personal browser
+Use personal profile sounds
+Use personal profile sounds?
+Use prevent ringing
+Use print service
+Use satellite messaging?
+Use scanning for deceptive apps
+Use scanning for deceptive apps for work
+Use schedule
+Use screen lock
+Use screen saver
+Use screenshot
+Use Shortcut
+Use spell checker
+Use split screen with app on the left
+Use split screen with app on the right
+Use sRGB
+Use Storage manager
+Use system certificates
+Use system gestures
+Use system language
+Use system languages
+Use System Selection (Default)
+Use tethering hardware acceleration if available
+Use text from screen
+Use the charger that came with your device
+Use the left mouse button as your right
+Use the same sounds as your personal profile
+Use the shortcut to
+Use this network when it has better availability
+Use this SIM
+Use Thread
+Use three finger tap
+Use triple-tap
+Use USB for
+Use Uss
+Use vibration & haptics
+Use watch to
+Use Wi\u2011Fi
+Use Wi\u2011Fi for calls to improve quality
+Use Wi\u2011Fi hotspot
+Use wireless debugging
+Use Wi‑Fi calling
+Use work browser
+Use your biometric or screen lock to continue
+Use your biometric to continue
+Use your device pattern to continue
+Use your face or screen lock to continue
+Use your face to authenticate
+Use your face to continue
+Use your fingerprint
+Use your fingerprint or screen lock to continue
+Use your fingerprint to continue
+Use your keyboard to control the pointer
+Use your keyboard to view all apps
+Use your touchpad to go back
+Use your touchpad to go home
+Use your touchpad to view recent apps
+Used
+User
+User certificate
+User credentials
+User data
+User info
+User Interface
+User limit reached
+User presence is detected
+User selector
+username
+Username (email)
+Users
+Users & profiles
+Users have their own apps and content
+Using 16 KB page-agnostic mode
+Using 4 KB page-agnostic mode
+Using face
+Using face or fingerprint
+Using face or watch
+Using face, fingerprint, or watch
+Using fingerprint
+Using fingerprint or watch
+Using watch
+USSD request changed to regular call
+USSD request changed to SS request
+USSD request changed to video call
+Usually 0000 or 1234
+Utilities
+UWB is unavailable in the current location
+Validity:
+Verbose vendor logging has ended
+Verified
+Verify apps over USB
+Verify bytecode of debuggable apps
+Verify it\u0027s you
+Verify it\u0027s you before erasing an eSIM
+Verify it\u2019s you
+Verify it\u2019s you in apps
+Verify password
+Verify pattern
+Verify PIN
+Version
+Very Fast
+vibrant, RGB, sRGB, color, natural, standard
+Vibrate
+Vibrate first then ring gradually
+Vibrate on tap
+Vibration & haptics
+Vibration only
+Vibrations
+Video
+Video camera
+Video problem
+Videos
+View
+View all apps
+View and control currently running services
+View and control screen
+View and modify shared data
+View and modify stored credentials
+View and perform actions
+view battery usage, battery usage, power usage
+View by apps
+View by systems
+View controls
+View details
+View legal info, status, software version
+view network connections
+view notification settings
+View notifications
+View notifications & Quick Settings
+View notifications & text messages
+View or change subscription
+View Policies
+View possible causes
+View recent apps
+View Settings
+View usage for past 24 hours
+View usage since last full charge
+view Wi-Fi connections
+Viewing full screen
+Violet
+Visible to all nearby Bluetooth devices
+Vision Settings
+Visit a repair provider.
+Vo5G
+vo5g, vonr, advanced calling, 5g calling
+Voice
+Voice Assist
+Voice calls
+Voice input & output
+Voice input & output settings
+Voice input services
+Voice input settings
+Voice search
+Voicemail
+Voicemail messages
+Voices
+volte, advanced calling, 4g calling
+Volume and vibration
+Volume buttons shortcut
+Volume keys
+Volume keys shortcut
+Volume keys shortcut from lock screen
+Volume lowered to safer level
+Volume sliders collapsed
+Volume sliders expanded
+Volume, vibration, Do Not Disturb
+VPN
+VPN & app user certificate
+VPN activated
+VPN on.
+VPN settings are not available for this user
+VPN status
+VR helper services
+VR listener
+vr virtual reality listener stereo helper service
+W+ connections
+W+ network
+Wait
+Wait for debugger
+Wake screen for notifications
+Wake up device to play here
+Wake up display
+wallet
+Wallpaper
+Wallpaper & style
+Wallpaper credits
+Watch added
+Watch storage is full. Delete some files to free space.
+Watch Unlock
+watch unlock, add watch unlock
+Watching
+Ways to unlock
+Web Search
+Webcam
+Webcam and supplying power
+WebView implementation
+Wednesday
+week
+Weekend
+Weeknight
+weeks
+Welcome back, guest!
+Well done!
+WEP
+WEP is an older security protocol that\u0027s less secure
+What can interrupt Do Not Disturb
+What do you want your lock screen to show?
+What has been using the battery
+What part of your device experience was affected?
+What to show
+When device is in VR
+When Do Not Disturb is on
+When no devices are connected
+When screen is dark, it turns on for new notifications
+When screen is off
+When screen is on
+When the screen is off
+When the screen is on
+When to show
+When to start
+When to turn on automatically
+When turned off, 3- or 4-finger gestures are ignored
+When using Face Unlock
+When using Face Unlock, always require confirmation step
+When using Fingerprint Unlock
+When work profile is locked
+When you don\u2019t have a mobile network
+Where invite reply is
+Where reply is
+Where to save contacts
+While charging
+While charging or docked
+While docked
+While docked and charging
+While driving
+White
+Who can interrupt
+Whoops, that\u2019s not the sensor
+Wi-Fi calling
+Wi-Fi config
+Wi-Fi control
+Wi-Fi data limit reached
+Wi-Fi information
+Wi-Fi is off
+Wi-Fi not available
+Wi-Fi only
+Wi-Fi state:
+Wi-Fi status
+Wi\u2011Fi
+Wi\u2011Fi and Mobile
+Wi\u2011Fi calling
+Wi\u2011Fi certificate
+Wi\u2011Fi data
+Wi\u2011Fi data usage
+Wi\u2011Fi Direct
+Wi\u2011Fi doesn\u0027t turn back on automatically
+Wi\u2011Fi hotspot
+Wi\u2011Fi is not connected to the internet
+Wi\u2011Fi MAC address
+Wi\u2011Fi non\u2011persistent MAC randomization
+Wi\u2011Fi notification, wifi notification
+Wi\u2011Fi pairing code
+Wi\u2011Fi preferences
+Wi\u2011Fi scan throttling
+Wi\u2011Fi scanning
+Wi\u2011Fi scanning turned on
+Wi\u2011Fi settings
+Wi\u2011Fi shared with device
+Wi\u2011Fi turns back on automatically
+Wi\u2011Fi unavailable
+Wi\u2011Fi won\u2019t auto-connect for now
+Wi\u2011Fi, hotspot
+Widget reordering ended.
+Widget reordering started.
+Widgets
+Widgets on lock screen
+WiFi Call
+WiFi Calling
+Wifi disconnected.
+Wifi off.
+Wifi one bar.
+Wifi signal full.
+Wifi three bars.
+Wifi two bars.
+wifi, wi-fi, call, calling
+wifi, wi-fi, toggle, control
+Will never turn off automatically
+Will never turn on automatically
+Will turn off automatically after bedtime
+Will turn off automatically at sunrise
+Will turn on automatically at bedtime
+Will turn on automatically at sunset
+Will turn on based on your routine
+Window animation scale
+Windows Live
+wipe, delete, restore, clear, remove, factory reset
+Wired audio
+Wired audio device
+Wired headphone
+Wired headphones
+Wired microphone
+Wireless & networks
+Wireless debugging
+Wireless debugging connected
+Wireless debugging not allowed
+Wireless display
+Wireless display certification
+Wireless display options
+Wireless emergency alerts
+With exceptions
+Won\'t automatically connect
+word
+Word:
+Work
+Work 2
+Work 3
+Work apps
+Work apps are paused
+work challenge, work, profile
+Work Fax
+Work lock screen
+Work Mobile
+Work notifications
+Work Pager
+Work phone ringtone
+Work profile
+Work profile deleted
+Work profile is off
+Work profile isn\u2019t available yet
+Work profile keyboards & tools
+Work profile lock
+Work profile lock, encryption, and more
+Work profile locked
+work profile must be turned on.
+Work profile network activity is visible to your IT admin
+Work profile screen lock
+Work profile security
+Work profile settings
+Work profile sounds
+Work SIM
+Work view
+Would you like to give us feedback on this suggestion?
+WPA
+WPA-Enterprise
+WPA-Personal
+WPA/WPA2-Enterprise
+WPA/WPA2-Personal
+WPA/WPA2/WPA3-Enterprise
+WPA2
+WPA2-Personal
+WPA2/WPA3-Enterprise
+WPA2/WPA3-Personal
+WPA3
+WPA3-Enterprise
+WPA3-Enterprise 192-bit
+WPA3-Personal
+WPS configuration
+write call log
+Write in text fields
+write modify system settings
+Write system preferences
+Wrong HSUM build configuration
+Wrong Password
+Wrong Pattern
+Wrong PIN
+Yahoo
+year
+years
+Yellow
+Yes or Maybe
+Yes, continue
+Yes, make them an admin
+Yes, Maybe, or Not replied
+Yes, reset
+Yes, switch
+You and your child are in control
+You are in guest mode
+You are now a developer!
+You can also turn on Spatial Audio for Bluetooth devices.
+You can change this anytime in Settings
+You can change this later in Settings\u00A0>\u00A0Apps"
+You can now magnify part of your screen
+You can only have 5 services on
+You can save or delete your activity on exit
+You can set up your fingerprint later in Settings.
+You can set up your fingerprint later.
+You can try again now or set up your fingerprint later.
+You can uninstall the creditor app
+You can use 2 SIMs at a time
+You can\'t change the caller ID setting.
+You completed the go back gesture.
+You completed the go home gesture
+You completed the view all apps gesture
+You completed the view recent apps gesture.
+You have new messages
+You haven\'t allowed notifications from this app
+You haven\u2019t set up Face Unlock
+You may also need to type this passkey on the other device.
+You may also need to type this PIN on the other device.
+You may need to reformat the device
+You may need to reformat the device. Tap to eject.
+You need to complete the port field.
+You need to restart your device to change this setting.
+You set the importance of these notifications.
+You will see notifications on your screen
+You won\u2019t see or hear notifications
+You4
+You\'ll stop sharing audio with the connected headphones
+You\'re currently casting to a nearby device
+You\'re currently recording your entire screen
+You\'re currently sharing an app
+You\'re currently sharing with an app
+You\'re currently sharing your entire screen with an app
+You\'re sharing audio
+You\'re using this app in your work profile
+You\'re using this app outside of your work profile
+You\u0027ll need to restart your device to turn off MTE.
+You\u0027ll need to restart your device to turn on MTE.
+You\u2019re all set!
+You\u2019re in control
+You\u2019ve added the maximum number of faces
+You\u2019ve added the maximum number of fingerprints
+Your access to this device
+Your Android TV device will shut down.
+Your apps have used more data than usual
+Your audio device
+your carrier
+Your credit provider can:
+Your data will be deleted
+Your data won\u2019t be private
+Your device can personalize how you\’re addressed
+Your device settings and regional preferences will change.
+Your device will be erased
+Your devices
+Your mobile network has changed
+Your new unlock pattern
+Your phone will shut down.
+Your primary SIMs
+Your recent and snoozed notifications will appear here
+Your recent conversations will show up here
+Your SIM is PUK-locked. Type the PUK code to unlock it.
+Your SIMs changed
+Your storage is now being managed by the storage manager
+Your tablet will shut down.
+Your watch will shut down.
+Your work policy info
+Your work profile is no longer available on this device
+Z-Ram
+Zoom
+Zoom in
+Zoom in on screen
+Zoom in on the screen
+Zoom out
+• At least one device or device panel are available
