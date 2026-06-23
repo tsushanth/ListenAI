@@ -70,7 +70,16 @@ class KokoroOnDeviceService(private val context: Context) : TTSService {
         return session != null
     }
 
+    @Synchronized
     private fun ensureSession(): OrtSession? {
+        // Double-checked under @Synchronized: previously the null check + lazy
+        // createSession was racy — onSynthesizeText, isAvailable() warmup, and
+        // the in-app reader could all enter ensureSession concurrently and each
+        // call env.createSession in parallel. 2026-06-22 v52 logcat caught
+        // three sessions being created at once (2.7s / 3.6s / 3.7s each),
+        // stealing CPU from each other and pushing first-chunk inference to
+        // 7.4s (vs 6.6s on v51 with only one session create). The extra
+        // sessions also leaked memory until process death.
         session?.let { return it }
         val modelFile = KokoroModelDownloader.getInstance(context).modelFile
         if (!modelFile.exists()) {
@@ -108,6 +117,21 @@ class KokoroOnDeviceService(private val context: Context) : TTSService {
             // synth would push that latency onto the user's first tap.
             // `prewarm()` triggers the lazy load and returns quickly.
             g2p.prewarm()
+            // NOTE on ONNX warmup: 2026-06-22 v52 attempted a synthetic
+            // inference warmup inside ensureSession to amortize ORT's
+            // first-call JIT cost. It made things worse because:
+            //   (1) The synthetic shape (6 tokens) didn't match real
+            //       chunk shapes (50-60 tokens), so JIT didn't apply
+            //       to the real calls.
+            //   (2) Combined with the (now-fixed) thread-safety bug,
+            //       three sessions raced and starved each other on CPU.
+            // The right fix here is to pre-warm with a realistic-shape
+            // synthesis once the user has set us as default engine — but
+            // that's a separate workstream (needs a background WorkManager
+            // job triggered from the system TTS settings hookup). For now,
+            // we accept that the first chunk pays JIT cost (~6.6s vs 3.3s
+            // for subsequent chunks) and focus the latency wins on the
+            // streaming path.
             s
         } catch (e: Exception) {
             Log.e(TAG, "ensureSession: createSession failed", e)
