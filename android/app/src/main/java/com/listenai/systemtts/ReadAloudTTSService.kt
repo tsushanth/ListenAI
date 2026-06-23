@@ -60,6 +60,15 @@ class ReadAloudTTSService : TextToSpeechService() {
     private val tag = "ReadAloudTTSService"
 
     /**
+     * Texts ≤ this many characters that miss the prebuilt label cache
+     * route through Piper (live VITS, ~600-800 ms on Pixel 9 Pro)
+     * instead of Kokoro (~2-3 s). Longer texts stay on Kokoro because
+     * Piper's per-token cost dominates above a sentence-length input
+     * and Kokoro's streaming/chunking gets competitive there.
+     */
+    private val PIPER_MAX_CHARS = 80
+
+    /**
      * Hard rule: this engine is **on-device only**. TalkBack / Maps / Kindle
      * hit it constantly — cloud round-trip latency makes the device feel broken
      * and forces the system reader to talk to the network all day.
@@ -335,6 +344,29 @@ class ReadAloudTTSService : TextToSpeechService() {
             return
         }
 
+        // Cache miss + short text: try Piper (~600-800 ms) before
+        // falling through to Kokoro (~2-3 s). Piper requires eSpeak
+        // NG, so we gate on isReady() — if the bridge failed to load
+        // we skip straight to Kokoro. Long text stays on Kokoro
+        // because Piper's per-token cost grows roughly linearly and
+        // Kokoro is competitive once chunks/streaming kick in.
+        if (text.length <= PIPER_MAX_CHARS) {
+            val piperStart = System.currentTimeMillis()
+            val pcm = try {
+                PiperLiveSynth.synthesize(applicationContext, text)
+            } catch (t: Throwable) {
+                Log.w(tag, "Piper synth threw (non-fatal): ${t.message}")
+                ShortArray(0)
+            }
+            if (pcm.isNotEmpty()) {
+                Log.i(tag, "T_PIPER_DONE text='${text.take(40)}' dt=${System.currentTimeMillis() - piperStart}ms samples=${pcm.size}")
+                servePcmDirect(pcm, PiperLiveSynth.sampleRate(), callback)
+                return
+            }
+            // Otherwise fall through to Kokoro
+            Log.i(tag, "Piper returned empty PCM — falling through to Kokoro")
+        }
+
         val voiceName = request.voiceName ?: VoiceCatalog.defaultVoiceName(
             iso3ToIso2(request.language), iso3ToIso2Country(request.country), null
         )
@@ -425,6 +457,36 @@ class ReadAloudTTSService : TextToSpeechService() {
                 callback.error()
             }
         }
+    }
+
+    /**
+     * Streams freshly-synthesized 16-bit LE PCM (e.g. from Piper) to
+     * the SynthesisCallback. Same plumbing as servePcmFromCache but
+     * takes a ShortArray + sample rate directly instead of a cache
+     * Hit. Used for the cache-miss-short-text Piper path.
+     */
+    private fun servePcmDirect(pcm: ShortArray, sampleRate: Int, callback: SynthesisCallback) {
+        val rc = callback.start(sampleRate, AudioFormat.ENCODING_PCM_16BIT, 1)
+        if (rc != TextToSpeech.SUCCESS) {
+            Log.w(tag, "servePcmDirect: callback.start returned $rc")
+            return
+        }
+        val maxBuf = callback.maxBufferSize.coerceAtLeast(2)
+        // ShortArray → ByteArray (16-bit LE)
+        val bytes = ByteArray(pcm.size * 2)
+        ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN).asShortBuffer().put(pcm)
+        var offset = 0
+        while (offset < bytes.size) {
+            if (stopRequested) return
+            val len = minOf(maxBuf, bytes.size - offset)
+            val pushRc = callback.audioAvailable(bytes, offset, len)
+            if (pushRc != TextToSpeech.SUCCESS) {
+                Log.w(tag, "servePcmDirect: audioAvailable returned $pushRc")
+                return
+            }
+            offset += len
+        }
+        callback.done()
     }
 
     /**
