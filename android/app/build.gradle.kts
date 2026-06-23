@@ -23,12 +23,33 @@ android {
         applicationId = "com.listenai"
         minSdk = 26
         targetSdk = 35
-        versionCode = 65
-        versionName = "2.14.22"
+        versionCode = 66
+        versionName = "2.14.23"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
             useSupportLibrary = true
+        }
+
+        ndk {
+            // The prebuilt libespeak-ng.so is arm64-v8a only. Limit
+            // our native bridge build to the same ABI; for other ABIs
+            // the eSpeak feature is silently absent (System.loadLibrary
+            // returns UnsatisfiedLinkError on x86 emulators etc).
+            abiFilters += listOf("arm64-v8a")
+        }
+
+        externalNativeBuild {
+            cmake {
+                arguments += listOf("-DANDROID_STL=c++_shared")
+            }
+        }
+    }
+
+    externalNativeBuild {
+        cmake {
+            path = file("src/main/cpp/CMakeLists.txt")
+            version = "3.22.1"
         }
     }
 

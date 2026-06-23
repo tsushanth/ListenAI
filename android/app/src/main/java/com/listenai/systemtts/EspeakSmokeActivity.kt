@@ -6,28 +6,28 @@ import android.util.Log
 import android.widget.TextView
 
 /**
- * Minimal smoke test for the eSpeak NG Android prebuilt .so files
- * (from HeyLetsLearnSomething, dated 2026-02-17). Validates ABI
- * compatibility with our AGP 8.x + minSdk 26 toolchain BEFORE
- * committing to the full Piper integration tomorrow.
+ * End-to-end eSpeak NG phonemizer smoke test.
  *
- * Does NOT phonemize anything yet — just loads the .so + its
- * `libc++_shared` dependency and reports success/failure to logcat.
- * If both libraries load without `UnsatisfiedLinkError`, the
- * integration path is real and tomorrow's work is JNI bridge +
- * espeak-ng-data assets.
+ * Loads libespeak-ng + bridge .so files, copies the English data
+ * subset from APK assets to filesDir, calls `espeak_Initialize`,
+ * selects en-us voice, phonemizes a small test corpus, and reports
+ * the IPA output + per-call timings to logcat + on-screen.
+ *
+ * Pass criteria: all test phrases return non-empty IPA that looks
+ * reasonable (e.g. "hello world" → "həlˈoʊ wˈɜːld").
+ *
+ * If this passes, the Piper integration path is fully validated and
+ * we can wire up `PiperOnDeviceService` to use this bridge.
  *
  * Launch:
  *   adb shell am start -n com.listenai/.systemtts.EspeakSmokeActivity
- *
- * Filter logs: `adb logcat -s EspeakSmoke:I EspeakSmoke:E`
  */
 class EspeakSmokeActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val out = TextView(this).apply {
-            textSize = 16f
+            textSize = 14f
             setPadding(48, 96, 48, 48)
         }
         setContentView(out)
@@ -38,31 +38,32 @@ class EspeakSmokeActivity : Activity() {
             lines.add(s)
             out.text = lines.joinToString("\n")
         }
-        fun logE(s: String, t: Throwable) {
-            Log.e(TAG, s, t)
-            lines.add("$s — ${t.javaClass.simpleName}: ${t.message}")
-            out.text = lines.joinToString("\n")
+
+        log("Initializing…")
+        val t0 = System.currentTimeMillis()
+        val sr = EspeakBridge.ensureInitialized(applicationContext)
+        val initMs = System.currentTimeMillis() - t0
+        log("ensureInitialized → sampleRate=$sr in ${initMs}ms")
+        if (sr <= 0) {
+            log("INIT FAILED — bailing")
+            return
         }
 
-        log("EspeakSmoke starting…")
-        try {
-            val t0 = System.currentTimeMillis()
-            System.loadLibrary("c++_shared")
-            log("loaded libc++_shared in ${System.currentTimeMillis() - t0}ms")
-        } catch (t: Throwable) {
-            logE("libc++_shared FAILED to load", t)
-            return
+        val testCorpus = listOf(
+            "hello world",
+            "Wi-Fi",
+            "Bluetooth",
+            "Settings",
+            "The quick brown fox jumps over the lazy dog.",
+            "Quick settings expanded.",
+        )
+        for (text in testCorpus) {
+            val t = System.currentTimeMillis()
+            val ipa = EspeakBridge.phonemize(text)
+            val dt = System.currentTimeMillis() - t
+            log("[${dt}ms] '$text' → '$ipa'")
         }
-        try {
-            val t0 = System.currentTimeMillis()
-            System.loadLibrary("espeak-ng")
-            log("loaded libespeak-ng in ${System.currentTimeMillis() - t0}ms")
-        } catch (t: Throwable) {
-            logE("libespeak-ng FAILED to load", t)
-            return
-        }
-        log("SMOKE TEST PASSED — both libraries loaded clean")
-        log("next step (tomorrow): JNI bridge + espeak-ng-data assets")
+        log("\nDONE. If 'hello world' shows 'həlˈoʊ wˈɜːld' or similar, full path works.")
     }
 
     companion object { private const val TAG = "EspeakSmoke" }
