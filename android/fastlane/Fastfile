@@ -51,4 +51,37 @@ platform :android do
       release_status: "completed"
     )
   end
+
+  # ---------------------------------------------------------------
+  # ReadAloud Voice — the standalone TTS engine app
+  # (com.listenai.voice, product flavor `voice` of the same project)
+  # ---------------------------------------------------------------
+
+  desc "Push the voice-flavor AAB to Internal Testing on com.listenai.voice."
+  lane :voice_internal do
+    upload_to_play_store(
+      package_name: "com.listenai.voice",
+      track: "internal",
+      aab: "app/build/outputs/bundle/voiceRelease/app-voice-release.aab",
+      skip_upload_metadata: true,
+      skip_upload_images: true,
+      skip_upload_screenshots: true,
+      skip_upload_changelogs: true,
+      release_status: "completed"
+    )
+  end
+
+  desc "Push the voice-flavor AAB to Closed Testing (alpha) on com.listenai.voice."
+  lane :voice_closed_testing do
+    upload_to_play_store(
+      package_name: "com.listenai.voice",
+      track: "alpha",
+      aab: "app/build/outputs/bundle/voiceRelease/app-voice-release.aab",
+      skip_upload_metadata: true,
+      skip_upload_images: true,
+      skip_upload_screenshots: true,
+      skip_upload_changelogs: true,
+      release_status: "completed"
+    )
+  end
 end
