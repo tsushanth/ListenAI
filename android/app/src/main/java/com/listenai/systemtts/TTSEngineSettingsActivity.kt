@@ -42,6 +42,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.ui.res.stringResource
+import com.listenai.BuildConfig
+import com.listenai.R
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -96,7 +99,7 @@ class TTSEngineSettingsActivity : ComponentActivity() {
             ListenAITheme {
                 Scaffold(
                     topBar = {
-                        TopAppBar(title = { Text("ReadAloud AI Voices") })
+                        TopAppBar(title = { Text(stringResource(R.string.system_tts_engine_name)) })
                     }
                 ) { padding ->
                     VoiceCatalogScreen(padding)
@@ -336,10 +339,11 @@ private fun VoiceCatalogScreen(padding: PaddingValues) {
         )
         ModelStatusBanner(downloadState, onDownload = { downloader.startIfPossible() })
         // Show the Chatterbox download banner only when the user actually
-        // has clones — otherwise it's noise. Once Ready, the system TTS path
-        // will be allowed to use clones (currently still blocked until M2.6
-        // inference is wired).
-        if (clones.isNotEmpty()) {
+        // has clones — otherwise it's noise. Voice cloning is reader-flavor
+        // territory entirely; the standalone ReadAloud Voice app has no
+        // cloning UI, login, or upload flow, so even if some leftover
+        // state surfaces a clone, suppress the prompt there.
+        if (BuildConfig.FLAVOR != "voice" && clones.isNotEmpty()) {
             ChatterboxBanner(
                 state = chatterboxState,
                 onDownload = { chatterboxDownloader.startIfPossible() },
@@ -350,7 +354,7 @@ private fun VoiceCatalogScreen(padding: PaddingValues) {
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            if (clones.isNotEmpty()) {
+            if (BuildConfig.FLAVOR != "voice" && clones.isNotEmpty()) {
                 item("clones-header") {
                     SectionHeader(
                         title = "Your cloned voices",
