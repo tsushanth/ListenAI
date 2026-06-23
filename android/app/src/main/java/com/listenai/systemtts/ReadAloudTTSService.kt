@@ -27,6 +27,9 @@ import com.listenai.service.tts.SynthesisOptions
 import com.listenai.service.tts.TTSServiceFactory
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import java.util.concurrent.LinkedBlockingQueue
+import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.concurrent.thread
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -499,33 +502,71 @@ class ReadAloudTTSService : TextToSpeechService() {
         val maxBuf = callback.maxBufferSize.coerceAtLeast(2)
         val svcEntryMs = System.currentTimeMillis()
         Log.i(tag, "T_SVC_ENTRY=$svcEntryMs chars=${text.length}")
-        var pushedSomething = false
+
+        // Producer / consumer decoupling. The previous implementation pushed
+        // each chunk's PCM through `callback.audioAvailable` inline, which
+        // blocks until AudioTrack accepts the bytes (~chunk-audio-length).
+        // That serialized chunk N+1 inference behind chunk N playback —
+        // 2026-06-22 spectrogram showed 3.3-3.8s silence gaps between
+        // chunks. Now: producer (the synthesizeChunkedPcm callback) enqueues
+        // each chunk's bytes and returns immediately, freeing the synth
+        // thread to start the next chunk; consumer (a dedicated thread)
+        // drains the queue into AudioTrack at the framework's pace.
+        // Bounded at 8 chunks so a slow consumer eventually backpressures
+        // the producer rather than ballooning RAM on book-length input.
+        val queue = LinkedBlockingQueue<ByteArray>(8)
+        val sentinel = ByteArray(0)
+        val pushedSomething = AtomicBoolean(false)
+        val consumerAborted = AtomicBoolean(false)
+
+        val consumer = thread(name = "ReadAloudTTS-AudioPush", start = true) {
+            try {
+                while (true) {
+                    val bytes = queue.take()
+                    if (bytes === sentinel) return@thread
+                    if (stopRequested) {
+                        consumerAborted.set(true)
+                        return@thread
+                    }
+                    var offset = 0
+                    while (offset < bytes.size) {
+                        val len = minOf(maxBuf, bytes.size - offset)
+                        val rc = callback.audioAvailable(bytes, offset, len)
+                        if (rc != TextToSpeech.SUCCESS) {
+                            Log.w(tag, "audioAvailable() returned $rc — abort streaming")
+                            consumerAborted.set(true)
+                            return@thread
+                        }
+                        offset += len
+                    }
+                    if (pushedSomething.compareAndSet(false, true)) {
+                        Log.i(tag, "T_FIRST_AUDIO_PUSH=${System.currentTimeMillis()} dt_from_entry=${System.currentTimeMillis() - svcEntryMs}ms")
+                    }
+                }
+            } catch (ie: InterruptedException) {
+                consumerAborted.set(true)
+            }
+        }
+
         val completed = service.synthesizeChunkedPcm(text, preset, opts) { pcm, _ ->
-            if (stopRequested) return@synthesizeChunkedPcm false
+            if (stopRequested || consumerAborted.get()) return@synthesizeChunkedPcm false
             // ShortArray (signed 16-bit LE PCM) → ByteArray for audioAvailable.
             val bytes = ByteArray(pcm.size * 2)
             ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN).asShortBuffer().put(pcm)
-            // The TTS framework caps each audioAvailable() write at
-            // SynthesisCallback.getMaxBufferSize() — split larger chunks.
-            var offset = 0
-            while (offset < bytes.size) {
-                val len = minOf(maxBuf, bytes.size - offset)
-                val rc = callback.audioAvailable(bytes, offset, len)
-                if (rc != TextToSpeech.SUCCESS) {
-                    Log.w(tag, "audioAvailable() returned $rc — abort streaming")
-                    return@synthesizeChunkedPcm false
-                }
-                offset += len
+            try {
+                queue.put(bytes)   // backpressures if consumer falls 8 chunks behind
+            } catch (ie: InterruptedException) {
+                return@synthesizeChunkedPcm false
             }
-            if (!pushedSomething) {
-                Log.i(tag, "T_FIRST_AUDIO_PUSH=${System.currentTimeMillis()} dt_from_entry=${System.currentTimeMillis() - svcEntryMs}ms")
-            }
-            pushedSomething = true
             true
         }
-        if (completed && pushedSomething) {
+        // Signal end-of-stream to consumer, then wait for it to drain.
+        try { queue.put(sentinel) } catch (ie: InterruptedException) { /* shutting down */ }
+        consumer.join()
+
+        if (completed && pushedSomething.get() && !consumerAborted.get()) {
             callback.done()
-        } else if (!pushedSomething) {
+        } else if (!pushedSomething.get()) {
             // synthesis returned no audio (e.g. all chunks empty after tokenization)
             Log.w(tag, "streamKokoroChunksToCallback: no PCM produced — signalling error")
             callback.error()

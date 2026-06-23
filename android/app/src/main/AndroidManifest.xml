@@ -169,6 +169,16 @@
             android:exported="true"
             android:theme="@style/Theme.ListenAI" />
 
+        <!-- Kokoro variant benchmark — tests alt quantization variants
+             (model_quantized, model_uint8, model_uint8f16) against NNAPI
+             to see if any actually engages the Tensor SOC instead of
+             silently falling back to CPU. -->
+        <activity
+            android:name=".systemtts.KokoroVariantBenchmarkActivity"
+            android:label="Kokoro variant benchmark"
+            android:exported="true"
+            android:theme="@style/Theme.ListenAI" />
+
     </application>
 
 </manifest>
