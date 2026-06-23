@@ -2,6 +2,7 @@ package com.listenai
 
 import android.app.Application
 import android.util.Log
+import com.listenai.BuildConfig
 import com.listenai.di.allModules
 import com.listenai.service.AppOpenTracker
 import com.listenai.service.FacebookSDKHelper
@@ -38,27 +39,26 @@ class ListenAIApplication : Application() {
         // Configure services with backend URL
         configureServices()
 
-        // Initialize app open tracker
-        AppOpenTracker.init(this)
-
-        // Initialize RevenueCat for subscriptions
-        RevenueCatManager.getInstance().configure(this)
-
-        // Initialize PaywallKit experiment manager
-        com.kreativekoala.paywallkit.manager.ExperimentManager.init(this)
-        com.kreativekoala.paywallkit.manager.PromoCodeManager.init(this)
-
-        // Initialize RatingKit
-        RatingKit.init(this, appId = "readaloud")
-
-        // Initialize Firebase Analytics for Google Ads conversion tracking
-        FirebaseAnalyticsHelper.initialize(this)
-
-        // Initialize TikTok Events SDK for install attribution
-        TikTokHelper.initialize(this)
-
-        // Initialize Facebook SDK for Meta Ads attribution
-        FacebookSDKHelper.initialize(this)
+        // Reader-flavor monetization + analytics. The standalone
+        // ReadAloud Voice app (BuildConfig.FLAVOR == "voice") is a
+        // paid-upfront product — Play's IAP handles entitlement, so
+        // there's no PaywallKit/RevenueCat surface to wire up.
+        // We also skip the marketing-attribution SDKs (Firebase
+        // Analytics, TikTok Events, Meta SDK) in the voice flavor
+        // because that app's entire UI is a single voice-picker
+        // screen; there are no funnels to attribute. Skipping these
+        // keeps the standalone's startup cost low and its data
+        // footprint honest for the BVI audience the app targets.
+        if (BuildConfig.FLAVOR != "voice") {
+            AppOpenTracker.init(this)
+            RevenueCatManager.getInstance().configure(this)
+            com.kreativekoala.paywallkit.manager.ExperimentManager.init(this)
+            com.kreativekoala.paywallkit.manager.PromoCodeManager.init(this)
+            RatingKit.init(this, appId = "readaloud")
+            FirebaseAnalyticsHelper.initialize(this)
+            TikTokHelper.initialize(this)
+            FacebookSDKHelper.initialize(this)
+        }
 
         // Warm up the Kokoro ONNX session if the user opted into on-device
         // synthesis AND the model file is already on disk. Doing this at app
@@ -68,6 +68,12 @@ class ListenAIApplication : Application() {
         // to cloud for the user's first utterance even when on-device is
         // ready to serve it.
         warmUpKokoroIfReady()
+        // Chatterbox = voice cloning, reader-only. Voice flavor's
+        // picker doesn't expose it, so don't burn the 1.5 GB RAM
+        // mapping the sessions take.
+        if (BuildConfig.FLAVOR != "voice") {
+            warmUpChatterboxIfReady()
+        }
     }
 
     private fun warmUpKokoroIfReady() {
@@ -84,6 +90,34 @@ class ListenAIApplication : Application() {
                 Log.i(TAG, "warmUpKokoroIfReady: session ready = $ok")
             } catch (t: Throwable) {
                 Log.e(TAG, "warmUpKokoroIfReady: session warmup failed", t)
+            }
+        }
+    }
+
+    /**
+     * Eagerly load the 4 Chatterbox ONNX sessions if the model bundle is on
+     * disk. This shifts the ~10-15s cold-load cost from "the moment the
+     * user asks TalkBack to speak" to "app start" — which the user is
+     * already waiting for. Memory cost is ~1.5 GB of weight files mapped
+     * into process RAM, so we only fire if the user has actually downloaded
+     * the bundle.
+     */
+    private fun warmUpChatterboxIfReady() {
+        val onDisk = com.listenai.service.tts.ChatterboxModelDownloader
+            .getInstance(this).isReady()
+        Log.i(TAG, "warmUpChatterboxIfReady: onDisk=$onDisk")
+        if (!onDisk) return
+
+        CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
+            try {
+                Log.i(TAG, "warmUpChatterboxIfReady: loading 4 ONNX sessions in background")
+                val t0 = System.currentTimeMillis()
+                val ok = com.listenai.service.tts.ChatterboxOnDeviceService
+                    .getInstance(this@ListenAIApplication).isAvailable()
+                val elapsed = System.currentTimeMillis() - t0
+                Log.i(TAG, "warmUpChatterboxIfReady: sessions ready=$ok in ${elapsed}ms")
+            } catch (t: Throwable) {
+                Log.e(TAG, "warmUpChatterboxIfReady: session warmup failed", t)
             }
         }
     }
