@@ -20,6 +20,7 @@ import android.media.MediaPlayer
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.PlayArrow
@@ -99,7 +100,24 @@ class TTSEngineSettingsActivity : ComponentActivity() {
             ListenAITheme {
                 Scaffold(
                     topBar = {
-                        TopAppBar(title = { Text(stringResource(R.string.system_tts_engine_name)) })
+                        TopAppBar(
+                            title = { Text(stringResource(R.string.system_tts_engine_name)) },
+                            // Voice flavor: launcher activity is THIS screen
+                            // (no MainActivity to back out to), so the back
+                            // arrow has to finish() the activity itself —
+                            // gets the user back to their last app or home.
+                            // Reader flavor: still useful (matches user
+                            // expectation when reached from system TTS
+                            // settings cog).
+                            navigationIcon = {
+                                IconButton(onClick = { finish() }) {
+                                    Icon(
+                                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                        contentDescription = stringResource(R.string.system_tts_back_content_description)
+                                    )
+                                }
+                            }
+                        )
                     }
                 ) { padding ->
                     VoiceCatalogScreen(padding)

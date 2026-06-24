@@ -2,6 +2,7 @@
 <resources>
     <string name="app_name">ReadAloud AI</string>
     <string name="system_tts_engine_name">ReadAloud AI Voices</string>
+    <string name="system_tts_back_content_description">Back</string>
 
     <!-- Meta / Facebook SDK -->
     <string name="facebook_app_id">1550416256518249</string>
