@@ -345,16 +345,38 @@ class ReadAloudTTSService : TextToSpeechService() {
         // MUST skip them or they hear the wrong voice. Same for rate:
         // the cache PCM is pre-rendered at 1.0x, and Piper's length_scale
         // is wired below, so cache hits require rate==100.
-        val voiceName = request.voiceName ?: VoiceCatalog.defaultVoiceName(
-            iso3ToIso2(request.language), iso3ToIso2Country(request.country), null
-        )
+        //
+        // Prefer the user's current SettingsManager pick over the
+        // framework's request.voiceName. The framework caches the result
+        // of onGetDefaultVoiceNameFor() at engine init time and does NOT
+        // re-query it when SettingsManager changes — which is fine on
+        // stock Android (a TalkBack restart forces a re-query) but
+        // breaks on Samsung One UI (where TalkBack restarts don't clear
+        // the framework's voice cache). Reading SettingsManager live on
+        // every synth call makes the user's pick take effect immediately
+        // regardless of OEM TalkBack behavior. Apps that explicitly call
+        // tts.setVoice() with a non-default voice still get overridden
+        // when SettingsManager is set, which matches user expectation
+        // (the in-app pick is the most-recent explicit choice). In-app
+        // voice previews don't route through this service at all
+        // (ChatterboxOnDeviceService.synthesize directly), so they
+        // remain correct.
+        val settingsPick = com.listenai.service.settings.SettingsManager
+            .getInstance(applicationContext).selectedVoiceId.value
+            ?.takeIf { it.isNotBlank() }
+            ?.let { com.listenai.systemtts.VoiceCatalog.voiceNameForPresetId(it) }
+        val voiceName = settingsPick
+            ?: request.voiceName
+            ?: VoiceCatalog.defaultVoiceName(
+                iso3ToIso2(request.language), iso3ToIso2Country(request.country), null
+            )
         val preset = VoiceCatalog.resolvePreset(voiceName)
         if (preset == null) {
             Log.w(tag, "Unknown voice requested: $voiceName")
             callback.error()
             return
         }
-        Log.i(tag, "voiceResolved request.voiceName='${request.voiceName}' fallback='$voiceName' preset=${preset.id} providerVoiceId=${preset.providerVoiceId}")
+        Log.i(tag, "voiceResolved request.voiceName='${request.voiceName}' settingsPick='$settingsPick' final='$voiceName' preset=${preset.id} providerVoiceId=${preset.providerVoiceId}")
 
         val isClonedVoice = preset.id.startsWith("cloned_") || preset.providerModelId == "chatterbox"
         val voiceKey = preset.providerVoiceId ?: "af_heart"
