@@ -578,10 +578,12 @@ private fun ModelStatusBanner(
                 tint = Color(0xFFE0B341)
             )
         }
-        is KokoroModelDownloader.State.WaitingForWifi -> {
+        is KokoroModelDownloader.State.Waiting -> {
+            // Title is a one-word status; the reason string carries the
+            // device-specific detail (battery, thermal, network, etc.).
             BannerCard(
-                title = "Waiting for Wi-Fi",
-                caption = "Voice model will download when you connect to Wi-Fi.",
+                title = "Waiting to download",
+                caption = state.reason,
                 actionLabel = null,
                 onAction = {},
                 tint = Color(0xFFE0B341)

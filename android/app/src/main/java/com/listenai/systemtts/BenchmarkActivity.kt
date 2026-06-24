@@ -76,6 +76,27 @@ class BenchmarkActivity : Activity() {
                     runOnUiThread {
                         status.text = "$benchText\n\n— done. See logcat -s TTSBench:I ReadAloudTTSService:I"
                     }
+                    // Samsung framework-cache verification: if --es voice2
+                    // is set, mutate SettingsManager mid-session and call
+                    // speak() again on the SAME TTS client (same framework
+                    // cache). This is the exact shape of the real bug:
+                    // a long-lived TalkBack client whose cached voice goes
+                    // stale because the framework doesn't re-query us when
+                    // SettingsManager changes. The voiceResolved log on the
+                    // second utterance proves whether our settingsPick
+                    // override actually wins over the stale framework cache.
+                    val voice2 = intent.getStringExtra("voice2")
+                    val text2 = intent.getStringExtra("text2") ?: benchText
+                    if (!voice2.isNullOrBlank() && utteranceId?.endsWith("-2") != true) {
+                        Log.i(TAG, "T_VOICE_SWAP swap_to=$voice2")
+                        com.listenai.service.settings.SettingsManager
+                            .getInstance(applicationContext)
+                            .setSelectedVoiceId(voice2)
+                        val id2 = "bench-${System.currentTimeMillis()}-2"
+                        Log.i(TAG, "T_SPEAK_CALL_2=${System.currentTimeMillis()} id=$id2")
+                        tts?.speak(text2, TextToSpeech.QUEUE_ADD, null, id2)
+                        return
+                    }
                     finishDelayed()
                 }
                 @Suppress("OverridingDeprecatedMember")
@@ -111,7 +132,11 @@ class BenchmarkActivity : Activity() {
 
     companion object {
         private const val TAG = "TTSBench"
-        private const val ENGINE_PACKAGE = "com.listenai"
+        // BuildConfig.APPLICATION_ID resolves to whichever flavor we're
+        // running in (com.listenai for reader, com.listenai.voice for
+        // standalone). Hardcoding "com.listenai" breaks under the voice
+        // flavor when the reader isn't installed.
+        private val ENGINE_PACKAGE = com.listenai.BuildConfig.APPLICATION_ID
 
         // Three sentences — should split into 2-3 chunks given the current
         // CHUNK_CHAR_CAP, exposing the streaming win. The text is

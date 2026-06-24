@@ -31,6 +31,8 @@ import com.listenai.service.settings.SettingsManager
 import com.listenai.service.tts.KokoroModelDownloader
 import com.listenai.service.tts.KokoroOnDeviceService
 import com.listenai.ui.theme.*
+import com.kreativekoala.crosspromokit.models.AppId
+import com.kreativekoala.crosspromokit.view.CrossPromoSection
 import com.kreativekoala.paywallkit.models.PaywallFeature
 import com.kreativekoala.paywallkit.models.PaywallTheme
 import com.kreativekoala.paywallkit.view.PaywallPreview
@@ -392,6 +394,8 @@ fun SettingsScreen(
                     }
                 )
             }
+
+            CrossPromoSection(currentApp = AppId.READALOUD)
 
             Spacer(modifier = Modifier.height(32.dp))
         }
@@ -824,9 +828,13 @@ private fun OfflineAIRow(
             }
         }
 
-        if (enabled && eligible && state is KokoroModelDownloader.State.WaitingForWifi) {
+        if (enabled && eligible && state is KokoroModelDownloader.State.Waiting) {
+            // The reason carries the device-specific cause (battery,
+            // thermal, network, etc.) — render it verbatim rather than
+            // hardcoding "Waiting for Wi-Fi" which lies on Samsung when
+            // the actual block is thermal/battery throttling.
             Text(
-                text = stringResource(R.string.settings_offline_ai_waiting_wifi),
+                text = state.reason,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(start = 48.dp)
