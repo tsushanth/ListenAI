@@ -95,6 +95,14 @@ class TalkbackLabelCache private constructor(private val context: Context) {
         }
     }
 
+    /**
+     * All cached label texts in manifest order. Used by the per-voice
+     * pre-warm worker to know which labels to synthesize for a newly
+     * selected voice so they hit the per-voice cache on first use
+     * instead of falling through to live Kokoro synth.
+     */
+    fun allTexts(): List<String> = manifestByHash.values.map { it.text }
+
     private data class ManifestEntry(val text: String, val norm: String, val file: String, val audioMs: Int)
 
     companion object {

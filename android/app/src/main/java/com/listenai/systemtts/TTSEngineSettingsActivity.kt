@@ -39,7 +39,9 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -231,6 +233,24 @@ private fun VoiceCatalogScreen(padding: PaddingValues) {
     val selectedVoiceId by settings.selectedVoiceId.collectAsState()
     var clones by remember { mutableStateOf(VoiceCatalog.clonedVoices()) }
 
+    // Per-voice cache pre-warm orchestrator. Exposes Status (Idle /
+    // Running / Done / Failed) per voiceKey so each VoiceRow can render
+    // its own cache-status badge + Optimize action. Dorothy (af_heart)
+    // is special — already covered by the bundled TalkbackLabelCache,
+    // so it shows "Optimized (built-in)" regardless of this map.
+    val preWarmMgr = remember { PerVoicePreWarmManager.getInstance(context) }
+    val preWarmStates by preWarmMgr.states.collectAsState()
+    // Start observing every built-in voice's WorkInfo state on screen
+    // entry so "Already optimized" reflects past runs (not just
+    // ones started in the current session).
+    LaunchedEffect(Unit) {
+        for (p in VoiceCatalog.presets()) {
+            val vk = p.providerVoiceId ?: continue
+            if (vk == "af_heart") continue                // bundled — no work to observe
+            preWarmMgr.startObserving(vk)
+        }
+    }
+
     val controller = remember { PreviewController() }
     var inFlight by remember { mutableStateOf<String?>(null) }   // voice name being synthesized
     var playing by remember { mutableStateOf<String?>(null) }    // voice name currently playing
@@ -411,13 +431,21 @@ private fun VoiceCatalogScreen(padding: PaddingValues) {
                     if (it.size >= 2) it[0] to it[1] else it[0] to "US"
                 }
                 val voiceName = "readaloud-${preset.id.lowercase()}-${lang.lowercase()}-${region.lowercase()}"
+                // Per-voice cache pre-warm status. Dorothy (af_heart) ships
+                // a bundled cache so it's always "Optimized"; other voices
+                // start Idle until the user taps Optimize.
+                val voiceKey = preset.providerVoiceId.orEmpty()
+                val preWarmStatus = preWarmStates[voiceKey] ?: PerVoicePreWarmManager.Status.Idle
                 VoiceRow(
                     preset = preset,
                     isLoading = inFlight == voiceName,
                     isPlaying = playing == voiceName,
                     isSelected = selectedVoiceId == preset.id,
+                    preWarmStatus = preWarmStatus,
                     onSelect = { settings.setSelectedVoiceId(preset.id) },
-                    onPreview = { preview(voiceName, preset) }
+                    onPreview = { preview(voiceName, preset) },
+                    onOptimize = { preWarmMgr.start(voiceKey) },
+                    onPauseOptimize = { preWarmMgr.cancel(voiceKey) },
                 )
             }
             item("diagnostics") {
@@ -769,13 +797,32 @@ private fun VoiceRow(
     isLoading: Boolean,
     isPlaying: Boolean,
     isSelected: Boolean,
+    preWarmStatus: PerVoicePreWarmManager.Status,
     onSelect: () -> Unit,
     onPreview: () -> Unit,
+    onOptimize: () -> Unit,
+    onPauseOptimize: () -> Unit,
 ) {
+    // Dorothy ships with a bundled cache so she's always considered
+    // optimized — no work to run, no Optimize action shown.
+    val isBundled = preset.providerVoiceId == "af_heart"
+
     // Build a single accessibility-merged content description so TalkBack
     // reads the row as one focus target, including selected state. Without
     // this, TalkBack hops between sub-elements (avatar, name, language
     // chip, preview button) and the row itself has no announced action.
+    val cacheBadgeForA11y = when {
+        isBundled -> "cache optimized (built-in)"
+        preWarmStatus is PerVoicePreWarmManager.Status.Running -> {
+            val pct = if (preWarmStatus.total > 0)
+                (preWarmStatus.processed * 100 / preWarmStatus.total).coerceIn(0, 100)
+            else 0
+            "optimizing cache, $pct percent"
+        }
+        preWarmStatus is PerVoicePreWarmManager.Status.Done -> "cache optimized"
+        preWarmStatus is PerVoicePreWarmManager.Status.Failed -> "cache optimization failed"
+        else -> "cache not optimized"
+    }
     val description = buildString {
         append(preset.name)
         append(", ")
@@ -783,6 +830,7 @@ private fun VoiceRow(
         append(", ")
         append(preset.gender.name.lowercase())
         if (preset.tier == VoiceTier.PREMIUM) append(", premium voice")
+        append(", "); append(cacheBadgeForA11y)
         append(if (isSelected) ", selected" else ", not selected. Double-tap to select.")
     }
 
@@ -799,54 +847,135 @@ private fun VoiceRow(
             },
         colors = CardDefaults.cardColors(),
     ) {
-        Row(
+        Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Selection indicator — visible radio/check so sighted users see
+                // which voice is currently the system default. Tinted to match
+                // the row's state.
+                Icon(
+                    imageVector = if (isSelected) Icons.Default.Check else Icons.Default.RadioButtonUnchecked,
+                    contentDescription = null,
+                    tint = if (isSelected) MaterialTheme.colorScheme.primary
+                           else MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(24.dp),
+                )
+                Box(modifier = Modifier.size(8.dp))
+                VoiceAvatar(preset)
+                Column(modifier = Modifier
+                    .padding(start = 16.dp)
+                    .weight(1f)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = preset.name,
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 16.sp
+                        )
+                        if (preset.tier == VoiceTier.PREMIUM) {
+                            AssistChip(
+                                onClick = { /* TODO(M4): launch RevenueCat purchase */ },
+                                label = { Text("Premium") },
+                                leadingIcon = {
+                                    Icon(Icons.Default.Lock, contentDescription = null,
+                                         modifier = Modifier.size(16.dp))
+                                },
+                                colors = AssistChipDefaults.assistChipColors(),
+                                modifier = Modifier.padding(start = 8.dp)
+                            )
+                        }
+                    }
+                    Text(
+                        text = "${preset.languageCode} · ${preset.gender.name.lowercase()}",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                PreviewButton(isLoading = isLoading, isPlaying = isPlaying, onClick = onPreview)
+            }
+
+            // Cache-status row. Hidden for the bundled Dorothy voice in
+            // a low-key way ("Optimized (built-in)" + no action) so the
+            // UX is uniform but doesn't invite a useless tap. For every
+            // other voice this is the entire pre-warm control surface
+            // — badge + Optimize/Pause button.
+            VoiceCacheStatusRow(
+                isBundled = isBundled,
+                status = preWarmStatus,
+                onOptimize = onOptimize,
+                onPause = onPauseOptimize,
+            )
+        }
+    }
+}
+
+/**
+ * Per-voice cache-fill status + action. Renders as a thin row below the
+ * main VoiceRow content so it's discoverable but doesn't dominate the
+ * card. Four visible states:
+ *   - bundled (Dorothy): "Optimized (built-in)"  — no action
+ *   - Idle:              "Not optimized • ~50 min, background" + Optimize
+ *   - Running(p, t):     "Optimizing X% (P of T)"               + Pause
+ *   - Done:              "Optimized"                            — no action
+ *   - Failed:            "Optimization failed"                  + Retry
+ */
+@Composable
+private fun VoiceCacheStatusRow(
+    isBundled: Boolean,
+    status: PerVoicePreWarmManager.Status,
+    onOptimize: () -> Unit,
+    onPause: () -> Unit,
+) {
+    val (badge, action) = when {
+        isBundled -> "Optimized (built-in)" to null
+        status is PerVoicePreWarmManager.Status.Running -> {
+            val pct = if (status.total > 0)
+                (status.processed * 100 / status.total).coerceIn(0, 100)
+            else 0
+            val label = if (status.total > 0)
+                "Optimizing… $pct% (${status.processed} of ${status.total})"
+            else "Optimizing…"
+            label to ("Pause" to onPause)
+        }
+        status is PerVoicePreWarmManager.Status.Done -> "Optimized" to null
+        status is PerVoicePreWarmManager.Status.Failed ->
+            "Optimization failed" to ("Retry" to onOptimize)
+        // Idle / not-yet-started — be explicit about the one-time cost
+        // so a user who taps Optimize already knows it's a slow job
+        // they can pause; matches the user's "make it clear this will
+        // take time" requirement. Empirical on Galaxy S22: ~3 sec/
+        // label × 6184 labels ≈ 5h, faster on Pixel. Phrasing leaves
+        // room for either.
+        else -> "Not optimized • several hours in the background, pause anytime" to ("Optimize" to onOptimize)
+    }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = badge,
+            fontSize = 12.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.weight(1f),
+        )
+        if (action != null) {
+            val (actionLabel, onClick) = action
+            TextButton(onClick = onClick) {
+                Text(actionLabel, fontSize = 12.sp)
+            }
+        }
+    }
+    if (status is PerVoicePreWarmManager.Status.Running && status.total > 0) {
+        LinearProgressIndicator(
+            progress = { (status.processed.toFloat() / status.total).coerceIn(0f, 1f) },
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Selection indicator — visible radio/check so sighted users see
-            // which voice is currently the system default. Tinted to match
-            // the row's state.
-            Icon(
-                imageVector = if (isSelected) Icons.Default.Check else Icons.Default.RadioButtonUnchecked,
-                contentDescription = null,
-                tint = if (isSelected) MaterialTheme.colorScheme.primary
-                       else MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(24.dp),
-            )
-            Box(modifier = Modifier.size(8.dp))
-            VoiceAvatar(preset)
-            Column(modifier = Modifier
-                .padding(start = 16.dp)
-                .weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = preset.name,
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 16.sp
-                    )
-                    if (preset.tier == VoiceTier.PREMIUM) {
-                        AssistChip(
-                            onClick = { /* TODO(M4): launch RevenueCat purchase */ },
-                            label = { Text("Premium") },
-                            leadingIcon = {
-                                Icon(Icons.Default.Lock, contentDescription = null,
-                                     modifier = Modifier.size(16.dp))
-                            },
-                            colors = AssistChipDefaults.assistChipColors(),
-                            modifier = Modifier.padding(start = 8.dp)
-                        )
-                    }
-                }
-                Text(
-                    text = "${preset.languageCode} · ${preset.gender.name.lowercase()}",
-                    fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            PreviewButton(isLoading = isLoading, isPlaying = isPlaying, onClick = onPreview)
-        }
+                .padding(top = 4.dp),
+        )
     }
 }
 
