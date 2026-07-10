@@ -46,7 +46,7 @@ export default function ReaderPage() {
     setError(null)
 
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://listenai-backend-917362189743.us-central1.run.app'
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://listenai-backend.fly.dev'
       const deviceId = localStorage.getItem('deviceId') || crypto.randomUUID()
       localStorage.setItem('deviceId', deviceId)
 

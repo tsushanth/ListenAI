@@ -10,7 +10,7 @@ export interface EnvConfig {
   SUPABASE_URL: string;
   SUPABASE_SERVICE_ROLE_KEY: string;
   SUPABASE_JWT_SECRET: string;
-  OPENAI_API_KEY?: string;
+  ANTHROPIC_API_KEY?: string;
   SELFHOSTED_TTS_URL?: string;
   SELFHOSTED_TTS_API_KEY?: string;
   ELEVENLABS_API_KEY?: string;
@@ -526,6 +526,10 @@ export interface TTSJobStatusResponse {
     percentage: number;
     estimated_remaining_sec?: number;  // Estimated synthesis time remaining (based on measured rate)
   };
+  // Global queue context. Computed at poll time.
+  // queue_position is null once the job leaves queued/processing.
+  queue_depth?: number;       // Total queued+processing jobs across ALL users
+  queue_position?: number | null;  // 1-based position of THIS job in the global queue
   audio_url?: string;        // Full audio URL (when status is 'ready')
   preview_url?: string;      // Preview audio URL (when status is 'partial_ready' or 'ready')
   preview_duration_sec?: number;  // Duration of preview in seconds

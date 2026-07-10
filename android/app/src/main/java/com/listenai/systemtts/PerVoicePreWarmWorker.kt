@@ -60,6 +60,27 @@ class PerVoicePreWarmWorker(
                 Data.Builder().putString(KEY_ERROR, "no preset for voice_key=$voiceKey").build()
             )
 
+        // Wrap the rest of the run in a broad catch: on Samsung + Android 12+
+        // setForeground() can throw ForegroundServiceStartNotAllowedException,
+        // Kokoro session init can NPE if the model isn't downloaded yet, etc.
+        // In those cases we return success with a silent-abort marker so the
+        // UI drops back to Idle (Optimize button re-enables) rather than
+        // showing an alarming "cache optimization failed" state.
+        return@withContext try {
+            runPreWarm(voiceKey, preset)
+        } catch (t: Throwable) {
+            Log.w(TAG, "pre-warm aborted for voiceKey=$voiceKey: ${t.javaClass.simpleName}: ${t.message}")
+            Result.success(
+                Data.Builder()
+                    .putString(KEY_VOICE_KEY, voiceKey)
+                    .putBoolean(KEY_SILENT_ABORT, true)
+                    .putString(KEY_ABORT_REASON, "${t.javaClass.simpleName}: ${t.message}")
+                    .build()
+            )
+        }
+    }
+
+    private suspend fun runPreWarm(voiceKey: String, preset: com.listenai.data.models.VoicePreset): Result {
         Log.i(TAG, "starting pre-warm for voiceKey=$voiceKey (preset=${preset.name})")
 
         val labelCache = TalkbackLabelCache.getInstance(applicationContext)
@@ -70,7 +91,16 @@ class PerVoicePreWarmWorker(
         val total = allLabels.size
         Log.i(TAG, "pre-warm corpus: $total labels")
 
-        setForeground(createForegroundInfo(preset.name, 0, total))
+        // Foreground promotion is best-effort. Samsung's One UI + Android 12+
+        // stricter foreground-service starts can refuse this with a
+        // ForegroundServiceStartNotAllowedException; if that happens we
+        // downgrade to non-foreground mode (worker keeps running, just
+        // lower priority + no persistent notification).
+        try {
+            setForeground(createForegroundInfo(preset.name, 0, total))
+        } catch (t: Throwable) {
+            Log.w(TAG, "setForeground denied by OS (continuing as background): ${t.message}")
+        }
 
         var done = 0
         var skipped = 0
@@ -81,7 +111,7 @@ class PerVoicePreWarmWorker(
             // Honor WorkManager cancellation cleanly between labels.
             if (isStopped) {
                 Log.i(TAG, "stopped at $index/$total (done=$done skipped=$skipped failed=$failed)")
-                return@withContext Result.success(progressData(voiceKey, index, total, done, skipped, failed))
+                return Result.success(progressData(voiceKey, index, total, done, skipped, failed))
             }
             // Already cached? Skip — this is what makes the worker
             // resumable across pauses/kills/retries.
@@ -120,13 +150,20 @@ class PerVoicePreWarmWorker(
             val processed = index + 1
             setProgress(progressData(voiceKey, processed, total, done, skipped, failed))
             if (processed % 5 == 0 || processed == total) {
-                setForeground(createForegroundInfo(preset.name, processed, total))
+                try {
+                    setForeground(createForegroundInfo(preset.name, processed, total))
+                } catch (t: Throwable) {
+                    // Same fallback as the initial setForeground — if the OS
+                    // refuses mid-run, keep synthesizing without the
+                    // foreground promotion.
+                    Log.w(TAG, "setForeground mid-run denied (continuing): ${t.message}")
+                }
             }
         }
 
         val elapsedMs = System.currentTimeMillis() - tStart
         Log.i(TAG, "pre-warm done in ${elapsedMs}ms: done=$done skipped=$skipped failed=$failed of $total")
-        Result.success(progressData(voiceKey, total, total, done, skipped, failed))
+        return Result.success(progressData(voiceKey, total, total, done, skipped, failed))
     }
 
     // ----------------------------------------------------------------
@@ -206,6 +243,12 @@ class PerVoicePreWarmWorker(
         const val KEY_SKIPPED = "skipped"
         const val KEY_FAILED = "failed"
         const val KEY_ERROR = "error"
+        // Set when the worker aborted cleanly (foreground denial, Kokoro not
+        // ready, etc.) — signals the manager to fall back to Status.Idle so
+        // the UI shows "cache not optimized" instead of "cache optimization
+        // failed." Read by PerVoicePreWarmManager on SUCCEEDED.
+        const val KEY_SILENT_ABORT = "silent_abort"
+        const val KEY_ABORT_REASON = "abort_reason"
 
         /** Unique work name per voice — pause/cancel one voice without affecting others. */
         fun workName(voiceKey: String): String = "voice_pre_warm_$voiceKey"

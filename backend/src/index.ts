@@ -22,9 +22,11 @@ import { aiRouter } from './routes/ai.js';
 import { adminRouter } from './routes/admin.js';
 import { workerPushRouter } from './routes/workerPush.js';
 import { clonedVoicesRouter } from './routes/clonedVoices.js';
+import { storiesRouter } from './routes/stories.js';
 import { voiceMarketplaceRouter } from './routes/voiceMarketplace.js';
 import { stripeWebhookRouter } from './routes/stripeWebhook.js';
 import { authRouter } from './routes/auth.js';
+import { appConfigRouter } from './routes/appConfig.js';
 import { aggregateLatencyMetrics, checkSupabaseHealth, checkStorageHealth } from './lib/supabaseClient.js';
 import { startWorker, stopWorker } from './workers/ttsJobWorker.js';
 import { checkPubSubHealth } from './lib/pubsub.js';
@@ -191,12 +193,19 @@ app.use('/api/tts', workerPushRouter);
 // Cloned voices routes (requires auth) - for voice cloning with Chatterbox
 app.use('/api/cloned-voices', clonedVoicesRouter);
 
+// Story generation (Lullaby Haven custom bedtime stories) — X-Device-ID gated,
+// per-device rate limit set inside the router.
+app.use('/api/stories', storiesRouter);
+
 
 // Voice marketplace routes - for sharing and discovering cloned voices
 app.use('/api/marketplace', voiceMarketplaceRouter);
 
 // Auth routes - for Apple/Google sign-in (no auth middleware - handles its own auth)
 app.use('/api/auth', authRouter);
+
+// App config - public, no auth required (paywall mode, feature flags)
+app.use('/api/config', appConfigRouter);
 
 // ============================================================================
 // Error Handling

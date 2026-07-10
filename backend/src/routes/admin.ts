@@ -17,6 +17,7 @@ import {
   removeFromBlocklist,
   isUserInJobApiRollout,
 } from '../lib/rollout.js';
+import { getPaywallMode, setPaywallMode, type PaywallMode } from '../lib/paywallConfig.js';
 import {
   getFailureStats,
   getInferenceLatencyStats,
@@ -27,6 +28,7 @@ import {
   type TTFBMetrics,
 } from '../lib/elevenLabsClient.js';
 import type { AuthenticatedRequest } from '../types/index.js';
+import { ttsMetricsRouter } from './ttsMetrics.js';
 
 // ============================================================================
 // Admin Logger
@@ -77,6 +79,35 @@ export const adminRouter = Router();
 
 // All admin routes require API key
 adminRouter.use(requireAdminAuth);
+
+// Mount /admin/tts-metrics — single-endpoint TTS pipeline dashboard.
+// Inherits the x-admin-key auth from the parent router.
+adminRouter.use('/tts-metrics', ttsMetricsRouter);
+
+// ============================================================================
+// GET /admin/paywall-mode - Get current paywall mode
+// ============================================================================
+
+adminRouter.get('/paywall-mode', (_req: Request, res: Response) => {
+  res.json({ paywallMode: getPaywallMode() });
+});
+
+// ============================================================================
+// POST /admin/paywall-mode - Set paywall mode ("soft" | "aggressive")
+// ============================================================================
+
+adminRouter.post('/paywall-mode', (req: Request, res: Response) => {
+  const { mode } = req.body as { mode?: string };
+
+  if (mode !== 'soft' && mode !== 'aggressive') {
+    res.status(400).json({ error: 'mode must be "soft" or "aggressive"' });
+    return;
+  }
+
+  setPaywallMode(mode as PaywallMode);
+  adminLogger.info({ mode }, 'Paywall mode updated');
+  res.json({ success: true, paywallMode: getPaywallMode() });
+});
 
 // ============================================================================
 // GET /admin/rollout - Get rollout status

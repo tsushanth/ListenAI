@@ -1,18 +1,19 @@
 import { Router, Request, Response, NextFunction, RequestHandler } from 'express';
 import { z } from 'zod';
-import OpenAI from 'openai';
+import Anthropic from '@anthropic-ai/sdk';
 import { logger } from '../lib/logger.js';
 import { config } from '../lib/config.js';
 import type { AuthenticatedRequest } from '../types/index.js';
 import { ValidationError, AuthorizationError } from '../types/index.js';
 
 // ============================================================================
-// OpenAI Client
+// Anthropic Client
 // ============================================================================
 
-const openai = config.OPENAI_API_KEY
-  ? new OpenAI({ apiKey: config.OPENAI_API_KEY })
+const anthropic = config.ANTHROPIC_API_KEY
+  ? new Anthropic({ apiKey: config.ANTHROPIC_API_KEY })
   : null;
+const LLM_MODEL = 'claude-sonnet-4-6';
 
 // ============================================================================
 // Async Handler Wrapper
@@ -50,7 +51,7 @@ const summarizeRequestSchema = z.object({
 aiRouter.post(
   '/summarize',
   asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-    if (!openai) {
+    if (!anthropic) {
       throw new AuthorizationError('AI features are not configured');
     }
 
@@ -129,26 +130,26 @@ Provide clear, accurate answers based on the article content.`;
     try {
       const startTime = Date.now();
 
-      const completion = await openai.chat.completions.create({
-        model: 'gpt-4o-mini', // Cost-effective model for summarization
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt },
-        ],
+      const completion = await anthropic.messages.create({
+        model: LLM_MODEL,
+        system: systemPrompt,
+        messages: [{ role: 'user', content: userPrompt }],
         max_tokens: 1000,
         temperature: 0.7,
       });
 
       const responseTime = Date.now() - startTime;
-      const aiResponse = completion.choices[0]?.message?.content ?? 'Unable to generate response.';
+      const firstBlock = completion.content[0];
+      const aiResponse =
+        firstBlock && firstBlock.type === 'text' ? firstBlock.text : 'Unable to generate response.';
 
       logger.info(
         {
           userId,
           action,
           responseTimeMs: responseTime,
-          inputTokens: completion.usage?.prompt_tokens,
-          outputTokens: completion.usage?.completion_tokens,
+          inputTokens: completion.usage?.input_tokens,
+          outputTokens: completion.usage?.output_tokens,
         },
         'AI summarize completed'
       );
@@ -158,7 +159,7 @@ Provide clear, accurate answers based on the article content.`;
         response: aiResponse,
         action,
         metadata: {
-          model: 'gpt-4o-mini',
+          model: LLM_MODEL,
           response_time_ms: responseTime,
           input_length: truncatedText.length,
           was_truncated: text.length > maxInputChars,
@@ -177,7 +178,7 @@ Provide clear, accurate answers based on the article content.`;
 
 aiRouter.get('/status', (_req: Request, res: Response) => {
   res.json({
-    available: openai !== null,
+    available: anthropic !== null,
     features: ['summarize', 'key_points', 'explain', 'custom'],
   });
 });

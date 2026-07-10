@@ -1,0 +1,19 @@
+                        -H/Users/sushanthtiruvaipati/Documents/GitHub/ReadAloudAI/android/app/src/main/cpp
+-DCMAKE_SYSTEM_NAME=Android
+-DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+-DCMAKE_SYSTEM_VERSION=26
+-DANDROID_PLATFORM=android-26
+-DANDROID_ABI=arm64-v8a
+-DCMAKE_ANDROID_ARCH_ABI=arm64-v8a
+-DANDROID_NDK=/Users/sushanthtiruvaipati/Library/Android/sdk/ndk/27.0.12077973
+-DCMAKE_ANDROID_NDK=/Users/sushanthtiruvaipati/Library/Android/sdk/ndk/27.0.12077973
+-DCMAKE_TOOLCHAIN_FILE=/Users/sushanthtiruvaipati/Library/Android/sdk/ndk/27.0.12077973/build/cmake/android.toolchain.cmake
+-DCMAKE_MAKE_PROGRAM=/Users/sushanthtiruvaipati/Library/Android/sdk/cmake/3.22.1/bin/ninja
+-DCMAKE_LIBRARY_OUTPUT_DIRECTORY=/Users/sushanthtiruvaipati/Documents/GitHub/ReadAloudAI/android/app/build/intermediates/cxx/RelWithDebInfo/4t465p48/obj/arm64-v8a
+-DCMAKE_RUNTIME_OUTPUT_DIRECTORY=/Users/sushanthtiruvaipati/Documents/GitHub/ReadAloudAI/android/app/build/intermediates/cxx/RelWithDebInfo/4t465p48/obj/arm64-v8a
+-DCMAKE_BUILD_TYPE=RelWithDebInfo
+-B/Users/sushanthtiruvaipati/Documents/GitHub/ReadAloudAI/android/app/.cxx/RelWithDebInfo/4t465p48/arm64-v8a
+-GNinja
+-DANDROID_STL=c++_shared
+                        Build command args: []
+                        Version: 2

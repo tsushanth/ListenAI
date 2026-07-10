@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  System TTS engine capability descriptor for ReadAloud AI.
+
+  Read by the Android framework when the user opens
+  Settings → Accessibility → Text-to-speech output.
+
+  android:settingsActivity is the in-Settings voice catalog launched when
+  the user taps the ⚙ next to "ReadAloud AI Voices" in the engine list.
+-->
+<tts-engine xmlns:android="http://schemas.android.com/apk/res/android"
+    android:settingsActivity="com.listenai.systemtts.TTSEngineSettingsActivity" />

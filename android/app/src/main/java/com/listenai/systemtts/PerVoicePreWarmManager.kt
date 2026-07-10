@@ -1,6 +1,7 @@
 package com.listenai.systemtts
 
 import android.content.Context
+import android.util.Log
 import androidx.work.Constraints
 import androidx.work.Data
 import androidx.work.ExistingWorkPolicy
@@ -86,8 +87,21 @@ class PerVoicePreWarmManager private constructor(private val context: Context) {
             val newStatus = when (info.state) {
                 WorkInfo.State.RUNNING, WorkInfo.State.ENQUEUED, WorkInfo.State.BLOCKED ->
                     if (total > 0) Status.Running(processed, total) else Status.Running(0, 0)
-                WorkInfo.State.SUCCEEDED ->
-                    Status.Done(total)
+                WorkInfo.State.SUCCEEDED -> {
+                    // Silent-abort path: worker caught an OS-refusal (e.g.
+                    // Samsung foreground-service denial or Kokoro session
+                    // not ready) and returned success with a marker rather
+                    // than failure. Show Idle so the Optimize button
+                    // re-enables and a fresh foreground tap can retry.
+                    val silent = info.outputData.getBoolean(PerVoicePreWarmWorker.KEY_SILENT_ABORT, false)
+                    if (silent) {
+                        val reason = info.outputData.getString(PerVoicePreWarmWorker.KEY_ABORT_REASON)
+                        Log.i(TAG, "silent abort for $voiceKey (reason=$reason) -> Idle")
+                        Status.Idle
+                    } else {
+                        Status.Done(total)
+                    }
+                }
                 WorkInfo.State.FAILED ->
                     Status.Failed(info.outputData.getString(PerVoicePreWarmWorker.KEY_ERROR) ?: "Pre-warm failed")
                 WorkInfo.State.CANCELLED ->
@@ -100,6 +114,7 @@ class PerVoicePreWarmManager private constructor(private val context: Context) {
     }
 
     companion object {
+        private const val TAG = "PerVoicePreWarm"
         @Volatile private var INSTANCE: PerVoicePreWarmManager? = null
 
         fun getInstance(context: Context): PerVoicePreWarmManager {

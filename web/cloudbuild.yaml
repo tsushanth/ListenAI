@@ -39,4 +39,4 @@ timeout: '1200s'
 # Substitution variables - set these in the Cloud Build trigger
 substitutions:
   _NEXT_PUBLIC_APP_URL: 'https://readaloudai.org'
-  _NEXT_PUBLIC_API_URL: 'https://listenai-backend-917362189743.us-central1.run.app'
+  _NEXT_PUBLIC_API_URL: 'https://listenai-backend.fly.dev'

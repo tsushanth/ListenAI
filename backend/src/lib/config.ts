@@ -15,7 +15,9 @@ const envSchema = z.object({
   SUPABASE_JWT_SECRET: z.string().min(1),
 
   // TTS Providers
-  OPENAI_API_KEY: z.string().optional(),
+  // OPENAI_API_KEY removed — listenai-backend's LLM calls (summarize +
+  // article cleanup) now go through Anthropic. OpenAI billing is off.
+  ANTHROPIC_API_KEY: z.string().optional(),
   SELFHOSTED_TTS_URL: z.string().url().optional(),
   SELFHOSTED_TTS_API_KEY: z.string().optional(),
 

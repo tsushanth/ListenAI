@@ -128,16 +128,6 @@
             android:exported="true"
             android:theme="@style/Theme.ListenAI" />
 
-        <!-- Diagnostic activity (M2.6 development). Loads each Chatterbox
-             ONNX session and shows its input/output tensor names so we can
-             verify the inference wiring against the real export.
-             Launch: adb shell am start -n com.listenai/.systemtts.ChatterboxDebugActivity -->
-        <activity
-            android:name=".systemtts.ChatterboxDebugActivity"
-            android:label="Chatterbox tensor inspector"
-            android:exported="true"
-            android:theme="@style/Theme.ListenAI" />
-
         <!-- Headless benchmark for the system TTS path. Invokes our engine
              via the public TextToSpeech client API and logs precise
              timestamps for every stage. Pair with scrcpy audio capture to

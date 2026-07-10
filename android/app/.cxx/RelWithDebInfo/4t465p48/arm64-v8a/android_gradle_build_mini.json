@@ -1,0 +1,29 @@
+{
+  "buildFiles": [
+    "/Users/sushanthtiruvaipati/Documents/GitHub/ReadAloudAI/android/app/src/main/cpp/CMakeLists.txt"
+  ],
+  "cleanCommandsComponents": [
+    [
+      "/Users/sushanthtiruvaipati/Library/Android/sdk/cmake/3.22.1/bin/ninja",
+      "-C",
+      "/Users/sushanthtiruvaipati/Documents/GitHub/ReadAloudAI/android/app/.cxx/RelWithDebInfo/4t465p48/arm64-v8a",
+      "clean"
+    ]
+  ],
+  "buildTargetsCommandComponents": [
+    "/Users/sushanthtiruvaipati/Library/Android/sdk/cmake/3.22.1/bin/ninja",
+    "-C",
+    "/Users/sushanthtiruvaipati/Documents/GitHub/ReadAloudAI/android/app/.cxx/RelWithDebInfo/4t465p48/arm64-v8a",
+    "{LIST_OF_TARGETS_TO_BUILD}"
+  ],
+  "libraries": {
+    "espeak_bridge::@6890427a1f51a3e7e1df": {
+      "artifactName": "espeak_bridge",
+      "abi": "arm64-v8a",
+      "output": "/Users/sushanthtiruvaipati/Documents/GitHub/ReadAloudAI/android/app/build/intermediates/cxx/RelWithDebInfo/4t465p48/obj/arm64-v8a/libespeak_bridge.so",
+      "runtimeFiles": [
+        "/Users/sushanthtiruvaipati/Documents/GitHub/ReadAloudAI/android/app/src/main/jniLibs/arm64-v8a/libespeak-ng.so"
+      ]
+    }
+  }
+}

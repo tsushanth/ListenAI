@@ -1,123 +1,54 @@
-import { PubSub, Message, Subscription } from '@google-cloud/pubsub';
+import { supabase } from './supabaseClient.js';
 import { logger } from './logger.js';
 
 // ============================================================================
-// Pub/Sub Client for TTS Job Queue
+// Job Queue — DB-only (post-GCP migration, 2026-05-25)
 // ============================================================================
+//
+// This file used to be a GCP Pub/Sub client. After the move off GCP, the
+// queue is now driven entirely by the `tts_jobs` table in Supabase:
+//   - Job creation = INSERT row with status='queued'
+//   - Job pickup = the worker's built-in DB poll (3s cadence in
+//     `workers/ttsJobWorker.ts startWorker()`) SELECTs queued rows and
+//     atomically claims them by flipping status='processing'
+//   - Job retry = UPDATE row back to status='queued' with retry_count++
+//
+// The exports below preserve the old Pub/Sub-style public API so callers
+// in routes/tts.ts and workers/ttsJobWorker.ts don't have to change.
+// They're thin shims over the DB-only model.
+//
+// Filename is kept as pubsub.ts only to minimize the import churn. Treat
+// this as the job queue module.
 
-const pubsubLogger = logger.child({ module: 'pubsub' });
+const queueLogger = logger.child({ module: 'jobQueue' });
 
-// Configuration
-const PROJECT_ID = process.env.GOOGLE_CLOUD_PROJECT || 'summarizerproxy';
-const TOPIC_NAME = process.env.PUBSUB_TOPIC || 'tts-jobs';
-const SUBSCRIPTION_NAME = process.env.PUBSUB_SUBSCRIPTION || 'tts-jobs-worker';
-
-// Initialize Pub/Sub client
-const pubsub = new PubSub({ projectId: PROJECT_ID });
-
-// ============================================================================
-// Retry Configuration
-// ============================================================================
-
-const MAX_PUBLISH_RETRIES = 3;
-const PUBLISH_BASE_DELAY_MS = 1000;
-
-const RETRYABLE_ERROR_CODES = [
-  'ECONNRESET',
-  'ECONNREFUSED',
-  'ETIMEDOUT',
-  'ENOTFOUND',
-  'UND_ERR_SOCKET',
-];
-
-function isRetryablePublishError(error: unknown): boolean {
-  if (error instanceof Error) {
-    const message = error.message || '';
-    for (const code of RETRYABLE_ERROR_CODES) {
-      if (message.includes(code)) return true;
-    }
-  }
-  return false;
-}
-
-/**
- * Retry wrapper for Pub/Sub publish operations.
- */
-async function withPublishRetry<T>(
-  operation: () => Promise<T>,
-  context: string
-): Promise<T> {
-  let lastError: Error | undefined;
-
-  for (let attempt = 0; attempt <= MAX_PUBLISH_RETRIES; attempt++) {
-    try {
-      return await operation();
-    } catch (error) {
-      lastError = error as Error;
-
-      if (!isRetryablePublishError(error)) {
-        throw error;
-      }
-
-      if (attempt >= MAX_PUBLISH_RETRIES) {
-        pubsubLogger.error(
-          { error, attempt: attempt + 1, context },
-          `Pub/Sub publish failed after ${MAX_PUBLISH_RETRIES + 1} attempts`
-        );
-        throw error;
-      }
-
-      const delay = PUBLISH_BASE_DELAY_MS * Math.pow(2, attempt) + Math.random() * 500;
-      pubsubLogger.warn(
-        { error: lastError.message, attempt: attempt + 1, delayMs: Math.round(delay), context },
-        'Pub/Sub publish failed, retrying...'
-      );
-
-      await new Promise(resolve => setTimeout(resolve, delay));
-    }
-  }
-
-  throw lastError;
-}
-
-// Job message payload
+// Job message payload — kept stable for callsite compatibility
 export interface TTSJobMessage {
   jobId: string;
-  attempt: number;  // 1-based attempt number
+  attempt: number; // 1-based attempt number
   publishedAt: string;
 }
 
+export type MessageHandler = (message: TTSJobMessage) => Promise<void>;
+
 /**
- * Publish a TTS job to the queue.
- * Called by the API when a new job is created.
+ * Publish a TTS job. With the DB-only queue, the row's existing
+ * `status='queued'` IS the publish — the worker's polling loop picks it
+ * up within ~3s. This function is a no-op kept for API stability.
+ *
+ * Returns the jobId in place of the old Pub/Sub message ID so any
+ * caller that logs the return value keeps working.
  */
 export async function publishTTSJob(jobId: string): Promise<string> {
-  const topic = pubsub.topic(TOPIC_NAME);
-
-  const message: TTSJobMessage = {
-    jobId,
-    attempt: 1,
-    publishedAt: new Date().toISOString(),
-  };
-
-  const messageBuffer = Buffer.from(JSON.stringify(message));
-
-  try {
-    const messageId = await withPublishRetry(
-      () => topic.publishMessage({ data: messageBuffer }),
-      `publishTTSJob(${jobId})`
-    );
-    pubsubLogger.info({ jobId, messageId }, 'Published TTS job to queue');
-    return messageId;
-  } catch (error) {
-    pubsubLogger.error({ error, jobId }, 'Failed to publish TTS job');
-    throw error;
-  }
+  queueLogger.debug({ jobId }, 'Job queued (DB poll will pick up)');
+  return jobId;
 }
 
 /**
- * Republish a job for retry with incremented attempt count.
- * Uses exponential backoff via Pub/Sub message scheduling.
+ * Mark a job for retry. The caller (worker) is responsible for the
+ * actual DB update — see `ttsJobWorker.ts` near the failure paths,
+ * which sets `status='queued'` + `retry_count`. We just return
+ * true/false to keep the original control flow.
  */
 export async function republishForRetry(
   jobId: string,
@@ -125,132 +56,46 @@ export async function republishForRetry(
   maxRetries: number = 3
 ): Promise<boolean> {
   if (currentAttempt >= maxRetries) {
-    pubsubLogger.warn({ jobId, attempt: currentAttempt, maxRetries }, 'Max retries reached, not republishing');
-    return false;
-  }
-
-  const topic = pubsub.topic(TOPIC_NAME);
-  const nextAttempt = currentAttempt + 1;
-
-  // Exponential backoff: 10s, 30s, 90s
-  const backoffSeconds = Math.pow(3, currentAttempt) * 10;
-
-  const message: TTSJobMessage = {
-    jobId,
-    attempt: nextAttempt,
-    publishedAt: new Date().toISOString(),
-  };
-
-  const messageBuffer = Buffer.from(JSON.stringify(message));
-
-  try {
-    // Pub/Sub doesn't natively support delayed messages,
-    // but we can use Cloud Scheduler or implement delay in worker
-    // For now, we'll republish immediately and let worker handle backoff
-    const messageId = await withPublishRetry(
-      () => topic.publishMessage({
-        data: messageBuffer,
-        attributes: {
-          attempt: String(nextAttempt),
-          backoffSeconds: String(backoffSeconds),
-        }
-      }),
-      `republishForRetry(${jobId}, attempt=${nextAttempt})`
+    queueLogger.warn(
+      { jobId, currentAttempt, maxRetries },
+      'Max retries reached, not requeuing'
     );
-
-    pubsubLogger.info({
-      jobId,
-      messageId,
-      attempt: nextAttempt,
-      backoffSeconds
-    }, 'Republished TTS job for retry');
-
-    return true;
-  } catch (error) {
-    pubsubLogger.error({ error, jobId }, 'Failed to republish TTS job for retry');
     return false;
   }
+  queueLogger.info(
+    { jobId, nextAttempt: currentAttempt + 1 },
+    'Job will be requeued for retry (caller updates DB row)'
+  );
+  return true;
 }
 
 /**
- * Message handler type for the worker.
+ * Subscribe to job messages. The worker's own DB-polling loop in
+ * `startWorker()` is now the only consumption path, so this is a no-op
+ * that returns an empty stop function. Kept so existing call sites
+ * compile and behave the same.
  */
-export type MessageHandler = (message: TTSJobMessage) => Promise<void>;
-
-/**
- * Start consuming messages from the subscription.
- * Returns a function to stop the subscription.
- */
-export function startSubscription(handler: MessageHandler): () => void {
-  const subscription = pubsub.subscription(SUBSCRIPTION_NAME);
-
-  pubsubLogger.info({ subscription: SUBSCRIPTION_NAME }, 'Starting Pub/Sub subscription');
-
-  const messageHandler = async (message: Message) => {
-    const startTime = Date.now();
-    let jobMessage: TTSJobMessage;
-
-    try {
-      jobMessage = JSON.parse(message.data.toString()) as TTSJobMessage;
-    } catch (error) {
-      pubsubLogger.error({ error, messageId: message.id }, 'Failed to parse message');
-      message.ack();  // Ack malformed messages to avoid infinite retries
-      return;
-    }
-
-    const { jobId, attempt } = jobMessage;
-    const backoffSeconds = message.attributes?.backoffSeconds
-      ? parseInt(message.attributes.backoffSeconds, 10)
-      : 0;
-
-    pubsubLogger.info({ jobId, attempt, messageId: message.id, backoffSeconds }, 'Processing message');
-
-    // If this is a retry with backoff, wait before processing
-    if (backoffSeconds > 0 && attempt > 1) {
-      pubsubLogger.info({ jobId, backoffSeconds }, 'Applying backoff delay');
-      await new Promise(resolve => setTimeout(resolve, backoffSeconds * 1000));
-    }
-
-    try {
-      await handler(jobMessage);
-      message.ack();
-
-      const processingTime = Date.now() - startTime;
-      pubsubLogger.info({ jobId, attempt, processingTime }, 'Message processed successfully');
-
-    } catch (error) {
-      pubsubLogger.error({ error, jobId, attempt }, 'Message handler failed');
-
-      // Nack the message to trigger Pub/Sub's built-in retry
-      // Or we handle retry ourselves with republish
-      message.ack();  // Ack anyway - we'll handle retry via republish
-    }
-  };
-
-  subscription.on('message', messageHandler);
-
-  subscription.on('error', (error: Error) => {
-    pubsubLogger.error({ error }, 'Subscription error');
-  });
-
-  // Return stop function
+export function startSubscription(_handler: MessageHandler): () => void {
+  queueLogger.info('startSubscription: using DB poll (no external queue)');
   return () => {
-    subscription.removeListener('message', messageHandler);
-    pubsubLogger.info('Pub/Sub subscription stopped');
+    queueLogger.debug('stopSubscription: no-op (DB poll lives in worker)');
   };
 }
 
 /**
- * Check if Pub/Sub is configured and available.
+ * Health check. With Pub/Sub gone, "queue health" reduces to "can we
+ * reach Supabase and read the jobs table?". Used by the /health route.
  */
 export async function checkPubSubHealth(): Promise<boolean> {
   try {
-    const topic = pubsub.topic(TOPIC_NAME);
-    const [exists] = await topic.exists();
-    return exists;
+    const { error } = await supabase.from('tts_jobs').select('id').limit(1);
+    return !error;
   } catch {
     return false;
   }
 }
 
-export { pubsub, TOPIC_NAME, SUBSCRIPTION_NAME };
+// Kept exported for any callsite that referenced these constants. Both
+// now point at the table name — the queue and the table are one.
+export const TOPIC_NAME = 'tts_jobs';
+export const SUBSCRIPTION_NAME = 'tts_jobs';

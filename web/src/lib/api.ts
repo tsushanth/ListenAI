@@ -1,6 +1,6 @@
 // API Service for Voice Marketplace
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://listenai-backend-917362189743.us-central1.run.app';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://listenai-backend.fly.dev';
 
 // Get or create device ID for user identification
 function getDeviceId(): string {

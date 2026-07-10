@@ -242,8 +242,16 @@ export async function getSubscription(userId: string): Promise<DBSubscription | 
  * Get user's subscription tier.
  */
 export async function getUserTier(userId: string): Promise<SubscriptionTier> {
-  // Default pro user gets unlimited tier
-  if (userId === 'pro-user-default' || userId === 'dev-user-001') {
+  // Default pro user gets unlimited tier. Includes the UUIDs the auth
+  // middleware assigns to unauthenticated requests — apps like LullabyHaven
+  // hit /api/tts/job-cloned without a Supabase JWT and should not be quota-
+  // capped against a shared bucket.
+  if (
+    userId === 'pro-user-default' ||
+    userId === 'dev-user-001' ||
+    userId === '00000000-0000-0000-0000-000000000001' ||
+    userId === '00000000-0000-0000-0000-000000000002'
+  ) {
     return 'unlimited';
   }
 
@@ -340,8 +348,16 @@ export async function canSynthesize(
   userId: string,
   characters: number
 ): Promise<QuotaCheckResult> {
-  // For default pro user (apps without auth), always allow with pro limits
-  if (userId === 'pro-user-default' || userId === 'dev-user-001') {
+  // For default pro user (apps without auth), always allow with pro limits.
+  // The string literals are legacy; the auth middleware now assigns UUIDs for
+  // unauthenticated requests, so include those too — otherwise LullabyHaven
+  // and other no-auth callers get quota-checked against a shared bucket.
+  if (
+    userId === 'pro-user-default' ||
+    userId === 'dev-user-001' ||
+    userId === '00000000-0000-0000-0000-000000000001' ||
+    userId === '00000000-0000-0000-0000-000000000002'
+  ) {
     logger.info({ userId, characters }, 'Default user - bypassing quota check with pro limits');
     return {
       allowed: true,
@@ -1126,6 +1142,42 @@ export async function getTTSJobForUser(jobId: string, userId: string): Promise<D
   }
 
   return data as DBTTSJob;
+}
+
+/**
+ * Compute global queue depth and this job's position in the queue.
+ * - queueDepth: count of jobs currently in 'queued' or 'processing' status across ALL users
+ * - queuePosition: 1-based position of THIS job in that queue (ordered by created_at ascending).
+ *   Returns null if the job is no longer queued/processing (e.g., ready/failed/canceled).
+ *
+ * Cheap: two indexed COUNT queries. Computed at poll time, not stored.
+ */
+export async function getQueueInfo(jobId: string): Promise<{ queueDepth: number; queuePosition: number | null }> {
+  // Total queued+processing globally
+  const { count: queueDepth } = await supabase
+    .from('tts_jobs')
+    .select('*', { count: 'exact', head: true })
+    .in('status', ['queued', 'processing']);
+
+  // This job's created_at — only meaningful if job itself is still in queue
+  const { data: jobRow } = await supabase
+    .from('tts_jobs')
+    .select('created_at, status')
+    .eq('id', jobId)
+    .single();
+
+  if (!jobRow || !['queued', 'processing'].includes(jobRow.status)) {
+    return { queueDepth: queueDepth ?? 0, queuePosition: null };
+  }
+
+  // Count jobs created before (or at) this one that are still queued/processing
+  const { count: ahead } = await supabase
+    .from('tts_jobs')
+    .select('*', { count: 'exact', head: true })
+    .in('status', ['queued', 'processing'])
+    .lte('created_at', jobRow.created_at);
+
+  return { queueDepth: queueDepth ?? 0, queuePosition: ahead ?? null };
 }
 
 /**

@@ -104,7 +104,6 @@
 		00A00000000000000000000A /* SignInPageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00B00000000000000000000A /* SignInPageView.swift */; };
 		00A00000000000000000000B /* OfflineAIPageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00B00000000000000000000B /* OfflineAIPageView.swift */; };
 		00A00000000000000000000C /* TTSSampleComparisonView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00B00000000000000000000C /* TTSSampleComparisonView.swift */; };
-		00A00000000000000000000D /* OfflineDownloadPageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00B00000000000000000000D /* OfflineDownloadPageView.swift */; };
 		00CTPV0000000000000001 /* CloudTTSProgressView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00CTPV0000000000000002 /* CloudTTSProgressView.swift */; };
 		00D000000000000000000001 /* voice_sample_rachel.wav in Resources */ = {isa = PBXBuildFile; fileRef = 00E000000000000000000001 /* voice_sample_rachel.wav */; };
 		00D000000000000000000002 /* voice_sample_adam.wav in Resources */ = {isa = PBXBuildFile; fileRef = 00E000000000000000000002 /* voice_sample_adam.wav */; };
@@ -244,7 +243,6 @@
 		00B00000000000000000000A /* SignInPageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignInPageView.swift; sourceTree = "<group>"; };
 		00B00000000000000000000B /* OfflineAIPageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfflineAIPageView.swift; sourceTree = "<group>"; };
 		00B00000000000000000000C /* TTSSampleComparisonView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TTSSampleComparisonView.swift; sourceTree = "<group>"; };
-		00B00000000000000000000D /* OfflineDownloadPageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfflineDownloadPageView.swift; sourceTree = "<group>"; };
 		00CTPV0000000000000002 /* CloudTTSProgressView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudTTSProgressView.swift; sourceTree = "<group>"; };
 		00E000000000000000000001 /* voice_sample_rachel.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = voice_sample_rachel.wav; sourceTree = "<group>"; };
 		00E000000000000000000002 /* voice_sample_adam.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = voice_sample_adam.wav; sourceTree = "<group>"; };
@@ -762,7 +760,6 @@
 				00B00000000000000000000A /* SignInPageView.swift */,
 				00B00000000000000000000B /* OfflineAIPageView.swift */,
 				00B00000000000000000000C /* TTSSampleComparisonView.swift */,
-				00B00000000000000000000D /* OfflineDownloadPageView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -1032,7 +1029,6 @@
 				00A00000000000000000000A /* SignInPageView.swift in Sources */,
 				00A00000000000000000000B /* OfflineAIPageView.swift in Sources */,
 				00A00000000000000000000C /* TTSSampleComparisonView.swift in Sources */,
-				00A00000000000000000000D /* OfflineDownloadPageView.swift in Sources */,
 				60053F2DC49846065D6EBC7B /* BackgroundStreamingSynthesisService.swift in Sources */,
 				FC8D4518BE88A2E5699ED58A /* StreamingTTSService.swift in Sources */,
 				001A00000000000000000001 /* VoiceMarketplaceService.swift in Sources */,

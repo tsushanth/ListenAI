@@ -117,9 +117,9 @@ deploy_service() {
         --set-env-vars "SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}" \
         --set-env-vars "SUPABASE_JWT_SECRET=${SUPABASE_JWT_SECRET}" \
         --set-env-vars "OPENAI_API_KEY=${OPENAI_API_KEY:-}" \
-        --set-env-vars "SELFHOSTED_TTS_URL=${SELFHOSTED_TTS_URL:-https://readaloud-tts-917362189743.us-central1.run.app}" \
+        --set-env-vars "SELFHOSTED_TTS_URL=${SELFHOSTED_TTS_URL:-https://listenai-tts-worker.fly.dev}" \
         --set-env-vars "SELFHOSTED_TTS_API_KEY=${SELFHOSTED_TTS_API_KEY:-}" \
-        --set-env-vars "GPU_TTS_URL=${GPU_TTS_URL:-https://readaloud-tts-gpu-917362189743.us-central1.run.app}" \
+        --set-env-vars "GPU_TTS_URL=${GPU_TTS_URL:-https://listenai-tts-worker.fly.dev}" \
         --set-env-vars "GPU_TTS_ENABLED=${GPU_TTS_ENABLED:-true}" \
         --set-env-vars "RATE_LIMIT_WINDOW_MS=${RATE_LIMIT_WINDOW_MS:-60000}" \
         --set-env-vars "RATE_LIMIT_MAX_REQUESTS=${RATE_LIMIT_MAX_REQUESTS:-60}" \

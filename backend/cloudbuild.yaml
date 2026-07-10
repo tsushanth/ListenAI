@@ -45,7 +45,7 @@ substitutions:
   _SUPABASE_SERVICE_ROLE_KEY: ''
   _SUPABASE_JWT_SECRET: ''
   _SELFHOSTED_TTS_URL: ''
-  _GPU_TTS_URL: 'https://readaloud-tts-gpu-917362189743.us-central1.run.app'
+  _GPU_TTS_URL: 'https://listenai-tts-worker.fly.dev'
   _OPENAI_API_KEY: ''
   _ELEVENLABS_API_KEY: ''
   _STRIPE_SECRET_KEY: ''

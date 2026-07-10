@@ -1,0 +1,21 @@
+app = "listenai-tts-worker"
+primary_region = "iad"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 1
+  processes = ["app"]
+
+[[vm]]
+  cpu_kind = "shared"
+  cpus = 4
+  memory_mb = 8192
+
+[deploy]
+  strategy = "rolling"

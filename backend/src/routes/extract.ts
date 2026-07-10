@@ -3,14 +3,18 @@ import { z } from 'zod';
 import axios from 'axios';
 import { JSDOM } from 'jsdom';
 import { Readability } from '@mozilla/readability';
-import OpenAI from 'openai';
+import Anthropic from '@anthropic-ai/sdk';
 import { logger } from '../lib/logger.js';
 import { config } from '../lib/config.js';
 
-// OpenAI client for content cleaning
-const openai = config.OPENAI_API_KEY
-  ? new OpenAI({ apiKey: config.OPENAI_API_KEY })
+// Anthropic client for content cleaning. Replaced OpenAI gpt-4o-mini after
+// OpenAI billing was turned off post-leak. Sonnet 4.6 handles long-form
+// cleanup well within an 8 K output budget — typical cleaned articles fit
+// comfortably under that.
+const anthropic = config.ANTHROPIC_API_KEY
+  ? new Anthropic({ apiKey: config.ANTHROPIC_API_KEY })
   : null;
+const LLM_MODEL = 'claude-sonnet-4-6';
 
 // ============================================================================
 // Types
@@ -368,8 +372,8 @@ function detectLanguage(text: string): string {
  * and format the content coherently for text-to-speech.
  */
 async function cleanContentWithLLM(content: string, title: string | null): Promise<string> {
-  if (!openai) {
-    logger.warn('OpenAI not configured, skipping content cleaning');
+  if (!anthropic) {
+    logger.warn('Anthropic not configured, skipping content cleaning');
     return content;
   }
 
@@ -412,25 +416,28 @@ IMPORTANT:
   try {
     const startTime = Date.now();
 
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt },
-      ],
-      max_tokens: 16000, // Allow for long articles
+    const completion = await anthropic.messages.create({
+      model: LLM_MODEL,
+      system: systemPrompt,
+      messages: [{ role: 'user', content: userPrompt }],
+      // Sonnet 4.6 caps output at 8192 by default. The previous OpenAI cap
+      // of 16000 was a safety ceiling — actual cleaned articles fit well
+      // within 8 K. If we ever see truncation, switch to extended-output
+      // beta header instead of dropping back to OpenAI.
+      max_tokens: 8000,
       temperature: 0.1, // Low temperature for consistent cleaning
     });
 
-    const cleanedContent = completion.choices[0]?.message?.content;
+    const firstBlock = completion.content[0];
+    const cleanedContent = firstBlock && firstBlock.type === 'text' ? firstBlock.text : undefined;
     const responseTime = Date.now() - startTime;
 
     logger.info({
       responseTimeMs: responseTime,
       inputLength: truncatedContent.length,
       outputLength: cleanedContent?.length ?? 0,
-      inputTokens: completion.usage?.prompt_tokens,
-      outputTokens: completion.usage?.completion_tokens,
+      inputTokens: completion.usage?.input_tokens,
+      outputTokens: completion.usage?.output_tokens,
     }, 'Content cleaned with LLM');
 
     // Return cleaned content if valid, otherwise fall back to original

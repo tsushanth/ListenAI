@@ -4,12 +4,15 @@ FROM python:3.11-slim
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Minimal system deps - espeak-ng needed for misaki g2p phoneme processing
+# Minimal system deps. espeak-ng for misaki g2p phoneme processing.
+# ffmpeg for Edge TTS MP3→WAV fallback (used for de/ko, languages
+# Kokoro 82M doesn't cover).
 RUN apt-get update && apt-get install -y \
     libsndfile1 \
     curl \
     espeak-ng \
     wget \
+    ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

@@ -117,13 +117,20 @@ interface WorkerConfig {
 const DEFAULT_CONFIG: WorkerConfig = {
   maxRetries: 3,
   enabled: true,
-  stuckJobTimeoutMs: 3 * 60 * 1000,  // 3 minutes
+  // 60 min: CPU Kokoro fallback on a shared-cpu-2x VM can legitimately
+  // take 25-45 min for a long article (76K-83K chars). Observed p99 was
+  // 27 min, with one ready job at 44 min. 15 min was reaping still-
+  // running jobs and marking them as STUCK_JOB. If the synth path ever
+  // truly hangs for 60 min, that's a real failure worth flagging.
+  stuckJobTimeoutMs: 60 * 60 * 1000,
 };
 
 let workerConfig = { ...DEFAULT_CONFIG };
 let isRunning = false;
 let stopSubscription: (() => void) | null = null;
 let stuckJobInterval: NodeJS.Timeout | null = null;
+let dbPollInterval: NodeJS.Timeout | null = null;
+const dbPolledJobIds = new Set<string>();
 
 // Worker instance identifier for metrics
 const WORKER_INSTANCE = process.env.K_REVISION || `worker-${Date.now()}`;
@@ -975,12 +982,22 @@ async function processClonedVoiceJob(
   cacheKey: string,
   charCount: number
 ): Promise<void> {
-  const gpuTtsUrl = process.env.GPU_TTS_URL;
-  if (!gpuTtsUrl) {
-    throw new Error('GPU_TTS_URL not configured for cloned voice synthesis');
+  // Cloned-voice synthesis (Chatterbox or XTTS) runs on its own host, separate
+  // from the Kokoro Fly worker that GPU_TTS_URL points at. Use CHATTERBOX_URL
+  // for the /synthesize-cloned endpoint; fall back to GPU_TTS_URL for back-compat
+  // with deployments where both pointed at the same service.
+  const cloningTtsUrl = process.env.CHATTERBOX_URL || process.env.GPU_TTS_URL;
+  if (!cloningTtsUrl) {
+    throw new Error('CHATTERBOX_URL (or GPU_TTS_URL) not configured for cloned voice synthesis');
   }
 
-  const ttsServiceUrl = `${gpuTtsUrl}/synthesize-cloned`;
+  // Use the async job pattern (POST /jobs/synthesize-cloned → poll → download).
+  // The legacy /synthesize-cloned holds a single HTTP connection open for the
+  // full 8-17 min of synth, which doesn't survive Fly→Hetzner network resets.
+  // The async pattern splits the work into short calls that survive any
+  // intermediate connection drop.
+  const submitUrl = `${cloningTtsUrl}/jobs/synthesize-cloned`;
+  const jobStatusUrlBase = `${cloningTtsUrl}/jobs`;
   const modelId = cloningModel === 'chatterbox' ? 'chatterbox-v1' : 'xtts-v2';
 
   workerLogger.info({
@@ -988,8 +1005,8 @@ async function processClonedVoiceJob(
     clonedVoiceId,
     cloningModel,
     charCount,
-    ttsServiceUrl,
-  }, 'Starting cloned voice synthesis via GPU TTS service');
+    submitUrl,
+  }, 'Starting cloned voice synthesis via async job pattern');
 
   // Estimate chunks for progress tracking
   const chunkSize = cloningModel === 'chatterbox' ? 500 : 500;  // Both use 500 char chunks
@@ -1011,10 +1028,16 @@ async function processClonedVoiceJob(
   // Audio duration ≈ charCount / 12.5 chars per second
   // Add generous margin for model loading and processing
   const estimatedAudioDurationSec = charCount / 12.5;
-  const synthesisMultiplier = cloningModel === 'chatterbox' ? 4.0 : 2.5;  // Inverse of realtime factor with margin
+  // Chatterbox runs on a CPU-only Hetzner box (no GPU). Observed per-job synth
+  // is 8-17 min, BUT requests also queue at chatterbox itself (it processes
+  // serially). With one job ahead, total wall time = 2x synth time. With two
+  // ahead, 3x. So the worker timeout has to cover synth + chatterbox-side queue.
+  // 45 min covers ~2-3 jobs ahead at worst-case 15 min each.
+  // TODO: when chatterbox moves to GPU, drop multiplier to ~4 and minimum to 2 min.
+  const synthesisMultiplier = cloningModel === 'chatterbox' ? 30.0 : 2.5;
   const timeoutMs = Math.max(
-    5 * 60 * 1000,  // Minimum 5 minutes
-    Math.ceil(estimatedAudioDurationSec * synthesisMultiplier * 1000) + 60_000  // +1 min overhead
+    45 * 60 * 1000,  // Minimum 45 min — accounts for chatterbox queue depth on CPU box
+    Math.ceil(estimatedAudioDurationSec * synthesisMultiplier * 1000) + 60_000
   );
 
   workerLogger.info({
@@ -1023,20 +1046,17 @@ async function processClonedVoiceJob(
     timeoutMs,
   }, 'Cloned voice synthesis timeout calculated');
 
-  // Create AbortController for timeout
-  const abortController = new AbortController();
-  const timeoutId = setTimeout(() => abortController.abort(), timeoutMs);
+  const apiKeyHeader: Record<string, string> = process.env.SELFHOSTED_TTS_API_KEY
+    ? { 'X-API-Key': process.env.SELFHOSTED_TTS_API_KEY }
+    : {};
 
   try {
-    // Call GPU TTS service with timeout
-    const response = await fetch(ttsServiceUrl, {
+    // ---- Step 1: submit the synthesis job (returns immediately) ----
+    const submitResp = await fetch(submitUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Accept': 'audio/wav',
-        ...(process.env.SELFHOSTED_TTS_API_KEY
-          ? { 'X-API-Key': process.env.SELFHOSTED_TTS_API_KEY }
-          : {}),
+        ...apiKeyHeader,
       },
       body: JSON.stringify({
         text,
@@ -1045,16 +1065,78 @@ async function processClonedVoiceJob(
         speed,
         model: cloningModel,
       }),
-      signal: abortController.signal,
+      // 30s was failing on GPU service cold start (~40% job failure rate).
+      // Submit returns a job_id, the actual synthesis is async and bounded
+      // by the poll loop below (timeoutMs ≈ 73min for 144s audio).
+      signal: AbortSignal.timeout(120_000),
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`TTS service error: ${response.status} - ${errorText}`);
+    if (!submitResp.ok) {
+      const errorText = await submitResp.text();
+      throw new Error(`Submit failed: ${submitResp.status} - ${errorText}`);
+    }
+    const submitData = (await submitResp.json()) as { job_id: string; status: string };
+    const chatterboxJobId = submitData.job_id;
+
+    workerLogger.info({ jobId, chatterboxJobId }, 'Async job submitted to TTS service');
+
+    // ---- Step 2: poll for completion ----
+    const pollDeadline = Date.now() + timeoutMs;
+    let lastStatus = submitData.status;
+    let audioUrl: string | null = null;
+
+    while (Date.now() < pollDeadline) {
+      await new Promise((r) => setTimeout(r, 5_000));
+
+      const pollResp = await fetch(`${jobStatusUrlBase}/${chatterboxJobId}`, {
+        signal: AbortSignal.timeout(15_000),
+        headers: apiKeyHeader,
+      });
+
+      if (pollResp.status === 404) {
+        // Container restarted while job was queued — re-submit on next worker retry.
+        throw new Error(`TTS service lost job ${chatterboxJobId} (404). Likely container restart.`);
+      }
+      if (!pollResp.ok) {
+        // Transient poll error — keep trying.
+        workerLogger.warn({ jobId, chatterboxJobId, pollStatus: pollResp.status }, 'Poll transient error');
+        continue;
+      }
+
+      const pollData = (await pollResp.json()) as {
+        status: string;
+        audio_url?: string | null;
+        error?: string | null;
+      };
+      lastStatus = pollData.status;
+
+      if (pollData.status === 'done' && pollData.audio_url) {
+        audioUrl = pollData.audio_url;
+        break;
+      }
+      if (pollData.status === 'failed') {
+        throw new Error(`TTS service synthesis failed: ${pollData.error || 'unknown'}`);
+      }
     }
 
-    // Get audio buffer
-    const audioBuffer = Buffer.from(await response.arrayBuffer());
+    if (!audioUrl) {
+      throw new Error(`Cloned voice synthesis timed out polling (last status: ${lastStatus})`);
+    }
+
+    // ---- Step 3: download the rendered audio ----
+    const audioPathOnService = audioUrl.startsWith('http')
+      ? audioUrl
+      : `${cloningTtsUrl}${audioUrl}`;
+    const audioResp = await fetch(audioPathOnService, {
+      signal: AbortSignal.timeout(120_000),
+      headers: apiKeyHeader,
+    });
+
+    if (!audioResp.ok) {
+      throw new Error(`Audio download failed: ${audioResp.status}`);
+    }
+
+    const audioBuffer = Buffer.from(await audioResp.arrayBuffer());
     const synthesisTimeMs = Date.now() - synthesisStart;
 
     workerLogger.info({
@@ -1126,9 +1208,6 @@ async function processClonedVoiceJob(
       throw new Error(`Cloned voice synthesis timed out after ${timeoutMs / 1000}s`);
     }
     throw error;
-  } finally {
-    // Always clear the timeout
-    clearTimeout(timeoutId);
   }
 }
 
@@ -1678,7 +1757,18 @@ async function processWithPreview(
 async function checkForStuckJobs(): Promise<void> {
   const cutoffTime = new Date(Date.now() - workerConfig.stuckJobTimeoutMs).toISOString();
 
-  // Check for jobs stuck in 'processing' status
+  // Check for jobs stuck in 'processing' status.
+  //
+  // We used to also check for stuck 'queued' jobs — that was a Pub/Sub-era
+  // safety net for lost messages. With the DB-polling worker (post-2026-05-25),
+  // queued rows are guaranteed to be picked up within ~3s by the poll loop,
+  // so a queued-stuck check is dead code at best and at worst causes false
+  // STUCK_JOB failures: a long-running synth gets reaped from 'processing',
+  // requeued, then the queued-stuck check (which uses created_at, not
+  // updated_at) catches the same row immediately because created_at is
+  // already past the cutoff. That ping-pong burned 3 retries within a
+  // single watchdog window. Removed 2026-06-04 after observing 10 such
+  // false-positive failures on 5/31 + 6/2.
   const { data: stuckProcessingJobs, error: processingError } = await supabase
     .from('tts_jobs')
     .select('id, started_at, retry_count, status')
@@ -1689,21 +1779,7 @@ async function checkForStuckJobs(): Promise<void> {
     workerLogger.error({ error: processingError }, 'Failed to check for stuck processing jobs');
   }
 
-  // Also check for jobs stuck in 'queued' status (Pub/Sub message may have been lost)
-  const { data: stuckQueuedJobs, error: queuedError } = await supabase
-    .from('tts_jobs')
-    .select('id, created_at, retry_count, status')
-    .eq('status', 'queued')
-    .lt('created_at', cutoffTime);
-
-  if (queuedError) {
-    workerLogger.error({ error: queuedError }, 'Failed to check for stuck queued jobs');
-  }
-
-  const stuckJobs = [
-    ...(stuckProcessingJobs || []).map(j => ({ ...j, stuckType: 'processing' as const })),
-    ...(stuckQueuedJobs || []).map(j => ({ ...j, stuckType: 'queued' as const })),
-  ];
+  const stuckJobs = (stuckProcessingJobs || []).map(j => ({ ...j, stuckType: 'processing' as const }));
 
   if (stuckJobs.length === 0) {
     return;
@@ -1712,7 +1788,6 @@ async function checkForStuckJobs(): Promise<void> {
   workerLogger.warn({
     count: stuckJobs.length,
     processing: stuckProcessingJobs?.length || 0,
-    queued: stuckQueuedJobs?.length || 0,
   }, 'Found stuck jobs');
 
   for (const job of stuckJobs) {
@@ -1727,16 +1802,47 @@ async function checkForStuckJobs(): Promise<void> {
       });
       workerLogger.error({ jobId: job.id, retryCount, stuckType: job.stuckType }, 'Stuck job marked as failed');
     } else {
+      // Re-verify the job is STILL stuck before republishing. There's a race
+      // between the SELECT above and this UPDATE: a worker may have finished
+      // the job in the meantime, transitioning it to 'partial_ready' or 'ready'.
+      // Without this guard, we'd overwrite that completion with 'queued' and
+      // republish a duplicate, kicking off the whole pipeline a second time.
+      const { data: fresh, error: freshErr } = await supabase
+        .from('tts_jobs')
+        .select('status')
+        .eq('id', job.id)
+        .single();
+
+      if (freshErr || !fresh) {
+        workerLogger.warn({ jobId: job.id, error: freshErr }, 'Stuck job re-check failed, skipping requeue');
+        continue;
+      }
+
+      if (fresh.status !== job.stuckType) {
+        workerLogger.info({ jobId: job.id, observed: job.stuckType, current: fresh.status }, 'Stuck job already advanced, skipping requeue');
+        continue;
+      }
+
       const republished = await republishForRetry(job.id, retryCount, workerConfig.maxRetries);
       if (republished) {
-        await supabase
+        // Conditional UPDATE: only flip back to 'queued' if status is still
+        // what we observed at SELECT time. If a worker just moved it forward,
+        // this is a no-op and the in-flight worker keeps ownership.
+        const { data: updated } = await supabase
           .from('tts_jobs')
           .update({
             status: 'queued',
             retry_count: retryCount,
           })
-          .eq('id', job.id);
-        workerLogger.info({ jobId: job.id, retryCount, stuckType: job.stuckType }, 'Stuck job requeued for retry');
+          .eq('id', job.id)
+          .eq('status', job.stuckType)
+          .select('id');
+
+        if (updated && updated.length > 0) {
+          workerLogger.info({ jobId: job.id, retryCount, stuckType: job.stuckType }, 'Stuck job requeued for retry');
+        } else {
+          workerLogger.info({ jobId: job.id, stuckType: job.stuckType }, 'Stuck job advanced before requeue, message will be skipped on receipt');
+        }
       }
     }
   }
@@ -1762,6 +1868,58 @@ export function startWorker(config?: Partial<WorkerConfig>): void {
 
   stopSubscription = startSubscription(processJob);
   stuckJobInterval = setInterval(checkForStuckJobs, 30000);
+
+  // DB-polling worker: now the *only* delivery path after the GCP
+  // Pub/Sub migration. Pulls queued jobs from Supabase every 3s; the
+  // atomic status claim in processJob prevents double-processing when
+  // multiple backend machines run this loop. Also reads `retry_count`
+  // from the row so retried jobs carry the correct attempt number into
+  // processJob — without this, every retry would be treated as attempt
+  // 1 and the worker could loop forever on failing jobs.
+  dbPollInterval = setInterval(async () => {
+    if (!isRunning) return;
+    try {
+      const { data, error } = await supabase
+        .from('tts_jobs')
+        .select('id, retry_count')
+        .eq('status', 'queued')
+        .order('created_at', { ascending: true })
+        .limit(5);
+      if (error || !data || data.length === 0) return;
+      for (const row of data) {
+        const jobId = row.id as string;
+        if (dbPolledJobIds.has(jobId)) continue;
+        dbPolledJobIds.add(jobId);
+        // Keep the set bounded
+        if (dbPolledJobIds.size > 200) {
+          const first = dbPolledJobIds.values().next().value;
+          if (first) dbPolledJobIds.delete(first);
+        }
+        const attempt = ((row.retry_count as number | null) ?? 0) + 1;
+        workerLogger.info({ jobId, attempt }, 'DB poll: claiming queued job');
+        processJob({
+          jobId,
+          attempt,
+          publishedAt: new Date().toISOString(),
+        }).catch((err) => {
+          workerLogger.error({ jobId, err }, 'DB poll: processJob threw');
+        }).finally(() => {
+          // Once processJob exits — success, requeue, or permanent fail —
+          // the row is no longer in flight on this machine. Clear it from
+          // the in-memory dedupe set so the next poll cycle can pick it up
+          // if it got requeued back to 'queued' with retry_count++. Without
+          // this, requeued rows sat indefinitely because the same machine
+          // kept SELECTing them but skipping due to the set membership.
+          // The queued-stuck watchdog used to rescue these; that check was
+          // removed 2026-06-04 as Pub/Sub-era dead code, which exposed
+          // this pre-existing bug. Fix: 2026-06-07.
+          dbPolledJobIds.delete(jobId);
+        });
+      }
+    } catch (err) {
+      workerLogger.error({ err }, 'DB poll loop error');
+    }
+  }, 3000);
 }
 
 export function stopWorker(): void {
@@ -1783,6 +1941,12 @@ export function stopWorker(): void {
     clearInterval(stuckJobInterval);
     stuckJobInterval = null;
   }
+
+  if (dbPollInterval) {
+    clearInterval(dbPollInterval);
+    dbPollInterval = null;
+  }
+  dbPolledJobIds.clear();
 
   workerLogger.info('TTS job worker stopped');
 }
