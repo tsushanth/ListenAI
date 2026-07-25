@@ -13,6 +13,7 @@ RUN apt-get update && apt-get install -y \
     espeak-ng \
     wget \
     ffmpeg \
+    cron \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -36,6 +37,18 @@ RUN python download_model.py
 
 COPY main.py .
 
+# Nightly prune of /app/audio_cache: delete WAVs untouched in 7+ days at
+# 03:00 UTC. Prevents the cache from filling the container's 7.8 GB rootfs
+# and causing ENOSPC on subsequent renders (2026-07-25 incident: cache
+# accumulated 16k files over 6 weeks and blocked every render).
+RUN echo "0 3 * * * root find /app/audio_cache -maxdepth 1 -type f -name '*.wav' -mtime +7 -delete >> /var/log/audio-cache-prune.log 2>&1" \
+    > /etc/cron.d/audio-cache-prune && \
+    chmod 644 /etc/cron.d/audio-cache-prune && \
+    touch /var/log/audio-cache-prune.log
+
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
 ENV PORT=8080
 ENV CACHE_ENABLED=true
 ENV LOG_LEVEL=INFO
@@ -45,4 +58,4 @@ EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD curl -f http://localhost:8080/health || exit 1
 
-CMD ["python", "main.py"]
+CMD ["/entrypoint.sh"]
