@@ -819,6 +819,7 @@ private fun VoiceRow(
             else 0
             "optimizing cache, $pct percent"
         }
+        preWarmStatus is PerVoicePreWarmManager.Status.Paused -> "cache optimization paused, waiting for battery or system resources"
         preWarmStatus is PerVoicePreWarmManager.Status.Done -> "cache optimized"
         preWarmStatus is PerVoicePreWarmManager.Status.Failed -> "cache optimization failed"
         else -> "cache not optimized"
@@ -938,6 +939,12 @@ private fun VoiceCacheStatusRow(
             else "Optimizing…"
             label to ("Pause" to onPause)
         }
+        status is PerVoicePreWarmManager.Status.Paused -> {
+            val pct = if (status.total > 0)
+                (status.processed * 100 / status.total).coerceIn(0, 100)
+            else 0
+            "Paused… $pct% (${status.processed} of ${status.total}) — waiting for battery/system" to ("Cancel" to onPause)
+        }
         status is PerVoicePreWarmManager.Status.Done -> "Optimized" to null
         status is PerVoicePreWarmManager.Status.Failed ->
             "Optimization failed" to ("Retry" to onOptimize)
@@ -975,6 +982,19 @@ private fun VoiceCacheStatusRow(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = 4.dp),
+        )
+    } else if (status is PerVoicePreWarmManager.Status.Paused && status.total > 0) {
+        // Determinate, but visually distinct from an actively-advancing bar
+        // isn't worth the complexity here — the "Paused…" label text above
+        // already carries the distinction; a frozen determinate bar at the
+        // right percentage is still more honest than the old behavior
+        // (identical bar to Running, no way to tell paused from crawling).
+        LinearProgressIndicator(
+            progress = { (status.processed.toFloat() / status.total).coerceIn(0f, 1f) },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 4.dp),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
 }

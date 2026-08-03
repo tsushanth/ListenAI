@@ -31,6 +31,14 @@ class PerVoicePreWarmManager private constructor(private val context: Context) {
     sealed class Status {
         object Idle : Status()                              // never optimized
         data class Running(val processed: Int, val total: Int) : Status()
+        // WorkManager has the job BLOCKED or ENQUEUED-but-not-started —
+        // e.g. the battery-not-low constraint tripped, or the OS is
+        // throttling background work (Doze, Samsung app standby). Distinct
+        // from Running so the UI can say "paused" instead of leaving a
+        // stale percentage on screen that reads as hung. See PPTUM-style
+        // report: user canceled a genuinely-still-queued job at 1% after
+        // several minutes because nothing distinguished "slow" from "stuck".
+        data class Paused(val processed: Int, val total: Int) : Status()
         data class Done(val total: Int) : Status()          // completed at some point
         data class Failed(val message: String) : Status()
     }
@@ -85,8 +93,17 @@ class PerVoicePreWarmManager private constructor(private val context: Context) {
                 .takeIf { it > 0 }
                 ?: info.outputData.getInt(PerVoicePreWarmWorker.KEY_PROCESSED, 0)
             val newStatus = when (info.state) {
-                WorkInfo.State.RUNNING, WorkInfo.State.ENQUEUED, WorkInfo.State.BLOCKED ->
-                    if (total > 0) Status.Running(processed, total) else Status.Running(0, 0)
+                WorkInfo.State.RUNNING ->
+                    Status.Running(processed, total)
+                // BLOCKED means a constraint (battery-not-low) is unmet;
+                // ENQUEUED-with-prior-progress means the OS paused/killed
+                // and rescheduled the worker (Doze, app standby). Either
+                // way nothing is actively running right now — surface that
+                // instead of a static "Optimizing…" that looks stalled.
+                WorkInfo.State.BLOCKED ->
+                    Status.Paused(processed, total)
+                WorkInfo.State.ENQUEUED ->
+                    if (processed > 0) Status.Paused(processed, total) else Status.Running(0, 0)
                 WorkInfo.State.SUCCEEDED -> {
                     // Silent-abort path: worker caught an OS-refusal (e.g.
                     // Samsung foreground-service denial or Kokoro session

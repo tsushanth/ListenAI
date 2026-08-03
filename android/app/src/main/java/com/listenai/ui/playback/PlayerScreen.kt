@@ -334,6 +334,12 @@ fun PlayerScreen(
                     playerState = PlayerState.Playing(article)
                 }
 
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                // Structured-concurrency cancellation (e.g. user navigated
+                // away, LeftCompositionCancellationException) — not a real
+                // failure. Must rethrow so coroutine cancellation still
+                // propagates; swallowing it here would leak the job.
+                throw e
             } catch (e: Exception) {
                 android.util.Log.e("PlayerScreen", "Synthesis failed", e)
                 when (e) {
@@ -474,6 +480,8 @@ fun PlayerScreen(
                     playerState = PlayerState.Playing(article)
                 }
 
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
             } catch (e: Exception) {
                 android.util.Log.e("PlayerScreen", "Regeneration failed", e)
                 val errorMessage = e.message ?: context.getString(R.string.player_regeneration_failed)
