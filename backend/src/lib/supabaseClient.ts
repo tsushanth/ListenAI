@@ -1166,10 +1166,14 @@ export async function getQueueInfo(jobId: string): Promise<{ queueDepth: number;
   // invisible here — a job can show queueDepth=1 (itself) while the
   // single-machine worker is actually also busy with unrelated legacy
   // traffic. getActiveWorkerRequestCount() is a live, in-process count of
-  // calls actually in flight to the worker HTTP endpoint regardless of
-  // which code path issued them, so we take the max as the more honest
-  // "how many things are contending for the worker right now" figure.
-  const liveWorkerLoad = getActiveWorkerRequestCount();
+  // calls actually in flight to the worker HTTP endpoint, keyed per
+  // provider — GPU (Modal, primary) and CPU (Fly, fallback) are tracked
+  // separately so a GPU job's queue depth isn't inflated by unrelated CPU
+  // backlog (and vice versa). We report GPU load here since that's the
+  // primary path essentially all jobs take; a job that actually falls
+  // back to CPU (GPU circuit open) will under-report in that edge case,
+  // which is an acceptable tradeoff vs the previous always-conflated count.
+  const liveWorkerLoad = getActiveWorkerRequestCount('gpu-tts');
   const queueDepth = Math.max(dbQueueDepth ?? 0, liveWorkerLoad);
 
   // This job's created_at — only meaningful if job itself is still in queue

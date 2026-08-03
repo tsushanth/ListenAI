@@ -26,18 +26,23 @@ import { TTSProviderError } from '../types/index.js';
 // "processing" with no explanation for the wait. This counter tracks calls
 // actually in flight to the worker HTTP endpoint, regardless of which code
 // path issued them, so callers can surface true physical contention.
-let activeWorkerRequests = 0;
+//
+// Keyed by client name ('gpu-tts' | 'cpu-tts') rather than a single global
+// count — with GPU (Modal) now primary and CPU (Fly) as fallback, a global
+// counter meant a GPU job's reported queue depth got inflated by unrelated
+// CPU-path backlog it was never actually waiting behind (and vice versa).
+const activeWorkerRequestsByClient = new Map<string, number>();
 
-export function getActiveWorkerRequestCount(): number {
-  return activeWorkerRequests;
+export function getActiveWorkerRequestCount(clientName: string): number {
+  return activeWorkerRequestsByClient.get(clientName) ?? 0;
 }
 
-async function trackWorkerRequest<T>(fn: () => Promise<T>): Promise<T> {
-  activeWorkerRequests++;
+async function trackWorkerRequest<T>(clientName: string, fn: () => Promise<T>): Promise<T> {
+  activeWorkerRequestsByClient.set(clientName, (activeWorkerRequestsByClient.get(clientName) ?? 0) + 1);
   try {
     return await fn();
   } finally {
-    activeWorkerRequests--;
+    activeWorkerRequestsByClient.set(clientName, (activeWorkerRequestsByClient.get(clientName) ?? 1) - 1);
   }
 }
 
@@ -471,7 +476,7 @@ class SelfHostedClient implements ProviderClient {
 
     try {
       const response = await withRetry(
-        async () => trackWorkerRequest(() => this.client.post(
+        async () => trackWorkerRequest(this.name, () => this.client.post(
             '/synthesize',
             {
               text: request.text,
@@ -548,7 +553,7 @@ class SelfHostedClient implements ProviderClient {
 
     try {
       const response = await withRetry(
-        async () => trackWorkerRequest(() => this.client.post(
+        async () => trackWorkerRequest(this.name, () => this.client.post(
             '/synthesize-long',
             {
               text: request.text,
@@ -655,7 +660,7 @@ class SelfHostedClient implements ProviderClient {
     try {
       // Retry the initial connection - once streaming starts, we don't retry mid-stream
       const response = await withRetry(
-        async () => trackWorkerRequest(() => this.client.post(
+        async () => trackWorkerRequest(this.name, () => this.client.post(
             '/synthesize-stream',
             {
               text: request.text,
