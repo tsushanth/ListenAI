@@ -233,15 +233,27 @@ def chunk_for_kokoro(text: str, language: str, max_chars: int = 25) -> list:
     """Split text into chunks small enough to stay under Kokoro's 510
     phoneme limit. CJK / Hindi / dense scripts produce ~10-15 phonemes
     per char — empirically 37 chars of Japanese already bust the 510
-    cap. So we chunk aggressively (25 chars) and *always* sentence-split
-    for non-English even on short text. English bypasses chunking.
+    cap. So we chunk aggressively (25 chars) for those languages.
+
+    English produces roughly ~1 phoneme per char, so it gets a much
+    larger budget — but it MUST still be chunked for long text. Passing
+    an entire long article as a single chunk (previous behavior: "English
+    bypasses chunking") sent arbitrarily long input straight into
+    model.create() with no safety net — for a 1,362-char article this
+    silently hung the worker process for 8+ minutes with zero output
+    (not even health checks), rather than erroring cleanly. The
+    multi-chunk path below already has per-chunk try/except; the
+    single-chunk fast path does not, which is exactly why the failure
+    mode was a silent hang instead of a clean error.
 
     Splits in priority order: sentence-end (。！？.!?) → comma (、,) →
     hard char split when no punctuation is available."""
     import re
     lang = (language or "en").lower()
     if lang == "en":
-        return [text]
+        max_chars = 400
+        if len(text) <= max_chars:
+            return [text]
 
     sentences = re.split(r"(?<=[。！？\.!?])\s*", text)
     sentences = [s.strip() for s in sentences if s.strip()]

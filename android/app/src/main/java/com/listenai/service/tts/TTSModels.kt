@@ -167,11 +167,24 @@ data class SynthesisProgress(
     val previewUrl: String? = null,
 
     /** Preview audio duration in seconds */
-    val previewDurationSec: Double? = null
+    val previewDurationSec: Double? = null,
+
+    /** Raw job status string ("queued" | "processing" | "partial_ready" | "ready" | "failed" | "canceled"), null for non-job-API paths */
+    val jobStatus: String? = null,
+
+    /** Total jobs in queued+processing across all users (system-wide load); null once past queued */
+    val queueDepth: Int? = null,
+
+    /** 1-based position of this job in the global queue; null once past queued */
+    val queuePosition: Int? = null
 ) {
     /** Whether preview audio is available for immediate playback */
     val hasPreviewReady: Boolean
         get() = previewUrl != null
+
+    /** Whether this job is still waiting for its turn (not yet processing) */
+    val isQueued: Boolean
+        get() = jobStatus == "queued"
 
     companion object {
         val INITIAL = SynthesisProgress(

@@ -45,6 +45,7 @@ class TTSCoordinator(
         voice: VoicePreset,
         quality: VoiceQuality = _selectedQuality.value,
         options: SynthesisOptions = SynthesisOptions.DEFAULT,
+        forceOnDevice: Boolean = false,
         onProgress: (SynthesisProgress) -> Unit = {}
     ): SynthesisResult = withContext(Dispatchers.IO) {
         // Apply default settings
@@ -54,7 +55,7 @@ class TTSCoordinator(
         )
 
         // All synthesis uses self-hosted Kokoro
-        synthesizeWithKokoro(text, voice, adjustedOptions, onProgress)
+        synthesizeWithKokoro(text, voice, adjustedOptions, forceOnDevice, onProgress)
     }
 
     /**
@@ -65,6 +66,7 @@ class TTSCoordinator(
         text: String,
         voice: VoicePreset,
         options: SynthesisOptions,
+        forceOnDevice: Boolean = false,
         onProgress: (SynthesisProgress) -> Unit
     ): SynthesisResult {
         // Check if this is a cloned voice (ID starts with "cloned_" or uses Chatterbox model)
@@ -140,7 +142,14 @@ class TTSCoordinator(
         // Route through TTSServiceFactory so the on-device Kokoro path is
         // honored when the user opted in AND the ONNX session is loaded.
         // The factory transparently falls back to the cloud worker if not.
-        val service = TTSServiceFactory.getServiceForVoice(context, synthVoice)
+        // forceOnDevice bypasses that automatic routing — used by the
+        // "queue is busy, use offline AI" CTA (see CloudTTSProgressCard)
+        // when the user explicitly chooses to skip a busy cloud queue.
+        val service = if (forceOnDevice) {
+            TTSServiceFactory.getKokoroOnDeviceService(context)
+        } else {
+            TTSServiceFactory.getServiceForVoice(context, synthVoice)
+        }
         android.util.Log.d(
             "TTSCoordinator",
             "Picked service=${service::class.java.simpleName} for voiceId=$voiceId"

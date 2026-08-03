@@ -132,6 +132,55 @@ class TTSNotificationService private constructor(private val context: Context) {
     }
 
     /**
+     * Show notification when article TTS synthesis fails — most useful when
+     * it happens after the user has backgrounded the app (e.g. a cloud
+     * queue timeout), since PlayerState.Error alone is silent unless
+     * they're still looking at the player screen.
+     */
+    fun showArticleTTSFailed(
+        articleId: String,
+        articleTitle: String,
+        reason: String
+    ) {
+        if (!hasNotificationPermission()) {
+            android.util.Log.w("TTSNotification", "No notification permission, skipping notification")
+            return
+        }
+
+        val intent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            putExtra(EXTRA_ARTICLE_ID, articleId)
+            putExtra(EXTRA_NOTIFICATION_TYPE, TYPE_ARTICLE_TTS)
+        }
+
+        val pendingIntent = PendingIntent.getActivity(
+            context,
+            articleId.hashCode(),
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val notification = NotificationCompat.Builder(context, CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_notification)
+            .setContentTitle("Audio generation failed")
+            .setContentText("\"$articleTitle\" — $reason. Tap to retry.")
+            .setStyle(NotificationCompat.BigTextStyle()
+                .bigText("\"$articleTitle\" couldn't be generated: $reason\n\nTap to retry, or switch to offline AI voice from the player."))
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setContentIntent(pendingIntent)
+            .setAutoCancel(true)
+            .setCategory(NotificationCompat.CATEGORY_ERROR)
+            .build()
+
+        try {
+            notificationManager.notify(NOTIFICATION_ID_ARTICLE_TTS + articleId.hashCode(), notification)
+            android.util.Log.d("TTSNotification", "Showed article TTS failed notification for: $articleTitle")
+        } catch (e: SecurityException) {
+            android.util.Log.e("TTSNotification", "Failed to show notification: ${e.message}")
+        }
+    }
+
+    /**
      * Show notification when voice clone preview is ready
      */
     fun showVoiceClonePreviewReady(

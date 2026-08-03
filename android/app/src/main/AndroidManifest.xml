@@ -61,6 +61,14 @@
             </intent-filter>
         </service>
 
+        <!-- Keeps the process foreground for the duration of a cloud TTS
+             synthesis network call, so it survives the app being
+             backgrounded/frozen mid-request. See SynthesisForegroundService. -->
+        <service
+            android:name=".service.tts.SynthesisForegroundService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
+
         <!-- Media Button Receiver -->
         <receiver
             android:name=".receiver.MediaButtonReceiver"

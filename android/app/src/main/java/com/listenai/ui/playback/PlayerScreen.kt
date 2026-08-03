@@ -64,7 +64,11 @@ import org.koin.compose.koinInject
 sealed class PlayerState {
     object Loading : PlayerState()
     data class Ready(val article: Article) : PlayerState()
-    data class Synthesizing(val article: Article, val progress: Float) : PlayerState()
+    data class Synthesizing(
+        val article: Article,
+        val progress: Float,
+        val detail: com.listenai.service.tts.SynthesisProgress? = null,
+    ) : PlayerState()
     data class Playing(val article: Article) : PlayerState()
     data class Error(val message: String, val article: Article? = null) : PlayerState()
     data class QuotaExceeded(val remaining: Int, val required: Int, val article: Article) : PlayerState()
@@ -260,7 +264,7 @@ fun PlayerScreen(
                     onProgress = { progress ->
                         // Update UI state (called from IO dispatcher, but Compose state is thread-safe)
                         synthesisProgress = progress.overallProgress
-                        playerState = PlayerState.Synthesizing(article, progress.overallProgress)
+                        playerState = PlayerState.Synthesizing(article, progress.overallProgress, progress)
 
                         // Handle preview audio - start playback immediately when preview is ready
                         if (progress.hasPreviewReady && !hasStartedPreviewPlayback) {
@@ -352,6 +356,11 @@ fun PlayerScreen(
                             else -> e.message ?: context.getString(R.string.player_synthesis_failed)
                         }
                         playerState = PlayerState.Error(errorMessage, article)
+                        ttsNotificationService.showArticleTTSFailed(
+                            articleId = article.id,
+                            articleTitle = article.title ?: context.getString(R.string.player_article_fallback),
+                            reason = errorMessage
+                        )
                     }
                 }
             }
@@ -378,7 +387,7 @@ fun PlayerScreen(
     }
 
     // Function to regenerate audio with new voice - defined here so it's accessible from error handling
-    fun regenerateWithVoice(voice: VoicePreset, article: Article) {
+    fun regenerateWithVoice(voice: VoicePreset, article: Article, forceOnDevice: Boolean = false) {
         selectedVoice = voice
         showVoicePicker = false
 
@@ -408,10 +417,11 @@ fun PlayerScreen(
                 val result = ttsCoordinator.synthesize(
                     text = article.rawText,
                     voice = voice,
+                    forceOnDevice = forceOnDevice,
                     onProgress = { progress ->
                         // Update UI state (called from IO dispatcher, but Compose state is thread-safe)
                         synthesisProgress = progress.overallProgress
-                        playerState = PlayerState.Synthesizing(article, progress.overallProgress)
+                        playerState = PlayerState.Synthesizing(article, progress.overallProgress, progress)
 
                         // Handle preview audio - start playback immediately when preview is ready
                         if (progress.hasPreviewReady && !hasStartedPreviewPlayback) {
@@ -466,7 +476,13 @@ fun PlayerScreen(
 
             } catch (e: Exception) {
                 android.util.Log.e("PlayerScreen", "Regeneration failed", e)
-                playerState = PlayerState.Error(e.message ?: context.getString(R.string.player_regeneration_failed), article)
+                val errorMessage = e.message ?: context.getString(R.string.player_regeneration_failed)
+                playerState = PlayerState.Error(errorMessage, article)
+                ttsNotificationService.showArticleTTSFailed(
+                    articleId = article.id,
+                    articleTitle = article.title ?: context.getString(R.string.player_article_fallback),
+                    reason = errorMessage
+                )
             }
         }
     }
@@ -799,7 +815,11 @@ fun PlayerScreen(
                 ) {
                     // Synthesis banner if synthesizing
                     if (state is PlayerState.Synthesizing) {
-                        SynthesisBanner(progress = state.progress)
+                        SynthesisBanner(
+                            progress = state.progress,
+                            detail = state.detail,
+                            onUseOffline = { selectedVoice?.let { regenerateWithVoice(it, article, forceOnDevice = true) } },
+                        )
                     }
 
                     // Scrollable article content
@@ -1107,7 +1127,17 @@ private fun ArticleContent(
 }
 
 @Composable
-private fun SynthesisBanner(progress: Float) {
+private fun SynthesisBanner(
+    progress: Float,
+    detail: com.listenai.service.tts.SynthesisProgress? = null,
+    onUseOffline: (() -> Unit)? = null
+) {
+    val isQueued = detail?.isQueued == true
+    val totalSections = detail?.totalSections ?: 0
+    val sectionsCompleted = detail?.sectionsCompleted ?: 0
+    val queueDepth = detail?.queueDepth
+    val queuePosition = detail?.queuePosition
+
     Surface(
         modifier = Modifier
             .fillMaxWidth()
@@ -1115,30 +1145,102 @@ private fun SynthesisBanner(progress: Float) {
         shape = RoundedCornerShape(12.dp),
         color = Blue.copy(alpha = 0.1f)
     ) {
-        Row(
+        Column(
             modifier = Modifier.padding(12.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // Progress indicator
-            Text(
-                text = "🎙️",
-                style = MaterialTheme.typography.titleMedium
-            )
-
-            Column(modifier = Modifier.weight(1f)) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Text(
-                    text = stringResource(R.string.player_preparing_audio),
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium
+                    text = if (isQueued) "⏳" else "🎙️",
+                    style = MaterialTheme.typography.titleMedium
                 )
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = detail?.statusMessage?.takeIf { it.isNotBlank() }
+                            ?: stringResource(R.string.player_preparing_audio),
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium
+                    )
+                    if (!isQueued) {
+                        Text(
+                            text = stringResource(R.string.player_percent_complete, (progress * 100).toInt()),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+
+            // Chunk strip — uniform-width bars, one per section, filled as they complete
+            if (totalSections > 1) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    for (i in 0 until totalSections) {
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(4.dp)
+                                .clip(RoundedCornerShape(2.dp))
+                                .background(
+                                    if (i < sectionsCompleted) Blue
+                                    else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f)
+                                )
+                        )
+                    }
+                }
                 Text(
-                    text = stringResource(R.string.player_percent_complete, (progress * 100).toInt()),
+                    text = "Chunk ${sectionsCompleted.coerceAtMost(totalSections)} of $totalSections" +
+                        (detail?.estimatedTimeRemaining?.let { " · ~${it.toInt()}s remaining" } ?: ""),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
+
+            // Queue row — only while genuinely queued
+            if ((queueDepth ?: 0) > 1 && (queuePosition != null || queueDepth != null)) {
+                Text(
+                    text = buildString {
+                        if (queuePosition != null) {
+                            append(ordinal(queuePosition))
+                            append(" in line")
+                        }
+                        if (queueDepth != null) {
+                            if (isNotEmpty()) append(" · ")
+                            append("$queueDepth jobs queued")
+                        }
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            // Offline switch CTA — this backend runs a single physical worker
+            // machine, so any depth beyond this job's own request already
+            // means real queueing (unlike a multi-worker fleet where a >5
+            // threshold would make sense). Show it as soon as something else
+            // is contending for the worker.
+            if (onUseOffline != null && (queueDepth ?: 0) > 1) {
+                TextButton(onClick = onUseOffline) {
+                    Text("Use offline AI voice instead")
+                }
+            }
         }
+    }
+}
+
+private fun ordinal(n: Int): String {
+    if (n % 100 in 11..13) return "${n}th"
+    return when (n % 10) {
+        1 -> "${n}st"
+        2 -> "${n}nd"
+        3 -> "${n}rd"
+        else -> "${n}th"
     }
 }
 

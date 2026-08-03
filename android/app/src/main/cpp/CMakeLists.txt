@@ -23,3 +23,9 @@ target_include_directories(espeak_bridge PRIVATE ${CMAKE_SOURCE_DIR}/include)
 # itself depends on libc++_shared which is also in jniLibs/.
 find_library(log-lib log)
 target_link_libraries(espeak_bridge espeak-ng ${log-lib})
+
+# 16 KB page size support (required for Android 15+ devices with 16 KB
+# pages). Without this, libespeak_bridge.so's LOAD segments default to
+# 4 KB alignment and fail Android's page-size compatibility check —
+# confirmed via `llvm-readelf -lW` showing 0x1000 instead of 0x4000.
+target_link_options(espeak_bridge PRIVATE "-Wl,-z,max-page-size=16384")

@@ -87,6 +87,7 @@ class GoogleAuthService(private val context: Context) {
         private const val KEY_AVATAR_URL = "avatar_url"
         private const val KEY_ID_TOKEN = "id_token"
         private const val KEY_ACCESS_TOKEN = "access_token"
+        private const val KEY_REFRESH_TOKEN = "gmail_refresh_token"
         private const val KEY_IS_AUTHENTICATED = "is_authenticated"
 
         // Request code for Gmail sign-in
@@ -395,30 +396,59 @@ class GoogleAuthService(private val context: Context) {
     }
 
     /**
-     * Refresh Gmail access token if needed
+     * Refresh the Gmail access token using the stored OAuth refresh_token.
+     *
+     * Previously this looked up GoogleSignIn.getLastSignedInAccount(context)
+     * and used GoogleAuthUtil.getToken() — the *legacy* GoogleSignIn SDK's
+     * account-based token fetch. But Gmail auth actually happens via
+     * startGmailOAuthFlow()'s PKCE + Chrome Custom Tab flow, which never
+     * calls the GoogleSignIn SDK at all, so getLastSignedInAccount() always
+     * returned null for these users — every refresh attempt silently
+     * failed, and once the ~1hr access token expired, Gmail import was
+     * permanently broken until a full manual re-authorization. Fixed by
+     * using the actual OAuth2 refresh_token grant against the same token
+     * endpoint the initial exchange uses.
      */
     suspend fun refreshGmailToken(): String? = withContext(Dispatchers.IO) {
-        val account = GoogleSignIn.getLastSignedInAccount(context)
-        if (account?.account != null) {
-            try {
-                // Clear the cached token and get a fresh one
-                val scope = "oauth2:$GMAIL_SCOPE"
-                val currentToken = getAccessToken()
-                if (currentToken != null) {
-                    com.google.android.gms.auth.GoogleAuthUtil.clearToken(context, currentToken)
+        val refreshToken = encryptedPrefs.getString(KEY_REFRESH_TOKEN, null)
+        if (refreshToken == null) {
+            Log.w(TAG, "No refresh token stored — user must re-authorize Gmail access")
+            return@withContext null
+        }
+
+        try {
+            val requestBody = FormBody.Builder()
+                .add("client_id", IOS_CLIENT_ID)
+                .add("refresh_token", refreshToken)
+                .add("grant_type", "refresh_token")
+                .build()
+
+            val request = Request.Builder()
+                .url(OAUTH_TOKEN_ENDPOINT)
+                .post(requestBody)
+                .build()
+
+            val response = httpClient.newCall(request).execute()
+            if (!response.isSuccessful) {
+                val errorBody = response.body?.string() ?: "Unknown error"
+                Log.e(TAG, "Refresh token grant failed (${response.code}): $errorBody")
+                // A refresh token can itself be revoked/expired (e.g. user
+                // revoked access in their Google Account settings) — clear
+                // it so we don't keep retrying a dead token, and surface
+                // that re-authorization is required.
+                if (response.code == 400 || response.code == 401) {
+                    encryptedPrefs.edit().remove(KEY_REFRESH_TOKEN).apply()
                 }
-                val newToken = com.google.android.gms.auth.GoogleAuthUtil.getToken(
-                    context,
-                    account.account!!,
-                    scope
-                )
-                encryptedPrefs.edit().putString(KEY_ACCESS_TOKEN, newToken).apply()
-                newToken
-            } catch (e: Exception) {
-                Log.e(TAG, "Failed to refresh token", e)
-                null
+                return@withContext null
             }
-        } else {
+
+            val json = JSONObject(response.body!!.string())
+            val newAccessToken = json.getString("access_token")
+            encryptedPrefs.edit().putString(KEY_ACCESS_TOKEN, newAccessToken).apply()
+            Log.d(TAG, "Successfully refreshed Gmail access token")
+            newAccessToken
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to refresh token", e)
             null
         }
     }
@@ -577,22 +607,32 @@ class GoogleAuthService(private val context: Context) {
                 return@withContext Result.failure(IllegalStateException("Code verifier not found"))
             }
 
-            // Exchange authorization code for access token
-            val accessToken = exchangeCodeForToken(code, codeVerifier)
+            // Exchange authorization code for access + refresh token
+            val tokens = exchangeCodeForToken(code, codeVerifier)
 
             // Clear code verifier
             encryptedPrefs.edit().remove(KEY_CODE_VERIFIER).apply()
 
-            // Store access token
-            encryptedPrefs.edit().putString(KEY_ACCESS_TOKEN, accessToken).apply()
+            // Store access token, and refresh token if Google returned one
+            // (it should, given access_type=offline + prompt=consent on the
+            // authorization request — but Google only returns a refresh
+            // token on the *first* consent for a given client+scope, so
+            // don't overwrite an existing one with null on a later re-auth).
+            encryptedPrefs.edit().apply {
+                putString(KEY_ACCESS_TOKEN, tokens.accessToken)
+                if (tokens.refreshToken != null) {
+                    putString(KEY_REFRESH_TOKEN, tokens.refreshToken)
+                }
+                apply()
+            }
 
             // Mark Gmail as connected (gmail.modify scope only — no userinfo access)
             withContext(Dispatchers.Main) {
                 _gmailConnected.value = true
             }
 
-            Log.d(TAG, "Successfully exchanged code for access token")
-            Result.success(accessToken)
+            Log.d(TAG, "Successfully exchanged code for access token (refresh token present: ${tokens.refreshToken != null})")
+            Result.success(tokens.accessToken)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to handle OAuth redirect", e)
             _error.value = GoogleAuthError.AuthenticationFailed(e.message ?: "Token exchange failed")
@@ -642,9 +682,17 @@ class GoogleAuthService(private val context: Context) {
     }
 
     /**
-     * Exchange authorization code for access token
+     * Exchange authorization code for an access token + refresh token.
+     *
+     * Was previously discarding the refresh_token entirely (only
+     * `access_token` was read from the response) even though the
+     * authorization request already asks for `access_type=offline` to get
+     * one. Without it, refreshGmailToken() had no way to renew a token
+     * once Google's ~1hr access token expiry hit — Gmail import broke for
+     * every user after about an hour with no way to recover short of a
+     * full manual re-authorization.
      */
-    private suspend fun exchangeCodeForToken(code: String, codeVerifier: String): String = withContext(Dispatchers.IO) {
+    private suspend fun exchangeCodeForToken(code: String, codeVerifier: String): TokenResponse = withContext(Dispatchers.IO) {
         val requestBody = FormBody.Builder()
             .add("client_id", IOS_CLIENT_ID)
             .add("code", code)
@@ -665,8 +713,13 @@ class GoogleAuthService(private val context: Context) {
         }
 
         val json = JSONObject(response.body!!.string())
-        json.getString("access_token")
+        TokenResponse(
+            accessToken = json.getString("access_token"),
+            refreshToken = if (json.has("refresh_token")) json.getString("refresh_token") else null,
+        )
     }
+
+    private data class TokenResponse(val accessToken: String, val refreshToken: String?)
 
     /**
      * Fetch user info from Google API

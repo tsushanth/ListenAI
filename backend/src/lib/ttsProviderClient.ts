@@ -14,6 +14,34 @@ import type {
 import { TTSProviderError } from '../types/index.js';
 
 // ============================================================================
+// Live worker concurrency tracking
+// ============================================================================
+//
+// The DB-backed queue (tts_jobs status) only reflects requests submitted
+// through the job API. The legacy synchronous endpoints (POST /, /preview,
+// /stream) hit the same physical self-hosted worker machine but never touch
+// tts_jobs, so they're invisible to getQueueInfo()'s count — a job can show
+// queue_depth=1 (itself) while the single-machine worker is actually also
+// busy serving an unrelated legacy request, and the poller just sees
+// "processing" with no explanation for the wait. This counter tracks calls
+// actually in flight to the worker HTTP endpoint, regardless of which code
+// path issued them, so callers can surface true physical contention.
+let activeWorkerRequests = 0;
+
+export function getActiveWorkerRequestCount(): number {
+  return activeWorkerRequests;
+}
+
+async function trackWorkerRequest<T>(fn: () => Promise<T>): Promise<T> {
+  activeWorkerRequests++;
+  try {
+    return await fn();
+  } finally {
+    activeWorkerRequests--;
+  }
+}
+
+// ============================================================================
 // Connection Pool Configuration
 // ============================================================================
 
@@ -443,8 +471,7 @@ class SelfHostedClient implements ProviderClient {
 
     try {
       const response = await withRetry(
-        async () => {
-          return this.client.post(
+        async () => trackWorkerRequest(() => this.client.post(
             '/synthesize',
             {
               text: request.text,
@@ -459,8 +486,7 @@ class SelfHostedClient implements ProviderClient {
               },
               responseType: 'arraybuffer',
             }
-          );
-        },
+          )),
         `TTS short synthesis (${request.text.length} chars)`
       );
 
@@ -522,8 +548,7 @@ class SelfHostedClient implements ProviderClient {
 
     try {
       const response = await withRetry(
-        async () => {
-          return this.client.post(
+        async () => trackWorkerRequest(() => this.client.post(
             '/synthesize-long',
             {
               text: request.text,
@@ -540,8 +565,7 @@ class SelfHostedClient implements ProviderClient {
               responseType: 'arraybuffer',
               timeout: 600000,  // 10 minute timeout for very long texts
             }
-          );
-        },
+          )),
         `TTS long synthesis (${request.text.length} chars)`,
         longSynthesisRetryConfig
       );
@@ -631,8 +655,7 @@ class SelfHostedClient implements ProviderClient {
     try {
       // Retry the initial connection - once streaming starts, we don't retry mid-stream
       const response = await withRetry(
-        async () => {
-          return this.client.post(
+        async () => trackWorkerRequest(() => this.client.post(
             '/synthesize-stream',
             {
               text: request.text,
@@ -650,8 +673,7 @@ class SelfHostedClient implements ProviderClient {
               responseType: 'stream',
               timeout: 900000,  // 15 minute timeout for streaming
             }
-          );
-        },
+          )),
         `TTS streaming synthesis (${request.text.length} chars)`
       );
 

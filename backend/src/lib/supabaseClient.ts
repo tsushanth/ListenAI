@@ -1,6 +1,7 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { config, TIER_LIMITS, CHARS_PER_SECOND } from './config.js';
 import { logger } from './logger.js';
+import { getActiveWorkerRequestCount } from './ttsProviderClient.js';
 import type {
   DBUser,
   DBSubscription,
@@ -1154,10 +1155,22 @@ export async function getTTSJobForUser(jobId: string, userId: string): Promise<D
  */
 export async function getQueueInfo(jobId: string): Promise<{ queueDepth: number; queuePosition: number | null }> {
   // Total queued+processing globally
-  const { count: queueDepth } = await supabase
+  const { count: dbQueueDepth } = await supabase
     .from('tts_jobs')
     .select('*', { count: 'exact', head: true })
     .in('status', ['queued', 'processing']);
+
+  // The DB count only sees jobs submitted through the job API. Legacy
+  // synchronous endpoints (POST /, /preview, /stream) hit the same
+  // physical self-hosted worker but never touch tts_jobs, so they're
+  // invisible here — a job can show queueDepth=1 (itself) while the
+  // single-machine worker is actually also busy with unrelated legacy
+  // traffic. getActiveWorkerRequestCount() is a live, in-process count of
+  // calls actually in flight to the worker HTTP endpoint regardless of
+  // which code path issued them, so we take the max as the more honest
+  // "how many things are contending for the worker right now" figure.
+  const liveWorkerLoad = getActiveWorkerRequestCount();
+  const queueDepth = Math.max(dbQueueDepth ?? 0, liveWorkerLoad);
 
   // This job's created_at — only meaningful if job itself is still in queue
   const { data: jobRow } = await supabase
@@ -1167,7 +1180,7 @@ export async function getQueueInfo(jobId: string): Promise<{ queueDepth: number;
     .single();
 
   if (!jobRow || !['queued', 'processing'].includes(jobRow.status)) {
-    return { queueDepth: queueDepth ?? 0, queuePosition: null };
+    return { queueDepth, queuePosition: null };
   }
 
   // Count jobs created before (or at) this one that are still queued/processing
@@ -1177,7 +1190,7 @@ export async function getQueueInfo(jobId: string): Promise<{ queueDepth: number;
     .in('status', ['queued', 'processing'])
     .lte('created_at', jobRow.created_at);
 
-  return { queueDepth: queueDepth ?? 0, queuePosition: ahead ?? null };
+  return { queueDepth, queuePosition: ahead ?? null };
 }
 
 /**
