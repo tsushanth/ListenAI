@@ -96,6 +96,12 @@ fun PlayerScreen(
     var showSleepTimerPicker by remember { mutableStateOf(false) }
     var selectedVoice by remember { mutableStateOf<VoicePreset?>(null) }
     var availableVoices by remember { mutableStateOf<List<VoicePreset>>(emptyList()) }
+    // Set the instant the "Use offline AI voice instead" CTA is tapped, so
+    // the banner hides it immediately rather than waiting for the first
+    // on-device onProgress callback to overwrite queueDepth — that gap
+    // left the button visible for a moment after switching, which read as
+    // "did my tap not register?" Reset per new synthesis attempt below.
+    var switchedToOffline by remember { mutableStateOf(false) }
     // Mutable mirror of the navigation arg so auto-advance can move us to the
     // next EPUB chapter without leaving the player.
     var currentArticleId by remember(articleId) { mutableStateOf(articleId) }
@@ -241,6 +247,7 @@ fun PlayerScreen(
         }
 
         // Start synthesis
+        switchedToOffline = false
         playerState = PlayerState.Synthesizing(article, 0f)
 
         scope.launch {
@@ -414,7 +421,12 @@ fun PlayerScreen(
                 voiceId = voice.id
             )
 
-            // Start fresh synthesis with new voice
+            // Start fresh synthesis with new voice. Don't reset
+            // switchedToOffline when this call IS the offline switch
+            // (forceOnDevice=true) — it was just set true by the caller
+            // and this new Synthesizing state is the on-device attempt
+            // the CTA should stay hidden for.
+            if (!forceOnDevice) switchedToOffline = false
             playerState = PlayerState.Synthesizing(article, 0f)
 
             try {
@@ -826,7 +838,11 @@ fun PlayerScreen(
                         SynthesisBanner(
                             progress = state.progress,
                             detail = state.detail,
-                            onUseOffline = { selectedVoice?.let { regenerateWithVoice(it, article, forceOnDevice = true) } },
+                            showOfflineCta = !switchedToOffline,
+                            onUseOffline = {
+                                switchedToOffline = true
+                                selectedVoice?.let { regenerateWithVoice(it, article, forceOnDevice = true) }
+                            },
                         )
                     }
 
@@ -1138,6 +1154,7 @@ private fun ArticleContent(
 private fun SynthesisBanner(
     progress: Float,
     detail: com.listenai.service.tts.SynthesisProgress? = null,
+    showOfflineCta: Boolean = true,
     onUseOffline: (() -> Unit)? = null
 ) {
     val isQueued = detail?.isQueued == true
@@ -1233,7 +1250,7 @@ private fun SynthesisBanner(
             // means real queueing (unlike a multi-worker fleet where a >5
             // threshold would make sense). Show it as soon as something else
             // is contending for the worker.
-            if (onUseOffline != null && (queueDepth ?: 0) > 1) {
+            if (showOfflineCta && onUseOffline != null && (queueDepth ?: 0) > 1) {
                 TextButton(onClick = onUseOffline) {
                     Text("Use offline AI voice instead")
                 }
