@@ -1154,11 +1154,25 @@ export async function getTTSJobForUser(jobId: string, userId: string): Promise<D
  * Cheap: two indexed COUNT queries. Computed at poll time, not stored.
  */
 export async function getQueueInfo(jobId: string): Promise<{ queueDepth: number; queuePosition: number | null }> {
+  // A row can sit in 'queued'/'processing' for up to an hour before the
+  // stuck-job watchdog (stuckJobTimeoutMs) reaps it — that threshold exists
+  // to tolerate genuinely slow-but-working synthesis, not to define "is
+  // this job still relevant to show in a live queue count". Without a
+  // freshness filter, dead jobs from an earlier incident (crashed worker,
+  // client gave up) inflate queueDepth/queuePosition for up to an hour
+  // after they stopped mattering — confirmed live: 4 zombie 'processing'
+  // rows from a chaotic test session, untouched for 15-35+ minutes, showed
+  // up as "5th in line" on a brand new job that itself finished in 46s.
+  // 5 minutes is generous slack above normal per-chunk progress-update
+  // cadence for a genuinely active job.
+  const recentCutoff = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+
   // Total queued+processing globally
   const { count: dbQueueDepth } = await supabase
     .from('tts_jobs')
     .select('*', { count: 'exact', head: true })
-    .in('status', ['queued', 'processing']);
+    .in('status', ['queued', 'processing'])
+    .gte('updated_at', recentCutoff);
 
   // The DB count only sees jobs submitted through the job API. Legacy
   // synchronous endpoints (POST /, /preview, /stream) hit the same
@@ -1192,6 +1206,7 @@ export async function getQueueInfo(jobId: string): Promise<{ queueDepth: number;
     .from('tts_jobs')
     .select('*', { count: 'exact', head: true })
     .in('status', ['queued', 'processing'])
+    .gte('updated_at', recentCutoff)
     .lte('created_at', jobRow.created_at);
 
   return { queueDepth, queuePosition: ahead ?? null };
