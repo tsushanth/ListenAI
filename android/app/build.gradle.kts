@@ -2,6 +2,9 @@ import java.util.Properties
 
 plugins {
     id("com.android.application")
+    // android.builtInKotlin=false in gradle.properties opts out of AGP 9's
+    // built-in Kotlin (see that file for why) — this plugin is required
+    // again under that opt-out, same as pre-AGP-9.
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
     id("com.google.devtools.ksp")
@@ -17,12 +20,12 @@ if (keystorePropertiesFile.exists()) {
 
 android {
     namespace = "com.listenai"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.listenai"
         minSdk = 26
-        targetSdk = 35
+        targetSdk = 36
         versionCode = 83
         versionName = "2.14.39"
 
@@ -103,10 +106,6 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    kotlinOptions {
-        jvmTarget = "17"
-    }
-
     buildFeatures {
         compose = true
         buildConfig = true
@@ -123,6 +122,15 @@ android {
         jniLibs {
             useLegacyPackaging = false
         }
+    }
+}
+
+// Replaces the deprecated android { kotlinOptions { jvmTarget = "17" } }
+// block — that API is a hard compile error under AGP 9's Kotlin DSL script
+// compilation, not just a warning.
+kotlin {
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
     }
 }
 
@@ -176,9 +184,9 @@ dependencies {
     implementation("androidx.media3:media3-ui:1.2.1")
 
     // Room Database
-    implementation("androidx.room:room-runtime:2.6.1")
-    implementation("androidx.room:room-ktx:2.6.1")
-    ksp("androidx.room:room-compiler:2.6.1")
+    implementation("androidx.room:room-runtime:2.8.4")
+    implementation("androidx.room:room-ktx:2.8.4")
+    ksp("androidx.room:room-compiler:2.8.4")
 
     // DataStore Preferences
     implementation("androidx.datastore:datastore-preferences:1.0.0")
