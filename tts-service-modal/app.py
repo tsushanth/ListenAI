@@ -38,9 +38,17 @@ app = modal.App("readaloud-tts", image=image)
 
 @app.cls(
     gpu="T4",
-    container_idle_timeout=30,  # Scale to zero after 30s idle
-    allow_concurrent_inputs=10,
+    # 30s was too aggressive: torch+CUDA+Kokoro cold start takes ~16-20s
+    # (measured via `modal app logs`), so any real-world gap over 30s
+    # between requests forced a fresh cold start on every call — which is
+    # the common case for TTS (users don't request narration every 30s).
+    # 90s comfortably covers the back-to-back chunk requests within one
+    # article's synthesis while still scaling down between distinct
+    # sessions (typically minutes apart). At T4's $0.000164/s, worst-case
+    # idle-keepalive cost is ~$0.0148 per session even if never reused.
+    scaledown_window=90,
 )
+@modal.concurrent(max_inputs=10)
 class KokoroTTS:
     @modal.enter()
     def load_model(self):
@@ -104,7 +112,11 @@ class KokoroTTS:
 # FastAPI web endpoint for HTTP access (same API as Cloud Run service)
 @app.function(
     gpu="T4",
-    container_idle_timeout=30,
+    scaledown_window=90,  # see KokoroTTS class above for rationale
+    # allow_concurrent_inputs is deprecated in favor of @modal.concurrent,
+    # but the docs don't show a confirmed stacking order with @modal.asgi_app()
+    # — kept as-is here since it's proven working rather than guessing at
+    # decorator order on a function with a hard budget cap watching it.
     allow_concurrent_inputs=10,
     image=image,
 )
