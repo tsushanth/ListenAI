@@ -877,6 +877,38 @@ class TTSProviderManager {
     text: string,
     options?: { speed?: number; format?: 'mp3' | 'wav' | 'ogg' }
   ): Promise<TTSProviderResponse> {
+    const request: TTSProviderRequest = {
+      text,
+      voiceId: voice.provider_voice_id,
+      modelId: voice.provider_model_id ?? undefined,
+      settings: voice.settings,
+      speed: options?.speed,
+      format: options?.format,
+    };
+
+    const startTime = Date.now();
+
+    // Kokoro/self-hosted voices: route through GPU-preferred fallback
+    // (same logic the job API uses) instead of the flat 'selfhosted'
+    // provider map, which points straight at the CPU client with no GPU
+    // involved at all. Before this fix, every legacy synchronous call
+    // (POST /, /preview, /stream) silently bypassed GPU entirely — GPU
+    // being wired up for the job API didn't help these callers, they
+    // stayed on the same slow, congested CPU worker regardless.
+    if (voice.provider === 'selfhosted' && this.gpuEnabled) {
+      ttsLogger.info(
+        { voiceId: voice.provider_voice_id, textLength: text.length },
+        'Starting TTS synthesis (GPU-preferred path)'
+      );
+      const { usedGpu, ...result } = await this.synthesizeWithFallback(request);
+      const duration = Date.now() - startTime;
+      ttsLogger.info(
+        { provider: voice.provider, usedGpu, durationMs: duration, audioSize: result.audioBuffer.length },
+        'TTS synthesis completed'
+      );
+      return result;
+    }
+
     const provider = this.getProvider(voice.provider);
 
     if (!provider) {
@@ -892,16 +924,7 @@ class TTSProviderManager {
       'Starting TTS synthesis'
     );
 
-    const startTime = Date.now();
-
-    const result = await provider.synthesize({
-      text,
-      voiceId: voice.provider_voice_id,
-      modelId: voice.provider_model_id ?? undefined,
-      settings: voice.settings,
-      speed: options?.speed,
-      format: options?.format,
-    });
+    const result = await provider.synthesize(request);
 
     const duration = Date.now() - startTime;
     ttsLogger.info(
