@@ -1,0 +1,25 @@
+# ReadAloud AI
+
+> ReadAloud AI turns articles, PDFs, emails, and other documents into natural-sounding audio using AI-powered text-to-speech and voice cloning, so you can listen to your content instead of reading it.
+
+## What it does
+- Converts text (articles, PDFs, emails, documents) into speech using AI voices
+- Supports voice cloning (up to 10 cloned voices on paid plans)
+- Import content directly from a URL
+- Adjustable playback speed (up to 3x on paid plans)
+- Available as a web app and an iOS app
+
+## Key pages
+- Homepage: https://readaloudai.org/
+- Web app: https://readaloudai.org/app
+- Privacy policy: https://readaloudai.org/privacy
+- Terms of service: https://readaloudai.org/terms
+- iOS App Store: https://apps.apple.com/us/app/readaloud-ai/id6757346255
+
+## Pricing
+- Free plan: 5 articles/month, 10 AI voices, standard quality audio
+- Pro Weekly: $5.59/week — unlimited articles, 50+ AI voices, HD audio, voice cloning, PDF import
+- Pro Yearly: $27.99/year — everything in Pro Weekly plus unlimited voice clones
+
+## Who it's for
+People who want to listen to written content (articles, PDFs, emails, documents) rather than read it — including for accessibility, multitasking, or commuting.
