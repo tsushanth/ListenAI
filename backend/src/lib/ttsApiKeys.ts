@@ -23,7 +23,7 @@ export async function createApiKeyRecord(params: {
   label: string | null;
 }): Promise<TTSApiKeyRecord> {
   const { data, error } = await supabase
-    .from('tts_api_keys')
+    .from('realtimetts_api_keys')
     .insert({
       user_id: params.userId,
       gateway_key_id: params.gatewayKeyId,
@@ -42,7 +42,7 @@ export async function createApiKeyRecord(params: {
 
 export async function listApiKeysForUser(userId: string): Promise<TTSApiKeyRecord[]> {
   const { data, error } = await supabase
-    .from('tts_api_keys')
+    .from('realtimetts_api_keys')
     .select('*')
     .eq('user_id', userId)
     .order('created_at', { ascending: false });
@@ -57,7 +57,7 @@ export async function listApiKeysForUser(userId: string): Promise<TTSApiKeyRecor
 /** Returns the record if it belonged to this user and was marked revoked; null if not found/not owned. */
 export async function revokeApiKeyRecord(id: string, userId: string): Promise<TTSApiKeyRecord | null> {
   const { data, error } = await supabase
-    .from('tts_api_keys')
+    .from('realtimetts_api_keys')
     .update({ revoked_at: new Date().toISOString() })
     .eq('id', id)
     .eq('user_id', userId)

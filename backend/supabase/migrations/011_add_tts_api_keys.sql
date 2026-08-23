@@ -7,9 +7,14 @@
 -- display metadata for the ReadAloud web UI. The raw key value is never
 -- stored here, only the gateway-issued `key_id` (safe, non-secret) needed to
 -- revoke it later, and a short prefix for display.
+--
+-- Table prefixed `realtimetts_` (not `tts_`, which is already used by this
+-- app's own tables like tts_jobs/tts_usage) — this Supabase project is shared
+-- across multiple apps, so tables owned by a different app get that app's
+-- name as an explicit prefix to keep ownership obvious at a glance.
 -- ============================================================================
 
-CREATE TABLE IF NOT EXISTS tts_api_keys (
+CREATE TABLE IF NOT EXISTS realtimetts_api_keys (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
 
     -- Owner - real Supabase Auth user only. Deliberately NOT nullable and NOT
@@ -32,17 +37,17 @@ CREATE TABLE IF NOT EXISTS tts_api_keys (
     revoked_at TIMESTAMPTZ
 );
 
-CREATE INDEX IF NOT EXISTS idx_tts_api_keys_user_id ON tts_api_keys(user_id);
+CREATE INDEX IF NOT EXISTS idx_realtimetts_api_keys_user_id ON realtimetts_api_keys(user_id);
 
-ALTER TABLE tts_api_keys ENABLE ROW LEVEL SECURITY;
+ALTER TABLE realtimetts_api_keys ENABLE ROW LEVEL SECURITY;
 
 -- Service role only - all access goes through the backend (which uses
 -- SUPABASE_SERVICE_ROLE_KEY), never directly from the client.
-CREATE POLICY "Service role full access on tts_api_keys" ON tts_api_keys
+CREATE POLICY "Service role full access on realtimetts_api_keys" ON realtimetts_api_keys
     FOR ALL
     USING (true);
 
-COMMENT ON TABLE tts_api_keys IS
+COMMENT ON TABLE realtimetts_api_keys IS
     'Ownership/display record for realtime-tts-gateway API keys. The gateway
      (a separate Fly app, github.com/tsushanth/realtime-tts) is the actual
      source of truth for key validity - this table exists so the ReadAloud
