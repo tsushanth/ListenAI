@@ -73,16 +73,16 @@ export default function SettingsPage() {
 
         <div className="glass rounded-xl p-6">
           <p className="text-white/70 mb-4">
-            Get the full ReadAloud AI experience with our iOS app. Clone your voice, import articles, and listen on the go.
+            Get the full ReadAloud AI experience with our Android app. Clone your voice, import articles, and listen on the go.
           </p>
 
           <a
-            href="https://apps.apple.com/app/readaloud-ai"
+            href="https://play.google.com/store/apps/details?id=com.listenai"
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-2 bg-white text-black font-semibold px-6 py-3 rounded-lg hover:bg-white/90 transition-colors"
           >
-            Download on the App Store
+            Get it on Google Play
             <ExternalLink size={18} />
           </a>
         </div>
