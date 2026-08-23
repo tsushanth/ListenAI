@@ -19,6 +19,8 @@ export interface EnvConfig {
   GPU_TTS_ENABLED: boolean;
   RATE_LIMIT_WINDOW_MS: number;
   RATE_LIMIT_MAX_REQUESTS: number;
+  TTS_GATEWAY_URL: string;
+  TTS_GATEWAY_ADMIN_SECRET?: string;
 }
 
 // ============================================================================

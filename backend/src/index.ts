@@ -27,6 +27,7 @@ import { voiceMarketplaceRouter } from './routes/voiceMarketplace.js';
 import { stripeWebhookRouter } from './routes/stripeWebhook.js';
 import { authRouter } from './routes/auth.js';
 import { appConfigRouter } from './routes/appConfig.js';
+import { ttsApiKeysRouter } from './routes/ttsApiKeys.js';
 import { aggregateLatencyMetrics, checkSupabaseHealth, checkStorageHealth } from './lib/supabaseClient.js';
 import { startWorker, stopWorker } from './workers/ttsJobWorker.js';
 import { checkPubSubHealth } from './lib/pubsub.js';
@@ -196,6 +197,10 @@ app.use('/api/cloned-voices', clonedVoicesRouter);
 // Story generation (Lullaby Haven custom bedtime stories) — X-Device-ID gated,
 // per-device rate limit set inside the router.
 app.use('/api/stories', storiesRouter);
+
+// TTS realtime API key management (requires a REAL Supabase JWT, not the
+// requireAuth default-user fallback — see routes/ttsApiKeys.ts).
+app.use('/api/tts-api-keys', ttsApiKeysRouter);
 
 
 // Voice marketplace routes - for sharing and discovering cloned voices

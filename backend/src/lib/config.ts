@@ -38,6 +38,12 @@ const envSchema = z.object({
 
   // Pub/Sub push auth secret (used by /api/tts/worker/push endpoint)
   PUBSUB_PUSH_SECRET: z.string().optional(),
+
+  // realtime-tts-gateway (separate Fly app/repo) - lets signed-in users
+  // generate an API key for the standalone realtime TTS service. Optional so
+  // this repo still boots in envs where that feature isn't configured.
+  TTS_GATEWAY_URL: z.string().url().default('https://realtime-tts-gateway.fly.dev'),
+  TTS_GATEWAY_ADMIN_SECRET: z.string().optional(),
 });
 
 // ============================================================================
