@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { User, Smartphone, ExternalLink, Copy, Check } from 'lucide-react'
+import DeveloperApiSection from '@/components/DeveloperApiSection'
 
 export default function SettingsPage() {
   const [deviceId, setDeviceId] = useState<string>('')
@@ -60,6 +61,8 @@ export default function SettingsPage() {
           </div>
         </div>
       </section>
+
+      <DeveloperApiSection />
 
       {/* Mobile App Section */}
       <section className="mb-8">
