@@ -40,6 +40,20 @@ export async function createApiKeyRecord(params: {
   return data as TTSApiKeyRecord;
 }
 
+export async function countActiveKeysForUser(userId: string): Promise<number> {
+  const { count, error } = await supabase
+    .from('realtimetts_api_keys')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .is('revoked_at', null);
+
+  if (error) {
+    keysLogger.error({ error, userId }, 'Failed to count active API keys');
+    throw error;
+  }
+  return count ?? 0;
+}
+
 export async function listApiKeysForUser(userId: string): Promise<TTSApiKeyRecord[]> {
   const { data, error } = await supabase
     .from('realtimetts_api_keys')

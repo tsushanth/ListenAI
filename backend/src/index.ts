@@ -52,9 +52,13 @@ app.use(helmet({
 }));
 
 // CORS
+// Was a literal unfixed placeholder ('your-app-domain.com') until now - meant every
+// browser (not native-app) cross-origin call from the real web app was being CORS-
+// blocked in production. Native app traffic (iOS) isn't subject to CORS at all, which
+// is almost certainly why this went unnoticed.
 app.use(cors({
   origin: config.NODE_ENV === 'production'
-    ? ['https://your-app-domain.com'] // TODO: Configure allowed origins
+    ? ['https://readaloudai.org', 'https://readaloud-web.fly.dev']
     : true,
   credentials: true,
   exposedHeaders: [

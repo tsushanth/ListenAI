@@ -8,10 +8,16 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { verifyAuthToken, extractBearerToken } from '../lib/auth.js';
 import { issueGatewayKey, revokeGatewayKey } from '../lib/ttsGatewayClient.js';
-import { createApiKeyRecord, listApiKeysForUser, revokeApiKeyRecord } from '../lib/ttsApiKeys.js';
+import { createApiKeyRecord, listApiKeysForUser, revokeApiKeyRecord, countActiveKeysForUser } from '../lib/ttsApiKeys.js';
 import { logger } from '../lib/logger.js';
 
 const routeLogger = logger.child({ module: 'ttsApiKeys.route' });
+
+// Was unbounded — a signed-in user could generate unlimited keys, each spinning
+// up its own line item on the gateway's key store with no cost to the caller.
+// 5 is arbitrary but generous for real usage (dev/staging/prod-ish splits);
+// revisit once real usage patterns exist.
+const MAX_ACTIVE_KEYS_PER_USER = 5;
 
 interface StrictAuthedRequest extends Request {
   userId?: string;
@@ -62,6 +68,13 @@ ttsApiKeysRouter.get(
 ttsApiKeysRouter.post(
   '/',
   asyncHandler(async (req, res) => {
+    const activeCount = await countActiveKeysForUser(req.userId!);
+    if (activeCount >= MAX_ACTIVE_KEYS_PER_USER) {
+      res.status(429).json({
+        error: `You already have ${activeCount} active API keys (limit ${MAX_ACTIVE_KEYS_PER_USER}). Revoke one before creating another.`,
+      });
+      return;
+    }
     const label = typeof req.body?.label === 'string' ? req.body.label.slice(0, 200) : null;
     const { id: gatewayKeyId, key } = await issueGatewayKey(label || `readaloud user ${req.userId}`);
     const record = await createApiKeyRecord({
