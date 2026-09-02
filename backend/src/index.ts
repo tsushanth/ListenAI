@@ -32,6 +32,7 @@ import { aggregateLatencyMetrics, checkSupabaseHealth, checkStorageHealth } from
 import { startWorker, stopWorker } from './workers/ttsJobWorker.js';
 import { checkPubSubHealth } from './lib/pubsub.js';
 import { initRolloutFromEnv } from './lib/rollout.js';
+import { reportUsageToStripe } from './lib/realtimeTtsBilling.js';
 
 // Initialize rollout configuration from environment
 initRolloutFromEnv();
@@ -250,6 +251,17 @@ const server = app.listen(PORT, () => {
       logger.warn({ err }, 'Periodic latency aggregation failed (non-critical)');
     });
   }, SIX_HOURS_MS);
+
+  // Drains the realtime-tts gateway's per-key character usage and reports it
+  // to Stripe as meter events — see lib/realtimeTtsBilling.ts. Frequent
+  // (5min) since the gateway's own counters reset on each drain; a longer
+  // interval just means a bigger loss window if a report call fails.
+  const FIVE_MINUTES_MS = 5 * 60 * 1000;
+  setInterval(() => {
+    reportUsageToStripe().catch(err => {
+      logger.warn({ err }, 'Periodic realtime-tts usage report failed (non-critical)');
+    });
+  }, FIVE_MINUTES_MS);
 
   // Pull-based worker disabled — jobs are now delivered via Pub/Sub push
   // to /api/tts/worker/push. Set TTS_WORKER_ENABLED=true only for local dev.

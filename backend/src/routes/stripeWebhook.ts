@@ -2,6 +2,18 @@ import { Router, Request, Response } from 'express';
 import Stripe from 'stripe';
 import { logger } from '../lib/logger.js';
 import { supabase } from '../lib/supabaseClient.js';
+import { activateBillingFromCheckout, deactivateBillingForSubscription } from '../lib/realtimeTtsBilling.js';
+
+// realtime-tts checkouts/subscriptions are tagged with this metadata so they
+// can be routed away from ReadAloud's own "pro" subscription handlers below
+// — both fire the same Stripe event types, but a realtime-tts subscription
+// happens to use a different (freshly-created) Stripe Customer than a user's
+// main ReadAloud subscription, so the existing handlers would silently no-op
+// on it rather than corrupt anything. Branching explicitly is safer than
+// relying on that non-collision by accident.
+function isRealtimeTtsEvent(metadata: Stripe.Metadata | null | undefined): boolean {
+  return metadata?.product === 'realtime-tts-api';
+}
 
 const router = Router();
 
@@ -40,20 +52,30 @@ router.post('/stripe', async (req: Request, res: Response): Promise<void> => {
     switch (event.type) {
       case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session;
-        await handleCheckoutCompleted(session);
+        if (isRealtimeTtsEvent(session.metadata)) {
+          await activateBillingFromCheckout(session);
+        } else {
+          await handleCheckoutCompleted(session);
+        }
         break;
       }
 
       case 'customer.subscription.created':
       case 'customer.subscription.updated': {
         const subscription = event.data.object as Stripe.Subscription;
-        await handleSubscriptionUpdate(subscription);
+        if (!isRealtimeTtsEvent(subscription.metadata)) {
+          await handleSubscriptionUpdate(subscription);
+        }
         break;
       }
 
       case 'customer.subscription.deleted': {
         const subscription = event.data.object as Stripe.Subscription;
-        await handleSubscriptionCancelled(subscription);
+        if (isRealtimeTtsEvent(subscription.metadata)) {
+          await deactivateBillingForSubscription(subscription.id);
+        } else {
+          await handleSubscriptionCancelled(subscription);
+        }
         break;
       }
 

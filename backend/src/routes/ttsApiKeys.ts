@@ -7,8 +7,9 @@
 // valid Supabase JWT, full stop.
 import { Router, Request, Response, NextFunction } from 'express';
 import { verifyAuthToken, extractBearerToken } from '../lib/auth.js';
-import { issueGatewayKey, revokeGatewayKey } from '../lib/ttsGatewayClient.js';
+import { issueGatewayKey, revokeGatewayKey, setGatewayKeyBilling } from '../lib/ttsGatewayClient.js';
 import { createApiKeyRecord, listApiKeysForUser, revokeApiKeyRecord, countActiveKeysForUser } from '../lib/ttsApiKeys.js';
+import { isBillingActiveForUser, createCheckoutSession } from '../lib/realtimeTtsBilling.js';
 import { logger } from '../lib/logger.js';
 
 const routeLogger = logger.child({ module: 'ttsApiKeys.route' });
@@ -52,8 +53,12 @@ ttsApiKeysRouter.use(requireRealAuth);
 ttsApiKeysRouter.get(
   '/',
   asyncHandler(async (req, res) => {
-    const keys = await listApiKeysForUser(req.userId!);
+    const [keys, billingActive] = await Promise.all([
+      listApiKeysForUser(req.userId!),
+      isBillingActiveForUser(req.userId!),
+    ]);
     res.json({
+      billing_active: billingActive,
       keys: keys.map((k) => ({
         id: k.id,
         label: k.label,
@@ -62,6 +67,27 @@ ttsApiKeysRouter.get(
         revoked: !!k.revoked_at,
       })),
     });
+  })
+);
+
+// Starts a Stripe Checkout for the $0.05/1,000-char metered subscription
+// that gates this user's gateway keys — see lib/realtimeTtsBilling.ts.
+ttsApiKeysRouter.post(
+  '/billing/checkout',
+  asyncHandler(async (req, res) => {
+    const email = typeof req.body?.email === 'string' ? req.body.email : undefined;
+    if (!email) {
+      res.status(400).json({ error: 'email is required to start checkout.' });
+      return;
+    }
+    const origin = typeof req.headers.origin === 'string' ? req.headers.origin : 'https://readaloud.app';
+    const url = await createCheckoutSession({
+      userId: req.userId!,
+      email,
+      successUrl: `${origin}/developers?checkout=success`,
+      cancelUrl: `${origin}/developers?checkout=cancelled`,
+    });
+    res.json({ url });
   })
 );
 
@@ -77,16 +103,35 @@ ttsApiKeysRouter.post(
     }
     const label = typeof req.body?.label === 'string' ? req.body.label.slice(0, 200) : null;
     const { id: gatewayKeyId, key } = await issueGatewayKey(label || `readaloud user ${req.userId}`);
+    // The gateway requires a key to be explicitly billing-enabled before it'll
+    // run any TTS through it (see realtime-tts's keys.js). Real gate: only
+    // enable it if this user has an active realtimetts_billing row (a real
+    // Stripe subscription, see lib/realtimeTtsBilling.ts). A user without
+    // one still gets their key issued — it's just inert until they check out.
+    const billingActive = await isBillingActiveForUser(req.userId!);
+    if (billingActive) {
+      const billingOk = await setGatewayKeyBilling(gatewayKeyId, true);
+      if (!billingOk) {
+        routeLogger.error({ userId: req.userId, gatewayKeyId }, 'Issued gateway key but failed to enable billing — key will not work');
+      }
+    }
     const record = await createApiKeyRecord({
       userId: req.userId!,
       gatewayKeyId,
       keyPreview: key.slice(0, 10) + '…',
       label,
     });
-    routeLogger.info({ userId: req.userId, recordId: record.id }, 'Issued TTS API key');
+    routeLogger.info({ userId: req.userId, recordId: record.id, billingActive }, 'Issued TTS API key');
     // The raw key is returned exactly once — the frontend must show it to the
     // user immediately and tell them to save it; it is never retrievable again.
-    res.json({ id: record.id, key, key_preview: record.key_preview, label: record.label, created_at: record.created_at });
+    res.json({
+      id: record.id,
+      key,
+      key_preview: record.key_preview,
+      label: record.label,
+      created_at: record.created_at,
+      billing_active: billingActive,
+    });
   })
 );
 
