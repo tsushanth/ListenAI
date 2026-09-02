@@ -9,7 +9,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { verifyAuthTokenRemote, extractBearerToken } from '../lib/auth.js';
 import { issueGatewayKey, revokeGatewayKey, setGatewayKeyBilling } from '../lib/ttsGatewayClient.js';
 import { createApiKeyRecord, listApiKeysForUser, revokeApiKeyRecord, countActiveKeysForUser } from '../lib/ttsApiKeys.js';
-import { isBillingActiveForUser, createCheckoutSession } from '../lib/realtimeTtsBilling.js';
+import { isBillingActiveForUser, createCheckoutSession, createPortalSession } from '../lib/realtimeTtsBilling.js';
 import { logger } from '../lib/logger.js';
 
 const routeLogger = logger.child({ module: 'ttsApiKeys.route' });
@@ -95,6 +95,21 @@ ttsApiKeysRouter.post(
       cancelUrl: `${origin}/developers?checkout=cancelled`,
     });
     res.json({ url });
+  })
+);
+
+// Stripe-hosted portal for cancelling / updating payment method — no custom
+// UI needed. Requires the user to already have an active billing row.
+ttsApiKeysRouter.post(
+  '/billing/portal',
+  asyncHandler(async (req, res) => {
+    const origin = typeof req.headers.origin === 'string' ? req.headers.origin : 'https://readaloud.app';
+    try {
+      const url = await createPortalSession({ userId: req.userId!, returnUrl: `${origin}/developers` });
+      res.json({ url });
+    } catch (err) {
+      res.status(400).json({ error: err instanceof Error ? err.message : 'Failed to create portal session.' });
+    }
   })
 );
 

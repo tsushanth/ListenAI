@@ -20,6 +20,10 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', { apiVersion: '20
 // mtr_61VKS4vnYXmnQAsD441KFBTQTkmztIfY) — not re-derived at runtime.
 const TTS_BILLING_PRICE_ID = 'price_1UB47lKFBTQTkmztJ3XSMiev';
 const TTS_METER_EVENT_NAME = 'realtimetts_characters';
+// Dedicated Customer Portal config (cancel + payment-method update, no plan
+// changes since there's only one price) — the account's other portal
+// configs belong to different products on the same shared Stripe account.
+const TTS_BILLING_PORTAL_CONFIG_ID = 'bpc_1UB7PSKFBTQTkmztxt7ma3VG';
 
 // Distinguishes a realtime-tts checkout from ReadAloud's own "pro" upgrade
 // checkout in the shared Stripe webhook handler — both fire
@@ -71,6 +75,23 @@ export async function createCheckoutSession(params: {
     },
   });
   if (!session.url) throw new Error('Stripe did not return a checkout URL');
+  return session.url;
+}
+
+// Lets a user manage/cancel their subscription without any custom UI — the
+// gap flagged after shipping checkout: there was no way to cancel. Requires
+// an active realtimetts_billing row (a user with no subscription has
+// nothing to manage here).
+export async function createPortalSession(params: { userId: string; returnUrl?: string }): Promise<string> {
+  const billing = await getBillingForUser(params.userId);
+  if (!billing) {
+    throw new Error('No billing record for this user — nothing to manage yet.');
+  }
+  const session = await stripe.billingPortal.sessions.create({
+    customer: billing.stripe_customer_id,
+    configuration: TTS_BILLING_PORTAL_CONFIG_ID,
+    ...(params.returnUrl ? { return_url: params.returnUrl } : {}),
+  });
   return session.url;
 }
 
