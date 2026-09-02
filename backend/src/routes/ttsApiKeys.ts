@@ -6,7 +6,7 @@
 // against an external service, so it must reject anything without a genuinely
 // valid Supabase JWT, full stop.
 import { Router, Request, Response, NextFunction } from 'express';
-import { verifyAuthToken, extractBearerToken } from '../lib/auth.js';
+import { verifyAuthTokenRemote, extractBearerToken } from '../lib/auth.js';
 import { issueGatewayKey, revokeGatewayKey, setGatewayKeyBilling } from '../lib/ttsGatewayClient.js';
 import { createApiKeyRecord, listApiKeysForUser, revokeApiKeyRecord, countActiveKeysForUser } from '../lib/ttsApiKeys.js';
 import { isBillingActiveForUser, createCheckoutSession } from '../lib/realtimeTtsBilling.js';
@@ -31,7 +31,14 @@ async function requireRealAuth(req: StrictAuthedRequest, res: Response, next: Ne
       res.status(401).json({ error: 'Sign in required.' });
       return;
     }
-    const { userId } = await verifyAuthToken(token);
+    // verifyAuthToken (local JWT verification) hardcodes HS256 — this
+    // Supabase project issues ES256 tokens (the newer asymmetric signing
+    // keys), so it rejects every real token here. Found live 2026-09-02
+    // testing this exact route with a real Supabase user: every request
+    // failed "Sign in required" despite a genuinely valid, freshly-issued
+    // token. Remote verification asks Supabase itself, so it's correct
+    // regardless of which signing-key scheme the project uses.
+    const { userId } = await verifyAuthTokenRemote(token);
     req.userId = userId;
     next();
   } catch (err) {
