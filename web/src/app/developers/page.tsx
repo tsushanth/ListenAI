@@ -6,9 +6,18 @@ import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import DeveloperApiSection from '@/components/DeveloperApiSection'
 
-const CODE_SAMPLE = `const ws = new WebSocket(
-  "wss://api.readaloudai.org/tts?key=YOUR_API_KEY"
-)
+const CODE_SAMPLE = `// Step 1: authorize your key. This checks your billing/free-tier status
+// and returns a short-lived token plus the actual worker URL to connect to.
+const { token, url } = await fetch("https://api.readaloudai.org/tts/authorize", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ key: "YOUR_API_KEY" }),
+}).then((r) => r.json())
+
+// Step 2: connect DIRECTLY to the worker with that token — this is the
+// fast path, no extra relay hop, comparable latency to going straight to
+// the GPU worker itself.
+const ws = new WebSocket(\`\${url}?token=\${token}\`)
 
 ws.onopen = () => {
   ws.send(JSON.stringify({
@@ -31,7 +40,10 @@ ws.onmessage = (event) => {
     // binary PCM16LE mono 24kHz frame — queue it for playback
     playAudioChunk(event.data)
   }
-}`
+}
+
+// The token expires 60 seconds after issuance — call /tts/authorize again
+// for each new session rather than trying to reuse one.`
 
 const plans = [
   {
