@@ -77,7 +77,7 @@ ttsApiKeysRouter.get(
   })
 );
 
-// Starts a Stripe Checkout for the $0.05/1,000-char metered subscription
+// Starts a Stripe Checkout for the $0.01/1,000-char metered subscription
 // that gates this user's gateway keys — see lib/realtimeTtsBilling.ts.
 ttsApiKeysRouter.post(
   '/billing/checkout',
