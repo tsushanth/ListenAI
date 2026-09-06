@@ -30,6 +30,39 @@ export async function issueGatewayKey(label: string): Promise<{ id: string; key:
   return res.json();
 }
 
+export async function setGatewayKeyBilling(id: string, enabled: boolean): Promise<boolean> {
+  const res = await fetch(`${config.TTS_GATEWAY_URL}/admin/keys/billing`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${requireAdminSecret()}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ id, enabled }),
+  });
+  if (!res.ok) {
+    const body = await res.text().catch(() => '');
+    gatewayLogger.error({ status: res.status, body, id }, 'Failed to set gateway key billing status');
+    return false;
+  }
+  return true;
+}
+
+export async function drainGatewayUsage(): Promise<Array<{ id: string; chars: number }>> {
+  const res = await fetch(`${config.TTS_GATEWAY_URL}/admin/usage/drain`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${requireAdminSecret()}`,
+      'Content-Type': 'application/json',
+    },
+  });
+  if (!res.ok) {
+    const body = await res.text().catch(() => '');
+    gatewayLogger.error({ status: res.status, body }, 'Failed to drain gateway usage');
+    return [];
+  }
+  return res.json();
+}
+
 export async function revokeGatewayKey(id: string): Promise<boolean> {
   const res = await fetch(`${config.TTS_GATEWAY_URL}/admin/keys`, {
     method: 'DELETE',

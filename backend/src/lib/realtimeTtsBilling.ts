@@ -4,9 +4,13 @@
 // repo) for what "billingEnabled" actually gates on the other end.
 //
 // Billing is per-USER, not per-key: one Stripe subscription per user covers
-// all of that user's gateway keys. $0.05 per 1,000 characters synthesized,
-// reported via a Stripe Billing Meter (event name realtimetts_characters),
-// metered against Stripe price price_1UB47lKFBTQTkmztJ3XSMiev.
+// all of that user's gateway keys. $0.01 per 1,000 characters synthesized
+// (deliberately undercutting ElevenLabs' ~$0.05/1k floor rate — verified against
+// real measured compute cost to still leave healthy margin, see realtime-tts repo's
+// DECISIONS.md for the underlying cost/latency analysis), reported via a Stripe
+// Billing Meter (event name realtimetts_characters), metered against Stripe price
+// price_1UCU4gKFBTQTkmztYE2RuWia. (Was price_1UB47lKFBTQTkmztJ3XSMiev at $0.05/1k —
+// deactivated 2026-09-05, had zero real subscribers, safe to retire outright.)
 import Stripe from 'stripe';
 import { supabase } from './supabaseClient.js';
 import { logger } from './logger.js';
@@ -18,7 +22,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', { apiVersion: '20
 
 // Created once via the Stripe API (product prod_VBQz9uoIntSQWG, meter
 // mtr_61VKS4vnYXmnQAsD441KFBTQTkmztIfY) — not re-derived at runtime.
-const TTS_BILLING_PRICE_ID = 'price_1UB47lKFBTQTkmztJ3XSMiev';
+const TTS_BILLING_PRICE_ID = 'price_1UCU4gKFBTQTkmztYE2RuWia';
 const TTS_METER_EVENT_NAME = 'realtimetts_characters';
 // Dedicated Customer Portal config (cancel + payment-method update, no plan
 // changes since there's only one price) — the account's other portal
