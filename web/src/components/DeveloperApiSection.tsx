@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Code, Copy, Check, Trash2, LogIn, LogOut, Loader2 } from 'lucide-react'
+import { Code, Copy, Check, Trash2, LogOut, Loader2 } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { ttsApiKeysApi, type TTSApiKeySummary } from '@/lib/ttsApiKeysApi'
 import type { Session } from '@supabase/supabase-js'
@@ -17,6 +17,11 @@ export default function DeveloperApiSection() {
   const [issuing, setIssuing] = useState(false)
   const [billingActive, setBillingActive] = useState(false)
   const [billingLoading, setBillingLoading] = useState(false)
+  const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [authSubmitting, setAuthSubmitting] = useState(false)
+  const [authNotice, setAuthNotice] = useState<string | null>(null)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -45,11 +50,30 @@ export default function DeveloperApiSection() {
     if (session) loadKeys()
   }, [session, loadKeys])
 
-  const signIn = (provider: 'google' | 'apple') => {
-    supabase.auth.signInWithOAuth({
-      provider,
-      options: { redirectTo: typeof window !== 'undefined' ? window.location.href : undefined },
-    })
+  const submitAuth = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setAuthSubmitting(true)
+    setError(null)
+    setAuthNotice(null)
+    try {
+      if (authMode === 'signup') {
+        const { data, error: signUpError } = await supabase.auth.signUp({ email, password })
+        if (signUpError) throw signUpError
+        if (!data.session) {
+          // Email confirmation is required before a session is issued — this is a
+          // Supabase project setting, not something this form controls.
+          setAuthNotice('Check your email to confirm your account, then sign in.')
+          setAuthMode('signin')
+        }
+      } else {
+        const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
+        if (signInError) throw signInError
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Authentication failed')
+    } finally {
+      setAuthSubmitting(false)
+    }
   }
 
   const signOut = async () => {
@@ -135,20 +159,53 @@ export default function DeveloperApiSection() {
               seconds to spin up on the first request; once warm, responses stream back
               in under a second.
             </p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => signIn('google')}
-                className="inline-flex items-center gap-2 bg-white text-black font-semibold px-5 py-2.5 rounded-lg hover:bg-white/90 transition-colors"
-              >
-                <LogIn size={18} /> Sign in with Google
-              </button>
-              <button
-                onClick={() => signIn('apple')}
-                className="inline-flex items-center gap-2 bg-dark-tertiary border border-white/10 font-semibold px-5 py-2.5 rounded-lg hover:bg-white/10 transition-colors"
-              >
-                <LogIn size={18} /> Sign in with Apple
-              </button>
-            </div>
+            {authNotice && (
+              <p className="text-sm text-green-300 bg-green-500/10 border border-green-500/30 rounded-lg px-3 py-2 mb-4">
+                {authNotice}
+              </p>
+            )}
+
+            <form onSubmit={submitAuth} className="space-y-3 max-w-sm">
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@example.com"
+                className="w-full bg-dark-tertiary border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-primary"
+              />
+              <input
+                type="password"
+                required
+                minLength={6}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Password"
+                className="w-full bg-dark-tertiary border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-primary"
+              />
+              {error && <p className="text-sm text-red-400">{error}</p>}
+              <div className="flex items-center gap-3">
+                <button
+                  type="submit"
+                  disabled={authSubmitting}
+                  className="inline-flex items-center gap-2 bg-white text-black font-semibold px-5 py-2.5 rounded-lg hover:bg-white/90 transition-colors disabled:opacity-50"
+                >
+                  {authSubmitting ? <Loader2 size={18} className="animate-spin" /> : null}
+                  {authMode === 'signup' ? 'Create account' : 'Sign in'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuthMode(authMode === 'signup' ? 'signin' : 'signup')
+                    setError(null)
+                    setAuthNotice(null)
+                  }}
+                  className="text-sm text-white/50 hover:text-white transition-colors"
+                >
+                  {authMode === 'signup' ? 'Already have an account? Sign in' : "Don't have an account? Sign up"}
+                </button>
+              </div>
+            </form>
           </div>
         ) : (
           <div className="space-y-4">
