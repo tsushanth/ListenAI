@@ -34,7 +34,7 @@ async function authedRequest<T>(path: string, options: RequestInit = {}): Promis
 }
 
 export const ttsApiKeysApi = {
-  list: () => authedRequest<{ keys: TTSApiKeySummary[] }>('/api/tts-api-keys'),
+  list: () => authedRequest<{ keys: TTSApiKeySummary[]; billing_active: boolean }>('/api/tts-api-keys'),
 
   create: (label?: string) =>
     authedRequest<{ id: string; key: string; key_preview: string; label: string | null; created_at: string }>(
@@ -43,4 +43,16 @@ export const ttsApiKeysApi = {
     ),
 
   revoke: (id: string) => authedRequest<{ revoked: boolean }>(`/api/tts-api-keys/${id}`, { method: 'DELETE' }),
+
+  // Both return a Stripe-hosted URL to redirect the browser to — checkout for
+  // adding a payment method (unlocks unlimited pay-as-you-go usage beyond the
+  // free tier), portal for managing/cancelling an existing subscription.
+  startCheckout: (email: string) =>
+    authedRequest<{ url: string }>('/api/tts-api-keys/billing/checkout', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    }),
+
+  openBillingPortal: () =>
+    authedRequest<{ url: string }>('/api/tts-api-keys/billing/portal', { method: 'POST' }),
 }

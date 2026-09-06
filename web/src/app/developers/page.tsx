@@ -40,25 +40,27 @@ const plans = [
     period: 'to start',
     description: 'For testing and small projects',
     features: [
+      '10,000 free characters, no card required',
       'Realtime WebSocket streaming',
       'Kokoro-82M voice model',
-      'Pay-as-you-go beyond free tier',
-      'No credit card required to try',
+      'Upgrade to pay-as-you-go anytime',
     ],
+    cta: 'Get a free key',
     highlighted: false,
   },
   {
     name: 'Pay as you go',
-    price: 'Usage-based',
-    period: '',
+    price: '$0.01',
+    period: 'per 1,000 characters',
     description: 'Scales with your app, no plan to manage',
     features: [
-      'Everything in Free',
+      'Everything in Free, no limit',
       'Priority GPU warm-up',
       'Multiple concurrent connections',
       'Key-based usage tracking',
       'Revoke/rotate keys anytime',
     ],
+    cta: 'Add a payment method',
     highlighted: true,
   },
 ]
@@ -197,7 +199,7 @@ export default function DevelopersPage() {
                   <span className="text-3xl font-bold text-white">{plan.price}</span>
                   {plan.period && <span className="text-gray-400 ml-1">{plan.period}</span>}
                 </div>
-                <ul className="space-y-3">
+                <ul className="space-y-3 mb-8">
                   {plan.features.map((f) => (
                     <li key={f} className="flex items-center gap-3 text-sm text-gray-300">
                       <Check className="text-primary flex-shrink-0" size={16} />
@@ -205,6 +207,16 @@ export default function DevelopersPage() {
                     </li>
                   ))}
                 </ul>
+                <a
+                  href="#get-started"
+                  className={`block w-full text-center py-3 px-4 rounded-xl font-semibold transition-colors ${
+                    plan.highlighted
+                      ? 'bg-primary text-dark hover:bg-primary-dark'
+                      : 'bg-dark-tertiary text-white hover:bg-dark-tertiary/80'
+                  }`}
+                >
+                  {plan.cta}
+                </a>
               </div>
             ))}
           </div>

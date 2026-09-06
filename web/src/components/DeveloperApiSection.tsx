@@ -15,6 +15,8 @@ export default function DeveloperApiSection() {
   const [copied, setCopied] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [issuing, setIssuing] = useState(false)
+  const [billingActive, setBillingActive] = useState(false)
+  const [billingLoading, setBillingLoading] = useState(false)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -29,8 +31,9 @@ export default function DeveloperApiSection() {
     if (!session) return
     setKeysLoading(true)
     try {
-      const { keys } = await ttsApiKeysApi.list()
+      const { keys, billing_active } = await ttsApiKeysApi.list()
       setKeys(keys)
+      setBillingActive(billing_active)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load keys')
     } finally {
@@ -78,6 +81,31 @@ export default function DeveloperApiSection() {
     }
   }
 
+  const startCheckout = async () => {
+    if (!session?.user.email) return
+    setBillingLoading(true)
+    setError(null)
+    try {
+      const { url } = await ttsApiKeysApi.startCheckout(session.user.email)
+      window.location.href = url
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to start checkout')
+      setBillingLoading(false)
+    }
+  }
+
+  const openPortal = async () => {
+    setBillingLoading(true)
+    setError(null)
+    try {
+      const { url } = await ttsApiKeysApi.openBillingPortal()
+      window.location.href = url
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to open billing portal')
+      setBillingLoading(false)
+    }
+  }
+
   const copyKey = () => {
     if (!newKey) return
     navigator.clipboard.writeText(newKey)
@@ -103,9 +131,9 @@ export default function DeveloperApiSection() {
               Sign in to generate an API key for the realtime TTS service.
             </p>
             <p className="text-xs text-white/50 mb-4">
-              Latency note: the GPU backend is provisioned on demand and can take up to
-              ~5 minutes to spin up after being idle. It stays warm for 15 minutes after
-              your last request, then shuts down automatically to avoid unnecessary cost.
+              Latency note: a cold worker (idle for a couple minutes) can take several
+              seconds to spin up on the first request; once warm, responses stream back
+              in under a second.
             </p>
             <div className="flex gap-3">
               <button
@@ -135,10 +163,31 @@ export default function DeveloperApiSection() {
             </div>
 
             <p className="text-xs text-white/50">
-              Latency note: the GPU backend is provisioned on demand and can take up to
-              ~5 minutes to spin up after being idle. It stays warm for 15 minutes after
-              your last request, then shuts down automatically to avoid unnecessary cost.
+              Latency note: a cold worker (idle for a couple minutes) can take several
+              seconds to spin up on the first request; once warm, responses stream back
+              in under a second.
             </p>
+
+            <div className="bg-dark-tertiary border border-white/10 rounded-lg p-4 flex items-center justify-between">
+              <div>
+                <p className="text-sm text-white font-medium">
+                  {billingActive ? 'Pay-as-you-go active' : 'Free tier — 10,000 characters'}
+                </p>
+                <p className="text-xs text-white/50 mt-0.5">
+                  {billingActive
+                    ? '$0.01 per 1,000 characters, no limit.'
+                    : 'Add a payment method for unlimited usage beyond the free tier.'}
+                </p>
+              </div>
+              <button
+                onClick={billingActive ? openPortal : startCheckout}
+                disabled={billingLoading}
+                className="inline-flex items-center gap-2 bg-white text-black font-semibold px-4 py-2 rounded-lg text-sm hover:bg-white/90 transition-colors disabled:opacity-50 flex-shrink-0"
+              >
+                {billingLoading ? <Loader2 size={14} className="animate-spin" /> : null}
+                {billingActive ? 'Manage billing' : 'Add payment method'}
+              </button>
+            </div>
 
             {newKey && (
               <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4">
