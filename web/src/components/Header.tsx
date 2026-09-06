@@ -35,6 +35,9 @@ export default function Header() {
             <Link href="#faq" className="text-gray-300 hover:text-white transition-colors">
               FAQ
             </Link>
+            <Link href="/developers" className="text-gray-300 hover:text-white transition-colors">
+              Developers
+            </Link>
             <Link
               href="/app"
               className="bg-primary text-dark px-4 py-2 rounded-lg font-semibold hover:bg-primary-dark transition-colors"
@@ -67,6 +70,9 @@ export default function Header() {
               </Link>
               <Link href="#faq" className="text-gray-300 hover:text-white transition-colors">
                 FAQ
+              </Link>
+              <Link href="/developers" className="text-gray-300 hover:text-white transition-colors">
+                Developers
               </Link>
               <Link
                 href="/app"

@@ -54,7 +54,7 @@ export default function PrivacyPage() {
               When you use cloud-based voices, your article text is sent to the following services for audio generation:
             </p>
             <ul className="list-disc pl-6 text-gray-300 space-y-2">
-              <li><strong>Kokoro TTS</strong> (self-hosted on Google Cloud Platform, us-central1 region) &mdash; processes text for standard quality voices</li>
+              <li><strong>Kokoro TTS</strong> (self-hosted on RunPod GPU cloud infrastructure) &mdash; processes text for standard quality voices</li>
               <li><strong>ElevenLabs</strong> (elevenlabs.io) &mdash; processes text for premium quality voices, subject to <a href="https://elevenlabs.io/privacy" className="text-primary hover:text-primary-dark">ElevenLabs&apos; privacy policy</a></li>
             </ul>
 
