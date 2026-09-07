@@ -1,25 +1,35 @@
 # ReadAloud AI
 
-> ReadAloud AI turns articles, PDFs, emails, and other documents into natural-sounding audio using AI-powered text-to-speech and voice cloning, so you can listen to your content instead of reading it.
+> ReadAloud AI turns articles, PDFs, emails, and other documents into natural-sounding audio using AI-powered text-to-speech and voice cloning, so you can listen to your content instead of reading it. It also offers a realtime streaming text-to-speech API for developers and AI agents.
 
-## What it does
+## Consumer app — what it does
 - Converts text (articles, PDFs, emails, documents) into speech using AI voices
 - Supports voice cloning (up to 10 cloned voices on paid plans)
 - Import content directly from a URL
 - Adjustable playback speed (up to 3x on paid plans)
-- Available as a web app and an iOS app
+- Available as a web app and an Android app
 
 ## Key pages
 - Homepage: https://readaloudai.org/
 - Web app: https://readaloudai.org/app
 - Privacy policy: https://readaloudai.org/privacy
 - Terms of service: https://readaloudai.org/terms
-- iOS App Store: https://apps.apple.com/us/app/readaloud-ai/id6757346255
+- Android app: https://play.google.com/store/apps/details?id=com.listenai
 
-## Pricing
+## Consumer app pricing
 - Free plan: 5 articles/month, 10 AI voices, standard quality audio
 - Pro Weekly: $5.59/week — unlimited articles, 50+ AI voices, HD audio, voice cloning, PDF import
 - Pro Yearly: $27.99/year — everything in Pro Weekly plus unlimited voice clones
 
+## Developer API — realtime streaming text-to-speech
+Powered by Kokoro-82M, streams natural-sounding speech over WebSocket as it's generated.
+- Docs and signup: https://readaloudai.org/developers
+- Free tier: 10,000 characters, no credit card required
+- Pay-as-you-go: $0.01 per 1,000 characters (no plan to manage, scales with usage)
+- Typical warm latency: well under a second to first audio
+- MCP server (for AI agents/coding assistants): `npx realtime-tts-mcp` — https://github.com/tsushanth/realtime-tts-mcp
+- Protocol: WebSocket, JSON control messages + binary PCM16LE audio frames
+
 ## Who it's for
-People who want to listen to written content (articles, PDFs, emails, documents) rather than read it — including for accessibility, multitasking, or commuting.
+- Consumer app: people who want to listen to written content rather than read it — accessibility, multitasking, commuting.
+- Developer API: developers and AI agents that need realtime, low-latency text-to-speech.
