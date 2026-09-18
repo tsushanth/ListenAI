@@ -47,7 +47,7 @@ export async function setGatewayKeyBilling(id: string, enabled: boolean): Promis
   return true;
 }
 
-export async function drainGatewayUsage(): Promise<Array<{ id: string; chars: number }>> {
+export async function drainGatewayUsage(): Promise<Array<{ id: string; chars: number; piperChars?: number }>> {
   const res = await fetch(`${config.TTS_GATEWAY_URL}/admin/usage/drain`, {
     method: 'POST',
     headers: {

@@ -24,6 +24,12 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', { apiVersion: '20
 // mtr_61VKS4vnYXmnQAsD441KFBTQTkmztIfY) — not re-derived at runtime.
 const TTS_BILLING_PRICE_ID = 'price_1UCU4gKFBTQTkmztYE2RuWia';
 const TTS_METER_EVENT_NAME = 'realtimetts_characters';
+// Piper (CPU engine) is priced at $0.004/1k chars vs Kokoro's $0.01/1k. Rather than
+// add a second Stripe price/meter and migrate every live subscription, Piper chars are
+// reported to the existing meter pre-weighted: 1 Piper char = 0.4 billed chars. Trade-off:
+// the invoice's "characters" quantity is Kokoro-equivalent, not raw characters — move to a
+// dedicated Stripe price if invoice transparency matters.
+const PIPER_PRICE_RATIO = 0.4;
 // Dedicated Customer Portal config (cancel + payment-method update, no plan
 // changes since there's only one price) — the account's other portal
 // configs belong to different products on the same shared Stripe account.
@@ -179,7 +185,9 @@ export async function reportUsageToStripe(): Promise<void> {
   const usage = await drainGatewayUsage();
   if (usage.length === 0) return;
 
-  for (const { id: gatewayKeyId, chars } of usage) {
+  for (const { id: gatewayKeyId, chars: totalChars, piperChars = 0 } of usage) {
+    // `chars` from the gateway is the total across engines; piperChars is the cheaper subset.
+    const chars = Math.round((totalChars - piperChars) + piperChars * PIPER_PRICE_RATIO);
     try {
       const { data: keyRecord } = await supabase
         .from('realtimetts_api_keys')
