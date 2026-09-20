@@ -30,6 +30,12 @@ const TTS_METER_EVENT_NAME = 'realtimetts_characters';
 // the invoice's "characters" quantity is Kokoro-equivalent, not raw characters — move to a
 // dedicated Stripe price if invoice transparency matters.
 const PIPER_PRICE_RATIO = 0.4;
+// Batch speech-to-text (worker-stt-prod) is metered in audio seconds and billed through the SAME character
+// meter, no new Stripe objects: $0.11 per audio hour at the meter's $0.01 per 1,000 chars
+//   $0.11/h / ($0.01 / 1000 chars) = 11,000 char-equivalents per hour = 11,000 / 3,600 = 3.0556 per second.
+// Keep in sync with STT_CHARS_PER_SECOND in realtime-tts/gateway/keys.js (free-tier conversion).
+// Same trade-off as Piper: the invoice's "characters" quantity is an equivalent, not raw characters.
+export const STT_CHARS_PER_SECOND = 3.0556;
 // Dedicated Customer Portal config (cancel + payment-method update, no plan
 // changes since there's only one price) — the account's other portal
 // configs belong to different products on the same shared Stripe account.
@@ -181,29 +187,61 @@ export async function deactivateBillingForSubscription(subscriptionId: string): 
 // Best-effort: a failed Stripe report here loses that batch's usage (the
 // gateway has already zeroed its own counters by the time drainGatewayUsage
 // returns) — acceptable at this volume, see keys.js's drainUsage comment.
-export async function reportUsageToStripe(): Promise<void> {
-  const usage = await drainGatewayUsage();
+// Everything reportUsageToStripe touches outside this file, injectable for unit tests.
+export interface UsageReportDeps {
+  drain: typeof drainGatewayUsage;
+  getKeyOwner: (gatewayKeyId: string) => Promise<{ user_id: string } | null>;
+  getBilling: (userId: string) => Promise<RealtimeTtsBillingRow | null>;
+  createMeterEvent: (params: Stripe.Billing.MeterEventCreateParams) => Promise<unknown>;
+}
+
+const defaultUsageDeps: UsageReportDeps = {
+  drain: drainGatewayUsage,
+  getKeyOwner: async (gatewayKeyId) => {
+    const { data } = await supabase
+      .from('realtimetts_api_keys')
+      .select('user_id')
+      .eq('gateway_key_id', gatewayKeyId)
+      .maybeSingle();
+    return data as { user_id: string } | null;
+  },
+  getBilling: getBillingForUser,
+  createMeterEvent: (params) => stripe.billing.meterEvents.create(params),
+};
+
+// Billed value for one drained gateway entry, in Kokoro-equivalent characters:
+// Kokoro chars at 1.0, Piper chars at PIPER_PRICE_RATIO, STT audio seconds at STT_CHARS_PER_SECOND.
+export function billableChars(u: { chars: number; piperChars?: number; audioSeconds?: number }): number {
+  const { chars, piperChars = 0, audioSeconds = 0 } = u;
+  // `chars` from the gateway is the total across engines; piperChars is the cheaper subset.
+  return Math.round((chars - piperChars) + piperChars * PIPER_PRICE_RATIO) + Math.round(audioSeconds * STT_CHARS_PER_SECOND);
+}
+
+// Pulls accumulated usage (characters, Piper characters, STT audio seconds) off the gateway (per gateway
+// key id) and reports it to Stripe as meter events against each key owner's customer.
+// Best-effort: a failed Stripe report here loses that batch's usage (the
+// gateway has already zeroed its own counters by the time drainGatewayUsage
+// returns) — acceptable at this volume, see keys.js's drainUsage comment.
+export async function reportUsageToStripe(deps: UsageReportDeps = defaultUsageDeps): Promise<void> {
+  const usage = await deps.drain();
   if (usage.length === 0) return;
 
-  for (const { id: gatewayKeyId, chars: totalChars, piperChars = 0 } of usage) {
-    // `chars` from the gateway is the total across engines; piperChars is the cheaper subset.
-    const chars = Math.round((totalChars - piperChars) + piperChars * PIPER_PRICE_RATIO);
+  for (const entry of usage) {
+    const gatewayKeyId = entry.id;
+    const chars = billableChars(entry);
     try {
-      const { data: keyRecord } = await supabase
-        .from('realtimetts_api_keys')
-        .select('user_id')
-        .eq('gateway_key_id', gatewayKeyId)
-        .maybeSingle();
+      const keyRecord = await deps.getKeyOwner(gatewayKeyId);
       if (!keyRecord) {
         billingLogger.warn({ gatewayKeyId }, 'Usage reported for a gateway key with no owning user record');
         continue;
       }
-      const billing = await getBillingForUser(keyRecord.user_id);
+      const billing = await deps.getBilling(keyRecord.user_id);
       if (!billing?.active) {
         billingLogger.warn({ userId: keyRecord.user_id, gatewayKeyId, chars }, 'Usage reported for a user with no active billing — dropping (should be unreachable, key should not have been billing-enabled)');
         continue;
       }
-      await stripe.billing.meterEvents.create({
+      if (chars <= 0) continue; // e.g. a sub-0.16 s STT remainder rounds to nothing; don't send empty meter events
+      await deps.createMeterEvent({
         event_name: TTS_METER_EVENT_NAME,
         timestamp: Math.floor(Date.now() / 1000),
         payload: {
