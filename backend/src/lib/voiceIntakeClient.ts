@@ -32,7 +32,21 @@ export interface IntakeClient {
 }
 
 export function createIntakeClient(baseUrl: string, secret: string | undefined): IntakeClient {
-  async function call(method: string, path: string, opts: { json?: unknown; body?: Buffer; timeoutMs?: number } = {}): Promise<Response> {
+  // Idempotent calls (GET, part PUTs) are retried on network errors and 5xx: Modal web endpoints
+  // occasionally reset a connection (seen live: ECONNRESET on an 8 MB part). Everything else fails fast.
+  async function call(method: string, path: string, opts: { json?: unknown; body?: Buffer; timeoutMs?: number; retry?: boolean } = {}): Promise<Response> {
+    const tries = opts.retry || method === "GET" ? 3 : 1
+    for (let attempt = 1; ; attempt++) {
+      try {
+        return await callOnce(method, path, opts)
+      } catch (e) {
+        const transient = !(e instanceof IntakeError) || e.status >= 500
+        if (!transient || attempt >= tries) throw e instanceof IntakeError ? e : new IntakeError(502, 'network error talking to intake')
+        await new Promise((r) => setTimeout(r, 500 * attempt))
+      }
+    }
+  }
+  async function callOnce(method: string, path: string, opts: { json?: unknown; body?: Buffer; timeoutMs?: number } = {}): Promise<Response> {
     if (!secret) throw new IntakeError(503, 'INTAKE_SECRET is not configured');
     const headers: Record<string, string> = { Authorization: `Bearer ${secret}` };
     let body: BodyInit | undefined;
@@ -65,7 +79,7 @@ export function createIntakeClient(baseUrl: string, secret: string | undefined):
     create: (b) => json(call('POST', '/voices', { json: b })),
     list: (u) => json(call('GET', `/voices?owner_user_id=${id(u)}`)),
     get: (v) => json(call('GET', `/voices/${id(v)}`)),
-    putPart: (v, n, data) => json(call('PUT', `/voices/${id(v)}/dataset/parts/${n}`, { body: data })),
+    putPart: (v, n, data) => json(call('PUT', `/voices/${id(v)}/dataset/parts/${n}`, { body: data, retry: true })),
     listParts: (v) => json(call('GET', `/voices/${id(v)}/dataset/parts`)),
     commit: (v, parts, bytes) => json(call('POST', `/voices/${id(v)}/dataset/commit`, { json: { parts, bytes }, timeoutMs: 600_000 })),
     sample: (v, n) => bin(call('GET', `/voices/${id(v)}/samples/${n}`)),

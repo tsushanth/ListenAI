@@ -16,6 +16,7 @@ app.use('/api/voice-studio', createVoiceStudioRouter({
   intake, enabledUsers: () => '*', maxVoicesPerUser: 3, maxZipBytes: 300 * 1048576,
   backfillKeyOwners: async () => undefined, log: console,
 }));
+void (async () => {
 const srv = app.listen(0);
 const base = `http://127.0.0.1:${(srv.address() as AddressInfo).port}/api/voice-studio`;
 const A = 'e2e-user-a', B = 'e2e-user-b';
@@ -62,3 +63,4 @@ try {
   }
   srv.close();
 }
+})().catch((e) => { console.error('FAIL', e instanceof Error ? e.message : e); process.exit(1); });
