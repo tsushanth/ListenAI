@@ -1,13 +1,16 @@
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
+import { Inter, Bricolage_Grotesque, Instrument_Sans, JetBrains_Mono } from 'next/font/google'
 import './globals.css'
 
 const inter = Inter({ subsets: ['latin'] })
+const display = Bricolage_Grotesque({ subsets: ['latin'], variable: '--font-display', display: 'swap' })
+const body = Instrument_Sans({ subsets: ['latin'], variable: '--font-body', display: 'swap' })
+const mono = JetBrains_Mono({ subsets: ['latin'], variable: '--font-mono', display: 'swap' })
 
 export const metadata: Metadata = {
-  title: 'ReadAloud AI - Turn Any Text Into Natural Speech',
-  description: 'Transform articles, PDFs, emails, and documents into natural-sounding audio. Listen to your content anywhere with AI-powered text-to-speech and voice cloning.',
-  keywords: ['text to speech', 'TTS', 'audio articles', 'voice cloning', 'AI voice', 'read aloud', 'accessibility'],
+  title: 'ReadAloud AI - Realtime text-to-speech API',
+  description: 'A streaming text-to-speech API for voice agents and apps: about 170 ms to first audio, from $4 per million characters. Also available as the ReadAloud AI reader for Android and web.',
+  keywords: ['text to speech API', 'realtime TTS', 'voice agent', 'streaming TTS', 'text to speech', 'TTS', 'audio articles', 'voice cloning', 'AI voice', 'read aloud', 'accessibility'],
   authors: [{ name: 'ReadAloud AI' }],
   icons: {
     icon: [
@@ -21,16 +24,16 @@ export const metadata: Metadata = {
   },
   manifest: '/site.webmanifest',
   openGraph: {
-    title: 'ReadAloud AI - Turn Any Text Into Natural Speech',
-    description: 'Transform articles, PDFs, emails, and documents into natural-sounding audio.',
+    title: 'ReadAloud AI - Realtime text-to-speech API',
+    description: 'Streaming text-to-speech for voice agents and apps. About 170 ms to first audio, from $4 per million characters.',
     url: 'https://readaloudai.org',
     siteName: 'ReadAloud AI',
     type: 'website',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'ReadAloud AI - Turn Any Text Into Natural Speech',
-    description: 'Transform articles, PDFs, emails, and documents into natural-sounding audio.',
+    title: 'ReadAloud AI - Realtime text-to-speech API',
+    description: 'Streaming text-to-speech for voice agents and apps. About 170 ms to first audio, from $4 per million characters.',
   },
 }
 
@@ -41,7 +44,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={inter.className}>{children}</body>
+      <body className={`${inter.className} ${display.variable} ${body.variable} ${mono.variable}`}>{children}</body>
     </html>
   )
 }
