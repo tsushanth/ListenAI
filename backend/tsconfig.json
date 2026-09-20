@@ -22,5 +22,5 @@
     "allowUnreachableCode": false
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "src/scripts"]
+  "exclude": ["node_modules", "dist", "src/scripts", "src/**/*.test.ts"]
 }
