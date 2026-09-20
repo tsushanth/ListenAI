@@ -10,7 +10,8 @@
     "worker": "tsx src/runWorker.ts",
     "worker:dev": "tsx watch src/runWorker.ts",
     "lint": "eslint src --ext .ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test src/routes/voiceStudioRouter.test.ts"
   },
   "keywords": [
     "tts",

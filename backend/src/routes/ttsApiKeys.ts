@@ -124,7 +124,7 @@ ttsApiKeysRouter.post(
       return;
     }
     const label = typeof req.body?.label === 'string' ? req.body.label.slice(0, 200) : null;
-    const { id: gatewayKeyId, key } = await issueGatewayKey(label || `readaloud user ${req.userId}`);
+    const { id: gatewayKeyId, key } = await issueGatewayKey(label || `readaloud user ${req.userId}`, req.userId);
     // The gateway requires a key to be explicitly billing-enabled before it'll
     // run any TTS through it (see realtime-tts's keys.js). Real gate: only
     // enable it if this user has an active realtimetts_billing row (a real

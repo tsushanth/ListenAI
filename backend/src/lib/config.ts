@@ -44,6 +44,14 @@ const envSchema = z.object({
   // this repo still boots in envs where that feature isn't configured.
   TTS_GATEWAY_URL: z.string().url().default('https://realtime-tts-gateway.fly.dev'),
   TTS_GATEWAY_ADMIN_SECRET: z.string().optional(),
+
+  // Voice studio (customer custom voices) - see routes/voiceStudio.ts. Ships dark: the feature is off
+  // (routes return 404) unless VOICE_STUDIO_ENABLED_USERS lists Supabase user ids (comma separated) or "*".
+  VOICE_STUDIO_ENABLED_USERS: z.string().default(''),
+  VOICE_INTAKE_URL: z.string().url().default('https://t-sushanth--voice-intake-api.modal.run'),
+  INTAKE_SECRET: z.string().optional(),
+  VOICE_STUDIO_MAX_VOICES_PER_USER: z.string().transform(Number).default('3'),
+  VOICE_STUDIO_MAX_ZIP_MB: z.string().transform(Number).default('300'),
 });
 
 // ============================================================================
