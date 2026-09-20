@@ -33,7 +33,7 @@ const TABS: { id: string; label: string; note: string; code: string; link?: { hr
   },
   {
     id: 'claude-desktop', label: 'Claude Desktop',
-    note: 'Claude Desktop’s config file starts local programs, so use the mcp-remote bridge (needs Node). Add to claude_desktop_config.json and restart. The Connectors screen in Claude does not work yet because it needs OAuth login.',
+    note: 'Claude Desktop’s config file starts local programs, so use the mcp-remote bridge (needs Node). Add to claude_desktop_config.json and restart. In claude.ai, use Settings, Connectors instead (login, no key).',
     code: JSON.stringify({
       mcpServers: {
         readaloud: {
