@@ -71,7 +71,7 @@ export default function Home() {
             </div>
             <p className="ra-small" style={{ marginTop: 14 }}>
               Measured September 2026 from one machine in San Jose, interleaved, in the same hour, on short call-center sentences, as time to the
-              first audio byte on a warm streaming connection. Piper and ElevenLabs Flash are within measurement noise, so we do not claim to be
+              first audio byte on a warm streaming connection. ElevenLabs advertises 75 ms for Flash; that is model latency, while these figures are end to end, including the network. Piper and ElevenLabs Flash are within measurement noise, so we do not claim to be
               faster. Results vary by location and time of day. Prices are published list prices when measured. Voice quality is subjective, and
               ElevenLabs offers far more voices and languages. The scripts are in our{' '}
               <a href="https://github.com/tsushanth/realtime-tts/tree/main/benchmarks">public benchmarks folder</a>.
