@@ -13,6 +13,7 @@ export default function RaFooter() {
           <ul>
             <li><Link href="/developers">Overview and keys</Link></li>
             <li><Link href="/developers#reference">Reference</Link></li>
+            <li><Link href="/developers/mcp">MCP server</Link></li>
             <li><Link href="/#engines">Engines and benchmarks</Link></li>
             <li><Link href="/#pricing">Pricing</Link></li>
           </ul>
