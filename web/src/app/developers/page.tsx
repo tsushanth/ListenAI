@@ -11,7 +11,8 @@ const CODE_SAMPLE = `// Step 1: authorize your key. This checks your billing/fre
 const { token, url } = await fetch("https://api.readaloudai.org/tts/authorize", {
   method: "POST",
   headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({ key: "YOUR_API_KEY" }),
+  // engine is optional: "kokoro" (default) or "piper" (lowest latency and price)
+  body: JSON.stringify({ key: "YOUR_API_KEY", engine: "piper" }),
 }).then((r) => r.json())
 
 // Step 2: connect DIRECTLY to the worker with that token — this is the
@@ -67,6 +68,7 @@ const plans = [
     description: 'Scales with your app, no plan to manage',
     features: [
       'Everything in Free, no limit',
+      'Kokoro $0.01 per 1,000 characters; Piper engine $0.004 per 1,000 characters',
       'Priority GPU warm-up',
       'Multiple concurrent connections',
       'Key-based usage tracking',
@@ -232,6 +234,51 @@ export default function DevelopersPage() {
               </div>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* Engines + benchmark */}
+      <section id="engines" className="py-20 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-4xl mx-auto">
+          <h2 className="text-3xl font-bold text-white mb-4 text-center">Two engines, one API</h2>
+          <p className="text-gray-400 text-center mb-10">
+            Pick per request with <code className="text-primary">engine</code> when you authorize. The WebSocket protocol is identical.
+          </p>
+          <div className="overflow-x-auto mb-12">
+            <table className="w-full text-sm text-left text-gray-300 border border-dark-tertiary rounded-xl">
+              <thead className="bg-dark-secondary text-white">
+                <tr><th className="p-3"></th><th className="p-3">Kokoro (default)</th><th className="p-3">Piper</th></tr>
+              </thead>
+              <tbody>
+                <tr className="border-t border-dark-tertiary"><td className="p-3">Best for</td><td className="p-3">Highest naturalness</td><td className="p-3">Live voice agents and phone calls</td></tr>
+                <tr className="border-t border-dark-tertiary"><td className="p-3">Price</td><td className="p-3">$0.01 / 1K characters</td><td className="p-3">$0.004 / 1K characters</td></tr>
+                <tr className="border-t border-dark-tertiary"><td className="p-3">Voices</td><td className="p-3">Multiple</td><td className="p-3">One American English voice</td></tr>
+                <tr className="border-t border-dark-tertiary"><td className="p-3">Limits</td><td className="p-3">See pricing</td><td className="p-3">5,000 characters per request; capacity is limited, so retry on a &quot;at capacity&quot; error (close code 1013)</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3 className="text-2xl font-bold text-white mb-3">Latency and price against ElevenLabs</h3>
+          <div className="overflow-x-auto mb-4">
+            <table className="w-full text-sm text-left text-gray-300 border border-dark-tertiary rounded-xl">
+              <thead className="bg-dark-secondary text-white">
+                <tr><th className="p-3">Service</th><th className="p-3">Time to first audio (warm)</th><th className="p-3">Price per 1M characters</th></tr>
+              </thead>
+              <tbody>
+                <tr className="border-t border-dark-tertiary"><td className="p-3">ReadAloud Piper</td><td className="p-3">168–171 ms</td><td className="p-3">$4</td></tr>
+                <tr className="border-t border-dark-tertiary"><td className="p-3">ElevenLabs Flash v2.5</td><td className="p-3">173–174 ms</td><td className="p-3">$50</td></tr>
+                <tr className="border-t border-dark-tertiary"><td className="p-3">ElevenLabs Multilingual v2</td><td className="p-3">about 1.0–1.1 s</td><td className="p-3">$100</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p className="text-xs text-gray-500">
+            Measured September 2026 from one machine in San Jose, interleaved, same hour, short call-center
+            sentences, time to the first audio byte over a warm streaming connection. Piper and ElevenLabs Flash
+            are within measurement noise of each other; we are not claiming faster. Results vary by location and
+            time of day. Prices are published list prices at the time of measurement. Voice quality is subjective and
+            ElevenLabs offers far more voices and languages. The measurement scripts are public in our{' '}
+            <a className="underline" href="https://github.com/tsushanth/realtime-tts/tree/main/benchmarks">benchmarks folder</a>.
+          </p>
         </div>
       </section>
 
