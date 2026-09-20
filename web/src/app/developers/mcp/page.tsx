@@ -31,19 +31,30 @@ export default function McpDocsPage() {
 
         <section className="ra-section" style={{ paddingTop: 40 }}>
           <div className="ra-wrap ra-narrow" style={{ maxWidth: 820 }}>
-            <h2>1. Get an API key</h2>
-            <p className="ra-lede" style={{ marginBottom: 24 }}>
-              Sign in on the <Link href="/developers#get-started" style={{ textDecoration: 'underline' }}>Voice API page</Link> and create a key. New keys include 10,000 free characters. Your client sends the key with every request, so keep it out of chat messages and public repos.
+            <h2>1. Connect with a login (OAuth)</h2>
+            <p className="ra-lede" style={{ marginBottom: 16 }}>
+              The easiest way. Add the URL, sign in to your ReadAloud AI account in the browser, and approve. No key to copy or paste.
             </p>
-            <h2>2. Add the server</h2>
-            <p className="ra-lede" style={{ marginBottom: 24 }}>Pick your client and replace <code className="inl">YOUR_API_KEY</code>.</p>
+            <ul style={{ marginBottom: 32 }}>
+              <li><strong>claude.ai:</strong> Settings, then Connectors, then Add custom connector. Enter <code className="inl">https://readaloudai.org/mcp</code> and follow the sign-in window.</li>
+              <li><strong>Claude Code:</strong> run <code className="inl">claude mcp add --transport http readaloud https://readaloudai.org/mcp</code>, then type <code className="inl">/mcp</code> and choose readaloud to sign in.</li>
+              <li><strong>Cursor and VS Code:</strong> add the URL as a remote MCP server. The app opens a sign-in page when it first connects.</li>
+            </ul>
+            <p style={{ marginBottom: 32 }}>
+              When you approve, we create an API key named &ldquo;MCP connector (app name)&rdquo; for that app and it uses your free or paid characters. To disconnect, revoke that key in the <Link href="/developers#get-started" style={{ textDecoration: 'underline' }}>developer console</Link>. The app&rsquo;s next request fails and asks you to reconnect. Access tokens last one hour and are renewed automatically for up to 30 days; reconnecting replaces the previous key for the same app.
+            </p>
+
+            <h2>2. Or use an API key header</h2>
+            <p className="ra-lede" style={{ marginBottom: 24 }}>
+              For scripts and clients without login support. Sign in on the <Link href="/developers#get-started" style={{ textDecoration: 'underline' }}>Voice API page</Link> and create a key (new keys include 10,000 free characters), then pick your client and replace <code className="inl">YOUR_API_KEY</code>. Your client sends the key with every request, so keep it out of chat messages and public repos.
+            </p>
             <McpInstallTabs />
           </div>
         </section>
 
         <section className="ra-section">
           <div className="ra-wrap ra-narrow ra-ref" style={{ maxWidth: 820 }}>
-            <h2>3. Try it</h2>
+            <h2>Try it</h2>
             <p>Ask your assistant something like:</p>
             <ul>
               <li>&ldquo;Say &lsquo;Your order has shipped&rsquo; using the Kokoro voice af_heart.&rdquo;</li>
@@ -72,14 +83,12 @@ export default function McpDocsPage() {
 
             <h2 style={{ marginTop: 48 }}>Security</h2>
             <ul>
-              <li>Keys belong to one person. Do not share yours or commit it. If it leaks, revoke it in the developer console and create a new one.</li>
+              <li>Keys belong to one person. Do not share yours or commit it. If it leaks, or you want to disconnect an app you connected with a login, revoke its key in the developer console.</li>
               <li>Our server uses your key only to start each speech request. We do not log or store it.</li>
               <li>Audio is returned inline in the response. We do not save audio files or keep the text you send.</li>
               <li>The text you ask to speak is sent to the voice engine that generates it.</li>
             </ul>
 
-            <h2 style={{ marginTop: 48 }}>Login with your account (not yet)</h2>
-            <p>The server does not support OAuth login yet, so it needs an API key in a header. That means the one-click &ldquo;Connectors&rdquo; screens in some apps (for example claude.ai) cannot connect to it today. We plan to add OAuth so these clients can sign in with your account instead.</p>
             <p>Prefer the raw API? See the <Link href="/developers#reference" style={{ textDecoration: 'underline' }}>WebSocket reference</Link> for streaming and lower latency.</p>
           </div>
         </section>

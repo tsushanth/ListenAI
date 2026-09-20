@@ -8,7 +8,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test": "node --test test/*.test.ts"
+    "test": "node --test test/*.test.ts",
+    "test:oauth": "node test/oauth-integration.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.30.0",

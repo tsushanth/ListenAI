@@ -4,6 +4,9 @@ import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/
 import { createMcpServer, type RequestContext } from '@/lib/mcp/server'
 import { SlidingWindowLimiter } from '@/lib/mcp/ratelimit'
 import { UpstreamError, authorize } from '@/lib/mcp/upstream'
+import { resourceMetadataUrl } from '@/lib/oauth/config'
+import { oauthConfigured } from '@/lib/oauth/crypto'
+import { looksLikeOAuthToken, verifyAccessToken } from '@/lib/oauth/tokens'
 
 // Hosted MCP server for the ReadAloud AI voice API. Stateless Streamable HTTP (MCP spec 2025-06-18):
 // every POST is a self-contained JSON-RPC exchange answered as plain JSON, no sessions, no SSE.
@@ -11,10 +14,10 @@ import { UpstreamError, authorize } from '@/lib/mcp/upstream'
 // Auth: `Authorization: Bearer <API key>`. The key is only forwarded to /tts/authorize; it is never
 // logged or stored (only a SHA-256 prefix is kept in memory to bucket rate limits).
 //
-// TODO(OAuth): the MCP authorization spec (OAuth 2.1 + protected-resource metadata at
-// /.well-known/oauth-protected-resource, dynamic client registration) is not implemented. To add it,
-// serve that metadata, add `resource_metadata="..."` to the WWW-Authenticate header below, and accept
-// access tokens here in addition to API keys.
+// Also accepts OAuth 2.1 access tokens issued by this site (see src/lib/oauth/*, /oauth/*). An access token
+// is an opaque sealed blob that embeds the user's connector API key; we verify and decrypt it in memory
+// and then proceed exactly as for a raw API key. Tokens are stateless, so revoking the connector API key
+// in the developer console is what revokes access.
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -41,8 +44,12 @@ function rpcError(status: number, code: number, message: string, extra: Record<s
   return withHeaders(Response.json({ jsonrpc: '2.0', error: { code, message }, id: null }, { status }), extra)
 }
 
-function unauthorized(message: string): Response {
-  return rpcError(401, -32001, message, { 'WWW-Authenticate': 'Bearer realm="ReadAloud AI MCP", error="invalid_token"' })
+// Per the MCP authorization spec, a 401 carries resource_metadata so clients can discover the OAuth server.
+function unauthorized(message: string, opts: { invalid?: boolean } = { invalid: true }): Response {
+  const parts = ['Bearer realm="ReadAloud AI MCP"']
+  if (oauthConfigured()) parts.push(`resource_metadata="${resourceMetadataUrl()}"`)
+  if (opts.invalid) parts.push('error="invalid_token"')
+  return rpcError(401, -32001, message, { 'WWW-Authenticate': parts.join(', ') })
 }
 
 function clientIp(req: NextRequest): string {
@@ -63,9 +70,22 @@ export async function POST(req: NextRequest) {
   if (!ip.ok) return rpcError(429, -32002, 'Too many requests from this IP. Slow down.', { 'Retry-After': String(ip.retryAfterSec) })
 
   const auth = req.headers.get('authorization') || ''
-  const m = /^Bearer\s+(\S{8,256})$/i.exec(auth)
-  if (!m) return unauthorized('Missing or malformed Authorization header. Send "Authorization: Bearer <your ReadAloud AI API key>". Get a key at https://readaloudai.org/developers#get-started')
-  const apiKey = m[1]
+  const m = /^Bearer\s+(\S{8,2048})$/i.exec(auth)
+  if (!m) return unauthorized('Missing or malformed Authorization header. Connect with a ReadAloud AI login (OAuth), or send "Authorization: Bearer <your ReadAloud AI API key>". Get a key at https://readaloudai.org/developers#get-started', { invalid: !!auth })
+  let apiKey = m[1]
+  let viaOAuth = false
+  if (looksLikeOAuthToken(apiKey)) {
+    viaOAuth = true
+    if (!oauthConfigured()) return unauthorized('OAuth login is not available on this server. Use an API key.')
+    const t = verifyAccessToken(apiKey)
+    if (!t.ok) return unauthorized(t.reason === 'expired' ? 'Access token expired. Refresh it or reconnect.' : 'Invalid access token. Reconnect the ReadAloud AI connector.')
+    apiKey = t.apiKey
+  } else if (apiKey.length > 256) {
+    return unauthorized('Invalid API key.')
+  }
+  const revokedMsg = viaOAuth
+    ? 'This ReadAloud AI connector was revoked or is no longer valid. Reconnect it (sign in again) to continue.'
+    : 'Invalid or revoked API key.'
 
   const raw = await req.text()
   if (raw.length > MAX_BODY_BYTES) return rpcError(413, -32600, 'Request body too large.')
@@ -78,7 +98,7 @@ export async function POST(req: NextRequest) {
     try {
       await authorize(apiKey, 'piper')
     } catch (e) {
-      if (e instanceof UpstreamError && e.code === 'unauthorized') return unauthorized('Invalid or revoked API key.')
+      if (e instanceof UpstreamError && e.code === 'unauthorized') return unauthorized(revokedMsg)
       // 402 (free characters used up) still means the key is valid; connect and report it on the tool call.
     }
   }
@@ -90,7 +110,7 @@ export async function POST(req: NextRequest) {
   try {
     const res = await transport.handleRequest(req, { parsedBody: body })
     // The key was checked at connect time; if it was revoked since, upstream says 401 during a tool call.
-    if (ctx.authFailed) return unauthorized('Invalid or revoked API key.')
+    if (ctx.authFailed) return unauthorized(revokedMsg)
     return withHeaders(res)
   } finally {
     void server.close()
