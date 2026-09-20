@@ -3,6 +3,7 @@ import RaHeader from '@/components/ra/RaHeader'
 import RaFooter from '@/components/ra/RaFooter'
 import CodeTabs from '@/components/ra/CodeTabs'
 import DeveloperApiSection from '@/components/DeveloperApiSection'
+import VoiceStudioLink from '@/components/ra/VoiceStudioLink'
 
 export const metadata = {
   title: 'Voice API - ReadAloud AI',
@@ -21,6 +22,7 @@ export default function DevelopersPage() {
               Stream speech over a WebSocket. Get a key below, then follow the three calls. New keys include 10,000 free characters.
             </p>
             <p style={{ marginTop: 12 }}>Using Claude, Cursor or VS Code? <Link href="/developers/mcp" style={{ textDecoration: 'underline' }}>Connect our MCP server</Link> with one URL instead.</p>
+            <VoiceStudioLink />
           </div>
         </section>
 
