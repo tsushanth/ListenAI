@@ -15,6 +15,7 @@ export default function RaHeader() {
           <Link href="/#engines">Engines</Link>
           <Link href="/#pricing">Pricing</Link>
           <Link href="/developers#reference">Docs</Link>
+          <Link href="/developers/mcp">MCP</Link>
           <Link href="/reader">Reader app</Link>
           <Link href="/developers#get-started" className="ra-btn solid" style={{ color: '#fff' }}>Get API key</Link>
         </nav>

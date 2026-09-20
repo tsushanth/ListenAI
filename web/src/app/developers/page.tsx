@@ -20,6 +20,7 @@ export default function DevelopersPage() {
             <p className="ra-lede">
               Stream speech over a WebSocket. Get a key below, then follow the three calls. New keys include 10,000 free characters.
             </p>
+            <p style={{ marginTop: 12 }}>Using Claude, Cursor or VS Code? <Link href="/developers/mcp" style={{ textDecoration: 'underline' }}>Connect our MCP server</Link> with one URL instead.</p>
           </div>
         </section>
 

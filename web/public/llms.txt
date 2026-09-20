@@ -27,7 +27,8 @@ Powered by Kokoro-82M, streams natural-sounding speech over WebSocket as it's ge
 - Free tier: 10,000 characters, no credit card required
 - Pay-as-you-go: $0.01 per 1,000 characters (no plan to manage, scales with usage)
 - Typical warm latency: well under a second to first audio
-- MCP server (for AI agents/coding assistants): `npx realtime-tts-mcp` — https://github.com/tsushanth/realtime-tts-mcp
+- Hosted MCP server (Streamable HTTP, API key as Bearer token): https://readaloudai.org/mcp — setup: https://readaloudai.org/developers/mcp
+- Local MCP server (for AI agents/coding assistants): `npx realtime-tts-mcp` — https://github.com/tsushanth/realtime-tts-mcp
 - Protocol: WebSocket, JSON control messages + binary PCM16LE audio frames
 
 ## Who it's for
