@@ -49,7 +49,17 @@ export async function setGatewayKeyBilling(id: string, enabled: boolean): Promis
   return true;
 }
 
-export async function drainGatewayUsage(): Promise<Array<{ id: string; chars: number; piperChars?: number }>> {
+// One entry per key with usage since the last drain. `chars` is the TOTAL across engines (Piper included),
+// `piperChars` its Piper subset, `audioSeconds` batch speech-to-text audio (separate from chars).
+// audioSeconds is optional so an older gateway that predates STT still type-checks.
+export interface GatewayUsageEntry {
+  id: string;
+  chars: number;
+  piperChars?: number;
+  audioSeconds?: number;
+}
+
+export async function drainGatewayUsage(): Promise<GatewayUsageEntry[]> {
   const res = await fetch(`${config.TTS_GATEWAY_URL}/admin/usage/drain`, {
     method: 'POST',
     headers: {
