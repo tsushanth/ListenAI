@@ -251,8 +251,10 @@ body {
 .ra-vs-check input { width: 20px; height: 20px; margin-top: 2px; accent-color: var(--ink); }
 .ra-vs-store { background: var(--panel); border-radius: 14px; padding: 14px 18px; margin: 18px 0 22px; font-size: .94rem; color: var(--ink2); }
 .ra-vs-store p { margin-top: 4px; }
-.ra-vs-two { display: grid; grid-template-columns: 1fr 1fr; gap: 36px; }
-@media (max-width: 800px) { .ra-vs-two { grid-template-columns: 1fr; gap: 8px; } }
+.ra-vs-two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 36px; }
+.ra-vs-two > div, .ra-vs-card { min-width: 0; }
+.ra-vs-card p, .ra-vs-checklist li { overflow-wrap: anywhere; }
+@media (max-width: 800px) { .ra-vs-two { grid-template-columns: minmax(0, 1fr); gap: 8px; } }
 .ra-vs-checklist { padding-left: 0; list-style: none; display: grid; gap: 10px; }
 .ra-vs-checklist li { position: relative; padding-left: 28px; color: var(--ink2); }
 .ra-vs-checklist li::before { content: ''; position: absolute; left: 0; top: 3px; width: 16px; height: 16px; border: 1.5px solid var(--ink); border-radius: 5px; }
