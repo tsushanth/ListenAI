@@ -61,6 +61,15 @@ export default function DevelopersPage() {
                   <li><code>error</code> with a <code>message</code>. The connection stays usable unless it is closed.</li>
                 </ul>
 
+                <h3>Audio formats</h3>
+                <p>Add <code>{'"format": "…"'}</code> to a synthesize message (Piper engine). <code>pcm_24000</code> is the default. For phone lines use <code>mulaw_8000</code> or <code>alaw_8000</code> (G.711, 8 kHz); <code>pcm_8000</code> is also available. Each <code>chunk_meta</code> reports the <code>format</code> and <code>sample_rate</code> of the audio that follows. An unknown format returns an error and the connection stays open.</p>
+
+                <h3>HTTP streaming (Piper)</h3>
+                <p><code>POST</code> to the <code>http_url</code> returned by authorize with <code>Authorization: Bearer &lt;token&gt;</code> and JSON <code>{'{ "text", "voice", "speed", "format" }'}</code>. The response streams raw audio as each sentence is ready, with <code>X-Sample-Rate</code> and <code>X-Audio-Format</code> headers. At capacity you get <code>503</code> with <code>Retry-After</code>.</p>
+
+                <h3>SDKs and MCP</h3>
+                <p>Python and JavaScript clients live in the <a href="https://github.com/tsushanth/realtime-tts/tree/main/sdk" style={{ textDecoration: 'underline' }}>sdk folder</a> of our repository. Because they take your API key, use them from a server, not a browser. To use the voices from an AI assistant, see the <Link href="/developers/mcp" style={{ textDecoration: 'underline' }}>MCP server</Link>.</p>
+
                 <h3>Capacity and errors</h3>
                 <p>Piper serves up to 4 simultaneous streams per server. Beyond that you get <code>{'{ "type": "error", "message": "at capacity, retry shortly" }'}</code> and the socket closes with code <code>1013</code>. Retry with a short backoff.</p>
 
