@@ -45,6 +45,16 @@ export interface VoiceStudioDeps {
   /** When true, POST / additionally requires body.consent_statement === CONSENT_STATEMENT verbatim (see
    * that constant's comment). Used by the API-key path, which has no UI click to stand in for it. */
   requireConsentStatement?: boolean;
+  /** Gateway key ids that should ALSO own the voice at the serving layer (Piper owner.json's `key_ids`),
+   * in addition to `owner_user_id` (`user_ids`). Needed because Piper's registry matches `user_ids`
+   * against a session token's `uid` claim only (worker-piper-fly/server.py's `by_user` check) - a bare
+   * API key with no bound Supabase uid has no `uid` on its tokens, so a voice whose owner.json only got
+   * `user_ids: [<that key's id>]` would deploy successfully but be unusable by the very key that made it
+   * ("unknown voice" on every synthesize call). The web flow doesn't need this (its identity is always a
+   * real uid); the API-key flow returns `[keyId]` here whenever the resolved identity has no bound uid,
+   * found and fixed by an end-to-end live test rather than code review. See intake.py's deploy handler
+   * for how both fields end up in owner.json. */
+  ownerKeyIdsFor?: (req: Request) => string[] | undefined;
 }
 
 type Authed = Request & { studioUserId?: string };
@@ -151,8 +161,10 @@ export function createVoiceStudioRouter(deps: VoiceStudioDeps): Router {
       return;
     }
     const ip = clean(String(req.headers['x-forwarded-for'] ?? '').split(',')[0] || req.ip || '', 64);
+    const ownerKeyIds = deps.ownerKeyIdsFor?.(req);
     const out = await deps.intake.create({
       owner_user_id: req.studioUserId,
+      ...(ownerKeyIds && ownerKeyIds.length > 0 ? { owner_key_ids: ownerKeyIds } : {}),
       speaker_name: speaker,
       attested_by: attestedBy,
       consent: true,

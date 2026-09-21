@@ -15,11 +15,13 @@ const FORWARD_SECRET = 'test-forward-secret';
 
 function fakeIntake() {
   const voices = new Map<string, IntakeVoiceStatus>();
+  const ownerKeyIds = new Map<string, string[]>(); // what create() was actually sent, for the regression test below
   let n = 0;
   const intake: IntakeClient = {
     async create(b) {
       const id = `v-${(++n).toString(16).padStart(10, '0')}`;
       voices.set(id, { voice_id: id, status: 'created', owner_user_id: b.owner_user_id as string, speaker_name: b.speaker_name as string, created_at: 1 });
+      if (Array.isArray(b.owner_key_ids)) ownerKeyIds.set(id, b.owner_key_ids as string[]);
       return { voice_id: id };
     },
     async list(u) { return { voices: [...voices.values()].filter((v) => v.owner_user_id === u) }; },
@@ -32,7 +34,7 @@ function fakeIntake() {
     async deploy() { throw new Error('not used'); },
     async remove() { throw new Error('not used'); },
   };
-  return { intake, voices };
+  return { intake, voices, ownerKeyIds };
 }
 
 // Mirrors voiceStudioApiKey.ts's real authenticate()/featureFlagId(): trusts x-gateway-admin-secret,
@@ -53,6 +55,13 @@ function apiKeyDeps(intake: IntakeClient, enabled: string): VoiceStudioDeps {
     maxVoicesPerUser: 3,
     maxZipBytes: 1024,
     backfillKeyOwners: async () => {},
+    // Mirrors voiceStudioApiKey.ts's real ownerKeyIdsFor: a bare key (no bound uid) must also be sent as
+    // owner_key_ids so Piper's registry can match it (see the regression test below for why).
+    ownerKeyIdsFor: (req: Request) => {
+      const uid = String(req.headers['x-gateway-uid'] ?? '').trim();
+      const keyId = String(req.headers['x-gateway-key-id'] ?? '').trim();
+      return uid ? undefined : (keyId ? [keyId] : undefined);
+    },
   };
 }
 
@@ -136,6 +145,39 @@ test('key with no bound uid: owner identity falls back to the key id itself', as
   const { id } = await res.json();
   assert.equal(f.voices.get(id)?.owner_user_id, 'k-bare');
   await close();
+});
+
+// Regression test for a bug a LIVE e2e run against the deployed service found (not caught by review or
+// the test above): a bare key's owner_user_id becomes the key id, which intake.py's deploy handler writes
+// into Piper's owner.json as `user_ids` — but Piper only matches `user_ids` against a session token's
+// `uid` claim, and a token for a key with no bound uid never has one, so the voice deployed fine but the
+// creating key got "unknown voice" on every synthesize call. Fix: also send owner_key_ids so Piper's
+// separate key_ids match rule (which DOES check the token's key id) covers it. See ownerKeyIdsFor in
+// voiceStudioApiKey.ts and the intake.py deploy handler for the full chain this test is pinning down.
+test('key with no bound uid: create() ALSO sends owner_key_ids so the deployed voice is usable by that key', async () => {
+  const { call, f, close } = await boot('*');
+  try {
+    const headers = { 'x-gateway-admin-secret': FORWARD_SECRET, 'x-gateway-key-id': 'k-bare' }; // no x-gateway-uid
+    const res = await call(headers, 'POST', '/', fullConsent);
+    assert.equal(res.status, 201);
+    const { id } = await res.json();
+    assert.deepEqual(f.ownerKeyIds.get(id), ['k-bare']);
+  } finally {
+    await close();
+  }
+});
+
+test('key WITH a bound uid: create() does NOT send owner_key_ids (uid alone is the correct, matchable owner)', async () => {
+  const { call, f, close } = await boot('*');
+  try {
+    const headers = { 'x-gateway-admin-secret': FORWARD_SECRET, 'x-gateway-key-id': 'k1', 'x-gateway-uid': 'user-1' };
+    const res = await call(headers, 'POST', '/', fullConsent);
+    assert.equal(res.status, 201);
+    const { id } = await res.json();
+    assert.equal(f.ownerKeyIds.has(id), false);
+  } finally {
+    await close();
+  }
 });
 
 test('a voice created under one key id is not visible/owned via a different key id with a different uid', async () => {

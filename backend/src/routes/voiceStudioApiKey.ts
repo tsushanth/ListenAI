@@ -48,6 +48,19 @@ export const voiceStudioApiKeyRouter = createVoiceStudioRouter({
   },
   featureFlagId: (req: GatewayReq) => String(req.headers['x-gateway-key-id'] ?? '').trim(),
   requireConsentStatement: true,
+  // BUG FOUND BY A LIVE E2E TEST (not code review): when a bare API key has no bound uid, `authenticate`
+  // above resolves identity to the key id and that becomes owner_user_id — which intake.py's deploy
+  // handler writes into Piper's owner.json as `user_ids`. But worker-piper-fly/server.py's registry only
+  // matches `user_ids` against a session token's `uid` CLAIM, never against key_id — and a token minted
+  // for a key with no bound uid has no `uid` claim at all. Result: the voice deployed successfully but
+  // the very key that created it got "unknown voice" on every synthesize call. Fix: also tell the shared
+  // router to pass this key id as `owner_key_ids`, which Piper DOES match against a token's key_id, so a
+  // bare-key-owned voice is usable through both matching rules regardless of which claim ends up set.
+  ownerKeyIdsFor: (req: GatewayReq) => {
+    const uid = String(req.headers['x-gateway-uid'] ?? '').trim();
+    const keyId = String(req.headers['x-gateway-key-id'] ?? '').trim();
+    return uid ? undefined : (keyId ? [keyId] : undefined);
+  },
   intake: createIntakeClient(config.VOICE_INTAKE_URL, config.INTAKE_SECRET),
   enabledUsers: () => config.VOICE_STUDIO_API_ENABLED_KEYS,
   maxVoicesPerUser: config.VOICE_STUDIO_API_MAX_VOICES_PER_KEY,
