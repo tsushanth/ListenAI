@@ -76,6 +76,29 @@ export default function Home() {
               ElevenLabs offers far more voices and languages. The scripts are in our{' '}
               <a href="https://github.com/tsushanth/realtime-tts/tree/main/benchmarks">public benchmarks folder</a>.
             </p>
+
+            <h3 style={{ fontSize: '1.5rem', marginBottom: 12, marginTop: 40 }}>What you get for the price</h3>
+            <div className="ra-table-wrap">
+              <table className="ra-table">
+                <thead><tr><th>Engine</th><th>Word error rate</th><th>Naturalness (proxy)</th><th>Price per 1M characters</th></tr></thead>
+                <tbody>
+                  <tr><td className="hl">ReadAloud Piper</td><td className="hl">10.4%</td><td className="hl">4.44 / 5</td><td className="hl">$4</td></tr>
+                  <tr><td>ReadAloud Kokoro</td><td>5.8% (English only)</td><td>4.25 / 5</td><td>$10</td></tr>
+                  <tr><td>ElevenLabs Flash v2.5</td><td>6.2%</td><td>4.52 / 5</td><td>$50</td></tr>
+                  <tr><td>ElevenLabs Multilingual v2</td><td>4.3%</td><td>4.46 / 5</td><td>$100</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p className="ra-small" style={{ marginTop: 14 }}>
+              Word error rate: 21 short call-center sentences across English, Spanish, German and French, transcribed with an
+              open-source speech recognizer and compared to the known input text &mdash; lower is better. Naturalness: an automated
+              MOS predictor scored against a shared reference clip per language, not a human listener &mdash; useful for comparing
+              engines to each other, not as an absolute quality score. On this sample, Piper&rsquo;s error rate runs a bit higher than
+              ElevenLabs&rsquo; and naturalness is essentially tied. We don&rsquo;t publish side-by-side audio samples; the sample size
+              here (21 sentences) is small enough that we&rsquo;d rather you listen to Piper on your own text and judge for yourself.
+              Full methodology, per-language breakdown, and caveats are in the{' '}
+              <a href="https://github.com/tsushanth/realtime-tts/tree/main/eval">eval framework</a>, which we re-run after any engine change.
+            </p>
           </div>
         </section>
 
