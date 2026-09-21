@@ -1,13 +1,11 @@
 package com.listenai.ui.theme
 
 import android.app.Activity
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
@@ -67,7 +65,11 @@ private val DarkColorScheme = darkColorScheme(
 
 @Composable
 fun ListenAITheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
+    // The ListenAI reference always renders its warm light identity regardless of
+    // the device's system theme, so this no longer follows isSystemInDarkTheme().
+    // DarkColorScheme is kept below in case a future explicit dark-mode toggle
+    // needs it.
+    darkTheme: Boolean = false,
     content: @Composable () -> Unit
 ) {
     val colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme
@@ -76,7 +78,9 @@ fun ListenAITheme(
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
-            window.statusBarColor = colorScheme.background.toArgb()
+            // MainActivity already calls enableEdgeToEdge() — don't paint the status
+            // bar opaque here, or content (like the Home hero banner) can no longer
+            // draw behind it. Only the icon color (light vs dark) is set.
             WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !darkTheme
         }
     }

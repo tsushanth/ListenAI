@@ -15,14 +15,27 @@ val Yellow = Color(0xFFFFCC00)
 val Teal = Color(0xFF5AC8FA)
 val Pink = Color(0xFFEC4899)
 
+// Listen palette — sampled from the ListenAI reference app on-device (Sep 2026).
+// A warm, cream-and-amber identity: a soft pink/lavender diagonal hero, near-black
+// text, and one unified icon treatment (amber-on-cream) instead of a different
+// accent color per row.
+val ListenHeroPink = Color(0xFFFBD7FF)
+val ListenHeroLavender = Color(0xFFFAC1FE)
+val ListenInk = Color(0xFF0B0B0B)
+val ListenInkSecondary = Color(0xFF6E6E73)
+val ListenCreamTile = Color(0xFFFFF9EA)
+val ListenAmber = Color(0xFFE8A33D)
+val ListenCardBorder = Color(0xFFEFEDEA)
+val ListenMintBadgeBg = Color(0xFFE7F9EE)
+
 // Neutral colors - Light mode
-val BackgroundLight = Color(0xFFF2F2F7)
+val BackgroundLight = Color(0xFFFFFFFF)
 val SurfaceLight = Color(0xFFFFFFFF)
 val CardLight = Color(0xFFFFFFFF)
-val TextPrimaryLight = Color(0xFF000000)
-val TextSecondaryLight = Color(0xFF8E8E93)
+val TextPrimaryLight = ListenInk
+val TextSecondaryLight = ListenInkSecondary
 val TextTertiaryLight = Color(0xFFC7C7CC)
-val DividerLight = Color(0xFFE5E5EA)
+val DividerLight = ListenCardBorder
 
 // Neutral colors - Dark mode
 val BackgroundDark = Color(0xFF000000)
