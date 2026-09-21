@@ -12,11 +12,14 @@ import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import com.listenai.R
+import com.listenai.ui.theme.ListenInk
+import com.listenai.ui.theme.ListenInkSecondary
 
 /**
  * Bottom navigation item data
@@ -62,7 +65,10 @@ fun BottomNavBar(
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
-    NavigationBar {
+    NavigationBar(
+        containerColor = Color.White,
+        contentColor = ListenInk
+    ) {
         bottomNavItems.forEach { item ->
             val isSelected = currentRoute == item.route
 
@@ -90,7 +96,14 @@ fun BottomNavBar(
                 },
                 label = {
                     Text(text = stringResource(item.labelResId))
-                }
+                },
+                colors = NavigationBarItemDefaults.colors(
+                    selectedIconColor = ListenInk,
+                    selectedTextColor = ListenInk,
+                    indicatorColor = Color(0xFFF0EFEF),
+                    unselectedIconColor = ListenInkSecondary,
+                    unselectedTextColor = ListenInkSecondary
+                )
             )
         }
     }
