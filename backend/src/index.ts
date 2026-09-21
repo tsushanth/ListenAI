@@ -28,6 +28,7 @@ import { stripeWebhookRouter } from './routes/stripeWebhook.js';
 import { authRouter } from './routes/auth.js';
 import { appConfigRouter } from './routes/appConfig.js';
 import { ttsApiKeysRouter } from './routes/ttsApiKeys.js';
+import { voiceStudioRouter } from './routes/voiceStudio.js';
 import { aggregateLatencyMetrics, checkSupabaseHealth, checkStorageHealth } from './lib/supabaseClient.js';
 import { startWorker, stopWorker } from './workers/ttsJobWorker.js';
 import { checkPubSubHealth } from './lib/pubsub.js';
@@ -206,6 +207,10 @@ app.use('/api/stories', storiesRouter);
 // TTS realtime API key management (requires a REAL Supabase JWT, not the
 // requireAuth default-user fallback — see routes/ttsApiKeys.ts).
 app.use('/api/tts-api-keys', ttsApiKeysRouter);
+
+// Customer custom voices. Dark unless VOICE_STUDIO_ENABLED_USERS is set (404 otherwise); does its own
+// strict Supabase auth like the API-key routes above.
+app.use('/api/voice-studio', voiceStudioRouter);
 
 
 // Voice marketplace routes - for sharing and discovering cloned voices

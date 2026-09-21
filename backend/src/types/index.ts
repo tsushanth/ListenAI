@@ -21,6 +21,11 @@ export interface EnvConfig {
   RATE_LIMIT_MAX_REQUESTS: number;
   TTS_GATEWAY_URL: string;
   TTS_GATEWAY_ADMIN_SECRET?: string;
+  VOICE_STUDIO_ENABLED_USERS: string;
+  VOICE_INTAKE_URL: string;
+  INTAKE_SECRET?: string;
+  VOICE_STUDIO_MAX_VOICES_PER_USER: number;
+  VOICE_STUDIO_MAX_ZIP_MB: number;
 }
 
 // ============================================================================

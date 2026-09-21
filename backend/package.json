@@ -11,7 +11,7 @@
     "worker:dev": "tsx watch src/runWorker.ts",
     "lint": "eslint src --ext .ts",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --test src/lib/realtimeTtsBilling.test.ts"
+    "test": "tsx --test src/routes/voiceStudioRouter.test.ts src/lib/realtimeTtsBilling.test.ts"
   },
   "keywords": [
     "tts",
