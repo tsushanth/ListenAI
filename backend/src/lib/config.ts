@@ -52,6 +52,15 @@ const envSchema = z.object({
   INTAKE_SECRET: z.string().optional(),
   VOICE_STUDIO_MAX_VOICES_PER_USER: z.string().transform(Number).default('3'),
   VOICE_STUDIO_MAX_ZIP_MB: z.string().transform(Number).default('300'),
+
+  // API-key front door for voice cloning (mirrors the Supabase web flow above, same intake/consent/quota
+  // rules, different auth). Only the gateway (realtime-tts-gateway) calls this path, after it has already
+  // validated the caller's API key and resolved an owning identity; it proves that to us with this shared
+  // secret rather than us re-validating keys we don't store. Dark by default, same posture as the web flow:
+  // VOICE_STUDIO_API_ENABLED_KEYS empty = every request 404s regardless of key validity.
+  GATEWAY_FORWARD_SECRET: z.string().optional(),
+  VOICE_STUDIO_API_ENABLED_KEYS: z.string().default(''),
+  VOICE_STUDIO_API_MAX_VOICES_PER_KEY: z.string().transform(Number).default('3'),
 });
 
 // ============================================================================
