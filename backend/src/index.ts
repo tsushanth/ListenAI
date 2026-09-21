@@ -29,6 +29,7 @@ import { authRouter } from './routes/auth.js';
 import { appConfigRouter } from './routes/appConfig.js';
 import { ttsApiKeysRouter } from './routes/ttsApiKeys.js';
 import { voiceStudioRouter } from './routes/voiceStudio.js';
+import { voiceStudioApiKeyRouter } from './routes/voiceStudioApiKey.js';
 import { aggregateLatencyMetrics, checkSupabaseHealth, checkStorageHealth } from './lib/supabaseClient.js';
 import { startWorker, stopWorker } from './workers/ttsJobWorker.js';
 import { checkPubSubHealth } from './lib/pubsub.js';
@@ -212,6 +213,10 @@ app.use('/api/tts-api-keys', ttsApiKeysRouter);
 // strict Supabase auth like the API-key routes above.
 app.use('/api/voice-studio', voiceStudioRouter);
 
+// Same voice-studio logic via an API key instead of a Supabase session, reachable only from the gateway
+// (realtime-tts-gateway proxies /v1/voices here after validating the key) — see routes/voiceStudioApiKey.ts.
+// Not behind requireAuth/standardRateLimit: it does its own shared-secret check and its own rate limiting.
+app.use('/internal/voice-studio-api', voiceStudioApiKeyRouter);
 
 // Voice marketplace routes - for sharing and discovering cloned voices
 app.use('/api/marketplace', voiceMarketplaceRouter);

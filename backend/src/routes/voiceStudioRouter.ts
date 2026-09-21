@@ -16,6 +16,12 @@ import rateLimit from 'express-rate-limit';
 import { IntakeClient, IntakeError, IntakeVoiceStatus } from '../lib/voiceIntakeClient.js';
 
 export const CONSENT_TEXT_VERSION = '2026-09-v1';
+// Verbatim text an API caller (no UI, no click) must echo back in `consent_statement` to prove it was
+// actually read, not just a version number typed in blind. The web flow doesn't need this: a human clicked
+// "I attest..." next to the rendered text, which the version number alone already evidences.
+export const CONSENT_STATEMENT =
+  'I am authorized to consent on behalf of the speaker named in this request, and that speaker has agreed ' +
+  'to have their voice cloned and used to synthesize new speech through this service.';
 export const PART_BYTES_MAX = 12 * 1024 * 1024; // browser sends 8 MB parts; headroom, far below Cloud Run's 32 MiB limit
 export const MAX_PARTS = 64; // matches intake.py
 export const VOICE_ID_RE = /^v-[0-9a-f]{10}$/;
@@ -32,6 +38,13 @@ export interface VoiceStudioDeps {
   backfillKeyOwners(userId: string): Promise<void>;
   log?: { warn: (o: unknown, m?: string) => void; error: (o: unknown, m?: string) => void };
   rateLimits?: { create?: number; preview?: number; parts?: number };
+  /** Identity checked against enabledUsers()'s allowlist. Defaults to the authenticated uid itself (web
+   * flow: Supabase user id). The API-key flow passes the *key id* here instead, since decision #5 gates
+   * the feature per-key, not per-uid (a key may have no bound uid, or share a uid with other keys). */
+  featureFlagId?: (req: Request) => string;
+  /** When true, POST / additionally requires body.consent_statement === CONSENT_STATEMENT verbatim (see
+   * that constant's comment). Used by the API-key path, which has no UI click to stand in for it. */
+  requireConsentStatement?: boolean;
 }
 
 type Authed = Request & { studioUserId?: string };
@@ -82,8 +95,9 @@ export function createVoiceStudioRouter(deps: VoiceStudioDeps): Router {
     try {
       const uid = await deps.authenticate(req).catch(() => null);
       if (!uid) { res.status(401).json({ error: 'Sign in required.' }); return; }
+      const flagId = deps.featureFlagId ? deps.featureFlagId(req) : uid;
       const allow = deps.enabledUsers().split(',').map((s) => s.trim()).filter(Boolean);
-      if (!allow.includes('*') && !allow.includes(uid)) { res.status(404).json({ error: 'Not found' }); return; }
+      if (!allow.includes('*') && !allow.includes(flagId)) { res.status(404).json({ error: 'Not found' }); return; }
       (req as Authed).studioUserId = uid;
       next();
     } catch (e) { next(e); }
@@ -103,7 +117,16 @@ export function createVoiceStudioRouter(deps: VoiceStudioDeps): Router {
     }
   }
 
-  r.get('/enabled', (_req, res) => { res.json({ enabled: true, consent_text_version: CONSENT_TEXT_VERSION, max_zip_bytes: deps.maxZipBytes, part_bytes: 8 * 1024 * 1024 }); });
+  r.get('/enabled', (_req, res) => {
+    res.json({
+      enabled: true,
+      consent_text_version: CONSENT_TEXT_VERSION,
+      ...(deps.requireConsentStatement ? { consent_statement: CONSENT_STATEMENT } : {}),
+      max_zip_bytes: deps.maxZipBytes,
+      part_bytes: 8 * 1024 * 1024,
+      max_voices: deps.maxVoicesPerUser,
+    });
+  });
 
   r.get('/', wrap(async (req, res) => {
     const { voices } = await deps.intake.list(req.studioUserId!);
@@ -117,6 +140,10 @@ export function createVoiceStudioRouter(deps: VoiceStudioDeps): Router {
     if (speaker.length < 2 || attestedBy.length < 2) { res.status(400).json({ error: "Enter the speaker's full name and the name of the person confirming." }); return; }
     if (b.consent !== true) { res.status(400).json({ error: 'Consent must be confirmed.' }); return; }
     if (b.consent_text_version !== CONSENT_TEXT_VERSION) { res.status(400).json({ error: 'The consent wording was updated. Reload the page and confirm again.' }); return; }
+    if (deps.requireConsentStatement && b.consent_statement !== CONSENT_STATEMENT) {
+      res.status(400).json({ error: 'consent_statement must echo the exact consent text from GET /enabled.' });
+      return;
+    }
     const mine = await deps.intake.list(req.studioUserId!);
     const active = mine.voices.filter((v) => (v as { status?: string }).status !== 'rejected').length;
     if (active >= deps.maxVoicesPerUser) {
