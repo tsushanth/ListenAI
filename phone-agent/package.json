@@ -1,0 +1,16 @@
+{
+  "name": "phone-agent-mvp",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Narrow phone conversational-agent MVP: Twilio Media Streams bridged to the existing worker-stt-realtime / worker-piper-fly WebSocket pipeline (see ../../realtime-tts). Not wired to any live Twilio number. See README.md.",
+  "scripts": {
+    "test": "node --test test/"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  },
+  "optionalDependencies": {
+    "@anthropic-ai/sdk": "^0.32.0"
+  }
+}
