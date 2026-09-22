@@ -46,7 +46,10 @@ export class CallSession {
    * @param {string} [opts.greeting]
    * @param {(evt: {type: string, [k: string]: any}) => void} [opts.onEvent] - observability hook (logging/tests)
    */
-  constructor({ stt, tts, answerEngine, sink, systemPrompt = DEFAULT_SYSTEM_PROMPT, greeting = DEFAULT_GREETING, onEvent = () => {} }) {
+  constructor({
+    stt, tts, answerEngine, sink, systemPrompt = DEFAULT_SYSTEM_PROMPT, greeting = DEFAULT_GREETING,
+    onEvent = () => {}, noResponseTimeoutMs = 8000,
+  }) {
     this.stt = stt;
     this.tts = tts;
     this.answerEngine = answerEngine;
@@ -57,6 +60,13 @@ export class CallSession {
     this.state = new CallSessionState();
     this._agentSpeaking = false;
     this._pendingBargeIn = false;
+    // Silence/no-response handling: if the caller never says anything after
+    // the agent finishes a turn, don't hang the call open forever — reprompt
+    // once, then give up gracefully. See README "messier conversational
+    // inputs" hardening pass.
+    this.noResponseTimeoutMs = noResponseTimeoutMs;
+    this._noResponseTimer = null;
+    this._noResponseCount = 0;
 
     this._wireStt();
     this._wireTts();
@@ -66,6 +76,7 @@ export class CallSession {
   async start() {
     this._emit({ type: 'session_start' });
     await this._speak(this.greeting, { isGreeting: true });
+    this._armNoResponseTimer();
   }
 
   /** Forward one chunk of caller audio, already in the STT client's configured encoding. */
@@ -119,8 +130,16 @@ export class CallSession {
   }
 
   async _handleUserTurn(text) {
+    this._clearNoResponseTimer(); // the caller said *something* — the STT leg is alive either way
     if (this.state.ended) return;
-    if (!text || !text.trim()) return; // e.g. a "final" fired on pure silence/noise
+    if (!text || !text.trim()) {
+      // e.g. a "final" fired on pure silence/noise — not a real turn, but
+      // also not a dead line; keep waiting for a genuine response instead
+      // of hanging forever.
+      this._armNoResponseTimer();
+      return;
+    }
+    this._noResponseCount = 0; // caller is responsive again
     this.state.history.push({ role: 'user', content: text });
     this.state.turn += 1;
 
@@ -131,16 +150,73 @@ export class CallSession {
       return;
     }
 
-    const reply = await this.answerEngine.reply(this.state.history, this.systemPrompt);
-    this.state.history.push({ role: 'assistant', content: reply });
-    this._emit({ type: 'llm_reply', text: reply });
+    let result;
+    try {
+      result = await this.answerEngine.reply(this.state.history, this.systemPrompt);
+    } catch (err) {
+      // A network/API failure on the LLM call (timeout, OpenRouter outage,
+      // rate limit, ...) must not leave the caller hanging on a dead line —
+      // end the call gracefully instead of throwing out of the STT 'final'
+      // handler as an unhandled rejection.
+      this._emit({ type: 'llm_error', message: err?.message || String(err) });
+      this.state.outcome = 'error';
+      await this._speak("Sorry, I'm having trouble right now. We'll try you again later. Goodbye!");
+      this._end();
+      return;
+    }
+    // AnswerEngine.reply() historically returned a plain string (the stub,
+    // and the direct-Anthropic path, still do). Real engines with
+    // tool-call-based outcome detection (see llm.js's OpenRouter engine)
+    // return {text, outcome} instead — normalize both shapes here.
+    const replyText = typeof result === 'string' ? result : result.text;
+    const structuredOutcome = typeof result === 'string' ? null : result.outcome;
+    this.state.history.push({ role: 'assistant', content: replyText });
+    this._emit({ type: 'llm_reply', text: replyText, outcome: structuredOutcome });
 
-    if (/\bconfirmed\b/i.test(reply)) this.state.outcome = 'confirmed';
-    else if (/reschedule/i.test(reply)) this.state.outcome = 'reschedule';
+    if (structuredOutcome === 'confirmed' || structuredOutcome === 'reschedule') {
+      this.state.outcome = structuredOutcome;
+    } else if (structuredOutcome === null) {
+      // Fallback text-sniff — only reached for engines that don't report a
+      // structured outcome (the offline stub, and the legacy Anthropic-direct
+      // path). See the MVP report's honest gap; kept only as a fallback now.
+      if (/\bconfirmed\b/i.test(replyText)) this.state.outcome = 'confirmed';
+      else if (/reschedule/i.test(replyText)) this.state.outcome = 'reschedule';
+    }
 
-    const shouldEnd = /goodbye/i.test(reply);
-    await this._speak(reply);
+    const shouldEnd = /goodbye/i.test(replyText);
+    await this._speak(replyText);
     if (shouldEnd) this._end();
+    else this._armNoResponseTimer();
+  }
+
+  /** Starts (or restarts) the no-response watchdog after the agent finishes speaking. */
+  _armNoResponseTimer() {
+    this._clearNoResponseTimer();
+    if (this.state.ended) return;
+    this._noResponseTimer = setTimeout(() => this._onNoResponse(), this.noResponseTimeoutMs);
+    // Don't let a pending watchdog keep the process (or a test) alive.
+    this._noResponseTimer.unref?.();
+  }
+
+  _clearNoResponseTimer() {
+    if (this._noResponseTimer) {
+      clearTimeout(this._noResponseTimer);
+      this._noResponseTimer = null;
+    }
+  }
+
+  async _onNoResponse() {
+    if (this.state.ended) return;
+    this._noResponseCount += 1;
+    this._emit({ type: 'no_response_timeout', count: this._noResponseCount });
+    if (this._noResponseCount >= 2) {
+      this.state.outcome = 'timeout';
+      await this._speak("I haven't heard back from you, so I'll try again another time. Goodbye!");
+      this._end();
+      return;
+    }
+    await this._speak('Sorry, are you still there? Can you confirm yes or no on your appointment?');
+    this._armNoResponseTimer();
   }
 
   /** Streams one utterance to TTS and resolves once it's done playing (or cancelled by barge-in). */
@@ -160,6 +236,7 @@ export class CallSession {
 
   _end(outcome) {
     if (this.state.ended) return;
+    this._clearNoResponseTimer();
     this.state.ended = true;
     if (outcome) this.state.outcome = outcome;
     this._emit({ type: 'session_end', outcome: this.state.outcome, turns: this.state.turn });
