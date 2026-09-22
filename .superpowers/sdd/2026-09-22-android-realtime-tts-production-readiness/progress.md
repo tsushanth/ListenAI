@@ -74,3 +74,20 @@ This ledger lives in the ReadAloudAI worktree but tracks both.
 - Dispatched implementer (sonnet), agent a77167d4f1a8d65a6, work in /Users/sushanthtiruvaipati/Documents/GitHub/worktrees/sdd-task6-backend-proxy. In progress.
 - Task 8: implementer DONE_WITH_CONCERNS (commit 89eaf94) — no Android SDK in implementer's sandbox, so build/on-device verification (brief Step 3) wasn't performed there. Controller independently ran `./gradlew assembleReaderDebug` in the real worktree (ANDROID_HOME set, real SDK on this machine): BUILD SUCCESSFUL. Task reviewer (agent a8d0c9a44863c8ab3): independently grepped tree for the old embedded key (zero hits), verified authorize() request shape against Task 6's real route code line-by-line, verified the reused empty-bearer header against CloudTTSService.kt directly. Spec compliance ✅, Code quality ✅. 2 Minor findings (inert empty auth header - matches existing app convention, not enforced by backend yet; BACKEND_BASE_URL duplicates a literal already hardcoded in ~7 other files - pre-existing codebase pattern) — parked, no action required. Missing on-device manual test explicitly assessed by reviewer as acceptable residual, not blocking, given the narrow verified diff and clean build.
 - Task 8: complete (commit e27c9a1..89eaf94, review clean, 2 parked minors, build verified by controller)
+
+## Task 4: Autoscaling — BLOCKED, not complete
+- BASE: adc021a, implementer commit eecdec1 (pushed to origin)
+- Implementer DONE_WITH_CONCERNS: fly.toml changes deployed (connections-type concurrency, soft/hard limits below MAX_CONNECTIONS=4, mounts volume removed as structurally required), load_test.py/LOAD_TEST.md are real working tooling, ran 3 real load tests against production. Real negative result: 30/60 timeouts, machine count flat at 2 the whole run — autoscaling did not fire.
+- Root causes (external, not code bugs): (1) installed flyctl v0.4.95 does not parse max_machines_running at all — confirmed independently by controller via `fly config show -a piper-tts-sjc` (field genuinely absent from live config). Unknown whether the real deploy pipeline uses a different/newer flyctl. (2) Org-wide Fly machine quota exhausted (`fly scale count 4` failed: "organization has reached its machine limit") — ~30 apps share one quota. Correctly not worked around (cross-cutting infra/billing decision, escalated not silently bypassed).
+- Task reviewer (agent a8a7f88481047c9d4): Spec compliance ❌ (qualified — code correct, but the brief's actual deliverable, proof that 1→N scaling works, is unmet). Code quality ✅. One Important nuance: "[mounts] removal is reversible" was overstated — one machine (68354e9c424108) was actually destroyed and replaced by Fly's own HA logic, not paused; the volume itself is safely preserved (detached, not deleted).
+- Ruling: this is an environmental/infra blocker, not a fixable code defect — no further fix-loop dispatch. Reported directly to user. Requires human action: (a) confirm what flyctl version the real prod deploy pipeline uses, (b) raise Fly org machine quota via billing@fly.io or free capacity from another app.
+- Task 4: BLOCKED — parked, not marked complete. Code changes are real and deployed; the task's actual goal (verified autoscaling) is not achieved.
+
+## Summary: Tasks 4-8 dispatch complete
+- Task 4: BLOCKED (external infra, needs human action — flyctl/quota)
+- Task 5: complete (done directly, no commit)
+- Task 6: complete, reviewed clean (2 parked minors)
+- Task 7: complete, reviewed clean (1 parked minor)
+- Task 8: complete, reviewed clean (2 parked minors), build verified by controller
+- All Tasks 6+7+8 merged into one branch (sdd-task6-backend-proxy @ 89eaf94), pushed to origin.
+- Full-plan whole-branch review + finishing-a-development-branch NOT yet run — Task 4 being blocked means the plan as a whole is not done; pending user direction on how to proceed given the Task 4 blocker.
