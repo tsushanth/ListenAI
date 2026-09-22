@@ -38,12 +38,13 @@ import kotlin.coroutines.resumeWithException
  * would replace this with a proper incremental-playback pipeline; that's future work,
  * not part of this migration.
  *
- * TEMPORARY: [API_KEY] below is a real, billing-enabled test key embedded directly in
- * the client for today's on-device test build. This is extractable by decompiling the
- * APK - fine for a personal test build on one device, NOT acceptable for any wider
- * release. Before this ships beyond a local test build, this needs to move behind
- * ReadAloudAI's own backend (which already exists and already holds provider credentials
- * server-side for the old Chatterbox path) so the app never sees a raw platform API key.
+ * Auth: synthesis itself still goes straight to the realtime-tts gateway's WebSocket (that
+ * protocol needs no platform key, only the short-lived token `authorize()` hands back), but
+ * `authorize()` no longer talks to the gateway directly. It goes through ReadAloudAI's own
+ * backend (POST /api/realtime-tts/authorize on listenai-backend.fly.dev), which holds the real
+ * platform API key server-side and forwards the authorize call on the app's behalf - mirroring
+ * how CloudTTSService already relies on listenai-backend.fly.dev to hold provider credentials
+ * for the old Chatterbox path. The app never sees a raw platform API key.
  *
  * Voice selection: each built-in voice is mapped to a real Piper catalog voice via
  * PiperVoiceMapping, so the voice the user picked is the voice that gets synthesized.
@@ -53,9 +54,8 @@ class RealtimeTTSService(private val context: Context) : TTSService {
     companion object {
         private const val TAG = "RealtimeTTSService"
 
-        // TEMPORARY - see class doc. Minted 2026-09-21 as a dedicated, isolated test key
-        // (label "android-app-realtime-tts-test"), not shared with any other client.
-        private const val API_KEY = "rtts_85c9a002f770b3380814932f6a577f464574aaa81e774e2a"
+        // Same backend host CloudTTSService, AuthService, etc. already talk to.
+        private const val BACKEND_BASE_URL = "https://listenai-backend.fly.dev"
 
         private const val GATEWAY_BASE_URL = "https://api.readaloudai.org"
         private const val SAMPLE_RATE = 24000
@@ -161,13 +161,15 @@ class RealtimeTTSService(private val context: Context) : TTSService {
 
     private fun authorize(): AuthResponse {
         val body = JSONObject().apply {
-            put("key", API_KEY)
             put("engine", "piper")
         }
         val request = Request.Builder()
-            .url("$GATEWAY_BASE_URL/tts/authorize")
+            .url("$BACKEND_BASE_URL/api/realtime-tts/authorize")
             .post(body.toString().toRequestBody("application/json".toMediaType()))
             .addHeader("Content-Type", "application/json")
+            // Same auth CloudTTSService's requests to listenai-backend already send
+            // (empty bearer token - backend defaults to pro user).
+            .addHeader("Authorization", "Bearer ")
             .build()
 
         httpClient.newCall(request).execute().use { response ->
