@@ -113,22 +113,31 @@ existing `PlayerScreen` error UI handles it without new UI work.
 
 ## 4. Real per-voice mapping
 
-**Design**: two tiers, based on confirmed compatibility between the app's existing
-Kokoro voice catalog and realtime-tts's Kokoro worker (both use the same standard
-voice-pack naming — `af_heart`, `af_bella`, etc. — and the worker passes whatever voice
-ID it's given straight through to the underlying engine):
+**Revised 2026-09-22**: the app's default engine switches from Kokoro to Piper — cheaper
+($4 vs $10/1M chars), much faster (251ms vs 637ms median, per this project's own eval
+data), at the cost of a higher WER (10.4% vs 5.8%; naturalness is roughly a wash,
+slightly favoring Piper). This was a deliberate call to prioritize cost/latency over
+preserving Kokoro's free passthrough compatibility, made explicitly aware that it means
+**existing users' chosen voice will sound different after migration** — Piper's catalog
+has no "Bella"-equivalent voice-for-voice match, so this is a real, user-visible change,
+not just a backend swap. That tradeoff is accepted, not overlooked.
 
-- **Kokoro-provider voices** (the app's current default catalog): pass the app's existing
-  voice ID straight through unchanged. No mapping table needed for this tier.
-- **Piper-provider voices** (if/when offered as a cheaper option, or for any voice with
-  no direct Kokoro equivalent): a real mapping table, app voice → closest Piper voice by
-  locale/gender/accent, replacing today's single-hardcoded-voice shim
-  (`DEFAULT_VOICE_ID = "custom:en-us-john"` in the test build). Any app voice with no
-  reasonable match falls back to one documented default voice, not a silent wrong pick.
+**Design**: build a real mapping table, app `VoicePreset` → closest Piper voice by
+locale/gender/accent (drawing on the now-69-voice/19-language Piper catalog from today's
+mining work — mind that ~8 of those are tier-B/catalogued-only and not actually live in
+the registry yet, so the mapping table should only target published voices), replacing
+today's single-hardcoded-voice shim (`DEFAULT_VOICE_ID = "custom:en-us-john"` in the test
+build). Any app voice with no reasonable Piper match falls back to one documented default
+voice, not a silent wrong pick.
+
+Kokoro passthrough (same voice ID, no mapping needed, confirmed compatible) is no longer
+in scope for the default flow. It's cheap to revisit later — e.g. as an explicit "use my
+original voice" opt-in for existing users who notice/mind the change — but isn't part of
+this migration unless that becomes a real ask.
 
 **Testing**: for every voice in `VoicePreset.builtInVoices`, confirm it resolves to a
-real, working voice ID on the new backend (either passthrough or mapped) — this was
-explicitly *not* tested in today's build, which only exercised one voice end to end.
+real, working, *published* Piper voice ID on the new backend — this was explicitly *not*
+tested in today's build, which only exercised one voice end to end.
 
 ## Not in scope for this project
 
