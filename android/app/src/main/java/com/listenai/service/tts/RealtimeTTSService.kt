@@ -45,10 +45,8 @@ import kotlin.coroutines.resumeWithException
  * ReadAloudAI's own backend (which already exists and already holds provider credentials
  * server-side for the old Chatterbox path) so the app never sees a raw platform API key.
  *
- * Voice selection: for this first pass every built-in voice maps to a single default
- * Piper voice (DEFAULT_VOICE_ID below), not a real per-voice mapping - proving the
- * pipeline works end-to-end, not full voice parity. TODO: map VoicePreset -> a real
- * catalog voice id once this graduates past a test build.
+ * Voice selection: each built-in voice is mapped to a real Piper catalog voice via
+ * PiperVoiceMapping, so the voice the user picked is the voice that gets synthesized.
  */
 class RealtimeTTSService(private val context: Context) : TTSService {
 
@@ -60,7 +58,6 @@ class RealtimeTTSService(private val context: Context) : TTSService {
         private const val API_KEY = "rtts_85c9a002f770b3380814932f6a577f464574aaa81e774e2a"
 
         private const val GATEWAY_BASE_URL = "https://api.readaloudai.org"
-        private const val DEFAULT_VOICE_ID = "custom:en-us-john"
         private const val SAMPLE_RATE = 24000
         private const val CHANNELS = 1
         private const val BITS_PER_SAMPLE = 16
@@ -139,7 +136,7 @@ class RealtimeTTSService(private val context: Context) : TTSService {
                 )
             )
 
-            val pcm = synthesizeOverWebSocket(auth, totalText, options, taskId)
+            val pcm = synthesizeOverWebSocket(auth, totalText, voice, options, taskId)
 
             onProgress(
                 SynthesisProgress(
@@ -184,6 +181,7 @@ class RealtimeTTSService(private val context: Context) : TTSService {
     private suspend fun synthesizeOverWebSocket(
         auth: AuthResponse,
         text: String,
+        voice: VoicePreset,
         options: SynthesisOptions,
         taskId: UUID
     ): ByteArray = suspendCancellableCoroutine { cont ->
@@ -197,7 +195,7 @@ class RealtimeTTSService(private val context: Context) : TTSService {
                 val message = JSONObject().apply {
                     put("type", "synthesize")
                     put("text", text)
-                    put("voice", DEFAULT_VOICE_ID)
+                    put("voice", PiperVoiceMapping.resolve(voice))
                     put("speed", options.speed.toDouble())
                 }
                 webSocket.send(message.toString())
