@@ -92,7 +92,14 @@ object TTSServiceFactory {
 
     private var onDeviceService: OnDeviceTTSService? = null
     private var cloudService: CloudTTSService? = null
+    private var realtimeTTSService: RealtimeTTSService? = null
     private var kokoroOnDeviceService: KokoroOnDeviceService? = null
+
+    // TEMPORARY test-build switch: true routes the normal (non-cloned) cloud reading
+    // path through RealtimeTTSService (api.readaloudai.org) instead of CloudTTSService
+    // (listenai-backend.fly.dev). See RealtimeTTSService's class doc for what this
+    // migration does and doesn't cover yet (single default voice, embedded test key).
+    const val USE_REALTIME_TTS_FOR_TESTING = true
 
     /**
      * Get or create the on-device TTS service
@@ -104,11 +111,20 @@ object TTSServiceFactory {
     }
 
     /**
-     * Get or create the cloud TTS service
+     * Get or create the cloud TTS service (listenai-backend.fly.dev / Chatterbox-Kokoro).
      */
     fun getCloudService(context: android.content.Context): CloudTTSService {
         return cloudService ?: CloudTTSService(context).also {
             cloudService = it
+        }
+    }
+
+    /**
+     * Get or create the realtime-tts platform TTS service (api.readaloudai.org).
+     */
+    fun getRealtimeTTSService(context: android.content.Context): RealtimeTTSService {
+        return realtimeTTSService ?: RealtimeTTSService(context).also {
+            realtimeTTSService = it
         }
     }
 
@@ -167,7 +183,9 @@ object TTSServiceFactory {
         }
         return when {
             voice.provider == VoiceProvider.ANDROID -> getOnDeviceService(context)
-            voice.provider.isCloud && preferCloud -> getCloudService(context)
+            voice.provider.isCloud && preferCloud -> {
+                if (USE_REALTIME_TTS_FOR_TESTING) getRealtimeTTSService(context) else getCloudService(context)
+            }
             else -> getOnDeviceService(context)
         }
     }
