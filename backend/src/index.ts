@@ -12,6 +12,7 @@ import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 import { standardRateLimit, ttsRateLimitByTier, previewRateLimit, burstRateLimit, jobPollingRateLimit } from './middleware/rateLimit.js';
 
 import { ttsRouter } from './routes/tts.js';
+import { realtimeTtsRouter } from './routes/realtimeTts.js';
 import { usageRouter } from './routes/usage.js';
 import { voicesRouter } from './routes/voices.js';
 import { extractRouter } from './routes/extract.js';
@@ -166,6 +167,11 @@ app.post('/api/tts/job/:jobId/cancel', jobPollingRateLimit, requireAuth, ttsRout
 // Order: burstRateLimit (spam prevention) → requireAuth → ttsRateLimitByTier (tier-aware) → ttsRouter
 // Note: Job routes are handled by specific routes above, this catches the rest
 app.use('/api/tts', burstRateLimit, requireAuth, ttsRateLimitByTier, ttsRouter);
+
+// realtime-tts authorize proxy: holds the dedicated REALTIME_TTS_API_KEY server-side (Task 5) and forwards
+// authorize calls to the realtime-tts platform, so the Android app never sees the raw platform key.
+// Same burstRateLimit → requireAuth ordering as /api/tts above (per-app-user rate limiting).
+app.use('/api/realtime-tts', burstRateLimit, requireAuth, realtimeTtsRouter);
 
 // Preview endpoint has stricter rate limit (10 req/min)
 app.use('/api/tts/preview', previewRateLimit);
