@@ -91,3 +91,11 @@ This ledger lives in the ReadAloudAI worktree but tracks both.
 - Task 8: complete, reviewed clean (2 parked minors), build verified by controller
 - All Tasks 6+7+8 merged into one branch (sdd-task6-backend-proxy @ 89eaf94), pushed to origin.
 - Full-plan whole-branch review + finishing-a-development-branch NOT yet run — Task 4 being blocked means the plan as a whole is not done; pending user direction on how to proceed given the Task 4 blocker.
+
+## On-device verification (physical Pixel 9 Pro, controller-run, 2026-09-23)
+- Merged android-realtime-tts-migration (b294606) + sdd-task6-backend-proxy (Tasks 6+7+8, 89eaf94) via fast-forward (sdd-task6-backend-proxy was already a direct descendant) — clean, no conflicts. Pushed to origin.
+- Built and installed real APK on connected device (`./gradlew installReaderDebug`), imported real text, tapped play.
+- FIRST real finding: authorize() returned a genuine 404 NOT_FOUND. Root cause found: Task 6's backend route (reviewed clean, merged to git) had never actually been deployed to production listenai-backend.fly.dev — last real deploy was 15h52m stale, predating today's work. This is exactly the kind of gap only a real on-device/integration test catches; unit/integration tests all ran against local test servers, not the real deployed backend.
+- Fixed: ran `fly deploy -a listenai-backend` for real. Verified via direct curl (200, real token + wss:// url, no key leaked) and via a second on-device attempt.
+- Second on-device attempt: full real success. Logs show RealtimeTTSService picked, real WAV synthesized and played to completion (0:03/0:03, "Full" badge), using the real per-voice mapping (Bella -> af_bella -> synthesized via Piper). This is the first genuine end-to-end proof of the whole migration working on real hardware.
+- Ruling: backend deploys are NOT automatic on merge in this project — a real deploy step is required and was missing from the plan's task list. Noting this as a process gap for future SDD plans touching this backend.
