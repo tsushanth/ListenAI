@@ -118,3 +118,11 @@ This ledger lives in the ReadAloudAI worktree but tracks both.
 - Both fix commits pushed: ReadAloudAI 1233113, realtime-tts f7fa71e.
 
 ## PLAN STATUS: all 8 tasks complete, both final whole-branch reviews clean (after one real fix wave each), real on-device verification done, one Critical security incident (leaked key) found and resolved same-session. Proceeding to finishing-a-development-branch for both repos.
+
+## Post-plan follow-up: real dynamic autoscaling (fly-autoscaler)
+- User asked why capacity was capped at 4 - answer: `fly scale count 4` was a manual number set for testing, not a Fly platform limit. Researched real Fly autoscaling mechanics (max_machines_running is genuinely not the growth mechanism; fly-autoscaler is a separate, real product for this).
+- Compared GCP Cloud Run (native elastic, but ~$197/mo for an always-on-CPU baseline equivalent vs Fly's $13.27/mo - always-on CPU billing mode required for a warm-model+websocket workload), AWS App Runner (no WebSocket support, being sunset for new customers 2026-04), AWS Fargate+ALB (WebSocket ok, but DIY autoscaling same as Fly), Azure Container Apps (KEDA-native, WebSocket unverified). User chose: build fly-autoscaler now.
+- Built and verified for real: grew piper-tts-sjc's pool to 10 machines (`fly scale count 10`, free while stopped), deployed `piper-tts-sjc-autoscaler` (flyio/fly-autoscaler:0.2) polling Fly's built-in hosted Prometheus (`fly_app_concurrency`, zero app instrumentation needed - confirmed this metric already existed and was live/queryable). Expression: `max(1, ceil(concurrency/3))`.
+- Real verification: baseline correctly scaled 10->3 started machines to match low real demand; a real 15-concurrent load test caused it to compute target=5 and genuinely start 3 additional machines on its own (log-confirmed `"machine started"` events, no manual intervention during the test) - the first real, automatic pool-size change observed all session (previously every scale-up required a human running `fly scale count`).
+- Documented in new `worker-piper-fly/AUTOSCALER.md`. Committed as 3d0cc1f, pushed.
+- Note: this is a genuine capability upgrade beyond the original 8-task plan's Task 4 scope (which only proved *manual* scale-out works) - real elastic autoscaling is now live for the realtime-tts worker.
