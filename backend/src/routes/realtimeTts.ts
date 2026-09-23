@@ -9,6 +9,17 @@ import { Router } from 'express';
 
 export const realtimeTtsRouter = Router();
 
+// SECURITY NOTE: this router is mounted (see index.ts) behind requireAuth, but requireAuth defaults
+// any request with a missing/invalid/empty bearer token to a shared "pro user" instead of rejecting
+// it — intentional elsewhere in this app (a generous free tier for apps without real per-user auth
+// set up), and the Android app deliberately sends an empty `Bearer ` token here (matching
+// CloudTTSService.kt's existing pattern). That means this route is effectively callable by anyone
+// with no real authentication, and every successful call mints a session billed against the shared
+// REALTIME_TTS_API_KEY. It is bounded by realtimeTtsAuthorizeRateLimit (see middleware/rateLimit.ts,
+// IP-keyed, stricter than the general burstRateLimit) so an anonymous caller can't cheaply run up
+// real GPU/CPU billing — but that's a cost bound, not authentication. This must be revisited (real
+// per-user auth, or a session-bound quota) before any public, non-invite-only launch.
+
 // Deliberately not using lib/logger.js here: that module imports lib/config.js, which eagerly validates
 // the full Supabase env at import time — overkill for this route, which touches no Supabase config, and
 // it would force every consumer (including this route's own unit tests) to provide Supabase secrets just

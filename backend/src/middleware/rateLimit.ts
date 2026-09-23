@@ -218,3 +218,34 @@ export const jobPollingRateLimit = rateLimit({
     message: 'Too many status polling requests. Please slow down.',
   },
 });
+
+/**
+ * Rate limiter specific to POST /api/realtime-tts/authorize.
+ *
+ * requireAuth (see middleware/auth.ts) defaults unauthenticated/invalid-token callers to a shared
+ * "pro user" instead of rejecting them — an intentional generous-free-tier design elsewhere in the
+ * app, but it means this route (mounted behind requireAuth) is effectively callable by anyone with
+ * no real per-user identity, and every successful call mints a session billed against the shared
+ * REALTIME_TTS_API_KEY. The general-purpose burstRateLimit (3 req/10s) runs before requireAuth on
+ * this route too, but it's IP-keyed only because no user is attached yet at that point, and 3/10s
+ * (~18/min) is still cheap enough for an anonymous caller to run up real GPU/CPU cost over time.
+ *
+ * This limiter is deliberately IP-keyed (never user-keyed) since, for this route, there is no real
+ * per-user identity to key on, and stricter than burstRateLimit: unauthenticated legitimate app usage
+ * authorizes a session only when the user actually starts playback, which is infrequent per IP.
+ *
+ * NOTE: this bounds cost, it does not fix the underlying lack of authentication. Must be revisited
+ * (real per-user auth, or a proper API key/session-bound quota) before any public, non-invite-only
+ * launch — see the comment on realtimeTtsRouter in routes/realtimeTts.ts.
+ */
+export const realtimeTtsAuthorizeRateLimit = rateLimit({
+  windowMs: 5 * 60 * 1000, // 5 minutes
+  max: 10, // 10 authorize calls per IP per 5 minutes
+  keyGenerator: (req) => `rt-tts-authorize:ip:${req.ip ?? 'unknown'}`,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    error: 'RATE_LIMITED',
+    message: 'Too many realtime-tts authorize requests from this address. Please slow down.',
+  },
+});

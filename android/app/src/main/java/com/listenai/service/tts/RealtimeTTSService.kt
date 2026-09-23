@@ -1,9 +1,12 @@
 package com.listenai.service.tts
 
 import android.content.Context
+import com.listenai.ListenAIApplication
 import com.listenai.data.models.VoicePreset
 import com.listenai.data.models.VoiceProvider
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -49,13 +52,22 @@ import kotlin.coroutines.resumeWithException
  * Voice selection: each built-in voice is mapped to a real Piper catalog voice via
  * PiperVoiceMapping, so the voice the user picked is the voice that gets synthesized.
  */
-class RealtimeTTSService(private val context: Context) : TTSService {
+class RealtimeTTSService(
+    private val context: Context,
+    // Overridable only for tests (see RealtimeTTSServiceTest), which point these at a local
+    // MockWebServer instead of the real backend/gateway. Production call sites (TTSService.kt)
+    // use the defaults, which reuse the real hosts below.
+    private val backendBaseUrl: String = DEFAULT_BACKEND_BASE_URL,
+    private val gatewayBaseUrl: String = GATEWAY_BASE_URL
+) : TTSService {
 
     companion object {
         private const val TAG = "RealtimeTTSService"
 
-        // Same backend host CloudTTSService, AuthService, etc. already talk to.
-        private const val BACKEND_BASE_URL = "https://listenai-backend.fly.dev"
+        // Reuses ListenAIApplication.BACKEND_URL (same module, public companion const - already the
+        // mechanism CloudTTSService/AuthService/etc. rely on) rather than duplicating the literal
+        // again; see ListenAIApplication.kt.
+        private val DEFAULT_BACKEND_BASE_URL = ListenAIApplication.BACKEND_URL
 
         private const val GATEWAY_BASE_URL = "https://api.readaloudai.org"
         private const val SAMPLE_RATE = 24000
@@ -76,12 +88,32 @@ class RealtimeTTSService(private val context: Context) : TTSService {
         .writeTimeout(15, TimeUnit.SECONDS)
         .build()
 
-    override suspend fun isAvailable(): Boolean {
-        return try {
-            withContext(Dispatchers.IO) {
-                val request = Request.Builder().url("$GATEWAY_BASE_URL/health").get().build()
-                httpClient.newCall(request).execute().use { it.isSuccessful }
+    /**
+     * Real synthesis needs BOTH hops to be up: the backend-proxy's /api/realtime-tts/authorize
+     * (listenai-backend, which mints the session token) and the realtime-tts gateway itself
+     * (api.readaloudai.org, which actually streams audio over the authorized WebSocket).
+     *
+     * Previously this only probed the gateway's /health, which is why an undeployed/broken
+     * backend-proxy route surfaced as a confusing 404 mid-synthesis (after the user tapped play)
+     * instead of a clean "service unavailable" signal shown up front. Checking both here means a
+     * broken backend-proxy now shows up as unavailable before the user ever taps play.
+     */
+    override suspend fun isAvailable(): Boolean = withContext(Dispatchers.IO) {
+        try {
+            coroutineScope {
+                val backendUp = async { probeHealth("$backendBaseUrl/health") }
+                val gatewayUp = async { probeHealth("$gatewayBaseUrl/health") }
+                backendUp.await() && gatewayUp.await()
             }
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    private fun probeHealth(url: String): Boolean {
+        return try {
+            val request = Request.Builder().url(url).get().build()
+            httpClient.newCall(request).execute().use { it.isSuccessful }
         } catch (e: Exception) {
             false
         }
@@ -164,7 +196,7 @@ class RealtimeTTSService(private val context: Context) : TTSService {
             put("engine", "piper")
         }
         val request = Request.Builder()
-            .url("$BACKEND_BASE_URL/api/realtime-tts/authorize")
+            .url("$backendBaseUrl/api/realtime-tts/authorize")
             .post(body.toString().toRequestBody("application/json".toMediaType()))
             .addHeader("Content-Type", "application/json")
             // Same auth CloudTTSService's requests to listenai-backend already send
@@ -343,16 +375,30 @@ class RealtimeTTSService(private val context: Context) : TTSService {
         return out.toByteArray()
     }
 
-    private fun handleErrorResponse(code: Int, body: String) {
+    // internal (not private) so RealtimeTTSServiceTest can exercise it directly - JSONObject
+    // request-body construction elsewhere in this class relies on the real org.json impl, which
+    // isn't available on the plain-JVM unit test classpath (only a "not mocked" stub is), so
+    // full-flow tests through synthesize()/authorize() can't reach this reliably in that
+    // environment. This method itself doesn't touch anything Android-specific.
+    internal fun handleErrorResponse(code: Int, body: String) {
         val message = try {
             JSONObject(body).optString("error", body)
         } catch (e: Exception) {
             body
         }
         when (code) {
-            401 -> throw TTSError.InvalidConfiguration("Invalid API key")
+            // The client no longer holds a platform API key - the backend-proxy does - so a
+            // 401/500 here means the backend's REALTIME_TTS_API_KEY is missing/misconfigured
+            // server-side, not that this app sent a bad key.
+            401 -> throw TTSError.InvalidConfiguration("Realtime TTS is misconfigured on the server (401 from backend)")
             402 -> throw TTSError.QuotaExceeded(0, 0)
+            404 -> throw TTSError.ApiError(
+                "ReadAloud AI (realtime-tts)",
+                code,
+                "Backend route not found - check that /api/realtime-tts/authorize is deployed on the backend"
+            )
             429 -> throw TTSError.RateLimited(60.0)
+            500 -> throw TTSError.InvalidConfiguration("Realtime TTS is misconfigured on the server (500 from backend)")
             else -> throw TTSError.ApiError("ReadAloud AI (realtime-tts)", code, message)
         }
     }

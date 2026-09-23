@@ -22,6 +22,17 @@ android {
     namespace = "com.listenai"
     compileSdk = 36
 
+    testOptions {
+        unitTests {
+            // RealtimeTTSServiceTest exercises org.json.JSONObject (request/response bodies) on
+            // the plain-JVM unit test classpath, where the Android SDK's org.json is a stub that
+            // throws "not mocked" by default. Return safe defaults instead so JSONObject actually
+            // works in unit tests, matching the real behavior since none of these codepaths rely
+            // on org.json's platform-specific quirks.
+            isReturnDefaultValues = true
+        }
+    }
+
     defaultConfig {
         applicationId = "com.listenai"
         minSdk = 26
@@ -253,6 +264,12 @@ dependencies {
     // Testing
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3")
+    // Pinned to 5.0.0-alpha.14 (not the app's own 4.12.0 okhttp dep) because some other
+    // dependency in this project forces okhttp up to 5.0.0-alpha.14 project-wide; mockwebserver
+    // 4.12.0 links against okhttp3.internal.Util, which that version doesn't have, and fails at
+    // test runtime with NoClassDefFoundError. Keep this in sync with whatever okhttp resolves to
+    // (see `./gradlew :app:dependencies` for the winning version) if that ever changes.
+    testImplementation("com.squareup.okhttp3:mockwebserver:5.0.0-alpha.14")
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
     // 3.5.1 reflects into InputManager.getInstance(), which newer Android versions
     // removed — every instrumented test failed at Espresso's idle-wait step before

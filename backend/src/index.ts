@@ -9,7 +9,7 @@ import { logger } from './lib/logger.js';
 
 import { requireAuth } from './middleware/auth.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
-import { standardRateLimit, ttsRateLimitByTier, previewRateLimit, burstRateLimit, jobPollingRateLimit } from './middleware/rateLimit.js';
+import { standardRateLimit, ttsRateLimitByTier, previewRateLimit, burstRateLimit, jobPollingRateLimit, realtimeTtsAuthorizeRateLimit } from './middleware/rateLimit.js';
 
 import { ttsRouter } from './routes/tts.js';
 import { realtimeTtsRouter } from './routes/realtimeTts.js';
@@ -168,10 +168,16 @@ app.post('/api/tts/job/:jobId/cancel', jobPollingRateLimit, requireAuth, ttsRout
 // Note: Job routes are handled by specific routes above, this catches the rest
 app.use('/api/tts', burstRateLimit, requireAuth, ttsRateLimitByTier, ttsRouter);
 
-// realtime-tts authorize proxy: holds the dedicated REALTIME_TTS_API_KEY server-side (Task 5) and forwards
+// realtime-tts authorize proxy: holds the dedicated REALTIME_TTS_API_KEY server-side and forwards
 // authorize calls to the realtime-tts platform, so the Android app never sees the raw platform key.
-// Same burstRateLimit → requireAuth ordering as /api/tts above (per-app-user rate limiting).
-app.use('/api/realtime-tts', burstRateLimit, requireAuth, realtimeTtsRouter);
+//
+// This route is intentionally callable without real per-user auth (requireAuth defaults callers with
+// no/invalid token to a shared "pro user" rather than rejecting them, matching this app's existing
+// generous-free-tier philosophy elsewhere). Since every successful call here mints a session billed
+// against the shared REALTIME_TTS_API_KEY, it is bounded by realtimeTtsAuthorizeRateLimit (IP-keyed,
+// stricter than the general-purpose burstRateLimit) in addition to burstRateLimit. This must be
+// revisited before any public (non-invite-only) launch — see middleware/rateLimit.ts for details.
+app.use('/api/realtime-tts', burstRateLimit, realtimeTtsAuthorizeRateLimit, requireAuth, realtimeTtsRouter);
 
 // Preview endpoint has stricter rate limit (10 req/min)
 app.use('/api/tts/preview', previewRateLimit);
