@@ -24,6 +24,10 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', { apiVersion: '20
 // mtr_61VKS4vnYXmnQAsD441KFBTQTkmztIfY) — not re-derived at runtime.
 const TTS_BILLING_PRICE_ID = 'price_1UCU4gKFBTQTkmztYE2RuWia';
 const TTS_METER_EVENT_NAME = 'realtimetts_characters';
+// Voice design meter (created once via Stripe Dashboard or scripts/create-voice-design-meter.mjs).
+// Set these env vars after creating the meter/price.
+const VOICE_DESIGN_METER_EVENT_NAME = process.env.VOICE_DESIGN_METER_EVENT_NAME || 'realtimetts_voice_design_generations';
+
 // Piper (CPU engine) is priced at $0.004/1k chars vs Kokoro's $0.01/1k. Rather than
 // add a second Stripe price/meter and migrate every live subscription, Piper chars are
 // reported to the existing meter pre-weighted: 1 Piper char = 0.4 billed chars. Trade-off:
@@ -252,5 +256,29 @@ export async function reportUsageToStripe(deps: UsageReportDeps = defaultUsageDe
     } catch (err) {
       billingLogger.error({ err, gatewayKeyId, chars }, 'Failed to report usage to Stripe');
     }
+  }
+}
+
+// Reports one voice-design generation to Stripe as a meter event.
+// Called synchronously after the Modal job succeeds, not batched.
+// Best-effort: a metering failure does not fail the generation itself.
+export async function reportVoiceDesignUsage(userId: string): Promise<void> {
+  const billing = await getBillingForUser(userId);
+  if (!billing?.active) {
+    billingLogger.warn({ userId }, 'reportVoiceDesignUsage called for user with no active billing');
+    return;
+  }
+  try {
+    await stripe.billing.meterEvents.create({
+      event_name: VOICE_DESIGN_METER_EVENT_NAME,
+      timestamp: Math.floor(Date.now() / 1000),
+      payload: {
+        stripe_customer_id: billing.stripe_customer_id,
+        value: '1',
+      },
+    });
+    billingLogger.debug({ userId }, 'Voice design usage reported');
+  } catch (err) {
+    billingLogger.error({ err, userId }, 'Failed to report voice design usage');
   }
 }

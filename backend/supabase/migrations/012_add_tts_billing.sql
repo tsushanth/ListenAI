@@ -29,6 +29,8 @@ CREATE INDEX IF NOT EXISTS idx_realtimetts_billing_stripe_customer_id ON realtim
 
 ALTER TABLE realtimetts_billing ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Service role full access on realtimetts_billing" ON realtimetts_billing;
+
 CREATE POLICY "Service role full access on realtimetts_billing" ON realtimetts_billing
     FOR ALL
     USING (true);

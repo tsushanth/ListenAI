@@ -5,7 +5,7 @@ import express, { Router, Request, Response, NextFunction } from 'express';
 import rateLimit from 'express-rate-limit';
 import { config } from '../lib/config.js';
 import { supabase } from '../lib/supabaseClient.js';
-import { isBillingActiveForUser } from '../lib/realtimeTtsBilling.js';
+import { isBillingActiveForUser, reportVoiceDesignUsage } from '../lib/realtimeTtsBilling.js';
 import { logger } from '../lib/logger.js';
 
 const log = logger.child({ module: 'voiceDesign' });
@@ -179,6 +179,9 @@ export const voiceDesignRouter: Router = (() => {
           .update({ status: status.status, completed_at: new Date().toISOString() })
           .eq('modal_job_id', req.params.id)
           .eq('user_id', userId);
+        if (status.status === 'ready') {
+          reportVoiceDesignUsage(userId).catch((err: unknown) => log.warn({ err }, 'voice design billing report failed (non-critical)'));
+        }
       }
 
       res.json(status);
