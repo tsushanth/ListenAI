@@ -1,0 +1,5 @@
+# ninja log v5
+0	54	1785797612036372147	CMakeFiles/espeak_bridge.dir/espeak_bridge.c.o	db684e8dbac26d82
+54	108	1785797612088989245	/Users/sushanthtiruvaipati/Documents/GitHub/ReadAloudAI/android/app/build/intermediates/cxx/Debug/23bu6769/obj/arm64-v8a/libespeak_bridge.so	66cc09a15a179c6e
+12	851	1790002937590091800	/Users/sushanthtiruvaipati/Documents/GitHub/ReadAloudAI/android/app/build/intermediates/cxx/Debug/23bu6769/obj/arm64-v8a/libespeak_bridge.so	66cc09a15a179c6e
+15	901	1790163246743574002	/Users/sushanthtiruvaipati/Documents/GitHub/ReadAloudAI/android/app/build/intermediates/cxx/Debug/23bu6769/obj/arm64-v8a/libespeak_bridge.so	66cc09a15a179c6e

@@ -30,6 +30,7 @@ import { authRouter } from './routes/auth.js';
 import { appConfigRouter } from './routes/appConfig.js';
 import { ttsApiKeysRouter } from './routes/ttsApiKeys.js';
 import { voiceStudioRouter } from './routes/voiceStudio.js';
+import { voiceDesignRouter } from './routes/voiceDesign.js';
 import { voiceStudioApiKeyRouter } from './routes/voiceStudioApiKey.js';
 import { aggregateLatencyMetrics, checkSupabaseHealth, checkStorageHealth } from './lib/supabaseClient.js';
 import { startWorker, stopWorker } from './workers/ttsJobWorker.js';
@@ -221,7 +222,8 @@ app.use('/api/stories', storiesRouter);
 // requireAuth default-user fallback — see routes/ttsApiKeys.ts).
 app.use('/api/tts-api-keys', ttsApiKeysRouter);
 
-// Customer custom voices. Dark unless VOICE_STUDIO_ENABLED_USERS is set (404 otherwise); does its own
+// Voice design — Parler-TTS text-to-voice generation (dark unless VOICE_DESIGN_URL is configured)
+app.use('/api/voice-design', voiceDesignRouter);
 // strict Supabase auth like the API-key routes above.
 app.use('/api/voice-studio', voiceStudioRouter);
 

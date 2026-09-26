@@ -11,19 +11,19 @@
 		},
 		{
 			"isExternal" : true,
-			"path" : "/Users/sushanthtiruvaipati/Library/Android/sdk/ndk/27.0.12077973/build/cmake/android.toolchain.cmake"
+			"path" : "/Users/sushanthtiruvaipati/Library/Android/sdk/ndk/28.2.13676358/build/cmake/android.toolchain.cmake"
 		},
 		{
 			"isExternal" : true,
-			"path" : "/Users/sushanthtiruvaipati/Library/Android/sdk/ndk/27.0.12077973/build/cmake/android-legacy.toolchain.cmake"
+			"path" : "/Users/sushanthtiruvaipati/Library/Android/sdk/ndk/28.2.13676358/build/cmake/android-legacy.toolchain.cmake"
 		},
 		{
 			"isExternal" : true,
-			"path" : "/Users/sushanthtiruvaipati/Library/Android/sdk/ndk/27.0.12077973/build/cmake/abis.cmake"
+			"path" : "/Users/sushanthtiruvaipati/Library/Android/sdk/ndk/28.2.13676358/build/cmake/abis.cmake"
 		},
 		{
 			"isExternal" : true,
-			"path" : "/Users/sushanthtiruvaipati/Library/Android/sdk/ndk/27.0.12077973/build/cmake/platforms.cmake"
+			"path" : "/Users/sushanthtiruvaipati/Library/Android/sdk/ndk/28.2.13676358/build/cmake/platforms.cmake"
 		},
 		{
 			"isCMake" : true,
@@ -32,7 +32,7 @@
 		},
 		{
 			"isExternal" : true,
-			"path" : "/Users/sushanthtiruvaipati/Library/Android/sdk/ndk/27.0.12077973/build/cmake/hooks/pre/Android-Determine.cmake"
+			"path" : "/Users/sushanthtiruvaipati/Library/Android/sdk/ndk/28.2.13676358/build/cmake/hooks/pre/Android-Determine.cmake"
 		},
 		{
 			"isCMake" : true,
@@ -41,11 +41,11 @@
 		},
 		{
 			"isGenerated" : true,
-			"path" : "/Users/sushanthtiruvaipati/Documents/GitHub/ReadAloudAI/android/app/.cxx/RelWithDebInfo/4t465p48/arm64-v8a/CMakeFiles/3.22.1-g37088a8/CMakeSystem.cmake"
+			"path" : "/Users/sushanthtiruvaipati/Documents/GitHub/ReadAloudAI/android/app/.cxx/RelWithDebInfo/1z315025/arm64-v8a/CMakeFiles/3.22.1-g37088a8/CMakeSystem.cmake"
 		},
 		{
 			"isExternal" : true,
-			"path" : "/Users/sushanthtiruvaipati/Library/Android/sdk/ndk/27.0.12077973/build/cmake/android.toolchain.cmake"
+			"path" : "/Users/sushanthtiruvaipati/Library/Android/sdk/ndk/28.2.13676358/build/cmake/android.toolchain.cmake"
 		},
 		{
 			"isCMake" : true,
@@ -59,7 +59,7 @@
 		},
 		{
 			"isExternal" : true,
-			"path" : "/Users/sushanthtiruvaipati/Library/Android/sdk/ndk/27.0.12077973/build/cmake/hooks/pre/Android-Initialize.cmake"
+			"path" : "/Users/sushanthtiruvaipati/Library/Android/sdk/ndk/28.2.13676358/build/cmake/hooks/pre/Android-Initialize.cmake"
 		},
 		{
 			"isCMake" : true,
@@ -83,7 +83,7 @@
 		},
 		{
 			"isExternal" : true,
-			"path" : "/Users/sushanthtiruvaipati/Library/Android/sdk/ndk/27.0.12077973/build/cmake/hooks/pre/Determine-Compiler.cmake"
+			"path" : "/Users/sushanthtiruvaipati/Library/Android/sdk/ndk/28.2.13676358/build/cmake/hooks/pre/Determine-Compiler.cmake"
 		},
 		{
 			"isCMake" : true,
@@ -307,7 +307,7 @@
 		},
 		{
 			"isGenerated" : true,
-			"path" : "/Users/sushanthtiruvaipati/Documents/GitHub/ReadAloudAI/android/app/.cxx/RelWithDebInfo/4t465p48/arm64-v8a/CMakeFiles/3.22.1-g37088a8/CMakeCCompiler.cmake"
+			"path" : "/Users/sushanthtiruvaipati/Documents/GitHub/ReadAloudAI/android/app/.cxx/RelWithDebInfo/1z315025/arm64-v8a/CMakeFiles/3.22.1-g37088a8/CMakeCCompiler.cmake"
 		},
 		{
 			"isCMake" : true,
@@ -331,7 +331,7 @@
 		},
 		{
 			"isExternal" : true,
-			"path" : "/Users/sushanthtiruvaipati/Library/Android/sdk/ndk/27.0.12077973/build/cmake/hooks/pre/Android.cmake"
+			"path" : "/Users/sushanthtiruvaipati/Library/Android/sdk/ndk/28.2.13676358/build/cmake/hooks/pre/Android.cmake"
 		},
 		{
 			"isCMake" : true,
@@ -390,11 +390,11 @@
 		},
 		{
 			"isExternal" : true,
-			"path" : "/Users/sushanthtiruvaipati/Library/Android/sdk/ndk/27.0.12077973/build/cmake/hooks/pre/Android-Clang.cmake"
+			"path" : "/Users/sushanthtiruvaipati/Library/Android/sdk/ndk/28.2.13676358/build/cmake/hooks/pre/Android-Clang.cmake"
 		},
 		{
 			"isExternal" : true,
-			"path" : "/Users/sushanthtiruvaipati/Library/Android/sdk/ndk/27.0.12077973/build/cmake/flags.cmake"
+			"path" : "/Users/sushanthtiruvaipati/Library/Android/sdk/ndk/28.2.13676358/build/cmake/flags.cmake"
 		},
 		{
 			"isCMake" : true,
@@ -458,13 +458,13 @@
 		},
 		{
 			"isGenerated" : true,
-			"path" : "/Users/sushanthtiruvaipati/Documents/GitHub/ReadAloudAI/android/app/.cxx/RelWithDebInfo/4t465p48/arm64-v8a/CMakeFiles/3.22.1-g37088a8/CMakeCCompiler.cmake"
+			"path" : "/Users/sushanthtiruvaipati/Documents/GitHub/ReadAloudAI/android/app/.cxx/RelWithDebInfo/1z315025/arm64-v8a/CMakeFiles/3.22.1-g37088a8/CMakeCCompiler.cmake"
 		}
 	],
 	"kind" : "cmakeFiles",
 	"paths" : 
 	{
-		"build" : "/Users/sushanthtiruvaipati/Documents/GitHub/ReadAloudAI/android/app/.cxx/RelWithDebInfo/4t465p48/arm64-v8a",
+		"build" : "/Users/sushanthtiruvaipati/Documents/GitHub/ReadAloudAI/android/app/.cxx/RelWithDebInfo/1z315025/arm64-v8a",
 		"source" : "/Users/sushanthtiruvaipati/Documents/GitHub/ReadAloudAI/android/app/src/main/cpp"
 	},
 	"version" : 

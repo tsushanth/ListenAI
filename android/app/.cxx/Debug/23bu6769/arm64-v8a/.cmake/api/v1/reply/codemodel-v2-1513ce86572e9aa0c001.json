@@ -6,10 +6,10 @@
 			[
 				{
 					"build" : ".",
-					"jsonFile" : "directory-.-RelWithDebInfo-f5ebdc15457944623624.json",
+					"jsonFile" : "directory-.-Debug-f5ebdc15457944623624.json",
 					"minimumCMakeVersion" : 
 					{
-						"string" : "3.6.0"
+						"string" : "3.10.0"
 					},
 					"projectIndex" : 0,
 					"source" : ".",
@@ -19,7 +19,7 @@
 					]
 				}
 			],
-			"name" : "RelWithDebInfo",
+			"name" : "Debug",
 			"projects" : 
 			[
 				{
@@ -39,7 +39,7 @@
 				{
 					"directoryIndex" : 0,
 					"id" : "espeak_bridge::@6890427a1f51a3e7e1df",
-					"jsonFile" : "target-espeak_bridge-RelWithDebInfo-acabfd71176eb51d28a5.json",
+					"jsonFile" : "target-espeak_bridge-Debug-80ef54cb6d40eff488b4.json",
 					"name" : "espeak_bridge",
 					"projectIndex" : 0
 				}
@@ -49,7 +49,7 @@
 	"kind" : "codemodel",
 	"paths" : 
 	{
-		"build" : "/Users/sushanthtiruvaipati/Documents/GitHub/ReadAloudAI/android/app/.cxx/RelWithDebInfo/4t465p48/arm64-v8a",
+		"build" : "/Users/sushanthtiruvaipati/Documents/GitHub/ReadAloudAI/android/app/.cxx/Debug/23bu6769/arm64-v8a",
 		"source" : "/Users/sushanthtiruvaipati/Documents/GitHub/ReadAloudAI/android/app/src/main/cpp"
 	},
 	"version" : 

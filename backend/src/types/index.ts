@@ -26,6 +26,8 @@ export interface EnvConfig {
   INTAKE_SECRET?: string;
   VOICE_STUDIO_MAX_VOICES_PER_USER: number;
   VOICE_STUDIO_MAX_ZIP_MB: number;
+  VOICE_DESIGN_URL?: string;
+  VOICE_DESIGN_SECRET?: string;
   GATEWAY_FORWARD_SECRET?: string;
   VOICE_STUDIO_API_ENABLED_KEYS: string;
   VOICE_STUDIO_API_MAX_VOICES_PER_KEY: number;

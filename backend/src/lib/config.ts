@@ -53,6 +53,10 @@ const envSchema = z.object({
   VOICE_STUDIO_MAX_VOICES_PER_USER: z.string().transform(Number).default('3'),
   VOICE_STUDIO_MAX_ZIP_MB: z.string().transform(Number).default('300'),
 
+  // Voice design (text-to-voice via Parler-TTS on Modal) — ships dark if unset.
+  VOICE_DESIGN_URL: z.string().url().optional(),
+  VOICE_DESIGN_SECRET: z.string().optional(),
+
   // API-key front door for voice cloning (mirrors the Supabase web flow above, same intake/consent/quota
   // rules, different auth). Only the gateway (realtime-tts-gateway) calls this path, after it has already
   // validated the caller's API key and resolved an owning identity; it proves that to us with this shared
