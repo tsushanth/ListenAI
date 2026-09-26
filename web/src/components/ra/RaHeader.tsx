@@ -11,6 +11,7 @@ export default function RaHeader() {
       <div className="ra-wrap ra-head-in">
         <Link href="/" className="ra-logo"><i aria-hidden="true" />ReadAloud AI</Link>
         <nav className={`ra-nav${open ? ' open' : ''}`} aria-label="Main">
+          <Link href="/design-voice">Design a voice</Link>
           <Link href="/developers">Voice API</Link>
           <Link href="/#engines">Engines</Link>
           <Link href="/#pricing">Pricing</Link>
