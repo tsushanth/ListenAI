@@ -20,6 +20,7 @@ import { Request } from 'express';
 import { config } from '../lib/config.js';
 import { logger } from '../lib/logger.js';
 import { createIntakeClient } from '../lib/voiceIntakeClient.js';
+import { chargeForVoiceClone } from '../lib/realtimeTtsBilling.js';
 import { createVoiceStudioRouter } from './voiceStudioRouter.js';
 
 const log = logger.child({ module: 'voiceStudioApiKey' });
@@ -67,6 +68,13 @@ export const voiceStudioApiKeyRouter = createVoiceStudioRouter({
   maxZipBytes: config.VOICE_STUDIO_MAX_ZIP_MB * 1024 * 1024,
   // No Supabase account necessarily exists for a bare API key; nothing to backfill.
   backfillKeyOwners: async () => {},
+  onCommitSuccess: async (identity: string, voiceId: string) => {
+    const result = await chargeForVoiceClone(identity);
+    if (!result.success) {
+      log.warn({ identity, voiceId, error: result.error }, 'Voice clone billing failed — committed anyway');
+    }
+    return result.success;
+  },
   log,
   // Tighter than the web defaults (20/40/400 per hour): a raw API caller can script requests much faster
   // than a human clicking through a UI, and training is the expensive one to let someone hammer.

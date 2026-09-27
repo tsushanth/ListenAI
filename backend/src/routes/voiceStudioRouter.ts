@@ -55,6 +55,9 @@ export interface VoiceStudioDeps {
    * found and fixed by an end-to-end live test rather than code review. See intake.py's deploy handler
    * for how both fields end up in owner.json. */
   ownerKeyIdsFor?: (req: Request) => string[] | undefined;
+  /** Called after a voice dataset is successfully committed (training starts). Best-effort:
+   *  errors are logged but do not fail the request. Return true on success, false otherwise. */
+  onCommitSuccess?: (userId: string, voiceId: string) => Promise<boolean>;
 }
 
 type Authed = Request & { studioUserId?: string };
@@ -207,6 +210,11 @@ export function createVoiceStudioRouter(deps: VoiceStudioDeps): Router {
     if (total > deps.maxZipBytes) { res.status(413).json({ error: `That upload is too large (limit ${Math.round(deps.maxZipBytes / 1048576)} MB). Use FLAC or MP3 files, or fewer recordings.` }); return; }
     const out = await deps.intake.commit(req.params.id!, parts, total);
     res.status(202).json({ id: out.voice_id, status: out.status, clips: out.clips });
+    if (deps.onCommitSuccess) {
+      deps.onCommitSuccess(req.studioUserId!, out.voice_id).catch((e) =>
+        deps.log?.warn?.({ e, voiceId: out.voice_id }, 'onCommitSuccess failed (billing non-critical)')
+      );
+    }
   }));
 
   r.get('/:id/samples/:n', wrap(async (req, res) => {

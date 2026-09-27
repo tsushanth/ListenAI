@@ -20,6 +20,9 @@ const billingLogger = logger.child({ module: 'realtimeTtsBilling' });
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', { apiVersion: '2023-10-16' });
 
+// Voice clone pricing
+const VOICE_CLONE_PRICE_CENTS = 250;
+
 // Created once via the Stripe API (product prod_VBQz9uoIntSQWG, meter
 // mtr_61VKS4vnYXmnQAsD441KFBTQTkmztIfY) — not re-derived at runtime.
 const TTS_BILLING_PRICE_ID = 'price_1UCU4gKFBTQTkmztYE2RuWia';
@@ -280,5 +283,50 @@ export async function reportVoiceDesignUsage(userId: string): Promise<void> {
     billingLogger.debug({ userId }, 'Voice design usage reported');
   } catch (err) {
     billingLogger.error({ err, userId }, 'Failed to report voice design usage');
+  }
+}
+
+// --------------------------------------------------------------------------
+// Voice clone one-time charge ($2.50)
+// --------------------------------------------------------------------------
+
+async function resolveUserId(identity: string): Promise<string | null> {
+  // Supabase uids contain hyphens; gateway key ids are short alphanumeric hashes
+  if (identity.includes('-')) return identity;
+
+  const { data } = await supabase
+    .from('realtimetts_api_keys')
+    .select('user_id')
+    .eq('gateway_key_id', identity)
+    .maybeSingle();
+  return data?.user_id ?? null;
+}
+
+/** Charge $2.50 for a voice clone. Best-effort: a billing failure does not fail the voice creation. */
+export async function chargeForVoiceClone(identity: string): Promise<{ success: boolean; invoiceItemId?: string; error?: string }> {
+  const userId = await resolveUserId(identity);
+  if (!userId) {
+    billingLogger.warn({ identity }, 'chargeForVoiceClone: could not resolve user id');
+    return { success: false, error: 'User not found' };
+  }
+
+  const billing = await getBillingForUser(userId);
+  if (!billing?.active) {
+    billingLogger.warn({ userId, identity }, 'chargeForVoiceClone: no active billing record');
+    return { success: false, error: 'No active billing record' };
+  }
+
+  try {
+    const item = await stripe.invoiceItems.create({
+      customer: billing.stripe_customer_id,
+      amount: VOICE_CLONE_PRICE_CENTS,
+      currency: 'usd',
+      description: 'Voice clone training',
+    });
+    billingLogger.info({ userId, invoiceItemId: item.id }, 'Voice clone charge created');
+    return { success: true, invoiceItemId: item.id };
+  } catch (err) {
+    billingLogger.error({ err, userId }, 'Failed to create voice clone charge');
+    return { success: false, error: 'Stripe error' };
   }
 }
