@@ -4,6 +4,7 @@ import RaFooter from '@/components/ra/RaFooter'
 import CodeTabs from '@/components/ra/CodeTabs'
 import DeveloperApiSection from '@/components/DeveloperApiSection'
 import VoiceStudioLink from '@/components/ra/VoiceStudioLink'
+import VoiceCloningDocs from '@/components/ra/VoiceCloningDocs'
 
 export const metadata = {
   title: 'Voice API - ReadAloud AI',
@@ -75,8 +76,9 @@ export default function DevelopersPage() {
                 <h3>Capacity and errors</h3>
                 <p>Piper serves up to 4 simultaneous streams per server. Beyond that you get <code>{'{ "type": "error", "message": "at capacity, retry shortly" }'}</code> and the socket closes with code <code>1013</code>. Retry with a short backoff.</p>
 
-                <h3>Custom voices (early access)</h3>
-                <p>Trained voices are used with <code>{'"voice": "custom:<id>"'}</code>. Any other voice value uses the default voice. A voice can only be used by the API keys it was created for; anything else returns <code>unknown voice</code>. <a href="mailto:support@readaloudai.org?subject=Custom%20voice%20early%20access" style={{ textDecoration: 'underline' }}>Email us</a> to get started.</p>
+                <h3 id="voice-cloning">Voice cloning</h3>
+                <p>Create a custom voice from your own recordings and use it with <code className="inl">custom:&lt;id&gt;</code>. Training runs automatically on GPU and takes about 30–60 minutes.</p>
+                <VoiceCloningDocs />
 
                 <h3 id="speech-to-text">Speech to text (batch)</h3>
                 <p>Transcribe a finished recording with Whisper large-v3-turbo. This is batch only: you upload a file and get the whole transcript back. There is no live streaming transcription yet, no speaker labels (diarization) and no entity detection.</p>

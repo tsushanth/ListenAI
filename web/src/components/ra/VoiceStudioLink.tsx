@@ -23,6 +23,6 @@ export default function VoiceStudioLink() {
   }, [])
   if (!on) return null
   return (
-    <p style={{ marginTop: 12 }}>Need your own brand voice? <Link href="/voices" style={{ textDecoration: 'underline' }}>Create a custom voice from your recordings</Link>.</p>
+    <p style={{ marginTop: 12 }}>Need your own brand voice? <Link href="/voices" style={{ textDecoration: 'underline' }}>Create one from your recordings</Link> (web UI) or use the <a href="#voice-cloning" style={{ textDecoration: 'underline' }}>API below</a>.</p>
   )
 }
