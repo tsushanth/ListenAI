@@ -427,18 +427,38 @@ Updated: "Voice name updated."
 
 Convert speech from one voice to another — keep the words and prosody, change the speaker.
 
-### How It Works
+### Self-Serve Model
 
-| Step | What Happens |
-|------|-------------|
-| 1. Source audio | Upload the speech you want to convert (e.g., a recording of someone speaking) |
-| 2. Target voice | Upload a reference audio of the voice you want to sound like (e.g., your own voice) |
-| 3. Conversion | GPU processes the audio using Seed-VC (20-30 seconds for typical clips) |
-| 4. Result | Download the converted audio — same content, new voice |
+ReadAloud AI does **not** run a shared voice-conversion server. Each user deploys their own Modal app (Seed-VC on GPU) and stores the URL + secret with us. The backend proxies requests to the user's Modal instance. Benefits:
+
+- **Privacy**: Audio never touches ReadAloud servers (goes directly user → Modal → user)
+- **Cost control**: GPUs only run when you use them; Modal's free tier covers experimentation
+- **No single point of failure**: One user's app down does not affect anyone else
+
+### Setup
+
+1. Clone the repo and deploy:
+   ```bash
+   git clone https://github.com/tsushanth/realtime-tts.git
+   cd realtime-tts/voice-pipeline
+   modal deploy convert_job.py
+   ```
+2. Set your secret:
+   ```bash
+   modal secret create voice-convert CONVERT_SECRET=your-secret-here
+   ```
+3. Save the URL + secret in the ReadAloud UI at `/convert-voice` → Settings, or via API:
+   ```bash
+   curl -X POST https://listenai-backend.fly.dev/api/voice-convert/config \
+     -H "Authorization: Bearer {jwt_token}" \
+     -H "Content-Type: application/json" \
+     -d '{"modal_url":"https://your-name--voice-convert-api.modal.run","modal_secret":"your-secret"}'
+   ```
 
 ### API
 
 ```bash
+# Submit conversion
 curl -X POST https://listenai-backend.fly.dev/api/voice-convert/conversions \
   -H "Authorization: Bearer {jwt_token}" \
   -F "source=@source.wav" \
@@ -459,8 +479,8 @@ curl -s https://listenai-backend.fly.dev/api/voice-convert/conversions/{job_id}/
 
 ### Pricing
 
-- $0.05 per conversion
-- Metered billing via Stripe
+- $0.05 per conversion (billed by ReadAloud for API usage)
+- You also pay Modal for GPU time (~$0.001/second on A10G, or free within Modal's trial credits)
 - No monthly minimum
 
 ### Limits
@@ -470,7 +490,7 @@ curl -s https://listenai-backend.fly.dev/api/voice-convert/conversions/{job_id}/
 | Max file size | 25 MB per file |
 | Supported formats | WAV, FLAC, OGG, MP3, M4A |
 | Rate limit | 10 conversions/hour |
-| Requires | Active TTS subscription |
+| Requires | Active TTS subscription + user-provided Modal app |
 
 ### Use Cases
 

@@ -34,7 +34,84 @@ Authorization: Bearer {supabase_jwt_token}
 
 ---
 
-### POST `/api/voice-convert/conversions`
+### Voice Conversion (Self-Serve)
+
+ReadAloud AI does not run a shared voice-conversion server. Instead, each user deploys their own Modal app (Seed-VC on GPU) and stores the URL + secret with us. The backend proxies requests to the user's Modal instance. Audio never touches ReadAloud servers.
+
+#### Setup (one-time)
+
+1. Clone the realtime-tts repo and run:
+   ```bash
+   cd voice-pipeline && modal deploy convert_job.py
+   ```
+2. Set a Modal secret:
+   ```bash
+   modal secret create voice-convert CONVERT_SECRET=your-secret-here
+   ```
+3. Copy the deployed URL and secret into the web UI at `/convert-voice` → Settings.
+
+#### Config Endpoints
+
+##### GET `/api/voice-convert/config`
+
+Return the user's saved Modal endpoint URL (secret is never returned).
+
+**Response:**
+```json
+{
+  "modal_url": "https://your-name--voice-convert-api.modal.run",
+  "configured": true
+}
+```
+
+**Errors:**
+| Status | Description |
+|--------|-------------|
+| 401 | Missing/invalid token |
+| 404 | No config saved yet |
+
+---
+
+##### POST `/api/voice-convert/config`
+
+Save the user's Modal endpoint.
+
+**Request:**
+```json
+{
+  "modal_url": "https://your-name--voice-convert-api.modal.run",
+  "modal_secret": "your-modal-secret"
+}
+```
+
+**Response:**
+```json
+{
+  "configured": true,
+  "modal_url": "https://your-name--voice-convert-api.modal.run"
+}
+```
+
+**Validation:**
+- `modal_url` must be HTTPS
+- Both fields required
+
+---
+
+##### DELETE `/api/voice-convert/config`
+
+Remove saved config.
+
+**Response:**
+```json
+{
+  "deleted": true
+}
+```
+
+---
+
+#### Conversion Endpoints
 
 Convert speech from one voice to another using speech-to-speech conversion.
 
