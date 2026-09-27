@@ -30,6 +30,9 @@ const TTS_METER_EVENT_NAME = 'realtimetts_characters';
 // Voice design meter (created once via Stripe Dashboard or scripts/create-voice-design-meter.mjs).
 // Set these env vars after creating the meter/price.
 const VOICE_DESIGN_METER_EVENT_NAME = process.env.VOICE_DESIGN_METER_EVENT_NAME || 'realtimetts_voice_design_generations';
+// Voice conversion meter (created once via Stripe Dashboard or scripts/create-voice-convert-meter.mjs).
+// Set these env vars after creating the meter/price.
+const VOICE_CONVERT_METER_EVENT_NAME = process.env.VOICE_CONVERT_METER_EVENT_NAME || 'realtimetts_voice_conversions';
 
 // Piper (CPU engine) is priced at $0.004/1k chars vs Kokoro's $0.01/1k. Rather than
 // add a second Stripe price/meter and migrate every live subscription, Piper chars are
@@ -283,6 +286,27 @@ export async function reportVoiceDesignUsage(userId: string): Promise<void> {
     billingLogger.debug({ userId }, 'Voice design usage reported');
   } catch (err) {
     billingLogger.error({ err, userId }, 'Failed to report voice design usage');
+  }
+}
+
+export async function reportVoiceConvertUsage(userId: string): Promise<void> {
+  const billing = await getBillingForUser(userId);
+  if (!billing?.active) {
+    billingLogger.warn({ userId }, 'reportVoiceConvertUsage called for user with no active billing');
+    return;
+  }
+  try {
+    await stripe.billing.meterEvents.create({
+      event_name: VOICE_CONVERT_METER_EVENT_NAME,
+      timestamp: Math.floor(Date.now() / 1000),
+      payload: {
+        stripe_customer_id: billing.stripe_customer_id,
+        value: '1',
+      },
+    });
+    billingLogger.debug({ userId }, 'Voice convert usage reported');
+  } catch (err) {
+    billingLogger.error({ err, userId }, 'Failed to report voice convert usage');
   }
 }
 
