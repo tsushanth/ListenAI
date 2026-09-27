@@ -48,6 +48,9 @@ async function modalAudio(path: string): Promise<Buffer> {
 // --------------------------------------------------------------------------
 
 async function requireUser(req: Request, res: Response): Promise<string | null> {
+  const cached = (req as Request & { userId?: string }).userId;
+  if (cached) return cached;
+
   const token = (req.headers.authorization || '').replace(/^Bearer /, '');
   if (!token) { res.status(401).json({ error: 'Sign in required.' }); return null; }
 
@@ -57,7 +60,12 @@ async function requireUser(req: Request, res: Response): Promise<string | null> 
   const active = await isBillingActiveForUser(user.id);
   if (!active) { res.status(402).json({ error: 'Voice design requires an active TTS subscription.' }); return null; }
 
+  (req as Request & { userId?: string }).userId = user.id;
   return user.id;
+}
+
+async function requireUserMiddleware(req: Request, res: Response, next: NextFunction) {
+  if (await requireUser(req, res)) next();
 }
 
 function cleanStr(v: unknown, max: number): string {
@@ -138,10 +146,9 @@ export const voiceDesignRouter: Router = (() => {
   });
 
   // Create a generation job
-  r.post('/designs', limiter, express.json({ limit: '16kb' }), async (req, res, next) => {
+  r.post('/designs', requireUserMiddleware, limiter, express.json({ limit: '16kb' }), async (req, res, next) => {
     try {
-      const userId = await requireUser(req, res);
-      if (!userId) return;
+      const userId = (req as Request & { userId?: string }).userId!;
       const description = cleanStr(req.body?.description, 800);
       const text = cleanStr(req.body?.text, 500);
       if (!description || description.length < 10) { res.status(400).json({ error: 'Description must be at least 10 characters.' }); return; }
