@@ -1,10 +1,9 @@
-// Speech-to-speech voice conversion: proxy to the Modal voice-convert-dev Seed-VC app.
-// Authenticated users with an active TTS billing subscription can convert speech
-// from one voice to another. Usage is tracked per conversion.
+// Speech-to-speech voice conversion: self-serve per-user Modal endpoints.
+// Each user deploys their own Modal app (convert_job.py) and stores the URL + secret here.
+// The backend proxies conversion requests to the user's Modal instance.
 import express, { Router, Request, Response, NextFunction } from 'express';
 import rateLimit from 'express-rate-limit';
 import multer from 'multer';
-import { config } from '../lib/config.js';
 import { supabase } from '../lib/supabaseClient.js';
 import { isBillingActiveForUser, reportVoiceConvertUsage } from '../lib/realtimeTtsBilling.js';
 import { logger } from '../lib/logger.js';
@@ -12,20 +11,35 @@ import { logger } from '../lib/logger.js';
 const log = logger.child({ module: 'voiceConvert' });
 
 // --------------------------------------------------------------------------
-// Modal client
+// Per-user config helpers
 // --------------------------------------------------------------------------
 
-const VOICE_CONVERT_URL = config.VOICE_CONVERT_URL;
-const VOICE_CONVERT_SECRET = config.VOICE_CONVERT_SECRET;
-
-function authHeaders() {
-  return { Authorization: VOICE_CONVERT_SECRET ? `Bearer ${VOICE_CONVERT_SECRET}` : '' };
+interface UserVoiceConvertConfig {
+  modal_url: string;
+  modal_secret: string;
 }
 
-async function modalRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
-  if (!VOICE_CONVERT_URL) throw new Error('Voice conversion is not configured');
-  const url = `${VOICE_CONVERT_URL}${path}`;
-  const res = await fetch(url, { ...init, headers: { ...authHeaders(), ...(init.headers || {}) } });
+async function getUserConfig(userId: string): Promise<UserVoiceConvertConfig | null> {
+  const { data, error } = await supabase
+    .from('user_voice_convert_configs')
+    .select('modal_url, modal_secret')
+    .eq('user_id', userId)
+    .single();
+  if (error || !data || Array.isArray(data)) return null;
+  return data as UserVoiceConvertConfig;
+}
+
+function authHeaders(secret: string) {
+  return { Authorization: secret ? `Bearer ${secret}` : '' };
+}
+
+async function modalRequest<T>(
+  cfg: UserVoiceConvertConfig,
+  path: string,
+  init: RequestInit = {}
+): Promise<T> {
+  const url = `${cfg.modal_url}${path}`;
+  const res = await fetch(url, { ...init, headers: { ...authHeaders(cfg.modal_secret), ...(init.headers || {}) } });
   if (!res.ok) {
     const text = await res.text().catch(() => '');
     throw new Error(`Modal voice-convert returned HTTP ${res.status}: ${text}`);
@@ -34,9 +48,8 @@ async function modalRequest<T>(path: string, init: RequestInit = {}): Promise<T>
   return res.json() as T;
 }
 
-async function modalAudio(path: string): Promise<Buffer> {
-  if (!VOICE_CONVERT_URL) throw new Error('Voice conversion is not configured');
-  const res = await fetch(`${VOICE_CONVERT_URL}${path}`, { headers: authHeaders() });
+async function modalAudio(cfg: UserVoiceConvertConfig, path: string): Promise<Buffer> {
+  const res = await fetch(`${cfg.modal_url}${path}`, { headers: authHeaders(cfg.modal_secret) });
   if (!res.ok) {
     const text = await res.text().catch(() => '');
     throw new Error(`Modal voice-convert returned HTTP ${res.status}: ${text}`);
@@ -83,8 +96,6 @@ const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: MAX_AUDIO_MB * 1024 * 1024 },
   fileFilter: (_req, _file, cb) => {
-    // Accept all files; MIME-type validation is done in the route handler
-    // so we can return a proper 400 with context instead of multer's generic error.
     cb(null, true);
   },
 });
@@ -96,21 +107,64 @@ const upload = multer({
 export const voiceConvertRouter: Router = (() => {
   const r = Router();
 
-  // Dark by default
-  r.use((_req, res, next) => {
-    if (!VOICE_CONVERT_URL || !VOICE_CONVERT_SECRET) { res.status(404).json({ error: 'Not found' }); return; }
-    next();
-  });
-
   const limiter = rateLimit({
     windowMs: 3600_000,
-    max: 10, // 10 conversions/hour per user
+    max: 10,
     standardHeaders: true,
     legacyHeaders: false,
     keyGenerator: (req) => `voice-convert:${(req as Request & { userId?: string }).userId ?? 'anon'}`,
     validate: false,
     message: { error: 'Too many requests. You can convert 10 voices per hour.' },
   });
+
+  // ------------------------------------------------------------------------
+  // Config management
+  // ------------------------------------------------------------------------
+
+  r.get('/config', requireUserMiddleware, async (req, res, next) => {
+    try {
+      const userId = (req as Request & { userId?: string }).userId!;
+      const cfg = await getUserConfig(userId);
+      if (!cfg) { res.status(404).json({ error: 'No configuration found.' }); return; }
+      // Never return the secret to the client
+      res.json({ modal_url: cfg.modal_url, configured: true });
+    } catch (e) { next(e); }
+  });
+
+  r.post('/config', requireUserMiddleware, async (req, res, next) => {
+    try {
+      const userId = (req as Request & { userId?: string }).userId!;
+      const url = cleanStr(req.body?.modal_url, 500);
+      const secret = cleanStr(req.body?.modal_secret, 500);
+
+      if (!url) { res.status(400).json({ error: 'modal_url is required.' }); return; }
+      if (!secret) { res.status(400).json({ error: 'modal_secret is required.' }); return; }
+      if (!url.startsWith('https://')) { res.status(400).json({ error: 'modal_url must be an HTTPS URL.' }); return; }
+
+      const { error } = await supabase
+        .from('user_voice_convert_configs')
+        .upsert({ user_id: userId, modal_url: url, modal_secret: secret, updated_at: new Date().toISOString() },
+          { onConflict: 'user_id' });
+      if (error) {
+        log.error({ error }, 'Failed to save voice convert config');
+        res.status(500).json({ error: 'Could not save configuration.' });
+        return;
+      }
+      res.json({ configured: true, modal_url: url });
+    } catch (e) { next(e); }
+  });
+
+  r.delete('/config', requireUserMiddleware, async (req, res, next) => {
+    try {
+      const userId = (req as Request & { userId?: string }).userId!;
+      await supabase.from('user_voice_convert_configs').delete().eq('user_id', userId);
+      res.json({ deleted: true });
+    } catch (e) { next(e); }
+  });
+
+  // ------------------------------------------------------------------------
+  // Conversion jobs
+  // ------------------------------------------------------------------------
 
   // Submit a conversion job
   r.post('/conversions', requireUserMiddleware, limiter, upload.fields([
@@ -119,6 +173,12 @@ export const voiceConvertRouter: Router = (() => {
   ]), async (req, res, next) => {
     try {
       const userId = (req as Request & { userId?: string }).userId!;
+      const cfg = await getUserConfig(userId);
+      if (!cfg) {
+        res.status(400).json({ error: 'Voice conversion is not configured. Deploy your own Modal app and save the URL + secret in Settings first.' });
+        return;
+      }
+
       const files = req.files as Record<string, Express.Multer.File[]>;
       const sourceFile = files?.source?.[0];
       const targetFile = files?.target?.[0];
@@ -128,7 +188,6 @@ export const voiceConvertRouter: Router = (() => {
         return;
       }
 
-      // Validate MIME types
       const allowedMimes = ['audio/wav', 'audio/flac', 'audio/ogg', 'audio/mpeg', 'audio/mp4', 'audio/x-m4a', 'audio/m4a'];
       if (!allowedMimes.includes(sourceFile.mimetype)) {
         res.status(400).json({ error: `Unsupported source format: ${sourceFile.mimetype}. Allowed: WAV, FLAC, OGG, MP3, M4A.` });
@@ -139,7 +198,6 @@ export const voiceConvertRouter: Router = (() => {
         return;
       }
 
-      // Validate consent attestation
       const consent = cleanStr(req.body?.consent_statement, 500);
       const expectedConsent =
         'I confirm that I have the legal right to use both the source audio and the target voice reference, ' +
@@ -149,14 +207,13 @@ export const voiceConvertRouter: Router = (() => {
         return;
       }
 
-      // Build multipart form and forward to Modal
       const formData = new FormData();
       formData.append('source', new Blob([new Uint8Array(sourceFile.buffer)]), sourceFile.originalname || 'source.wav');
       formData.append('target', new Blob([new Uint8Array(targetFile.buffer)]), targetFile.originalname || 'target.wav');
 
-      const modalRes = await fetch(`${VOICE_CONVERT_URL}/convert`, {
+      const modalRes = await fetch(`${cfg.modal_url}/convert`, {
         method: 'POST',
-        headers: authHeaders(),
+        headers: authHeaders(cfg.modal_secret),
         body: formData,
       });
 
@@ -167,7 +224,6 @@ export const voiceConvertRouter: Router = (() => {
 
       const result = await modalRes.json() as { job_id: string; status: string; source_seconds?: number; target_seconds?: number };
 
-      // Track the job for history
       const { error: dbError } = await supabase.from('voice_conversions').insert({
         user_id: userId,
         modal_job_id: result.job_id,
@@ -187,9 +243,11 @@ export const voiceConvertRouter: Router = (() => {
     try {
       const userId = await requireUser(req, res);
       if (!userId) return;
-      const st = await modalRequest<{ status: string; [key: string]: unknown }>(`/convert/${req.params.id}`);
+      const cfg = await getUserConfig(userId);
+      if (!cfg) { res.status(400).json({ error: 'Voice conversion is not configured.' }); return; }
 
-      // Update status in our DB when done/failed
+      const st = await modalRequest<{ status: string; [key: string]: unknown }>(cfg, `/convert/${req.params.id}`);
+
       if (st.status === 'done' || st.status === 'failed') {
         await supabase.from('voice_conversions')
           .update({ status: st.status, completed_at: new Date().toISOString(), error: (st as any).stderr_tail || null })
@@ -209,7 +267,9 @@ export const voiceConvertRouter: Router = (() => {
     try {
       const userId = await requireUser(req, res);
       if (!userId) return;
-      const wav = await modalAudio(`/convert/${req.params.id}/result`);
+      const cfg = await getUserConfig(userId);
+      if (!cfg) { res.status(400).json({ error: 'Voice conversion is not configured.' }); return; }
+      const wav = await modalAudio(cfg, `/convert/${req.params.id}/result`);
       res.set({ 'Content-Type': 'audio/wav', 'Cache-Control': 'private, max-age=300' }).send(wav);
     } catch (e) { next(e); }
   });
@@ -219,7 +279,9 @@ export const voiceConvertRouter: Router = (() => {
     try {
       const userId = await requireUser(req, res);
       if (!userId) return;
-      await modalRequest(`/convert/${req.params.id}`, { method: 'DELETE' });
+      const cfg = await getUserConfig(userId);
+      if (!cfg) { res.status(400).json({ error: 'Voice conversion is not configured.' }); return; }
+      await modalRequest(cfg, `/convert/${req.params.id}`, { method: 'DELETE' });
       await supabase.from('voice_conversions')
         .delete()
         .eq('modal_job_id', req.params.id)

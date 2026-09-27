@@ -27,9 +27,42 @@ export interface ConversionStatus {
   stderr_tail?: string
 }
 
+export interface UserConfig {
+  modal_url: string
+  configured: boolean
+}
+
 export const voiceConvertApi = {
   getConsentText(): string {
     return CONSENT_STATEMENT
+  },
+
+  async getConfig(): Promise<UserConfig | null> {
+    const res = await fetch(`${API_BASE_URL}/api/voice-convert/config`, {
+      headers: { Authorization: `Bearer ${await token()}` },
+    })
+    if (res.status === 404) return null
+    if (!res.ok) return fail(res)
+    return res.json()
+  },
+
+  async saveConfig(params: { modal_url: string; modal_secret: string }): Promise<UserConfig> {
+    const res = await fetch(`${API_BASE_URL}/api/voice-convert/config`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${await token()}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(params),
+    })
+    if (!res.ok) return fail(res)
+    return res.json()
+  },
+
+  async removeConfig(): Promise<{ deleted: boolean }> {
+    const res = await fetch(`${API_BASE_URL}/api/voice-convert/config`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${await token()}` },
+    })
+    if (!res.ok) return fail(res)
+    return res.json()
   },
 
   async create(params: {
