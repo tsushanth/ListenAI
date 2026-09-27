@@ -423,6 +423,68 @@ Updated: "Voice name updated."
 
 ---
 
+## Speech-to-Speech (Voice Conversion)
+
+Convert speech from one voice to another — keep the words and prosody, change the speaker.
+
+### How It Works
+
+| Step | What Happens |
+|------|-------------|
+| 1. Source audio | Upload the speech you want to convert (e.g., a recording of someone speaking) |
+| 2. Target voice | Upload a reference audio of the voice you want to sound like (e.g., your own voice) |
+| 3. Conversion | GPU processes the audio using Seed-VC (20-30 seconds for typical clips) |
+| 4. Result | Download the converted audio — same content, new voice |
+
+### API
+
+```bash
+curl -X POST https://listenai-backend.fly.dev/api/voice-convert/conversions \
+  -H "Authorization: Bearer {jwt_token}" \
+  -F "source=@source.wav" \
+  -F "target=@target.wav" \
+  -F "consent_statement=I confirm that I have the legal right to use both the source audio and the target voice reference, and that this conversion does not impersonate any person without their consent."
+# -> {"job_id": "uuid", "status": "queued"}
+
+# Poll for completion
+curl -s https://listenai-backend.fly.dev/api/voice-convert/conversions/{job_id} \
+  -H "Authorization: Bearer {jwt_token}"
+# -> {"status": "done"}
+
+# Download converted audio
+curl -s https://listenai-backend.fly.dev/api/voice-convert/conversions/{job_id}/audio \
+  -H "Authorization: Bearer {jwt_token}" \
+  -o converted.wav
+```
+
+### Pricing
+
+- $0.05 per conversion
+- Metered billing via Stripe
+- No monthly minimum
+
+### Limits
+
+| Limit | Value |
+|-------|-------|
+| Max file size | 25 MB per file |
+| Supported formats | WAV, FLAC, OGG, MP3, M4A |
+| Rate limit | 10 conversions/hour |
+| Requires | Active TTS subscription |
+
+### Use Cases
+
+- Personalize audiobooks (read in your own voice)
+- Voice localization (keep speaking style, change speaker)
+- Accessibility (convert assistive tech output to user's preferred voice)
+- Content creation (dub voiceovers while preserving emotional delivery)
+
+### Legal Notes
+
+Same consent framework as voice cloning: you must have legal right to use both the source content AND the target voice reference. Conversions without consent are prohibited.
+
+---
+
 ## Voice Sharing (Community Voices)
 
 ### Overview

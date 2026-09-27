@@ -34,6 +34,78 @@ Authorization: Bearer {supabase_jwt_token}
 
 ---
 
+### POST `/api/voice-convert/conversions`
+
+Convert speech from one voice to another using speech-to-speech conversion.
+
+**Request:**
+- Content-Type: `multipart/form-data`
+- Files:
+  - `source` — Source audio file (WAV, FLAC, OGG, MP3, M4A). The speech you want to convert.
+  - `target` — Target voice reference audio (WAV, FLAC, OGG, MP3, M4A). The voice you want to sound like.
+- Form fields:
+  - `consent_statement` — Exact consent text (required, see below)
+
+**Response:**
+```json
+{
+  "job_id": "uuid-string",
+  "status": "queued"
+}
+```
+
+**Errors:**
+| Status | Error Code | Description |
+|--------|------------|-------------|
+| 400 | validation_error | Missing files, unsupported format, or consent mismatch |
+| 401 | unauthorized | Missing/invalid token |
+| 402 | quota_exceeded | No active TTS subscription |
+| 413 | file_too_large | Audio exceeds 25 MB |
+| 429 | rate_limited | Max 10 conversions/hour exceeded |
+
+**Consent Statement (exact text required):**
+```
+I confirm that I have the legal right to use both the source audio and the target voice reference, and that this conversion does not impersonate any person without their consent.
+```
+
+---
+
+### GET `/api/voice-convert/conversions/:id`
+
+Poll conversion status.
+
+**Response:**
+```json
+{
+  "status": "queued" | "running" | "done" | "failed"
+}
+```
+
+---
+
+### GET `/api/voice-convert/conversions/:id/audio`
+
+Download converted audio.
+
+**Response:**
+- Content-Type: `audio/wav`
+- Body: Binary WAV data
+
+---
+
+### DELETE `/api/voice-convert/conversions/:id`
+
+Delete a conversion job and its audio.
+
+**Response:**
+```json
+{
+  "deleted": true
+}
+```
+
+---
+
 ### POST `/api/tts`
 
 Generate complete audio from text.
