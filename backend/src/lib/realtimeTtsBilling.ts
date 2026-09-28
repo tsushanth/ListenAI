@@ -354,3 +354,27 @@ export async function chargeForVoiceClone(identity: string): Promise<{ success: 
     return { success: false, error: 'Stripe error' };
   }
 }
+
+// Reports TTS character usage to Stripe meter (for cloned-voice synthesis and any
+// backend-served TTS). Best-effort: billing failure must not block the request.
+export async function reportTtsUsage(userId: string, charCount: number): Promise<void> {
+  const billing = await getBillingForUser(userId);
+  if (!billing?.active) {
+    billingLogger.warn({ userId }, 'reportTtsUsage called for user with no active billing');
+    return;
+  }
+  if (charCount <= 0) return;
+  try {
+    await stripe.billing.meterEvents.create({
+      event_name: TTS_METER_EVENT_NAME,
+      timestamp: Math.floor(Date.now() / 1000),
+      payload: {
+        stripe_customer_id: billing.stripe_customer_id,
+        value: String(charCount),
+      },
+    });
+    billingLogger.debug({ userId, charCount }, 'TTS usage reported');
+  } catch (err) {
+    billingLogger.error({ err, userId, charCount }, 'Failed to report TTS usage');
+  }
+}

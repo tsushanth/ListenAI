@@ -61,6 +61,10 @@ const envSchema = z.object({
   VOICE_CONVERT_URL: z.string().url().optional(),
   VOICE_CONVERT_SECRET: z.string().optional(),
 
+  // XTTS v2 instant voice cloning — ships dark if unset.
+  XTTS_CLONE_URL: z.string().url().optional(),
+  XTTS_CLONE_SECRET: z.string().optional(),
+
   // Modal CLI credentials — used by backend to deploy/destroy voice-convert apps on behalf of users.
   MODAL_TOKEN_ID: z.string().optional(),
   MODAL_TOKEN_SECRET: z.string().optional(),

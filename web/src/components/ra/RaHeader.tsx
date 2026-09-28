@@ -12,6 +12,7 @@ export default function RaHeader() {
         <Link href="/" className="ra-logo"><i aria-hidden="true" />ReadAloud AI</Link>
         <nav className={`ra-nav${open ? ' open' : ''}`} aria-label="Main">
           <Link href="/design-voice">Design a voice</Link>
+          <Link href="/clone-voice">Clone a voice</Link>
           <Link href="/convert-voice">Convert voice</Link>
           <Link href="/developers">Voice API</Link>
           <Link href="/#engines">Engines</Link>

@@ -32,6 +32,7 @@ import { ttsApiKeysRouter } from './routes/ttsApiKeys.js';
 import { voiceStudioRouter } from './routes/voiceStudio.js';
 import { voiceDesignRouter } from './routes/voiceDesign.js';
 import { voiceConvertRouter } from './routes/voiceConvert.js';
+import { voiceCloneRouter } from './routes/voiceClone.js';
 import { voiceStudioApiKeyRouter } from './routes/voiceStudioApiKey.js';
 import { aggregateLatencyMetrics, checkSupabaseHealth, checkStorageHealth } from './lib/supabaseClient.js';
 import { startWorker, stopWorker } from './workers/ttsJobWorker.js';
@@ -227,6 +228,8 @@ app.use('/api/tts-api-keys', ttsApiKeysRouter);
 app.use('/api/voice-design', voiceDesignRouter);
 // Voice convert — Seed-VC speech-to-speech voice conversion (dark unless VOICE_CONVERT_URL is configured)
 app.use('/api/voice-convert', voiceConvertRouter);
+// Voice clone — XTTS v2 instant voice cloning (dark unless XTTS_CLONE_URL is configured)
+app.use('/api/voice-clone', voiceCloneRouter);
 // strict Supabase auth like the API-key routes above.
 app.use('/api/voice-studio', voiceStudioRouter);
 
