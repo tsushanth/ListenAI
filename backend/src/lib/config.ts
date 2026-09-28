@@ -61,6 +61,11 @@ const envSchema = z.object({
   VOICE_CONVERT_URL: z.string().url().optional(),
   VOICE_CONVERT_SECRET: z.string().optional(),
 
+  // Modal CLI credentials — used by backend to deploy/destroy voice-convert apps on behalf of users.
+  MODAL_TOKEN_ID: z.string().optional(),
+  MODAL_TOKEN_SECRET: z.string().optional(),
+  MODAL_WORKSPACE: z.string().optional(),
+
   // API-key front door for voice cloning (mirrors the Supabase web flow above, same intake/consent/quota
   // rules, different auth). Only the gateway (realtime-tts-gateway) calls this path, after it has already
   // validated the caller's API key and resolved an owning identity; it proves that to us with this shared

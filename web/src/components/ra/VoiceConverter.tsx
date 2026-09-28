@@ -5,10 +5,10 @@ import { supabase } from '@/lib/supabaseClient'
 import {
   voiceConvertApi,
   type ConversionJob,
-  type UserConfig,
+  type Deployment,
 } from '@/lib/voiceConvertApi'
 
-type Stage = 'idle' | 'config' | 'uploading' | 'polling' | 'ready' | 'failed'
+type Stage = 'idle' | 'uploading' | 'polling' | 'ready' | 'failed'
 
 const ALLOWED_TYPES = ['audio/wav', 'audio/flac', 'audio/ogg', 'audio/mpeg', 'audio/mp4', 'audio/x-m4a', 'audio/m4a']
 const ALLOWED_EXT = ['.wav', '.flac', '.ogg', '.mp3', '.m4a', '.mp4']
@@ -27,12 +27,10 @@ function fmtSize(bytes: number): string {
 export default function VoiceConverter() {
   const [sessionEmail, setSessionEmail] = useState<string | null>(null)
 
-  // Config
-  const [config, setConfig] = useState<UserConfig | null | undefined>(undefined)
-  const [showConfig, setShowConfig] = useState(false)
-  const [modalUrl, setModalUrl] = useState('')
-  const [modalSecret, setModalSecret] = useState('')
-  const [configSaving, setConfigSaving] = useState(false)
+  // Deployment
+  const [deployment, setDeployment] = useState<Deployment | null | undefined>(undefined)
+  const [deploying, setDeploying] = useState(false)
+  const [destroying, setDestroying] = useState(false)
 
   // Conversion
   const [sourceFile, setSourceFile] = useState<File | null>(null)
@@ -52,41 +50,73 @@ export default function VoiceConverter() {
     })
   }, [])
 
-  const loadConfig = useCallback(async () => {
+  const loadDeployment = useCallback(async () => {
     try {
-      const cfg = await voiceConvertApi.getConfig()
-      setConfig(cfg)
-      if (cfg) { setModalUrl(cfg.modal_url); setShowConfig(false) }
+      const dep = await voiceConvertApi.getDeployment()
+      setDeployment(dep)
+      if (dep?.status === 'deploying') {
+        // Poll deployment status
+        pollDeployment()
+      }
     } catch {
-      setConfig(null)
+      setDeployment(null)
     }
   }, [])
 
   useEffect(() => {
-    if (sessionEmail) loadConfig()
-  }, [sessionEmail, loadConfig])
+    if (sessionEmail) loadDeployment()
+  }, [sessionEmail, loadDeployment])
 
-  const saveConfig = async () => {
-    setConfigSaving(true); setError(null)
+  const pollDeployment = useCallback(async () => {
+    let attempts = 0
+    const interval = setInterval(async () => {
+      if (cancelled.current) { clearInterval(interval); return }
+      try {
+        const dep = await voiceConvertApi.getDeployment()
+        setDeployment(dep)
+        if (dep?.status === 'ready' || dep?.status === 'failed' || dep == null) {
+          clearInterval(interval)
+          setDeploying(false)
+        }
+      } catch {
+        // keep polling
+      }
+      attempts++
+      if (attempts > 60) { clearInterval(interval); setDeploying(false) }
+    }, 3000)
+  }, [])
+
+  const deploy = async () => {
+    setError(null); setDeploying(true)
     try {
-      const cfg = await voiceConvertApi.saveConfig({
-        modal_url: modalUrl.trim(),
-        modal_secret: modalSecret.trim(),
-      })
-      setConfig(cfg)
-      setModalSecret('')
-      setShowConfig(false)
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not save configuration.')
-    } finally { setConfigSaving(false) }
+      const dep = await voiceConvertApi.deploy()
+      setDeployment(dep)
+      if (dep.status === 'deploying') {
+        pollDeployment()
+      }
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Could not start deployment.')
+      setDeploying(false)
+    }
   }
 
-  const deleteConfig = async () => {
-    try { await voiceConvertApi.removeConfig(); setConfig(null); setModalUrl('') } catch {}
+  const destroy = async () => {
+    setError(null); setDestroying(true)
+    try {
+      await voiceConvertApi.destroy()
+      setDeployment(null)
+      resetConversion()
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Could not destroy deployment.')
+    } finally { setDestroying(false) }
   }
+
+  // ------------------------------------------------------------------------
+  // Conversion
+  // ------------------------------------------------------------------------
 
   const validate = useCallback((): string | null => {
-    if (!config) return 'Configure your Modal app first.'
+    if (!deployment || deployment.status !== 'ready') return 'Deploy a converter first.'
     if (!sourceFile) return 'Choose a source audio file.'
     if (!targetFile) return 'Choose a target voice reference file.'
     if (!isValidAudio(sourceFile)) return `Source file type not supported: ${sourceFile.name}`
@@ -95,7 +125,7 @@ export default function VoiceConverter() {
     if (targetFile.size > 25 * 1024 * 1024) return `Target file too large: ${fmtSize(targetFile.size)} (max 25 MB).`
     if (!consent) return 'You must confirm the consent statement to continue.'
     return null
-  }, [sourceFile, targetFile, consent, config])
+  }, [sourceFile, targetFile, consent, deployment])
 
   const submit = async () => {
     if (cancelled.current) return
@@ -141,7 +171,7 @@ export default function VoiceConverter() {
     }
   }
 
-  const reset = () => {
+  const resetConversion = () => {
     setSourceFile(null)
     setTargetFile(null)
     setConsent(false)
@@ -166,64 +196,66 @@ export default function VoiceConverter() {
     <div className="ra-vs">
       {error && <p className="ra-err" role="alert">{error}</p>}
 
-      {/* Config banner */}
-      {config === undefined ? (
-        <p className="ra-small">Loading configuration…</p>
-      ) : config === null ? (
-        <div className="ra-vs-card" style={{ marginBottom: 20 }}>
-          <h3>Voice conversion not set up</h3>
-          <p className="ra-lede" style={{ fontSize: '1rem' }}>
-            ReadAloud AI does not run a shared conversion server. You deploy your own Modal app
-            (free GPU credits available) and we proxy requests to it. Your audio never touches our servers.
-          </p>
-          {!showConfig ? (
-            <div className="ra-cta">
-              <button className="ra-btn solid" onClick={() => setShowConfig(true)}>
-                Configure my Modal app
+      {/* Deployment section */}
+      <div className="ra-vs-card" style={{ marginBottom: 20 }}>
+        <h3 style={{ marginBottom: 8 }}>Your voice converter</h3>
+        {deployment === undefined ? (
+          <p className="ra-small">Checking deployment…</p>
+        ) : deployment === null ? (
+          <>
+            <p className="ra-lede" style={{ fontSize: '1rem' }}>
+              Deploy your own GPU-powered voice converter. It runs on your own Modal account
+              (free credits available) and shuts down when not in use. Audio never touches our servers.
+            </p>
+            <div className="ra-cta" style={{ marginTop: 12 }}>
+              <button className="ra-btn solid" onClick={deploy} disabled={deploying}>
+                {deploying ? 'Deploying…' : 'Deploy converter'}
               </button>
             </div>
-          ) : (
-            <ConfigForm
-              modalUrl={modalUrl}
-              setModalUrl={setModalUrl}
-              modalSecret={modalSecret}
-              setModalSecret={setModalSecret}
-              saving={configSaving}
-              onSave={saveConfig}
-              onCancel={() => setShowConfig(false)}
-            />
-          )}
-        </div>
-      ) : (
-        <div className="ra-vs-card" style={{ marginBottom: 20 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-            <span className="ra-vs-pill ready" style={{ fontSize: '.75rem' }}>
-              Configured
-            </span>
-            <span className="ra-small">{config.modal_url}</span>
-            <div style={{ marginLeft: 'auto' }} className="ra-cta">
-              <button className="ra-btn ghost" onClick={() => setShowConfig(true)}>Update</button>
-              <button className="ra-btn ghost danger" onClick={deleteConfig}>Remove</button>
+          </>
+        ) : deployment.status === 'deploying' ? (
+          <div className="ra-vs-training" style={{ marginTop: 8 }}>
+            <div className="ra-vs-spin" aria-hidden="true" />
+            <div>
+              <h3 style={{ margin: 0 }}>Deploying converter</h3>
+              <p>Building your Seed-VC GPU container. This takes 1–2 minutes.</p>
             </div>
           </div>
-          {showConfig && (
-            <div style={{ marginTop: 12, borderTop: '1px solid var(--hair)' }}>
-              <ConfigForm
-                modalUrl={modalUrl}
-                setModalUrl={setModalUrl}
-                modalSecret={modalSecret}
-                setModalSecret={setModalSecret}
-                saving={configSaving}
-                onSave={saveConfig}
-                onCancel={() => setShowConfig(false)}
-              />
+        ) : deployment.status === 'ready' ? (
+          <>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+              <span className="ra-vs-pill ready" style={{ fontSize: '.75rem' }}>
+                Ready
+              </span>
+              <span className="ra-small">{deployment.modal_url}</span>
+              <div style={{ marginLeft: 'auto' }} className="ra-cta">
+                <button className="ra-btn ghost danger" onClick={destroy} disabled={destroying}>
+                  {destroying ? 'Stopping…' : 'Stop converter'}
+                </button>
+              </div>
             </div>
-          )}
-        </div>
-      )}
+            <p className="ra-small" style={{ marginTop: 8 }}>
+              Your converter only costs money while processing audio. Keep it stopped when not in use.
+            </p>
+          </>
+        ) : deployment.status === 'failed' ? (
+          <>
+            <p className="ra-vs-notice bad" role="alert">
+              Deployment failed. Try again or contact support.
+            </p>
+            <div className="ra-cta">
+              <button className="ra-btn solid" onClick={deploy} disabled={deploying}>
+                Retry deployment
+              </button>
+            </div>
+          </>
+        ) : (
+          <p className="ra-small">Status: {deployment.status}</p>
+        )}
+      </div>
 
       {/* Conversion form */}
-      {config && !showConfig && (
+      {deployment?.status === 'ready' && (
         <div className="ra-vs-card">
           <div className="ra-vs-form two" style={{ marginBottom: 20 }}>
             <div>
@@ -294,7 +326,7 @@ export default function VoiceConverter() {
               </button>
             )}
             {(stage === 'ready' || stage === 'failed') && (
-              <button className="ra-btn ghost" onClick={reset}>
+              <button className="ra-btn ghost" onClick={resetConversion}>
                 Convert another
               </button>
             )}
@@ -306,7 +338,7 @@ export default function VoiceConverter() {
                 <div className="ra-vs-spin" aria-hidden="true" />
                 <div>
                   <h3 style={{ margin: 0 }}>Converting voice</h3>
-                  <p>Seed-VC is processing your audio on your Modal app. This usually takes 20–30 seconds.</p>
+                  <p>Seed-VC is processing your audio. This usually takes 20–30 seconds.</p>
                 </div>
               </div>
             </div>
@@ -334,62 +366,6 @@ export default function VoiceConverter() {
           )}
         </div>
       )}
-    </div>
-  )
-}
-
-function ConfigForm({
-  modalUrl,
-  setModalUrl,
-  modalSecret,
-  setModalSecret,
-  saving,
-  onSave,
-  onCancel,
-}: {
-  modalUrl: string
-  setModalUrl: (v: string) => void
-  modalSecret: string
-  setModalSecret: (v: string) => void
-  saving: boolean
-  onSave: () => void
-  onCancel: () => void
-}) {
-  return (
-    <div style={{ marginTop: 12 }}>
-      <div className="ra-vs-form two">
-        <label>
-          Modal app URL
-          <input
-            type="url"
-            value={modalUrl}
-            onChange={(e) => setModalUrl(e.target.value)}
-            placeholder="https://your-name--voice-convert-api.modal.run"
-            disabled={saving}
-          />
-        </label>
-        <label>
-          Modal secret (Bearer token)
-          <input
-            type="password"
-            value={modalSecret}
-            onChange={(e) => setModalSecret(e.target.value)}
-            placeholder="sk-..."
-            disabled={saving}
-          />
-        </label>
-      </div>
-      <p className="ra-small" style={{ marginTop: 8 }}>
-        To get these: run <code className="inl">modal deploy voice-pipeline/convert_job.py</code> in
-        your own clone, then copy the URL and the <code className="inl">CONVERT_SECRET</code> you set
-        in Modal secrets. Your audio runs on your Modal account, not ours.
-      </p>
-      <div className="ra-cta" style={{ marginTop: 12 }}>
-        <button className="ra-btn solid" disabled={saving || !modalUrl.trim() || !modalSecret.trim()} onClick={onSave}>
-          {saving ? 'Saving…' : 'Save configuration'}
-        </button>
-        <button className="ra-btn ghost" onClick={onCancel} disabled={saving}>Cancel</button>
-      </div>
     </div>
   )
 }

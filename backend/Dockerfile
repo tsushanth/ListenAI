@@ -26,7 +26,9 @@ FROM node:20-alpine AS production
 WORKDIR /app
 
 # Install ffmpeg for audio conversion (WAV to MP3)
-RUN apk add --no-cache ffmpeg
+# Install Python + modal CLI for voice-convert deployment orchestration
+RUN apk add --no-cache ffmpeg python3 py3-pip && \
+    pip3 install modal==0.63.0 --break-system-packages
 
 # Create non-root user
 RUN addgroup -g 1001 -S nodejs && \
@@ -40,6 +42,9 @@ RUN npm install --only=production && npm cache clean --force
 
 # Copy built files
 COPY --from=builder /app/dist ./dist
+
+# Copy Modal deployment files (voice-convert deployable)
+COPY modal ./modal
 
 # Switch to non-root user
 USER nodejs
