@@ -179,3 +179,50 @@ export function generateAudioPath(cacheKey: string, format: string): string {
 export function generateJobAudioPath(jobId: string, format: string): string {
   return `audio/jobs/${jobId}.${format}`;
 }
+
+// ============================================================================
+// Music Cache Key Generation
+// ============================================================================
+
+/**
+ * Options for music cache key generation
+ */
+export interface MusicCacheKeyOptions {
+  prompt: string;
+  durationSec: number;
+}
+
+/**
+ * Compute a cache key for music generation.
+ *
+ * The cache key uniquely identifies a music generation request based on:
+ * - Prompt (normalized text describing the desired music)
+ * - Duration in seconds
+ *
+ * Two requests with the same cache key will produce identical music output.
+ *
+ * @param options - Cache key options
+ * @returns SHA-256 hash as cache key
+ */
+export function computeMusicCacheKey(options: MusicCacheKeyOptions): string {
+  const normalizedPrompt = normalizeText(options.prompt);
+  const promptHash = sha256(normalizedPrompt);
+  const compositeKey = `music-v1|${options.durationSec}|${promptHash}`;
+  return sha256(compositeKey);
+}
+
+/**
+ * Generate a storage path for music audio file.
+ *
+ * @param jobId - The job ID
+ * @returns Storage path suitable for R2 storage
+ *
+ * @example
+ * ```typescript
+ * const path = generateMusicAudioPath('job-abc-123');
+ * // Returns: 'music/jobs/job-abc-123.wav'
+ * ```
+ */
+export function generateMusicAudioPath(jobId: string): string {
+  return `music/jobs/${jobId}.wav`;
+}
