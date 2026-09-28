@@ -20,126 +20,129 @@ let resolvedUserId = 'test-user-1';
 let billingActive = true;
 
 // ---------------------------------------------------------------------------
-// Intercept fetch for Supabase and Modal backends
+// Intercept fetch — installed per-test so concurrent test files aren't affected
 // ---------------------------------------------------------------------------
-const originalFetch = globalThis.fetch;
-
 const MODAL_BASE = 'https://user-modal-app.modal.run';
 
-globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
-  const url = typeof input === 'string' ? input : input.toString();
+let originalFetch: typeof globalThis.fetch;
 
-  // Supabase auth
-  if (url === 'http://localhost:54321/auth/v1/user') {
-    const token = (init?.headers as Record<string, string>)?.['Authorization']?.replace(/^Bearer /, '') || '';
-    if (token === 'valid-token') {
-      return new Response(JSON.stringify({ id: resolvedUserId, aud: 'authenticated' }), { status: 200, headers: { 'Content-Type': 'application/json' } });
-    }
-    return new Response(JSON.stringify({ message: 'Invalid token', error: 'invalid_token' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
-  }
+function installFetchMock() {
+  originalFetch = globalThis.fetch;
+  globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+    const url = typeof input === 'string' ? input : input.toString();
 
-  // Supabase REST — billing check
-  if (url.includes('/rest/v1/realtimetts_billing')) {
-    const u = new URL(url);
-    const uid = u.searchParams.get('user_id')?.replace(/^eq\./, '');
-    if (billingActive && uid === resolvedUserId) {
-      return new Response(JSON.stringify([{
-        user_id: uid,
-        stripe_customer_id: `cus_${uid}`,
-        stripe_subscription_id: 'sub_test',
-        stripe_subscription_item_id: 'si_test',
-        active: true,
-      }]), { status: 200, headers: { 'Content-Type': 'application/json' } });
-    }
-    return new Response('[]', { status: 200, headers: { 'Content-Type': 'application/json' } });
-  }
-
-  // Supabase REST — user_voice_convert_configs (match any method/URL containing the table name)
-  if (url.includes('/rest/v1/user_voice_convert_configs')) {
-    const u = new URL(url);
-    const uid = u.searchParams.get('user_id')?.replace(/^eq\./, '');
-    const method = (init?.method || 'GET').toUpperCase();
-
-    if (method === 'GET') {
-      const cfg = userConfigs.get(resolvedUserId);
-      if (!cfg) return new Response('[]', { status: 200, headers: { 'Content-Type': 'application/json' } });
-      return new Response(JSON.stringify([{ modal_url: cfg.modal_url, modal_secret: cfg.modal_secret }]),
-        { status: 200, headers: { 'Content-Type': 'application/json' } });
+    // Supabase auth
+    if (url === 'http://localhost:54321/auth/v1/user') {
+      const token = (init?.headers as Record<string, string>)?.['Authorization']?.replace(/^Bearer /, '') || '';
+      if (token === 'valid-token') {
+        return new Response(JSON.stringify({ id: resolvedUserId, aud: 'authenticated' }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+      }
+      return new Response(JSON.stringify({ message: 'Invalid token', error: 'invalid_token' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
     }
 
-    if (method === 'POST' || method === 'PUT') {
-      const body = JSON.parse((init?.body as string) || '{}');
-      if (body.user_id === resolvedUserId || (Array.isArray(body) && body[0]?.user_id === resolvedUserId)) {
+    // Supabase REST — billing check
+    if (url.includes('/rest/v1/realtimetts_billing')) {
+      const u = new URL(url);
+      const uid = u.searchParams.get('user_id')?.replace(/^eq\./, '');
+      if (billingActive && uid === resolvedUserId) {
+        return new Response(JSON.stringify([{
+          user_id: uid,
+          stripe_customer_id: `cus_${uid}`,
+          stripe_subscription_id: 'sub_test',
+          stripe_subscription_item_id: 'si_test',
+          active: true,
+        }]), { status: 200, headers: { 'Content-Type': 'application/json' } });
+      }
+      return new Response('[]', { status: 200, headers: { 'Content-Type': 'application/json' } });
+    }
+
+    // Supabase REST — user_voice_convert_deployments
+    if (url.includes('/rest/v1/user_voice_convert_deployments')) {
+      const u = new URL(url);
+      const uid = u.searchParams.get('user_id')?.replace(/^eq\./, '');
+      const method = (init?.method || 'GET').toUpperCase();
+
+      if (method === 'GET') {
+        const cfg = userConfigs.get(resolvedUserId);
+        if (!cfg) return new Response(JSON.stringify(null), { status: 200, headers: { 'Content-Type': 'application/json' } });
+        // Return a single object (not array) because Supabase .single() expects this format
+        return new Response(JSON.stringify({ user_id: resolvedUserId, modal_url: cfg.modal_url, modal_secret: cfg.modal_secret, status: 'ready', app_name: 'test-app', job_count: 0 }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } });
+      }
+
+      if (method === 'POST' || method === 'PUT' || method === 'PATCH') {
+        const body = JSON.parse((init?.body as string) || '{}');
         const record = Array.isArray(body) ? body[0] : body;
-        userConfigs.set(resolvedUserId, { modal_url: record.modal_url, modal_secret: record.modal_secret });
+        if (record.modal_url && record.modal_secret) {
+          userConfigs.set(resolvedUserId, { modal_url: record.modal_url, modal_secret: record.modal_secret });
+        }
         return new Response(JSON.stringify([record]), { status: 200, headers: { 'Content-Type': 'application/json' } });
       }
-      if (body.modal_url && body.modal_secret) {
-        userConfigs.set(resolvedUserId, { modal_url: body.modal_url, modal_secret: body.modal_secret });
-        return new Response(JSON.stringify([body]), { status: 200, headers: { 'Content-Type': 'application/json' } });
+
+      if (method === 'DELETE') {
+        if (uid === resolvedUserId) userConfigs.delete(resolvedUserId);
+        return new Response('[]', { status: 200, headers: { 'Content-Type': 'application/json' } });
       }
+
       return new Response('[]', { status: 200, headers: { 'Content-Type': 'application/json' } });
     }
 
-    if (method === 'DELETE' || method === 'PATCH') {
-      if (uid === resolvedUserId) userConfigs.delete(resolvedUserId);
-      return new Response('[]', { status: 200, headers: { 'Content-Type': 'application/json' } });
+    // Supabase REST — voice_conversions (insert/update/delete)
+    if (url.includes('/rest/v1/voice_conversions')) {
+      return new Response(JSON.stringify([{ id: 1 }]), { status: 200, headers: { 'Content-Type': 'application/json' } });
     }
 
-    return new Response('[]', { status: 200, headers: { 'Content-Type': 'application/json' } });
-  }
+    // Modal voice-convert backend (user's own Modal app)
+    if (url.startsWith(MODAL_BASE)) {
+      const auth = (init?.headers as Record<string, string>)?.['Authorization'] || '';
+      const cfg = userConfigs.get(resolvedUserId);
+      if (cfg && !auth.includes(cfg.modal_secret)) {
+        return new Response(JSON.stringify({ error: 'unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
+      }
 
-  // Supabase REST — voice_conversions (insert/update/delete)
-  if (url.includes('/rest/v1/voice_conversions')) {
-    return new Response(JSON.stringify([{ id: 1 }]), { status: 200, headers: { 'Content-Type': 'application/json' } });
-  }
+      const path = url.replace(MODAL_BASE, '');
 
-  // Modal voice-convert backend (user's own Modal app)
-  if (url.startsWith(MODAL_BASE)) {
-    const auth = (init?.headers as Record<string, string>)?.['Authorization'] || '';
-    const cfg = userConfigs.get(resolvedUserId);
-    if (cfg && !auth.includes(cfg.modal_secret)) {
-      return new Response(JSON.stringify({ error: 'unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
+      if (path === '/convert' && (init?.method || '').toUpperCase() === 'POST') {
+        modalRequests.push({ method: 'POST', path: '/convert' });
+        const id = `job-${Math.random().toString(36).slice(2, 10)}`;
+        modalJobs.set(id, { status: 'queued' });
+        return new Response(JSON.stringify({ job_id: id, status: 'queued', source_seconds: 5.2, target_seconds: 3.1 }), { status: 202, headers: { 'Content-Type': 'application/json' } });
+      }
+
+      const pollMatch = path.match(/^\/convert\/([^\/]+)$/);
+      if (pollMatch) {
+        const id = pollMatch[1];
+        modalRequests.push({ method: 'GET', path: `/convert/${id}` });
+        const j = modalJobs.get(id);
+        if (!j) return new Response(JSON.stringify({ error: 'not found' }), { status: 404, headers: { 'Content-Type': 'application/json' } });
+        return new Response(JSON.stringify({ job_id: id, status: j.status }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+      }
+
+      const audioMatch = path.match(/^\/convert\/([^\/]+)\/result$/);
+      if (audioMatch) {
+        const id = audioMatch[1];
+        modalRequests.push({ method: 'GET', path: `/convert/${id}/result` });
+        const j = modalJobs.get(id);
+        if (!j || !j.audio) return new Response(JSON.stringify({ error: 'not found' }), { status: 404, headers: { 'Content-Type': 'application/json' } });
+        return new Response(j.audio, { status: 200, headers: { 'Content-Type': 'audio/wav' } });
+      }
+
+      const deleteMatch = path.match(/^\/convert\/([^\/]+)$/);
+      if (deleteMatch && (init?.method || '').toUpperCase() === 'DELETE') {
+        const id = deleteMatch[1];
+        modalRequests.push({ method: 'DELETE', path: `/convert/${id}` });
+        modalJobs.delete(id);
+        return new Response(JSON.stringify({ deleted: true }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+      }
     }
 
-    const path = url.replace(MODAL_BASE, '');
+    return originalFetch(input, init);
+  };
+}
 
-    if (path === '/convert' && (init?.method || '').toUpperCase() === 'POST') {
-      modalRequests.push({ method: 'POST', path: '/convert' });
-      const id = `job-${Math.random().toString(36).slice(2, 10)}`;
-      modalJobs.set(id, { status: 'queued' });
-      return new Response(JSON.stringify({ job_id: id, status: 'queued', source_seconds: 5.2, target_seconds: 3.1 }), { status: 202, headers: { 'Content-Type': 'application/json' } });
-    }
-
-    const pollMatch = path.match(/^\/convert\/([^/]+)$/);
-    if (pollMatch) {
-      const id = pollMatch[1];
-      modalRequests.push({ method: 'GET', path: `/convert/${id}` });
-      const j = modalJobs.get(id);
-      if (!j) return new Response(JSON.stringify({ error: 'not found' }), { status: 404, headers: { 'Content-Type': 'application/json' } });
-      return new Response(JSON.stringify({ job_id: id, status: j.status }), { status: 200, headers: { 'Content-Type': 'application/json' } });
-    }
-
-    const audioMatch = path.match(/^\/convert\/([^/]+)\/result$/);
-    if (audioMatch) {
-      const id = audioMatch[1];
-      modalRequests.push({ method: 'GET', path: `/convert/${id}/result` });
-      const j = modalJobs.get(id);
-      if (!j || !j.audio) return new Response(JSON.stringify({ error: 'not found' }), { status: 404, headers: { 'Content-Type': 'application/json' } });
-      return new Response(j.audio, { status: 200, headers: { 'Content-Type': 'audio/wav' } });
-    }
-
-    const deleteMatch = path.match(/^\/convert\/([^/]+)$/);
-    if (deleteMatch && (init?.method || '').toUpperCase() === 'DELETE') {
-      const id = deleteMatch[1];
-      modalRequests.push({ method: 'DELETE', path: `/convert/${id}` });
-      modalJobs.delete(id);
-      return new Response(JSON.stringify({ deleted: true }), { status: 200, headers: { 'Content-Type': 'application/json' } });
-    }
-  }
-
-  return originalFetch(input, init);
-};
+function uninstallFetchMock() {
+  globalThis.fetch = originalFetch;
+}
 
 // ---------------------------------------------------------------------------
 // Boot helpers
@@ -199,24 +202,29 @@ function resetState() {
 // ---------------------------------------------------------------------------
 
 test('no token -> 401', async () => {
+  installFetchMock();
   resetState();
   const s = await boot();
   const form = buildForm(Buffer.from('src'), Buffer.from('tgt'));
   const r = await s.call(null, 'POST', '/conversions', form);
   assert.equal(r.status, 401);
   s.close();
+  uninstallFetchMock();
 });
 
 test('invalid token -> 401', async () => {
+  installFetchMock();
   resetState();
   const s = await boot();
   const form = buildForm(Buffer.from('src'), Buffer.from('tgt'));
   const r = await s.call('bad-token', 'POST', '/conversions', form);
   assert.equal(r.status, 401);
   s.close();
+  uninstallFetchMock();
 });
 
 test('billing inactive -> 402', async () => {
+  installFetchMock();
   resetState();
   billingActive = false;
   const s = await boot();
@@ -224,9 +232,11 @@ test('billing inactive -> 402', async () => {
   const r = await s.call('valid-token', 'POST', '/conversions', form);
   assert.equal(r.status, 402);
   s.close();
+  uninstallFetchMock();
 });
 
-test('no user config -> 400 with self-serve message', async () => {
+test('no user deployment -> 400 with self-serve message', async () => {
+  installFetchMock();
   resetState();
   const s = await boot();
   const form = buildForm(Buffer.from('src'), Buffer.from('tgt'), CONSENT_STATEMENT);
@@ -235,9 +245,11 @@ test('no user config -> 400 with self-serve message', async () => {
   const body = await r.json();
   assert.match(body.error, /not configured/);
   s.close();
+  uninstallFetchMock();
 });
 
 test('missing consent statement -> 400', async () => {
+  installFetchMock();
   resetState();
   userConfigs.set(resolvedUserId, { modal_url: MODAL_BASE, modal_secret: 'my-secret' });
   const s = await boot();
@@ -247,9 +259,11 @@ test('missing consent statement -> 400', async () => {
   const body = await r.json();
   assert.match(body.error, /consent_statement/);
   s.close();
+  uninstallFetchMock();
 });
 
 test('wrong consent statement -> 400', async () => {
+  installFetchMock();
   resetState();
   userConfigs.set(resolvedUserId, { modal_url: MODAL_BASE, modal_secret: 'my-secret' });
   const s = await boot();
@@ -257,9 +271,11 @@ test('wrong consent statement -> 400', async () => {
   const r = await s.call('valid-token', 'POST', '/conversions', form);
   assert.equal(r.status, 400);
   s.close();
+  uninstallFetchMock();
 });
 
 test('missing source or target file -> 400', async () => {
+  installFetchMock();
   resetState();
   userConfigs.set(resolvedUserId, { modal_url: MODAL_BASE, modal_secret: 'my-secret' });
   const s = await boot();
@@ -268,9 +284,11 @@ test('missing source or target file -> 400', async () => {
   const r = await s.call('valid-token', 'POST', '/conversions', form);
   assert.equal(r.status, 400);
   s.close();
+  uninstallFetchMock();
 });
 
 test('unsupported audio format -> 400', async () => {
+  installFetchMock();
   resetState();
   userConfigs.set(resolvedUserId, { modal_url: MODAL_BASE, modal_secret: 'my-secret' });
   const s = await boot();
@@ -283,9 +301,11 @@ test('unsupported audio format -> 400', async () => {
   const body = await r.json();
   assert.match(body.error, /Unsupported source format/);
   s.close();
+  uninstallFetchMock();
 });
 
 test('create conversion forwards to user Modal app and records job', async () => {
+  installFetchMock();
   resetState();
   userConfigs.set(resolvedUserId, { modal_url: MODAL_BASE, modal_secret: 'my-secret' });
   const s = await boot();
@@ -298,9 +318,11 @@ test('create conversion forwards to user Modal app and records job', async () =>
   assert.equal(json.status, 'queued');
   assert.equal(modalRequests[modalRequests.length - 1]?.method, 'POST');
   s.close();
+  uninstallFetchMock();
 });
 
 test('poll conversion returns Modal status', async () => {
+  installFetchMock();
   resetState();
   userConfigs.set(resolvedUserId, { modal_url: MODAL_BASE, modal_secret: 'my-secret' });
   const s = await boot();
@@ -315,9 +337,11 @@ test('poll conversion returns Modal status', async () => {
   const body = await poll.json();
   assert.equal(body.status, 'done');
   s.close();
+  uninstallFetchMock();
 });
 
 test('fetch audio returns wav bytes', async () => {
+  installFetchMock();
   resetState();
   userConfigs.set(resolvedUserId, { modal_url: MODAL_BASE, modal_secret: 'my-secret' });
   const s = await boot();
@@ -331,9 +355,11 @@ test('fetch audio returns wav bytes', async () => {
   assert.equal(audio.status, 200);
   assert.equal(audio.headers.get('content-type'), 'audio/wav');
   s.close();
+  uninstallFetchMock();
 });
 
 test('delete conversion removes job', async () => {
+  installFetchMock();
   resetState();
   userConfigs.set(resolvedUserId, { modal_url: MODAL_BASE, modal_secret: 'my-secret' });
   const s = await boot();
@@ -346,82 +372,36 @@ test('delete conversion removes job', async () => {
   const body = await del.json();
   assert.equal(body.deleted, true);
   s.close();
+  uninstallFetchMock();
 });
 
-// Config management tests
+// Deployment management tests (replaces old /config tests)
 
-test('GET /config -> 404 when no config', async () => {
+test('GET /deploy -> 404 when no deployment', async () => {
+  installFetchMock();
   resetState();
   const s = await boot();
-  const r = await s.call('valid-token', 'GET', '/config');
+  const r = await s.call('valid-token', 'GET', '/deploy');
   assert.equal(r.status, 404);
   s.close();
+  uninstallFetchMock();
 });
 
-test('POST /config saves user Modal endpoint', async () => {
+test('GET /deploy returns deployment info when configured', async () => {
+  installFetchMock();
   resetState();
+  userConfigs.set(resolvedUserId, { modal_url: 'https://my-app.modal.run', modal_secret: 'secret123' });
   const s = await boot();
-  const r = await s.call('valid-token', 'POST', '/config', {
-    modal_url: 'https://my-app.modal.run',
-    modal_secret: 'abc123',
-  }, true);
+  const r = await s.call('valid-token', 'GET', '/deploy');
   assert.equal(r.status, 200);
   const body = await r.json();
-  assert.equal(body.configured, true);
   assert.equal(body.modal_url, 'https://my-app.modal.run');
-
-  const g = await s.call('valid-token', 'GET', '/config');
-  assert.equal(g.status, 200);
-  const getBody = await g.json();
-  assert.equal(getBody.modal_url, 'https://my-app.modal.run');
-  assert.equal(getBody.configured, true);
-  assert.equal(getBody.modal_secret, undefined);
+  assert.equal(body.status, 'ready');
+  assert.equal(body.modal_secret, undefined); // should never leak secret
   s.close();
+  uninstallFetchMock();
 });
 
-test('POST /config rejects non-https URL', async () => {
-  resetState();
-  const s = await boot();
-  const r = await s.call('valid-token', 'POST', '/config', {
-    modal_url: 'http://insecure.com',
-    modal_secret: 'abc',
-  }, true);
-  assert.equal(r.status, 400);
-  s.close();
-});
-
-test('DELETE /config removes config', async () => {
-  resetState();
-  userConfigs.set(resolvedUserId, { modal_url: MODAL_BASE, modal_secret: 'my-secret' });
-  const s = await boot();
-  const r = await s.call('valid-token', 'DELETE', '/config');
-  assert.equal(r.status, 200);
-  assert.equal(userConfigs.has(resolvedUserId), false);
-  s.close();
-});
-
-test('different user sees their own config', async () => {
-  resetState();
-  userConfigs.set('user-a', { modal_url: 'https://a.modal.run', modal_secret: 'secret-a' });
-  userConfigs.set('user-b', { modal_url: 'https://b.modal.run', modal_secret: 'secret-b' });
-
-  const s = await boot();
-
-  resolvedUserId = 'user-a';
-  const ra = await s.call('valid-token', 'GET', '/config');
-  assert.equal(ra.status, 200);
-  const bodyA = await ra.json();
-  assert.equal(bodyA.modal_url, 'https://a.modal.run');
-
-  resolvedUserId = 'user-b';
-  const rb = await s.call('valid-token', 'GET', '/config');
-  assert.equal(rb.status, 200);
-  const bodyB = await rb.json();
-  assert.equal(bodyB.modal_url, 'https://b.modal.run');
-
-  resolvedUserId = 'user-c';
-  const rc = await s.call('valid-token', 'GET', '/config');
-  assert.equal(rc.status, 404);
-
-  s.close();
-});
+// Deployment tests: POST /deploy and DELETE /deploy do subprocess calls to modal CLI,
+// which is impractical to unit-test here without extensive exec mocking. Covered by
+// integration tests instead.
