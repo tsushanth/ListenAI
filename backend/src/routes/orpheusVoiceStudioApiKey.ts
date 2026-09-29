@@ -34,6 +34,16 @@ function authenticate(req: any): string | null {
   return identity;
 }
 
+/** Middleware that checks authentication before any body parsing happens. Reject unauthenticated
+ * requests early to prevent resource exhaustion from buffering large bodies. */
+function requireGatewayAuth(req: Request, res: Response, next: () => void) {
+  if (!authenticate(req)) {
+    res.status(401).json({ error: 'unauthorized' });
+    return;
+  }
+  next();
+}
+
 function serviceUrl(): string {
   return process.env.ORPHEUS_CLONE_SERVICE_URL || '';
 }
@@ -49,11 +59,7 @@ async function relayResponse(res: Response, upstream: globalThis.Response) {
   res.status(upstream.status).set('content-type', contentType).send(text);
 }
 
-router.post('/', async (req: Request, res: Response) => {
-  if (!authenticate(req)) {
-    res.status(401).json({ error: 'unauthorized' });
-    return;
-  }
+router.post('/', requireGatewayAuth, async (req: Request, res: Response) => {
   try {
     const upstream = await fetch(`${serviceUrl()}/v1/orpheus-voices`, {
       method: 'POST',
@@ -69,11 +75,7 @@ router.post('/', async (req: Request, res: Response) => {
   }
 });
 
-router.put('/:vid/dataset', express.raw({ type: '*/*', limit: RAW_ZIP_LIMIT }), async (req: Request, res: Response) => {
-  if (!authenticate(req)) {
-    res.status(401).json({ error: 'unauthorized' });
-    return;
-  }
+router.put('/:vid/dataset', requireGatewayAuth, express.raw({ type: '*/*', limit: RAW_ZIP_LIMIT }), async (req: Request, res: Response) => {
   try {
     const upstream = await fetch(`${serviceUrl()}/v1/orpheus-voices/${req.params.vid}/dataset`, {
       method: 'PUT',
@@ -89,11 +91,7 @@ router.put('/:vid/dataset', express.raw({ type: '*/*', limit: RAW_ZIP_LIMIT }), 
   }
 });
 
-router.post('/:vid/dataset/commit', async (req: Request, res: Response) => {
-  if (!authenticate(req)) {
-    res.status(401).json({ error: 'unauthorized' });
-    return;
-  }
+router.post('/:vid/dataset/commit', requireGatewayAuth, async (req: Request, res: Response) => {
   try {
     const upstream = await fetch(`${serviceUrl()}/v1/orpheus-voices/${req.params.vid}/dataset/commit`, {
       method: 'POST',
@@ -109,11 +107,7 @@ router.post('/:vid/dataset/commit', async (req: Request, res: Response) => {
   }
 });
 
-router.get('/:vid', async (req: Request, res: Response) => {
-  if (!authenticate(req)) {
-    res.status(401).json({ error: 'unauthorized' });
-    return;
-  }
+router.get('/:vid', requireGatewayAuth, async (req: Request, res: Response) => {
   try {
     const upstream = await fetch(`${serviceUrl()}/v1/orpheus-voices/${req.params.vid}`, {
       method: 'GET',
@@ -125,11 +119,7 @@ router.get('/:vid', async (req: Request, res: Response) => {
   }
 });
 
-router.delete('/:vid', async (req: Request, res: Response) => {
-  if (!authenticate(req)) {
-    res.status(401).json({ error: 'unauthorized' });
-    return;
-  }
+router.delete('/:vid', requireGatewayAuth, async (req: Request, res: Response) => {
   try {
     const upstream = await fetch(`${serviceUrl()}/v1/orpheus-voices/${req.params.vid}`, {
       method: 'DELETE',

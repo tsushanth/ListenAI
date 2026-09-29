@@ -155,3 +155,19 @@ test('correct secret but no identity headers -> 401, Modal never called', async 
     uninstallFetchMock();
   }
 });
+
+test('unauthenticated PUT /:vid/dataset -> 401, Modal never called (auth before body parse)', async () => {
+  installFetchMock();
+  modalRequests.length = 0;
+  const { call, close } = await boot();
+  try {
+    // Unauthenticated PUT request (no x-gateway-admin-secret header).
+    // Auth middleware runs before express.raw() buffers the body, so this should reject early.
+    const res = await call({}, 'PUT', '/v-test123/dataset', { test: 'data' });
+    assert.equal(res.status, 401);
+    assert.equal(modalRequests.length, 0, 'Modal should not be called for unauthenticated requests');
+  } finally {
+    close();
+    uninstallFetchMock();
+  }
+});
