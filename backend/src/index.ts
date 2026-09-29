@@ -37,6 +37,7 @@ import { voiceCloneRouter } from './routes/voiceClone.js';
 import { voiceStudioApiKeyRouter } from './routes/voiceStudioApiKey.js';
 import { aggregateLatencyMetrics, checkSupabaseHealth, checkStorageHealth } from './lib/supabaseClient.js';
 import { startWorker, stopWorker } from './workers/ttsJobWorker.js';
+import { startMusicJobWorker } from './workers/musicJobWorker.js';
 import { checkPubSubHealth } from './lib/pubsub.js';
 import { initRolloutFromEnv } from './lib/rollout.js';
 import { reportUsageToStripe } from './lib/realtimeTtsBilling.js';
@@ -309,6 +310,8 @@ const server = app.listen(PORT, () => {
       enabled: true,
     });
   }
+
+  startMusicJobWorker();
 });
 
 // Graceful shutdown
