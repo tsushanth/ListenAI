@@ -33,6 +33,8 @@ const VOICE_DESIGN_METER_EVENT_NAME = process.env.VOICE_DESIGN_METER_EVENT_NAME 
 // Voice conversion meter (created once via Stripe Dashboard or scripts/create-voice-convert-meter.mjs).
 // Set these env vars after creating the meter/price.
 const VOICE_CONVERT_METER_EVENT_NAME = process.env.VOICE_CONVERT_METER_EVENT_NAME || 'realtimetts_voice_conversions';
+// Music generation meter (created once via scripts/create-music-generation-meter.mjs).
+export const MUSIC_GENERATION_METER_EVENT_NAME = 'realtimetts_music_generations';
 
 // Piper (CPU engine) is priced at $0.004/1k chars vs Kokoro's $0.01/1k. Rather than
 // add a second Stripe price/meter and migrate every live subscription, Piper chars are
@@ -352,6 +354,30 @@ export async function chargeForVoiceClone(identity: string): Promise<{ success: 
   } catch (err) {
     billingLogger.error({ err, userId }, 'Failed to create voice clone charge');
     return { success: false, error: 'Stripe error' };
+  }
+}
+
+// Reports one music generation to Stripe as a meter event.
+// Called after a music job's status is already updated to 'ready', not before.
+// Best-effort: a metering failure must not fail the (already-successful) job.
+export async function reportMusicGenerationUsage(userId: string): Promise<void> {
+  const billing = await getBillingForUser(userId);
+  if (!billing?.active) {
+    billingLogger.warn({ userId }, 'reportMusicGenerationUsage called for user with no active billing');
+    return;
+  }
+  try {
+    await stripe.billing.meterEvents.create({
+      event_name: MUSIC_GENERATION_METER_EVENT_NAME,
+      timestamp: Math.floor(Date.now() / 1000),
+      payload: {
+        stripe_customer_id: billing.stripe_customer_id,
+        value: '1',
+      },
+    });
+    billingLogger.debug({ userId }, 'Music generation usage reported');
+  } catch (err) {
+    billingLogger.error({ err, userId }, 'Failed to report music generation usage');
   }
 }
 

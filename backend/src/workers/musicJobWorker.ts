@@ -1,6 +1,7 @@
 import { claimNextMusicJob, updateMusicJobStatus, uploadMusicAudio, DBMusicJob } from '../lib/supabaseClient.js';
 import { generateMusicAudioPath } from '../lib/cacheKey.js';
 import { logger } from '../lib/logger.js';
+import { reportMusicGenerationUsage } from '../lib/realtimeTtsBilling.js';
 
 const workerLogger = logger.child({ module: 'music-worker' });
 
@@ -55,6 +56,9 @@ export async function processOneJob(deps: MusicWorkerDeps = defaultDeps): Promis
     await deps.uploadAudio(audioPath, audioBuffer);
     await deps.updateStatus(job.id, 'ready', { audioPath });
     workerLogger.info({ jobId: job.id, audioPath }, 'Music job ready');
+    await reportMusicGenerationUsage(job.user_id).catch((err) => {
+      workerLogger.error({ err, jobId: job.id }, 'Failed to report usage after successful job');
+    });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     workerLogger.error({ jobId: job.id, error: message }, 'Music job failed');
