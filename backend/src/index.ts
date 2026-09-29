@@ -28,7 +28,8 @@ import { voiceMarketplaceRouter } from './routes/voiceMarketplace.js';
 import { stripeWebhookRouter } from './routes/stripeWebhook.js';
 import { authRouter } from './routes/auth.js';
 import { appConfigRouter } from './routes/appConfig.js';
-import { ttsApiKeysRouter } from './routes/ttsApiKeys.js';
+import { ttsApiKeysRouter, requireRealAuth } from './routes/ttsApiKeys.js';
+import { textToMusicRouter } from './routes/textToMusic.js';
 import { voiceStudioRouter } from './routes/voiceStudio.js';
 import { voiceDesignRouter } from './routes/voiceDesign.js';
 import { voiceConvertRouter } from './routes/voiceConvert.js';
@@ -184,6 +185,12 @@ app.use('/api/realtime-tts', burstRateLimit, realtimeTtsAuthorizeRateLimit, requ
 
 // Preview endpoint has stricter rate limit (10 req/min)
 app.use('/api/tts/preview', previewRateLimit);
+
+// Text-to-music job routes: billable, external-facing, so requireRealAuth (no
+// permissive default-user fallback) rather than requireAuth. Job polling gets
+// the generous polling rate limit, same pattern as /api/tts/job/:jobId above.
+app.get('/api/music/job/:jobId', jobPollingRateLimit, requireRealAuth, textToMusicRouter);
+app.use('/api/music', burstRateLimit, requireRealAuth, textToMusicRouter);
 
 // Usage routes (requires auth)
 app.use('/api/usage', requireAuth, usageRouter);
