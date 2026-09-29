@@ -29,7 +29,11 @@ import { logger } from '../lib/logger.js';
 const musicLogger = logger.child({ module: 'text-to-music' });
 
 const MIN_DURATION_SEC = 15;
-const MAX_DURATION_SEC = 120;
+// Stable Audio Open 1.0's model config caps generation at ~47.5s
+// (sample_size=2097152 at sample_rate=44100) — confirmed via an actual
+// end-to-end training + inference run. Must match worker-modal-music/app.py's
+// MAX_DURATION_SEC in the realtime-tts repo.
+const MAX_DURATION_SEC = 47;
 
 const jobRequestSchema = z.object({
   prompt: z.string().min(1).max(500),
@@ -53,6 +57,18 @@ textToMusicRouter.post('/job', asyncHandler(async (req: Request, res: Response) 
   }
   const { prompt, duration_sec } = parseResult.data;
 
+  // Billing gate: mirrors voiceDesign.ts's requireUser check (isBillingActiveForUser).
+  // Runs BEFORE the cache lookup below: a cache hit costs no new GPU work,
+  // but it's still someone else's generated audio — a user with no active
+  // subscription must not get it for free just because another user already
+  // paid to generate it once. Billing gates access to the feature, not just
+  // to fresh generation.
+  const billingActive = await isBillingActiveForUser(userId);
+  if (!billingActive) {
+    res.status(402).json({ error: 'Text-to-music requires an active TTS subscription.' });
+    return;
+  }
+
   const cacheKey = computeMusicCacheKey({ prompt, durationSec: duration_sec });
 
   const cached = await getCachedMusic(cacheKey);
@@ -60,10 +76,12 @@ textToMusicRouter.post('/job', asyncHandler(async (req: Request, res: Response) 
     const audioUrl = await getSignedAudioUrl(cached.audio_path);
     if (audioUrl) {
       musicLogger.info({ cacheKey }, 'Music cache hit');
-      // DECISION: cache hits are NOT billed. No new GPU work happened — the
-      // audio was already generated (and billed) for whichever user
-      // triggered the original generation — so charging this user again
-      // for a cache hit would be double-billing for zero marginal cost.
+      // DECISION: cache hits are NOT metered/billed per-generation. No new
+      // GPU work happened — the audio was already generated (and billed)
+      // for whichever user triggered the original generation — so charging
+      // this user a second per-generation fee for a cache hit would be
+      // double-billing for zero marginal cost. The billing-active check
+      // above still gates whether this user can use the feature at all.
       res.status(202).json({
         // Return a synthetic pseudo job id, not `cached.id` (the original
         // generating job's real id). That job may belong to a different
@@ -78,14 +96,6 @@ textToMusicRouter.post('/job', asyncHandler(async (req: Request, res: Response) 
       });
       return;
     }
-  }
-
-  // Billing gate: mirrors voiceDesign.ts's requireUser check (isBillingActiveForUser).
-  // Only applies past the cache-hit path above, since cache hits aren't billed.
-  const billingActive = await isBillingActiveForUser(userId);
-  if (!billingActive) {
-    res.status(402).json({ error: 'Text-to-music requires an active TTS subscription.' });
-    return;
   }
 
   const job = await createMusicJob({ userId, prompt, durationSec: duration_sec, cacheKey });

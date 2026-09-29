@@ -271,6 +271,19 @@ app.use(errorHandler);
 
 const PORT = config.PORT;
 
+// Fail fast and loud BEFORE the server starts accepting traffic, rather than
+// inside the app.listen() callback: a misconfiguration caught only after the
+// port is already bound would crash the whole process (taking down TTS,
+// Stripe webhooks, everything) instead of cleanly failing the deploy.
+// MUSIC_WORKER_ENABLED=true with no URL configured is always a
+// misconfiguration, never an intentional state — every queued music job
+// would silently fail otherwise.
+if (process.env.MUSIC_WORKER_ENABLED === 'true' && !process.env.MUSIC_WORKER_URL) {
+  throw new Error(
+    'MUSIC_WORKER_ENABLED=true but MUSIC_WORKER_URL is not set — refusing to start the music job worker against an empty URL. Set MUSIC_WORKER_URL (and MUSIC_WORKER_SHARED_SECRET) or unset MUSIC_WORKER_ENABLED.'
+  );
+}
+
 const server = app.listen(PORT, () => {
   logger.info({ port: PORT, env: config.NODE_ENV }, 'Server started');
 
@@ -319,17 +332,6 @@ const server = app.listen(PORT, () => {
   // MUSIC_WORKER_ENABLED=true must be set in production too, or music jobs
   // will queue forever and never be processed. See cloudbuild.yaml.
   if (process.env.MUSIC_WORKER_ENABLED === 'true') {
-    if (!process.env.MUSIC_WORKER_URL) {
-      // Fail fast and loud rather than silently starting a poll loop that
-      // calls `${MUSIC_WORKER_URL}/generate` == "/generate" forever and
-      // fails every single job. Throwing here (rather than just warning)
-      // is deliberate: MUSIC_WORKER_ENABLED=true with no URL configured is
-      // always a misconfiguration, never an intentional state, and every
-      // queued music job would silently fail otherwise.
-      throw new Error(
-        'MUSIC_WORKER_ENABLED=true but MUSIC_WORKER_URL is not set — refusing to start the music job worker against an empty URL. Set MUSIC_WORKER_URL (and MUSIC_WORKER_SHARED_SECRET) or unset MUSIC_WORKER_ENABLED.'
-      );
-    }
     logger.info('Starting music job worker');
     startMusicJobWorker();
   }
