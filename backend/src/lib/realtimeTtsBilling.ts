@@ -35,6 +35,15 @@ const VOICE_DESIGN_METER_EVENT_NAME = process.env.VOICE_DESIGN_METER_EVENT_NAME 
 const VOICE_CONVERT_METER_EVENT_NAME = process.env.VOICE_CONVERT_METER_EVENT_NAME || 'realtimetts_voice_conversions';
 // Music generation meter (created once via scripts/create-music-generation-meter.mjs).
 export const MUSIC_GENERATION_METER_EVENT_NAME = 'realtimetts_music_generations';
+// The meter above only reports USAGE — it bills nothing unless the customer's
+// subscription actually includes a price tied to it. That price didn't exist
+// until create-music-generation-meter.mjs was run for real (previously only
+// written, never executed against Stripe), so this was a real $0 gap: usage
+// was tracked but never charged. Set after running that script; checkout
+// gracefully omits the line item if unset, matching how VOICE_DESIGN/
+// VOICE_CONVERT above are also still not wired into checkout (a separate,
+// pre-existing gap, not fixed here — scoped to music only).
+const MUSIC_GENERATION_PRICE_ID = process.env.MUSIC_GENERATION_PRICE_ID || '';
 
 // Piper (CPU engine) is priced at $0.004/1k chars vs Kokoro's $0.01/1k. Rather than
 // add a second Stripe price/meter and migrate every live subscription, Piper chars are
@@ -85,6 +94,16 @@ export async function isBillingActiveForUser(userId: string): Promise<boolean> {
   return !!row?.active;
 }
 
+// Pure and exported so the "does the music price get attached, and only
+// when configured" decision is unit-testable without mocking the Stripe SDK.
+export function buildCheckoutLineItems(): Stripe.Checkout.SessionCreateParams.LineItem[] {
+  const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [{ price: TTS_BILLING_PRICE_ID }];
+  if (MUSIC_GENERATION_PRICE_ID) {
+    lineItems.push({ price: MUSIC_GENERATION_PRICE_ID });
+  }
+  return lineItems;
+}
+
 export async function createCheckoutSession(params: {
   userId: string;
   email: string;
@@ -94,7 +113,7 @@ export async function createCheckoutSession(params: {
   const session = await stripe.checkout.sessions.create({
     mode: 'subscription',
     customer_email: params.email,
-    line_items: [{ price: TTS_BILLING_PRICE_ID }],
+    line_items: buildCheckoutLineItems(),
     success_url: params.successUrl,
     cancel_url: params.cancelUrl,
     metadata: { ...REALTIME_TTS_CHECKOUT_METADATA, userId: params.userId },

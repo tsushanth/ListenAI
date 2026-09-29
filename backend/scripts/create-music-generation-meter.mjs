@@ -42,8 +42,11 @@ async function main() {
       recurring: { interval: 'month', usage_type: 'metered', meter: meter.id },
     });
     console.log(`Created price: ${price.id} ($0.05/generation)`);
-    console.log(`\nAdd to realtimeTtsBilling.ts:`);
-    console.log(`  const MUSIC_GENERATION_METER_EVENT_NAME = '${meterName}';`);
+    console.log(`\nSet this env var on the backend deployment so createCheckoutSession actually`);
+    console.log(`attaches this price to new subscriptions (see realtimeTtsBilling.ts):`);
+    console.log(`  MUSIC_GENERATION_PRICE_ID=${price.id}`);
+    console.log(`\n(MUSIC_GENERATION_METER_EVENT_NAME is already hardcoded to '${meterName}' in`);
+    console.log(`realtimeTtsBilling.ts and doesn't need to be set — only the price id above does.)`);
   } catch (err) {
     console.error('Failed to create meter/price:', err.message);
     process.exit(1);
