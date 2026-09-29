@@ -8,6 +8,7 @@ import { config } from './lib/config.js';
 import { logger } from './lib/logger.js';
 
 import { requireAuth } from './middleware/auth.js';
+import { requireAuthOrApiKey } from './middleware/apiKeyAuth.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 import { standardRateLimit, ttsRateLimitByTier, previewRateLimit, burstRateLimit, jobPollingRateLimit, realtimeTtsAuthorizeRateLimit } from './middleware/rateLimit.js';
 
@@ -238,7 +239,12 @@ app.use('/api/voice-clone', voiceCloneRouter);
 // text-to-music feature branch's textToMusic.ts. Dark unless SOUND_EFFECTS_WORKER_URL
 // is configured (soundEffects.ts's routes still respond, but jobs never leave 'queued'
 // without the worker below actually running — mirrors MUSIC_WORKER_ENABLED's gating).
-app.use('/api/sound-effects', requireAuth, soundEffectsRouter);
+// Uses requireAuthOrApiKey (not requireAuth): this is a billed, MCP-reachable route, and
+// requireAuth's default-user fallback would let an unauthenticated/invalid caller get
+// billed to a shared default user. requireAuthOrApiKey has no such fallback — it accepts
+// either a real Supabase JWT or a gateway-forwarded API-key identity, and rejects (401)
+// anything else. See MCP_AUTH_BRIDGE.md.
+app.use('/api/sound-effects', requireAuthOrApiKey, soundEffectsRouter);
 // strict Supabase auth like the API-key routes above.
 app.use('/api/voice-studio', voiceStudioRouter);
 

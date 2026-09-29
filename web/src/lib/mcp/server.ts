@@ -9,7 +9,7 @@ import {
 import { KOKORO_VOICES, PIPER_VOICES, resolveVoice } from './voices.ts'
 import {
   UpstreamError, authorize, fetchPiperHealth, synthesize, type ErrorCode,
-  submitSoundEffectJob, pollSoundEffectJob, fetchAudioBytes,
+  submitSoundEffectJob, pollSoundEffectJob, fetchAudioBytes, gatewayForwardHeaders,
 } from './upstream.ts'
 import { pcm16ToWav, pcmDurationSeconds } from './wav.ts'
 
@@ -116,12 +116,16 @@ export function createMcpServer(ctx: RequestContext): McpServer {
     const rl = soundEffectLimiter.check(ctx.keyId)
     if (!rl.ok) return toolError('rate_limited', `Too many sound effect requests for this key. Try again in ${rl.retryAfterSec} s.`, true)
     try {
-      const submitted = await submitSoundEffectJob(ctx.apiKey, parsed.prompt, parsed.duration_sec)
+      // Resolve the gateway-forwarded identity headers once and reuse them
+      // across the submit + poll calls below, rather than re-exchanging the
+      // API key with the gateway on every poll.
+      const identityHeaders = await gatewayForwardHeaders(ctx.apiKey)
+      const submitted = await submitSoundEffectJob(identityHeaders, parsed.prompt, parsed.duration_sec)
       let result = submitted
       const deadline = Date.now() + SOUND_EFFECT_POLL_TIMEOUT_MS
       while (result.status !== 'ready' && result.status !== 'failed' && Date.now() < deadline) {
         await new Promise((r) => setTimeout(r, SOUND_EFFECT_POLL_INTERVAL_MS))
-        result = await pollSoundEffectJob(ctx.apiKey, result.job_id)
+        result = await pollSoundEffectJob(identityHeaders, result.job_id)
       }
       if (result.status === 'failed') {
         return toolError('upstream', result.error?.message ?? 'Sound effect generation failed.', true)

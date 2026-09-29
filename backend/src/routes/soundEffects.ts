@@ -3,19 +3,17 @@
 // cache-hit handling, zod validation) — adapted for sound effects'
 // much-shorter duration range.
 //
-// Auth: mounted behind `requireAuth` in index.ts, same as this repo's other
-// generation routes (voiceDesign, voiceConvert, voiceClone). The music
-// branch's textToMusic.ts documents wanting a real per-user auth check
-// (`requireRealAuth`, defined in routes/ttsApiKeys.ts) rather than
-// requireAuth's default-user fallback, because an unauthenticated caller
-// getting billed to a shared default user would be a real problem for a
-// metered endpoint — that concern applies equally here. This repo's
-// requireRealAuth is local to ttsApiKeys.ts and not exported, so reusing it
-// as-is isn't possible without also exporting it; using requireAuth here
-// (like voiceDesign/voiceConvert do) keeps this consistent with every other
-// mounted route in this repo. Flagged in the top-level report as a judgment
-// call worth a human sanity-check, not silently fixed by exporting/renaming
-// someone else's auth helper.
+// Auth: mounted behind `requireAuthOrApiKey` in index.ts (see
+// middleware/apiKeyAuth.ts and MCP_AUTH_BRIDGE.md), NOT `requireAuth`. This
+// route used to be mounted behind `requireAuth`, whose default-user fallback
+// would silently resolve any missing/invalid/dev-mode credential to a shared
+// default UUID — actively dangerous for a billed, MCP-reachable route like
+// this one (an unauthenticated caller could get billed to a shared default
+// user). `requireAuthOrApiKey` has no such fallback: it accepts a real
+// Supabase JWT or a gateway-forwarded API-key identity, and 401s everything
+// else. It also sets `req.userId` (as read below), which the actual
+// `requireAuth` middleware never set — so swapping it in also fixes a
+// latent bug where `userId` would have been `undefined` on every request.
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { asyncHandler } from '../middleware/errorHandler.js';

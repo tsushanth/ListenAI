@@ -106,31 +106,84 @@ export function synthesize(opts: { url: string; token: string; text: string; voi
 // GATEWAY (api.readaloudai.org) via an API key exchanged for a session
 // token (authorize()) then a WebSocket (synthesize()). Sound effects live
 // on the ReadAloudAI *backend* instead (backend/src/routes/soundEffects.ts,
-// an async job API, mounted behind Express `requireAuth`), a separate
-// service with a separate auth model: requireAuth expects a Supabase user
-// access token in the Authorization header, not a realtime-tts gateway API
-// key. There is no code today that exchanges one for the other.
+// an async job API, mounted behind `requireAuthOrApiKey` — see
+// backend/src/middleware/apiKeyAuth.ts and MCP_AUTH_BRIDGE.md), a separate
+// service with a separate auth model than the gateway's own session tokens.
 //
-// KNOWN LIMITATION (flagged in the top-level report, not silently papered
-// over): this passes the MCP caller's `apiKey` straight through as a Bearer
-// token against the ReadAloudAI backend. That only works if the caller's
-// "API key" happens to already be a valid Supabase access token for the
-// same user — true for nothing today. Wiring this up for real needs either
-// a persistent-API-key mechanism on the ReadAloudAI backend (the same gap
-// textToMusic.ts's own top-of-file comment flags for itself) or a token-
-// exchange step here. Left as-is (rather than inventing a fake bridge)
-// so this is visibly a TODO instead of a silently-broken "works in the
-// demo" path.
+// This used to forward the MCP caller's raw `apiKey` straight through as a
+// Bearer token against the backend, which the backend correctly rejected as
+// an invalid JWT (it isn't one). Fixed per MCP_AUTH_BRIDGE.md's "gateway
+// identity bridge" pattern — the same one `voiceStudioApiKey.ts` already
+// uses in production:
+//   1. Exchange the raw key for a session token via the gateway's existing
+//      `authorize()` (same call text_to_speech already makes) — this is
+//      what actually validates the key; the backend never sees raw key
+//      material.
+//   2. Decode the resolved identity (the `uid` claim the gateway embeds in
+//      the session token, per ttsGatewayClient.ts's `issueGatewayKey`
+//      comment — or the token's key id if there's no bound uid) out of that
+//      token. The token is not re-verified here: it was just minted by the
+//      gateway in step 1 over a fresh, authenticated response, so decoding
+//      is trusted the same way the rest of this call chain already trusts
+//      that response.
+//   3. Forward the backend call with `x-gateway-admin-secret` (proving this
+//      is a trusted forwarder, not an arbitrary caller) plus `x-gateway-uid`
+//      / `x-gateway-key-id` instead of a fake Bearer token.
+//
+// GATEWAY_FORWARD_SECRET provisioning: per MCP_AUTH_BRIDGE.md this is a
+// human/ops decision, not something to default silently. This reads it from
+// `MCP_GATEWAY_FORWARD_SECRET` in the web deployment's env — ops must set it
+// to the *same* value as the backend's `GATEWAY_FORWARD_SECRET` (the backend
+// middleware checks against one secret; minting a second, MCP-scoped secret
+// would need a backend change too, left as the follow-up
+// MCP_AUTH_BRIDGE.md's "Everything else" section flags). If it isn't
+// configured, sound effect calls fail closed with a clear upstream error
+// instead of silently sending a bearer token the backend will reject anyway.
 const SOUND_EFFECTS_BACKEND_URL = process.env.READALOUD_BACKEND_URL || 'https://api.readaloudai.com'
 
 export interface SoundEffectJobResult { job_id: string; status: string; cache_hit?: boolean; audio_url?: string; error?: { code: string; message: string } }
 
-export async function submitSoundEffectJob(apiKey: string, prompt: string, durationSec: number): Promise<SoundEffectJobResult> {
+/** Decode (not verify — see comment above) the `uid` / key-id claims out of a gateway session JWT. */
+function decodeGatewayIdentity(token: string): { uid?: string; keyId?: string } {
+  const parts = token.split('.')
+  if (parts.length < 2) return {}
+  try {
+    const payload = JSON.parse(Buffer.from(parts[1]!.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8')) as Record<string, unknown>
+    const uid = typeof payload.uid === 'string' ? payload.uid : undefined
+    const keyIdRaw = payload.key_id ?? payload.keyId ?? payload.kid
+    const keyId = typeof keyIdRaw === 'string' ? keyIdRaw : undefined
+    return { uid, keyId }
+  } catch {
+    return {}
+  }
+}
+
+/** Exchange the raw API key for gateway-forwarded identity headers the backend's requireAuthOrApiKey trusts. */
+export async function gatewayForwardHeaders(apiKey: string): Promise<Record<string, string>> {
+  const secret = process.env.MCP_GATEWAY_FORWARD_SECRET
+  if (!secret) {
+    throw new UpstreamError('upstream', 'Sound effect generation is not configured on this server (missing gateway forward secret).', false)
+  }
+  // Engine choice doesn't matter for identity resolution — sound effects
+  // aren't a TTS engine — so an arbitrary valid engine is used purely to
+  // reuse the existing authorize() call.
+  const { token } = await authorize(apiKey, 'piper')
+  const { uid, keyId } = decodeGatewayIdentity(token)
+  if (!uid && !keyId) {
+    throw new UpstreamError('upstream', 'Could not resolve an identity for this API key from the gateway session token.', true)
+  }
+  const headers: Record<string, string> = { 'x-gateway-admin-secret': secret }
+  if (uid) headers['x-gateway-uid'] = uid
+  else headers['x-gateway-key-id'] = keyId!
+  return headers
+}
+
+export async function submitSoundEffectJob(identityHeaders: Record<string, string>, prompt: string, durationSec: number): Promise<SoundEffectJobResult> {
   let r: Response
   try {
     r = await fetch(`${SOUND_EFFECTS_BACKEND_URL}/api/sound-effects/job`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+      headers: { 'Content-Type': 'application/json', ...identityHeaders },
       body: JSON.stringify({ prompt, duration_sec: durationSec }),
       cache: 'no-store',
       signal: AbortSignal.timeout(10_000),
@@ -147,11 +200,11 @@ export async function submitSoundEffectJob(apiKey: string, prompt: string, durat
   return body
 }
 
-export async function pollSoundEffectJob(apiKey: string, jobId: string): Promise<SoundEffectJobResult> {
+export async function pollSoundEffectJob(identityHeaders: Record<string, string>, jobId: string): Promise<SoundEffectJobResult> {
   let r: Response
   try {
     r = await fetch(`${SOUND_EFFECTS_BACKEND_URL}/api/sound-effects/job/${encodeURIComponent(jobId)}`, {
-      headers: { Authorization: `Bearer ${apiKey}` },
+      headers: identityHeaders,
       cache: 'no-store',
       signal: AbortSignal.timeout(10_000),
     })
