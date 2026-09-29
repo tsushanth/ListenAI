@@ -1,3 +1,17 @@
+// Text-to-music API routes.
+//
+// Auth: mounted behind `requireRealAuth` (see index.ts) which currently only
+// accepts a Supabase user session/access token, verified remotely via
+// verifyAuthTokenRemote (see routes/ttsApiKeys.ts). There is NOT yet a
+// separate long-lived "API key" mechanism for this endpoint — an external
+// SDK consumer must pass their ReadAloud Supabase access token in the
+// Authorization header as their "API key". This is a real limitation for
+// third-party integrations (tokens expire and aren't meant to be
+// distributed as API keys) but is how auth on this endpoint actually works
+// today.
+// TODO: add persistent-API-key support for the text-to-music endpoint
+// (mirroring however ttsApiKeys.ts's job-API-key flow works for TTS) — not
+// yet implemented.
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { asyncHandler } from '../middleware/errorHandler.js';
@@ -9,6 +23,7 @@ import {
   getCachedMusic,
   getSignedAudioUrl,
 } from '../lib/supabaseClient.js';
+import { isBillingActiveForUser } from '../lib/realtimeTtsBilling.js';
 import { logger } from '../lib/logger.js';
 
 const musicLogger = logger.child({ module: 'text-to-music' });
@@ -45,8 +60,17 @@ textToMusicRouter.post('/job', asyncHandler(async (req: Request, res: Response) 
     const audioUrl = await getSignedAudioUrl(cached.audio_path);
     if (audioUrl) {
       musicLogger.info({ cacheKey }, 'Music cache hit');
+      // DECISION: cache hits are NOT billed. No new GPU work happened — the
+      // audio was already generated (and billed) for whichever user
+      // triggered the original generation — so charging this user again
+      // for a cache hit would be double-billing for zero marginal cost.
       res.status(202).json({
-        job_id: cached.id,
+        // Return a synthetic pseudo job id, not `cached.id` (the original
+        // generating job's real id). That job may belong to a different
+        // user, so returning it verbatim would make GET /job/:jobId 404 for
+        // this user (getMusicJobForUser scopes by user_id). Mirrors the
+        // same cache-hit pattern used for TTS jobs — see routes/tts.ts.
+        job_id: `cache-${cacheKey.substring(0, 8)}`,
         status: 'ready',
         cache_hit: true,
         audio_url: audioUrl,
@@ -54,6 +78,14 @@ textToMusicRouter.post('/job', asyncHandler(async (req: Request, res: Response) 
       });
       return;
     }
+  }
+
+  // Billing gate: mirrors voiceDesign.ts's requireUser check (isBillingActiveForUser).
+  // Only applies past the cache-hit path above, since cache hits aren't billed.
+  const billingActive = await isBillingActiveForUser(userId);
+  if (!billingActive) {
+    res.status(402).json({ error: 'Text-to-music requires an active TTS subscription.' });
+    return;
   }
 
   const job = await createMusicJob({ userId, prompt, durationSec: duration_sec, cacheKey });
@@ -81,10 +113,16 @@ textToMusicRouter.get('/job/:jobId', asyncHandler(async (req: Request, res: Resp
     audioUrl = (await getSignedAudioUrl(job.audio_path)) ?? undefined;
   }
 
+  // Don't echo the raw upstream (Modal worker) error body back to external
+  // API callers — it may contain internal stack traces, hostnames, or other
+  // implementation detail we don't want to leak. The detailed message is
+  // still stored in job.error_message in the DB for our own debugging (see
+  // musicJobWorker.ts) and logged server-side; only a generic message goes
+  // in the HTTP response.
   res.json({
     job_id: job.id,
     status: job.status,
     audio_url: audioUrl,
-    error: job.error_code ? { code: job.error_code, message: job.error_message ?? 'Unknown error' } : undefined,
+    error: job.error_code ? { code: job.error_code, message: 'Music generation failed' } : undefined,
   });
 }));

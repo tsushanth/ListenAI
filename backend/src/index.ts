@@ -37,7 +37,7 @@ import { voiceCloneRouter } from './routes/voiceClone.js';
 import { voiceStudioApiKeyRouter } from './routes/voiceStudioApiKey.js';
 import { aggregateLatencyMetrics, checkSupabaseHealth, checkStorageHealth } from './lib/supabaseClient.js';
 import { startWorker, stopWorker } from './workers/ttsJobWorker.js';
-import { startMusicJobWorker } from './workers/musicJobWorker.js';
+import { startMusicJobWorker, stopMusicJobWorker } from './workers/musicJobWorker.js';
 import { checkPubSubHealth } from './lib/pubsub.js';
 import { initRolloutFromEnv } from './lib/rollout.js';
 import { reportUsageToStripe } from './lib/realtimeTtsBilling.js';
@@ -311,10 +311,26 @@ const server = app.listen(PORT, () => {
     });
   }
 
-  // Music job worker polling loop — calls Modal endpoint every 3s.
-  // Set MUSIC_WORKER_ENABLED=true only for local dev.
+  // Music job worker polling loop — calls the Modal music-generation endpoint
+  // every 3s and reaps jobs stuck in 'processing'. Unlike the TTS worker
+  // above (which is genuinely dev-only, since production TTS is delivered
+  // via Pub/Sub push), the music job worker is the ONLY delivery mechanism
+  // for music jobs — there is no push-based alternative — so
+  // MUSIC_WORKER_ENABLED=true must be set in production too, or music jobs
+  // will queue forever and never be processed. See cloudbuild.yaml.
   if (process.env.MUSIC_WORKER_ENABLED === 'true') {
-    logger.info('Starting music job worker (dev mode)');
+    if (!process.env.MUSIC_WORKER_URL) {
+      // Fail fast and loud rather than silently starting a poll loop that
+      // calls `${MUSIC_WORKER_URL}/generate` == "/generate" forever and
+      // fails every single job. Throwing here (rather than just warning)
+      // is deliberate: MUSIC_WORKER_ENABLED=true with no URL configured is
+      // always a misconfiguration, never an intentional state, and every
+      // queued music job would silently fail otherwise.
+      throw new Error(
+        'MUSIC_WORKER_ENABLED=true but MUSIC_WORKER_URL is not set — refusing to start the music job worker against an empty URL. Set MUSIC_WORKER_URL (and MUSIC_WORKER_SHARED_SECRET) or unset MUSIC_WORKER_ENABLED.'
+      );
+    }
+    logger.info('Starting music job worker');
     startMusicJobWorker();
   }
 });
@@ -326,6 +342,9 @@ function shutdown(signal: string) {
   // Stop worker if running
   if (process.env.TTS_WORKER_ENABLED === 'true') {
     stopWorker();
+  }
+  if (process.env.MUSIC_WORKER_ENABLED === 'true') {
+    stopMusicJobWorker();
   }
 
   server.close(() => {

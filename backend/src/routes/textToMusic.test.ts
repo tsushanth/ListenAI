@@ -34,8 +34,30 @@ const jobsById = new Map<string, FakeJob>();
 const jobsByCacheKey = new Map<string, FakeJob>();
 let jobCounter = 0;
 
+// Controls the billing gate (isBillingActiveForUser -> getBillingForUser),
+// which queries the `realtimetts_billing` table via plain PostgREST (not an
+// RPC) — mirrors the pattern in voiceDesign.test.ts. Defaults to active so
+// existing tests above (written before the billing gate existed) keep
+// passing without every one of them needing to know about billing.
+let billingActive = true;
+
 globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
   const url = typeof input === 'string' ? input : input.toString();
+
+  if (url.startsWith('http://localhost:54321/rest/v1/realtimetts_billing')) {
+    const u = new URL(url);
+    const uid = u.searchParams.get('user_id')?.replace(/^eq\./, '');
+    if (billingActive && uid) {
+      return new Response(JSON.stringify([{
+        user_id: uid,
+        stripe_customer_id: `cus_${uid}`,
+        stripe_subscription_id: 'sub_test',
+        stripe_subscription_item_id: 'si_test',
+        active: true,
+      }]), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    }
+    return new Response('[]', { status: 200, headers: { 'Content-Type': 'application/json' } });
+  }
 
   if (url.startsWith('http://localhost:54321/rest/v1/rpc/')) {
     const body = init?.body ? JSON.parse(String(init.body)) : {};
@@ -138,6 +160,20 @@ test('POST /job creates a job and returns 202 processing on cache miss', async (
   assert.equal(body.status, 'processing');
   assert.ok(body.job_id);
   s.close();
+});
+
+test('POST /job returns 402 and does not create a job when billing is not active', async () => {
+  billingActive = false;
+  try {
+    const s = await boot();
+    const jobsBefore = jobCounter;
+    const res = await s.call('POST', '/job', { prompt: 'no-billing-prompt-should-not-create-job', duration_sec: 30 });
+    assert.equal(res.status, 402);
+    assert.equal(jobCounter, jobsBefore, 'no job should have been created');
+    s.close();
+  } finally {
+    billingActive = true;
+  }
 });
 
 test('GET /job/:jobId returns 404 for a job belonging to a different user', async () => {

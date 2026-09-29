@@ -1,4 +1,4 @@
-import { claimNextMusicJob, updateMusicJobStatus, uploadMusicAudio, DBMusicJob } from '../lib/supabaseClient.js';
+import { claimNextMusicJob, updateMusicJobStatus, uploadMusicAudio, DBMusicJob, supabase } from '../lib/supabaseClient.js';
 import { generateMusicAudioPath } from '../lib/cacheKey.js';
 import { logger } from '../lib/logger.js';
 import { reportMusicGenerationUsage } from '../lib/realtimeTtsBilling.js';
@@ -8,6 +8,8 @@ const workerLogger = logger.child({ module: 'music-worker' });
 const MUSIC_WORKER_URL = process.env.MUSIC_WORKER_URL ?? '';
 const MUSIC_WORKER_SHARED_SECRET = process.env.MUSIC_WORKER_SHARED_SECRET ?? '';
 const POLL_INTERVAL_MS = 3000;
+const STUCK_JOB_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
+const STUCK_JOB_CHECK_INTERVAL_MS = 60 * 1000;
 
 async function callModalWorker(prompt: string, durationSec: number): Promise<Buffer> {
   const response = await fetch(`${MUSIC_WORKER_URL}/generate`, {
@@ -68,11 +70,77 @@ export async function processOneJob(deps: MusicWorkerDeps = defaultDeps): Promis
   return true;
 }
 
-export function startMusicJobWorker(intervalMs: number = POLL_INTERVAL_MS): void {
-  setInterval(() => {
-    processOneJob().catch((err) => {
-      workerLogger.error({ err }, 'Unexpected error in music job worker poll loop');
+// Stuck-job reaper: mirrors ttsJobWorker.ts's checkForStuckJobs, simplified
+// since music_jobs has no retry_count/chunking to reason about — a job
+// stuck in 'processing' for more than STUCK_JOB_TIMEOUT_MS is just marked
+// failed with a clear error code so it stops blocking polling clients
+// forever (e.g. a worker crash mid-job, or a hung/unresponsive Modal call
+// that somehow evaded the callModalWorker AbortSignal timeout).
+export async function checkForStuckMusicJobs(): Promise<void> {
+  const cutoffTime = new Date(Date.now() - STUCK_JOB_TIMEOUT_MS).toISOString();
+
+  const { data: stuckJobs, error } = await supabase
+    .from('music_jobs')
+    .select('id')
+    .eq('status', 'processing')
+    .lt('updated_at', cutoffTime);
+
+  if (error) {
+    workerLogger.error({ error }, 'Failed to check for stuck music jobs');
+    return;
+  }
+
+  for (const job of stuckJobs || []) {
+    workerLogger.warn({ jobId: job.id }, 'Reaping stuck music job');
+    await updateMusicJobStatus(job.id, 'failed', {
+      errorCode: 'STUCK_JOB',
+      errorMessage: `Job stuck in processing for over ${STUCK_JOB_TIMEOUT_MS / 1000}s`,
+    }).catch((err) => {
+      workerLogger.error({ err, jobId: job.id }, 'Failed to mark stuck music job as failed');
     });
+  }
+}
+
+let pollInterval: NodeJS.Timeout | null = null;
+let stuckJobInterval: NodeJS.Timeout | null = null;
+let jobInFlight = false;
+
+export function startMusicJobWorker(intervalMs: number = POLL_INTERVAL_MS): void {
+  pollInterval = setInterval(() => {
+    // Concurrency guard: skip this tick if the previous processOneJob() call
+    // (from a prior tick) hasn't finished yet. Without this, a slow Modal
+    // call (up to 120s, see callModalWorker's AbortSignal.timeout) combined
+    // with a 3s poll interval would let dozens of overlapping processOneJob
+    // calls race to claim jobs concurrently.
+    if (jobInFlight) {
+      return;
+    }
+    jobInFlight = true;
+    processOneJob()
+      .catch((err) => {
+        workerLogger.error({ err }, 'Unexpected error in music job worker poll loop');
+      })
+      .finally(() => {
+        jobInFlight = false;
+      });
   }, intervalMs);
+
+  stuckJobInterval = setInterval(() => {
+    checkForStuckMusicJobs().catch((err) => {
+      workerLogger.error({ err }, 'Unexpected error in music stuck-job reaper');
+    });
+  }, STUCK_JOB_CHECK_INTERVAL_MS);
+
   workerLogger.info({ intervalMs }, 'Music job worker started');
+}
+
+export function stopMusicJobWorker(): void {
+  if (pollInterval) {
+    clearInterval(pollInterval);
+    pollInterval = null;
+  }
+  if (stuckJobInterval) {
+    clearInterval(stuckJobInterval);
+    stuckJobInterval = null;
+  }
 }
