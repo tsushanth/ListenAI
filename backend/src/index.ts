@@ -8,6 +8,7 @@ import { config } from './lib/config.js';
 import { logger } from './lib/logger.js';
 
 import { requireAuth } from './middleware/auth.js';
+import { requireAuthOrApiKey } from './middleware/apiKeyAuth.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 import { standardRateLimit, ttsRateLimitByTier, previewRateLimit, burstRateLimit, jobPollingRateLimit, realtimeTtsAuthorizeRateLimit } from './middleware/rateLimit.js';
 
@@ -222,9 +223,10 @@ app.use('/api/cloned-voices', clonedVoicesRouter);
 // per-device rate limit set inside the router.
 app.use('/api/stories', storiesRouter);
 
-// Audiobooks MVP (requires auth) — chapter detection + batch same-voice TTS
+// Audiobooks MVP (requires auth, or a gateway-forwarded MCP API key identity —
+// see middleware/apiKeyAuth.ts) — chapter detection + batch same-voice TTS
 // per chapter + ffmpeg MP3 export with chapter markers. Backend/API only.
-app.use('/api/audiobooks', requireAuth, audiobooksRouter);
+app.use('/api/audiobooks', requireAuthOrApiKey, audiobooksRouter);
 
 // TTS realtime API key management (requires a REAL Supabase JWT, not the
 // requireAuth default-user fallback — see routes/ttsApiKeys.ts).
