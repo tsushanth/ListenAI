@@ -35,8 +35,10 @@ import { voiceConvertRouter } from './routes/voiceConvert.js';
 import { voiceCloneRouter } from './routes/voiceClone.js';
 import { voiceStudioApiKeyRouter } from './routes/voiceStudioApiKey.js';
 import { orpheusVoiceStudioApiKeyRouter } from './routes/orpheusVoiceStudioApiKey.js';
+import { soundEffectsRouter } from './routes/soundEffects.js';
 import { aggregateLatencyMetrics, checkSupabaseHealth, checkStorageHealth } from './lib/supabaseClient.js';
 import { startWorker, stopWorker } from './workers/ttsJobWorker.js';
+import { startSoundEffectJobWorker, stopSoundEffectJobWorker } from './workers/soundEffectJobWorker.js';
 import { checkPubSubHealth } from './lib/pubsub.js';
 import { initRolloutFromEnv } from './lib/rollout.js';
 import { reportUsageToStripe } from './lib/realtimeTtsBilling.js';
@@ -231,6 +233,12 @@ app.use('/api/voice-design', voiceDesignRouter);
 app.use('/api/voice-convert', voiceConvertRouter);
 // Voice clone — XTTS v2 instant voice cloning (dark unless XTTS_CLONE_URL is configured)
 app.use('/api/voice-clone', voiceCloneRouter);
+// Sound effects — text-to-sound-effect generation on a shared Modal worker (see
+// backend/modal/sound_effects_worker.py), async job API mirroring the (unmerged)
+// text-to-music feature branch's textToMusic.ts. Dark unless SOUND_EFFECTS_WORKER_URL
+// is configured (soundEffects.ts's routes still respond, but jobs never leave 'queued'
+// without the worker below actually running — mirrors MUSIC_WORKER_ENABLED's gating).
+app.use('/api/sound-effects', requireAuth, soundEffectsRouter);
 // strict Supabase auth like the API-key routes above.
 app.use('/api/voice-studio', voiceStudioRouter);
 
@@ -308,6 +316,15 @@ const server = app.listen(PORT, () => {
       enabled: true,
     });
   }
+
+  // Embedded polling worker for sound effect generation jobs — mirrors the
+  // text-to-music feature branch's MUSIC_WORKER_ENABLED gate. Off by
+  // default: a deploy with no Modal worker provisioned should not spin up
+  // a poll loop that will just fail every callModalWorker() call.
+  if (process.env.SOUND_EFFECT_WORKER_ENABLED === 'true') {
+    logger.info('Starting sound effect job worker');
+    startSoundEffectJobWorker();
+  }
 });
 
 // Graceful shutdown
@@ -317,6 +334,9 @@ function shutdown(signal: string) {
   // Stop worker if running
   if (process.env.TTS_WORKER_ENABLED === 'true') {
     stopWorker();
+  }
+  if (process.env.SOUND_EFFECT_WORKER_ENABLED === 'true') {
+    stopSoundEffectJobWorker();
   }
 
   server.close(() => {

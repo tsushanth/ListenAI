@@ -99,6 +99,77 @@ export function synthesize(opts: { url: string; token: string; text: string; voi
   })
 }
 
+// ----------------------------------------------------------------------------
+// Sound effects — a different upstream than the TTS gateway above.
+//
+// text_to_speech/list_voices/get_api_status all talk to the realtime-tts
+// GATEWAY (api.readaloudai.org) via an API key exchanged for a session
+// token (authorize()) then a WebSocket (synthesize()). Sound effects live
+// on the ReadAloudAI *backend* instead (backend/src/routes/soundEffects.ts,
+// an async job API, mounted behind Express `requireAuth`), a separate
+// service with a separate auth model: requireAuth expects a Supabase user
+// access token in the Authorization header, not a realtime-tts gateway API
+// key. There is no code today that exchanges one for the other.
+//
+// KNOWN LIMITATION (flagged in the top-level report, not silently papered
+// over): this passes the MCP caller's `apiKey` straight through as a Bearer
+// token against the ReadAloudAI backend. That only works if the caller's
+// "API key" happens to already be a valid Supabase access token for the
+// same user — true for nothing today. Wiring this up for real needs either
+// a persistent-API-key mechanism on the ReadAloudAI backend (the same gap
+// textToMusic.ts's own top-of-file comment flags for itself) or a token-
+// exchange step here. Left as-is (rather than inventing a fake bridge)
+// so this is visibly a TODO instead of a silently-broken "works in the
+// demo" path.
+const SOUND_EFFECTS_BACKEND_URL = process.env.READALOUD_BACKEND_URL || 'https://api.readaloudai.com'
+
+export interface SoundEffectJobResult { job_id: string; status: string; cache_hit?: boolean; audio_url?: string; error?: { code: string; message: string } }
+
+export async function submitSoundEffectJob(apiKey: string, prompt: string, durationSec: number): Promise<SoundEffectJobResult> {
+  let r: Response
+  try {
+    r = await fetch(`${SOUND_EFFECTS_BACKEND_URL}/api/sound-effects/job`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify({ prompt, duration_sec: durationSec }),
+      cache: 'no-store',
+      signal: AbortSignal.timeout(10_000),
+    })
+  } catch {
+    throw new UpstreamError('upstream', 'Could not reach the sound effects service. Try again shortly.', true)
+  }
+  if (r.status === 401) throw new UpstreamError('unauthorized', 'Invalid or expired credentials for sound effect generation.')
+  if (r.status === 402) throw new UpstreamError('payment_required', 'Sound effect generation requires an active subscription.')
+  if (r.status === 429) throw new UpstreamError('rate_limited', 'Sound effect generation is being rate limited. Wait a moment and retry.', true)
+  if (!r.ok && r.status !== 202) throw new UpstreamError('upstream', `The sound effects service returned ${r.status}.`, r.status >= 500)
+  const body = (await r.json().catch(() => null)) as SoundEffectJobResult | null
+  if (!body?.job_id) throw new UpstreamError('upstream', 'Unexpected response from the sound effects service.', true)
+  return body
+}
+
+export async function pollSoundEffectJob(apiKey: string, jobId: string): Promise<SoundEffectJobResult> {
+  let r: Response
+  try {
+    r = await fetch(`${SOUND_EFFECTS_BACKEND_URL}/api/sound-effects/job/${encodeURIComponent(jobId)}`, {
+      headers: { Authorization: `Bearer ${apiKey}` },
+      cache: 'no-store',
+      signal: AbortSignal.timeout(10_000),
+    })
+  } catch {
+    throw new UpstreamError('upstream', 'Could not reach the sound effects service while polling. Try again shortly.', true)
+  }
+  if (!r.ok) throw new UpstreamError('upstream', `The sound effects service returned ${r.status} while polling.`, r.status >= 500)
+  const body = (await r.json().catch(() => null)) as SoundEffectJobResult | null
+  if (!body?.status) throw new UpstreamError('upstream', 'Unexpected response from the sound effects service while polling.', true)
+  return body
+}
+
+export async function fetchAudioBytes(url: string): Promise<Buffer> {
+  const r = await fetch(url, { cache: 'no-store', signal: AbortSignal.timeout(15_000) })
+  if (!r.ok) throw new UpstreamError('upstream', `Could not download generated audio (${r.status}).`, true)
+  return Buffer.from(await r.arrayBuffer())
+}
+
 export async function fetchPiperHealth(): Promise<{ active: number; max: number; device?: string; status?: string } | null> {
   try {
     const r = await fetch('https://piper-tts-sjc.fly.dev/health', { cache: 'no-store', signal: AbortSignal.timeout(5000) })

@@ -33,6 +33,13 @@ const VOICE_DESIGN_METER_EVENT_NAME = process.env.VOICE_DESIGN_METER_EVENT_NAME 
 // Voice conversion meter (created once via Stripe Dashboard or scripts/create-voice-convert-meter.mjs).
 // Set these env vars after creating the meter/price.
 const VOICE_CONVERT_METER_EVENT_NAME = process.env.VOICE_CONVERT_METER_EVENT_NAME || 'realtimetts_voice_conversions';
+// Sound effect generation meter (mirrors the text-to-music feature's
+// MUSIC_GENERATION_METER_EVENT_NAME — that branch isn't merged into this
+// repo yet, so this is a fresh meter, not a reuse of an existing one).
+// Create via a create-sound-effect-generation-meter.mjs script analogous to
+// the voice-design/voice-convert ones referenced above, then set this env
+// var if the created meter's event name differs from the default.
+export const SOUND_EFFECT_GENERATION_METER_EVENT_NAME = process.env.SOUND_EFFECT_GENERATION_METER_EVENT_NAME || 'realtimetts_sound_effect_generations';
 
 // Piper (CPU engine) is priced at $0.004/1k chars vs Kokoro's $0.01/1k. Rather than
 // add a second Stripe price/meter and migrate every live subscription, Piper chars are
@@ -376,5 +383,31 @@ export async function reportTtsUsage(userId: string, charCount: number): Promise
     billingLogger.debug({ userId, charCount }, 'TTS usage reported');
   } catch (err) {
     billingLogger.error({ err, userId, charCount }, 'Failed to report TTS usage');
+  }
+}
+
+// Reports one sound effect generation to Stripe as a meter event. Mirrors
+// reportMusicGenerationUsage in the (unmerged) text-to-music feature branch's
+// realtimeTtsBilling.ts. Called after a sound effect job's status is already updated to 'ready',
+// not before. Best-effort: a metering failure must not fail the
+// (already-successful) job.
+export async function reportSoundEffectGenerationUsage(userId: string): Promise<void> {
+  const billing = await getBillingForUser(userId);
+  if (!billing?.active) {
+    billingLogger.warn({ userId }, 'reportSoundEffectGenerationUsage called for user with no active billing');
+    return;
+  }
+  try {
+    await stripe.billing.meterEvents.create({
+      event_name: SOUND_EFFECT_GENERATION_METER_EVENT_NAME,
+      timestamp: Math.floor(Date.now() / 1000),
+      payload: {
+        stripe_customer_id: billing.stripe_customer_id,
+        value: '1',
+      },
+    });
+    billingLogger.debug({ userId }, 'Sound effect generation usage reported');
+  } catch (err) {
+    billingLogger.error({ err, userId }, 'Failed to report sound effect generation usage');
   }
 }

@@ -22,3 +22,23 @@ export const listVoicesInput = {
   engine: engineSchema.optional().describe('Only list voices for this engine. Omit to list both.'),
 }
 export const listVoicesSchema = z.object(listVoicesInput)
+
+// Sound effect generation — mirrors backend/src/routes/soundEffects.ts's own
+// MIN/MAX_DURATION_SEC exactly (1-12s; sound effects are much shorter clips
+// than the text-to-music feature's 15-47s range). Keep these in sync with
+// that file if either changes.
+export const SOUND_EFFECT_MIN_DURATION_SEC = 1
+export const SOUND_EFFECT_MAX_DURATION_SEC = 12
+// Generation runs on a GPU worker and is not instant like TTS; the tool
+// polls internally for up to this long before giving up and returning a
+// job id for the caller to check back on later.
+export const SOUND_EFFECT_POLL_TIMEOUT_MS = 45_000
+export const SOUND_EFFECT_POLL_INTERVAL_MS = 2_000
+
+export const soundEffectInput = {
+  prompt: z.string().trim().min(1, 'prompt must not be empty').max(500, 'prompt must be at most 500 characters')
+    .describe('A short description of the desired sound effect, e.g. "glass shattering on concrete" or "footsteps on gravel". Not song lyrics or musical style — for music, a separate tool would be needed.'),
+  duration_sec: z.number().min(SOUND_EFFECT_MIN_DURATION_SEC).max(SOUND_EFFECT_MAX_DURATION_SEC).default(3)
+    .describe(`Length of the generated clip in seconds, ${SOUND_EFFECT_MIN_DURATION_SEC}-${SOUND_EFFECT_MAX_DURATION_SEC}. Default 3s. Most one-shot effects (a click, a door slam) need well under 5s.`),
+}
+export const soundEffectSchema = z.object(soundEffectInput)
