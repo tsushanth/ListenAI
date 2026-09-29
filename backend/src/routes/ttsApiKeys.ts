@@ -24,7 +24,7 @@ interface StrictAuthedRequest extends Request {
   userId?: string;
 }
 
-async function requireRealAuth(req: StrictAuthedRequest, res: Response, next: NextFunction): Promise<void> {
+export async function requireRealAuth(req: StrictAuthedRequest, res: Response, next: NextFunction): Promise<void> {
   try {
     const token = extractBearerToken(req.headers.authorization);
     if (!token) {
