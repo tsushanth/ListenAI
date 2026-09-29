@@ -93,8 +93,9 @@ export default function DevelopersPage() {
                   a 500&nbsp;ms target &mdash; close, not there yet. Two open issues: generation
                   currently runs at roughly 1.6&ndash;2.7&times; real time, and utterance length is
                   not yet reliably controlled &mdash; the same prompt can produce anywhere from a
-                  third of a second to several seconds of audio. We are training on more data per
-                  voice to address both. Cold container start adds a few seconds on the first
+                  third of a second to several seconds of audio. Both point to needing a larger
+                  training run per voice, not a serving-side fix, but we haven't verified that
+                  yet. Cold container start adds a few seconds on the first
                   request after an idle period.
                 </p>
                 <OrpheusCloningDocs />
