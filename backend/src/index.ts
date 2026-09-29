@@ -311,7 +311,12 @@ const server = app.listen(PORT, () => {
     });
   }
 
-  startMusicJobWorker();
+  // Music job worker polling loop — calls Modal endpoint every 3s.
+  // Set MUSIC_WORKER_ENABLED=true only for local dev.
+  if (process.env.MUSIC_WORKER_ENABLED === 'true') {
+    logger.info('Starting music job worker (dev mode)');
+    startMusicJobWorker();
+  }
 });
 
 // Graceful shutdown
