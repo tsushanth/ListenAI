@@ -24,6 +24,7 @@ import { adminRouter } from './routes/admin.js';
 import { workerPushRouter } from './routes/workerPush.js';
 import { clonedVoicesRouter } from './routes/clonedVoices.js';
 import { storiesRouter } from './routes/stories.js';
+import { audiobooksRouter } from './routes/audiobooks.js';
 import { voiceMarketplaceRouter } from './routes/voiceMarketplace.js';
 import { stripeWebhookRouter } from './routes/stripeWebhook.js';
 import { authRouter } from './routes/auth.js';
@@ -220,6 +221,10 @@ app.use('/api/cloned-voices', clonedVoicesRouter);
 // Story generation (Lullaby Haven custom bedtime stories) — X-Device-ID gated,
 // per-device rate limit set inside the router.
 app.use('/api/stories', storiesRouter);
+
+// Audiobooks MVP (requires auth) — chapter detection + batch same-voice TTS
+// per chapter + ffmpeg MP3 export with chapter markers. Backend/API only.
+app.use('/api/audiobooks', requireAuth, audiobooksRouter);
 
 // TTS realtime API key management (requires a REAL Supabase JWT, not the
 // requireAuth default-user fallback — see routes/ttsApiKeys.ts).

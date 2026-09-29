@@ -22,3 +22,26 @@ export const listVoicesInput = {
   engine: engineSchema.optional().describe('Only list voices for this engine. Omit to list both.'),
 }
 export const listVoicesSchema = z.object(listVoicesInput)
+
+// ============================================================================
+// Audiobooks MVP (backend/src/routes/audiobooks.ts) — chapter detection +
+// batch same-voice TTS per chapter + ffmpeg export. See audiobooksClient.ts
+// for the open item on how this MCP server authenticates to that API.
+// ============================================================================
+
+export const MAX_AUDIOBOOK_TEXT_CHARS = 2_000_000
+
+export const createAudiobookInput = {
+  title: z.string().trim().min(1).max(500).describe('Audiobook title.'),
+  text: z.string().trim().min(1).max(MAX_AUDIOBOOK_TEXT_CHARS)
+    .describe('The full text to turn into an audiobook. It will be split into chapters automatically (by an LLM boundary call), then synthesized chapter by chapter with one fixed voice.'),
+  voice_id: z.string().min(1).max(100).default('af_heart')
+    .describe('Kokoro voice id used for every chapter (e.g. "af_heart", "am_adam"). Call list_voices for options.'),
+  speed: z.number().min(0.5).max(3.0).default(1.0).describe('Speaking rate multiplier, applied to every chapter.'),
+}
+export const createAudiobookSchema = z.object(createAudiobookInput)
+
+export const audiobookIdInput = {
+  audiobook_id: z.string().uuid().describe('The audiobook id returned by create_audiobook.'),
+}
+export const audiobookIdSchema = z.object(audiobookIdInput)

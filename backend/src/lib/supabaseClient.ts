@@ -618,7 +618,7 @@ export async function getRecentUsage(
 // Audio Storage Operations
 // ============================================================================
 
-const AUDIO_BUCKET = 'audio-files';
+export const AUDIO_BUCKET = 'audio-files';
 
 /**
  * Upload synthesized audio to Supabase Storage.

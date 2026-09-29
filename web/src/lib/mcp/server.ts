@@ -1,10 +1,11 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js'
 import { SlidingWindowLimiter } from './ratelimit.ts'
-import { MAX_AUDIO_SECONDS, listVoicesInput, textToSpeechInput, textToSpeechSchema, MAX_TEXT_CHARS } from './schemas.ts'
+import { MAX_AUDIO_SECONDS, listVoicesInput, textToSpeechInput, textToSpeechSchema, MAX_TEXT_CHARS, createAudiobookInput, createAudiobookSchema, audiobookIdInput, audiobookIdSchema } from './schemas.ts'
 import { KOKORO_VOICES, PIPER_VOICES, resolveVoice } from './voices.ts'
 import { UpstreamError, authorize, fetchPiperHealth, synthesize, type ErrorCode } from './upstream.ts'
 import { pcm16ToWav, pcmDurationSeconds } from './wav.ts'
+import { AudiobooksApiError, createAudiobook, getAudiobookStatus, exportAudiobook } from './audiobooksClient.ts'
 
 // 15 speech calls per minute per API key (per server instance).
 export const keyLimiter = new SlidingWindowLimiter(15, 60_000)
@@ -88,6 +89,83 @@ export function createMcpServer(ctx: RequestContext): McpServer {
       kokoro: { status: 'not reported', note: 'Runs on a GPU worker that can need a few extra seconds to wake after idle.' },
     }
     return { content: [{ type: 'text', text: JSON.stringify(out, null, 2) }], structuredContent: out }
+  })
+
+  // ==========================================================================
+  // Audiobooks MVP — chapter detection + batch same-voice TTS + ffmpeg export.
+  // See audiobooksClient.ts for the open item on API-key -> backend identity.
+  // ==========================================================================
+
+  server.registerTool('create_audiobook', {
+    title: 'Create audiobook',
+    description:
+      'Turn long text into an audiobook: splits it into chapters and synthesizes each chapter with the same voice. ' +
+      'Returns immediately with an audiobook_id — chapter synthesis runs in the background; poll get_audiobook_status until every chapter is ready, then call export_audiobook.',
+    inputSchema: createAudiobookInput,
+    annotations: { title: 'Create audiobook', readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
+  }, async (args): Promise<CallToolResult> => {
+    const parsed = createAudiobookSchema.parse(args)
+    try {
+      const result = await createAudiobook(ctx.apiKey, parsed)
+      return {
+        content: [{ type: 'text', text: `Created audiobook ${result.audiobook_id} with ${result.chapter_count} chapter(s), status: ${result.status}. Poll get_audiobook_status with this id.` }],
+        structuredContent: result as unknown as Record<string, unknown>,
+      }
+    } catch (e) {
+      if (e instanceof AudiobooksApiError) {
+        if (e.status === 401) ctx.authFailed = true
+        return toolError('upstream', e.message, e.status === 0 || e.status >= 500)
+      }
+      return toolError('upstream', 'Unexpected error while creating the audiobook.', true)
+    }
+  })
+
+  server.registerTool('get_audiobook_status', {
+    title: 'Get audiobook status',
+    description: 'Check chapter-by-chapter synthesis progress for an audiobook created with create_audiobook. Status moves pending -> processing -> completed (or failed if a chapter synthesis fails).',
+    inputSchema: audiobookIdInput,
+    annotations: { title: 'Get audiobook status', readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+  }, async (args): Promise<CallToolResult> => {
+    const parsed = audiobookIdSchema.parse(args)
+    try {
+      const result = await getAudiobookStatus(ctx.apiKey, parsed.audiobook_id)
+      const readyCount = result.chapters_completed ?? result.chapters_ready ?? result.chapters.filter((c) => c.status === 'ready').length
+      return {
+        content: [{ type: 'text', text: `Audiobook ${result.audiobook_id}: ${result.status} (${readyCount}/${result.chapter_count} chapters ready).${result.error ? ` Error: ${result.error.message}` : ''}` }],
+        structuredContent: result as unknown as Record<string, unknown>,
+      }
+    } catch (e) {
+      if (e instanceof AudiobooksApiError) {
+        if (e.status === 401) ctx.authFailed = true
+        if (e.status === 404) return toolError('invalid_input', 'No audiobook found with that id.', false)
+        return toolError('upstream', e.message, e.status === 0 || e.status >= 500)
+      }
+      return toolError('upstream', 'Unexpected error while checking audiobook status.', true)
+    }
+  })
+
+  server.registerTool('export_audiobook', {
+    title: 'Export audiobook',
+    description: 'Concatenate every chapter of a completed audiobook into a single MP3 with chapter markers, and return a download URL. Call get_audiobook_status first — every chapter must be "ready".',
+    inputSchema: audiobookIdInput,
+    annotations: { title: 'Export audiobook', readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+  }, async (args): Promise<CallToolResult> => {
+    const parsed = audiobookIdSchema.parse(args)
+    try {
+      const result = await exportAudiobook(ctx.apiKey, parsed.audiobook_id)
+      return {
+        content: [{ type: 'text', text: result.audio_url ? `Exported audiobook ${result.audiobook_id}: ${result.audio_url}` : `Export status for ${result.audiobook_id}: ${result.export_status ?? result.status}` }],
+        structuredContent: result as unknown as Record<string, unknown>,
+      }
+    } catch (e) {
+      if (e instanceof AudiobooksApiError) {
+        if (e.status === 401) ctx.authFailed = true
+        if (e.status === 404) return toolError('invalid_input', 'No audiobook found with that id.', false)
+        if (e.status === 400 || e.status === 422) return toolError('invalid_input', e.message, false)
+        return toolError('upstream', e.message, e.status === 0 || e.status >= 500)
+      }
+      return toolError('upstream', 'Unexpected error while exporting the audiobook.', true)
+    }
   })
 
   return server

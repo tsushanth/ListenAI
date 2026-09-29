@@ -213,6 +213,110 @@ export function cleanupStaleJobs(maxAgeMs: number = 15 * 60 * 1000): string[] {
 export function resetCache(): void {
   progressCache.clear();
   cacheStats = { hits: 0, misses: 0, writes: 0, deletes: 0 };
+  jobGroups.clear();
+  jobToGroup.clear();
+}
+
+// ============================================================================
+// Job Groups (Audiobooks MVP)
+// ============================================================================
+// A "job group" is a set of tts_jobs that belong together as one logical
+// unit — for the Audiobooks MVP, one group per audiobook, one member job per
+// chapter. This cache only tracks *membership* (groupId <-> jobIds); the
+// per-job progress itself still lives in `progressCache` above (or the DB,
+// once a job leaves this in-memory cache), so a group's aggregate status is
+// always computed by looking up each member job the same way a single-job
+// status poll already does — this just avoids every caller having to
+// separately track "which jobIds make up audiobook X".
+//
+// Like `progressCache`, this is in-memory and per-instance. On horizontal
+// scaling, move it to Redis (or drop it entirely and let callers query the
+// `audiobook_chapters` table directly, which already mirrors job status) —
+// see the same note on `progressCache` above.
+
+const jobGroups = new Map<string, Set<string>>(); // groupId -> jobIds
+const jobToGroup = new Map<string, string>(); // jobId -> groupId
+
+/**
+ * Register a tts_jobs id as a member of a job group (e.g. an audiobook id).
+ * Safe to call before or after the job's own progress is initialized.
+ */
+export function addJobToGroup(groupId: string, jobId: string): void {
+  let members = jobGroups.get(groupId);
+  if (!members) {
+    members = new Set();
+    jobGroups.set(groupId, members);
+  }
+  members.add(jobId);
+  jobToGroup.set(jobId, groupId);
+}
+
+/** Get all job ids registered under a group, or an empty array if none. */
+export function getJobGroupMembers(groupId: string): string[] {
+  const members = jobGroups.get(groupId);
+  return members ? Array.from(members) : [];
+}
+
+/** Get the group a job belongs to, if any. */
+export function getJobGroupForJob(jobId: string): string | null {
+  return jobToGroup.get(jobId) ?? null;
+}
+
+/**
+ * Remove a whole group's membership tracking (call once the group's
+ * aggregate status is terminal, e.g. all chapters ready/failed, and callers
+ * no longer need fast in-memory rollups).
+ */
+export function clearJobGroup(groupId: string): void {
+  const members = jobGroups.get(groupId);
+  if (members) {
+    for (const jobId of members) jobToGroup.delete(jobId);
+  }
+  jobGroups.delete(groupId);
+}
+
+/**
+ * Aggregate progress across a group's member jobs using whatever is
+ * available in this in-memory cache right now. Jobs not present here have
+ * either completed (and left the cache) or never started — callers should
+ * treat a job missing from this aggregate as "check the DB" for that job,
+ * exactly like the single-job status endpoint does.
+ */
+export function getJobGroupProgress(groupId: string): {
+  totalKnown: number;
+  chunksCompletedTotal: number;
+  chunksTotalKnown: number;
+  progressSecTotal: number;
+  estimatedDurationSecTotal: number;
+  anyPartialReady: boolean;
+} {
+  const members = getJobGroupMembers(groupId);
+  let chunksCompletedTotal = 0;
+  let chunksTotalKnown = 0;
+  let progressSecTotal = 0;
+  let estimatedDurationSecTotal = 0;
+  let anyPartialReady = false;
+  let totalKnown = 0;
+
+  for (const jobId of members) {
+    const progress = progressCache.get(jobId);
+    if (!progress) continue;
+    totalKnown++;
+    chunksCompletedTotal += progress.chunksCompleted;
+    chunksTotalKnown += progress.chunksTotal;
+    progressSecTotal += progress.progressSec;
+    estimatedDurationSecTotal += progress.estimatedDurationSec;
+    if (progress.status === 'partial_ready') anyPartialReady = true;
+  }
+
+  return {
+    totalKnown,
+    chunksCompletedTotal,
+    chunksTotalKnown,
+    progressSecTotal,
+    estimatedDurationSecTotal,
+    anyPartialReady,
+  };
 }
 
 /**
