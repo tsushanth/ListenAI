@@ -11,7 +11,7 @@ process.env.ORPHEUS_CLONE_SERVICE_URL = 'https://orpheus-clone.modal.run';
 process.env.ORPHEUS_CLONE_SECRET = 'test-modal-secret';
 process.env.NODE_ENV = 'test';
 
-const modalRequests: Array<{ method: string; url: string; authorization: string | null; body: string }> = [];
+const modalRequests: Array<{ method: string; url: string; authorization: string | null; owner: string | null; body: string }> = [];
 
 // When set, the next intercepted Modal call returns this raw binary body (with the given content-type)
 // instead of the default fake JSON response. Used to test that relayResponse preserves binary bytes.
@@ -30,7 +30,13 @@ function installFetchMock() {
     }
     const headers = (init?.headers as Record<string, string>) || {};
     const bodyText = typeof init?.body === 'string' ? init.body : init?.body ? Buffer.from(init.body as any).toString() : '';
-    modalRequests.push({ method: init?.method || 'GET', url, authorization: headers['authorization'] ?? null, body: bodyText });
+    modalRequests.push({
+      method: init?.method || 'GET',
+      url,
+      authorization: headers['authorization'] ?? null,
+      owner: headers['x-owner'] ?? null,
+      body: bodyText,
+    });
     if (nextModalBinaryResponse) {
       const { body, contentType } = nextModalBinaryResponse;
       nextModalBinaryResponse = null;
@@ -106,6 +112,7 @@ test('correct secret + x-gateway-uid -> POST / forwarded to Modal with bearer to
     assert.equal(modalRequests[0].method, 'POST');
     assert.equal(modalRequests[0].url, 'https://orpheus-clone.modal.run/v1/orpheus-voices');
     assert.equal(modalRequests[0].authorization, 'Bearer test-modal-secret');
+    assert.equal(modalRequests[0].owner, 'user-42');
     assert.equal(JSON.parse(modalRequests[0].body).speaker_name, 'Test Speaker');
   } finally {
     close();
@@ -126,6 +133,7 @@ test('correct secret -> GET /:vid forwarded to Modal detail path', async () => {
     assert.equal(res.status, 200);
     assert.equal(modalRequests[0].url, 'https://orpheus-clone.modal.run/v1/orpheus-voices/v-deadbeef00');
     assert.equal(modalRequests[0].authorization, 'Bearer test-modal-secret');
+    assert.equal(modalRequests[0].owner, 'user-42');
   } finally {
     close();
     uninstallFetchMock();
@@ -145,6 +153,7 @@ test('correct secret -> DELETE /:vid forwarded to Modal delete path', async () =
     assert.equal(res.status, 200);
     assert.equal(modalRequests[0].method, 'DELETE');
     assert.equal(modalRequests[0].url, 'https://orpheus-clone.modal.run/v1/orpheus-voices/v-deadbeef00');
+    assert.equal(modalRequests[0].owner, 'key-1');
   } finally {
     close();
     uninstallFetchMock();
@@ -195,6 +204,7 @@ test('correct secret -> POST /tts forwarded to Modal synthesis endpoint', async 
     assert.equal(modalRequests[0].method, 'POST');
     assert.equal(modalRequests[0].url, 'https://orpheus-clone.modal.run/v1/orpheus-tts');
     assert.equal(modalRequests[0].authorization, 'Bearer test-modal-secret');
+    assert.equal(modalRequests[0].owner, 'user-42');
     const sentBody = JSON.parse(modalRequests[0].body);
     assert.equal(sentBody.voice, 'v-deadbeef00');
     assert.equal(sentBody.text, 'hello world');
@@ -223,6 +233,80 @@ test('POST /tts relays binary PCM audio byte-for-byte, not corrupted by UTF-8 te
     assert.equal(res.headers.get('content-type'), 'audio/pcm');
     const receivedBuf = Buffer.from(await res.arrayBuffer());
     assert.deepEqual(receivedBuf, Buffer.from(pcmBytes), 'relayed body must be byte-for-byte identical to the Modal response');
+  } finally {
+    close();
+    uninstallFetchMock();
+  }
+});
+
+test('x-gateway-key-id only (no uid) -> Modal fetch carries X-Owner: key-1', async () => {
+  installFetchMock();
+  modalRequests.length = 0;
+  const { call, close } = await boot();
+  try {
+    const res = await call(
+      { 'x-gateway-admin-secret': 'test-forward-secret', 'x-gateway-key-id': 'key-1' },
+      'POST',
+      '/',
+      { speaker_name: 'Test Speaker' }
+    );
+    assert.equal(res.status, 200);
+    assert.equal(modalRequests[0].owner, 'key-1');
+  } finally {
+    close();
+    uninstallFetchMock();
+  }
+});
+
+test('malformed vid with path traversal -> 400, Modal never called', async () => {
+  installFetchMock();
+  modalRequests.length = 0;
+  const { call, close } = await boot();
+  try {
+    // "..%2F..%2Fadmin" URL-decodes to "../../admin" by the time it reaches req.params.vid.
+    const res = await call(
+      { 'x-gateway-admin-secret': 'test-forward-secret', 'x-gateway-uid': 'user-42' },
+      'GET',
+      '/..%2F..%2Fadmin'
+    );
+    assert.equal(res.status, 400);
+    assert.equal(modalRequests.length, 0);
+  } finally {
+    close();
+    uninstallFetchMock();
+  }
+});
+
+test('malformed vid with injected query string -> 400, Modal never called', async () => {
+  installFetchMock();
+  modalRequests.length = 0;
+  const { call, close } = await boot();
+  try {
+    const res = await call(
+      { 'x-gateway-admin-secret': 'test-forward-secret', 'x-gateway-uid': 'user-42' },
+      'DELETE',
+      '/v-1%3Fx%3D1'
+    );
+    assert.equal(res.status, 400);
+    assert.equal(modalRequests.length, 0);
+  } finally {
+    close();
+    uninstallFetchMock();
+  }
+});
+
+test('malformed vid on POST /:vid/dataset/commit -> 400, Modal never called', async () => {
+  installFetchMock();
+  modalRequests.length = 0;
+  const { call, close } = await boot();
+  try {
+    const res = await call(
+      { 'x-gateway-admin-secret': 'test-forward-secret', 'x-gateway-uid': 'user-42' },
+      'POST',
+      '/..%2F..%2Fadmin/dataset/commit'
+    );
+    assert.equal(res.status, 400);
+    assert.equal(modalRequests.length, 0);
   } finally {
     close();
     uninstallFetchMock();
