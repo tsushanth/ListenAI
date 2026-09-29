@@ -99,6 +99,87 @@ export function synthesize(opts: { url: string; token: string; text: string; voi
   })
 }
 
+// ============================================================================
+// Dubbing (v1)
+// ============================================================================
+//
+// OPEN QUESTION / KNOWN GAP: unlike text_to_speech (which exchanges the API
+// key for a session token via /tts/authorize, a route that already exists
+// on the gateway), there is no gateway route yet that accepts an API key and
+// forwards to the backend's Supabase-authed POST /api/dub. The calls below
+// assume a `/dub` and `/dub/:jobId` route will be added to the gateway that:
+//   1. validates `key` the same way /tts/authorize does, and
+//   2. forwards to the backend using the GATEWAY_FORWARD_SECRET +
+//      X-Gateway-Uid pattern routes/voiceStudioApiKey.ts already uses for
+//      the same key->Supabase-identity problem.
+// Until that gateway route exists, these calls will 404. This is called out
+// explicitly in the feature report as something to build before this MCP
+// tool is usable end to end.
+
+export interface DubSubmitResult { job_id: string; status: string }
+export interface DubStatusResult {
+  job_id: string
+  status: 'processing' | 'ready' | 'failed'
+  audio_url?: string
+  segments?: unknown[]
+  error?: string
+}
+
+export async function submitDub(opts: {
+  key: string
+  audioBase64: string
+  filename: string
+  targetLanguage: string
+  sourceLanguage?: string
+  voiceId?: string
+}): Promise<DubSubmitResult> {
+  let r: Response
+  try {
+    r = await fetch(`${GATEWAY}/dub`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        key: opts.key,
+        audio_base64: opts.audioBase64,
+        filename: opts.filename,
+        target_language: opts.targetLanguage,
+        source_language: opts.sourceLanguage,
+        voice_id: opts.voiceId,
+      }),
+      cache: 'no-store',
+      signal: AbortSignal.timeout(30_000),
+    })
+  } catch {
+    throw new UpstreamError('upstream', 'Could not reach the ReadAloud AI API. Try again shortly.', true)
+  }
+  if (r.status === 401) throw new UpstreamError('unauthorized', 'Invalid or revoked API key.')
+  if (r.status === 402) throw new UpstreamError('payment_required', 'This key has used up its free characters.')
+  if (r.status === 429) throw new UpstreamError('rate_limited', 'The API is rate limiting this key. Wait a moment and retry.', true)
+  if (r.status === 404) throw new UpstreamError('upstream', 'Dubbing is not available yet on this deployment.', false)
+  if (!r.ok) throw new UpstreamError('upstream', `The ReadAloud AI API returned ${r.status}.`, r.status >= 500)
+  const body = (await r.json().catch(() => null)) as DubSubmitResult | null
+  if (!body?.job_id) throw new UpstreamError('upstream', 'Unexpected response from the ReadAloud AI API.', true)
+  return body
+}
+
+export async function getDubStatus(key: string, jobId: string): Promise<DubStatusResult> {
+  let r: Response
+  try {
+    r = await fetch(`${GATEWAY}/dub/${encodeURIComponent(jobId)}?key=${encodeURIComponent(key)}`, {
+      cache: 'no-store',
+      signal: AbortSignal.timeout(10_000),
+    })
+  } catch {
+    throw new UpstreamError('upstream', 'Could not reach the ReadAloud AI API. Try again shortly.', true)
+  }
+  if (r.status === 401) throw new UpstreamError('unauthorized', 'Invalid or revoked API key.')
+  if (r.status === 404) throw new UpstreamError('upstream', 'Dubbing job not found (it may have expired).', false)
+  if (!r.ok) throw new UpstreamError('upstream', `The ReadAloud AI API returned ${r.status}.`, r.status >= 500)
+  const body = (await r.json().catch(() => null)) as DubStatusResult | null
+  if (!body?.job_id || !body.status) throw new UpstreamError('upstream', 'Unexpected response from the ReadAloud AI API.', true)
+  return body
+}
+
 export async function fetchPiperHealth(): Promise<{ active: number; max: number; device?: string; status?: string } | null> {
   try {
     const r = await fetch('https://piper-tts-sjc.fly.dev/health', { cache: 'no-store', signal: AbortSignal.timeout(5000) })

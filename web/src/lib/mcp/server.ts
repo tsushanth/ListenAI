@@ -1,9 +1,9 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js'
 import { SlidingWindowLimiter } from './ratelimit.ts'
-import { MAX_AUDIO_SECONDS, listVoicesInput, textToSpeechInput, textToSpeechSchema, MAX_TEXT_CHARS } from './schemas.ts'
+import { MAX_AUDIO_SECONDS, listVoicesInput, textToSpeechInput, textToSpeechSchema, MAX_TEXT_CHARS, dubAudioInput, dubAudioSchema, dubStatusInput, dubStatusSchema, MAX_DUB_AUDIO_BYTES } from './schemas.ts'
 import { KOKORO_VOICES, PIPER_VOICES, resolveVoice } from './voices.ts'
-import { UpstreamError, authorize, fetchPiperHealth, synthesize, type ErrorCode } from './upstream.ts'
+import { UpstreamError, authorize, fetchPiperHealth, synthesize, submitDub, getDubStatus, type ErrorCode } from './upstream.ts'
 import { pcm16ToWav, pcmDurationSeconds } from './wav.ts'
 
 // 15 speech calls per minute per API key (per server instance).
@@ -25,7 +25,7 @@ function toolError(code: ErrorCode, message: string, retryable: boolean): CallTo
 
 export function createMcpServer(ctx: RequestContext): McpServer {
   const server = new McpServer({ name: 'readaloud-ai', version: '1.0.0' }, {
-    instructions: 'ReadAloud AI text-to-speech. Use text_to_speech to turn short text into a WAV audio clip. Use list_voices before picking a non-default voice.',
+    instructions: 'ReadAloud AI text-to-speech and dubbing. Use text_to_speech to turn short text into a WAV audio clip. Use list_voices before picking a non-default voice. Use dub_audio to re-voice a spoken audio clip into another language (audio in, audio out — no video), then get_dub_status to poll for the result.',
   })
 
   server.registerTool('text_to_speech', {
@@ -88,6 +88,74 @@ export function createMcpServer(ctx: RequestContext): McpServer {
       kokoro: { status: 'not reported', note: 'Runs on a GPU worker that can need a few extra seconds to wake after idle.' },
     }
     return { content: [{ type: 'text', text: JSON.stringify(out, null, 2) }], structuredContent: out }
+  })
+
+  server.registerTool('dub_audio', {
+    title: 'Dub audio into another language',
+    description:
+      `Submit a short spoken-audio clip to be re-voiced in another language: transcribes it, translates each segment, and ` +
+      `synthesizes the translation with roughly the same segment timing as the source (speed-matched per segment, not true forced ` +
+      `alignment). Audio in, audio out only — no video muxing or subtitles. Returns a job_id immediately; call get_dub_status to poll ` +
+      `for the result. This is NOT voice cloning: the dub uses a standard voice, not the original speaker's voice, unless you already ` +
+      `have a cloned voice_id. Errors are returned with a code: capacity (temporary, retry), payment_required, rate_limited (wait).`,
+    inputSchema: dubAudioInput,
+    annotations: { title: 'Dub audio', readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
+  }, async (args): Promise<CallToolResult> => {
+    const parsed = dubAudioSchema.parse(args)
+    const rl = keyLimiter.check(ctx.keyId)
+    if (!rl.ok) return toolError('rate_limited', `Too many requests for this key. Try again in ${rl.retryAfterSec} s.`, true)
+
+    const decodedBytes = Math.floor((parsed.audio_base64.length * 3) / 4)
+    if (decodedBytes > MAX_DUB_AUDIO_BYTES) {
+      return toolError('invalid_input', `Decoded audio is too large (~${Math.round(decodedBytes / 1024 / 1024)} MB, max ${Math.round(MAX_DUB_AUDIO_BYTES / 1024 / 1024)} MB).`, false)
+    }
+
+    try {
+      const result = await submitDub({
+        key: ctx.apiKey,
+        audioBase64: parsed.audio_base64,
+        filename: parsed.filename,
+        targetLanguage: parsed.target_language,
+        sourceLanguage: parsed.source_language,
+        voiceId: parsed.voice_id,
+      })
+      return {
+        content: [
+          { type: 'text', text: `Dubbing job submitted: ${result.job_id} (status: ${result.status}). Call get_dub_status with this job_id to check progress and get the result.` },
+        ],
+        structuredContent: { ...result },
+      }
+    } catch (e) {
+      if (e instanceof UpstreamError) {
+        if (e.code === 'unauthorized') ctx.authFailed = true
+        return toolError(e.code, e.message, e.retryable)
+      }
+      return toolError('upstream', 'Unexpected error while submitting the dubbing job.', true)
+    }
+  })
+
+  server.registerTool('get_dub_status', {
+    title: 'Get dubbing job status',
+    description: 'Poll a dubbing job started by dub_audio. Returns "processing", "ready" (with an audio_url to download), or "failed" (with an error message).',
+    inputSchema: dubStatusInput,
+    annotations: { title: 'Get dubbing job status', readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+  }, async (args): Promise<CallToolResult> => {
+    const parsed = dubStatusSchema.parse(args)
+    try {
+      const result = await getDubStatus(ctx.apiKey, parsed.job_id)
+      const summary = result.status === 'ready'
+        ? `Dub ready: ${result.audio_url}`
+        : result.status === 'failed'
+          ? `Dub failed: ${result.error ?? 'unknown error'}`
+          : 'Dub still processing.'
+      return { content: [{ type: 'text', text: summary }], structuredContent: { ...result } }
+    } catch (e) {
+      if (e instanceof UpstreamError) {
+        if (e.code === 'unauthorized') ctx.authFailed = true
+        return toolError(e.code, e.message, e.retryable)
+      }
+      return toolError('upstream', 'Unexpected error while checking the dubbing job.', true)
+    }
   })
 
   return server

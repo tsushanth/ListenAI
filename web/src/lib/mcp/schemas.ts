@@ -22,3 +22,31 @@ export const listVoicesInput = {
   engine: engineSchema.optional().describe('Only list voices for this engine. Omit to list both.'),
 }
 export const listVoicesSchema = z.object(listVoicesInput)
+
+// ============================================================================
+// Dubbing (v1: audio-in / audio-out re-voicing, no video)
+// ============================================================================
+
+// Base64-encoded audio keeps this a plain JSON tool call. Real dubbing jobs
+// (minutes of audio) will be sizeable base64 payloads — MAX_DUB_AUDIO_BYTES
+// caps the decoded size, checked server-side before forwarding upstream.
+export const MAX_DUB_AUDIO_BYTES = 25 * 1024 * 1024 // 25 MB decoded
+
+export const dubAudioInput = {
+  audio_base64: z.string().min(1)
+    .describe('Source audio, base64-encoded (wav, mp3, m4a, ogg, or flac). Up to ~25 MB decoded.'),
+  filename: z.string().max(200).default('source-audio.mp3')
+    .describe('Original filename, used only to infer the audio format.'),
+  target_language: z.string().min(2).max(40)
+    .describe('Language to dub INTO, e.g. "Spanish" or "es".'),
+  source_language: z.string().min(2).max(10).optional()
+    .describe('Language the source audio is in, e.g. "en". Omit to let the transcriber auto-detect.'),
+  voice_id: z.string().min(1).max(100).optional()
+    .describe('Kokoro voice id to speak the dub in. Omit for the default voice — this is not voice cloning; the dub will not sound like the original speaker.'),
+}
+export const dubAudioSchema = z.object(dubAudioInput)
+
+export const dubStatusInput = {
+  job_id: z.string().min(1).describe('The job_id returned by dub_audio.'),
+}
+export const dubStatusSchema = z.object(dubStatusInput)
