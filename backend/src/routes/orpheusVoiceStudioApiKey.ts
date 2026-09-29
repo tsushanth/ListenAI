@@ -54,9 +54,9 @@ function serviceSecret(): string {
 
 /** Forward the Modal response's status/body straight through to our caller (the gateway). */
 async function relayResponse(res: Response, upstream: globalThis.Response) {
-  const text = await upstream.text();
+  const buf = Buffer.from(await upstream.arrayBuffer());
   const contentType = upstream.headers.get('content-type') || 'application/json';
-  res.status(upstream.status).set('content-type', contentType).send(text);
+  res.status(upstream.status).set('content-type', contentType).send(buf);
 }
 
 router.post('/', requireGatewayAuth, async (req: Request, res: Response) => {

@@ -13,6 +13,10 @@ process.env.NODE_ENV = 'test';
 
 const modalRequests: Array<{ method: string; url: string; authorization: string | null; body: string }> = [];
 
+// When set, the next intercepted Modal call returns this raw binary body (with the given content-type)
+// instead of the default fake JSON response. Used to test that relayResponse preserves binary bytes.
+let nextModalBinaryResponse: { body: Uint8Array; contentType: string } | null = null;
+
 let originalFetch: typeof globalThis.fetch;
 
 function installFetchMock() {
@@ -27,6 +31,11 @@ function installFetchMock() {
     const headers = (init?.headers as Record<string, string>) || {};
     const bodyText = typeof init?.body === 'string' ? init.body : init?.body ? Buffer.from(init.body as any).toString() : '';
     modalRequests.push({ method: init?.method || 'GET', url, authorization: headers['authorization'] ?? null, body: bodyText });
+    if (nextModalBinaryResponse) {
+      const { body, contentType } = nextModalBinaryResponse;
+      nextModalBinaryResponse = null;
+      return new Response(body, { status: 200, headers: { 'Content-Type': contentType } });
+    }
     return new Response(JSON.stringify({ ok: true, url }), { status: 200, headers: { 'Content-Type': 'application/json' } });
   };
 }
@@ -189,6 +198,31 @@ test('correct secret -> POST /tts forwarded to Modal synthesis endpoint', async 
     const sentBody = JSON.parse(modalRequests[0].body);
     assert.equal(sentBody.voice, 'v-deadbeef00');
     assert.equal(sentBody.text, 'hello world');
+  } finally {
+    close();
+    uninstallFetchMock();
+  }
+});
+
+test('POST /tts relays binary PCM audio byte-for-byte, not corrupted by UTF-8 text decoding', async () => {
+  installFetchMock();
+  modalRequests.length = 0;
+  // Bytes 0xff, 0xfe, 0x80 are invalid on their own as UTF-8 continuation/lead bytes; a `.text()`
+  // round-trip through relayResponse would replace them with U+FFFD and corrupt the payload.
+  const pcmBytes = Uint8Array.from([0xff, 0xfe, 0x00, 0x01, 0x80]);
+  nextModalBinaryResponse = { body: pcmBytes, contentType: 'audio/pcm' };
+  const { call, close } = await boot();
+  try {
+    const res = await call(
+      { 'x-gateway-admin-secret': 'test-forward-secret', 'x-gateway-uid': 'user-42' },
+      'POST',
+      '/tts',
+      { voice: 'v-deadbeef00', text: 'hello world' }
+    );
+    assert.equal(res.status, 200);
+    assert.equal(res.headers.get('content-type'), 'audio/pcm');
+    const receivedBuf = Buffer.from(await res.arrayBuffer());
+    assert.deepEqual(receivedBuf, Buffer.from(pcmBytes), 'relayed body must be byte-for-byte identical to the Modal response');
   } finally {
     close();
     uninstallFetchMock();
