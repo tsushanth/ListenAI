@@ -34,6 +34,7 @@ import { voiceDesignRouter } from './routes/voiceDesign.js';
 import { voiceConvertRouter } from './routes/voiceConvert.js';
 import { voiceCloneRouter } from './routes/voiceClone.js';
 import { voiceStudioApiKeyRouter } from './routes/voiceStudioApiKey.js';
+import { orpheusVoiceStudioApiKeyRouter } from './routes/orpheusVoiceStudioApiKey.js';
 import { aggregateLatencyMetrics, checkSupabaseHealth, checkStorageHealth } from './lib/supabaseClient.js';
 import { startWorker, stopWorker } from './workers/ttsJobWorker.js';
 import { checkPubSubHealth } from './lib/pubsub.js';
@@ -237,6 +238,11 @@ app.use('/api/voice-studio', voiceStudioRouter);
 // (realtime-tts-gateway proxies /v1/voices here after validating the key) — see routes/voiceStudioApiKey.ts.
 // Not behind requireAuth/standardRateLimit: it does its own shared-secret check and its own rate limiting.
 app.use('/internal/voice-studio-api', voiceStudioApiKeyRouter);
+
+// Orpheus streaming voice cloning: same gateway-trusted pattern as voice-studio-api above, but a plain
+// direct router (no createVoiceStudioRouter factory) proxying to the Modal training/serving service —
+// there is no web UI for this feature yet to share logic with. See routes/orpheusVoiceStudioApiKey.ts.
+app.use('/internal/orpheus-clone-api', orpheusVoiceStudioApiKeyRouter);
 
 // Voice marketplace routes - for sharing and discovering cloned voices
 app.use('/api/marketplace', voiceMarketplaceRouter);
