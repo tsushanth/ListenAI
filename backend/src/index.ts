@@ -8,6 +8,7 @@ import { config } from './lib/config.js';
 import { logger } from './lib/logger.js';
 
 import { requireAuth } from './middleware/auth.js';
+import { requireAuthOrApiKey } from './middleware/apiKeyAuth.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 import { standardRateLimit, ttsRateLimitByTier, previewRateLimit, burstRateLimit, jobPollingRateLimit, realtimeTtsAuthorizeRateLimit } from './middleware/rateLimit.js';
 
@@ -232,7 +233,7 @@ app.use('/api/voice-design', voiceDesignRouter);
 app.use('/api/voice-convert', voiceConvertRouter);
 // Voice clone — XTTS v2 instant voice cloning (dark unless XTTS_CLONE_URL is configured)
 app.use('/api/voice-clone', voiceCloneRouter);
-app.use('/api/stt', sttRouter);
+app.use('/api/stt', requireAuthOrApiKey, sttRouter);
 // strict Supabase auth like the API-key routes above.
 app.use('/api/voice-studio', voiceStudioRouter);
 

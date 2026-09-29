@@ -102,6 +102,26 @@ async function callWorker(opts: {
 // Helpers
 // --------------------------------------------------------------------------
 
+// backend/src/index.ts now mounts this router behind requireAuthOrApiKey
+// (middleware/apiKeyAuth.ts), which resolves either a real Supabase JWT or a
+// gateway-forwarded API-key identity and sets req.userId before this router
+// ever runs. The `cached` read below is what makes that resolution take effect
+// here with zero other changes to this file: requireUser() already preferred
+// req.userId over its own JWT check, so requireAuthOrApiKey's identity just
+// short-circuits it. The inline JWT fallback stays so this route still works
+// standalone (e.g. in tests) if ever mounted without the middleware.
+//
+// Billing note (still accurate after this change): even if a caller reaches
+// this route via the gateway-forwarded-identity branch, isBillingActiveForUser
+// below is checked against *that resolved user's* realtimetts_billing row, and
+// reportSttUsage (see realtimeTtsBilling.ts) bills that same real user's
+// Stripe subscription. STT_API_KEY (used inside authorizeStt() above to talk
+// to the gateway/worker) is a separate, house-owned key with no
+// realtimetts_billing row of its own — its own gateway-side usage drain is
+// intentionally dropped by reportUsageToStripe's "no owning user record"
+// branch, so it is never double-billed against a real customer. That analysis
+// does not depend on which auth branch resolved req.userId, so it is
+// unaffected by this middleware change.
 async function requireUser(req: Request, res: Response): Promise<string | null> {
   const cached = (req as Request & { userId?: string }).userId;
   if (cached) return cached;
