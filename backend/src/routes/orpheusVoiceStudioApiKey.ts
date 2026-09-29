@@ -131,4 +131,20 @@ router.delete('/:vid', requireGatewayAuth, async (req: Request, res: Response) =
   }
 });
 
+router.post('/tts', requireGatewayAuth, async (req: Request, res: Response) => {
+  try {
+    const upstream = await fetch(`${serviceUrl()}/v1/orpheus-tts`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        authorization: `Bearer ${serviceSecret()}`,
+      },
+      body: JSON.stringify(req.body ?? {}),
+    });
+    await relayResponse(res, upstream);
+  } catch {
+    res.status(502).json({ error: 'orpheus clone service unavailable' });
+  }
+});
+
 export const orpheusVoiceStudioApiKeyRouter = router;

@@ -156,6 +156,45 @@ test('correct secret but no identity headers -> 401, Modal never called', async 
   }
 });
 
+test('unauthenticated POST /tts -> 401, Modal never called', async () => {
+  installFetchMock();
+  modalRequests.length = 0;
+  const { call, close } = await boot();
+  try {
+    const res = await call({}, 'POST', '/tts', { voice: 'v-deadbeef00', text: 'hello world' });
+    assert.equal(res.status, 401);
+    assert.equal(modalRequests.length, 0);
+  } finally {
+    close();
+    uninstallFetchMock();
+  }
+});
+
+test('correct secret -> POST /tts forwarded to Modal synthesis endpoint', async () => {
+  installFetchMock();
+  modalRequests.length = 0;
+  const { call, close } = await boot();
+  try {
+    const res = await call(
+      { 'x-gateway-admin-secret': 'test-forward-secret', 'x-gateway-uid': 'user-42' },
+      'POST',
+      '/tts',
+      { voice: 'v-deadbeef00', text: 'hello world' }
+    );
+    assert.equal(res.status, 200);
+    assert.equal(modalRequests.length, 1);
+    assert.equal(modalRequests[0].method, 'POST');
+    assert.equal(modalRequests[0].url, 'https://orpheus-clone.modal.run/v1/orpheus-tts');
+    assert.equal(modalRequests[0].authorization, 'Bearer test-modal-secret');
+    const sentBody = JSON.parse(modalRequests[0].body);
+    assert.equal(sentBody.voice, 'v-deadbeef00');
+    assert.equal(sentBody.text, 'hello world');
+  } finally {
+    close();
+    uninstallFetchMock();
+  }
+});
+
 test('unauthenticated PUT /:vid/dataset -> 401, Modal never called (auth before body parse)', async () => {
   installFetchMock();
   modalRequests.length = 0;
