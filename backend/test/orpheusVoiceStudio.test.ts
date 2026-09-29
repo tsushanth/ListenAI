@@ -29,6 +29,31 @@ mock.module('../src/lib/auth.js', {
   },
 });
 
+// Billing: default every user to an active subscription so the pre-existing tests above (written before
+// the billing gate existed) keep exercising the happy path unchanged. Tests that need inactive billing or
+// a charge/usage-report failure flip `billingActive`/`chargeShouldFail`/`usageReportShouldFail` for the
+// duration of that one test and reset them in `finally`.
+export let billingActive = true;
+export let chargeShouldFail = false;
+export let usageReportShouldFail = false;
+export const chargeCalls: string[] = [];
+export const usageReportCalls: Array<{ userId: string; charCount: number }> = [];
+
+mock.module('../src/lib/realtimeTtsBilling.js', {
+  namedExports: {
+    isBillingActiveForUser: async (_userId: string) => billingActive,
+    chargeForVoiceClone: async (identity: string) => {
+      chargeCalls.push(identity);
+      if (chargeShouldFail) return { success: false, error: 'Stripe error' };
+      return { success: true, invoiceItemId: 'ii_test' };
+    },
+    reportTtsUsage: async (userId: string, charCount: number) => {
+      usageReportCalls.push({ userId, charCount });
+      if (usageReportShouldFail) throw new Error('Stripe meter event failed');
+    },
+  },
+});
+
 process.env.SUPABASE_URL ??= 'http://localhost:54321';
 process.env.SUPABASE_SERVICE_ROLE_KEY ??= 'test';
 process.env.SUPABASE_JWT_SECRET ??= 'test';
@@ -268,6 +293,177 @@ test('unauthenticated PUT /:vid/dataset -> 401, Modal never called (auth before 
     assert.equal(res.status, 401);
     assert.equal(modalRequests.length, 0, 'Modal should not be called for unauthenticated requests');
   } finally {
+    close();
+    uninstallFetchMock();
+  }
+});
+
+test('billing inactive -> POST / returns 402, Modal never called', async () => {
+  installFetchMock();
+  modalRequests.length = 0;
+  billingActive = false;
+  const { call, close } = await boot();
+  try {
+    const res = await call(AUTH, 'POST', '/', { speaker_name: 'Test' });
+    assert.equal(res.status, 402);
+    assert.deepEqual(await res.json(), { error: 'Voice cloning requires an active TTS subscription.' });
+    assert.equal(modalRequests.length, 0);
+  } finally {
+    billingActive = true;
+    close();
+    uninstallFetchMock();
+  }
+});
+
+test('billing inactive -> PUT /:vid/dataset returns 402, Modal never called', async () => {
+  installFetchMock();
+  modalRequests.length = 0;
+  billingActive = false;
+  const { call, close } = await boot();
+  try {
+    const res = await call(AUTH, 'PUT', '/v-deadbeef00/dataset', { some: 'zip' });
+    assert.equal(res.status, 402);
+    assert.equal(modalRequests.length, 0);
+  } finally {
+    billingActive = true;
+    close();
+    uninstallFetchMock();
+  }
+});
+
+test('billing inactive -> POST /:vid/dataset/commit returns 402, Modal never called, no charge', async () => {
+  installFetchMock();
+  modalRequests.length = 0;
+  chargeCalls.length = 0;
+  billingActive = false;
+  const { call, close } = await boot();
+  try {
+    const res = await call(AUTH, 'POST', '/v-deadbeef00/dataset/commit', {});
+    assert.equal(res.status, 402);
+    assert.equal(modalRequests.length, 0);
+    assert.equal(chargeCalls.length, 0);
+  } finally {
+    billingActive = true;
+    close();
+    uninstallFetchMock();
+  }
+});
+
+test('billing inactive -> POST /tts returns 402, Modal never called, no usage report', async () => {
+  installFetchMock();
+  modalRequests.length = 0;
+  usageReportCalls.length = 0;
+  billingActive = false;
+  const { call, close } = await boot();
+  try {
+    const res = await call(AUTH, 'POST', '/tts', { voice: 'v-deadbeef00', text: 'hello world' });
+    assert.equal(res.status, 402);
+    assert.equal(modalRequests.length, 0);
+    assert.equal(usageReportCalls.length, 0);
+  } finally {
+    billingActive = true;
+    close();
+    uninstallFetchMock();
+  }
+});
+
+test('billing active -> GET /:vid still works (status endpoint is never gated)', async () => {
+  installFetchMock();
+  modalRequests.length = 0;
+  billingActive = false; // inactive billing must not block status
+  const { call, close } = await boot();
+  try {
+    const res = await call(AUTH, 'GET', '/v-deadbeef00');
+    assert.equal(res.status, 200);
+    assert.equal(modalRequests.length, 1);
+  } finally {
+    billingActive = true;
+    close();
+    uninstallFetchMock();
+  }
+});
+
+test('billing inactive -> DELETE /:vid still works (delete endpoint is never gated)', async () => {
+  installFetchMock();
+  modalRequests.length = 0;
+  billingActive = false; // inactive billing must not block delete
+  const { call, close } = await boot();
+  try {
+    const res = await call(AUTH, 'DELETE', '/v-deadbeef00');
+    assert.equal(res.status, 200);
+    assert.equal(modalRequests.length, 1);
+  } finally {
+    billingActive = true;
+    close();
+    uninstallFetchMock();
+  }
+});
+
+test('successful dataset commit charges $2.50 via chargeForVoiceClone for the session owner', async () => {
+  installFetchMock();
+  modalRequests.length = 0;
+  chargeCalls.length = 0;
+  const { call, close } = await boot();
+  try {
+    const res = await call(AUTH, 'POST', '/v-deadbeef00/dataset/commit', {});
+    assert.equal(res.status, 200);
+    assert.equal(modalRequests.length, 1);
+    // chargeForVoiceClone is fire-and-forget after the response; give its .catch() a tick.
+    await new Promise((r) => setTimeout(r, 10));
+    assert.deepEqual(chargeCalls, ['user-42']);
+  } finally {
+    close();
+    uninstallFetchMock();
+  }
+});
+
+test('charge failure does not block or fail the dataset commit response', async () => {
+  installFetchMock();
+  modalRequests.length = 0;
+  chargeCalls.length = 0;
+  chargeShouldFail = true;
+  const { call, close } = await boot();
+  try {
+    const res = await call(AUTH, 'POST', '/v-deadbeef00/dataset/commit', {});
+    assert.equal(res.status, 200);
+    await new Promise((r) => setTimeout(r, 10));
+    assert.deepEqual(chargeCalls, ['user-42']);
+  } finally {
+    chargeShouldFail = false;
+    close();
+    uninstallFetchMock();
+  }
+});
+
+test('successful synthesis reports usage via reportTtsUsage with the synthesized character count', async () => {
+  installFetchMock();
+  modalRequests.length = 0;
+  usageReportCalls.length = 0;
+  const { call, close } = await boot();
+  try {
+    const res = await call(AUTH, 'POST', '/tts', { voice: 'v-deadbeef00', text: 'hello world' });
+    assert.equal(res.status, 200);
+    await new Promise((r) => setTimeout(r, 10));
+    assert.deepEqual(usageReportCalls, [{ userId: 'user-42', charCount: 'hello world'.length }]);
+  } finally {
+    close();
+    uninstallFetchMock();
+  }
+});
+
+test('usage-report failure does not block or fail the synthesis response', async () => {
+  installFetchMock();
+  modalRequests.length = 0;
+  usageReportCalls.length = 0;
+  usageReportShouldFail = true;
+  const { call, close } = await boot();
+  try {
+    const res = await call(AUTH, 'POST', '/tts', { voice: 'v-deadbeef00', text: 'hello world' });
+    assert.equal(res.status, 200);
+    await new Promise((r) => setTimeout(r, 10));
+    assert.equal(usageReportCalls.length, 1);
+  } finally {
+    usageReportShouldFail = false;
     close();
     uninstallFetchMock();
   }

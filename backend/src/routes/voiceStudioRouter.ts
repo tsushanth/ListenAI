@@ -58,6 +58,15 @@ export interface VoiceStudioDeps {
   /** Called after a voice dataset is successfully committed (training starts). Best-effort:
    *  errors are logged but do not fail the request. Return true on success, false otherwise. */
   onCommitSuccess?: (userId: string, voiceId: string) => Promise<boolean>;
+  /** Gates voice creation (POST /) and starting training (POST /:id/dataset/commit) on an active TTS
+   * subscription. When omitted, no gate is applied (used by the API-key flow, which meters/charges
+   * instead of hard-gating — see voiceStudioApiKey.ts's onCommitSuccess comment). When present and it
+   * resolves false, the request is rejected with 402 in the same shape voiceClone.ts uses. */
+  requireActiveBilling?: (userId: string) => Promise<boolean>;
+  /** Reports synthesis usage for a successful /:id/preview call. Fire-and-forget: never awaited into
+   * the response, and a failure here must never affect the response already sent. Optional — when
+   * omitted, preview usage isn't reported (used by the API-key flow). */
+  reportTtsUsage?: (userId: string, charCount: number) => Promise<void>;
 }
 
 type Authed = Request & { studioUserId?: string };
@@ -147,6 +156,10 @@ export function createVoiceStudioRouter(deps: VoiceStudioDeps): Router {
   }));
 
   r.post('/', limiter(lim.create), express.json({ limit: '16kb' }), wrap(async (req, res) => {
+    if (deps.requireActiveBilling && !(await deps.requireActiveBilling(req.studioUserId!))) {
+      res.status(402).json({ error: 'Voice cloning requires an active TTS subscription.' });
+      return;
+    }
     const b = (req.body ?? {}) as Record<string, unknown>;
     const speaker = clean(b.speaker_name, 100);
     const attestedBy = clean(b.attested_by, 100);
@@ -200,6 +213,10 @@ export function createVoiceStudioRouter(deps: VoiceStudioDeps): Router {
   }));
 
   r.post('/:id/dataset/commit', express.json({ limit: '4kb' }), wrap(async (req, res) => {
+    if (deps.requireActiveBilling && !(await deps.requireActiveBilling(req.studioUserId!))) {
+      res.status(402).json({ error: 'Voice cloning requires an active TTS subscription.' });
+      return;
+    }
     const v = await owned(req, res, req.params.id!);
     if (!v) return;
     if (v.status !== 'created') { res.status(409).json({ error: 'Recordings were already uploaded for this voice.' }); return; }
@@ -232,7 +249,13 @@ export function createVoiceStudioRouter(deps: VoiceStudioDeps): Router {
     const v = await owned(req, res, req.params.id!);
     if (!v) return;
     if (v.status !== 'ready' && v.status !== 'deployed') { res.status(409).json({ error: 'The voice is not trained yet.' }); return; }
-    res.set({ 'Content-Type': 'audio/wav', 'Cache-Control': 'no-store' }).send(await deps.intake.preview(req.params.id!, text));
+    const wav = await deps.intake.preview(req.params.id!, text);
+    res.set({ 'Content-Type': 'audio/wav', 'Cache-Control': 'no-store' }).send(wav);
+    if (deps.reportTtsUsage) {
+      deps.reportTtsUsage(req.studioUserId!, text.length).catch((e) =>
+        deps.log?.warn?.({ e, voiceId: req.params.id }, 'TTS usage report failed (non-critical)')
+      );
+    }
   }));
 
   r.post('/:id/deploy', wrap(async (req, res) => {

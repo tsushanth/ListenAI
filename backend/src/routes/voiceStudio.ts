@@ -6,6 +6,7 @@ import { logger } from '../lib/logger.js';
 import { createIntakeClient } from '../lib/voiceIntakeClient.js';
 import { listApiKeysForUser } from '../lib/ttsApiKeys.js';
 import { setGatewayKeyOwner } from '../lib/ttsGatewayClient.js';
+import { isBillingActiveForUser, chargeForVoiceClone, reportTtsUsage } from '../lib/realtimeTtsBilling.js';
 import { createVoiceStudioRouter } from './voiceStudioRouter.js';
 
 const log = logger.child({ module: 'voiceStudio' });
@@ -25,5 +26,19 @@ export const voiceStudioRouter = createVoiceStudioRouter({
     const keys = await listApiKeysForUser(userId);
     await Promise.all(keys.filter((k) => !k.revoked_at).map((k) => setGatewayKeyOwner(k.gateway_key_id, userId)));
   },
+  // Web flow only (unlike the API-key flow in voiceStudioApiKey.ts, which meters/charges via
+  // onCommitSuccess without a hard gate): require an active TTS subscription to create a voice or
+  // start training, matching voiceClone.ts's isBillingActiveForUser -> 402 pattern exactly.
+  requireActiveBilling: isBillingActiveForUser,
+  // Charge $2.50 for training at the moment the dataset is committed. Best-effort: chargeForVoiceClone
+  // never throws (it returns { success: false } on failure), so this can't fail the commit response.
+  onCommitSuccess: async (userId, voiceId) => {
+    const result = await chargeForVoiceClone(userId);
+    if (!result.success) {
+      log.warn({ userId, voiceId, error: result.error }, 'Voice clone billing failed — committed anyway');
+    }
+    return result.success;
+  },
+  reportTtsUsage,
   log,
 });

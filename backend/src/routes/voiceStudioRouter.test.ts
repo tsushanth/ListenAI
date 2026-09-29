@@ -207,3 +207,113 @@ test('rate limit on creation is per user', async () => {
   assert.equal((await s.call('user-b', 'POST', '/', consent)).status, 201);
   s.close();
 });
+
+// --------------------------------------------------------------------------
+// Billing gate / charge / usage-report deps (added for the web flow, wired for real in
+// routes/voiceStudio.ts via lib/realtimeTtsBilling.ts's isBillingActiveForUser/chargeForVoiceClone/
+// reportTtsUsage). These deps are optional so the API-key flow (voiceStudioApiKey.ts), which doesn't
+// pass them, keeps its existing meter-but-don't-gate behavior unchanged.
+// --------------------------------------------------------------------------
+
+test('billing inactive -> POST / (create) returns 402 in voiceClone.ts\'s exact error shape, intake never called', async () => {
+  const s = await boot({ requireActiveBilling: async () => false });
+  const r = await s.call('user-a', 'POST', '/', consent);
+  assert.equal(r.status, 402);
+  assert.deepEqual(await r.json(), { error: 'Voice cloning requires an active TTS subscription.' });
+  assert.equal(s.f.calls.includes('create'), false);
+  s.close();
+});
+
+test('billing inactive -> POST /:id/dataset/commit returns 402, intake.commit never called, no charge', async () => {
+  const chargeCalls: string[] = [];
+  let billingActive = true;
+  const s = await boot({
+    requireActiveBilling: async () => billingActive,
+    onCommitSuccess: async (userId) => { chargeCalls.push(userId); return true; },
+  });
+  const { id } = (await (await s.call('user-a', 'POST', '/', consent)).json()) as { id: string };
+  await s.call('user-a', 'PUT', `/${id}/dataset/parts/0`, undefined, Buffer.alloc(10));
+  billingActive = false;
+  const r = await s.call('user-a', 'POST', `/${id}/dataset/commit`, { parts: 1 });
+  assert.equal(r.status, 402);
+  assert.equal(s.f.calls.includes('commit'), false);
+  assert.equal(chargeCalls.length, 0);
+  s.close();
+});
+
+test('billing active -> create and commit proceed normally, and commit charges via onCommitSuccess', async () => {
+  const chargeCalls: Array<{ userId: string; voiceId: string }> = [];
+  const s = await boot({
+    requireActiveBilling: async () => true,
+    onCommitSuccess: async (userId, voiceId) => { chargeCalls.push({ userId, voiceId }); return true; },
+  });
+  const { id } = (await (await s.call('user-a', 'POST', '/', consent)).json()) as { id: string };
+  await s.call('user-a', 'PUT', `/${id}/dataset/parts/0`, undefined, Buffer.alloc(10));
+  const r = await s.call('user-a', 'POST', `/${id}/dataset/commit`, { parts: 1 });
+  assert.equal(r.status, 202);
+  await new Promise((res) => setTimeout(res, 10)); // onCommitSuccess is fire-and-forget after the response
+  assert.deepEqual(chargeCalls, [{ userId: 'user-a', voiceId: id }]);
+  s.close();
+});
+
+test('charge failure (onCommitSuccess resolves false, or throws) does not block or fail the commit response', async () => {
+  const s = await boot({
+    requireActiveBilling: async () => true,
+    onCommitSuccess: async () => { throw new Error('Stripe down'); },
+  });
+  const { id } = (await (await s.call('user-a', 'POST', '/', consent)).json()) as { id: string };
+  await s.call('user-a', 'PUT', `/${id}/dataset/parts/0`, undefined, Buffer.alloc(10));
+  const r = await s.call('user-a', 'POST', `/${id}/dataset/commit`, { parts: 1 });
+  assert.equal(r.status, 202);
+  assert.deepEqual(await r.json(), { id, status: 'training', clips: 1 });
+  s.close();
+});
+
+test('successful preview reports usage via reportTtsUsage with the synthesized character count', async () => {
+  const usageCalls: Array<{ userId: string; charCount: number }> = [];
+  const s = await boot({ reportTtsUsage: async (userId, charCount) => { usageCalls.push({ userId, charCount }); } });
+  const { id } = (await (await s.call('user-a', 'POST', '/', consent)).json()) as { id: string };
+  s.f.voices.get(id)!.status = 'ready';
+  const r = await s.call('user-a', 'POST', `/${id}/preview`, { text: 'hello world' });
+  assert.equal(r.status, 200);
+  await new Promise((res) => setTimeout(res, 10)); // reportTtsUsage is fire-and-forget after the response
+  assert.deepEqual(usageCalls, [{ userId: 'user-a', charCount: 'hello world'.length }]);
+  s.close();
+});
+
+test('usage-report failure does not block or fail the preview response', async () => {
+  const s = await boot({ reportTtsUsage: async () => { throw new Error('Stripe meter event failed'); } });
+  const { id } = (await (await s.call('user-a', 'POST', '/', consent)).json()) as { id: string };
+  s.f.voices.get(id)!.status = 'ready';
+  const r = await s.call('user-a', 'POST', `/${id}/preview`, { text: 'hello world' });
+  assert.equal(r.status, 200);
+  s.close();
+});
+
+test('billing inactive -> GET /:id and DELETE /:id still work (status/delete are never gated)', async () => {
+  const s = await boot({ requireActiveBilling: async () => true });
+  const { id } = (await (await s.call('user-a', 'POST', '/', consent)).json()) as { id: string };
+  // Flip billing inactive only after the voice already exists, then confirm status/delete still work.
+  const s2 = await boot({ requireActiveBilling: async () => false });
+  const { id: id2 } = await (async () => {
+    // Recreate under the inactive-billing instance's own intake — creation itself would 402 here, so
+    // seed the fake intake directly to isolate what this test is actually checking (status/delete).
+    const created = await s2.f.intake.create({ owner_user_id: 'user-a', speaker_name: 'X' });
+    return { id: created.voice_id };
+  })();
+  assert.equal((await s2.call('user-a', 'GET', `/${id2}`)).status, 200);
+  assert.equal((await s2.call('user-a', 'DELETE', `/${id2}`)).status, 200);
+  s.close();
+  s2.close();
+});
+
+test('no requireActiveBilling dep (matches the API-key flow) -> create and commit are never gated', async () => {
+  const s = await boot(); // requireActiveBilling intentionally omitted
+  const created = await s.call('user-a', 'POST', '/', consent);
+  assert.equal(created.status, 201);
+  const { id } = (await created.json()) as { id: string };
+  await s.call('user-a', 'PUT', `/${id}/dataset/parts/0`, undefined, Buffer.alloc(10));
+  const r = await s.call('user-a', 'POST', `/${id}/dataset/commit`, { parts: 1 });
+  assert.equal(r.status, 202);
+  s.close();
+});

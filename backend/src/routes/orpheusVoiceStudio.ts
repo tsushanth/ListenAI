@@ -17,6 +17,10 @@
 // avoiding a small, low-risk amount of duplication. Duplication was judged the safer trade here.
 import express, { Router, Request, Response, NextFunction } from 'express';
 import { verifyAuthTokenRemote, extractBearerToken } from '../lib/auth.js';
+import { isBillingActiveForUser, chargeForVoiceClone, reportTtsUsage } from '../lib/realtimeTtsBilling.js';
+import { logger } from '../lib/logger.js';
+
+const log = logger.child({ module: 'orpheusVoiceStudio' });
 
 const router = Router();
 
@@ -80,7 +84,24 @@ async function requireSupabaseAuth(req: Request, res: Response, next: NextFuncti
   }
 }
 
-router.post('/', requireSupabaseAuth, express.json({ limit: '16kb' }), async (req: Request, res: Response) => {
+/** Gates voice creation/training on an active realtime-tts subscription — same check and same 402 shape
+ * as voiceClone.ts's requireUser, applied here to the routes that create a voice or start training (not
+ * to GET/DELETE, which must keep working regardless of billing state so a lapsed subscriber can still see
+ * or remove their own voices). */
+async function requireActiveBilling(req: Request, res: Response, next: NextFunction) {
+  try {
+    const active = await isBillingActiveForUser((req as Authed).orpheusOwner!);
+    if (!active) {
+      res.status(402).json({ error: 'Voice cloning requires an active TTS subscription.' });
+      return;
+    }
+    next();
+  } catch {
+    res.status(402).json({ error: 'Voice cloning requires an active TTS subscription.' });
+  }
+}
+
+router.post('/', requireSupabaseAuth, requireActiveBilling, express.json({ limit: '16kb' }), async (req: Request, res: Response) => {
   try {
     const upstream = await fetch(`${serviceUrl()}/v1/orpheus-voices`, {
       method: 'POST',
@@ -98,7 +119,7 @@ router.post('/', requireSupabaseAuth, express.json({ limit: '16kb' }), async (re
   }
 });
 
-router.put('/:vid/dataset', requireSupabaseAuth, express.raw({ type: '*/*', limit: RAW_ZIP_LIMIT }), async (req: Request, res: Response) => {
+router.put('/:vid/dataset', requireSupabaseAuth, requireActiveBilling, express.raw({ type: '*/*', limit: RAW_ZIP_LIMIT }), async (req: Request, res: Response) => {
   const vid = validateVid(req, res);
   if (!vid) return;
   try {
@@ -118,21 +139,30 @@ router.put('/:vid/dataset', requireSupabaseAuth, express.raw({ type: '*/*', limi
   }
 });
 
-router.post('/:vid/dataset/commit', requireSupabaseAuth, express.json({ limit: '16kb' }), async (req: Request, res: Response) => {
+router.post('/:vid/dataset/commit', requireSupabaseAuth, requireActiveBilling, express.json({ limit: '16kb' }), async (req: Request, res: Response) => {
   const vid = validateVid(req, res);
   if (!vid) return;
+  const owner = (req as Authed).orpheusOwner!;
   try {
     const upstream = await fetch(`${serviceUrl()}/v1/orpheus-voices/${vid}/dataset/commit`, {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
         authorization: `Bearer ${serviceSecret()}`,
-        'x-owner': (req as Authed).orpheusOwner!,
+        'x-owner': owner,
       },
       body: JSON.stringify(req.body ?? {}),
       signal: AbortSignal.timeout(DEFAULT_UPSTREAM_TIMEOUT_MS),
     });
     await relayResponse(res, upstream);
+    // Charge $2.50 for training, at the moment the dataset is committed (mirrors
+    // voiceStudioApiKey.ts's onCommitSuccess call site). Best-effort: a billing failure must
+    // never fail or block the commit response, which has already been sent above.
+    if (upstream.ok) {
+      chargeForVoiceClone(owner).catch((err: unknown) =>
+        log.warn({ err, owner, vid }, 'Voice clone billing charge failed (non-critical)')
+      );
+    }
   } catch {
     res.status(502).json({ error: 'orpheus clone service unavailable' });
   }
@@ -174,19 +204,33 @@ router.delete('/:vid', requireSupabaseAuth, async (req: Request, res: Response) 
   }
 });
 
-router.post('/tts', requireSupabaseAuth, express.json({ limit: '16kb' }), async (req: Request, res: Response) => {
+// Judgment call: POST /tts also requires active billing (rather than only usage-reporting it) — see
+// the accompanying task report for the reasoning. Short version: this endpoint synthesizes with a
+// customer's own cloned voice, the same product surface voiceClone.ts gates with isBillingActiveForUser
+// on every request including synthesize, and reportTtsUsage() is a no-op that just logs a warning when
+// billing isn't active — silently under-billing usage is worse than a clear 402 up front.
+router.post('/tts', requireSupabaseAuth, requireActiveBilling, express.json({ limit: '16kb' }), async (req: Request, res: Response) => {
+  const owner = (req as Authed).orpheusOwner!;
+  const text = typeof req.body?.text === 'string' ? req.body.text : '';
   try {
     const upstream = await fetch(`${serviceUrl()}/v1/orpheus-tts`, {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
         authorization: `Bearer ${serviceSecret()}`,
-        'x-owner': (req as Authed).orpheusOwner!,
+        'x-owner': owner,
       },
       body: JSON.stringify(req.body ?? {}),
       signal: AbortSignal.timeout(TTS_UPSTREAM_TIMEOUT_MS),
     });
     await relayResponse(res, upstream);
+    if (upstream.ok && text.length > 0) {
+      // Fire-and-forget, exactly like voiceClone.ts's synthesize route: never awaited into the
+      // response, and a reporting failure must never affect the response already sent above.
+      reportTtsUsage(owner, text.length).catch((err: unknown) =>
+        log.warn({ err, owner, charCount: text.length }, 'TTS billing report failed (non-critical)')
+      );
+    }
   } catch {
     res.status(502).json({ error: 'orpheus clone service unavailable' });
   }
