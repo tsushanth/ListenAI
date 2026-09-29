@@ -187,3 +187,20 @@ test('GET /job/:jobId returns 404 for a job belonging to a different user', asyn
   assert.equal(getRes.status, 404);
   otherUser.close();
 });
+
+test('GET /job/:jobId on a cache-* pseudo id returns 200 ready with no audio_url', async () => {
+  const s = await boot();
+  const getRes = await s.call('GET', '/job/cache-abcd1234');
+  assert.equal(getRes.status, 200);
+  const body = await getRes.json();
+  assert.equal(body.status, 'ready');
+  assert.equal(body.audio_url, undefined);
+  s.close();
+});
+
+test('GET /job/:jobId on a malformed, non-UUID, non-cache- id returns 404, not 500', async () => {
+  const s = await boot();
+  const getRes = await s.call('GET', '/job/not-a-real-id');
+  assert.equal(getRes.status, 404);
+  s.close();
+});

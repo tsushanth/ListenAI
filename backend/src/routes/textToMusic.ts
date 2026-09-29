@@ -99,9 +99,32 @@ textToMusicRouter.post('/job', asyncHandler(async (req: Request, res: Response) 
   });
 }));
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 textToMusicRouter.get('/job/:jobId', asyncHandler(async (req: Request, res: Response) => {
   const userId = (req as StrictAuthedRequest).userId!;
   const jobId = req.params.jobId!;
+
+  // Cache-hit pseudo-ids (see POST /job) are always "ready" and never hit the
+  // DB. The real audio_url was already returned in the original POST
+  // response, so a client polling a cache-hit id afterward should already
+  // have it and doesn't need to poll at all — no audio_url is included here
+  // since an 8-char cache-key prefix can't reconstruct or re-sign it.
+  if (jobId.startsWith('cache-')) {
+    res.json({
+      job_id: jobId,
+      status: 'ready',
+      error: undefined,
+    });
+    return;
+  }
+
+  // Reject anything that isn't a real UUID before hitting Postgres — the
+  // RPC's UUID-typed parameter would otherwise turn a malformed id into an
+  // unhandled 500 instead of a normal 404.
+  if (!UUID_REGEX.test(jobId)) {
+    throw new NotFoundError('Job');
+  }
 
   const job = await getMusicJobForUser(jobId, userId);
   if (!job) {
