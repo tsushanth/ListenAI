@@ -81,22 +81,26 @@ export default function DevelopersPage() {
                 <p>Create a custom voice from your own recordings and use it with <code className="inl">custom:&lt;id&gt;</code>. Training runs automatically on GPU and takes about 30–60 minutes.</p>
                 <VoiceCloningDocs />
 
-                <h3 id="streaming-cloning">Low-latency streaming clone</h3>
+                <h3 id="streaming-cloning">Low-latency streaming clone (in development)</h3>
                 <p>
-                  A second cloning path on a different model (Orpheus, a neural codec language
-                  model), for conversational agents that need speech to start well under a second
-                  after the request. Create a voice with <code className="inl">custom-fast:&lt;id&gt;</code>,
-                  8&ndash;20 minutes of your own recordings recommended.
+                  We are building a second, faster cloning path on a different model (Orpheus, a neural
+                  codec language model), aimed at conversational agents that need speech to start well
+                  under a second after the request &mdash; not yet available through the API for general
+                  use. The endpoints below show the shape of what's coming: <code className="inl">custom-fast:&lt;id&gt;</code> voices,
+                  8&ndash;20 minutes of your own recordings recommended, synthesized as PCM16, 24&nbsp;kHz,
+                  mono (matching the rest of this API) once this ships, and gated behind a billing-enabled
+                  API key (the gateway will return <code>402</code> otherwise).
                 </p>
-                <p><b>What we measured (early numbers, still improving).</b> A pilot voice reached a
-                  median time-to-first-audio-chunk of about 550&ndash;580&nbsp;ms once warm, against
-                  a 500&nbsp;ms target &mdash; close, not there yet. Two open issues: generation
+                <p><b>What we measured (early internal pilot, not a live API number).</b> A pilot voice
+                  reached a median time-to-first-audio-chunk of about 550&ndash;580&nbsp;ms once warm,
+                  against a 500&nbsp;ms target &mdash; close, not there yet. Two open issues: generation
                   currently runs at roughly 1.6&ndash;2.7&times; real time, and utterance length is
                   not yet reliably controlled &mdash; the same prompt can produce anywhere from a
                   third of a second to several seconds of audio. Both point to needing a larger
                   training run per voice, not a serving-side fix, but we haven't verified that
-                  yet. Cold container start adds a few seconds on the first
-                  request after an idle period.
+                  yet. Even once the endpoint is live, responses are buffered end-to-end through this
+                  proxy chain rather than truly streamed &mdash; a known, separately tracked limitation.
+                  Cold container start adds a few seconds on the first request after an idle period.
                 </p>
                 <OrpheusCloningDocs />
 
