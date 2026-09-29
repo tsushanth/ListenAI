@@ -8,6 +8,7 @@ import { config } from './lib/config.js';
 import { logger } from './lib/logger.js';
 
 import { requireAuth } from './middleware/auth.js';
+import { requireAuthOrApiKey } from './middleware/apiKeyAuth.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 import { standardRateLimit, ttsRateLimitByTier, previewRateLimit, burstRateLimit, jobPollingRateLimit, realtimeTtsAuthorizeRateLimit } from './middleware/rateLimit.js';
 
@@ -235,7 +236,7 @@ app.use('/api/voice-clone', voiceCloneRouter);
 // Dubbing v1 — audio-in/audio-out re-voicing via STT (external worker-stt-prod) + Claude
 // translation + existing TTS pipeline (dark unless STT_WORKER_URL is configured). See
 // routes/dub.ts header for scope boundaries (no video, in-memory jobs only).
-app.use('/api/dub', requireAuth, dubRouter);
+app.use('/api/dub', requireAuthOrApiKey, dubRouter);
 // strict Supabase auth like the API-key routes above.
 app.use('/api/voice-studio', voiceStudioRouter);
 

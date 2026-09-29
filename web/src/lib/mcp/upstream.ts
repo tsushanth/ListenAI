@@ -1,4 +1,5 @@
 import WebSocket from 'ws'
+import { createHash } from 'node:crypto'
 import { MAX_AUDIO_SECONDS, REQUEST_TIMEOUT_MS } from './schemas.ts'
 import { BYTES_PER_SAMPLE, SAMPLE_RATE } from './wav.ts'
 
@@ -103,18 +104,68 @@ export function synthesize(opts: { url: string; token: string; text: string; voi
 // Dubbing (v1)
 // ============================================================================
 //
-// OPEN QUESTION / KNOWN GAP: unlike text_to_speech (which exchanges the API
-// key for a session token via /tts/authorize, a route that already exists
-// on the gateway), there is no gateway route yet that accepts an API key and
-// forwards to the backend's Supabase-authed POST /api/dub. The calls below
-// assume a `/dub` and `/dub/:jobId` route will be added to the gateway that:
-//   1. validates `key` the same way /tts/authorize does, and
-//   2. forwards to the backend using the GATEWAY_FORWARD_SECRET +
-//      X-Gateway-Uid pattern routes/voiceStudioApiKey.ts already uses for
-//      the same key->Supabase-identity problem.
-// Until that gateway route exists, these calls will 404. This is called out
-// explicitly in the feature report as something to build before this MCP
-// tool is usable end to end.
+// There is no `/dub` route on the realtime-tts gateway, and there never needs
+// to be one: the backend's POST /api/dub now accepts the same
+// gateway-forwarded-identity pattern voiceStudioApiKey.ts pioneered and
+// requireAuthOrApiKey (backend/src/middleware/apiKeyAuth.ts) generalizes. So
+// instead of proxying through the gateway, we:
+//   1. Validate the raw key against the gateway's existing /tts/authorize
+//      (the only key-validation endpoint that exists) to confirm it's live
+//      and pull the bound Supabase uid out of the session token it returns
+//      (ttsGatewayClient.ts embeds it as the `uid` claim).
+//   2. Call the backend's real `/api/dub` directly, forwarding
+//      `x-gateway-admin-secret` (MCP_GATEWAY_FORWARD_SECRET) plus
+//      `x-gateway-uid` (or `x-gateway-key-id` when the key has no bound uid)
+//      so requireAuthOrApiKey resolves an identity without ever seeing a JWT.
+//
+// MCP_GATEWAY_FORWARD_SECRET is deliberately a *separate* secret from the
+// gateway's own GATEWAY_FORWARD_SECRET (per MCP_AUTH_BRIDGE.md's blast-radius
+// note) — provision it to both the backend and this web deployment's
+// environment before enabling this in production. Until it's provisioned,
+// calls below fail closed with an `upstream` error rather than silently
+// forwarding an unauthenticated request.
+
+export const BACKEND_URL = process.env.DUB_BACKEND_URL || process.env.BACKEND_URL || 'https://api.readaloudai.org'
+const MCP_GATEWAY_FORWARD_SECRET = process.env.MCP_GATEWAY_FORWARD_SECRET
+
+/** Decode the `uid` claim from a gateway session token without verifying its signature — the token was
+ *  just fetched directly from the gateway over this same authorize() call, so we already trust its origin;
+ *  this only extracts the payload, it isn't an independent trust boundary. */
+function decodeGatewayUid(token: string): string | undefined {
+  try {
+    const parts = token.split('.')
+    if (parts.length < 2) return undefined
+    const json = Buffer.from(parts[1].replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8')
+    const payload = JSON.parse(json) as { uid?: string }
+    return typeof payload.uid === 'string' ? payload.uid : undefined
+  } catch {
+    return undefined
+  }
+}
+
+/** Validate the raw API key against the gateway and resolve a backend-forwardable identity: the bound
+ *  Supabase uid if there is one, else a synthetic key-id identity derived from the key itself. */
+async function resolveGatewayIdentity(key: string): Promise<{ uid?: string; keyId: string }> {
+  const { token } = await authorize(key, 'piper')
+  const uid = decodeGatewayUid(token)
+  // No real gateway key id is exposed to this process; fall back to a stable per-key identity derived
+  // from the key so requests from the same key still map to the same backend user when there's no bound uid.
+  const keyId = createHash('sha256').update(key).digest('hex').slice(0, 32)
+  return { uid, keyId }
+}
+
+function forwardHeaders(identity: { uid?: string; keyId: string }): Record<string, string> {
+  if (!MCP_GATEWAY_FORWARD_SECRET) {
+    throw new UpstreamError('upstream', 'Dubbing is not configured on this deployment (missing MCP_GATEWAY_FORWARD_SECRET).', false)
+  }
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    'x-gateway-admin-secret': MCP_GATEWAY_FORWARD_SECRET,
+  }
+  if (identity.uid) headers['x-gateway-uid'] = identity.uid
+  else headers['x-gateway-key-id'] = identity.keyId
+  return headers
+}
 
 export interface DubSubmitResult { job_id: string; status: string }
 export interface DubStatusResult {
@@ -133,13 +184,13 @@ export async function submitDub(opts: {
   sourceLanguage?: string
   voiceId?: string
 }): Promise<DubSubmitResult> {
+  const identity = await resolveGatewayIdentity(opts.key)
   let r: Response
   try {
-    r = await fetch(`${GATEWAY}/dub`, {
+    r = await fetch(`${BACKEND_URL}/api/dub`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: forwardHeaders(identity),
       body: JSON.stringify({
-        key: opts.key,
         audio_base64: opts.audioBase64,
         filename: opts.filename,
         target_language: opts.targetLanguage,
@@ -163,9 +214,11 @@ export async function submitDub(opts: {
 }
 
 export async function getDubStatus(key: string, jobId: string): Promise<DubStatusResult> {
+  const identity = await resolveGatewayIdentity(key)
   let r: Response
   try {
-    r = await fetch(`${GATEWAY}/dub/${encodeURIComponent(jobId)}?key=${encodeURIComponent(key)}`, {
+    r = await fetch(`${BACKEND_URL}/api/dub/${encodeURIComponent(jobId)}`, {
+      headers: forwardHeaders(identity),
       cache: 'no-store',
       signal: AbortSignal.timeout(10_000),
     })
