@@ -1,13 +1,25 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js'
 import { SlidingWindowLimiter } from './ratelimit.ts'
-import { MAX_AUDIO_SECONDS, listVoicesInput, textToSpeechInput, textToSpeechSchema, MAX_TEXT_CHARS } from './schemas.ts'
+import {
+  MAX_AUDIO_SECONDS, listVoicesInput, textToSpeechInput, textToSpeechSchema, MAX_TEXT_CHARS,
+  isolateVoiceInput, isolateVoiceSchema, getVoiceIsolationInput, getVoiceIsolationSchema,
+  MAX_ISOLATE_AUDIO_MB, ISOLATE_REQUEST_TIMEOUT_MS,
+} from './schemas.ts'
 import { KOKORO_VOICES, PIPER_VOICES, resolveVoice } from './voices.ts'
-import { UpstreamError, authorize, fetchPiperHealth, synthesize, type ErrorCode } from './upstream.ts'
+import {
+  UpstreamError, authorize, fetchPiperHealth, synthesize, type ErrorCode,
+  isolateVoice, getVoiceIsolationStatus, getVoiceIsolationAudio,
+} from './upstream.ts'
 import { pcm16ToWav, pcmDurationSeconds } from './wav.ts'
 
 // 15 speech calls per minute per API key (per server instance).
 export const keyLimiter = new SlidingWindowLimiter(15, 60_000)
+
+// Isolation jobs run a GPU container per job: keep this tighter than speech. Mirrors the backend's own
+// 10/hour limiter on POST /api/voice-isolate/isolations (voiceIsolate.ts), just scoped per-minute here
+// since this limiter is local to one MCP server instance, not shared with the web app's own calls.
+export const isolateKeyLimiter = new SlidingWindowLimiter(5, 60_000)
 
 export interface RequestContext {
   keyId: string // hash of the API key, only used to bucket rate limits
@@ -25,7 +37,7 @@ function toolError(code: ErrorCode, message: string, retryable: boolean): CallTo
 
 export function createMcpServer(ctx: RequestContext): McpServer {
   const server = new McpServer({ name: 'readaloud-ai', version: '1.0.0' }, {
-    instructions: 'ReadAloud AI text-to-speech. Use text_to_speech to turn short text into a WAV audio clip. Use list_voices before picking a non-default voice.',
+    instructions: 'ReadAloud AI text-to-speech and voice isolation. Use text_to_speech to turn short text into a WAV audio clip. Use list_voices before picking a non-default voice. Use isolate_voice to separate vocals from a song/clip, then poll get_voice_isolation for the result.',
   })
 
   server.registerTool('text_to_speech', {
@@ -60,6 +72,95 @@ export function createMcpServer(ctx: RequestContext): McpServer {
         return toolError(e.code, e.message, e.retryable)
       }
       return toolError('upstream', 'Unexpected error while generating speech.', true)
+    }
+  })
+
+  server.registerTool('isolate_voice', {
+    title: 'Isolate voice',
+    description:
+      `Separate a song or clip's vocals from the rest (Demucs htdemucs). Send base64-encoded audio ` +
+      `(WAV, FLAC, OGG, MP3, or M4A), up to ${MAX_ISOLATE_AUDIO_MB} MB decoded. Runs on a per-job GPU container, so it ` +
+      `can take up to a minute or more depending on length; this call returns a job_id right away — poll ` +
+      `get_voice_isolation with that job_id until status is "done", then call it again with fetch_audio ` +
+      `to get the separated audio. Requires confirms_rights: true (you must have the legal right to use ` +
+      `this audio). Set want_instrumental to also get the backing track, not just vocals. ` +
+      `Uses the caller's active subscription, so avoid resubmitting the same audio. ` +
+      `Errors are returned with a code: payment_required (no active subscription), invalid_input (bad audio ` +
+      `or missing rights confirmation), rate_limited (wait).`,
+    inputSchema: isolateVoiceInput,
+    annotations: { title: 'Isolate voice', readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
+  }, async (args): Promise<CallToolResult> => {
+    const parsed = isolateVoiceSchema.parse(args)
+    const rl = isolateKeyLimiter.check(ctx.keyId)
+    if (!rl.ok) return toolError('rate_limited', `Too many isolation requests for this key. Try again in ${rl.retryAfterSec} s.`, true)
+
+    let buffer: Buffer
+    try {
+      buffer = Buffer.from(parsed.audio_base64, 'base64')
+    } catch {
+      return toolError('invalid_input', 'audio_base64 is not valid base64.', false)
+    }
+    if (buffer.length === 0) return toolError('invalid_input', 'Decoded audio is empty.', false)
+    if (buffer.length > MAX_ISOLATE_AUDIO_MB * 1024 * 1024) {
+      return toolError('invalid_input', `Decoded audio exceeds ${MAX_ISOLATE_AUDIO_MB} MB.`, false)
+    }
+
+    try {
+      const result = await isolateVoice({
+        apiKey: ctx.apiKey, keyId: ctx.keyId, buffer, mimeType: parsed.mime_type,
+        wantInstrumental: parsed.want_instrumental, timeoutMs: ISOLATE_REQUEST_TIMEOUT_MS,
+      })
+      return {
+        content: [{ type: 'text', text: `Isolation job ${result.job_id} is ${result.status}. Poll get_voice_isolation with job_id "${result.job_id}" for status and, once done, the separated audio.` }],
+        structuredContent: { job_id: result.job_id, status: result.status },
+      }
+    } catch (e) {
+      if (e instanceof UpstreamError) {
+        if (e.code === 'unauthorized') ctx.authFailed = true
+        return toolError(e.code, e.message, e.retryable)
+      }
+      return toolError('upstream', 'Unexpected error while submitting the isolation job.', true)
+    }
+  })
+
+  server.registerTool('get_voice_isolation', {
+    title: 'Get voice isolation status/result',
+    description:
+      `Check an isolate_voice job's status by job_id. While status is "queued" or "processing", returns ` +
+      `just the status — poll again after a few seconds. Once status is "done", also returns the ` +
+      `separated audio (the "vocals" stem by default, or "instrumental" if you passed want_instrumental to ` +
+      `isolate_voice and set stem to "instrumental" here) as an inline WAV clip. If status is "failed" or ` +
+      `"rejected", the job did not produce audio.`,
+    inputSchema: getVoiceIsolationInput,
+    annotations: { title: 'Get voice isolation', readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+  }, async (args): Promise<CallToolResult> => {
+    const parsed = getVoiceIsolationSchema.parse(args)
+    try {
+      const st = await getVoiceIsolationStatus({
+        apiKey: ctx.apiKey, keyId: ctx.keyId, jobId: parsed.job_id, timeoutMs: ISOLATE_REQUEST_TIMEOUT_MS,
+      })
+      if (st.status !== 'done') {
+        return {
+          content: [{ type: 'text', text: `Isolation job ${parsed.job_id} is ${st.status}.${st.status === 'failed' || st.status === 'rejected' ? ` No audio was produced.${typeof st.error === 'string' ? ` (${st.error})` : ''}` : ' Poll again shortly.'}` }],
+          structuredContent: { job_id: parsed.job_id, status: st.status },
+        }
+      }
+      const audio = await getVoiceIsolationAudio({
+        apiKey: ctx.apiKey, keyId: ctx.keyId, jobId: parsed.job_id, stem: parsed.stem, timeoutMs: ISOLATE_REQUEST_TIMEOUT_MS,
+      })
+      return {
+        content: [
+          { type: 'audio', data: audio.toString('base64'), mimeType: 'audio/wav' },
+          { type: 'text', text: `Isolation job ${parsed.job_id} is done. Returning the ${parsed.stem} stem.` },
+        ],
+        structuredContent: { job_id: parsed.job_id, status: st.status, stem: parsed.stem },
+      }
+    } catch (e) {
+      if (e instanceof UpstreamError) {
+        if (e.code === 'unauthorized') ctx.authFailed = true
+        return toolError(e.code, e.message, e.retryable)
+      }
+      return toolError('upstream', 'Unexpected error while checking the isolation job.', true)
     }
   })
 

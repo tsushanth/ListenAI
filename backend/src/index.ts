@@ -8,6 +8,7 @@ import { config } from './lib/config.js';
 import { logger } from './lib/logger.js';
 
 import { requireAuth } from './middleware/auth.js';
+import { requireAuthOrApiKey } from './middleware/apiKeyAuth.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 import { standardRateLimit, ttsRateLimitByTier, previewRateLimit, burstRateLimit, jobPollingRateLimit, realtimeTtsAuthorizeRateLimit } from './middleware/rateLimit.js';
 
@@ -230,8 +231,12 @@ app.use('/api/tts-api-keys', ttsApiKeysRouter);
 app.use('/api/voice-design', voiceDesignRouter);
 // Voice convert — Seed-VC speech-to-speech voice conversion (dark unless VOICE_CONVERT_URL is configured)
 app.use('/api/voice-convert', voiceConvertRouter);
-// Voice isolate — Demucs (htdemucs) vocal isolation (dark unless VOICE_ISOLATE_URL is configured)
-app.use('/api/voice-isolate', voiceIsolateRouter);
+// Voice isolate — Demucs (htdemucs) vocal isolation (dark unless VOICE_ISOLATE_URL is configured).
+// requireAuthOrApiKey lets the MCP tool call in with a gateway-forwarded API key identity, same as
+// stt.ts; the route's own requireUser()/requireUserMiddleware already checks req.userId first (set by
+// requireAuthOrApiKey) before falling back to JWT verification, so no changes were needed inside
+// voiceIsolate.ts itself — see MCP_AUTH_BRIDGE.md.
+app.use('/api/voice-isolate', requireAuthOrApiKey, voiceIsolateRouter);
 // Voice clone — XTTS v2 instant voice cloning (dark unless XTTS_CLONE_URL is configured)
 app.use('/api/voice-clone', voiceCloneRouter);
 // strict Supabase auth like the API-key routes above.

@@ -23,7 +23,10 @@ export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
-const MAX_BODY_BYTES = 64 * 1024
+// Was 64 KiB when only text_to_speech/list_voices existed; isolate_voice sends base64 audio (up to
+// MAX_ISOLATE_AUDIO_MB decoded, see mcp/schemas.ts) inline in the JSON-RPC body, so this has to hold at
+// least that much plus base64/JSON overhead (~33% + envelope).
+const MAX_BODY_BYTES = 12 * 1024 * 1024
 const ipLimiter = new SlidingWindowLimiter(120, 60_000) // any request, per client IP
 
 const CORS: Record<string, string> = {
