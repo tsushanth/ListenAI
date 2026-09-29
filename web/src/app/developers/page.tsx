@@ -80,6 +80,24 @@ export default function DevelopersPage() {
                 <p>Create a custom voice from your own recordings and use it with <code className="inl">custom:&lt;id&gt;</code>. Training runs automatically on GPU and takes about 30–60 minutes.</p>
                 <VoiceCloningDocs />
 
+                <h3 id="streaming-cloning">Low-latency streaming clone (in development)</h3>
+                <p>
+                  We are building a second, faster cloning path on a different model (Orpheus, a neural
+                  codec language model), aimed at conversational agents that need speech to start well
+                  under a second after the request &mdash; not yet available through the API.
+                </p>
+                <p><b>What we measured.</b> An early internal pilot voice, trained on about 8 minutes of
+                  audio, reached a median time-to-first-audio-chunk of about 550&ndash;580&nbsp;ms once
+                  the model was warm (p90 similar), against a 500&nbsp;ms target &mdash; close, not there
+                  yet. Two things are still unresolved before this is a real number to build on: generation
+                  currently runs at roughly 1.6&ndash;2.7&times; real time (slower than the audio it
+                  produces, which can make long responses fall behind), and the model does not yet reliably
+                  learn when to stop &mdash; the same short prompt produced anywhere from about a third of a
+                  second to several seconds of audio across repeated runs. Both point to needing a larger
+                  training run per voice, not a serving-side fix. Cold container start adds a few seconds on
+                  the first request after an idle period, the same pattern as our other GPU-backed features.
+                </p>
+
                 <h3 id="speech-to-text">Speech to text (batch)</h3>
                 <p>Transcribe a finished recording with Whisper large-v3-turbo. This is batch only: you upload a file and get the whole transcript back. There is no live streaming transcription yet, no speaker labels (diarization) and no entity detection.</p>
                 <p><b>1. Authorize.</b> <code>POST https://api.readaloudai.org/stt/authorize</code> with JSON <code>{'{ "key" }'}</code>. Returns <code>{'{ token, url }'}</code>. It uses the same key, the same <code>401</code> and <code>402</code> errors, and the same 60 second token as the voice API. Authorize again if the token has expired before you upload. It returns <code>501</code> if speech to text is not enabled.</p>
