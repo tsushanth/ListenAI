@@ -35,6 +35,7 @@ import { voiceConvertRouter } from './routes/voiceConvert.js';
 import { voiceCloneRouter } from './routes/voiceClone.js';
 import { voiceStudioApiKeyRouter } from './routes/voiceStudioApiKey.js';
 import { orpheusVoiceStudioApiKeyRouter } from './routes/orpheusVoiceStudioApiKey.js';
+import { orpheusVoiceStudioRouter } from './routes/orpheusVoiceStudio.js';
 import { aggregateLatencyMetrics, checkSupabaseHealth, checkStorageHealth } from './lib/supabaseClient.js';
 import { startWorker, stopWorker } from './workers/ttsJobWorker.js';
 import { checkPubSubHealth } from './lib/pubsub.js';
@@ -240,9 +241,14 @@ app.use('/api/voice-studio', voiceStudioRouter);
 app.use('/internal/voice-studio-api', voiceStudioApiKeyRouter);
 
 // Orpheus streaming voice cloning: same gateway-trusted pattern as voice-studio-api above, but a plain
-// direct router (no createVoiceStudioRouter factory) proxying to the Modal training/serving service —
-// there is no web UI for this feature yet to share logic with. See routes/orpheusVoiceStudioApiKey.ts.
+// direct router (no createVoiceStudioRouter factory) proxying to the Modal training/serving service.
+// See routes/orpheusVoiceStudioApiKey.ts.
 app.use('/internal/orpheus-clone-api', orpheusVoiceStudioApiKeyRouter);
+
+// Same Orpheus cloning operations, but for real logged-in customers via their Supabase session (not the
+// gateway shared secret above) — powers the web UI at web/src/components/ra/OrpheusVoiceStudio.tsx. See
+// routes/orpheusVoiceStudio.ts for why this is a separate file rather than reusing the gateway-trusted one.
+app.use('/api/orpheus-voice-studio', orpheusVoiceStudioRouter);
 
 // Voice marketplace routes - for sharing and discovering cloned voices
 app.use('/api/marketplace', voiceMarketplaceRouter);

@@ -1,6 +1,6 @@
 import RaHeader from '@/components/ra/RaHeader'
 import RaFooter from '@/components/ra/RaFooter'
-import VoiceStudio from '@/components/ra/VoiceStudio'
+import VoicesTabs from '@/components/ra/VoicesTabs'
 
 export const metadata = {
   title: 'Custom voice - ReadAloud AI',
@@ -17,7 +17,7 @@ export default function VoicesPage() {
           <div className="ra-wrap">
             <p className="ra-small" style={{ marginBottom: 8 }}>Voice API · Custom voice</p>
             <h1 style={{ fontSize: 'clamp(2rem, 5vw, 3.2rem)', marginBottom: 28, maxWidth: '18ch' }}>Your own voice, from your own recordings</h1>
-            <VoiceStudio />
+            <VoicesTabs />
           </div>
         </section>
       </main>
