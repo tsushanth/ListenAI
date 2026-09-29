@@ -30,6 +30,8 @@ import { authRouter } from './routes/auth.js';
 import { appConfigRouter } from './routes/appConfig.js';
 import { ttsApiKeysRouter, requireRealAuth } from './routes/ttsApiKeys.js';
 import { textToMusicRouter } from './routes/textToMusic.js';
+import { musicApiKeysRouter } from './routes/musicApiKeys.js';
+import { requireMusicAuth } from './middleware/musicAuth.js';
 import { voiceStudioRouter } from './routes/voiceStudio.js';
 import { voiceDesignRouter } from './routes/voiceDesign.js';
 import { voiceConvertRouter } from './routes/voiceConvert.js';
@@ -187,11 +189,18 @@ app.use('/api/realtime-tts', burstRateLimit, realtimeTtsAuthorizeRateLimit, requ
 // Preview endpoint has stricter rate limit (10 req/min)
 app.use('/api/tts/preview', previewRateLimit);
 
-// Text-to-music job routes: billable, external-facing, so requireRealAuth (no
-// permissive default-user fallback) rather than requireAuth. Job polling gets
-// the generous polling rate limit, same pattern as /api/tts/job/:jobId above.
-app.get('/api/music/job/:jobId', jobPollingRateLimit, requireRealAuth, textToMusicRouter);
-app.use('/api/music', burstRateLimit, requireRealAuth, textToMusicRouter);
+// Text-to-music job routes: billable, external-facing, so requireMusicAuth
+// (accepts a persistent API key OR a session token — no permissive
+// default-user fallback either way) rather than requireAuth. Job polling
+// gets the generous polling rate limit, same pattern as /api/tts/job/:jobId
+// above.
+app.get('/api/music/job/:jobId', jobPollingRateLimit, requireMusicAuth, textToMusicRouter);
+app.use('/api/music', burstRateLimit, requireMusicAuth, textToMusicRouter);
+
+// Music API key management: session-only (requireRealAuth) — minting/
+// revoking keys must never be doable with just an API key, or a leaked key
+// could mint infinite new ones.
+app.use('/api/music-api-keys', requireRealAuth, musicApiKeysRouter);
 
 // Usage routes (requires auth)
 app.use('/api/usage', requireAuth, usageRouter);
