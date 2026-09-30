@@ -23,6 +23,7 @@ export const listVoicesInput = {
 }
 export const listVoicesSchema = z.object(listVoicesInput)
 
+<<<<<<< HEAD
 // ============================================================================
 // Audiobooks MVP (backend/src/routes/audiobooks.ts) — chapter detection +
 // batch same-voice TTS per chapter + ffmpeg export. See audiobooksClient.ts
@@ -73,3 +74,21 @@ export const getVoiceIsolationInput = {
     .describe('Which separated stem to fetch once the job is done. Ignored while the job is still running.'),
 }
 export const getVoiceIsolationSchema = z.object(getVoiceIsolationInput)
+
+// ============================================================================
+// Batch speech-to-text (worker-stt-prod via the gateway's /stt/authorize hand-off — see upstream.ts).
+// Base64-encoded because MCP tool calls are JSON-RPC, not multipart file uploads.
+export const MAX_STT_AUDIO_MB = 25
+export const STT_REQUEST_TIMEOUT_MS = 120_000
+
+export const speechToTextInput = {
+  audio_base64: z.string().min(1)
+    .describe(`Base64-encoded audio bytes (WAV, FLAC, OGG, MP3, M4A, or WEBM), up to ${MAX_STT_AUDIO_MB} MB decoded.`),
+  mime_type: z.string().max(80).default('audio/wav')
+    .describe('MIME type of the audio, e.g. "audio/wav", "audio/mpeg", "audio/webm".'),
+  language: z.string().regex(/^[a-z]{2}$/).optional()
+    .describe('ISO-639-1 language hint (e.g. "en"). Omit to auto-detect.'),
+  word_timestamps: z.boolean().default(false)
+    .describe('If true, include per-word start/end timestamps in the result.'),
+}
+export const speechToTextSchema = z.object(speechToTextInput)

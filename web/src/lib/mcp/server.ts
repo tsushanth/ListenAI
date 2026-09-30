@@ -6,10 +6,11 @@ import {
   createAudiobookInput, createAudiobookSchema, audiobookIdInput, audiobookIdSchema,
   isolateVoiceInput, isolateVoiceSchema, getVoiceIsolationInput, getVoiceIsolationSchema,
   MAX_ISOLATE_AUDIO_MB, ISOLATE_REQUEST_TIMEOUT_MS,
+  speechToTextInput, speechToTextSchema, MAX_STT_AUDIO_MB, STT_REQUEST_TIMEOUT_MS,
 } from './schemas.ts'
 import { KOKORO_VOICES, PIPER_VOICES, resolveVoice } from './voices.ts'
 import {
-  UpstreamError, authorize, fetchPiperHealth, synthesize, type ErrorCode,
+  UpstreamError, authorize, authorizeStt, fetchPiperHealth, synthesize, transcribe, type ErrorCode,
   isolateVoice, getVoiceIsolationStatus, getVoiceIsolationAudio,
 } from './upstream.ts'
 import { pcm16ToWav, pcmDurationSeconds } from './wav.ts'
@@ -22,6 +23,9 @@ export const keyLimiter = new SlidingWindowLimiter(15, 60_000)
 // 10/hour limiter on POST /api/voice-isolate/isolations (voiceIsolate.ts), just scoped per-minute here
 // since this limiter is local to one MCP server instance, not shared with the web app's own calls.
 export const isolateKeyLimiter = new SlidingWindowLimiter(5, 60_000)
+
+// Transcription is heavier (GPU minutes, not milliseconds) than a TTS call: 10 per minute per key.
+export const sttKeyLimiter = new SlidingWindowLimiter(10, 60_000)
 
 export interface RequestContext {
   keyId: string // hash of the API key, only used to bucket rate limits
@@ -163,6 +167,62 @@ export function createMcpServer(ctx: RequestContext): McpServer {
         return toolError(e.code, e.message, e.retryable)
       }
       return toolError('upstream', 'Unexpected error while checking the isolation job.', true)
+    }
+  })
+
+  server.registerTool('speech_to_text', {
+    title: 'Speech to text',
+    description:
+      `Transcribe spoken audio to text. Send base64-encoded audio (WAV, FLAC, OGG, MP3, M4A, or WEBM), up to ${MAX_STT_AUDIO_MB} MB decoded. ` +
+      `Runs on a batch Whisper worker (large-v3-turbo) — expect a few seconds to a couple of minutes depending on length; long calls will not stream. ` +
+      `Returns the transcript, detected language, and audio duration; set word_timestamps for per-word timing. ` +
+      `Uses the caller's free minutes or billing, so avoid re-transcribing the same audio. ` +
+      `Errors are returned with a code: capacity (temporary, retry), payment_required (free minutes used up), invalid_input (bad/oversized audio), rate_limited (wait).`,
+    inputSchema: speechToTextInput,
+    annotations: { title: 'Speech to text', readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+  }, async (args): Promise<CallToolResult> => {
+    const parsed = speechToTextSchema.parse(args)
+    const rl = sttKeyLimiter.check(ctx.keyId)
+    if (!rl.ok) return toolError('rate_limited', `Too many transcription requests for this key. Try again in ${rl.retryAfterSec} s.`, true)
+
+    let buffer: Buffer
+    try {
+      buffer = Buffer.from(parsed.audio_base64, 'base64')
+    } catch {
+      return toolError('invalid_input', 'audio_base64 is not valid base64.', false)
+    }
+    if (buffer.length === 0) return toolError('invalid_input', 'Decoded audio is empty.', false)
+    if (buffer.length > MAX_STT_AUDIO_MB * 1024 * 1024) {
+      return toolError('invalid_input', `Decoded audio exceeds ${MAX_STT_AUDIO_MB} MB.`, false)
+    }
+
+    try {
+      const { token, url } = await authorizeStt(ctx.apiKey)
+      const result = await transcribe({
+        url, token, buffer, mimeType: parsed.mime_type,
+        language: parsed.language, wordTimestamps: parsed.word_timestamps,
+        timeoutMs: STT_REQUEST_TIMEOUT_MS,
+      })
+      return {
+        content: [
+          { type: 'text', text: result.text },
+          { type: 'text', text: `Detected language ${result.language}${result.language_probability ? ` (${(result.language_probability * 100).toFixed(0)}%)` : ''}, ${result.duration.toFixed(1)} s of audio.` },
+        ],
+        structuredContent: {
+          text: result.text,
+          language: result.language,
+          language_probability: result.language_probability ?? null,
+          duration: result.duration,
+          words: result.words ?? undefined,
+          segments: result.segments ?? undefined,
+        },
+      }
+    } catch (e) {
+      if (e instanceof UpstreamError) {
+        if (e.code === 'unauthorized') ctx.authFailed = true
+        return toolError(e.code, e.message, e.retryable)
+      }
+      return toolError('upstream', 'Unexpected error while transcribing audio.', true)
     }
   })
 

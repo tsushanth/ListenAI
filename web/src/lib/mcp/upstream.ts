@@ -254,6 +254,78 @@ export async function getVoiceIsolationAudio(opts: {
   return Buffer.from(await r.arrayBuffer())
 }
 
+/** Same hand-off as authorize() above, but for batch speech-to-text (worker-stt-prod, `mode: "batch"`). */
+export async function authorizeStt(key: string): Promise<{ token: string; url: string }> {
+  let r: Response
+  try {
+    r = await fetch(`${GATEWAY}/stt/authorize`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key, mode: 'batch' }),
+      cache: 'no-store',
+      signal: AbortSignal.timeout(10_000),
+    })
+  } catch {
+    throw new UpstreamError('upstream', 'Could not reach the ReadAloud AI API. Try again shortly.', true)
+  }
+  if (r.status === 401) throw new UpstreamError('unauthorized', 'Invalid or revoked API key.')
+  if (r.status === 402) throw new UpstreamError('payment_required', 'This key has used up its free characters. Add a payment method in the developer console at https://readaloudai.org/developers#get-started, then try again.')
+  if (r.status === 429) throw new UpstreamError('rate_limited', 'The API is rate limiting this key. Wait a moment and retry.', true)
+  if (r.status === 501) throw new UpstreamError('upstream', 'Speech-to-text is not available right now.', true)
+  if (!r.ok) throw new UpstreamError('upstream', `The ReadAloud AI API returned ${r.status}.`, r.status >= 500)
+  const body = (await r.json().catch(() => null)) as { token?: string; url?: string } | null
+  if (!body?.token || !body.url || !/^https?:\/\//.test(body.url)) throw new UpstreamError('upstream', 'Unexpected response from the ReadAloud AI API.', true)
+  return { token: body.token, url: body.url }
+}
+
+export interface TranscribeResult {
+  text: string
+  language: string
+  language_probability?: number
+  duration: number
+  words?: Array<{ word: string; start: number; end: number }>
+  segments?: Array<{ id: number; start: number; end: number; text: string }>
+}
+
+/** POST decoded audio bytes to worker-stt-prod's `/v1/stt`, authenticated with a freshly minted session token. */
+export async function transcribe(opts: {
+  url: string
+  token: string
+  buffer: Buffer
+  mimeType: string
+  language?: string
+  wordTimestamps: boolean
+  timeoutMs: number
+}): Promise<TranscribeResult> {
+  const qs = new URLSearchParams()
+  if (opts.language) qs.set('language', opts.language)
+  if (opts.wordTimestamps) qs.set('word_timestamps', 'true')
+
+  let r: Response
+  try {
+    r = await fetch(`${opts.url}/v1/stt?${qs.toString()}`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${opts.token}`, 'Content-Type': opts.mimeType || 'application/octet-stream' },
+      body: new Uint8Array(opts.buffer),
+      signal: AbortSignal.timeout(opts.timeoutMs),
+    })
+  } catch {
+    throw new UpstreamError('upstream', 'Could not reach the speech-to-text worker. Try again shortly.', true)
+  }
+  if (r.status === 401) throw new UpstreamError('unauthorized', 'Speech-to-text session token was rejected.')
+  if (r.status === 413) throw new UpstreamError('invalid_input', 'Audio file is too large.')
+  if (r.status === 400) {
+    const text = await r.text().catch(() => '')
+    throw new UpstreamError('invalid_input', `The worker rejected the audio: ${text || 'bad request'}.`)
+  }
+  if (!r.ok) {
+    const text = await r.text().catch(() => '')
+    throw new UpstreamError('upstream', `worker-stt-prod returned ${r.status}: ${text}`, r.status >= 500)
+  }
+  const body = (await r.json().catch(() => null)) as TranscribeResult | null
+  if (!body || typeof body.text !== 'string') throw new UpstreamError('upstream', 'Unexpected response from the speech-to-text worker.', true)
+  return body
+}
 export async function fetchPiperHealth(): Promise<{ active: number; max: number; device?: string; status?: string } | null> {
   try {
     const r = await fetch('https://piper-tts-sjc.fly.dev/health', { cache: 'no-store', signal: AbortSignal.timeout(5000) })

@@ -69,6 +69,15 @@ const envSchema = z.object({
   XTTS_CLONE_URL: z.string().url().optional(),
   XTTS_CLONE_SECRET: z.string().optional(),
 
+  // Batch speech-to-text (worker-stt-prod, faster-whisper large-v3-turbo, external Modal app in the
+  // rt-stt-rt-prod repo — shared, scale-to-zero, NOT a per-user deployment; see routes/stt.ts) — ships
+  // dark if unset. Unlike XTTS/voice-convert, the worker is not called directly with a static bearer
+  // secret: it requires a session token minted by the realtime-tts gateway's /stt/authorize, so these
+  // are gateway-facing credentials (mirrors REALTIME_TTS_API_KEY/REALTIME_TTS_GATEWAY_URL in
+  // routes/realtimeTts.ts), not a worker URL/secret pair.
+  STT_GATEWAY_URL: z.string().url().optional(),
+  STT_API_KEY: z.string().optional(),
+
   // Modal CLI credentials — used by backend to deploy/destroy voice-convert apps on behalf of users.
   MODAL_TOKEN_ID: z.string().optional(),
   MODAL_TOKEN_SECRET: z.string().optional(),

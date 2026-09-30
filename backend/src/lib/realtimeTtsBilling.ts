@@ -333,6 +333,42 @@ export async function reportVoiceIsolateUsage(userId: string): Promise<void> {
   }
 }
 
+// Reports one customer-facing batch speech-to-text call (backend/src/routes/stt.ts) to Stripe as a
+// meter event, weighted into character-equivalents via STT_CHARS_PER_SECOND — the SAME meter/price
+// as TTS characters (see the comment above STT_CHARS_PER_SECOND). This is distinct from, and in
+// addition to, the gateway-key-based STT usage drain in reportUsageToStripe: that path bills whoever
+// owns the *gateway* key used to call worker-stt-prod (the realtime-tts developer API product). The
+// customer-facing route below authorizes against the gateway with a single shared backend-owned key
+// (STT_API_KEY, same pattern as REALTIME_TTS_API_KEY in routes/realtimeTts.ts), so that gateway key's
+// own usage is NOT a real end user — reportSttUsage is what actually bills the real ReadAloudAI user,
+// against their own realtimetts_billing subscription. Do not let STT_API_KEY's gateway-side usage
+// also reach reportUsageToStripe for a real customer, or usage would be double-billed; as long as
+// STT_API_KEY is a house/backend key with no realtimetts_billing row of its own, its drained usage is
+// silently dropped by reportUsageToStripe's "no owning user record" branch, which is the intended
+// (if easy-to-miss) safety net here.
+export async function reportSttUsage(userId: string, audioSeconds: number): Promise<void> {
+  const billing = await getBillingForUser(userId);
+  if (!billing?.active) {
+    billingLogger.warn({ userId }, 'reportSttUsage called for user with no active billing');
+    return;
+  }
+  const chars = Math.round(audioSeconds * STT_CHARS_PER_SECOND);
+  if (chars <= 0) return; // sub-0.16s remainder rounds to nothing, matches reportUsageToStripe's drain path
+  try {
+    await stripe.billing.meterEvents.create({
+      event_name: TTS_METER_EVENT_NAME,
+      timestamp: Math.floor(Date.now() / 1000),
+      payload: {
+        stripe_customer_id: billing.stripe_customer_id,
+        value: String(chars),
+      },
+    });
+    billingLogger.debug({ userId, audioSeconds, chars }, 'STT usage reported');
+  } catch (err) {
+    billingLogger.error({ err, userId, audioSeconds }, 'Failed to report STT usage');
+  }
+}
+
 // --------------------------------------------------------------------------
 // Voice clone one-time charge ($2.50)
 // --------------------------------------------------------------------------

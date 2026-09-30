@@ -36,6 +36,7 @@ import { voiceDesignRouter } from './routes/voiceDesign.js';
 import { voiceConvertRouter } from './routes/voiceConvert.js';
 import { voiceIsolateRouter } from './routes/voiceIsolate.js';
 import { voiceCloneRouter } from './routes/voiceClone.js';
+import { sttRouter } from './routes/stt.js';
 import { voiceStudioApiKeyRouter } from './routes/voiceStudioApiKey.js';
 import { orpheusVoiceStudioApiKeyRouter } from './routes/orpheusVoiceStudioApiKey.js';
 import { orpheusVoiceStudioRouter } from './routes/orpheusVoiceStudio.js';
@@ -246,6 +247,7 @@ app.use('/api/voice-convert', voiceConvertRouter);
 app.use('/api/voice-isolate', requireAuthOrApiKey, voiceIsolateRouter);
 // Voice clone — XTTS v2 instant voice cloning (dark unless XTTS_CLONE_URL is configured)
 app.use('/api/voice-clone', voiceCloneRouter);
+app.use('/api/stt', requireAuthOrApiKey, sttRouter);
 // strict Supabase auth like the API-key routes above.
 app.use('/api/voice-studio', voiceStudioRouter);
 
