@@ -117,7 +117,16 @@ body {
   .ra-nav { display: none; position: absolute; top: 64px; left: 0; right: 0; background: var(--paper); padding: 16px 24px 24px; flex-direction: column; align-items: flex-start; border-bottom: 1px solid var(--line); }
   .ra-nav.open { display: flex; }
   .ra-menu-btn { display: block; }
+  .ra-nav-tools { width: 100%; }
+  .ra-nav-menu { position: static; box-shadow: none; border: 0; border-left: 2px solid var(--line); border-radius: 0; padding: 4px 0 4px 14px; margin-top: 6px; min-width: 0; }
 }
+/* "Tools" dropdown group in the header */
+.ra-nav-tools { position: relative; }
+.ra-nav-tools-btn { display: inline-flex; align-items: center; gap: 4px; background: none; border: 0; padding: 0; font: inherit; font-size: .95rem; color: var(--ink2); cursor: pointer; }
+.ra-nav-tools-btn:hover, .ra-nav-tools-btn[aria-expanded="true"] { color: var(--ink); }
+.ra-nav-menu { position: absolute; top: calc(100% + 12px); left: -12px; min-width: 200px; display: grid; gap: 2px; padding: 8px; background: var(--paper); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,.08); z-index: 50; }
+.ra-nav-menu a { padding: 8px 10px; border-radius: 8px; white-space: nowrap; }
+.ra-nav-menu a:hover { background: var(--panel); }
 
 .ra-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 999px; padding: 12px 22px; font-weight: 600; font-size: .98rem; text-decoration: none; border: 1.5px solid var(--ink); cursor: pointer; transition: background .15s, color .15s; font-family: inherit; }
 .ra-btn.solid { background: var(--ink); color: #fff; }
