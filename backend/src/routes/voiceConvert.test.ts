@@ -8,6 +8,7 @@ import type { AddressInfo } from 'node:net';
 process.env.SUPABASE_URL ??= 'http://localhost:54321';
 process.env.SUPABASE_SERVICE_ROLE_KEY ??= 'test';
 process.env.SUPABASE_JWT_SECRET ??= 'test';
+process.env.GATEWAY_FORWARD_SECRET ??= 'test-forward-secret';
 process.env.NODE_ENV = 'test';
 
 // ---------------------------------------------------------------------------
@@ -148,12 +149,19 @@ function uninstallFetchMock() {
 // Boot helpers
 // ---------------------------------------------------------------------------
 
-async function boot() {
+// `withGatewayAuth: true` mounts requireAuthOrApiKey in front of the router, exactly as backend/src/index.ts
+// does in production (API-key / MCP callers and the web app's JWT both go through it).
+async function boot(opts: { withGatewayAuth?: boolean } = {}) {
   const { voiceConvertRouter } = await import('./voiceConvert.js');
 
   const app = express();
   app.use(express.json());
-  app.use('/api/voice-convert', voiceConvertRouter);
+  if (opts.withGatewayAuth) {
+    const { requireAuthOrApiKey } = await import('../middleware/apiKeyAuth.js');
+    app.use('/api/voice-convert', requireAuthOrApiKey, voiceConvertRouter);
+  } else {
+    app.use('/api/voice-convert', voiceConvertRouter);
+  }
   const server = app.listen(0);
   const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}/api/voice-convert`;
 
@@ -170,7 +178,10 @@ async function boot() {
       body: body instanceof FormData ? body : body ? JSON.stringify(body) : undefined,
     });
 
-  return { call, server, close: () => { server.close(); } };
+  const callH = (headers: Record<string, string>, method: string, path: string, body?: FormData) =>
+    fetch(base + path, { method, headers, body });
+
+  return { call, callH, server, close: () => { server.close(); } };
 }
 
 function buildForm(source: Buffer, target: Buffer, consent?: string): FormData {
@@ -405,3 +416,89 @@ test('GET /deploy returns deployment info when configured', async () => {
 // Deployment tests: POST /deploy and DELETE /deploy do subprocess calls to modal CLI,
 // which is impractical to unit-test here without extensive exec mocking. Covered by
 // integration tests instead.
+
+// ---------------------------------------------------------------------------
+// API-key (gateway-forwarded identity) auth, mounted behind requireAuthOrApiKey
+// ---------------------------------------------------------------------------
+
+const GW = () => ({ 'x-gateway-admin-secret': 'test-forward-secret', 'x-gateway-uid': resolvedUserId });
+
+test('gateway-forwarded API key identity can submit, poll and fetch a conversion', async () => {
+  installFetchMock();
+  resetState();
+  resolvedUserId = 'gw-user-1'; // own rate-limit bucket (10/hour per user)
+  userConfigs.set(resolvedUserId, { modal_url: MODAL_BASE, modal_secret: 'my-secret' });
+  const s = await boot({ withGatewayAuth: true });
+  const r = await s.callH(GW(), 'POST', '/conversions', buildForm(Buffer.from('src'), Buffer.from('tgt'), CONSENT_STATEMENT));
+  assert.equal(r.status, 202);
+  const { job_id } = await r.json();
+  assert.ok(job_id);
+  modalJobs.set(job_id, { status: 'done', audio: Buffer.from('fake-wav') });
+  assert.equal((await s.callH(GW(), 'GET', `/conversions/${job_id}`)).status, 200);
+  const audio = await s.callH(GW(), 'GET', `/conversions/${job_id}/audio`);
+  assert.equal(audio.status, 200);
+  s.close();
+  uninstallFetchMock();
+});
+
+test('gateway-forwarded request with the wrong secret -> 401 and never reaches Modal', async () => {
+  installFetchMock();
+  resetState();
+  resolvedUserId = 'gw-user-2'; // own rate-limit bucket (10/hour per user)
+  userConfigs.set(resolvedUserId, { modal_url: MODAL_BASE, modal_secret: 'my-secret' });
+  const s = await boot({ withGatewayAuth: true });
+  const r = await s.callH({ 'x-gateway-admin-secret': 'wrong', 'x-gateway-uid': resolvedUserId }, 'POST', '/conversions',
+    buildForm(Buffer.from('src'), Buffer.from('tgt'), CONSENT_STATEMENT));
+  assert.equal(r.status, 401);
+  assert.equal(modalRequests.length, 0);
+  s.close();
+  uninstallFetchMock();
+});
+
+test('billing is still enforced for a gateway-forwarded identity (no free ride via the bridge)', async () => {
+  installFetchMock();
+  resetState();
+  resolvedUserId = 'gw-user-3'; // own rate-limit bucket (10/hour per user)
+  billingActive = false;
+  userConfigs.set(resolvedUserId, { modal_url: MODAL_BASE, modal_secret: 'my-secret' });
+  const s = await boot({ withGatewayAuth: true });
+  const r = await s.callH(GW(), 'POST', '/conversions', buildForm(Buffer.from('src'), Buffer.from('tgt'), CONSENT_STATEMENT));
+  assert.equal(r.status, 402);
+  assert.equal(modalRequests.length, 0);
+  s.close();
+  uninstallFetchMock();
+});
+
+test('consent statement is still required for gateway-forwarded callers', async () => {
+  installFetchMock();
+  resetState();
+  resolvedUserId = 'gw-user-4'; // own rate-limit bucket (10/hour per user)
+  userConfigs.set(resolvedUserId, { modal_url: MODAL_BASE, modal_secret: 'my-secret' });
+  const s = await boot({ withGatewayAuth: true });
+  const r = await s.callH(GW(), 'POST', '/conversions', buildForm(Buffer.from('src'), Buffer.from('tgt'), 'I consent.'));
+  assert.equal(r.status, 400);
+  s.close();
+  uninstallFetchMock();
+});
+
+test('no deployment -> 400 with machine-readable code deployment_required (API-key callers deploy via POST /deploy)', async () => {
+  installFetchMock();
+  resetState();
+  resolvedUserId = 'gw-user-5'; // own rate-limit bucket (10/hour per user)
+  const s = await boot({ withGatewayAuth: true });
+  const r = await s.callH(GW(), 'POST', '/conversions', buildForm(Buffer.from('src'), Buffer.from('tgt'), CONSENT_STATEMENT));
+  assert.equal(r.status, 400);
+  assert.equal((await r.json()).code, 'deployment_required');
+  s.close();
+  uninstallFetchMock();
+});
+
+test('GET /deploy works for gateway-forwarded callers (404 when none)', async () => {
+  installFetchMock();
+  resetState();
+  resolvedUserId = 'gw-user-6'; // own rate-limit bucket (10/hour per user)
+  const s = await boot({ withGatewayAuth: true });
+  assert.equal((await s.callH(GW(), 'GET', '/deploy')).status, 404);
+  s.close();
+  uninstallFetchMock();
+});

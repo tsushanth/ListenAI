@@ -8,6 +8,7 @@ import type { AddressInfo } from 'node:net';
 process.env.SUPABASE_URL ??= 'http://localhost:54321';
 process.env.SUPABASE_SERVICE_ROLE_KEY ??= 'test';
 process.env.SUPABASE_JWT_SECRET ??= 'test';
+process.env.GATEWAY_FORWARD_SECRET ??= 'test-forward-secret';
 process.env.NODE_ENV = 'test';
 process.env.VOICE_DESIGN_URL = 'http://127.0.0.1:9999';
 process.env.VOICE_DESIGN_SECRET = 'modal-secret';
@@ -96,11 +97,18 @@ globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise
 // Boot helpers
 // ---------------------------------------------------------------------------
 
-async function boot() {
+// `withGatewayAuth: true` mounts requireAuthOrApiKey in front of the router, exactly as backend/src/index.ts
+// does in production (API-key / MCP callers and the web app's JWT both go through it).
+async function boot(opts: { withGatewayAuth?: boolean } = {}) {
   const { voiceDesignRouter } = await import('./voiceDesign.js');
 
   const app = express();
-  app.use('/api/voice-design', voiceDesignRouter);
+  if (opts.withGatewayAuth) {
+    const { requireAuthOrApiKey } = await import('../middleware/apiKeyAuth.js');
+    app.use('/api/voice-design', requireAuthOrApiKey, voiceDesignRouter);
+  } else {
+    app.use('/api/voice-design', voiceDesignRouter);
+  }
   const server = app.listen(0);
   const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}/api/voice-design`;
 
@@ -114,7 +122,14 @@ async function boot() {
       body: body ? JSON.stringify(body) : undefined,
     });
 
-  return { call, server, close: () => server.close() };
+  const callH = (headers: Record<string, string>, method: string, path: string, body?: unknown) =>
+    fetch(base + path, {
+      method,
+      headers: { ...headers, ...(body ? { 'Content-Type': 'application/json' } : {}) },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+
+  return { call, callH, server, close: () => server.close() };
 }
 
 // ---------------------------------------------------------------------------
@@ -216,5 +231,62 @@ test('presets empty list', async () => {
   assert.equal(r.status, 200);
   const body = await r.json();
   assert.deepEqual(body.presets, []);
+  s.close();
+});
+
+// ---------------------------------------------------------------------------
+// API-key (gateway-forwarded identity) auth, mounted behind requireAuthOrApiKey
+// ---------------------------------------------------------------------------
+
+const GW = () => ({ 'x-gateway-admin-secret': 'test-forward-secret', 'x-gateway-uid': resolvedUserId });
+const VALID_DESIGN = { description: 'A warm, friendly female narrator for audiobooks', text: 'Hello world' };
+
+test('gateway-forwarded API key identity can create and poll a design job', async () => {
+  const s = await boot({ withGatewayAuth: true });
+  resolvedUserId = 'gw-user-1'; // own rate-limit bucket (12/hour per user)
+  const create = await s.callH(GW(), 'POST', '/designs', VALID_DESIGN);
+  assert.equal(create.status, 201);
+  const { job_id } = await create.json();
+  modalJobs.set(job_id, { status: 'ready', audio: Buffer.from('fake-wav') });
+  assert.equal((await s.callH(GW(), 'GET', `/designs/${job_id}`)).status, 200);
+  const audio = await s.callH(GW(), 'GET', `/designs/${job_id}/audio`);
+  assert.equal(audio.status, 200);
+  assert.equal(audio.headers.get('content-type'), 'audio/wav');
+  s.close();
+});
+
+test('gateway-forwarded request with the wrong secret -> 401 and never reaches Modal', async () => {
+  const s = await boot({ withGatewayAuth: true });
+  resolvedUserId = 'gw-user-2'; // own rate-limit bucket (12/hour per user)
+  modalRequests.length = 0;
+  const r = await s.callH({ 'x-gateway-admin-secret': 'wrong', 'x-gateway-uid': resolvedUserId }, 'POST', '/designs', VALID_DESIGN);
+  assert.equal(r.status, 401);
+  assert.equal(modalRequests.length, 0);
+  s.close();
+});
+
+test('no credentials at all behind requireAuthOrApiKey -> 401', async () => {
+  const s = await boot({ withGatewayAuth: true });
+  resolvedUserId = 'gw-user-3'; // own rate-limit bucket (12/hour per user)
+  assert.equal((await s.callH({}, 'POST', '/designs', VALID_DESIGN)).status, 401);
+  s.close();
+});
+
+test('billing is still enforced for a gateway-forwarded identity (no free ride via the bridge)', async () => {
+  const s = await boot({ withGatewayAuth: true });
+  resolvedUserId = 'gw-user-4'; // own rate-limit bucket (12/hour per user)
+  modalRequests.length = 0;
+  billingActive = false;
+  const r = await s.callH(GW(), 'POST', '/designs', VALID_DESIGN);
+  assert.equal(r.status, 402);
+  assert.equal(modalRequests.length, 0);
+  billingActive = true;
+  s.close();
+});
+
+test('validation still applies to gateway-forwarded callers', async () => {
+  const s = await boot({ withGatewayAuth: true });
+  resolvedUserId = 'gw-user-5'; // own rate-limit bucket (12/hour per user)
+  assert.equal((await s.callH(GW(), 'POST', '/designs', { description: 'x', text: 'hi' })).status, 400);
   s.close();
 });

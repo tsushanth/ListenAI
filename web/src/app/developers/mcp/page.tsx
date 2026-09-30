@@ -12,6 +12,16 @@ const tools = [
   ['text_to_speech', 'Speaks up to 1,000 characters and returns a WAV clip (24 kHz, mono) plus the duration and time to first audio. Inputs: text, engine (piper or kokoro), voice, speed (0.5 to 2).'],
   ['list_voices', 'Lists the voices you can use for each engine. Input: engine (optional).'],
   ['get_api_status', 'Shows whether the Piper engine is up and how many of its simultaneous streams are in use. Useful after a capacity error.'],
+  ['design_voice', 'Generates a new synthetic voice from a text description and a sample sentence. Returns a job_id. Inputs: description (10 to 800 characters), text (up to 500 characters). Needs an active subscription.'],
+  ['get_voice_design', 'Polls a design_voice job. Returns the status, and the WAV sample once it is ready. Input: job_id.'],
+  ['convert_voice', 'Speech-to-speech conversion: re-speaks a source clip in the voice of a target reference clip. Returns a job_id. Inputs: source_audio_base64, target_audio_base64 (up to 4 MB each), MIME types, confirms_rights (must be true). The first call on an account sets up a private converter (about 3 minutes) and returns a temporary capacity error; call again afterwards.'],
+  ['get_voice_conversion', 'Polls a convert_voice job. Returns the status, and the converted WAV once it is done. Input: job_id.'],
+  ['create_voice_clone', 'Starts a custom cloned voice (Piper fine-tune) and records the speaker’s consent. Returns a voice_id. Inputs: speaker_name, attested_by, consent (true), consent_statement (the exact wording). Needs a billing-enabled key.'],
+  ['upload_voice_clone_dataset', 'Uploads the recordings for a voice as a ZIP. Inputs: voice_id, and either zip_base64 (up to 8 MB) or zip_url (public https, up to 48 MB). Does not start training or bill.'],
+  ['commit_voice_clone_dataset', 'Starts training (30 to 60 minutes) and bills $2.50 per voice. Inputs: voice_id, confirms_charge (must be true).'],
+  ['get_voice_clone_status', 'Shows a cloned voice’s status: created, training, ready or rejected. Input: voice_id.'],
+  ['deploy_voice_clone', 'Makes a ready cloned voice usable. Returns the voice name to pass to text_to_speech, as custom:<voice_id>. Input: voice_id.'],
+  ['delete_voice_clone', 'Permanently deletes a cloned voice and its recordings. Input: voice_id.'],
 ]
 
 export default function McpDocsPage() {

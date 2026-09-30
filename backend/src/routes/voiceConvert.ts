@@ -132,20 +132,26 @@ async function modalAppStop(appName: string): Promise<void> {
 // --------------------------------------------------------------------------
 
 async function requireUser(req: Request, res: Response): Promise<string | null> {
-  const cached = (req as Request & { userId?: string }).userId;
-  if (cached) return cached;
+  // Identity: req.userId is set upstream by requireAuthOrApiKey (gateway-forwarded API key OR verified JWT);
+  // fall back to verifying the bearer token ourselves so the router still works mounted standalone.
+  let userId = (req as Request & { userId?: string }).userId;
+  if (!userId) {
+    const token = (req.headers.authorization || '').replace(/^Bearer /, '');
+    if (!token) { res.status(401).json({ error: 'Sign in required.' }); return null; }
 
-  const token = (req.headers.authorization || '').replace(/^Bearer /, '');
-  if (!token) { res.status(401).json({ error: 'Sign in required.' }); return null; }
+    const { data: { user }, error } = await supabase.auth.getUser(token);
+    if (error || !user) { res.status(401).json({ error: 'Invalid token.' }); return null; }
+    userId = user.id;
+  }
 
-  const { data: { user }, error } = await supabase.auth.getUser(token);
-  if (error || !user) { res.status(401).json({ error: 'Invalid token.' }); return null; }
-
-  const active = await isBillingActiveForUser(user.id);
+  // Billing is checked for EVERY resolved identity, including one already set by requireAuthOrApiKey. (The
+  // sibling routes short-circuit on a pre-set req.userId and skip this check, which would let any
+  // authenticated caller past the subscription gate once the bridge middleware is mounted in front.)
+  const active = await isBillingActiveForUser(userId);
   if (!active) { res.status(402).json({ error: 'Voice conversion requires an active TTS subscription.' }); return null; }
 
-  (req as Request & { userId?: string }).userId = user.id;
-  return user.id;
+  (req as Request & { userId?: string }).userId = userId;
+  return userId;
 }
 
 async function requireUserMiddleware(req: Request, res: Response, next: NextFunction) {
@@ -290,7 +296,7 @@ export const voiceConvertRouter: Router = (() => {
       const userId = (req as Request & { userId?: string }).userId!;
       const modalCfg = await getUserModalConfig(userId);
       if (!modalCfg) {
-        res.status(400).json({ error: 'Voice conversion is not configured. Deploy a converter first.' });
+        res.status(400).json({ error: 'Voice conversion is not configured. Deploy a converter first (POST /api/voice-convert/deploy).', code: 'deployment_required' });
         return;
       }
 
@@ -367,7 +373,7 @@ export const voiceConvertRouter: Router = (() => {
       const userId = await requireUser(req, res);
       if (!userId) return;
       const modalCfg = await getUserModalConfig(userId);
-      if (!modalCfg) { res.status(400).json({ error: 'Voice conversion is not configured.' }); return; }
+      if (!modalCfg) { res.status(400).json({ error: 'Voice conversion is not configured.', code: 'deployment_required' }); return; }
 
       const st = await modalRequest<{ status: string; [key: string]: unknown }>(modalCfg, `/convert/${req.params.id}`);
 
@@ -377,7 +383,7 @@ export const voiceConvertRouter: Router = (() => {
           .eq('modal_job_id', req.params.id)
           .eq('user_id', userId);
         if (st.status === 'done') {
-          reportVoiceConvertUsage(userId).catch((err: unknown) => log.warn({ err }, 'voice convert billing report failed (non-critical)'));
+          reportVoiceConvertUsage(userId, req.params.id).catch((err: unknown) => log.warn({ err }, 'voice convert billing report failed (non-critical)'));
         }
       }
 
@@ -391,7 +397,7 @@ export const voiceConvertRouter: Router = (() => {
       const userId = await requireUser(req, res);
       if (!userId) return;
       const modalCfg = await getUserModalConfig(userId);
-      if (!modalCfg) { res.status(400).json({ error: 'Voice conversion is not configured.' }); return; }
+      if (!modalCfg) { res.status(400).json({ error: 'Voice conversion is not configured.', code: 'deployment_required' }); return; }
       const wav = await modalAudio(modalCfg, `/convert/${req.params.id}/result`);
       res.set({ 'Content-Type': 'audio/wav', 'Cache-Control': 'private, max-age=300' }).send(wav);
     } catch (e) { next(e); }
@@ -403,7 +409,7 @@ export const voiceConvertRouter: Router = (() => {
       const userId = await requireUser(req, res);
       if (!userId) return;
       const modalCfg = await getUserModalConfig(userId);
-      if (!modalCfg) { res.status(400).json({ error: 'Voice conversion is not configured.' }); return; }
+      if (!modalCfg) { res.status(400).json({ error: 'Voice conversion is not configured.', code: 'deployment_required' }); return; }
       await modalRequest(modalCfg, `/convert/${req.params.id}`, { method: 'DELETE' });
       await supabase.from('voice_conversions')
         .delete()
