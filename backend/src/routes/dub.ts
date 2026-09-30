@@ -9,6 +9,9 @@
 //             TTS pipeline, adjusting `speed` per segment so its synthesized
 //             duration approximately matches the source segment's duration.
 //   4. Concatenate the per-segment audio buffers in order and return one file.
+//             (Each segment comes back from ttsProvider.synthesize as a full,
+//             independent WAV file — see the PCM-splicing note below on why
+//             this can't just be a raw Buffer.concat of those buffers.)
 //
 // Explicitly OUT OF SCOPE for this pass (see report):
 //   - Video. This is audio-in -> audio-out only. No muxing, no subtitles burn-in.
@@ -247,9 +250,121 @@ async function synthesizeSegment(
     updated_at: new Date().toISOString(),
   };
 
-  const result = await ttsProvider.synthesize(voice, trimmed, { speed, format: 'mp3' });
+  // NOTE: the selfhosted (Kokoro) TTS path ignores `format` entirely and
+  // always returns WAV bytes regardless of what's requested here — confirmed
+  // in ttsProviderClient.ts's synthesizeShort()/synthesizeLong(), both of
+  // which hardcode `format: 'wav'` on their response. Requesting 'wav'
+  // explicitly (rather than 'mp3', which was never actually honored) keeps
+  // this call honest about what it actually gets back.
+  const result = await ttsProvider.synthesize(voice, trimmed, { speed, format: 'wav' });
 
   return { audioBuffer: result.audioBuffer, durationMs: result.durationMs, speedUsed: speed };
+}
+
+// ============================================================================
+// WAV splicing
+// ============================================================================
+//
+// Each per-segment buffer from synthesizeSegment() is itself a complete,
+// independent WAV file (RIFF header + fmt chunk + data chunk) — confirmed
+// against ttsProviderClient.ts. A naive Buffer.concat() of these would glue
+// multiple RIFF/WAVE headers back to back, which is not valid WAV: a
+// standards-conforming reader stops at the first data chunk's declared
+// length and ignores everything after it, silently truncating playback to
+// just the first segment. To produce one genuinely valid file, we parse each
+// segment's fmt/data chunks, concatenate the raw PCM payloads only, and
+// write a single WAV header sized for the combined PCM data.
+
+interface WavPcm {
+  pcm: Buffer;
+  numChannels: number;
+  sampleRate: number;
+  bitsPerSample: number;
+}
+
+/**
+ * Parse a WAV buffer's `fmt ` and `data` chunks (searching chunk-by-chunk
+ * rather than assuming fixed offsets, since an optional chunk like `LIST`
+ * can appear before `data`). Returns null if `buffer` isn't a valid
+ * RIFF/WAVE file or is too short to contain both required chunks.
+ */
+function parseWavPcm(buffer: Buffer): WavPcm | null {
+  if (buffer.length < 12 || buffer.toString('ascii', 0, 4) !== 'RIFF' || buffer.toString('ascii', 8, 12) !== 'WAVE') {
+    return null;
+  }
+
+  let offset = 12;
+  let numChannels: number | undefined;
+  let sampleRate: number | undefined;
+  let bitsPerSample: number | undefined;
+  let pcm: Buffer | undefined;
+
+  while (offset + 8 <= buffer.length) {
+    const chunkId = buffer.toString('ascii', offset, offset + 4);
+    const chunkSize = buffer.readUInt32LE(offset + 4);
+    const chunkStart = offset + 8;
+    const chunkEnd = Math.min(chunkStart + chunkSize, buffer.length);
+
+    if (chunkId === 'fmt ') {
+      numChannels = buffer.readUInt16LE(chunkStart + 2);
+      sampleRate = buffer.readUInt32LE(chunkStart + 4);
+      bitsPerSample = buffer.readUInt16LE(chunkStart + 14);
+    } else if (chunkId === 'data') {
+      pcm = buffer.subarray(chunkStart, chunkEnd);
+    }
+
+    // Chunks are word-aligned: a chunk with an odd size has one byte of padding after it.
+    offset = chunkStart + chunkSize + (chunkSize % 2);
+  }
+
+  if (numChannels === undefined || sampleRate === undefined || bitsPerSample === undefined || !pcm) {
+    return null;
+  }
+  return { pcm, numChannels, sampleRate, bitsPerSample };
+}
+
+/** Build a standard 44-byte canonical WAV header for the given PCM format/length. */
+function buildWavHeader(opts: { numChannels: number; sampleRate: number; bitsPerSample: number; dataLength: number }): Buffer {
+  const { numChannels, sampleRate, bitsPerSample, dataLength } = opts;
+  const blockAlign = numChannels * (bitsPerSample / 8);
+  const byteRate = sampleRate * blockAlign;
+
+  const header = Buffer.alloc(44);
+  header.write('RIFF', 0, 'ascii');
+  header.writeUInt32LE(36 + dataLength, 4);
+  header.write('WAVE', 8, 'ascii');
+  header.write('fmt ', 12, 'ascii');
+  header.writeUInt32LE(16, 16); // fmt chunk size (PCM)
+  header.writeUInt16LE(1, 20); // audio format = PCM
+  header.writeUInt16LE(numChannels, 22);
+  header.writeUInt32LE(sampleRate, 24);
+  header.writeUInt32LE(byteRate, 28);
+  header.writeUInt16LE(blockAlign, 32);
+  header.writeUInt16LE(bitsPerSample, 34);
+  header.write('data', 36, 'ascii');
+  header.writeUInt32LE(dataLength, 40);
+  return header;
+}
+
+/**
+ * Splice a sequence of per-segment WAV buffers into one valid WAV file by
+ * extracting each segment's PCM payload and re-wrapping the concatenated PCM
+ * in a single header. Empty buffers (from empty/non-speech segments — see
+ * synthesizeSegment) are skipped since they carry no header to parse.
+ * Segments are expected to share the same format (they all come from the
+ * same TTS voice/provider); if a segment doesn't parse as WAV, it's dropped
+ * rather than corrupting the whole file.
+ */
+function spliceWavSegments(buffers: Buffer[]): Buffer {
+  const parsed = buffers.map((b) => (b.length > 0 ? parseWavPcm(b) : null)).filter((p): p is WavPcm => p !== null);
+  if (parsed.length === 0) {
+    return Buffer.alloc(0);
+  }
+
+  const { numChannels, sampleRate, bitsPerSample } = parsed[0]!;
+  const pcm = Buffer.concat(parsed.map((p) => p.pcm));
+  const header = buildWavHeader({ numChannels, sampleRate, bitsPerSample, dataLength: pcm.length });
+  return Buffer.concat([header, pcm]);
 }
 
 // ============================================================================
@@ -351,15 +466,20 @@ async function runDubJob(
       });
     }
 
-    // 4. Concatenate. v1 approximation: naive back-to-back byte concatenation
-    // of MP3 buffers, no silence-gap padding between segments and no
-    // container-level remuxing (no ffmpeg in this repo — see file header).
-    // Most MP3 decoders tolerate concatenated frames fine for playback, but
-    // this is not a substitute for real audio muxing.
-    const finalAudio = Buffer.concat(buffers);
+    // 4. Splice. v1 approximation: no silence-gap padding between segments
+    // and no container-level remuxing (no ffmpeg in this repo — see file
+    // header) — segments are placed back to back with no regard for the
+    // source segment gaps. This is NOT a raw Buffer.concat of the per-segment
+    // buffers though: each one is its own complete WAV file (RIFF header +
+    // PCM data), so naive concatenation would glue multiple headers together
+    // into an invalid file that most players truncate at the first segment.
+    // spliceWavSegments() strips each segment down to its PCM payload and
+    // wraps the combined PCM in a single valid header (see WAV splicing
+    // section above) — not a substitute for real audio muxing.
+    const finalAudio = spliceWavSegments(buffers);
 
-    const audioPath = `audio/dubbing/${job.userId}/${job.id}.mp3`;
-    await uploadAudioToCache(audioPath, finalAudio, 'mp3');
+    const audioPath = `audio/dubbing/${job.userId}/${job.id}.wav`;
+    await uploadAudioToCache(audioPath, finalAudio, 'wav');
     const audioUrl = await getSignedAudioUrl(audioPath);
 
     job.segments = segmentResults;
