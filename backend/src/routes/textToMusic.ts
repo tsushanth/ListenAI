@@ -1,17 +1,8 @@
 // Text-to-music API routes.
 //
-// Auth: mounted behind `requireRealAuth` (see index.ts) which currently only
-// accepts a Supabase user session/access token, verified remotely via
-// verifyAuthTokenRemote (see routes/ttsApiKeys.ts). There is NOT yet a
-// separate long-lived "API key" mechanism for this endpoint — an external
-// SDK consumer must pass their ReadAloud Supabase access token in the
-// Authorization header as their "API key". This is a real limitation for
-// third-party integrations (tokens expire and aren't meant to be
-// distributed as API keys) but is how auth on this endpoint actually works
-// today.
-// TODO: add persistent-API-key support for the text-to-music endpoint
-// (mirroring however ttsApiKeys.ts's job-API-key flow works for TTS) — not
-// yet implemented.
+// Auth: mounted behind `requireMusicAuth` (see index.ts), which accepts a
+// persistent rlm_ API key or a Supabase session token. Key minting lives in
+// routes/musicApiKeys.ts behind session-only requireRealAuth.
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { asyncHandler } from '../middleware/errorHandler.js';
@@ -35,6 +26,17 @@ const MIN_DURATION_SEC = 15;
 // MAX_DURATION_SEC in the realtime-tts repo.
 const MAX_DURATION_SEC = 47;
 
+// Fail-closed provisioning gate. Music generation runs on our own paid GPU
+// (Modal A10G) and is only revenue-bearing if BOTH (a) the worker is enabled
+// and (b) MUSIC_GENERATION_PRICE_ID is set, so checkout attaches the metered
+// per-generation price. Without (b), reportMusicGenerationUsage emits meter
+// events that bill nothing (unpriced GPU cost). Read at request time so the
+// gate follows the deployed env; new job creation is refused (503) unless
+// both are set. Not applied to GET /job/:jobId so in-flight jobs stay pollable.
+export function isMusicProvisioned(): boolean {
+  return process.env.MUSIC_WORKER_ENABLED === 'true' && !!process.env.MUSIC_GENERATION_PRICE_ID;
+}
+
 const jobRequestSchema = z.object({
   prompt: z.string().min(1).max(500),
   duration_sec: z.number().min(MIN_DURATION_SEC).max(MAX_DURATION_SEC),
@@ -48,6 +50,11 @@ export const textToMusicRouter = Router();
 
 textToMusicRouter.post('/job', asyncHandler(async (req: Request, res: Response) => {
   const userId = (req as StrictAuthedRequest).userId!;
+
+  if (!isMusicProvisioned()) {
+    res.status(503).json({ error: 'Text-to-music is not available.' });
+    return;
+  }
 
   const parseResult = jobRequestSchema.safeParse(req.body);
   if (!parseResult.success) {

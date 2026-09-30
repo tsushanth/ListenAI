@@ -12,6 +12,10 @@ process.env.SUPABASE_URL ??= 'http://localhost:54321';
 process.env.SUPABASE_SERVICE_ROLE_KEY ??= 'test';
 process.env.SUPABASE_JWT_SECRET ??= 'test';
 process.env.NODE_ENV = 'test';
+// The route fails closed unless the worker is enabled AND the metered price is
+// configured (see isMusicProvisioned); existing tests assume a provisioned env.
+process.env.MUSIC_WORKER_ENABLED = 'true';
+process.env.MUSIC_GENERATION_PRICE_ID ??= 'price_test_music';
 
 // ---------------------------------------------------------------------------
 // Intercept fetch for Supabase RPC calls backing the music_jobs table.
@@ -203,4 +207,34 @@ test('GET /job/:jobId on a malformed, non-UUID, non-cache- id returns 404, not 5
   const getRes = await s.call('GET', '/job/not-a-real-id');
   assert.equal(getRes.status, 404);
   s.close();
+});
+
+test('POST /job returns 503 and creates no job when the metered price is not configured', async () => {
+  const saved = process.env.MUSIC_GENERATION_PRICE_ID;
+  delete process.env.MUSIC_GENERATION_PRICE_ID;
+  try {
+    const s = await boot();
+    const jobsBefore = jobCounter;
+    const res = await s.call('POST', '/job', { prompt: 'unpriced-should-not-create-job', duration_sec: 30 });
+    assert.equal(res.status, 503);
+    assert.equal(jobCounter, jobsBefore, 'no job should have been created');
+    s.close();
+  } finally {
+    process.env.MUSIC_GENERATION_PRICE_ID = saved;
+  }
+});
+
+test('POST /job returns 503 when the music worker is not enabled', async () => {
+  const saved = process.env.MUSIC_WORKER_ENABLED;
+  delete process.env.MUSIC_WORKER_ENABLED;
+  try {
+    const s = await boot();
+    const jobsBefore = jobCounter;
+    const res = await s.call('POST', '/job', { prompt: 'no-worker-should-not-create-job', duration_sec: 30 });
+    assert.equal(res.status, 503);
+    assert.equal(jobCounter, jobsBefore);
+    s.close();
+  } finally {
+    process.env.MUSIC_WORKER_ENABLED = saved;
+  }
 });
