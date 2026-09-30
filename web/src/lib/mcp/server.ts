@@ -20,6 +20,17 @@ import {
 } from './upstream.ts'
 import { pcm16ToWav, pcmDurationSeconds } from './wav.ts'
 import { AudiobooksApiError, createAudiobook, getAudiobookStatus, exportAudiobook } from './audiobooksClient.ts'
+import {
+  designVoiceInput, designVoiceSchema, getVoiceDesignInput, getVoiceDesignSchema,
+  convertVoiceInput, convertVoiceSchema, getVoiceConversionInput, getVoiceConversionSchema, MAX_CONVERT_AUDIO_MB,
+  createVoiceCloneInput, createVoiceCloneSchema, uploadVoiceCloneDatasetInput, uploadVoiceCloneDatasetSchema,
+  commitVoiceCloneDatasetInput, commitVoiceCloneDatasetSchema, voiceCloneIdInput, voiceCloneIdSchema,
+  MAX_CLONE_ZIP_BASE64_MB, MAX_CLONE_ZIP_URL_MB, designKeyLimiter, convertKeyLimiter, cloneKeyLimiter,
+  submitVoiceDesign, getVoiceDesignStatus, getVoiceDesignAudio,
+  submitVoiceConversion, getVoiceConversionStatus, getVoiceConversionAudio,
+  createVoiceClone, uploadVoiceCloneDataset, commitVoiceCloneDataset, getVoiceCloneStatus, deployVoiceClone, deleteVoiceClone,
+  downloadZip, looksLikeZip,
+} from './voiceTools.ts'
 
 // 15 speech calls per minute per API key (per server instance).
 export const keyLimiter = new SlidingWindowLimiter(15, 60_000)
@@ -459,6 +470,268 @@ export function createMcpServer(ctx: RequestContext): McpServer {
       }
       return toolError('upstream', 'Unexpected error while generating a sound effect.', true)
     }
+  })
+
+  // ==========================================================================
+  // Voice design, voice conversion and voice cloning. Contiguous block at the end of the registrations;
+  // schemas, limiters and upstream clients live in voiceTools.ts.
+  // ==========================================================================
+
+  const failVoice = (e: unknown, fallback: string): CallToolResult => {
+    if (e instanceof UpstreamError) {
+      if (e.code === 'unauthorized') ctx.authFailed = true
+      return toolError(e.code, e.message, e.retryable)
+    }
+    return toolError('upstream', fallback, true)
+  }
+  const decodedBytes = (b64: string) => Math.floor((b64.length * 3) / 4)
+
+  server.registerTool('design_voice', {
+    title: 'Design a voice',
+    description:
+      `Generate a brand-new synthetic voice from a text description (e.g. "a warm, friendly female narrator with a calm British accent") ` +
+      `and have it speak a sample sentence. Runs on a GPU worker; this call returns a job_id right away. Poll get_voice_design with that job_id ` +
+      `until it returns the WAV audio. Billed per generated voice on the caller's active subscription, so avoid resubmitting the same description. ` +
+      `Errors are returned with a code: payment_required (no active subscription), invalid_input (description/text too short or long), rate_limited (wait).`,
+    inputSchema: designVoiceInput,
+    annotations: { title: 'Design a voice', readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
+  }, async (args): Promise<CallToolResult> => {
+    const parsed = designVoiceSchema.parse(args)
+    const rl = designKeyLimiter.check(ctx.keyId)
+    if (!rl.ok) return toolError('rate_limited', `Too many voice design requests for this key. Try again in ${rl.retryAfterSec} s.`, true)
+    try {
+      const r = await submitVoiceDesign({ apiKey: ctx.apiKey, keyId: ctx.keyId, description: parsed.description, text: parsed.text })
+      return {
+        content: [{ type: 'text', text: `Voice design job ${r.job_id} is ${r.status}. Poll get_voice_design with job_id "${r.job_id}" for the audio.` }],
+        structuredContent: { job_id: r.job_id, status: r.status },
+      }
+    } catch (e) { return failVoice(e, 'Unexpected error while submitting the voice design job.') }
+  })
+
+  server.registerTool('get_voice_design', {
+    title: 'Get voice design status/result',
+    description:
+      `Check a design_voice job by job_id. While status is "queued" or "processing" it returns just the status: poll again after a few seconds. ` +
+      `Once status is "ready" it also returns the generated voice sample as an inline WAV clip. Polling a finished job again is safe and is not billed twice.`,
+    inputSchema: getVoiceDesignInput,
+    annotations: { title: 'Get voice design', readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+  }, async (args): Promise<CallToolResult> => {
+    const parsed = getVoiceDesignSchema.parse(args)
+    try {
+      const st = await getVoiceDesignStatus({ apiKey: ctx.apiKey, keyId: ctx.keyId, jobId: parsed.job_id })
+      if (st.status !== 'ready') {
+        return {
+          content: [{ type: 'text', text: `Voice design job ${parsed.job_id} is ${st.status}.${st.status === 'failed' ? ' No audio was produced.' : ' Poll again shortly.'}` }],
+          structuredContent: { job_id: parsed.job_id, status: st.status },
+        }
+      }
+      const audio = await getVoiceDesignAudio({ apiKey: ctx.apiKey, keyId: ctx.keyId, jobId: parsed.job_id })
+      return {
+        content: [
+          { type: 'audio', data: audio.toString('base64'), mimeType: 'audio/wav' },
+          { type: 'text', text: `Voice design job ${parsed.job_id} is ready.` },
+        ],
+        structuredContent: { job_id: parsed.job_id, status: st.status },
+      }
+    } catch (e) { return failVoice(e, 'Unexpected error while checking the voice design job.') }
+  })
+
+  server.registerTool('convert_voice', {
+    title: 'Convert voice',
+    description:
+      `Speech-to-speech voice conversion (Seed-VC): re-speak the source audio in the voice of a target reference clip, keeping the words and timing. ` +
+      `Send both clips base64-encoded (WAV, FLAC, OGG, MP3, or M4A), up to ${MAX_CONVERT_AUDIO_MB} MB decoded each. Requires confirms_rights: true. ` +
+      `Returns a job_id right away; poll get_voice_conversion. First use on an account provisions a private GPU converter automatically (about 3 minutes): ` +
+      `in that case this returns a temporary "capacity" error, and you should call convert_voice again after a few minutes. ` +
+      `Errors are returned with a code: payment_required (no active subscription), invalid_input (bad audio or missing rights confirmation), capacity (converter still being set up, retry), rate_limited (wait).`,
+    inputSchema: convertVoiceInput,
+    annotations: { title: 'Convert voice', readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
+  }, async (args): Promise<CallToolResult> => {
+    const parsed = convertVoiceSchema.parse(args)
+    const rl = convertKeyLimiter.check(ctx.keyId)
+    if (!rl.ok) return toolError('rate_limited', `Too many voice conversion requests for this key. Try again in ${rl.retryAfterSec} s.`, true)
+    const limit = MAX_CONVERT_AUDIO_MB * 1024 * 1024
+    if (decodedBytes(parsed.source_audio_base64) > limit || decodedBytes(parsed.target_audio_base64) > limit) {
+      return toolError('invalid_input', `Each clip must be at most ${MAX_CONVERT_AUDIO_MB} MB decoded.`, false)
+    }
+    const source = Buffer.from(parsed.source_audio_base64, 'base64')
+    const target = Buffer.from(parsed.target_audio_base64, 'base64')
+    if (source.length === 0 || target.length === 0) return toolError('invalid_input', 'Decoded audio is empty.', false)
+    try {
+      const r = await submitVoiceConversion({
+        apiKey: ctx.apiKey, keyId: ctx.keyId,
+        source, sourceMime: parsed.source_mime_type, target, targetMime: parsed.target_mime_type,
+      })
+      return {
+        content: [{ type: 'text', text: `Voice conversion job ${r.job_id} is ${r.status}. Poll get_voice_conversion with job_id "${r.job_id}" for the audio.` }],
+        structuredContent: { job_id: r.job_id, status: r.status },
+      }
+    } catch (e) { return failVoice(e, 'Unexpected error while submitting the voice conversion job.') }
+  })
+
+  server.registerTool('get_voice_conversion', {
+    title: 'Get voice conversion status/result',
+    description:
+      `Check a convert_voice job by job_id. While status is "queued" or "processing" it returns just the status: poll again after a few seconds. ` +
+      `Once status is "done" it also returns the converted speech as an inline WAV clip. If status is "failed" or "rejected" no audio was produced. ` +
+      `Polling a finished job again is safe and is not billed twice.`,
+    inputSchema: getVoiceConversionInput,
+    annotations: { title: 'Get voice conversion', readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+  }, async (args): Promise<CallToolResult> => {
+    const parsed = getVoiceConversionSchema.parse(args)
+    try {
+      const st = await getVoiceConversionStatus({ apiKey: ctx.apiKey, keyId: ctx.keyId, jobId: parsed.job_id })
+      if (st.status !== 'done') {
+        const bad = st.status === 'failed' || st.status === 'rejected'
+        return {
+          content: [{ type: 'text', text: `Voice conversion job ${parsed.job_id} is ${st.status}.${bad ? ' No audio was produced.' : ' Poll again shortly.'}` }],
+          structuredContent: { job_id: parsed.job_id, status: st.status },
+        }
+      }
+      const audio = await getVoiceConversionAudio({ apiKey: ctx.apiKey, keyId: ctx.keyId, jobId: parsed.job_id })
+      return {
+        content: [
+          { type: 'audio', data: audio.toString('base64'), mimeType: 'audio/wav' },
+          { type: 'text', text: `Voice conversion job ${parsed.job_id} is done.` },
+        ],
+        structuredContent: { job_id: parsed.job_id, status: st.status },
+      }
+    } catch (e) { return failVoice(e, 'Unexpected error while checking the voice conversion job.') }
+  })
+
+  server.registerTool('create_voice_clone', {
+    title: 'Create a voice clone',
+    description:
+      `Start a custom cloned voice (Piper fine-tune) for a speaker who has agreed to it. Records the speaker's consent and returns a voice_id; ` +
+      `next call upload_voice_clone_dataset, then commit_voice_clone_dataset (that step starts training and bills $2.50 per voice). ` +
+      `Needs a billing-enabled API key and at most 3 active voices per key. You must pass consent: true and the consent_statement verbatim; ` +
+      `only clone a voice you are authorized to. Errors are returned with a code: payment_required (billing not enabled on this key), invalid_input (names too short or consent wording wrong), rate_limited (wait).`,
+    inputSchema: createVoiceCloneInput,
+    annotations: { title: 'Create voice clone', readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
+  }, async (args): Promise<CallToolResult> => {
+    const parsed = createVoiceCloneSchema.parse(args)
+    const rl = cloneKeyLimiter.check(ctx.keyId)
+    if (!rl.ok) return toolError('rate_limited', `Too many voice cloning requests for this key. Try again in ${rl.retryAfterSec} s.`, true)
+    try {
+      const r = await createVoiceClone({
+        apiKey: ctx.apiKey, speakerName: parsed.speaker_name, attestedBy: parsed.attested_by, consentStatement: parsed.consent_statement,
+      })
+      return {
+        content: [{ type: 'text', text: `Created voice ${r.id} (status: created). Next: upload_voice_clone_dataset with voice_id "${r.id}".` }],
+        structuredContent: { voice_id: r.id, status: 'created' },
+      }
+    } catch (e) { return failVoice(e, 'Unexpected error while creating the voice clone.') }
+  })
+
+  server.registerTool('upload_voice_clone_dataset', {
+    title: 'Upload voice clone recordings',
+    description:
+      `Upload the recordings for a voice made with create_voice_clone: a ZIP of clean, single-speaker WAV/FLAC/MP3 files (10-60 minutes is ideal). ` +
+      `Provide exactly one of zip_base64 (up to ${MAX_CLONE_ZIP_BASE64_MB} MB decoded) or zip_url (public https URL, up to ${MAX_CLONE_ZIP_URL_MB} MB). ` +
+      `This only uploads; it does not start training or bill anything. Call commit_voice_clone_dataset afterwards. ` +
+      `Errors are returned with a code: invalid_input (not a ZIP, too large, or the voice already has recordings), payment_required, rate_limited (wait).`,
+    inputSchema: uploadVoiceCloneDatasetInput,
+    annotations: { title: 'Upload voice clone dataset', readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+  }, async (args): Promise<CallToolResult> => {
+    const parsed = uploadVoiceCloneDatasetSchema.parse(args)
+    const rl = cloneKeyLimiter.check(ctx.keyId)
+    if (!rl.ok) return toolError('rate_limited', `Too many voice cloning requests for this key. Try again in ${rl.retryAfterSec} s.`, true)
+    if (!!parsed.zip_base64 === !!parsed.zip_url) return toolError('invalid_input', 'Provide exactly one of zip_base64 or zip_url.', false)
+    try {
+      let zip: Buffer
+      if (parsed.zip_base64) {
+        if (decodedBytes(parsed.zip_base64) > MAX_CLONE_ZIP_BASE64_MB * 1024 * 1024) {
+          return toolError('invalid_input', `zip_base64 exceeds ${MAX_CLONE_ZIP_BASE64_MB} MB decoded. Host the ZIP at an https URL and pass zip_url instead.`, false)
+        }
+        zip = Buffer.from(parsed.zip_base64, 'base64')
+      } else {
+        zip = await downloadZip(parsed.zip_url as string)
+      }
+      if (!looksLikeZip(zip)) return toolError('invalid_input', 'The data is not a ZIP archive.', false)
+      const r = await uploadVoiceCloneDataset({ apiKey: ctx.apiKey, voiceId: parsed.voice_id, zip })
+      return {
+        content: [{ type: 'text', text: `Uploaded ${r.bytes} bytes (${r.parts} part${r.parts === 1 ? '' : 's'}) for voice ${parsed.voice_id}. Next: commit_voice_clone_dataset (starts training, bills $2.50).` }],
+        structuredContent: { voice_id: parsed.voice_id, uploaded_bytes: r.bytes, parts: r.parts },
+      }
+    } catch (e) { return failVoice(e, 'Unexpected error while uploading the recordings.') }
+  })
+
+  server.registerTool('commit_voice_clone_dataset', {
+    title: 'Commit voice clone and start training',
+    description:
+      `Finish the upload for a voice and start training (about 30-60 minutes on GPU). THIS BILLS $2.50 (one-time, per voice) to the account behind this API key, ` +
+      `so it requires confirms_charge: true; call it once per voice. Poll get_voice_clone_status until status is "ready", then deploy_voice_clone to use it. ` +
+      `Errors are returned with a code: payment_required (billing not enabled), invalid_input (nothing uploaded, or already committed), rate_limited (wait).`,
+    inputSchema: commitVoiceCloneDatasetInput,
+    annotations: { title: 'Commit voice clone dataset', readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
+  }, async (args): Promise<CallToolResult> => {
+    const parsed = commitVoiceCloneDatasetSchema.parse(args)
+    const rl = cloneKeyLimiter.check(ctx.keyId)
+    if (!rl.ok) return toolError('rate_limited', `Too many voice cloning requests for this key. Try again in ${rl.retryAfterSec} s.`, true)
+    try {
+      const r = await commitVoiceCloneDataset({ apiKey: ctx.apiKey, voiceId: parsed.voice_id })
+      return {
+        content: [{ type: 'text', text: `Training started for voice ${r.id} (status: ${r.status}${r.clips !== undefined ? `, ${r.clips} clips` : ''}). Poll get_voice_clone_status; expect roughly 30-60 minutes.` }],
+        structuredContent: { voice_id: r.id, status: r.status, clips: r.clips ?? null },
+      }
+    } catch (e) { return failVoice(e, 'Unexpected error while starting training.') }
+  })
+
+  server.registerTool('get_voice_clone_status', {
+    title: 'Get voice clone status',
+    description:
+      `Check a cloned voice: status moves created -> training -> ready (or rejected, with a reason if the recordings could not be used). ` +
+      `When ready, call deploy_voice_clone, then use "custom:<voice_id>" as the voice in text_to_speech.`,
+    inputSchema: voiceCloneIdInput,
+    annotations: { title: 'Get voice clone status', readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+  }, async (args): Promise<CallToolResult> => {
+    const parsed = voiceCloneIdSchema.parse(args)
+    try {
+      const v = await getVoiceCloneStatus({ apiKey: ctx.apiKey, voiceId: parsed.voice_id })
+      const reason = v.error && typeof v.error === 'object' ? (v.error as { reason?: string }).reason : undefined
+      return {
+        content: [{ type: 'text', text: `Voice ${v.id}: ${v.status ?? 'unknown'}.${reason ? ` ${reason}` : ''}${v.status === 'ready' ? ' Call deploy_voice_clone to make it usable.' : ''}` }],
+        structuredContent: v as Record<string, unknown>,
+      }
+    } catch (e) { return failVoice(e, 'Unexpected error while checking the voice clone.') }
+  })
+
+  server.registerTool('deploy_voice_clone', {
+    title: 'Deploy voice clone',
+    description:
+      `Make a trained (status "ready") cloned voice available for synthesis. Returns the voice name to pass to text_to_speech, in the form "custom:<voice_id>". No extra charge.`,
+    inputSchema: voiceCloneIdInput,
+    annotations: { title: 'Deploy voice clone', readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+  }, async (args): Promise<CallToolResult> => {
+    const parsed = voiceCloneIdSchema.parse(args)
+    const rl = cloneKeyLimiter.check(ctx.keyId)
+    if (!rl.ok) return toolError('rate_limited', `Too many voice cloning requests for this key. Try again in ${rl.retryAfterSec} s.`, true)
+    try {
+      const r = await deployVoiceClone({ apiKey: ctx.apiKey, voiceId: parsed.voice_id })
+      return {
+        content: [{ type: 'text', text: `Voice ${r.id} is live. Use voice "${r.voice}" in text_to_speech.` }],
+        structuredContent: { voice_id: r.id, voice: r.voice },
+      }
+    } catch (e) { return failVoice(e, 'Unexpected error while deploying the voice clone.') }
+  })
+
+  server.registerTool('delete_voice_clone', {
+    title: 'Delete voice clone',
+    description:
+      `Permanently delete a cloned voice and its recordings. This cannot be undone and does not refund the $2.50 creation charge.`,
+    inputSchema: voiceCloneIdInput,
+    annotations: { title: 'Delete voice clone', readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: true },
+  }, async (args): Promise<CallToolResult> => {
+    const parsed = voiceCloneIdSchema.parse(args)
+    const rl = cloneKeyLimiter.check(ctx.keyId)
+    if (!rl.ok) return toolError('rate_limited', `Too many voice cloning requests for this key. Try again in ${rl.retryAfterSec} s.`, true)
+    try {
+      await deleteVoiceClone({ apiKey: ctx.apiKey, voiceId: parsed.voice_id })
+      return {
+        content: [{ type: 'text', text: `Deleted voice ${parsed.voice_id}.` }],
+        structuredContent: { voice_id: parsed.voice_id, deleted: true },
+      }
+    } catch (e) { return failVoice(e, 'Unexpected error while deleting the voice clone.') }
   })
 
   return server

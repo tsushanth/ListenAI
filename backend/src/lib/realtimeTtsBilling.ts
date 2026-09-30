@@ -275,7 +275,9 @@ export async function reportUsageToStripe(deps: UsageReportDeps = defaultUsageDe
 // Reports one voice-design generation to Stripe as a meter event.
 // Called synchronously after the Modal job succeeds, not batched.
 // Best-effort: a metering failure does not fail the generation itself.
-export async function reportVoiceDesignUsage(userId: string): Promise<void> {
+// jobId (when given) is sent as the Stripe meter event `identifier`, which Stripe dedupes on, so a job that is
+// polled again after it is already done (an MCP client re-polling) is never billed twice.
+export async function reportVoiceDesignUsage(userId: string, jobId?: string): Promise<void> {
   const billing = await getBillingForUser(userId);
   if (!billing?.active) {
     billingLogger.warn({ userId }, 'reportVoiceDesignUsage called for user with no active billing');
@@ -284,6 +286,7 @@ export async function reportVoiceDesignUsage(userId: string): Promise<void> {
   try {
     await stripe.billing.meterEvents.create({
       event_name: VOICE_DESIGN_METER_EVENT_NAME,
+      ...(jobId ? { identifier: `voice-design-${jobId}` } : {}),
       timestamp: Math.floor(Date.now() / 1000),
       payload: {
         stripe_customer_id: billing.stripe_customer_id,
@@ -296,7 +299,9 @@ export async function reportVoiceDesignUsage(userId: string): Promise<void> {
   }
 }
 
-export async function reportVoiceConvertUsage(userId: string): Promise<void> {
+// jobId (when given) is sent as the Stripe meter event `identifier`, which Stripe dedupes on, so a job that is
+// polled again after it is already done (an MCP client re-polling) is never billed twice.
+export async function reportVoiceConvertUsage(userId: string, jobId?: string): Promise<void> {
   const billing = await getBillingForUser(userId);
   if (!billing?.active) {
     billingLogger.warn({ userId }, 'reportVoiceConvertUsage called for user with no active billing');
@@ -305,6 +310,7 @@ export async function reportVoiceConvertUsage(userId: string): Promise<void> {
   try {
     await stripe.billing.meterEvents.create({
       event_name: VOICE_CONVERT_METER_EVENT_NAME,
+      ...(jobId ? { identifier: `voice-convert-${jobId}` } : {}),
       timestamp: Math.floor(Date.now() / 1000),
       payload: {
         stripe_customer_id: billing.stripe_customer_id,

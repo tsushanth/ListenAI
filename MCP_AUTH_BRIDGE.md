@@ -170,3 +170,23 @@ middleware exists to prevent — an invalid/garbage JWT never falls back to a de
 `middleware/auth.ts`'s `requireAuth`.
 
 Run: `cd backend && npm test` (all 80 tests pass, including the 8 new ones).
+
+## Voice design, voice conversion and voice cloning (API key + MCP)
+
+- `/api/voice-design` and `/api/voice-convert` are now mounted behind `requireAuthOrApiKey`. Their
+  `requireUser()` resolves `req.userId` first, then falls back to JWT, and then **always** checks the active
+  subscription (`isBillingActiveForUser`). Unlike `voiceIsolate.ts`/`stt.ts`, the billing check is not skipped
+  when `req.userId` is already set; otherwise mounting the bridge would let any authenticated caller past the
+  subscription gate. Consent statements and per-user rate limits are unchanged.
+- Usage reports for design/convert pass the job id as the Stripe meter event `identifier`, so re-polling a
+  finished job cannot bill it twice (MCP clients poll far more than the web app does).
+- **Per-user converter deploy for API-key callers.** Conversion runs on a per-user Modal deployment (unless the
+  global `VOICE_CONVERT_URL` fallback is configured). `POST/GET/DELETE /api/voice-convert/deploy` is reachable
+  through the bridge, so an API-key caller needs no browser. A conversion with no ready deployment answers
+  `400 {code: "deployment_required"}`. The MCP `convert_voice` tool reacts to that code by calling
+  `POST /deploy` itself (or finding it already running; a `failed` deployment is deleted and redeployed once)
+  and returns a retryable `capacity` error saying the converter is being provisioned (~3 minutes), so the
+  caller just retries. Raw REST callers do the same by hand: on `deployment_required`, `POST /deploy`, poll
+  `GET /deploy` until `status: "ready"`, retry.
+- **Cloning** does not go through this backend bridge at all: the MCP tools call the realtime-tts gateway's
+  `/v1/voices/*` with the caller's API key as bearer. `commit_voice_clone_dataset` is the billed step ($2.50).

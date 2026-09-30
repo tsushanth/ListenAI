@@ -238,10 +238,14 @@ app.use('/api/audiobooks', requireAuthOrApiKey, audiobooksRouter);
 // requireAuth default-user fallback — see routes/ttsApiKeys.ts).
 app.use('/api/tts-api-keys', ttsApiKeysRouter);
 
-// Voice design — Parler-TTS text-to-voice generation (dark unless VOICE_DESIGN_URL is configured)
-app.use('/api/voice-design', voiceDesignRouter);
-// Voice convert — Seed-VC speech-to-speech voice conversion (dark unless VOICE_CONVERT_URL is configured)
-app.use('/api/voice-convert', voiceConvertRouter);
+// Voice design — Parler-TTS text-to-voice generation (dark unless VOICE_DESIGN_URL is configured).
+// requireAuthOrApiKey: accepts a real Supabase JWT (web) or a gateway-forwarded API-key identity (MCP);
+// the router's requireUser() still enforces the active-subscription check for both. See MCP_AUTH_BRIDGE.md.
+app.use('/api/voice-design', requireAuthOrApiKey, voiceDesignRouter);
+// Voice convert — Seed-VC speech-to-speech voice conversion (dark unless VOICE_CONVERT_URL is configured).
+// Same bridge as voice-design. API-key callers have no browser to click "Deploy": POST /deploy is itself
+// bridged, and a 400 with code 'deployment_required' tells them to call it (the MCP convert_voice tool does).
+app.use('/api/voice-convert', requireAuthOrApiKey, voiceConvertRouter);
 // Voice isolate — Demucs (htdemucs) vocal isolation (dark unless VOICE_ISOLATE_URL is configured).
 // requireAuthOrApiKey lets the MCP tool call in with a gateway-forwarded API key identity, same as
 // stt.ts; the route's own requireUser()/requireUserMiddleware already checks req.userId first (set by
