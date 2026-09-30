@@ -1102,10 +1102,14 @@ export async function createTTSJob(params: {
  * Uses RPC to bypass PostgREST schema cache issues.
  */
 export async function getTTSJob(jobId: string): Promise<DBTTSJob | null> {
-  // Use RPC with a dummy user ID since we're not checking ownership
+  // get_tts_job's actual bypass condition is `p_user_id IS NULL` (see its
+  // definition), not any particular UUID value — a non-null dummy UUID
+  // never matches a real job's user_id, so this always returned no rows
+  // until fixed here. Confirmed against the live function definition and a
+  // real production job during an audiobooks end-to-end test.
   const { data, error } = await supabase.rpc('get_tts_job', {
     p_job_id: jobId,
-    p_user_id: '00000000-0000-0000-0000-000000000000', // Dummy - function ignores for admin access
+    p_user_id: null,
   });
 
   if (error) {
