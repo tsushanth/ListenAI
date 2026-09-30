@@ -30,6 +30,8 @@ export interface EnvConfig {
   VOICE_DESIGN_SECRET?: string;
   VOICE_CONVERT_URL?: string;
   VOICE_CONVERT_SECRET?: string;
+  VOICE_ISOLATE_URL?: string;
+  VOICE_ISOLATE_SECRET?: string;
   XTTS_CLONE_URL?: string;
   XTTS_CLONE_SECRET?: string;
   MODAL_TOKEN_ID?: string;

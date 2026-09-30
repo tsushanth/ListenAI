@@ -61,6 +61,10 @@ const envSchema = z.object({
   VOICE_CONVERT_URL: z.string().url().optional(),
   VOICE_CONVERT_SECRET: z.string().optional(),
 
+  // Voice isolate (vocal isolation via Demucs on Modal) — ships dark if unset.
+  VOICE_ISOLATE_URL: z.string().url().optional(),
+  VOICE_ISOLATE_SECRET: z.string().optional(),
+
   // XTTS v2 instant voice cloning — ships dark if unset.
   XTTS_CLONE_URL: z.string().url().optional(),
   XTTS_CLONE_SECRET: z.string().optional(),

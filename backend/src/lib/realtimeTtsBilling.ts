@@ -310,6 +310,29 @@ export async function reportVoiceConvertUsage(userId: string): Promise<void> {
   }
 }
 
+const VOICE_ISOLATE_METER_EVENT_NAME = process.env.VOICE_ISOLATE_METER_EVENT_NAME || 'realtimetts_voice_isolations';
+
+export async function reportVoiceIsolateUsage(userId: string): Promise<void> {
+  const billing = await getBillingForUser(userId);
+  if (!billing?.active) {
+    billingLogger.warn({ userId }, 'reportVoiceIsolateUsage called for user with no active billing');
+    return;
+  }
+  try {
+    await stripe.billing.meterEvents.create({
+      event_name: VOICE_ISOLATE_METER_EVENT_NAME,
+      timestamp: Math.floor(Date.now() / 1000),
+      payload: {
+        stripe_customer_id: billing.stripe_customer_id,
+        value: '1',
+      },
+    });
+    billingLogger.debug({ userId }, 'Voice isolate usage reported');
+  } catch (err) {
+    billingLogger.error({ err, userId }, 'Failed to report voice isolate usage');
+  }
+}
+
 // --------------------------------------------------------------------------
 // Voice clone one-time charge ($2.50)
 // --------------------------------------------------------------------------
