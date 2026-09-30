@@ -79,6 +79,21 @@ image = (
 )
 web_image = modal.Image.debian_slim(python_version="3.11").pip_install("fastapi==0.109.0", "python-multipart==0.0.9")
 
+# submit() below only calls _validate(), which needs soundfile/librosa -- nothing from the heavy
+# `image` above (torch, the cloned seed-vc repo, transformers, whisper, onnxruntime, etc.). Giving it
+# this much lighter image (matching isolate_job.py's image, which has no such split needed) keeps its
+# cold-start fast. Previously submit() shared `image`, so api()'s synchronous submit.remote() call --
+# on this app's very first real deploy -- blocked on a cold pull of the full ML image and blew past
+# api()'s timeout every time: confirmed live via a real production smoke test (three real submissions,
+# each timing out around the function's timeout ceiling, first at 60s then again at 240s after that was
+# bumped as a first attempt at this same fix). This is the actual fix; the bumped api() timeout below
+# is now just a safety margin, not the load-bearing change.
+submit_image = (
+    modal.Image.debian_slim(python_version="3.11")
+    .apt_install("ffmpeg", "libsndfile1")
+    .pip_install("soundfile", "librosa", "numpy<2")
+)
+
 MAX_SOURCE_SECONDS = 120.0
 MAX_TARGET_SECONDS = 60.0
 MIN_SECONDS = 0.5
@@ -119,7 +134,7 @@ def _job_dir(job_id: str) -> str:
     return f"/jobs/{job_id}"
 
 
-@app.function(image=image, volumes={"/jobs": jobs}, timeout=120)
+@app.function(image=submit_image, volumes={"/jobs": jobs}, timeout=120)
 def submit(job_id: str, source_bytes: bytes, source_ext: str, target_bytes: bytes, target_ext: str,
            diffusion_steps: int = 30, length_adjust: float = 1.0) -> dict:
     """Validates inputs, stores them on the jobs Volume, writes job.json (status=queued), and spawns
@@ -246,14 +261,10 @@ def cleanup(job_id: str) -> dict:
     image=web_image,
     secrets=[convert_secret] if convert_secret else [],
     volumes={"/jobs": jobs},
-    # 60s was not enough: api()'s own container (web_image) is light, but its POST /convert handler
-    # makes a synchronous submit.remote() call into a container using `image` above -- a much heavier
-    # image (clones seed-vc, installs transformers/whisper/onnxruntime/etc.) than isolate_job.py's.
-    # On this app's very first real deploy, that cold image pull alone exceeded 60s, so every first
-    # conversion after a fresh per-user deploy failed with "function execution timed out" -- confirmed
-    # by a live production smoke test (three real submissions, each timing out at ~60-64s). Bumped to
-    # give a cold submit() container real headroom; isolate_job.py's lighter image doesn't need this.
-    timeout=240,
+    # submit() now uses submit_image (see above), a light image that should cold-start in a few
+    # seconds like isolate_job.py's does -- 120s is a safety margin for Modal scheduling delays, not
+    # a load-bearing budget for a slow cold pull the way it was before that fix.
+    timeout=120,
 )
 @modal.asgi_app()
 def api():
