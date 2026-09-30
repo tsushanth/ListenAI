@@ -129,11 +129,15 @@ function uninstallFetchMock() {
 // Boot helpers
 // ---------------------------------------------------------------------------
 
-async function boot() {
+async function boot(opts: { presetUserId?: string } = {}) {
   const { sttRouter } = await import('./stt.js');
 
   const app = express();
   app.use(express.json());
+  if (opts.presetUserId) {
+    // Simulates requireAuthOrApiKey having already resolved an identity.
+    app.use((req, _res, next) => { (req as express.Request & { userId?: string }).userId = opts.presetUserId; next(); });
+  }
   app.use('/api/stt', sttRouter);
   const server = app.listen(0);
   const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}/api/stt`;
@@ -181,6 +185,17 @@ test('no token -> 401', async () => {
   const s = await boot();
   const r = await s.call(null, 'POST', '/transcriptions', buildAudioForm());
   assert.equal(r.status, 401);
+  s.close();
+  uninstallFetchMock();
+});
+
+test('pre-resolved identity (bridge) without an active subscription -> 402, not skipped', async () => {
+  installFetchMock();
+  resetState();
+  billingActive = false;
+  const s = await boot({ presetUserId: resolvedUserId });
+  const r = await s.call(null, 'POST', '/transcriptions', buildAudioForm());
+  assert.equal(r.status, 402);
   s.close();
   uninstallFetchMock();
 });

@@ -246,6 +246,20 @@ test('gateway-forwarded request with the wrong secret is rejected (401), never r
   uninstallFetchMock();
 });
 
+test('gateway-forwarded identity without an active subscription -> 402 (bridge must not skip the billing gate)', async () => {
+  installFetchMock();
+  resetState();
+  billingActive = false;
+  userConfigs.set(resolvedUserId, { modal_url: MODAL_BASE, modal_secret: 'my-secret' });
+  const s = await boot({ withGatewayAuth: true });
+  const form = buildForm(Buffer.from('input'), { consent: CONSENT_STATEMENT });
+  const r = await s.call({ 'x-gateway-admin-secret': 'test-forward-secret', 'x-gateway-uid': resolvedUserId }, 'POST', '/isolations', form);
+  assert.equal(r.status, 402);
+  assert.equal(modalRequests.length, 0);
+  s.close();
+  uninstallFetchMock();
+});
+
 // ---------------------------------------------------------------------------
 // Billing gate
 // ---------------------------------------------------------------------------

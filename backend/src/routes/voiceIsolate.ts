@@ -134,7 +134,11 @@ async function modalAppStop(appName: string): Promise<void> {
 
 async function requireUser(req: Request, res: Response): Promise<string | null> {
   const cached = (req as Request & { userId?: string }).userId;
-  if (cached) return cached;
+  if (cached) {
+    // Identity already resolved by requireAuthOrApiKey: the subscription gate must still apply.
+    if (!(await isBillingActiveForUser(cached))) { res.status(402).json({ error: 'Voice isolation requires an active TTS subscription.' }); return null; }
+    return cached;
+  }
 
   const token = (req.headers.authorization || '').replace(/^Bearer /, '');
   if (!token) { res.status(401).json({ error: 'Sign in required.' }); return null; }
