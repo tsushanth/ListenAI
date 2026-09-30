@@ -58,7 +58,13 @@ MAX_DURATION_SEC = 12.0
 
 image = (
     modal.Image.debian_slim(python_version="3.10")
-    .apt_install("git")
+    # libsndfile1 is the system library the `soundfile` Python package wraps -
+    # without it, torchaudio has NO I/O backend at all and torchaudio.save()
+    # fails with "Couldn't find appropriate backend" for any target (BytesIO
+    # OR a real file path - confirmed both live against a real deployed
+    # worker; this was never a BytesIO-vs-file issue, the backend was simply
+    # never installed).
+    .apt_install("git", "libsndfile1")
     .pip_install(
         "numpy==1.26.4",
         "torch==2.7.1",
@@ -66,6 +72,7 @@ image = (
         "pytorch-lightning==2.1.0",
         "prefigure",
         "dill",
+        "soundfile==0.12.1",
         "git+https://github.com/Stability-AI/stable-audio-tools.git",
         "fastapi==0.109.0",
         "uvicorn[standard]==0.27.0",
