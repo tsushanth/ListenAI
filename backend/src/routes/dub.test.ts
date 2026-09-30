@@ -77,12 +77,16 @@ interface MockSegment { start: number; end: number; text: string }
 
 let sttSegments: MockSegment[] = [{ start: 0, end: 2, text: 'Hello there.' }];
 let sttStatus = 200;
+// Controls the billing gate (isBillingActiveForUser -> getBillingForUser), which queries
+// the `realtimetts_billing` table via plain PostgREST — mirrors soundEffects.test.ts. Defaults to active.
+let billingActive = true;
 
 function resetMocks() {
   sttSegments = [{ start: 0, end: 2, text: 'Hello there.' }];
   sttStatus = 200;
   currentTranslationReply = '["Hola."]';
   anthropicCalls.length = 0;
+  billingActive = true;
 }
 
 let originalFetch: typeof globalThis.fetch;
@@ -99,6 +103,22 @@ function installFetchMock(supabaseUrl: string) {
         return new Response(JSON.stringify({ id: JWT_USER_ID }), { status: 200, headers: { 'Content-Type': 'application/json' } });
       }
       return new Response(JSON.stringify({ error: 'invalid' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
+    }
+
+    // Billing gate (isBillingActiveForUser -> getBillingForUser)
+    if (url.startsWith(`${supabaseUrl}/rest/v1/realtimetts_billing`)) {
+      const u = new URL(url);
+      const uid = u.searchParams.get('user_id')?.replace(/^eq\./, '');
+      if (billingActive && uid) {
+        return new Response(JSON.stringify([{
+          user_id: uid,
+          stripe_customer_id: `cus_${uid}`,
+          stripe_subscription_id: 'sub_test',
+          stripe_subscription_item_id: 'si_test',
+          active: true,
+        }]), { status: 200, headers: { 'Content-Type': 'application/json' } });
+      }
+      return new Response('[]', { status: 200, headers: { 'Content-Type': 'application/json' } });
     }
 
     // STT gateway authorize hand-off (POST {key, mode} -> {token, url})
@@ -230,6 +250,22 @@ test('POST /api/dub with gateway-forwarded API key identity is accepted (no JWT 
     const body = await r.json();
     assert.ok(body.job_id);
     assert.equal(body.status, 'processing');
+  } finally {
+    s.close();
+    uninstallFetchMock();
+  }
+});
+
+test('POST /api/dub with no active TTS subscription -> 402, job never created', async () => {
+  installFetchMock(SHARED_STUB.url);
+  resetMocks();
+  billingActive = false;
+  const s = await boot(SHARED_STUB.url);
+  try {
+    const r = await s.call(jwtHeaders, 'POST', '/', buildForm());
+    assert.equal(r.status, 402);
+    const body = await r.json();
+    assert.match(body.error, /active TTS subscription/i);
   } finally {
     s.close();
     uninstallFetchMock();

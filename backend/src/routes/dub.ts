@@ -39,6 +39,7 @@ import { logger } from '../lib/logger.js';
 import { ttsProvider } from '../lib/ttsProviderClient.js';
 import { normalizeVoiceId, getDefaultVoiceId } from '../lib/voiceMapping.js';
 import { uploadAudioToCache, getSignedAudioUrl } from '../lib/supabaseClient.js';
+import { isBillingActiveForUser, reportDubbingUsage } from '../lib/realtimeTtsBilling.js';
 import type { AuthenticatedRequest, DBVoice } from '../types/index.js';
 import { ValidationError, NotFoundError } from '../types/index.js';
 
@@ -492,6 +493,13 @@ async function runDubJob(
       { jobId: job.id, segments: segmentResults.length, bytes: finalAudio.length },
       'Dubbing job completed'
     );
+
+    // Fire-and-forget, exactly like the sound-effects/voice-isolate/voice-convert
+    // pattern in realtimeTtsBilling.ts: never awaited into the job result, and a
+    // metering failure must never turn a successful dub into a failed job.
+    reportDubbingUsage(job.userId).catch((err: unknown) =>
+      dubLogger.warn({ err, jobId: job.id, userId: job.userId }, 'Dubbing billing report failed (non-critical)')
+    );
   } catch (error) {
     job.status = 'failed';
     job.error = error instanceof Error ? error.message : 'Unknown error';
@@ -542,6 +550,12 @@ const submitBodySchema = z.object({
 // --------------------------------------------------------------------------
 dubRouter.post('/', upload.single('audio'), asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   const userId = req.user.id;
+
+  if (!(await isBillingActiveForUser(userId))) {
+    res.status(402).json({ error: 'Dubbing requires an active TTS subscription.' });
+    return;
+  }
+
   const file = req.file;
 
   if (!file || file.size < 1024) {
