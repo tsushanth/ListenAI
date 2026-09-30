@@ -28,6 +28,10 @@ class ListenAIApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        // The standalone "voice" flavor ships without telemetry (see below), so no failure reports either.
+        if (BuildConfig.FLAVOR != "voice") {
+            FailureReporter.init(this, "readaloud", "afr_9adcdf8324b13e8e5cd9cd1eb178b55c", BuildConfig.VERSION_NAME)
+        }
 
         // Initialize Koin dependency injection
         startKoin {
