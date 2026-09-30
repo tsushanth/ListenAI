@@ -11,7 +11,7 @@
     "worker:dev": "tsx watch src/runWorker.ts",
     "lint": "eslint src --ext .ts",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --test --experimental-test-module-mocks src/routes/voiceStudioRouter.test.ts src/routes/voiceStudioApiKey.test.ts src/lib/realtimeTtsBilling.test.ts src/routes/realtimeTts.test.ts src/middleware/rateLimit.test.ts src/middleware/apiKeyAuth.test.ts src/routes/voiceDesign.test.ts src/routes/voiceConvert.test.ts src/routes/voiceIsolate.test.ts src/routes/stt.test.ts test/orpheusVoiceStudioApiKey.test.ts test/orpheusVoiceStudio.test.ts src/lib/chapterDetection.test.ts src/routes/audiobooks.test.ts"
+    "test": "tsx --test --experimental-test-module-mocks src/routes/voiceStudioRouter.test.ts src/routes/voiceStudioApiKey.test.ts src/lib/realtimeTtsBilling.test.ts src/routes/realtimeTts.test.ts src/middleware/rateLimit.test.ts src/middleware/apiKeyAuth.test.ts src/routes/voiceDesign.test.ts src/routes/voiceConvert.test.ts src/routes/voiceIsolate.test.ts src/routes/stt.test.ts src/routes/dub.test.ts test/orpheusVoiceStudioApiKey.test.ts test/orpheusVoiceStudio.test.ts src/lib/chapterDetection.test.ts src/routes/audiobooks.test.ts"
   },
   "keywords": [
     "tts",

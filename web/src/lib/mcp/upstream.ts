@@ -1,4 +1,5 @@
 import WebSocket from 'ws'
+import { createHash } from 'node:crypto'
 import { MAX_AUDIO_SECONDS, REQUEST_TIMEOUT_MS } from './schemas.ts'
 import { BYTES_PER_SAMPLE, SAMPLE_RATE } from './wav.ts'
 
@@ -131,6 +132,7 @@ const MCP_GATEWAY_FORWARD_SECRET = process.env.MCP_GATEWAY_FORWARD_SECRET || ''
 /** Best-effort, unverified read of a JWT's payload — safe here only because the token came straight from
  *  our own gateway in direct response to our own authorize() call; we are reading a claim WE just minted a
  *  request for, not trusting an arbitrary bearer token from an external caller. */
+
 function decodeJwtClaim(token: string, claim: string): string | undefined {
   try {
     const part = token.split('.')[1]
@@ -326,6 +328,110 @@ export async function transcribe(opts: {
   if (!body || typeof body.text !== 'string') throw new UpstreamError('upstream', 'Unexpected response from the speech-to-text worker.', true)
   return body
 }
+
+function decodeGatewayUid(token: string): string | undefined {
+  try {
+    const parts = token.split('.')
+    if (parts.length < 2) return undefined
+    const json = Buffer.from(parts[1].replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8')
+    const payload = JSON.parse(json) as { uid?: string }
+    return typeof payload.uid === 'string' ? payload.uid : undefined
+  } catch {
+    return undefined
+  }
+}
+
+/** Validate the raw API key against the gateway and resolve a backend-forwardable identity: the bound
+ *  Supabase uid if there is one, else a synthetic key-id identity derived from the key itself. */
+async function resolveGatewayIdentity(key: string): Promise<{ uid?: string; keyId: string }> {
+  const { token } = await authorize(key, 'piper')
+  const uid = decodeGatewayUid(token)
+  // No real gateway key id is exposed to this process; fall back to a stable per-key identity derived
+  // from the key so requests from the same key still map to the same backend user when there's no bound uid.
+  const keyId = createHash('sha256').update(key).digest('hex').slice(0, 32)
+  return { uid, keyId }
+}
+
+function forwardHeaders(identity: { uid?: string; keyId: string }): Record<string, string> {
+  if (!MCP_GATEWAY_FORWARD_SECRET) {
+    throw new UpstreamError('upstream', 'Dubbing is not configured on this deployment (missing MCP_GATEWAY_FORWARD_SECRET).', false)
+  }
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    'x-gateway-admin-secret': MCP_GATEWAY_FORWARD_SECRET,
+  }
+  if (identity.uid) headers['x-gateway-uid'] = identity.uid
+  else headers['x-gateway-key-id'] = identity.keyId
+  return headers
+}
+
+export interface DubSubmitResult { job_id: string; status: string }
+export interface DubStatusResult {
+  job_id: string
+  status: 'processing' | 'ready' | 'failed'
+  audio_url?: string
+  segments?: unknown[]
+  error?: string
+}
+
+export async function submitDub(opts: {
+  key: string
+  audioBase64: string
+  filename: string
+  targetLanguage: string
+  sourceLanguage?: string
+  voiceId?: string
+}): Promise<DubSubmitResult> {
+  const identity = await resolveGatewayIdentity(opts.key)
+  let r: Response
+  try {
+    r = await fetch(`${BACKEND_URL}/api/dub`, {
+      method: 'POST',
+      headers: forwardHeaders(identity),
+      body: JSON.stringify({
+        audio_base64: opts.audioBase64,
+        filename: opts.filename,
+        target_language: opts.targetLanguage,
+        source_language: opts.sourceLanguage,
+        voice_id: opts.voiceId,
+      }),
+      cache: 'no-store',
+      signal: AbortSignal.timeout(30_000),
+    })
+  } catch {
+    throw new UpstreamError('upstream', 'Could not reach the ReadAloud AI API. Try again shortly.', true)
+  }
+  if (r.status === 401) throw new UpstreamError('unauthorized', 'Invalid or revoked API key.')
+  if (r.status === 402) throw new UpstreamError('payment_required', 'This key has used up its free characters.')
+  if (r.status === 429) throw new UpstreamError('rate_limited', 'The API is rate limiting this key. Wait a moment and retry.', true)
+  if (r.status === 404) throw new UpstreamError('upstream', 'Dubbing is not available yet on this deployment.', false)
+  if (!r.ok) throw new UpstreamError('upstream', `The ReadAloud AI API returned ${r.status}.`, r.status >= 500)
+  const body = (await r.json().catch(() => null)) as DubSubmitResult | null
+  if (!body?.job_id) throw new UpstreamError('upstream', 'Unexpected response from the ReadAloud AI API.', true)
+  return body
+}
+
+export async function getDubStatus(key: string, jobId: string): Promise<DubStatusResult> {
+  const identity = await resolveGatewayIdentity(key)
+  let r: Response
+  try {
+    r = await fetch(`${BACKEND_URL}/api/dub/${encodeURIComponent(jobId)}`, {
+      headers: forwardHeaders(identity),
+      cache: 'no-store',
+      signal: AbortSignal.timeout(10_000),
+    })
+  } catch {
+    throw new UpstreamError('upstream', 'Could not reach the ReadAloud AI API. Try again shortly.', true)
+  }
+  if (r.status === 401) throw new UpstreamError('unauthorized', 'Invalid or revoked API key.')
+  if (r.status === 404) throw new UpstreamError('upstream', 'Dubbing job not found (it may have expired).', false)
+  if (!r.ok) throw new UpstreamError('upstream', `The ReadAloud AI API returned ${r.status}.`, r.status >= 500)
+  const body = (await r.json().catch(() => null)) as DubStatusResult | null
+  if (!body?.job_id || !body.status) throw new UpstreamError('upstream', 'Unexpected response from the ReadAloud AI API.', true)
+  return body
+}
+
+
 export async function fetchPiperHealth(): Promise<{ active: number; max: number; device?: string; status?: string } | null> {
   try {
     const r = await fetch('https://piper-tts-sjc.fly.dev/health', { cache: 'no-store', signal: AbortSignal.timeout(5000) })
