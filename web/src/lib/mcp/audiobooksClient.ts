@@ -17,9 +17,14 @@
 // own secret or a separate one scoped to "web MCP server → backend". Without it, every call
 // below fails closed with 401 rather than forwarding the raw key as an invalid bearer token.
 
+import { createHash } from 'node:crypto'
 import { authorize } from './upstream.ts'
 
-const BACKEND_URL = process.env.AUDIOBOOKS_BACKEND_URL || process.env.TTS_GATEWAY_URL || 'https://api.readaloudai.org'
+// NOTE: fixed during a live redeploy debugging session — this defaulted to
+// 'https://api.readaloudai.org' (the realtime-tts GATEWAY), but /api/audiobooks
+// only exists on listenai-backend, not the gateway. Same class of bug already
+// fixed once for sound-effects' upstream client.
+const BACKEND_URL = process.env.AUDIOBOOKS_BACKEND_URL || process.env.NEXT_PUBLIC_API_URL || 'https://listenai-backend.fly.dev'
 const REQUEST_TIMEOUT_MS = 30_000
 
 export class AudiobooksApiError extends Error {
@@ -30,20 +35,30 @@ export class AudiobooksApiError extends Error {
   }
 }
 
-/** Decodes a JWT's payload claims without verifying the signature — safe here because we only
- *  read it to forward an *already-trusted* identity (the gateway signed it after validating the
- *  raw key), never to authenticate the request ourselves. */
+/** Decodes a gateway session token's claims without verifying the signature — safe here because
+ *  we only read it to forward an *already-trusted* identity (the gateway signed it after
+ *  validating the raw key), never to authenticate the request ourselves.
+ *
+ *  NOTE: fixed during a live redeploy debugging session. This assumed a standard 3-part
+ *  header.payload.signature JWT and always read split('.')[1] as the payload — but the real
+ *  gateway token (confirmed by calling POST /tts/authorize directly) is 2-part,
+ *  payload.signature, so the real claims are in split('.')[0], not [1]. On top of that, this
+ *  particular key's token carries only {id, exp} - no uid or key_id claim at all - so even
+ *  decoding the right segment yields nothing to key off. Now tries every dot-separated segment
+ *  and returns the first one that parses as a JSON object, so it's not hostage to which segment
+ *  position happens to hold the payload for a given token shape. */
 function decodeJwtClaims(token: string): Record<string, unknown> {
-  try {
-    const payload = token.split('.')[1]
-    if (!payload) return {}
-    const normalized = payload.replace(/-/g, '+').replace(/_/g, '/')
-    const json = Buffer.from(normalized, 'base64').toString('utf8')
-    const parsed = JSON.parse(json) as unknown
-    return parsed && typeof parsed === 'object' ? (parsed as Record<string, unknown>) : {}
-  } catch {
-    return {}
+  for (const segment of token.split('.')) {
+    try {
+      const normalized = segment.replace(/-/g, '+').replace(/_/g, '/')
+      const json = Buffer.from(normalized, 'base64').toString('utf8')
+      const parsed = JSON.parse(json) as unknown
+      if (parsed && typeof parsed === 'object') return parsed as Record<string, unknown>
+    } catch {
+      // try the next segment
+    }
   }
+  return {}
 }
 
 /** Exchanges the raw API key for a gateway session token (same call upstream.ts's authorize()
@@ -72,10 +87,13 @@ async function resolveGatewayIdentityHeaders(apiKey: string): Promise<Record<str
   const { token } = await authorize(apiKey, 'piper')
   const claims = decodeJwtClaims(token)
   const uid = typeof claims.uid === 'string' && claims.uid ? claims.uid : undefined
-  const keyId = typeof claims.key_id === 'string' && claims.key_id ? claims.key_id : undefined
-  if (!uid && !keyId) {
-    throw new AudiobooksApiError(401, 'Could not resolve an identity for this API key.')
-  }
+  // No token-carried key_id fallback anymore: this token's actual claims are
+  // just {id, exp} - no uid, no key_id - so requiring one out of the token
+  // meant every unbound key 401'd with "Could not resolve an identity",
+  // confirmed live. Mirrors dub's resolveGatewayIdentity in upstream.ts: a
+  // stable hash of the raw key itself is always available, so this path can
+  // never fail to resolve *some* identity, bound or not.
+  const keyId = uid ? undefined : createHash('sha256').update(apiKey).digest('hex').slice(0, 32)
 
   const headers: Record<string, string> = { 'x-gateway-admin-secret': forwardSecret }
   if (uid) headers['x-gateway-uid'] = uid
