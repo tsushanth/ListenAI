@@ -132,8 +132,123 @@ curl -L -X POST "<url>/v1/stt?language=auto" \\
                 <p><b>Price:</b> $0.11 per hour of audio, billed by the second on the audio&rsquo;s full length (silence included) once the transcript is returned. Failed requests are not billed. That is half of ElevenLabs Scribe&rsquo;s list price of $0.22 per hour, when measured. It uses the same free allowance as the voice API: 10,000 free characters is about 54 minutes of audio. On your invoice it appears as character equivalents on the same meter (about 3 per second of audio).</p>
                 <p><b>What we measured.</b> On 100 short clips of read English speech (LibriTTS-R, about 9 minutes, roughly 1,500 words) word error rate was 2.6% on clean audio and 2.8% on the same clips simulated as 8 kHz telephone audio. That is studio-quality read speech with no background noise or real codec damage, so expect worse on real calls, accents, crosstalk and noisy rooms, and expect the usual Whisper habit of occasionally inventing text over silence or noise. We have not yet measured other languages. Scribe&rsquo;s accuracy was not part of this comparison, only its price. The first request after a quiet period can take about ten extra seconds while a GPU starts.</p>
 
+                <h3 id="dubbing">Dubbing</h3>
+                <p>
+                  Upload a recording in one language and get back a version spoken in another,
+                  with each translated segment timed to roughly match the original. Pipeline:
+                  transcribe (Whisper) &rarr; translate segment-by-segment (Claude) &rarr;
+                  resynthesize each segment, speeding up or slowing down (0.5&times;&ndash;2&times;)
+                  so it fits the original segment&rsquo;s timing. <b>Signed-in web accounts only for
+                  now</b> &mdash; this is not yet reachable with an <code>rtts_</code> API key
+                  through the gateway; sign in and call it with your session token instead of
+                  the <code>key</code>/<code>authorize</code> flow used elsewhere on this page.
+                </p>
+                <p><b>1. Submit.</b> <code>POST https://api.readaloudai.org/api/dub</code>,
+                  <code>Authorization: Bearer &lt;your session token&gt;</code>,
+                  <code>multipart/form-data</code> with an <code>audio</code> file (wav, flac, ogg,
+                  mp3, mp4, m4a or webm, up to 50&nbsp;MB) and body fields <code>target_language</code>{' '}
+                  (required), <code>source_language</code> (optional, auto-detected otherwise) and{' '}
+                  <code>voice_id</code> (optional). Returns <code>202</code> with{' '}
+                  <code>{'{ job_id, status: "processing" }'}</code>.
+                </p>
+                <p><b>2. Poll.</b> <code>GET /api/dub/:job_id</code> returns{' '}
+                  <code>{'{ status, audio_url, segments: [{ source_text, translated_text, start_sec, end_sec, speed_used }], error }'}</code>{' '}
+                  once <code>status</code> is <code>ready</code> or <code>failed</code>. The result is a
+                  single WAV file.
+                </p>
+                <ul>
+                  <li><code>400</code> missing/oversized/unsupported audio, or a missing <code>target_language</code>.</li>
+                  <li><code>402</code> requires an active TTS subscription.</li>
+                  <li><code>404</code> unknown job, or a job that belongs to someone else.</li>
+                </ul>
+                <p><b>Price:</b> $0.05 per job, regardless of audio length, charged once the job completes. Failed jobs are not billed.</p>
+                <p><b>Known limitations.</b> Audio only &mdash; no video muxing or subtitle burn-in. Segment timing is a v1 approximation (whole-segment speed scaling, not real phoneme-level alignment), so lip-sync-grade timing shouldn&rsquo;t be expected. Jobs run in-memory on a single instance rather than a durable queue, so a deploy or restart while a job is in flight will lose it &mdash; resubmit if that happens. Each segment over 2,000 characters is truncated.</p>
+
+                <h3 id="sound-effects">Sound effects</h3>
+                <p>
+                  Generate a short sound effect from a text prompt (Stable Audio Open 1.0).{' '}
+                  <b>Signed-in web accounts only for now</b> &mdash; same session-token caveat as dubbing above.
+                </p>
+                <p><b>1. Submit.</b> <code>POST https://api.readaloudai.org/api/sound-effects/job</code>,
+                  <code>Authorization: Bearer &lt;your session token&gt;</code>, JSON{' '}
+                  <code>{'{ "prompt": "…", "duration_sec": 1-12 }'}</code>. An identical prompt+duration you&rsquo;ve
+                  already generated comes back immediately as a free cache hit:{' '}
+                  <code>{'{ job_id: "cache-…", status: "ready", cache_hit: true, audio_url }'}</code>. Otherwise{' '}
+                  <code>202</code> with <code>{'{ job_id, status: "processing", cache_hit: false, estimated_wait_sec }'}</code>.
+                </p>
+                <p><b>2. Poll.</b> <code>GET /api/sound-effects/job/:job_id</code> returns{' '}
+                  <code>{'{ status, audio_url, error }'}</code>.
+                </p>
+                <ul>
+                  <li><code>400</code> prompt missing/too long (500 chars max), or <code>duration_sec</code> out of range (1&ndash;12s).</li>
+                  <li><code>402</code> requires an active TTS subscription.</li>
+                  <li><code>404</code> unknown job.</li>
+                </ul>
+                <p><b>Price:</b> $0.05 per generation. Cache hits are always free.</p>
+
+                <h3 id="voice-isolate-convert">Voice isolation &amp; voice conversion</h3>
+                <p>
+                  Two related tools, each spinning up your own on-demand GPU container so your
+                  audio never sits on a shared server: <b>voice isolation</b> strips background
+                  noise/music from a recording (optionally also returning the isolated
+                  instrumental), and <b>voice conversion</b> re-sings/re-speaks a source
+                  recording in a target voice. <b>Signed-in web accounts only for now.</b>
+                </p>
+                <p><b>1. Deploy your container.</b> <code>POST /api/voice-isolate/deploy</code> or{' '}
+                  <code>POST /api/voice-convert/deploy</code> (same session-token auth). Check status with{' '}
+                  <code>GET .../deploy</code>, tear down with <code>DELETE .../deploy</code> when you&rsquo;re done
+                  &mdash; you aren&rsquo;t billed for idle deploy time, only completed jobs (see pricing below).
+                </p>
+                <p><b>2. Submit a job.</b> <code>POST /api/voice-isolate/isolations</code> (multipart{' '}
+                  <code>input</code> file) or <code>POST /api/voice-convert/conversions</code> (multipart{' '}
+                  <code>source</code> + <code>target</code> files) &mdash; wav, flac, ogg, mp3, mp4 or m4a, up to
+                  50&nbsp;MB (isolate) or 25&nbsp;MB (convert). Both require an exact{' '}
+                  <code>consent_statement</code> field confirming you have rights to the audio. Isolation also
+                  takes an optional <code>want_instrumental</code> boolean.
+                </p>
+                <p><b>3. Poll and fetch.</b> <code>GET .../isolations/:id</code> or{' '}
+                  <code>.../conversions/:id</code> for status, then <code>GET .../:id/audio</code> for the
+                  result (raw WAV bytes).
+                </p>
+                <ul>
+                  <li><code>400</code> no deployment, missing/bad file, or missing/wrong <code>consent_statement</code>.</li>
+                  <li><code>401</code> not signed in. <code>402</code> requires an active TTS subscription.</li>
+                  <li><code>409</code> a deployment already exists. <code>429</code> over 10 requests/hour.</li>
+                  <li><code>503</code> the GPU backend isn&rsquo;t configured in this environment.</li>
+                </ul>
+                <p><b>Price:</b> $0.05 per completed job for each, regardless of audio length.</p>
+
+                <h3 id="audiobooks">Audiobooks</h3>
+                <p>
+                  Turn a block of text or an EPUB into a chaptered audiobook: each chapter is
+                  synthesized as its own long-form job, then all chapters can be exported as one
+                  MP3 with embedded chapter markers. <b>Signed-in web accounts only for now.</b>
+                </p>
+                <p><b>1. Create.</b> <code>POST /api/audiobooks</code> with{' '}
+                  <code>{'{ title, voice_id, speed?, source_type: "text" | "epub", text? | epub_base64? }'}</code>.
+                  Chapters are detected automatically and queued as individual TTS jobs.
+                </p>
+                <p><b>2. Poll.</b> <code>GET /api/audiobooks/:id/status</code> for per-chapter status
+                  and duration.
+                </p>
+                <p><b>3. Export.</b> Once every chapter is <code>ready</code>,{' '}
+                  <code>POST /api/audiobooks/:id/export</code> concatenates them into one MP3 with ID3
+                  chapter markers and returns a signed download URL.
+                </p>
+                <ul>
+                  <li><code>400</code> a chapter isn&rsquo;t ready yet, no chapters detected, or a chapter over
+                    your plan&rsquo;s per-job character limit.</li>
+                  <li><code>404</code> unknown audiobook, or one that belongs to someone else.</li>
+                </ul>
+                <p><b>Price:</b> billed the same way as regular long-form text-to-speech &mdash; per
+                  character on the standard meter, once per chapter. There is no separate
+                  audiobook charge.</p>
+                <p><b>Known limitation.</b> The export step is newly enabled and has been reviewed
+                  but not yet exercised against a real multi-chapter book end-to-end in production
+                  &mdash; if a chapter-marker or concatenation edge case turns up, <Link href="mailto:support@readaloudai.org" style={{ textDecoration: 'underline' }}>let us know</Link>.</p>
+
                 <h3>Pricing and benchmarks</h3>
-                <p>Piper $0.004 and Kokoro $0.01 per 1,000 characters; speech to text $0.11 per hour of audio. See <Link href="/#engines" style={{ textDecoration: 'underline' }}>engines and benchmarks</Link> for how we measured latency against ElevenLabs.</p>
+                <p>Piper $0.004 and Kokoro $0.01 per 1,000 characters; speech to text $0.11 per hour of audio; dubbing, sound effects, voice isolation and voice conversion are each $0.05 per completed job; audiobooks bill per character like regular text-to-speech. See <Link href="/#engines" style={{ textDecoration: 'underline' }}>engines and benchmarks</Link> for how we measured latency against ElevenLabs.</p>
               </div>
               <div><CodeTabs /></div>
             </div>
