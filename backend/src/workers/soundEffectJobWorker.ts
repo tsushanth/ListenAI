@@ -63,7 +63,8 @@ export async function processOneJob(deps: SoundEffectWorkerDeps = defaultDeps): 
     await deps.uploadAudio(audioPath, audioBuffer);
     await deps.updateStatus(job.id, 'ready', { audioPath });
     workerLogger.info({ jobId: job.id, audioPath }, 'Sound effect job ready');
-    await reportSoundEffectGenerationUsage(job.user_id).catch((err) => {
+    // Billed per second of generated audio (rounded up, with a minimum), see AUDIO_JOB_PRICING.
+    await reportSoundEffectGenerationUsage(job.user_id, job.duration_sec, job.id).catch((err) => {
       workerLogger.error({ err, jobId: job.id }, 'Failed to report usage after successful job');
     });
   } catch (err) {

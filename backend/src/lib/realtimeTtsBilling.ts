@@ -30,15 +30,9 @@ const TTS_METER_EVENT_NAME = 'realtimetts_characters';
 // Voice design meter (created once via Stripe Dashboard or scripts/create-voice-design-meter.mjs).
 // Set these env vars after creating the meter/price.
 const VOICE_DESIGN_METER_EVENT_NAME = process.env.VOICE_DESIGN_METER_EVENT_NAME || 'realtimetts_voice_design_generations';
-// Voice conversion meter (created once via Stripe Dashboard or scripts/create-voice-convert-meter.mjs).
-// Set these env vars after creating the meter/price.
-const VOICE_CONVERT_METER_EVENT_NAME = process.env.VOICE_CONVERT_METER_EVENT_NAME || 'realtimetts_voice_conversions';
-// Sound effect generation meter (mirrors the text-to-music feature's
-// MUSIC_GENERATION_METER_EVENT_NAME below — a separate meter, not a reuse
-// of the music one).
-// Create via a create-sound-effect-generation-meter.mjs script analogous to
-// the voice-design/voice-convert ones referenced above, then set this env
-// var if the created meter's event name differs from the default.
+// Sound effect meter name. No longer used for billing (sound effects bill per second of generated
+// audio through the shared character meter, see AUDIO_JOB_PRICING); kept exported so existing
+// imports/env overrides keep compiling.
 export const SOUND_EFFECT_GENERATION_METER_EVENT_NAME = process.env.SOUND_EFFECT_GENERATION_METER_EVENT_NAME || 'realtimetts_sound_effect_generations';
 // Music generation meter (created once via scripts/create-music-generation-meter.mjs).
 export const MUSIC_GENERATION_METER_EVENT_NAME = 'realtimetts_music_generations';
@@ -64,6 +58,56 @@ const PIPER_PRICE_RATIO = 0.4;
 // Keep in sync with STT_CHARS_PER_SECOND in realtime-tts/gateway/keys.js (free-tier conversion).
 // Same trade-off as Piper: the invoice's "characters" quantity is an equivalent, not raw characters.
 export const STT_CHARS_PER_SECOND = 3.0556;
+// --- Per-audio-minute billing for dubbing, voice isolation, voice conversion and sound effects ---
+//
+// These used to send one flat meter event per job ("value: 1" on dedicated per-job meters). A flat
+// fee is far below cost on long files (uploads go to 50 MB) and, because those dedicated meters were
+// never attached to the checkout subscription (only TTS_BILLING_PRICE_ID is), the events billed
+// nothing at all. They now bill per audio-second through the SAME character meter as TTS and STT, so
+// no new Stripe objects are needed. One meter unit = one Kokoro-equivalent character = $0.00001
+// ($0.01 per 1,000 characters), so a price of $P per audio-minute is P / 0.00001 units per minute.
+// Same invoice trade-off as STT/Piper: the "characters" quantity is an equivalent, not raw characters.
+//
+// Prices (USD per audio-minute) vs measured/derived cost and ElevenLabs list price. Full arithmetic
+// is in the commit message of the change that introduced this block:
+//   dubbing   $0.15  cost ~$0.052/min (STT 0.0005 + translation ~0.0075 + TTS 0.044)   EL $0.33-0.50
+//   isolation $0.05  cost floor ~$0.016/min (worker-demucs-fly/PRICING.md)             EL $0.12
+//   convert   $0.10  cost ~$0.029/min (anchored on ~48 A10G-seconds per short job)     EL $0.12
+//   sfx       $0.09  per second of generated audio ($0.0015/s); cache hits stay free   EL $0.12
+// minBillableSeconds covers the fixed per-job cost (GPU cold start / model load / LLM call) that a
+// very short clip would otherwise not pay for.
+export type AudioJobService = 'dub' | 'isolate' | 'convert' | 'sound_effect';
+
+/** USD value of one meter unit: the character meter's $0.01 per 1,000 characters. */
+export const METER_USD_PER_UNIT = 0.00001;
+
+export const AUDIO_JOB_PRICING: Record<AudioJobService, { unitsPerMinute: number; minBillableSeconds: number }> = {
+  dub: { unitsPerMinute: 15000, minBillableSeconds: 10 }, // $0.15/min
+  isolate: { unitsPerMinute: 5000, minBillableSeconds: 10 }, // $0.05/min
+  convert: { unitsPerMinute: 10000, minBillableSeconds: 30 }, // $0.10/min, 30 s minimum = $0.05 (the old flat price)
+  sound_effect: { unitsPerMinute: 9000, minBillableSeconds: 4 }, // $0.09/min = $0.0015/s
+};
+
+/**
+ * Meter units to bill for one completed audio job. Duration is rounded UP to the next whole second,
+ * then raised to the service's minimum; non-finite or non-positive durations fall back to the
+ * minimum (a completed job is never free). Pure, for unit testing.
+ */
+const AUDIO_JOB_IDENTIFIER_PREFIX: Record<AudioJobService, string> = {
+  dub: 'dub',
+  isolate: 'voice-isolate',
+  convert: 'voice-convert', // same prefix the pre-existing convert identifier used
+  sound_effect: 'sound-effect',
+};
+
+export function billableAudioUnits(service: AudioJobService, audioSeconds: number | null | undefined): number {
+  const { unitsPerMinute, minBillableSeconds } = AUDIO_JOB_PRICING[service];
+  const secs = typeof audioSeconds === 'number' && Number.isFinite(audioSeconds) && audioSeconds > 0
+    ? Math.ceil(audioSeconds - 1e-9) // -1e-9: a float like 60.0000000001 must not round up a whole second
+    : 0;
+  return Math.round((Math.max(secs, minBillableSeconds) * unitsPerMinute) / 60);
+}
+
 // Dedicated Customer Portal config (cancel + payment-method update, no plan
 // changes since there's only one price) — the account's other portal
 // configs belong to different products on the same shared Stripe account.
@@ -320,75 +364,55 @@ export async function reportVoiceDesignUsage(userId: string, jobId?: string): Pr
   }
 }
 
-// jobId (when given) is sent as the Stripe meter event `identifier`, which Stripe dedupes on, so a job that is
-// polled again after it is already done (an MCP client re-polling) is never billed twice.
-export async function reportVoiceConvertUsage(userId: string, jobId?: string): Promise<void> {
-  const billing = await getBillingForUser(userId);
+/**
+ * Reports one completed audio job (dub / isolate / convert / sound effect) to the character meter,
+ * weighted by audio duration via AUDIO_JOB_PRICING. `jobId` becomes the Stripe meter event
+ * `identifier`, so re-reporting the same job (e.g. a client polling a finished job) is deduplicated
+ * by Stripe. Best-effort: a metering failure must never fail an already-successful job.
+ */
+export async function reportAudioJobUsage(
+  userId: string,
+  service: AudioJobService,
+  audioSeconds: number | null | undefined,
+  jobId?: string,
+  deps: { getBilling: (userId: string) => Promise<RealtimeTtsBillingRow | null>; createMeterEvent: (params: Stripe.Billing.MeterEventCreateParams) => Promise<unknown> } = {
+    getBilling: getBillingForUser,
+    createMeterEvent: (params) => stripe.billing.meterEvents.create(params),
+  },
+): Promise<void> {
+  const billing = await deps.getBilling(userId);
   if (!billing?.active) {
-    billingLogger.warn({ userId }, 'reportVoiceConvertUsage called for user with no active billing');
+    billingLogger.warn({ userId, service }, 'reportAudioJobUsage called for user with no active billing');
     return;
   }
+  if (!(typeof audioSeconds === 'number' && Number.isFinite(audioSeconds) && audioSeconds > 0)) {
+    billingLogger.warn({ userId, service, jobId }, 'Audio job has no usable duration; billing the minimum');
+  }
+  const units = billableAudioUnits(service, audioSeconds);
   try {
-    await stripe.billing.meterEvents.create({
-      event_name: VOICE_CONVERT_METER_EVENT_NAME,
-      ...(jobId ? { identifier: `voice-convert-${jobId}` } : {}),
+    await deps.createMeterEvent({
+      event_name: TTS_METER_EVENT_NAME,
       timestamp: Math.floor(Date.now() / 1000),
+      ...(jobId ? { identifier: `${AUDIO_JOB_IDENTIFIER_PREFIX[service]}-${jobId}` } : {}),
       payload: {
         stripe_customer_id: billing.stripe_customer_id,
-        value: '1',
+        value: String(units),
       },
     });
-    billingLogger.debug({ userId }, 'Voice convert usage reported');
+    billingLogger.debug({ userId, service, audioSeconds, units }, 'Audio job usage reported');
   } catch (err) {
-    billingLogger.error({ err, userId }, 'Failed to report voice convert usage');
+    billingLogger.error({ err, userId, service, audioSeconds, units }, 'Failed to report audio job usage');
   }
 }
 
-const DUBBING_METER_EVENT_NAME = process.env.DUBBING_METER_EVENT_NAME || 'realtimetts_dubbing_jobs';
-
-export async function reportDubbingUsage(userId: string): Promise<void> {
-  const billing = await getBillingForUser(userId);
-  if (!billing?.active) {
-    billingLogger.warn({ userId }, 'reportDubbingUsage called for user with no active billing');
-    return;
-  }
-  try {
-    await stripe.billing.meterEvents.create({
-      event_name: DUBBING_METER_EVENT_NAME,
-      timestamp: Math.floor(Date.now() / 1000),
-      payload: {
-        stripe_customer_id: billing.stripe_customer_id,
-        value: '1',
-      },
-    });
-    billingLogger.debug({ userId }, 'Dubbing usage reported');
-  } catch (err) {
-    billingLogger.error({ err, userId }, 'Failed to report dubbing usage');
-  }
-}
-
-const VOICE_ISOLATE_METER_EVENT_NAME = process.env.VOICE_ISOLATE_METER_EVENT_NAME || 'realtimetts_voice_isolations';
-
-export async function reportVoiceIsolateUsage(userId: string): Promise<void> {
-  const billing = await getBillingForUser(userId);
-  if (!billing?.active) {
-    billingLogger.warn({ userId }, 'reportVoiceIsolateUsage called for user with no active billing');
-    return;
-  }
-  try {
-    await stripe.billing.meterEvents.create({
-      event_name: VOICE_ISOLATE_METER_EVENT_NAME,
-      timestamp: Math.floor(Date.now() / 1000),
-      payload: {
-        stripe_customer_id: billing.stripe_customer_id,
-        value: '1',
-      },
-    });
-    billingLogger.debug({ userId }, 'Voice isolate usage reported');
-  } catch (err) {
-    billingLogger.error({ err, userId }, 'Failed to report voice isolate usage');
-  }
-}
+export const reportVoiceConvertUsage = (userId: string, sourceSeconds: number | null | undefined, jobId?: string) =>
+  reportAudioJobUsage(userId, 'convert', sourceSeconds, jobId);
+export const reportVoiceIsolateUsage = (userId: string, inputSeconds: number | null | undefined, jobId?: string) =>
+  reportAudioJobUsage(userId, 'isolate', inputSeconds, jobId);
+export const reportDubbingUsage = (userId: string, sourceSeconds: number | null | undefined, jobId?: string) =>
+  reportAudioJobUsage(userId, 'dub', sourceSeconds, jobId);
+export const reportSoundEffectGenerationUsage = (userId: string, durationSec: number | null | undefined, jobId?: string) =>
+  reportAudioJobUsage(userId, 'sound_effect', durationSec, jobId);
 
 // Reports one customer-facing batch speech-to-text call (backend/src/routes/stt.ts) to Stripe as a
 // meter event, weighted into character-equivalents via STT_CHARS_PER_SECOND — the SAME meter/price
@@ -516,30 +540,5 @@ export async function reportTtsUsage(userId: string, charCount: number): Promise
     billingLogger.debug({ userId, charCount }, 'TTS usage reported');
   } catch (err) {
     billingLogger.error({ err, userId, charCount }, 'Failed to report TTS usage');
-  }
-}
-
-// Reports one sound effect generation to Stripe as a meter event. Mirrors
-// reportMusicGenerationUsage above. Called after a sound effect job's status is already updated to 'ready',
-// not before. Best-effort: a metering failure must not fail the
-// (already-successful) job.
-export async function reportSoundEffectGenerationUsage(userId: string): Promise<void> {
-  const billing = await getBillingForUser(userId);
-  if (!billing?.active) {
-    billingLogger.warn({ userId }, 'reportSoundEffectGenerationUsage called for user with no active billing');
-    return;
-  }
-  try {
-    await stripe.billing.meterEvents.create({
-      event_name: SOUND_EFFECT_GENERATION_METER_EVENT_NAME,
-      timestamp: Math.floor(Date.now() / 1000),
-      payload: {
-        stripe_customer_id: billing.stripe_customer_id,
-        value: '1',
-      },
-    });
-    billingLogger.debug({ userId }, 'Sound effect generation usage reported');
-  } catch (err) {
-    billingLogger.error({ err, userId }, 'Failed to report sound effect generation usage');
   }
 }

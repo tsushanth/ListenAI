@@ -161,7 +161,7 @@ curl -L -X POST "<url>/v1/stt?language=auto" \\
                   <li><code>402</code> requires an active TTS subscription.</li>
                   <li><code>404</code> unknown job, or a job that belongs to someone else.</li>
                 </ul>
-                <p><b>Price:</b> $0.05 per job, regardless of audio length, charged once the job completes. Failed jobs are not billed.</p>
+                <p><b>Price:</b> $0.15 per minute of source audio (ElevenLabs dubbing lists at $0.33&ndash;$0.50 per minute), billed by the second rounded up, with a 10 second minimum, once the job completes. Failed jobs are not billed. On your invoice it appears as character equivalents on the same meter as text-to-speech (250 per second of audio).</p>
                 <p><b>Known limitations.</b> Audio only &mdash; no video muxing or subtitle burn-in. Segment timing is a v1 approximation (whole-segment speed scaling, not real phoneme-level alignment), so lip-sync-grade timing shouldn&rsquo;t be expected. Jobs run in-memory on a single instance rather than a durable queue, so a deploy or restart while a job is in flight will lose it &mdash; resubmit if that happens. Each segment over 2,000 characters is truncated.</p>
 
                 <h3 id="sound-effects">Sound effects</h3>
@@ -184,7 +184,7 @@ curl -L -X POST "<url>/v1/stt?language=auto" \\
                   <li><code>402</code> requires an active TTS subscription.</li>
                   <li><code>404</code> unknown job.</li>
                 </ul>
-                <p><b>Price:</b> $0.05 per generation. Cache hits are always free.</p>
+                <p><b>Price:</b> $0.0015 per second of generated audio ($0.09 per minute; ElevenLabs lists $0.12 per minute), rounded up to the next second with a 4 second minimum, so a 12 second effect is $0.018. Cache hits are always free. On your invoice it appears as character equivalents on the same meter as text-to-speech (150 per second).</p>
 
                 <h3 id="voice-isolate-convert">Voice isolation &amp; voice conversion</h3>
                 <p>
@@ -216,7 +216,7 @@ curl -L -X POST "<url>/v1/stt?language=auto" \\
                   <li><code>409</code> a deployment already exists. <code>429</code> over 10 requests/hour.</li>
                   <li><code>503</code> the GPU backend isn&rsquo;t configured in this environment.</li>
                 </ul>
-                <p><b>Price:</b> $0.05 per completed job for each, regardless of audio length.</p>
+                <p><b>Price:</b> voice isolation is $0.05 per minute of input audio (ElevenLabs lists $0.12 per minute), with a 10 second minimum. Voice conversion is $0.10 per minute of source audio (ElevenLabs lists $0.12 per minute), with a 30 second minimum ($0.05). Both are billed by the second rounded up, only for completed jobs. On your invoice they appear as character equivalents on the same meter as text-to-speech.</p>
 
                 <h3 id="audiobooks">Audiobooks</h3>
                 <p>
@@ -248,7 +248,7 @@ curl -L -X POST "<url>/v1/stt?language=auto" \\
                   &mdash; if a chapter-marker or concatenation edge case turns up, <Link href="mailto:support@readaloudai.org" style={{ textDecoration: 'underline' }}>let us know</Link>.</p>
 
                 <h3>Pricing and benchmarks</h3>
-                <p>Piper $0.004 and Kokoro $0.01 per 1,000 characters; speech to text $0.11 per hour of audio; dubbing, sound effects, voice isolation and voice conversion are each $0.05 per completed job; audiobooks bill per character like regular text-to-speech. See <Link href="/#engines" style={{ textDecoration: 'underline' }}>engines and benchmarks</Link> for how we measured latency against ElevenLabs.</p>
+                <p>Piper $0.004 and Kokoro $0.01 per 1,000 characters; speech to text $0.11 per hour of audio; dubbing $0.15 per audio minute, voice conversion $0.10 per audio minute, sound effects $0.09 per minute of generated audio and voice isolation $0.05 per audio minute, each billed by the second; audiobooks bill per character like regular text-to-speech. See <Link href="/#engines" style={{ textDecoration: 'underline' }}>engines and benchmarks</Link> for how we measured latency against ElevenLabs.</p>
               </div>
               <div><CodeTabs /></div>
             </div>

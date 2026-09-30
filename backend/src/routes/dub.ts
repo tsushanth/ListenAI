@@ -101,6 +101,8 @@ interface SttSegment {
 
 interface SttResult {
   language: string | null;
+  /** Total audio length in seconds (worker-reported, else the end of the last segment). Billing basis. */
+  durationSec: number;
   segments: SttSegment[];
 }
 
@@ -135,15 +137,18 @@ async function transcribeSourceAudio(
 
   const body = (await res.json()) as {
     language: string | null;
+    duration?: number;
     segments?: Array<{ id: number; start: number; end: number; text: string }>;
   };
   if (!Array.isArray(body.segments)) {
     throw new Error('worker-stt-prod returned an unexpected response shape (missing segments[])');
   }
-  return {
-    language: body.language,
-    segments: body.segments.map((s) => ({ start: s.start, end: s.end, text: s.text })),
-  };
+  const segments = body.segments.map((s) => ({ start: s.start, end: s.end, text: s.text }));
+  const lastEnd = segments.reduce((m, s) => Math.max(m, s.end), 0);
+  const durationSec = typeof body.duration === 'number' && Number.isFinite(body.duration) && body.duration > 0
+    ? Math.max(body.duration, lastEnd)
+    : lastEnd;
+  return { language: body.language, durationSec, segments };
 }
 
 /**
@@ -494,10 +499,10 @@ async function runDubJob(
       'Dubbing job completed'
     );
 
-    // Fire-and-forget, exactly like the sound-effects/voice-isolate/voice-convert
-    // pattern in realtimeTtsBilling.ts: never awaited into the job result, and a
-    // metering failure must never turn a successful dub into a failed job.
-    reportDubbingUsage(job.userId).catch((err: unknown) =>
+    // Billed per second of SOURCE audio (rounded up, with a minimum) on the character meter, see
+    // AUDIO_JOB_PRICING in realtimeTtsBilling.ts. Fire-and-forget: never awaited into the job
+    // result, and a metering failure must never turn a successful dub into a failed job.
+    reportDubbingUsage(job.userId, stt.durationSec, job.id).catch((err: unknown) =>
       dubLogger.warn({ err, jobId: job.id, userId: job.userId }, 'Dubbing billing report failed (non-critical)')
     );
   } catch (error) {

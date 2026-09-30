@@ -368,12 +368,21 @@ export const voiceIsolateRouter: Router = (() => {
       const st = await modalRequest<{ status: string; [key: string]: unknown }>(modalCfg, `/isolate/${req.params.id}`);
 
       if (st.status === 'done' || st.status === 'failed') {
+        // Read the row first so a client re-polling an already-completed job is not billed again
+        // (the meter event's identifier also dedupes within Stripe's window, this covers beyond it).
+        const { data: prior } = await supabase.from('voice_isolations')
+          .select('status, input_seconds')
+          .eq('modal_job_id', req.params.id)
+          .eq('user_id', userId)
+          .maybeSingle();
         await supabase.from('voice_isolations')
           .update({ status: st.status, completed_at: new Date().toISOString(), error: (st as any).stderr_tail || null })
           .eq('modal_job_id', req.params.id)
           .eq('user_id', userId);
-        if (st.status === 'done') {
-          reportVoiceIsolateUsage(userId).catch((err: unknown) => log.warn({ err }, 'voice isolate billing report failed (non-critical)'));
+        if (st.status === 'done' && prior?.status !== 'done') {
+          // Billed per second of input audio (rounded up, with a minimum), see AUDIO_JOB_PRICING.
+          const inputSeconds = typeof st.input_seconds === 'number' ? st.input_seconds : (prior?.input_seconds as number | null | undefined);
+          reportVoiceIsolateUsage(userId, inputSeconds, req.params.id).catch((err: unknown) => log.warn({ err }, 'voice isolate billing report failed (non-critical)'));
         }
       }
 

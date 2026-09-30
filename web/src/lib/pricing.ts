@@ -20,12 +20,12 @@ export interface ToolPrice {
 export const PRICING = {
   // Documented: "$0.11 per hour of audio" (developers page, home page).
   speechToText: { usd: 0.11, unit: 'hour of audio', note: 'Billed by the second; failed requests are not billed.' },
-  // Not documented on the site today.
-  dubbing: { usd: null, unit: 'job' },
-  // Not documented on the site today. Cache hits are not billed (backend behavior).
-  soundEffects: { usd: null, unit: 'clip' },
-  // Not documented on the site today.
-  voiceIsolate: { usd: null, unit: 'clip' },
+  // Documented: "$0.15 per minute of source audio", by the second, 10 s minimum.
+  dubbing: { usd: 0.15, unit: 'minute of source audio', note: 'Billed by the second (10 second minimum); failed jobs are not billed.' },
+  // Documented: "$0.0015 per second of generated audio". Cache hits are not billed (backend behavior).
+  soundEffects: { usd: 0.0015, unit: 'second of generated audio', note: '4 second minimum; cache hits are free.' },
+  // Documented: "$0.05 per minute of input audio", by the second, 10 s minimum.
+  voiceIsolate: { usd: 0.05, unit: 'minute of audio', note: 'Billed by the second (10 second minimum); failed jobs are not billed.' },
   // Documented: Kokoro voices are "$0.01 per 1,000 characters" (audiobook chapters use Kokoro).
   audiobooks: { usd: 0.01, unit: '1,000 characters', note: 'Same rate as text to speech with Kokoro voices.' },
 } as const satisfies Record<string, ToolPrice>
@@ -33,8 +33,8 @@ export const PRICING = {
 export type PricedTool = keyof typeof PRICING
 
 function fmtUsd(n: number): string {
-  // Cents at minimum, up to 3 decimals ($0.11, $0.004, $2.00).
-  const s = n.toFixed(3).replace(/0+$/, '').replace(/\.$/, '')
+  // Cents at minimum, up to 4 decimals ($0.11, $0.004, $0.0015, $2.00).
+  const s = n.toFixed(4).replace(/0+$/, '').replace(/\.$/, '')
   const [whole, frac = ''] = s.split('.')
   return `$${whole}.${frac.padEnd(2, '0')}`
 }
