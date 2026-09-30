@@ -12,6 +12,15 @@ const tools = [
   ['text_to_speech', 'Speaks up to 1,000 characters and returns a WAV clip (24 kHz, mono) plus the duration and time to first audio. Inputs: text, engine (piper or kokoro), voice, speed (0.5 to 2).'],
   ['list_voices', 'Lists the voices you can use for each engine. Input: engine (optional).'],
   ['get_api_status', 'Shows whether the Piper engine is up and how many of its simultaneous streams are in use. Useful after a capacity error.'],
+  ['speech_to_text', 'Transcribes spoken audio with Whisper large-v3-turbo. Inputs: audio_base64 (up to 25 MB decoded; WAV, FLAC, OGG, MP3, M4A or WEBM), language (optional), word_timestamps (optional). Returns the transcript, detected language and duration. Batch only.'],
+  ['generate_sound_effect', 'Generates a short sound effect from a text description and returns a WAV clip. Inputs: prompt, duration_sec (1 to 12, default 3). Repeat requests for the same prompt and duration are cached and not billed again. Needs an active subscription. Not for music.'],
+  ['dub_audio', 'Re-voices a spoken audio clip into another language: transcribe, translate, then resynthesize each segment with approximate timing. Audio in, audio out only (no video, no subtitles), and the timing is an approximation, not true alignment. Returns a job_id. Inputs: audio_base64 (up to 25 MB), target_language, source_language (optional). Needs an active subscription.'],
+  ['get_dub_status', 'Polls a dub_audio job. Returns processing, ready (with an audio_url) or failed. Input: job_id.'],
+  ['isolate_voice', 'Separates vocals from the rest of a clip (Demucs) and can also return the instrumental. Returns a job_id. Inputs: audio_base64 (up to 8 MB decoded), confirms_rights (must be true), want_instrumental (optional). Needs an active subscription and an isolation container deployed for your account first (deploy it at /isolate-voice while signed in). Quality on noisy real-world speech is limited: it is music-oriented separation, not a speech denoiser.'],
+  ['get_voice_isolation', 'Polls an isolate_voice job. Returns the status, and the separated WAV once it is done. Inputs: job_id, stem (vocals or instrumental).'],
+  ['create_audiobook', 'Turns long text or an ePub into a chaptered audiobook. Returns an audiobook_id right away; chapters are synthesized in the background.'],
+  ['get_audiobook_status', 'Shows the status and duration of each chapter of an audiobook. Input: audiobook_id.'],
+  ['export_audiobook', 'Joins the finished chapters into one MP3 with chapter markers and returns a download URL. Every chapter must be ready. Input: audiobook_id.'],
   ['design_voice', 'Generates a new synthetic voice from a text description and a sample sentence. Returns a job_id. Inputs: description (10 to 800 characters), text (up to 500 characters). Needs an active subscription.'],
   ['get_voice_design', 'Polls a design_voice job. Returns the status, and the WAV sample once it is ready. Input: job_id.'],
   ['convert_voice', 'Speech-to-speech conversion: re-speaks a source clip in the voice of a target reference clip. Returns a job_id. Inputs: source_audio_base64, target_audio_base64 (up to 4 MB each), MIME types, confirms_rights (must be true). The first call on an account sets up a private converter (about 3 minutes) and returns a temporary capacity error; call again afterwards.'],
@@ -80,11 +89,12 @@ export default function McpDocsPage() {
                 <tbody>{tools.map(([n, d]) => <tr key={n}><td><code>{n}</code></td><td>{d}</td></tr>)}</tbody>
               </table>
             </div>
-            <p style={{ marginTop: 16 }}>Voices: Piper has one voice, <code>default</code>. Kokoro has 28 English voices such as <code>af_heart</code>, <code>am_adam</code> and <code>bf_emma</code>; ask for <code>list_voices</code> for all of them. Custom trained voices use <code>custom:&lt;id&gt;</code>. Speech to text is not part of this server.</p>
+            <p style={{ marginTop: 16 }}>Voices: Piper has one voice, <code>default</code>. Kokoro has 28 English voices such as <code>af_heart</code>, <code>am_adam</code> and <code>bf_emma</code>; ask for <code>list_voices</code> for all of them. Custom trained voices use <code>custom:&lt;id&gt;</code>. </p>
+            <p style={{ marginTop: 12 }}>Most tools return a job id or a URL rather than inline audio, and the longer ones (dubbing, isolation, conversion, audiobooks, cloning) are polled with a matching <code>get_…</code> tool. The tools that need an account (dubbing, sound effects, isolation, conversion, voice design, audiobooks) bill the account your key belongs to; a key that is not tied to an account gets a payment-required error. The REST endpoints behind them do not take your key directly. This server is the only place an API key works for them. Web versions: <Link href="/transcribe" style={{ textDecoration: 'underline' }}>transcribe</Link>, <Link href="/dub" style={{ textDecoration: 'underline' }}>dub</Link>, <Link href="/sound-effects" style={{ textDecoration: 'underline' }}>sound effects</Link>, <Link href="/isolate-voice" style={{ textDecoration: 'underline' }}>isolate voice</Link>, <Link href="/audiobooks" style={{ textDecoration: 'underline' }}>audiobooks</Link>, <Link href="/design-voice" style={{ textDecoration: 'underline' }}>design voice</Link>, <Link href="/convert-voice" style={{ textDecoration: 'underline' }}>convert voice</Link> and <Link href="/clone-voice" style={{ textDecoration: 'underline' }}>clone voice</Link>. Prices are on the <Link href="/developers#reference" style={{ textDecoration: 'underline' }}>Voice API page</Link>; audio-based usage shows on your invoice as character equivalents.</p>
 
             <h2 style={{ marginTop: 48 }}>Limits</h2>
             <ul>
-              <li>Up to 1,000 characters and about 20 seconds of audio per call. Longer audio is cut off, so split long text into several calls.</li>
+              <li><code>text_to_speech</code>: up to 1,000 characters and about 20 seconds of audio per call. Longer audio is cut off, so split long text into several calls. Other tools have their own size limits, listed above.</li>
               <li>Each call times out after 30 seconds.</li>
               <li>15 speech calls per minute per key, and 120 requests per minute per IP address. Over the limit you get a retry message.</li>
               <li>Speech uses your key&rsquo;s characters and pricing, the same as the <Link href="/developers#reference" style={{ textDecoration: 'underline' }}>WebSocket API</Link>. When the free characters run out, tools return a &ldquo;payment required&rdquo; error.</li>
@@ -94,8 +104,8 @@ export default function McpDocsPage() {
             <h2 style={{ marginTop: 48 }}>Security</h2>
             <ul>
               <li>Keys belong to one person. Do not share yours or commit it. If it leaks, or you want to disconnect an app you connected with a login, revoke its key in the developer console.</li>
-              <li>Our server uses your key only to start each speech request. We do not log or store it.</li>
-              <li>Audio is returned inline in the response. We do not save audio files or keep the text you send.</li>
+              <li>Our server uses your key only to authorize each request and to work out which account it belongs to. We do not log or store it.</li>
+              <li><code>text_to_speech</code> returns audio inline and we do not save it or keep the text you send. Tools that run jobs (dubbing, sound effects, isolation, conversion, audiobooks, voice design, cloning) necessarily store your input and results on our servers while the job runs and so you can fetch it.</li>
               <li>The text you ask to speak is sent to the voice engine that generates it.</li>
             </ul>
 

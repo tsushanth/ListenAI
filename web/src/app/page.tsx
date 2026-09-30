@@ -31,7 +31,7 @@ export default function Home() {
             </div>
             <div className="ra-fact">
               <b>$4 per million characters</b>
-              <span>ElevenLabs Flash lists at $50 and Multilingual v2 at $100. You pay only for speech that finishes.</span>
+              <span>ElevenLabs Flash lists at $40 and Multilingual v2 at $80 (list prices, as of 2026-09). You pay only for speech that finishes.</span>
             </div>
             <div className="ra-fact">
               <b>Interrupt mid-sentence</b>
@@ -64,15 +64,15 @@ export default function Home() {
                 <thead><tr><th>Service</th><th>Time to first audio (warm)</th><th>Price per 1M characters</th></tr></thead>
                 <tbody>
                   <tr><td className="hl">ReadAloud Piper</td><td className="hl">168&ndash;171 ms</td><td className="hl">$4</td></tr>
-                  <tr><td>ElevenLabs Flash v2.5</td><td>173&ndash;174 ms</td><td>$50</td></tr>
-                  <tr><td>ElevenLabs Multilingual v2</td><td>about 1.0&ndash;1.1 s</td><td>$100</td></tr>
+                  <tr><td>ElevenLabs Flash v2.5</td><td>173&ndash;174 ms</td><td>$40</td></tr>
+                  <tr><td>ElevenLabs Multilingual v2</td><td>about 1.0&ndash;1.1 s</td><td>$80</td></tr>
                 </tbody>
               </table>
             </div>
             <p className="ra-small" style={{ marginTop: 14 }}>
               Measured September 2026 from one machine in San Jose, interleaved, in the same hour, on short call-center sentences, as time to the
               first audio byte on a warm streaming connection. ElevenLabs advertises 75 ms for Flash; that is model latency, while these figures are end to end, including the network. Piper and ElevenLabs Flash are within measurement noise, so we do not claim to be
-              faster. Results vary by location and time of day. Prices are published list prices when measured. Voice quality is subjective, and
+              faster. Results vary by location and time of day. ElevenLabs prices are its published API list prices as of 2026-09; the latency and quality figures are from our own runs. Voice quality is subjective, and
               ElevenLabs offers far more voices and languages. The scripts are in our{' '}
               <a href="https://github.com/tsushanth/realtime-tts/tree/main/benchmarks">public benchmarks folder</a>.
             </p>
@@ -84,8 +84,8 @@ export default function Home() {
                 <tbody>
                   <tr><td className="hl">ReadAloud Piper</td><td className="hl">10.4%</td><td className="hl">4.44 / 5</td><td className="hl">$4</td></tr>
                   <tr><td>ReadAloud Kokoro</td><td>5.8% (English only)</td><td>4.25 / 5</td><td>$10</td></tr>
-                  <tr><td>ElevenLabs Flash v2.5</td><td>6.2%</td><td>4.52 / 5</td><td>$50</td></tr>
-                  <tr><td>ElevenLabs Multilingual v2</td><td>4.3%</td><td>4.46 / 5</td><td>$100</td></tr>
+                  <tr><td>ElevenLabs Flash v2.5</td><td>6.2%</td><td>4.52 / 5</td><td>$40</td></tr>
+                  <tr><td>ElevenLabs Multilingual v2</td><td>4.3%</td><td>4.46 / 5</td><td>$80</td></tr>
                 </tbody>
               </table>
             </div>
@@ -178,7 +178,7 @@ export default function Home() {
             </div>
             <div className="ra-ref" style={{ marginTop: 0 }}>
               <ul>
-                <li>That is half of ElevenLabs Scribe&rsquo;s list price of $0.22 per hour, when we measured. We have not compared accuracy with Scribe.</li>
+                <li>That is half of ElevenLabs Scribe&rsquo;s batch list price of $0.22 per hour (as of 2026-09; its realtime price is $0.39 per hour). We have not compared accuracy with Scribe.</li>
                 <li>Word error rate was 2.6% on clean read English and 2.8% on simulated phone audio. Real calls are noisier, so test on yours.</li>
                 <li>Batch only for now: no live transcription, speaker labels or entity detection.</li>
                 <li>Accepts wav, flac, mp3, ogg, m4a and raw mu-law or A-law phone audio. Up to 200 MB or 3 hours per file.</li>
