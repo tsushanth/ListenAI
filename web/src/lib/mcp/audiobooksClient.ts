@@ -49,11 +49,18 @@ function decodeJwtClaims(token: string): Record<string, unknown> {
 /** Exchanges the raw API key for a gateway session token (same call upstream.ts's authorize()
  *  makes for TTS) and resolves the identity headers requireAuthOrApiKey expects from it. */
 async function resolveGatewayIdentityHeaders(apiKey: string): Promise<Record<string, string>> {
-  const forwardSecret = process.env.GATEWAY_FORWARD_SECRET
+  // Was reading GATEWAY_FORWARD_SECRET (unprefixed) - every other bridged tool
+  // (isolate_voice, dub_audio, sound effects, and the top-level route.ts
+  // connect-time check) reads MCP_GATEWAY_FORWARD_SECRET. The unprefixed var
+  // was never provisioned anywhere, so this always 401'd - confirmed live,
+  // masked behind route.ts's generic "Invalid or revoked API key." because a
+  // 401 UpstreamError anywhere in a tool call sets ctx.authFailed, which
+  // overrides the real tool response with that message.
+  const forwardSecret = process.env.MCP_GATEWAY_FORWARD_SECRET
   if (!forwardSecret) {
     throw new AudiobooksApiError(
       401,
-      'Audiobooks API access is not configured on this deployment (missing GATEWAY_FORWARD_SECRET).'
+      'Audiobooks API access is not configured on this deployment (missing MCP_GATEWAY_FORWARD_SECRET).'
     )
   }
 
