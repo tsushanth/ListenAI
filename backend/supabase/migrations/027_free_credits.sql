@@ -24,9 +24,12 @@ ALTER TABLE realtimetts_free_credits ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Service role full access on realtimetts_free_credits" ON realtimetts_free_credits;
 
+-- TO service_role: a bare "USING (true)" policy applies to PUBLIC (anon + authenticated), which
+-- would let anyone holding the site's public anon key read and edit these rows.
 CREATE POLICY "Service role full access on realtimetts_free_credits" ON realtimetts_free_credits
-    FOR ALL
-    USING (true);
+    FOR ALL TO service_role
+    USING (true) WITH CHECK (true);
+REVOKE ALL ON realtimetts_free_credits FROM anon, authenticated;
 
 -- Idempotency ledger: one row per deduction that carried an identifier (a job id), so a
 -- re-polled finished job is never charged against the credits twice.
@@ -42,8 +45,9 @@ ALTER TABLE realtimetts_free_credit_events ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Service role full access on realtimetts_free_credit_events" ON realtimetts_free_credit_events;
 
 CREATE POLICY "Service role full access on realtimetts_free_credit_events" ON realtimetts_free_credit_events
-    FOR ALL
-    USING (true);
+    FOR ALL TO service_role
+    USING (true) WITH CHECK (true);
+REVOKE ALL ON realtimetts_free_credit_events FROM anon, authenticated;
 
 -- Atomically consumes up to p_units and returns the units ACTUALLY consumed
 -- (never more than what remains, so no negative balance). Creates the user's row
