@@ -75,6 +75,15 @@ image = (
         "munch", "scipy", "modelscope", "onnxruntime", "gradio", "sounddevice", "descript-audio-codec",
         "openai-whisper", "matplotlib", "accelerate", "numpy<2",
     )
+    # Unpinned deliberately, installed last: without this, the container relies on whatever `modal`
+    # client version is baked into the cached base image layer, which can drift out of sync with the
+    # actual Modal backend's protobuf schema over time. Confirmed as the real cause of a live
+    # production crash-loop via a real smoke test: run_conversion failed every single container start
+    # with "AttributeError: Enum VolumeFsVersion has no value defined for name 'ValueType'" inside
+    # modal's own volume.py -- a stale bundled client, not anything in this file's own code. Same
+    # unpinned-on-purpose reasoning as the backend's own Dockerfile note for the modal CLI it shells
+    # out to (see routes/voiceConvert.ts's deploy handler / this repo's Dockerfile comment).
+    .pip_install("modal")
     .add_local_python_source("quality")  # shared metrics/quality-gate module (voice-pipeline/quality.py)
 )
 web_image = modal.Image.debian_slim(python_version="3.11").pip_install("fastapi==0.109.0", "python-multipart==0.0.9")
@@ -92,6 +101,7 @@ submit_image = (
     modal.Image.debian_slim(python_version="3.11")
     .apt_install("ffmpeg", "libsndfile1")
     .pip_install("soundfile", "librosa", "numpy<2")
+    .pip_install("modal")  # see the comment on `image`'s own modal pip_install above
 )
 
 MAX_SOURCE_SECONDS = 120.0

@@ -53,6 +53,11 @@ image = (
     .pip_install(
         "demucs==4.0.1", "soundfile", "librosa", "numpy<2",
     )
+    # Unpinned deliberately, installed last -- see convert_job.py's identical comment. A real
+    # production smoke test found convert_job.py's GPU function crash-looping on a stale bundled
+    # modal client; this file hasn't shown the same symptom yet, but it shares the exact same
+    # unpinned-base-image exposure, so fixing it here too preemptively.
+    .pip_install("modal")
     .add_local_python_source("quality")  # shared metrics/quality-gate module (voice-pipeline/quality.py)
 )
 web_image = modal.Image.debian_slim(python_version="3.11").pip_install("fastapi==0.109.0", "python-multipart==0.0.9")
