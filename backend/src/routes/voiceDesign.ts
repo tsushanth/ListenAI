@@ -5,7 +5,7 @@ import express, { Router, Request, Response, NextFunction } from 'express';
 import rateLimit from 'express-rate-limit';
 import { config } from '../lib/config.js';
 import { supabase } from '../lib/supabaseClient.js';
-import { isBillingActiveForUser, reportVoiceDesignUsage } from '../lib/realtimeTtsBilling.js';
+import { hasUsageAllowance, freeCreditsExhaustedMessage, reportVoiceDesignUsage } from '../lib/realtimeTtsBilling.js';
 import { logger } from '../lib/logger.js';
 
 const log = logger.child({ module: 'voiceDesign' });
@@ -63,8 +63,8 @@ async function requireUser(req: Request, res: Response): Promise<string | null> 
   // Billing is checked for EVERY resolved identity, including one already set by requireAuthOrApiKey. (The
   // sibling routes short-circuit on a pre-set req.userId and skip this check, which would let any
   // authenticated caller past the subscription gate once the bridge middleware is mounted in front.)
-  const active = await isBillingActiveForUser(userId);
-  if (!active) { res.status(402).json({ error: 'Voice design requires an active TTS subscription.' }); return null; }
+  const active = await hasUsageAllowance(userId);
+  if (!active) { res.status(402).json({ error: freeCreditsExhaustedMessage('voice design') }); return null; }
 
   (req as Request & { userId?: string }).userId = userId;
   return userId;

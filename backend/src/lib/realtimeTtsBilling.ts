@@ -121,10 +121,119 @@ export const REALTIME_TTS_CHECKOUT_METADATA = { product: 'realtime-tts-api' } as
 export interface RealtimeTtsBillingRow {
   id: string;
   user_id: string;
-  stripe_customer_id: string;
-  stripe_subscription_id: string;
-  stripe_subscription_item_id: string;
+  // NULL for a comped row (migration 028): a comped account has no Stripe objects at all.
+  stripe_customer_id: string | null;
+  stripe_subscription_id: string | null;
+  stripe_subscription_item_id: string | null;
   active: boolean;
+  // Complimentary account: full access, never reported to or dependent on Stripe.
+  comped?: boolean;
+}
+
+// --------------------------------------------------------------------------
+// Free credits (per USER, one-time grant; migration 027_free_credits.sql)
+// --------------------------------------------------------------------------
+// Denominated in the same "character-equivalent" meter unit as everything else here (1 unit = $0.00001,
+// see METER_USD_PER_UNIT), so 10,000 units = $0.10 = the "10,000 characters" the gateway's per-key free
+// tier has always advertised. THE ONE PLACE to change the grant. It is passed to consume_free_credits()
+// and only applies to users who have no realtimetts_free_credits row yet; already-created rows keep the
+// `granted` they were created with (UPDATE that column to change existing users).
+export const FREE_CREDIT_UNITS = 10000;
+// Voice design has no per-unit price of its own (flat per generation, metered as '1' on a dedicated
+// meter), so a free generation is charged as this flat amount ($0.05).
+export const VOICE_DESIGN_FREE_CREDIT_UNITS = 5000;
+export const ADD_PAYMENT_METHOD_URL = 'https://readaloudai.org/developers#get-started';
+
+/** 402 body text for a feature that is out of free credits. Distinct from the payment-only features' message. */
+export function freeCreditsExhaustedMessage(feature: string): string {
+  return `Your free credits are used up. Add a payment method to keep using ${feature}: ${ADD_PAYMENT_METHOD_URL}`;
+}
+
+export interface FreeCreditsStatus {
+  granted: number;
+  used: number;
+  remaining: number;
+}
+
+/** Free-credit balance. No row yet means an untouched full grant. A lookup error fails CLOSED (0 remaining). */
+export async function getFreeCredits(userId: string): Promise<FreeCreditsStatus> {
+  const { data, error } = await supabase
+    .from('realtimetts_free_credits')
+    .select('granted, used')
+    .eq('user_id', userId)
+    .maybeSingle();
+  if (error) {
+    billingLogger.error({ error, userId }, 'Failed to look up free credits (failing closed)');
+    return { granted: FREE_CREDIT_UNITS, used: FREE_CREDIT_UNITS, remaining: 0 };
+  }
+  if (!data) return { granted: FREE_CREDIT_UNITS, used: 0, remaining: FREE_CREDIT_UNITS };
+  const granted = Number(data.granted);
+  const used = Number(data.used);
+  return { granted, used, remaining: Math.max(0, granted - used) };
+}
+
+/**
+ * Atomically deducts up to `units` from the user's free credits (SQL function consume_free_credits) and
+ * returns how many were actually consumed (never more than remaining; the row is created with the default
+ * grant on first use). `identifier` makes the deduction idempotent: a repeat with the same identifier
+ * consumes 0. Never throws; a failure returns 0.
+ */
+export async function consumeFreeCredits(userId: string, units: number, identifier?: string): Promise<number> {
+  if (!(units > 0)) return 0;
+  try {
+    const { data, error } = await supabase.rpc('consume_free_credits', {
+      p_user: userId,
+      p_units: Math.round(units),
+      p_grant: FREE_CREDIT_UNITS,
+      p_identifier: identifier ?? null,
+    });
+    if (error) {
+      billingLogger.error({ error, userId, units }, 'consume_free_credits failed');
+      return 0;
+    }
+    return Number(data) || 0;
+  } catch (err) {
+    billingLogger.error({ err, userId, units }, 'consume_free_credits threw');
+    return 0;
+  }
+}
+
+type ConsumeFree = (userId: string, units: number, identifier?: string) => Promise<number>;
+
+async function deductFreeCredits(
+  userId: string,
+  units: number,
+  what: string,
+  identifier?: string,
+  consume: ConsumeFree = consumeFreeCredits,
+): Promise<void> {
+  if (!(units > 0)) return;
+  const consumed = await consume(userId, units, identifier);
+  if (consumed < units) {
+    // A completed job is never failed retroactively: we take what is left and log the shortfall.
+    billingLogger.info({ userId, what, units, consumed }, 'Free credits fully used by this job (shortfall not charged)');
+  } else {
+    billingLogger.debug({ userId, what, units }, 'Free credits deducted');
+  }
+}
+
+type MeterTarget =
+  | { kind: 'comped' }
+  | { kind: 'stripe'; billing: RealtimeTtsBillingRow & { stripe_customer_id: string } }
+  | { kind: 'free' };
+
+/** Where usage for this user is metered: nowhere (comped), Stripe (paying), or the free-credit balance. */
+async function resolveMeterTarget(
+  userId: string,
+  getBilling: (userId: string) => Promise<RealtimeTtsBillingRow | null> = getBillingForUser,
+): Promise<MeterTarget> {
+  const billing = await getBilling(userId);
+  if (billing?.active && billing.comped) return { kind: 'comped' };
+  if (billing?.active) {
+    if (billing.stripe_customer_id) return { kind: 'stripe', billing: billing as RealtimeTtsBillingRow & { stripe_customer_id: string } };
+    billingLogger.warn({ userId }, 'Active non-comped billing row has no Stripe customer; metering against free credits');
+  }
+  return { kind: 'free' };
 }
 
 export async function getBillingForUser(userId: string): Promise<RealtimeTtsBillingRow | null> {
@@ -140,9 +249,16 @@ export async function getBillingForUser(userId: string): Promise<RealtimeTtsBill
   return data as RealtimeTtsBillingRow | null;
 }
 
+// True for a paying subscriber AND for a comped account (active=true, comped=true).
 export async function isBillingActiveForUser(userId: string): Promise<boolean> {
   const row = await getBillingForUser(userId);
   return !!row?.active;
+}
+
+/** Gate for usage-metered features (dub, STT, isolate, convert, sound effects, voice design): billing active (incl. comped) OR free credits left. */
+export async function hasUsageAllowance(userId: string): Promise<boolean> {
+  if (await isBillingActiveForUser(userId)) return true;
+  return (await getFreeCredits(userId)).remaining > 0;
 }
 
 // Pure and exported so the "does the music price get attached, and only
@@ -182,7 +298,7 @@ export async function createCheckoutSession(params: {
 // nothing to manage here).
 export async function createPortalSession(params: { userId: string; returnUrl?: string }): Promise<string> {
   const billing = await getBillingForUser(params.userId);
-  if (!billing) {
+  if (!billing || !billing.stripe_customer_id) {
     throw new Error('No billing record for this user — nothing to manage yet.');
   }
   const session = await stripe.billingPortal.sessions.create({
@@ -191,6 +307,37 @@ export async function createPortalSession(params: { userId: string; returnUrl?: 
     ...(params.returnUrl ? { return_url: params.returnUrl } : {}),
   });
   return session.url;
+}
+
+// True when the subscription really has a way to pay: a subscription-level default payment method, the
+// customer's invoice default, or any attached card. Fails CLOSED (false) if Stripe cannot be asked.
+// This is what keeps "Pay-as-you-go active" honest: a subscription created outside Checkout (e.g. the
+// live-mode internal smoke test) has none of these.
+export async function subscriptionHasPaymentMethod(subscription: Stripe.Subscription): Promise<boolean> {
+  try {
+    if (subscription.default_payment_method) return true;
+    const customerId = typeof subscription.customer === 'string' ? subscription.customer : subscription.customer?.id;
+    if (!customerId) return false;
+    const customer = await stripe.customers.retrieve(customerId);
+    if (!customer.deleted && customer.invoice_settings?.default_payment_method) return true;
+    const cards = await stripe.paymentMethods.list({ customer: customerId, type: 'card', limit: 1 });
+    return cards.data.length > 0;
+  } catch (err) {
+    billingLogger.error({ err, subscriptionId: subscription.id }, 'Could not verify a payment method (treating as none)');
+    return false;
+  }
+}
+
+async function setUserGatewayKeysBilling(userId: string, enabled: boolean): Promise<void> {
+  const { setGatewayKeyBilling } = await import('./ttsGatewayClient.js');
+  const { data: existingKeys } = await supabase
+    .from('realtimetts_api_keys')
+    .select('gateway_key_id')
+    .eq('user_id', userId)
+    .is('revoked_at', null);
+  for (const k of existingKeys || []) {
+    await setGatewayKeyBilling(k.gateway_key_id, enabled);
+  }
 }
 
 // Called from stripeWebhook.ts on checkout.session.completed, only for
@@ -206,9 +353,24 @@ export async function activateBillingFromCheckout(session: Stripe.Checkout.Sessi
   }
 
   const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+  if (subscription.metadata?.purpose === 'internal-smoke-test' || session.metadata?.purpose === 'internal-smoke-test') {
+    billingLogger.warn({ subscriptionId, userId }, 'Refusing to activate realtime-tts billing for an internal smoke-test subscription');
+    return;
+  }
   const item = subscription.items.data.find((i) => i.price.id === TTS_BILLING_PRICE_ID);
   if (!item) {
     billingLogger.error({ subscriptionId }, 'realtime-tts subscription has no matching price item');
+    return;
+  }
+  if (!(await subscriptionHasPaymentMethod(subscription))) {
+    billingLogger.warn({ subscriptionId, userId }, 'Refusing to activate realtime-tts billing: subscription has no payment method attached');
+    return;
+  }
+
+  // A comped account is never touched by Stripe events (its flag must not be overwritten by an upsert).
+  const existing = await getBillingForUser(userId);
+  if (existing?.comped) {
+    billingLogger.info({ userId, subscriptionId }, 'User is comped; ignoring checkout activation (row left untouched)');
     return;
   }
 
@@ -230,15 +392,7 @@ export async function activateBillingFromCheckout(session: Stripe.Checkout.Sessi
 
   // Enable every gateway key this user already has — a user who checks out
   // after already issuing keys shouldn't have to re-issue them.
-  const { setGatewayKeyBilling } = await import('./ttsGatewayClient.js');
-  const { data: existingKeys } = await supabase
-    .from('realtimetts_api_keys')
-    .select('gateway_key_id')
-    .eq('user_id', userId)
-    .is('revoked_at', null);
-  for (const k of existingKeys || []) {
-    await setGatewayKeyBilling(k.gateway_key_id, true);
-  }
+  await setUserGatewayKeysBilling(userId, true);
 
   billingLogger.info({ userId, subscriptionId }, 'realtime-tts billing activated');
 }
@@ -248,20 +402,60 @@ export async function deactivateBillingForSubscription(subscriptionId: string): 
     .from('realtimetts_billing')
     .update({ active: false, updated_at: new Date().toISOString() })
     .eq('stripe_subscription_id', subscriptionId)
+    .eq('comped', false) // Stripe events never deactivate a comped account
     .select()
     .maybeSingle();
   if (error || !row) return;
 
-  const { setGatewayKeyBilling } = await import('./ttsGatewayClient.js');
-  const { data: existingKeys } = await supabase
-    .from('realtimetts_api_keys')
-    .select('gateway_key_id')
-    .eq('user_id', row.user_id)
-    .is('revoked_at', null);
-  for (const k of existingKeys || []) {
-    await setGatewayKeyBilling(k.gateway_key_id, false);
-  }
+  await setUserGatewayKeysBilling(row.user_id, false);
   billingLogger.info({ userId: row.user_id, subscriptionId }, 'realtime-tts billing deactivated');
+}
+
+// Re-activates a previously deactivated row when Stripe reports the subscription active again AND a payment
+// method exists. Only ever flips an existing, non-comped, inactive row matched by subscription id; creating
+// billing rows stays the exclusive job of a verified Checkout completion.
+export async function reactivateBillingForSubscription(subscription: Stripe.Subscription): Promise<void> {
+  const { data: row, error } = await supabase
+    .from('realtimetts_billing')
+    .select('*')
+    .eq('stripe_subscription_id', subscription.id)
+    .maybeSingle();
+  if (error || !row) return;
+  const billing = row as RealtimeTtsBillingRow;
+  if (billing.comped || billing.active) return;
+  if (subscription.metadata?.purpose === 'internal-smoke-test') return;
+  if (!(await subscriptionHasPaymentMethod(subscription))) {
+    billingLogger.warn({ userId: billing.user_id, subscriptionId: subscription.id }, 'Subscription active again but has no payment method; not re-activating');
+    return;
+  }
+  const { error: updateError } = await supabase
+    .from('realtimetts_billing')
+    .update({ active: true, updated_at: new Date().toISOString() })
+    .eq('stripe_subscription_id', subscription.id)
+    .eq('comped', false);
+  if (updateError) {
+    billingLogger.error({ error: updateError, userId: billing.user_id }, 'Failed to re-activate realtime-tts billing');
+    return;
+  }
+  await setUserGatewayKeysBilling(billing.user_id, true);
+  billingLogger.info({ userId: billing.user_id, subscriptionId: subscription.id }, 'realtime-tts billing re-activated');
+}
+
+// customer.subscription.updated for a realtime-tts subscription. past_due (and every other status) is left
+// alone on purpose: Stripe retries the payment, so that is a grace period, not a cancellation.
+export async function syncBillingFromSubscription(subscription: Stripe.Subscription): Promise<void> {
+  switch (subscription.status) {
+    case 'canceled':
+    case 'unpaid':
+    case 'incomplete_expired':
+      await deactivateBillingForSubscription(subscription.id);
+      return;
+    case 'active':
+      await reactivateBillingForSubscription(subscription);
+      return;
+    default:
+      return;
+  }
 }
 
 // Pulls accumulated character usage off the gateway (per gateway key id) and
@@ -275,6 +469,7 @@ export interface UsageReportDeps {
   getKeyOwner: (gatewayKeyId: string) => Promise<{ user_id: string } | null>;
   getBilling: (userId: string) => Promise<RealtimeTtsBillingRow | null>;
   createMeterEvent: (params: Stripe.Billing.MeterEventCreateParams) => Promise<unknown>;
+  consumeFreeCredits: ConsumeFree;
 }
 
 const defaultUsageDeps: UsageReportDeps = {
@@ -289,6 +484,7 @@ const defaultUsageDeps: UsageReportDeps = {
   },
   getBilling: getBillingForUser,
   createMeterEvent: (params) => stripe.billing.meterEvents.create(params),
+  consumeFreeCredits,
 };
 
 // Billed value for one drained gateway entry, in Kokoro-equivalent characters:
@@ -317,12 +513,18 @@ export async function reportUsageToStripe(deps: UsageReportDeps = defaultUsageDe
         billingLogger.warn({ gatewayKeyId }, 'Usage reported for a gateway key with no owning user record');
         continue;
       }
-      const billing = await deps.getBilling(keyRecord.user_id);
-      if (!billing?.active) {
-        billingLogger.warn({ userId: keyRecord.user_id, gatewayKeyId, chars }, 'Usage reported for a user with no active billing — dropping (should be unreachable, key should not have been billing-enabled)');
+      const target = await resolveMeterTarget(keyRecord.user_id, deps.getBilling);
+      if (target.kind === 'comped') {
+        billingLogger.debug({ userId: keyRecord.user_id, gatewayKeyId, chars }, 'Comped user; gateway usage not reported to Stripe');
         continue;
       }
       if (chars <= 0) continue; // e.g. a sub-0.16 s STT remainder rounds to nothing; don't send empty meter events
+      if (target.kind === 'free') {
+        // Free-tier gateway keys are not normally drained, so this is an anomaly; count it against the user's credits.
+        await deductFreeCredits(keyRecord.user_id, chars, 'gateway usage', undefined, deps.consumeFreeCredits);
+        continue;
+      }
+      const billing = target.billing;
       await deps.createMeterEvent({
         event_name: TTS_METER_EVENT_NAME,
         timestamp: Math.floor(Date.now() / 1000),
@@ -343,11 +545,16 @@ export async function reportUsageToStripe(deps: UsageReportDeps = defaultUsageDe
 // jobId (when given) is sent as the Stripe meter event `identifier`, which Stripe dedupes on, so a job that is
 // polled again after it is already done (an MCP client re-polling) is never billed twice.
 export async function reportVoiceDesignUsage(userId: string, jobId?: string): Promise<void> {
-  const billing = await getBillingForUser(userId);
-  if (!billing?.active) {
-    billingLogger.warn({ userId }, 'reportVoiceDesignUsage called for user with no active billing');
+  const target = await resolveMeterTarget(userId);
+  if (target.kind === 'comped') {
+    billingLogger.debug({ userId }, 'Comped user; voice design usage not reported to Stripe');
     return;
   }
+  if (target.kind === 'free') {
+    await deductFreeCredits(userId, VOICE_DESIGN_FREE_CREDIT_UNITS, 'voice design', jobId ? `voice-design-${jobId}` : undefined);
+    return;
+  }
+  const billing = target.billing;
   try {
     await stripe.billing.meterEvents.create({
       event_name: VOICE_DESIGN_METER_EVENT_NAME,
@@ -375,20 +582,29 @@ export async function reportAudioJobUsage(
   service: AudioJobService,
   audioSeconds: number | null | undefined,
   jobId?: string,
-  deps: { getBilling: (userId: string) => Promise<RealtimeTtsBillingRow | null>; createMeterEvent: (params: Stripe.Billing.MeterEventCreateParams) => Promise<unknown> } = {
+  deps: {
+    getBilling: (userId: string) => Promise<RealtimeTtsBillingRow | null>;
+    createMeterEvent: (params: Stripe.Billing.MeterEventCreateParams) => Promise<unknown>;
+    consumeFreeCredits?: ConsumeFree;
+  } = {
     getBilling: getBillingForUser,
     createMeterEvent: (params) => stripe.billing.meterEvents.create(params),
   },
 ): Promise<void> {
-  const billing = await deps.getBilling(userId);
-  if (!billing?.active) {
-    billingLogger.warn({ userId, service }, 'reportAudioJobUsage called for user with no active billing');
+  const target = await resolveMeterTarget(userId, deps.getBilling);
+  if (target.kind === 'comped') {
+    billingLogger.debug({ userId, service }, 'Comped user; audio job usage not reported to Stripe');
     return;
   }
   if (!(typeof audioSeconds === 'number' && Number.isFinite(audioSeconds) && audioSeconds > 0)) {
     billingLogger.warn({ userId, service, jobId }, 'Audio job has no usable duration; billing the minimum');
   }
   const units = billableAudioUnits(service, audioSeconds);
+  if (target.kind === 'free') {
+    await deductFreeCredits(userId, units, service, jobId ? `${AUDIO_JOB_IDENTIFIER_PREFIX[service]}-${jobId}` : undefined, deps.consumeFreeCredits);
+    return;
+  }
+  const billing = target.billing;
   try {
     await deps.createMeterEvent({
       event_name: TTS_METER_EVENT_NAME,
@@ -428,13 +644,18 @@ export const reportSoundEffectGenerationUsage = (userId: string, durationSec: nu
 // silently dropped by reportUsageToStripe's "no owning user record" branch, which is the intended
 // (if easy-to-miss) safety net here.
 export async function reportSttUsage(userId: string, audioSeconds: number): Promise<void> {
-  const billing = await getBillingForUser(userId);
-  if (!billing?.active) {
-    billingLogger.warn({ userId }, 'reportSttUsage called for user with no active billing');
+  const target = await resolveMeterTarget(userId);
+  if (target.kind === 'comped') {
+    billingLogger.debug({ userId }, 'Comped user; STT usage not reported to Stripe');
     return;
   }
   const chars = Math.round(audioSeconds * STT_CHARS_PER_SECOND);
   if (chars <= 0) return; // sub-0.16s remainder rounds to nothing, matches reportUsageToStripe's drain path
+  if (target.kind === 'free') {
+    await deductFreeCredits(userId, chars, 'stt');
+    return;
+  }
+  const billing = target.billing;
   try {
     await stripe.billing.meterEvents.create({
       event_name: TTS_METER_EVENT_NAME,
@@ -474,11 +695,16 @@ export async function chargeForVoiceClone(identity: string): Promise<{ success: 
     return { success: false, error: 'User not found' };
   }
 
-  const billing = await getBillingForUser(userId);
-  if (!billing?.active) {
+  const target = await resolveMeterTarget(userId);
+  if (target.kind === 'comped') {
+    billingLogger.debug({ userId }, 'Comped user; voice clone not charged');
+    return { success: true };
+  }
+  if (target.kind === 'free') {
     billingLogger.warn({ userId, identity }, 'chargeForVoiceClone: no active billing record');
     return { success: false, error: 'No active billing record' };
   }
+  const billing = target.billing;
 
   try {
     const item = await stripe.invoiceItems.create({
@@ -499,11 +725,16 @@ export async function chargeForVoiceClone(identity: string): Promise<{ success: 
 // Called after a music job's status is already updated to 'ready', not before.
 // Best-effort: a metering failure must not fail the (already-successful) job.
 export async function reportMusicGenerationUsage(userId: string): Promise<void> {
-  const billing = await getBillingForUser(userId);
-  if (!billing?.active) {
+  const target = await resolveMeterTarget(userId);
+  if (target.kind === 'comped') {
+    billingLogger.debug({ userId }, 'Comped user; music usage not reported to Stripe');
+    return;
+  }
+  if (target.kind === 'free') {
     billingLogger.warn({ userId }, 'reportMusicGenerationUsage called for user with no active billing');
     return;
   }
+  const billing = target.billing;
   try {
     await stripe.billing.meterEvents.create({
       event_name: MUSIC_GENERATION_METER_EVENT_NAME,
@@ -522,12 +753,17 @@ export async function reportMusicGenerationUsage(userId: string): Promise<void> 
 // Reports TTS character usage to Stripe meter (for cloned-voice synthesis and any
 // backend-served TTS). Best-effort: billing failure must not block the request.
 export async function reportTtsUsage(userId: string, charCount: number): Promise<void> {
-  const billing = await getBillingForUser(userId);
-  if (!billing?.active) {
-    billingLogger.warn({ userId }, 'reportTtsUsage called for user with no active billing');
+  const target = await resolveMeterTarget(userId);
+  if (target.kind === 'comped') {
+    billingLogger.debug({ userId }, 'Comped user; TTS usage not reported to Stripe');
     return;
   }
   if (charCount <= 0) return;
+  if (target.kind === 'free') {
+    await deductFreeCredits(userId, charCount, 'tts');
+    return;
+  }
+  const billing = target.billing;
   try {
     await stripe.billing.meterEvents.create({
       event_name: TTS_METER_EVENT_NAME,

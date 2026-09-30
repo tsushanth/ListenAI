@@ -21,7 +21,7 @@ export default function DevelopersPage() {
           <div className="ra-wrap">
             <h1 style={{ maxWidth: '16ch' }}>Voice API</h1>
             <p className="ra-lede">
-              Stream speech over a WebSocket, or transcribe recordings with batch <a href="#speech-to-text" style={{ textDecoration: 'underline' }}>speech to text</a>. Get a key below, then follow the three calls. New keys include 10,000 free characters.
+              Stream speech over a WebSocket, or transcribe recordings with batch <a href="#speech-to-text" style={{ textDecoration: 'underline' }}>speech to text</a>. Get a key below, then follow the three calls. Every account starts with free credits.
             </p>
             <p style={{ marginTop: 12 }}>Using Claude, Cursor or VS Code? <Link href="/developers/mcp" style={{ textDecoration: 'underline' }}>Connect our MCP server</Link> with one URL instead.</p>
             <VoiceStudioLink />
@@ -33,6 +33,9 @@ export default function DevelopersPage() {
             <h2>Get your API key</h2>
             <p className="ra-lede" style={{ marginBottom: 24 }}>Sign in, create a key, and it works straight away.</p>
             <div className="ra-dark-panel"><DeveloperApiSection /></div>
+            <p className="ra-small" id="free-credits" style={{ marginTop: 16 }}>
+              <b>Free credits.</b> Every account gets a one-time grant of free credits (worth $0.10, about 10,000 characters of speech), shared across speech, transcription, dubbing, sound effects, voice isolation, voice conversion and voice design. Long jobs use more credits than short ones. When they run out those tools return <code>402</code> until you add a payment method; after that you pay as you go. Accounts without a payment method can hold one active API key, and text to speech through a key has its own 10,000 character allowance per key. Voice cloning and music generation always need a payment method.
+            </p>
           </div>
         </section>
 
@@ -153,7 +156,7 @@ curl -L -X POST "<url>/v1/stt?language=auto" \\
                   <code>convert_voice</code>, <code>design_voice</code>, the audiobook tools).
                   Through MCP, the work is billed to the account the key belongs to. Keys you create
                   in the console above belong to your account; a key that is not tied to an account
-                  gets <code>402</code> from dubbing, sound effects, voice design and voice conversion.
+                  gets <code>402</code> from dubbing, sound effects, voice design and voice conversion. Free credits are per account, so they follow the account, not the key.
                   Speech to text and voice cloning have their own key-based routes, described in their
                   sections.
                 </p>
@@ -172,7 +175,7 @@ curl -L -X POST "<url>/v1/stt?language=auto" \\
                 </p>
                 <ul>
                   <li><code>400</code> missing/oversized/unsupported audio, or a missing <code>target_language</code>.</li>
-                  <li><code>402</code> requires an active TTS subscription.</li>
+                  <li><code>402</code> your free credits are used up. Add a payment method.</li>
                   <li><code>404</code> unknown job, or a job that belongs to someone else.</li>
                 </ul>
                 <p><b>Price:</b> $0.15 per minute of source audio, billed by the second rounded up, with a 10 second minimum, once the job completes. Failed jobs are not billed. On your invoice it appears as character equivalents on the same meter as text-to-speech (250 per second of audio; 15,000 per minute).</p>
@@ -198,7 +201,7 @@ curl -L -X POST "<url>/v1/stt?language=auto" \\
                 </p>
                 <ul>
                   <li><code>400</code> prompt missing/too long (500 chars max), or <code>duration_sec</code> out of range (1&ndash;12s).</li>
-                  <li><code>402</code> requires an active TTS subscription.</li>
+                  <li><code>402</code> your free credits are used up. Add a payment method.</li>
                   <li><code>404</code> unknown job.</li>
                 </ul>
                 <p><b>Price:</b> $0.0015 per second of generated audio ($0.09 per minute), rounded up to the next second with a 4 second minimum, so a 12 second effect is $0.018. Cache hits are always free. On your invoice it appears as character equivalents on the same meter as text-to-speech (150 per second).</p>
@@ -228,8 +231,8 @@ curl -L -X POST "<url>/v1/stt?language=auto" \\
                 <p><b>Voice design.</b> <code>POST /api/voice-design</code> generates a synthetic voice from a
                   text description and a sample sentence (session token, or the MCP tools{' '}
                   <code>design_voice</code> and <code>get_voice_design</code>). Try it at{' '}
-                  <Link href="/design-voice" style={{ textDecoration: 'underline' }}>/design-voice</Link>. It needs an active
-                  subscription. Voice conversion also has a browser page at{' '}
+                  <Link href="/design-voice" style={{ textDecoration: 'underline' }}>/design-voice</Link>. It uses your free
+                  credits, then needs a payment method. Voice conversion also has a browser page at{' '}
                   <Link href="/convert-voice" style={{ textDecoration: 'underline' }}>/convert-voice</Link>.
                 </p>
                 <p><b>1. Deploy your container.</b> <code>POST /api/voice-isolate/deploy</code> or{' '}
@@ -251,7 +254,7 @@ curl -L -X POST "<url>/v1/stt?language=auto" \\
                 <ul>
                   <li><code>400</code> no deployment, missing/bad file, or missing/wrong <code>consent_statement</code>.</li>
                   <li><code>400</code> with <code>code: "deployment_required"</code> (conversion): no converter yet. <code>POST /api/voice-convert/deploy</code>, poll <code>GET</code> until <code>status: "ready"</code> (about 3 minutes), then retry.</li>
-                  <li><code>401</code> not signed in. <code>402</code> requires an active TTS subscription.</li>
+                  <li><code>401</code> not signed in. <code>402</code> your free credits are used up. Add a payment method.</li>
                   <li><code>409</code> a deployment already exists. <code>429</code> over 10 requests/hour.</li>
                   <li><code>503</code> the GPU backend isn&rsquo;t configured in this environment.</li>
                 </ul>

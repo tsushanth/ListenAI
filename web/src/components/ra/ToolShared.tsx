@@ -70,8 +70,8 @@ export function ErrorNotice({ error }: { error: UiError | null }) {
   if (error.subscription) {
     return (
       <div className="ra-vs-notice warn" role="alert">
-        <b>Subscription required.</b> {error.message}{' '}
-        <a href="/developers#get-started" style={{ textDecoration: 'underline' }}>Set up billing</a> to use this tool.
+        <b>Payment method needed.</b> {error.message}{' '}
+        New accounts get free credits; once they are used up, <a href="/developers#get-started" style={{ textDecoration: 'underline' }}>add a payment method</a> to keep using this tool.
       </div>
     )
   }

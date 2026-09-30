@@ -237,7 +237,7 @@ export async function isolateVoice(opts: {
     throw new UpstreamError('upstream', 'Could not reach the voice isolation backend. Try again shortly.', true)
   }
   if (r.status === 401) throw new UpstreamError('unauthorized', 'Invalid or revoked API key, or the isolation backend is not configured to trust this MCP server yet.')
-  if (r.status === 402) throw new UpstreamError('payment_required', 'Voice isolation requires an active subscription. Add a payment method in the developer console at https://readaloudai.org/developers#get-started, then try again.')
+  if (r.status === 402) throw new UpstreamError('payment_required', 'Your free credits are used up (voice isolation). Add a payment method in the developer console at https://readaloudai.org/developers#get-started, then try again.')
   if (r.status === 429) throw new UpstreamError('rate_limited', 'Too many isolation jobs. Wait a moment and retry.', true)
   if (r.status === 400) {
     const body = (await r.json().catch(() => null)) as { error?: string } | null
@@ -503,7 +503,7 @@ export async function submitSoundEffectJob(identityHeaders: Record<string, strin
     throw new UpstreamError('upstream', 'Could not reach the sound effects service. Try again shortly.', true)
   }
   if (r.status === 401) throw new UpstreamError('unauthorized', 'Invalid or expired credentials for sound effect generation.')
-  if (r.status === 402) throw new UpstreamError('payment_required', 'Sound effect generation requires an active subscription.')
+  if (r.status === 402) throw new UpstreamError('payment_required', 'Your free credits are used up (sound effects). Add a payment method at https://readaloudai.org/developers#get-started, then try again.')
   if (r.status === 429) throw new UpstreamError('rate_limited', 'Sound effect generation is being rate limited. Wait a moment and retry.', true)
   if (!r.ok && r.status !== 202) throw new UpstreamError('upstream', `The sound effects service returned ${r.status}.`, r.status >= 500)
   const body = (await r.json().catch(() => null)) as SoundEffectJobResult | null

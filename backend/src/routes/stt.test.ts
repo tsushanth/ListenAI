@@ -45,6 +45,10 @@ function installFetchMock() {
     }
 
     // Supabase REST — billing check
+    if (url.includes('/realtimetts_free_credits')) {
+      // Free-credit gate (hasUsageAllowance): exhausted, so inactive-billing tests still 402 quickly.
+      return new Response(JSON.stringify([{ granted: 10000, used: 10000 }]), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    }
     if (url.includes('/rest/v1/realtimetts_billing')) {
       const u = new URL(url);
       const uid = u.searchParams.get('user_id')?.replace(/^eq\./, '');

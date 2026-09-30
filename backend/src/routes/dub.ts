@@ -39,7 +39,7 @@ import { logger } from '../lib/logger.js';
 import { ttsProvider } from '../lib/ttsProviderClient.js';
 import { normalizeVoiceId, getDefaultVoiceId } from '../lib/voiceMapping.js';
 import { uploadAudioToCache, getSignedAudioUrl } from '../lib/supabaseClient.js';
-import { isBillingActiveForUser, reportDubbingUsage } from '../lib/realtimeTtsBilling.js';
+import { hasUsageAllowance, freeCreditsExhaustedMessage, reportDubbingUsage } from '../lib/realtimeTtsBilling.js';
 import type { AuthenticatedRequest, DBVoice } from '../types/index.js';
 import { ValidationError, NotFoundError } from '../types/index.js';
 
@@ -556,8 +556,8 @@ const submitBodySchema = z.object({
 dubRouter.post('/', upload.single('audio'), asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   const userId = req.user.id;
 
-  if (!(await isBillingActiveForUser(userId))) {
-    res.status(402).json({ error: 'Dubbing requires an active TTS subscription.' });
+  if (!(await hasUsageAllowance(userId))) {
+    res.status(402).json({ error: freeCreditsExhaustedMessage('dubbing') });
     return;
   }
 

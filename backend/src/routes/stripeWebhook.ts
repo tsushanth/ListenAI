@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import Stripe from 'stripe';
 import { logger } from '../lib/logger.js';
 import { supabase } from '../lib/supabaseClient.js';
-import { activateBillingFromCheckout, deactivateBillingForSubscription } from '../lib/realtimeTtsBilling.js';
+import { activateBillingFromCheckout, deactivateBillingForSubscription, syncBillingFromSubscription } from '../lib/realtimeTtsBilling.js';
 
 // realtime-tts checkouts/subscriptions are tagged with this metadata so they
 // can be routed away from ReadAloud's own "pro" subscription handlers below
@@ -65,6 +65,10 @@ router.post('/stripe', async (req: Request, res: Response): Promise<void> => {
         const subscription = event.data.object as Stripe.Subscription;
         if (!isRealtimeTtsEvent(subscription.metadata)) {
           await handleSubscriptionUpdate(subscription);
+        } else if (event.type === 'customer.subscription.updated') {
+          // canceled/unpaid/incomplete_expired deactivate; active again (with a payment method) re-activates;
+          // past_due is a grace period and is left as-is. Comped rows are never touched.
+          await syncBillingFromSubscription(subscription);
         }
         break;
       }

@@ -26,7 +26,7 @@ import rateLimit from 'express-rate-limit';
 import multer from 'multer';
 import { config } from '../lib/config.js';
 import { supabase } from '../lib/supabaseClient.js';
-import { isBillingActiveForUser, reportSttUsage } from '../lib/realtimeTtsBilling.js';
+import { hasUsageAllowance, freeCreditsExhaustedMessage, reportSttUsage } from '../lib/realtimeTtsBilling.js';
 import { logger } from '../lib/logger.js';
 
 const log = logger.child({ module: 'stt' });
@@ -126,7 +126,7 @@ async function requireUser(req: Request, res: Response): Promise<string | null> 
   const cached = (req as Request & { userId?: string }).userId;
   if (cached) {
     // Identity already resolved by requireAuthOrApiKey: the subscription gate must still apply.
-    if (!(await isBillingActiveForUser(cached))) { res.status(402).json({ error: 'Speech-to-text requires an active subscription.' }); return null; }
+    if (!(await hasUsageAllowance(cached))) { res.status(402).json({ error: freeCreditsExhaustedMessage('speech-to-text') }); return null; }
     return cached;
   }
 
@@ -136,8 +136,8 @@ async function requireUser(req: Request, res: Response): Promise<string | null> 
   const { data: { user }, error } = await supabase.auth.getUser(token);
   if (error || !user) { res.status(401).json({ error: 'Invalid token.' }); return null; }
 
-  const active = await isBillingActiveForUser(user.id);
-  if (!active) { res.status(402).json({ error: 'Speech-to-text requires an active subscription.' }); return null; }
+  const active = await hasUsageAllowance(user.id);
+  if (!active) { res.status(402).json({ error: freeCreditsExhaustedMessage('speech-to-text') }); return null; }
 
   (req as Request & { userId?: string }).userId = user.id;
   return user.id;

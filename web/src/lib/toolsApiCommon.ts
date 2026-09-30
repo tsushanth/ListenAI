@@ -48,7 +48,7 @@ export async function fail(res: Response): Promise<never> {
   if (res.status === 404 && (!text || text === 'Not found')) {
     text = 'This tool is not enabled on the server yet.'
   } else if (res.status === 402 && !text) {
-    text = 'An active subscription is required.'
+    text = 'Your free credits are used up, or this feature needs an active subscription.'
   }
   throw new ApiError(res.status, text || `Something went wrong (HTTP ${res.status}).`, code)
 }

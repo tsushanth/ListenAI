@@ -122,7 +122,7 @@ async function throwForStatus(r: Response, what: string, opts: { notFound?: stri
   const msg = await readErrorMessage(r)
   const map: Array<[number, ErrorCode, string, boolean]> = [
     [401, 'unauthorized', INVALID_KEY, false],
-    [402, 'payment_required', msg || `${what} requires an active subscription. Add a payment method in the developer console at https://readaloudai.org/developers#get-started, then try again.`, false],
+    [402, 'payment_required', msg || `${what} needs free credits or an active subscription; yours are used up. Add a payment method in the developer console at https://readaloudai.org/developers#get-started, then try again.`, false],
     [429, 'rate_limited', msg || `Too many ${what} requests. Wait a moment and retry.`, true],
   ]
   for (const [status, code, message, retryable] of map) {

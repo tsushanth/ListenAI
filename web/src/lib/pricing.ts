@@ -5,6 +5,18 @@
 // web/src/app/developers/page.tsx). When backend prices change, update this
 // file only - no page or component hardcodes a price.
 //
+// Free credits: every account gets a one-time grant, usable across these tools. Keep FREE_CREDIT_UNITS in
+// sync with backend/src/lib/realtimeTtsBilling.ts. One unit = $0.00001 (the character meter's unit), so
+// 10,000 units = $0.10 = 10,000 characters of speech.
+export const FREE_CREDIT_UNITS = 10000
+export const FREE_CREDIT_USD = 0.1
+
+/** Friendly line for a free-credit balance in meter units, e.g. "about 10,000 characters of speech". */
+export function creditsAsCharacters(units: number): string {
+  const n = Math.max(0, Math.round(units))
+  return `about ${n.toLocaleString('en-US')} characters of speech`
+}
+
 // `usd: null` means the site does not currently document a per-use price for
 // that tool; the UI then says so instead of inventing a number.
 
@@ -42,6 +54,6 @@ function fmtUsd(n: number): string {
 /** Human-readable price line for a tool page. */
 export function priceLine(tool: PricedTool): string {
   const p: ToolPrice = PRICING[tool]
-  if (p.usd === null) return 'Requires an active subscription. A per-use price is not published yet.'
+  if (p.usd === null) return 'Free credits, then a payment method. A per-use price is not published yet.'
   return `${fmtUsd(p.usd)} per ${p.unit}.${p.note ? ` ${p.note}` : ''}`
 }

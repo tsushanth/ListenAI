@@ -37,6 +37,10 @@ globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise
 
   // Supabase REST
   if (url.startsWith('http://localhost:54321/rest/')) {
+    if (url.includes('/realtimetts_free_credits')) {
+      // Free-credit gate (hasUsageAllowance): exhausted, so inactive-billing tests still 402 quickly.
+      return new Response(JSON.stringify([{ granted: 10000, used: 10000 }]), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    }
     if (url.includes('/realtimetts_billing')) {
       const u = new URL(url);
       const uid = u.searchParams.get('user_id')?.replace(/^eq\./, '');

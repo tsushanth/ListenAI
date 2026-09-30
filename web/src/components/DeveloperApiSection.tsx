@@ -3,7 +3,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Code, Copy, Check, Trash2, LogOut, Loader2 } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
-import { ttsApiKeysApi, type TTSApiKeySummary } from '@/lib/ttsApiKeysApi'
+import { ttsApiKeysApi, type TTSApiKeySummary, type FreeCredits } from '@/lib/ttsApiKeysApi'
+import { creditsAsCharacters, FREE_CREDIT_UNITS } from '@/lib/pricing'
 import type { Session } from '@supabase/supabase-js'
 
 export default function DeveloperApiSection() {
@@ -16,6 +17,8 @@ export default function DeveloperApiSection() {
   const [error, setError] = useState<string | null>(null)
   const [issuing, setIssuing] = useState(false)
   const [billingActive, setBillingActive] = useState(false)
+  const [comped, setComped] = useState(false)
+  const [credits, setCredits] = useState<FreeCredits | null>(null)
   const [billingLoading, setBillingLoading] = useState(false)
   const [authMode, setAuthMode] = useState<'signin' | 'signup' | 'forgot'>('signin')
   const [recovering, setRecovering] = useState(false)
@@ -47,9 +50,11 @@ export default function DeveloperApiSection() {
     if (!session) return
     setKeysLoading(true)
     try {
-      const { keys, billing_active } = await ttsApiKeysApi.list()
+      const { keys, billing_active, comped, free_credits } = await ttsApiKeysApi.list()
       setKeys(keys)
       setBillingActive(billing_active)
+      setComped(!!comped)
+      setCredits(free_credits ?? null)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load keys')
     } finally {
@@ -186,6 +191,8 @@ export default function DeveloperApiSection() {
       setBillingLoading(false)
     }
   }
+
+  const creditsExhausted = !billingActive && !comped && credits !== null && credits.remaining <= 0
 
   const copyKey = () => {
     if (!newKey) return
@@ -360,22 +367,36 @@ export default function DeveloperApiSection() {
             <div className="bg-dark-tertiary border border-white/10 rounded-lg p-4 flex items-center justify-between">
               <div>
                 <p className="text-sm text-white font-medium">
-                  {billingActive ? 'Pay-as-you-go active' : 'Free tier — 10,000 characters'}
+                  {comped
+                    ? 'Complimentary account - full access, not billed'
+                    : billingActive
+                      ? 'Pay-as-you-go active'
+                      : `Free credits: ${(credits?.remaining ?? FREE_CREDIT_UNITS).toLocaleString('en-US')} of ${(credits?.granted ?? FREE_CREDIT_UNITS).toLocaleString('en-US')} remaining`}
                 </p>
                 <p className="text-xs text-white/50 mt-0.5">
-                  {billingActive
-                    ? '$0.01 per 1,000 characters, no limit.'
-                    : 'Add a payment method for unlimited usage beyond the free tier.'}
+                  {comped
+                    ? 'No usage limits and nothing to pay.'
+                    : billingActive
+                      ? '$0.01 per 1,000 characters, no limit.'
+                      : creditsExhausted
+                        ? 'Your free credits are used up. Add a payment method to keep going.'
+                        : `That is ${creditsAsCharacters(credits?.remaining ?? FREE_CREDIT_UNITS)}, shared across speech, dubbing, transcription and the other tools. Add a payment method for unlimited pay-as-you-go usage.`}
                 </p>
               </div>
-              <button
-                onClick={billingActive ? openPortal : startCheckout}
-                disabled={billingLoading}
-                className="inline-flex items-center gap-2 bg-white text-black font-semibold px-4 py-2 rounded-lg text-sm hover:bg-white/90 transition-colors disabled:opacity-50 flex-shrink-0"
-              >
-                {billingLoading ? <Loader2 size={14} className="animate-spin" /> : null}
-                {billingActive ? 'Manage billing' : 'Add payment method'}
-              </button>
+              {!comped && (
+                <button
+                  onClick={billingActive ? openPortal : startCheckout}
+                  disabled={billingLoading}
+                  className={`inline-flex items-center gap-2 font-semibold px-4 py-2 rounded-lg text-sm transition-colors disabled:opacity-50 flex-shrink-0 ${
+                    !billingActive && creditsExhausted
+                      ? 'bg-green-500 text-black ring-2 ring-green-300 hover:bg-green-400'
+                      : 'bg-white text-black hover:bg-white/90'
+                  }`}
+                >
+                  {billingLoading ? <Loader2 size={14} className="animate-spin" /> : null}
+                  {billingActive ? 'Manage billing' : 'Add payment method'}
+                </button>
+              )}
             </div>
 
             {newKey && (

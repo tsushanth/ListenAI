@@ -5,6 +5,13 @@ import { supabase } from './supabaseClient'
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://listenai-backend.fly.dev'
 
+export interface FreeCredits {
+  /** Meter units (1 unit = $0.00001; 10,000 units = about 10,000 characters of speech). */
+  granted: number
+  used: number
+  remaining: number
+}
+
 export interface TTSApiKeySummary {
   id: string
   label: string | null
@@ -34,7 +41,8 @@ async function authedRequest<T>(path: string, options: RequestInit = {}): Promis
 }
 
 export const ttsApiKeysApi = {
-  list: () => authedRequest<{ keys: TTSApiKeySummary[]; billing_active: boolean }>('/api/tts-api-keys'),
+  list: () =>
+    authedRequest<{ keys: TTSApiKeySummary[]; billing_active: boolean; comped?: boolean; free_credits?: FreeCredits }>('/api/tts-api-keys'),
 
   create: (label?: string) =>
     authedRequest<{ id: string; key: string; key_preview: string; label: string | null; created_at: string }>(

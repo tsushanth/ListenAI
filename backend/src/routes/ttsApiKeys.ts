@@ -9,7 +9,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { verifyAuthTokenRemote, extractBearerToken } from '../lib/auth.js';
 import { issueGatewayKey, revokeGatewayKey, setGatewayKeyBilling } from '../lib/ttsGatewayClient.js';
 import { createApiKeyRecord, listApiKeysForUser, revokeApiKeyRecord, countActiveKeysForUser } from '../lib/ttsApiKeys.js';
-import { isBillingActiveForUser, createCheckoutSession, createPortalSession } from '../lib/realtimeTtsBilling.js';
+import { isBillingActiveForUser, getBillingForUser, getFreeCredits, createCheckoutSession, createPortalSession } from '../lib/realtimeTtsBilling.js';
 import { logger } from '../lib/logger.js';
 
 const routeLogger = logger.child({ module: 'ttsApiKeys.route' });
@@ -19,6 +19,7 @@ const routeLogger = logger.child({ module: 'ttsApiKeys.route' });
 // 5 is arbitrary but generous for real usage (dev/staging/prod-ish splits);
 // revisit once real usage patterns exist.
 const MAX_ACTIVE_KEYS_PER_USER = 5;
+const MAX_ACTIVE_KEYS_PER_USER_FREE = 1;
 
 interface StrictAuthedRequest extends Request {
   userId?: string;
@@ -60,12 +61,17 @@ ttsApiKeysRouter.use(requireRealAuth);
 ttsApiKeysRouter.get(
   '/',
   asyncHandler(async (req, res) => {
-    const [keys, billingActive] = await Promise.all([
+    const [keys, billing, credits] = await Promise.all([
       listApiKeysForUser(req.userId!),
-      isBillingActiveForUser(req.userId!),
+      getBillingForUser(req.userId!),
+      getFreeCredits(req.userId!),
     ]);
     res.json({
-      billing_active: billingActive,
+      // True for a paying subscriber and for a comped account; the UI shows "Pay-as-you-go active" only when this is true.
+      billing_active: !!billing?.active,
+      comped: !!(billing?.active && billing.comped),
+      // Units are the character-equivalent meter unit (1 unit = $0.00001; 10,000 units = 10,000 characters of speech).
+      free_credits: { granted: credits.granted, used: credits.used, remaining: credits.remaining },
       keys: keys.map((k) => ({
         id: k.id,
         label: k.label,
@@ -82,6 +88,11 @@ ttsApiKeysRouter.get(
 ttsApiKeysRouter.post(
   '/billing/checkout',
   asyncHandler(async (req, res) => {
+    const existing = await getBillingForUser(req.userId!);
+    if (existing?.active && existing.comped) {
+      res.status(400).json({ error: 'This is a complimentary account; there is nothing to pay for.' });
+      return;
+    }
     const email = typeof req.body?.email === 'string' ? req.body.email : undefined;
     if (!email) {
       res.status(400).json({ error: 'email is required to start checkout.' });
@@ -116,7 +127,17 @@ ttsApiKeysRouter.post(
 ttsApiKeysRouter.post(
   '/',
   asyncHandler(async (req, res) => {
+    const billingActive = await isBillingActiveForUser(req.userId!);
     const activeCount = await countActiveKeysForUser(req.userId!);
+    // The gateway's free tier (10,000 chars) is per KEY, so without a payment method a user gets ONE key:
+    // more keys would stack more free allowances. (Revoke + re-create still resets that key's counter;
+    // closing that needs a gateway change, see the free-credits follow-up notes.)
+    if (!billingActive && activeCount >= MAX_ACTIVE_KEYS_PER_USER_FREE) {
+      res.status(429).json({
+        error: `Free accounts can have ${MAX_ACTIVE_KEYS_PER_USER_FREE} active API key. Revoke it or add a payment method (https://readaloudai.org/developers#get-started) to create more.`,
+      });
+      return;
+    }
     if (activeCount >= MAX_ACTIVE_KEYS_PER_USER) {
       res.status(429).json({
         error: `You already have ${activeCount} active API keys (limit ${MAX_ACTIVE_KEYS_PER_USER}). Revoke one before creating another.`,
@@ -130,7 +151,6 @@ ttsApiKeysRouter.post(
     // enable it if this user has an active realtimetts_billing row (a real
     // Stripe subscription, see lib/realtimeTtsBilling.ts). A user without
     // one still gets their key issued — it's just inert until they check out.
-    const billingActive = await isBillingActiveForUser(req.userId!);
     if (billingActive) {
       const billingOk = await setGatewayKeyBilling(gatewayKeyId, true);
       if (!billingOk) {

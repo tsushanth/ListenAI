@@ -25,7 +25,7 @@ import {
   getCachedSoundEffect,
   getSignedAudioUrl,
 } from '../lib/supabaseClient.js';
-import { isBillingActiveForUser } from '../lib/realtimeTtsBilling.js';
+import { hasUsageAllowance, freeCreditsExhaustedMessage } from '../lib/realtimeTtsBilling.js';
 import { logger } from '../lib/logger.js';
 
 const soundEffectsLogger = logger.child({ module: 'sound-effects' });
@@ -95,9 +95,9 @@ soundEffectsRouter.post('/job', asyncHandler(async (req: Request, res: Response)
   // Billing gate: mirrors voiceDesign.ts's requireUser check
   // (isBillingActiveForUser). Only applies past the cache-hit path above,
   // since cache hits aren't billed.
-  const billingActive = await isBillingActiveForUser(userId);
+  const billingActive = await hasUsageAllowance(userId);
   if (!billingActive) {
-    res.status(402).json({ error: 'Sound effect generation requires an active TTS subscription.' });
+    res.status(402).json({ error: freeCreditsExhaustedMessage('sound effects') });
     return;
   }
 

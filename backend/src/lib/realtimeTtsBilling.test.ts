@@ -29,6 +29,7 @@ async function run(s: Setup) {
       events.push(p);
       return {};
     },
+    consumeFreeCredits: async () => 0,
   };
   await reportUsageToStripe(deps);
   return events;
@@ -195,10 +196,12 @@ test('reportAudioJobUsage: no active billing sends nothing; a Stripe failure doe
   await reportAudioJobUsage('u1', 'dub', 60, 'j', {
     getBilling: async () => null,
     createMeterEvent: async (p) => { events.push(p); return {}; },
+    consumeFreeCredits: async () => 0,
   });
   await reportAudioJobUsage('u1', 'dub', 60, 'j', {
     getBilling: async () => ({ stripe_customer_id: 'cus', active: false } as any),
     createMeterEvent: async (p) => { events.push(p); return {}; },
+    consumeFreeCredits: async () => 0,
   });
   assert.equal(events.length, 0);
   await assert.doesNotReject(reportAudioJobUsage('u1', 'convert', 60, 'j', {

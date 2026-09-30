@@ -80,6 +80,8 @@ let sttStatus = 200;
 // Controls the billing gate (isBillingActiveForUser -> getBillingForUser), which queries
 // the `realtimetts_billing` table via plain PostgREST — mirrors soundEffects.test.ts. Defaults to active.
 let billingActive = true;
+// Free-credit balance for the gate (realtimetts_free_credits): units used so far, or null = no row yet (untouched grant). Default exhausted.
+let freeCreditsUsed: number | null = 10000;
 
 function resetMocks() {
   sttSegments = [{ start: 0, end: 2, text: 'Hello there.' }];
@@ -87,6 +89,7 @@ function resetMocks() {
   currentTranslationReply = '["Hola."]';
   anthropicCalls.length = 0;
   billingActive = true;
+  freeCreditsUsed = 10000;
 }
 
 let originalFetch: typeof globalThis.fetch;
@@ -119,6 +122,12 @@ function installFetchMock(supabaseUrl: string) {
         }]), { status: 200, headers: { 'Content-Type': 'application/json' } });
       }
       return new Response('[]', { status: 200, headers: { 'Content-Type': 'application/json' } });
+    }
+
+    // Free-credit gate (hasUsageAllowance -> getFreeCredits)
+    if (url.startsWith(`${supabaseUrl}/rest/v1/realtimetts_free_credits`)) {
+      const rows = freeCreditsUsed === null ? [] : [{ granted: 10000, used: freeCreditsUsed }];
+      return new Response(JSON.stringify(rows), { status: 200, headers: { 'Content-Type': 'application/json' } });
     }
 
     // STT gateway authorize hand-off (POST {key, mode} -> {token, url})
@@ -227,6 +236,21 @@ test('POST /api/dub with no credentials -> 401 (requireAuthOrApiKey gate)', asyn
   }
 });
 
+test('POST /api/dub with no billing but free credits remaining -> accepted (202)', async () => {
+  installFetchMock(SHARED_STUB.url);
+  resetMocks();
+  billingActive = false;
+  freeCreditsUsed = null; // brand-new user: untouched grant
+  const s = await boot(SHARED_STUB.url);
+  try {
+    const r = await s.call(jwtHeaders, 'POST', '/', buildForm());
+    assert.equal(r.status, 202);
+  } finally {
+    s.close();
+    uninstallFetchMock();
+  }
+});
+
 test('POST /api/dub with an invalid JWT -> 401, not the default-user fallback', async () => {
   installFetchMock(SHARED_STUB.url);
   resetMocks();
@@ -265,7 +289,8 @@ test('POST /api/dub with no active TTS subscription -> 402, job never created', 
     const r = await s.call(jwtHeaders, 'POST', '/', buildForm());
     assert.equal(r.status, 402);
     const body = await r.json();
-    assert.match(body.error, /active TTS subscription/i);
+    assert.match(body.error, /free credits are used up/i);
+    assert.match(body.error, /readaloudai\.org\/developers#get-started/);
   } finally {
     s.close();
     uninstallFetchMock();

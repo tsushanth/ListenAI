@@ -8,7 +8,7 @@ import { exec } from 'child_process';
 import { promisify } from 'util';
 import { config } from '../lib/config.js';
 import { supabase } from '../lib/supabaseClient.js';
-import { isBillingActiveForUser, reportVoiceConvertUsage } from '../lib/realtimeTtsBilling.js';
+import { hasUsageAllowance, freeCreditsExhaustedMessage, reportVoiceConvertUsage } from '../lib/realtimeTtsBilling.js';
 import { logger } from '../lib/logger.js';
 
 const log = logger.child({ module: 'voiceConvert' });
@@ -147,8 +147,8 @@ async function requireUser(req: Request, res: Response): Promise<string | null> 
   // Billing is checked for EVERY resolved identity, including one already set by requireAuthOrApiKey. (The
   // sibling routes short-circuit on a pre-set req.userId and skip this check, which would let any
   // authenticated caller past the subscription gate once the bridge middleware is mounted in front.)
-  const active = await isBillingActiveForUser(userId);
-  if (!active) { res.status(402).json({ error: 'Voice conversion requires an active TTS subscription.' }); return null; }
+  const active = await hasUsageAllowance(userId);
+  if (!active) { res.status(402).json({ error: freeCreditsExhaustedMessage('voice conversion') }); return null; }
 
   (req as Request & { userId?: string }).userId = userId;
   return userId;
