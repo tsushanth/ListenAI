@@ -126,7 +126,7 @@ def web():
     import hmac
     import json
     import os
-    import io
+    import tempfile
     from fastapi import FastAPI, Request, Response
     from stable_audio_tools import create_model_from_config
     from stable_audio_tools.models.utils import load_ckpt_state_dict, copy_state_dict
@@ -213,9 +213,15 @@ def web():
                 # (only) batch item and clamp before saving, matching the
                 # shape torchaudio.save expects and avoiding clipping noise.
                 audio = audio[0].cpu().clamp(-1, 1)
-                buf = io.BytesIO()
-                torchaudio.save(buf, audio, sample_rate=SAMPLE_RATE, format="wav")
-                return buf.getvalue()
+                # torchaudio 2.x can't dispatch a backend for an in-memory
+                # BytesIO target ("Couldn't find appropriate backend to
+                # handle uri <_io.BytesIO ...> and format wav") - confirmed
+                # live against a real deployed worker. A real file path with
+                # a .wav extension lets it infer the backend the normal way.
+                with tempfile.NamedTemporaryFile(suffix=".wav") as tmp:
+                    torchaudio.save(tmp.name, audio, sample_rate=SAMPLE_RATE, format="wav")
+                    tmp.seek(0)
+                    return tmp.read()
 
             wav_bytes = await asyncio.to_thread(_run_generation)
             return Response(content=wav_bytes, media_type="audio/wav")
