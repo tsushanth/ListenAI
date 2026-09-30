@@ -55,7 +55,7 @@ image = (
     )
     .add_local_python_source("quality")  # shared metrics/quality-gate module (voice-pipeline/quality.py)
 )
-web_image = modal.Image.debian_slim(python_version="3.11").pip_install("fastapi==0.109.0")
+web_image = modal.Image.debian_slim(python_version="3.11").pip_install("fastapi==0.109.0", "python-multipart==0.0.9")
 
 MAX_INPUT_SECONDS = 600.0
 MIN_SECONDS = 0.5
