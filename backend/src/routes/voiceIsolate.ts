@@ -102,8 +102,12 @@ function modalEnv(): NodeJS.ProcessEnv {
 }
 
 async function modalSecretCreate(name: string, key: string, value: string): Promise<void> {
-  // Use a temp file to avoid shell escaping issues
-  const cmd = `modal secret create ${name} ${key}=${Buffer.from(value).toString('base64')} --base64`;
+  // Current Modal CLI (`modal secret create --help`) takes plain KEY=VALUE
+  // pairs, not base64 — there is no --base64 flag. `value` here is always
+  // our own randomHex(32) output (alphanumeric, no shell metacharacters),
+  // so passing it unescaped through this shell string is safe for this
+  // call site specifically, not in general.
+  const cmd = `modal secret create ${name} ${key}=${value} --force`;
   await execAsync(cmd, { env: modalEnv(), timeout: 30000 });
 }
 
