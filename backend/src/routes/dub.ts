@@ -1,7 +1,8 @@
 // Dubbing v1: upload a source-language audio file, get back a target-language
 // audio file with roughly the same segment timing. Pipeline:
-//   1. STT  — transcribe + segment the source audio (external Modal service,
-//             called directly — see note below).
+//   1. STT  — transcribe + segment the source audio, via the same gateway
+//             session-token hand-off as stt.ts (worker-stt-prod does not
+//             accept a static secret — see authorizeStt() below).
 //   2. MT   — translate each segment's text via Claude (mirrors extract.ts's
 //             LLM cleanup pattern).
 //   3. TTS  — synthesize each translated segment with the existing self-hosted
@@ -19,13 +20,11 @@
 //     tts.ts's job pattern uses a `tts_jobs` Postgres table; a real v2 of
 //     dubbing should get its own `dub_jobs` table and migration instead.
 //
-// STT NOTE: another agent is productizing backend/src/routes/stt.ts in a
-// sibling worktree concurrently with this change, so it isn't visible here.
-// This route calls the external `worker-stt-prod` Modal service directly,
-// with a fetch-based client mirroring voiceClone.ts's `modalRequest` pattern.
-// Once both land, the STT call in `transcribeSourceAudio()` below should be
-// consolidated with whatever stt.ts ends up exposing internally, instead of
-// this route talking to the Modal service a second, independent way.
+// STT NOTE: this route's transcribeSourceAudio()/authorizeStt() duplicate
+// stt.ts's gateway-authorize logic locally rather than importing it, to keep
+// this file's dependency surface small — both call the same external
+// worker-stt-prod service the same way and share the STT_API_KEY config.
+// Worth consolidating into a shared helper as a follow-up.
 
 import { Router, Request, Response, NextFunction, RequestHandler } from 'express';
 import { randomUUID } from 'crypto';
@@ -46,12 +45,38 @@ const dubLogger = logger.child({ module: 'dub' });
 // Config / external service client
 // ============================================================================
 
-// Dedicated env vars for the external STT Modal service. Not added to
-// config.ts's zod schema (that would make the whole app fail to boot in any
-// env that hasn't provisioned this yet) — read directly and the feature
-// ships dark (503) if unset, same posture as voiceClone.ts's XTTS_CLONE_URL.
-const STT_WORKER_URL = process.env.STT_WORKER_URL; // e.g. https://<workspace>--worker-stt-prod.modal.run
-const STT_WORKER_SECRET = process.env.STT_WORKER_SECRET;
+// worker-stt-prod does NOT accept a static bearer secret (confirmed against its own app.py: it
+// verifies an HMAC session token minted by the gateway's POST /stt/authorize, same contract
+// routes/stt.ts already uses). A STT_WORKER_URL/STT_WORKER_SECRET static-secret design would
+// fail against the real worker every time - caught during a live end-to-end dubbing test.
+// Reusing stt.ts's exact working gateway-authorize pattern and its already-provisioned
+// STT_API_KEY instead of a second, broken integration path.
+const STT_GATEWAY_URL = config.STT_GATEWAY_URL || 'https://api.readaloudai.org';
+const STT_API_KEY = config.STT_API_KEY;
+
+interface SttAuthorizeResult { token: string; url: string }
+
+async function authorizeStt(): Promise<SttAuthorizeResult> {
+  if (!STT_API_KEY) throw new Error('Speech-to-text is not configured; dubbing is not available in this environment.');
+  let upstream: globalThis.Response;
+  try {
+    upstream = await fetch(`${STT_GATEWAY_URL}/stt/authorize`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key: STT_API_KEY, mode: 'batch' }),
+      signal: AbortSignal.timeout(10_000),
+    });
+  } catch (err) {
+    throw new Error(`Could not reach the speech-to-text gateway: ${(err as Error).message}`);
+  }
+  if (!upstream.ok) {
+    const text = await upstream.text().catch(() => '');
+    throw new Error(`STT authorize failed with HTTP ${upstream.status}: ${text}`);
+  }
+  const body = (await upstream.json().catch(() => null)) as { token?: string; url?: string } | null;
+  if (!body?.token || !body.url) throw new Error('STT authorize returned an unexpected response');
+  return { token: body.token, url: body.url };
+}
 
 const anthropic = config.ANTHROPIC_API_KEY
   ? new Anthropic({ apiKey: config.ANTHROPIC_API_KEY })
@@ -76,34 +101,27 @@ interface SttResult {
 }
 
 /**
- * Call the external worker-stt-prod Modal service directly to transcribe
- * and segment the source audio. Mirrors voiceClone.ts's `modalRequest`
- * fetch pattern (bearer-token auth, JSON body, HTTP error -> Error).
- *
- * Expected upstream response shape (adjust once worker-stt-prod's real
- * contract is confirmed against the sibling stt.ts work):
- *   { language: string | null, segments: [{ start, end, text }, ...] }
+ * Transcribe and segment the source audio via worker-stt-prod, using the same
+ * gateway-authorize + raw-bytes-POST pattern as stt.ts's callWorker(). The
+ * worker's actual response has `segments: [{ id, start, end, text }, ...]`
+ * (see stt.ts's TranscribeResult) — mapped down to this file's simpler
+ * SttSegment shape (start, end, text) since dubbing doesn't need segment ids.
  */
 async function transcribeSourceAudio(
   audioBuffer: Buffer,
-  filename: string,
+  _filename: string,
   mimetype: string,
   sourceLanguage: string | undefined
 ): Promise<SttResult> {
-  if (!STT_WORKER_URL) {
-    throw new Error('STT_WORKER_URL is not configured; dubbing is not available in this environment.');
-  }
+  const { token, url } = await authorizeStt();
+  const qs = new URLSearchParams();
+  if (sourceLanguage) qs.set('language', sourceLanguage);
 
-  const formData = new FormData();
-  formData.append('audio', new Blob([new Uint8Array(audioBuffer)], { type: mimetype }), filename);
-  if (sourceLanguage) formData.append('language', sourceLanguage);
-
-  const res = await fetch(`${STT_WORKER_URL}/transcribe`, {
+  const res = await fetch(`${url}/v1/stt?${qs.toString()}`, {
     method: 'POST',
-    headers: {
-      ...(STT_WORKER_SECRET ? { Authorization: `Bearer ${STT_WORKER_SECRET}` } : {}),
-    },
-    body: formData,
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': mimetype || 'application/octet-stream' },
+    body: new Uint8Array(audioBuffer),
+    signal: AbortSignal.timeout(15 * 60_000),
   });
 
   if (!res.ok) {
@@ -111,11 +129,17 @@ async function transcribeSourceAudio(
     throw new Error(`worker-stt-prod returned HTTP ${res.status}: ${text}`);
   }
 
-  const body = (await res.json()) as SttResult;
+  const body = (await res.json()) as {
+    language: string | null;
+    segments?: Array<{ id: number; start: number; end: number; text: string }>;
+  };
   if (!Array.isArray(body.segments)) {
     throw new Error('worker-stt-prod returned an unexpected response shape (missing segments[])');
   }
-  return body;
+  return {
+    language: body.language,
+    segments: body.segments.map((s) => ({ start: s.start, end: s.end, text: s.text })),
+  };
 }
 
 /**
@@ -380,7 +404,7 @@ export const dubRouter = Router();
 // external STT service; if that service or Claude aren't configured, 404
 // rather than a confusing 500 mid-pipeline.
 dubRouter.use((_req, res, next) => {
-  if (!STT_WORKER_URL || !anthropic) {
+  if (!STT_API_KEY || !anthropic) {
     res.status(404).json({ error: 'Not found' });
     return;
   }

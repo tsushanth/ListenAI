@@ -37,8 +37,8 @@ const STT_URL = 'https://stt-worker.example.test';
 
 process.env.SUPABASE_JWT_SECRET ??= 'test';
 process.env.NODE_ENV = 'test';
-process.env.STT_WORKER_URL = STT_URL;
-process.env.STT_WORKER_SECRET = 'stt-secret';
+process.env.STT_GATEWAY_URL = STT_URL;
+process.env.STT_API_KEY = 'stt-secret';
 process.env.ANTHROPIC_API_KEY = 'test-anthropic-key';
 process.env.GATEWAY_FORWARD_SECRET = FORWARD_SECRET;
 
@@ -101,12 +101,18 @@ function installFetchMock(supabaseUrl: string) {
       return new Response(JSON.stringify({ error: 'invalid' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
     }
 
-    // STT worker
-    if (url === `${STT_URL}/transcribe`) {
+    // STT gateway authorize hand-off (POST {key, mode} -> {token, url})
+    if (url === `${STT_URL}/stt/authorize`) {
+      return new Response(JSON.stringify({ token: 'stt-session-token', url: STT_URL }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    }
+
+    // STT worker itself (raw audio bytes -> transcript+segments)
+    if (url.startsWith(`${STT_URL}/v1/stt`)) {
       if (sttStatus !== 200) {
         return new Response('worker error', { status: sttStatus });
       }
-      return new Response(JSON.stringify({ language: 'en', segments: sttSegments }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+      const segments = sttSegments.map((s, i) => ({ id: i, ...s }));
+      return new Response(JSON.stringify({ language: 'en', segments }), { status: 200, headers: { 'Content-Type': 'application/json' } });
     }
 
     // Supabase storage (uploadAudioToCache / getSignedAudioUrl) and anything else Supabase-related.
