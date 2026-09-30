@@ -1,0 +1,159 @@
+// Client for this repo's backend Audiobooks MVP API (backend/src/routes/audiobooks.ts,
+// mounted at /api/audiobooks behind requireAuthOrApiKey — see backend/src/index.ts and
+// backend/src/middleware/apiKeyAuth.ts).
+//
+// This MCP server's identity is a *developer API key* (`ctx.apiKey`), which is a different
+// credential from a Supabase session. requireAuthOrApiKey accepts a real Supabase JWT OR a
+// gateway-forwarded-secret + resolved-identity header pair (never the raw key itself — see
+// MCP_AUTH_BRIDGE.md at the repo root). So, like text_to_speech's use of upstream.ts's
+// authorize(), we exchange the raw key for a short-lived gateway session token via the
+// gateway's `/tts/authorize`, pull the `uid` (or `key_id`) claim out of that token, and
+// forward the backend call with `x-gateway-admin-secret` + `x-gateway-uid`/`x-gateway-key-id`
+// instead of `Authorization: Bearer <raw key>`.
+//
+// GATEWAY_FORWARD_SECRET must be provisioned to this web deployment's environment (it's the
+// same shared secret backend/src/middleware/apiKeyAuth.ts checks) — see MCP_AUTH_BRIDGE.md's
+// "what the MCP side still needs" section for the human call on whether that's the backend's
+// own secret or a separate one scoped to "web MCP server → backend". Without it, every call
+// below fails closed with 401 rather than forwarding the raw key as an invalid bearer token.
+
+import { authorize } from './upstream.ts'
+
+const BACKEND_URL = process.env.AUDIOBOOKS_BACKEND_URL || process.env.TTS_GATEWAY_URL || 'https://api.readaloudai.org'
+const REQUEST_TIMEOUT_MS = 30_000
+
+export class AudiobooksApiError extends Error {
+  status: number
+  constructor(status: number, message: string) {
+    super(message)
+    this.status = status
+  }
+}
+
+/** Decodes a JWT's payload claims without verifying the signature — safe here because we only
+ *  read it to forward an *already-trusted* identity (the gateway signed it after validating the
+ *  raw key), never to authenticate the request ourselves. */
+function decodeJwtClaims(token: string): Record<string, unknown> {
+  try {
+    const payload = token.split('.')[1]
+    if (!payload) return {}
+    const normalized = payload.replace(/-/g, '+').replace(/_/g, '/')
+    const json = Buffer.from(normalized, 'base64').toString('utf8')
+    const parsed = JSON.parse(json) as unknown
+    return parsed && typeof parsed === 'object' ? (parsed as Record<string, unknown>) : {}
+  } catch {
+    return {}
+  }
+}
+
+/** Exchanges the raw API key for a gateway session token (same call upstream.ts's authorize()
+ *  makes for TTS) and resolves the identity headers requireAuthOrApiKey expects from it. */
+async function resolveGatewayIdentityHeaders(apiKey: string): Promise<Record<string, string>> {
+  const forwardSecret = process.env.GATEWAY_FORWARD_SECRET
+  if (!forwardSecret) {
+    throw new AudiobooksApiError(
+      401,
+      'Audiobooks API access is not configured on this deployment (missing GATEWAY_FORWARD_SECRET).'
+    )
+  }
+
+  const { token } = await authorize(apiKey, 'audiobooks')
+  const claims = decodeJwtClaims(token)
+  const uid = typeof claims.uid === 'string' && claims.uid ? claims.uid : undefined
+  const keyId = typeof claims.key_id === 'string' && claims.key_id ? claims.key_id : undefined
+  if (!uid && !keyId) {
+    throw new AudiobooksApiError(401, 'Could not resolve an identity for this API key.')
+  }
+
+  const headers: Record<string, string> = { 'x-gateway-admin-secret': forwardSecret }
+  if (uid) headers['x-gateway-uid'] = uid
+  else if (keyId) headers['x-gateway-key-id'] = keyId
+  return headers
+}
+
+async function call<T>(apiKey: string, method: 'GET' | 'POST', path: string, body?: unknown): Promise<T> {
+  const identityHeaders = await resolveGatewayIdentityHeaders(apiKey)
+
+  let r: Response
+  try {
+    r = await fetch(`${BACKEND_URL}${path}`, {
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+        ...identityHeaders,
+      },
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+      cache: 'no-store',
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    })
+  } catch {
+    throw new AudiobooksApiError(0, 'Could not reach the audiobooks API. Try again shortly.')
+  }
+
+  const json = await r.json().catch(() => null) as Record<string, unknown> | null
+  if (!r.ok) {
+    const message = (json?.message as string | undefined) || (json?.error as string | undefined) || `Audiobooks API returned ${r.status}`
+    throw new AudiobooksApiError(r.status, message)
+  }
+  return json as T
+}
+
+export interface AudiobookChapterStatus {
+  sequence?: number
+  sequence_index?: number
+  title: string | null
+  status: string
+  duration_seconds?: number | null
+  duration_sec?: number | null
+  char_count?: number
+}
+
+export interface CreateAudiobookResult {
+  audiobook_id: string
+  status: string
+  chapter_count: number
+}
+
+export interface AudiobookStatusResult {
+  audiobook_id: string
+  status: string
+  chapter_count: number
+  chapters_completed?: number
+  chapters_ready?: number
+  chapters_failed?: number
+  overall_percentage?: number
+  export_status?: string
+  export_audio_path?: string | null
+  chapters: AudiobookChapterStatus[]
+  error?: { code?: string; message: string }
+}
+
+export interface ExportAudiobookResult {
+  audiobook_id: string
+  status?: string
+  export_status?: string
+  audio_url?: string
+  duration_sec?: number
+  duration_seconds?: number
+}
+
+export function createAudiobook(
+  apiKey: string,
+  params: { title: string; voice_id: string; speed?: number; text: string }
+): Promise<CreateAudiobookResult> {
+  return call(apiKey, 'POST', '/api/audiobooks', {
+    title: params.title,
+    voice_id: params.voice_id,
+    speed: params.speed,
+    source_type: 'text',
+    text: params.text,
+  })
+}
+
+export function getAudiobookStatus(apiKey: string, audiobookId: string): Promise<AudiobookStatusResult> {
+  return call(apiKey, 'GET', `/api/audiobooks/${encodeURIComponent(audiobookId)}/status`)
+}
+
+export function exportAudiobook(apiKey: string, audiobookId: string): Promise<ExportAudiobookResult> {
+  return call(apiKey, 'POST', `/api/audiobooks/${encodeURIComponent(audiobookId)}/export`)
+}
