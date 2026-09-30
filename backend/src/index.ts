@@ -30,7 +30,10 @@ import { voiceMarketplaceRouter } from './routes/voiceMarketplace.js';
 import { stripeWebhookRouter } from './routes/stripeWebhook.js';
 import { authRouter } from './routes/auth.js';
 import { appConfigRouter } from './routes/appConfig.js';
-import { ttsApiKeysRouter } from './routes/ttsApiKeys.js';
+import { ttsApiKeysRouter, requireRealAuth } from './routes/ttsApiKeys.js';
+import { textToMusicRouter } from './routes/textToMusic.js';
+import { musicApiKeysRouter } from './routes/musicApiKeys.js';
+import { requireMusicAuth } from './middleware/musicAuth.js';
 import { voiceStudioRouter } from './routes/voiceStudio.js';
 import { voiceDesignRouter } from './routes/voiceDesign.js';
 import { voiceConvertRouter } from './routes/voiceConvert.js';
@@ -45,6 +48,7 @@ import { soundEffectsRouter } from './routes/soundEffects.js';
 import { aggregateLatencyMetrics, checkSupabaseHealth, checkStorageHealth } from './lib/supabaseClient.js';
 import { startWorker, stopWorker } from './workers/ttsJobWorker.js';
 import { startSoundEffectJobWorker, stopSoundEffectJobWorker } from './workers/soundEffectJobWorker.js';
+import { startMusicJobWorker, stopMusicJobWorker } from './workers/musicJobWorker.js';
 import { checkPubSubHealth } from './lib/pubsub.js';
 import { initRolloutFromEnv } from './lib/rollout.js';
 import { reportUsageToStripe } from './lib/realtimeTtsBilling.js';
@@ -194,6 +198,19 @@ app.use('/api/realtime-tts', burstRateLimit, realtimeTtsAuthorizeRateLimit, requ
 // Preview endpoint has stricter rate limit (10 req/min)
 app.use('/api/tts/preview', previewRateLimit);
 
+// Text-to-music job routes: billable, external-facing, so requireMusicAuth
+// (accepts a persistent API key OR a session token — no permissive
+// default-user fallback either way) rather than requireAuth. Job polling
+// gets the generous polling rate limit, same pattern as /api/tts/job/:jobId
+// above.
+app.get('/api/music/job/:jobId', jobPollingRateLimit, requireMusicAuth, textToMusicRouter);
+app.use('/api/music', burstRateLimit, requireMusicAuth, textToMusicRouter);
+
+// Music API key management: session-only (requireRealAuth) — minting/
+// revoking keys must never be doable with just an API key, or a leaked key
+// could mint infinite new ones.
+app.use('/api/music-api-keys', requireRealAuth, musicApiKeysRouter);
+
 // Usage routes (requires auth)
 app.use('/api/usage', requireAuth, usageRouter);
 
@@ -256,8 +273,8 @@ app.use('/api/stt', requireAuthOrApiKey, sttRouter);
 // routes/dub.ts header for scope boundaries (no video, in-memory jobs only).
 app.use('/api/dub', requireAuthOrApiKey, dubRouter);
 // Sound effects — text-to-sound-effect generation on a shared Modal worker (see
-// backend/modal/sound_effects_worker.py), async job API mirroring the (unmerged)
-// text-to-music feature branch's textToMusic.ts. Dark unless SOUND_EFFECTS_WORKER_URL
+// backend/modal/sound_effects_worker.py), async job API mirroring the
+// text-to-music feature's textToMusic.ts. Dark unless SOUND_EFFECTS_WORKER_URL
 // is configured (soundEffects.ts's routes still respond, but jobs never leave 'queued'
 // without the worker below actually running — mirrors MUSIC_WORKER_ENABLED's gating).
 // Uses requireAuthOrApiKey (not requireAuth): this is a billed, MCP-reachable route, and
@@ -309,6 +326,19 @@ app.use(errorHandler);
 
 const PORT = config.PORT;
 
+// Fail fast and loud BEFORE the server starts accepting traffic, rather than
+// inside the app.listen() callback: a misconfiguration caught only after the
+// port is already bound would crash the whole process (taking down TTS,
+// Stripe webhooks, everything) instead of cleanly failing the deploy.
+// MUSIC_WORKER_ENABLED=true with no URL configured is always a
+// misconfiguration, never an intentional state — every queued music job
+// would silently fail otherwise.
+if (process.env.MUSIC_WORKER_ENABLED === 'true' && !process.env.MUSIC_WORKER_URL) {
+  throw new Error(
+    'MUSIC_WORKER_ENABLED=true but MUSIC_WORKER_URL is not set — refusing to start the music job worker against an empty URL. Set MUSIC_WORKER_URL (and MUSIC_WORKER_SHARED_SECRET) or unset MUSIC_WORKER_ENABLED.'
+  );
+}
+
 const server = app.listen(PORT, () => {
   logger.info({ port: PORT, env: config.NODE_ENV }, 'Server started');
 
@@ -350,12 +380,24 @@ const server = app.listen(PORT, () => {
   }
 
   // Embedded polling worker for sound effect generation jobs — mirrors the
-  // text-to-music feature branch's MUSIC_WORKER_ENABLED gate. Off by
+  // music worker's MUSIC_WORKER_ENABLED gate below. Off by
   // default: a deploy with no Modal worker provisioned should not spin up
   // a poll loop that will just fail every callModalWorker() call.
   if (process.env.SOUND_EFFECT_WORKER_ENABLED === 'true') {
     logger.info('Starting sound effect job worker');
     startSoundEffectJobWorker();
+  }
+
+  // Music job worker polling loop — calls the Modal music-generation endpoint
+  // every 3s and reaps jobs stuck in 'processing'. Unlike the TTS worker
+  // above (which is genuinely dev-only, since production TTS is delivered
+  // via Pub/Sub push), the music job worker is the ONLY delivery mechanism
+  // for music jobs — there is no push-based alternative — so
+  // MUSIC_WORKER_ENABLED=true must be set in production too, or music jobs
+  // will queue forever and never be processed. See cloudbuild.yaml.
+  if (process.env.MUSIC_WORKER_ENABLED === 'true') {
+    logger.info('Starting music job worker');
+    startMusicJobWorker();
   }
 });
 
@@ -369,6 +411,9 @@ function shutdown(signal: string) {
   }
   if (process.env.SOUND_EFFECT_WORKER_ENABLED === 'true') {
     stopSoundEffectJobWorker();
+  }
+  if (process.env.MUSIC_WORKER_ENABLED === 'true') {
+    stopMusicJobWorker();
   }
 
   server.close(() => {

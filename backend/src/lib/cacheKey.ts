@@ -184,14 +184,12 @@ export function generateJobAudioPath(jobId: string, format: string): string {
 // Sound Effect Cache Key Generation
 // ============================================================================
 //
-// Mirrors the equivalent "Music Cache Key Generation" section in the (as yet
-// unmerged) text-to-music feature branch's cacheKey.ts — same shape
-// (prompt + duration -> SHA-256 hash), added here directly since that
-// branch's music helpers aren't in this repo yet. If/when text-to-music
-// merges, keep both sections side by side rather than deduplicating them
-// into one generic helper — the two features are versioned independently
-// (see the "sfx-v1" vs "music-v1" namespace prefixes below) and a shared
-// helper would couple their cache-key formats together unnecessarily.
+// Same shape as the "Music Cache Key Generation" section below (prompt +
+// duration -> SHA-256 hash). Keep the two sections side by side rather than
+// deduplicating them into one generic helper — the two features are
+// versioned independently (see the "sfx-v1" vs "music-v1" namespace
+// prefixes) and a shared helper would couple their cache-key formats
+// together unnecessarily.
 
 /**
  * Options for sound effect cache key generation
@@ -237,4 +235,54 @@ export function computeSoundEffectCacheKey(options: SoundEffectCacheKeyOptions):
  */
 export function generateSoundEffectAudioPath(jobId: string): string {
   return `sound-effects/jobs/${jobId}.wav`;
+}
+
+// ============================================================================
+// Music Cache Key Generation
+// ============================================================================
+
+/**
+ * Options for music cache key generation
+ */
+export interface MusicCacheKeyOptions {
+  prompt: string;
+  durationSec: number;
+}
+
+/**
+ * Compute a cache key for music generation.
+ *
+ * The cache key uniquely identifies a music generation request based on:
+ * - Prompt (normalized text describing the desired music)
+ * - Duration in seconds
+ *
+ * Two requests with the same cache key will produce identical music output.
+ * Uses a distinct "music-v1" namespace so it never collides with a sound
+ * effect request (see "sfx-v1" above) with an otherwise-identical
+ * prompt/duration.
+ *
+ * @param options - Cache key options
+ * @returns SHA-256 hash as cache key
+ */
+export function computeMusicCacheKey(options: MusicCacheKeyOptions): string {
+  const normalizedPrompt = normalizeText(options.prompt);
+  const promptHash = sha256(normalizedPrompt);
+  const compositeKey = `music-v1|${options.durationSec}|${promptHash}`;
+  return sha256(compositeKey);
+}
+
+/**
+ * Generate a storage path for music audio file.
+ *
+ * @param jobId - The job ID
+ * @returns Storage path suitable for storage
+ *
+ * @example
+ * ```typescript
+ * const path = generateMusicAudioPath('job-abc-123');
+ * // Returns: 'music/jobs/job-abc-123.wav'
+ * ```
+ */
+export function generateMusicAudioPath(jobId: string): string {
+  return `music/jobs/${jobId}.wav`;
 }

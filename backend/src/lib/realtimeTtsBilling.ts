@@ -34,12 +34,23 @@ const VOICE_DESIGN_METER_EVENT_NAME = process.env.VOICE_DESIGN_METER_EVENT_NAME 
 // Set these env vars after creating the meter/price.
 const VOICE_CONVERT_METER_EVENT_NAME = process.env.VOICE_CONVERT_METER_EVENT_NAME || 'realtimetts_voice_conversions';
 // Sound effect generation meter (mirrors the text-to-music feature's
-// MUSIC_GENERATION_METER_EVENT_NAME — that branch isn't merged into this
-// repo yet, so this is a fresh meter, not a reuse of an existing one).
+// MUSIC_GENERATION_METER_EVENT_NAME below — a separate meter, not a reuse
+// of the music one).
 // Create via a create-sound-effect-generation-meter.mjs script analogous to
 // the voice-design/voice-convert ones referenced above, then set this env
 // var if the created meter's event name differs from the default.
 export const SOUND_EFFECT_GENERATION_METER_EVENT_NAME = process.env.SOUND_EFFECT_GENERATION_METER_EVENT_NAME || 'realtimetts_sound_effect_generations';
+// Music generation meter (created once via scripts/create-music-generation-meter.mjs).
+export const MUSIC_GENERATION_METER_EVENT_NAME = 'realtimetts_music_generations';
+// The meter above only reports USAGE — it bills nothing unless the customer's
+// subscription actually includes a price tied to it. That price didn't exist
+// until create-music-generation-meter.mjs was run for real (previously only
+// written, never executed against Stripe), so this was a real $0 gap: usage
+// was tracked but never charged. Set after running that script; checkout
+// gracefully omits the line item if unset, matching how VOICE_DESIGN/
+// VOICE_CONVERT above are also still not wired into checkout (a separate,
+// pre-existing gap, not fixed here — scoped to music only).
+const MUSIC_GENERATION_PRICE_ID = process.env.MUSIC_GENERATION_PRICE_ID || '';
 
 // Piper (CPU engine) is priced at $0.004/1k chars vs Kokoro's $0.01/1k. Rather than
 // add a second Stripe price/meter and migrate every live subscription, Piper chars are
@@ -90,6 +101,16 @@ export async function isBillingActiveForUser(userId: string): Promise<boolean> {
   return !!row?.active;
 }
 
+// Pure and exported so the "does the music price get attached, and only
+// when configured" decision is unit-testable without mocking the Stripe SDK.
+export function buildCheckoutLineItems(): Stripe.Checkout.SessionCreateParams.LineItem[] {
+  const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [{ price: TTS_BILLING_PRICE_ID }];
+  if (MUSIC_GENERATION_PRICE_ID) {
+    lineItems.push({ price: MUSIC_GENERATION_PRICE_ID });
+  }
+  return lineItems;
+}
+
 export async function createCheckoutSession(params: {
   userId: string;
   email: string;
@@ -99,7 +120,7 @@ export async function createCheckoutSession(params: {
   const session = await stripe.checkout.sessions.create({
     mode: 'subscription',
     customer_email: params.email,
-    line_items: [{ price: TTS_BILLING_PRICE_ID }],
+    line_items: buildCheckoutLineItems(),
     success_url: params.successUrl,
     cancel_url: params.cancelUrl,
     metadata: { ...REALTIME_TTS_CHECKOUT_METADATA, userId: params.userId },
@@ -421,6 +442,30 @@ export async function chargeForVoiceClone(identity: string): Promise<{ success: 
   }
 }
 
+// Reports one music generation to Stripe as a meter event.
+// Called after a music job's status is already updated to 'ready', not before.
+// Best-effort: a metering failure must not fail the (already-successful) job.
+export async function reportMusicGenerationUsage(userId: string): Promise<void> {
+  const billing = await getBillingForUser(userId);
+  if (!billing?.active) {
+    billingLogger.warn({ userId }, 'reportMusicGenerationUsage called for user with no active billing');
+    return;
+  }
+  try {
+    await stripe.billing.meterEvents.create({
+      event_name: MUSIC_GENERATION_METER_EVENT_NAME,
+      timestamp: Math.floor(Date.now() / 1000),
+      payload: {
+        stripe_customer_id: billing.stripe_customer_id,
+        value: '1',
+      },
+    });
+    billingLogger.debug({ userId }, 'Music generation usage reported');
+  } catch (err) {
+    billingLogger.error({ err, userId }, 'Failed to report music generation usage');
+  }
+}
+
 // Reports TTS character usage to Stripe meter (for cloned-voice synthesis and any
 // backend-served TTS). Best-effort: billing failure must not block the request.
 export async function reportTtsUsage(userId: string, charCount: number): Promise<void> {
@@ -446,8 +491,7 @@ export async function reportTtsUsage(userId: string, charCount: number): Promise
 }
 
 // Reports one sound effect generation to Stripe as a meter event. Mirrors
-// reportMusicGenerationUsage in the (unmerged) text-to-music feature branch's
-// realtimeTtsBilling.ts. Called after a sound effect job's status is already updated to 'ready',
+// reportMusicGenerationUsage above. Called after a sound effect job's status is already updated to 'ready',
 // not before. Best-effort: a metering failure must not fail the
 // (already-successful) job.
 export async function reportSoundEffectGenerationUsage(userId: string): Promise<void> {

@@ -1689,13 +1689,11 @@ export async function checkStorageHealth(): Promise<{
 // Sound Effect Jobs (text-to-sound-effect API)
 // ============================================================================
 //
-// Mirrors the equivalent "Music Jobs" section in the (as yet unmerged)
-// text-to-music feature branch's supabaseClient.ts — same RPC-per-op shape
-// as create_music_job/claim_next_music_job/etc, added directly here since
-// that branch's music helpers aren't present in this repo yet. Backing
-// table + RPCs are defined in supabase/migrations/018_add_sound_effect_jobs.sql
-// and locked down in 019_secure_sound_effect_jobs.sql (see that migration
-// for the same RLS/EXECUTE-grant hardening music_jobs needed).
+// Same RPC-per-op shape as the "Music Jobs" section below
+// (create_music_job/claim_next_music_job/etc). Backing table + RPCs are
+// defined in supabase/migrations/021_add_sound_effect_jobs.sql and locked
+// down in 022_secure_sound_effect_jobs.sql (see that migration for the same
+// RLS/EXECUTE-grant hardening music_jobs needed).
 
 export interface DBSoundEffectJob {
   id: string;
@@ -1775,3 +1773,82 @@ export async function uploadSoundEffectAudio(audioPath: string, audioBuffer: Buf
 // getSignedAudioUrl (defined above, in the TTS Job Operations section) is
 // generic over any storage path in AUDIO_BUCKET and is reused as-is for
 // sound effect jobs — no sound-effect-specific signed-URL helper needed.
+
+// ============================================================================
+// Music Jobs (text-to-music API)
+// ============================================================================
+
+export interface DBMusicJob {
+  id: string;
+  user_id: string;
+  status: 'queued' | 'processing' | 'ready' | 'failed';
+  prompt: string;
+  duration_sec: number;
+  cache_key: string;
+  audio_path: string | null;
+  error_code: string | null;
+  error_message: string | null;
+}
+
+export async function createMusicJob(params: {
+  userId: string;
+  prompt: string;
+  durationSec: number;
+  cacheKey: string;
+}): Promise<{ id: string; status: string }> {
+  const { data: jobId, error } = await supabase.rpc('create_music_job', {
+    p_user_id: params.userId,
+    p_prompt: params.prompt,
+    p_duration_sec: params.durationSec,
+    p_cache_key: params.cacheKey,
+  });
+  if (error) throw error;
+  return { id: jobId as string, status: 'queued' };
+}
+
+export async function getMusicJobForUser(jobId: string, userId: string): Promise<DBMusicJob | null> {
+  const { data, error } = await supabase.rpc('get_music_job_for_user', {
+    p_job_id: jobId,
+    p_user_id: userId,
+  });
+  if (error) throw error;
+  const job = data as DBMusicJob | null;
+  return job?.id ? job : null;
+}
+
+export async function getCachedMusic(cacheKey: string): Promise<DBMusicJob | null> {
+  const { data, error } = await supabase.rpc('get_cached_music', { p_cache_key: cacheKey });
+  if (error) throw error;
+  const job = data as DBMusicJob | null;
+  return job?.id ? job : null;
+}
+
+export async function claimNextMusicJob(): Promise<DBMusicJob | null> {
+  const { data, error } = await supabase.rpc('claim_next_music_job');
+  if (error) throw error;
+  const job = data as DBMusicJob | null;
+  return job?.id ? job : null;
+}
+
+export async function updateMusicJobStatus(
+  jobId: string,
+  status: 'processing' | 'ready' | 'failed',
+  opts: { audioPath?: string; errorCode?: string; errorMessage?: string } = {}
+): Promise<void> {
+  const { error } = await supabase.rpc('update_music_job_status', {
+    p_job_id: jobId,
+    p_status: status,
+    p_audio_path: opts.audioPath ?? null,
+    p_error_code: opts.errorCode ?? null,
+    p_error_message: opts.errorMessage ?? null,
+  });
+  if (error) throw error;
+}
+
+export async function uploadMusicAudio(audioPath: string, audioBuffer: Buffer): Promise<void> {
+  const { error } = await supabase.storage.from(AUDIO_BUCKET).upload(audioPath, audioBuffer, {
+    contentType: 'audio/wav',
+    upsert: true,
+  });
+  if (error) throw error;
+}
