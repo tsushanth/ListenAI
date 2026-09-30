@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { Inter, Bricolage_Grotesque, Instrument_Sans, JetBrains_Mono } from 'next/font/google'
 import './globals.css'
+import WebFailureReporter from '@/components/WebFailureReporter'
 
 const inter = Inter({ subsets: ['latin'] })
 const display = Bricolage_Grotesque({ subsets: ['latin'], variable: '--font-display', display: 'swap' })
@@ -44,7 +45,8 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={`${inter.className} ${display.variable} ${body.variable} ${mono.variable}`}>{children}</body>
+      <body className={`${inter.className} ${display.variable} ${body.variable} ${mono.variable}`}>
+        <WebFailureReporter />{children}</body>
     </html>
   )
 }

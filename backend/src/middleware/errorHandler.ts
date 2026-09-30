@@ -2,6 +2,7 @@ import { Request, Response, NextFunction, ErrorRequestHandler } from 'express';
 import { ZodError } from 'zod';
 import { logger } from '../lib/logger.js';
 import { config } from '../lib/config.js';
+import { reportBackendError } from '../lib/failureReporter.js';
 import {
   AppError,
   AuthenticationError,
@@ -75,6 +76,7 @@ export const errorHandler: ErrorRequestHandler = (
   };
 
   if (statusCode >= 500) {
+    reportBackendError(req, err, statusCode);
     logger.error({ ...logData, stack: err.stack }, 'Server error');
   } else if (statusCode >= 400) {
     logger.warn(logData, 'Client error');

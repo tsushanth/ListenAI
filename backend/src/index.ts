@@ -10,6 +10,7 @@ import { logger } from './lib/logger.js';
 import { requireAuth } from './middleware/auth.js';
 import { requireAuthOrApiKey } from './middleware/apiKeyAuth.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
+import { reportFailure, reportCrash } from './lib/failureReporter.js';
 import { standardRateLimit, ttsRateLimitByTier, previewRateLimit, burstRateLimit, jobPollingRateLimit, realtimeTtsAuthorizeRateLimit } from './middleware/rateLimit.js';
 
 import { ttsRouter } from './routes/tts.js';
@@ -438,11 +439,12 @@ process.on('SIGINT', () => shutdown('SIGINT'));
 // Unhandled rejection handling
 process.on('unhandledRejection', (reason, promise) => {
   logger.error({ reason, promise }, 'Unhandled rejection');
+  reportFailure('unhandledRejection', reason);
 });
 
 process.on('uncaughtException', (error) => {
   logger.fatal({ error }, 'Uncaught exception');
-  process.exit(1);
+  reportCrash('uncaughtException', error).finally(() => process.exit(1));
 });
 
 export default app;
