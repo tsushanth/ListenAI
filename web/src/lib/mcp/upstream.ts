@@ -1,5 +1,4 @@
 import WebSocket from 'ws'
-import { createHash } from 'node:crypto'
 import { MAX_AUDIO_SECONDS, REQUEST_TIMEOUT_MS } from './schemas.ts'
 import { BYTES_PER_SAMPLE, SAMPLE_RATE } from './wav.ts'
 
@@ -129,36 +128,81 @@ export function synthesize(opts: { url: string; token: string; text: string; voi
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'https://listenai-backend.fly.dev'
 const MCP_GATEWAY_FORWARD_SECRET = process.env.MCP_GATEWAY_FORWARD_SECRET || ''
 
-/** Best-effort, unverified read of a JWT's payload — safe here only because the token came straight from
- *  our own gateway in direct response to our own authorize() call; we are reading a claim WE just minted a
- *  request for, not trusting an arbitrary bearer token from an external caller. */
+// ----------------------------------------------------------------------------
+// Gateway identity bridge — shared by every MCP tool that forwards a call to
+// this repo's backend under requireAuthOrApiKey (see MCP_AUTH_BRIDGE.md).
+// This used to be reimplemented separately per tool family (isolate_voice,
+// dub_audio, generate_sound_effect, and audiobooksClient.ts each had their
+// own copy), with subtly different bugs — including a production outage
+// (audiobooksClient.ts assumed a 3-part JWT and required a token-carried
+// uid/key_id with no fallback; the real 2-part gateway token for that key
+// carried neither, so every call 401'd). Consolidated into one implementation
+// used everywhere, incorporating the lessons from that outage:
+//   - decodeGatewayClaims tries every dot-separated token segment for a JSON
+//     payload, rather than assuming a fixed segment index — the gateway
+//     token is 2-part (payload.signature), not a standard 3-part JWT.
+//   - resolveGatewayIdentity never throws "could not resolve identity": it
+//     always has a fallback identity to forward, because keyId here is the
+//     caller-supplied ctx.keyId (see server.ts / route.ts), not something
+//     this function derives itself.
+//
+// keyId is passed in by the caller (ctx.keyId, computed once in
+// app/mcp/route.ts as sha256(apiKey).slice(0, 16)) rather than re-derived
+// here. Before this consolidation, the dub/sound-effects/audiobooks copies
+// each self-derived their own sha256(key).slice(0, 32) fallback hash —
+// a DIFFERENT value, at a different slice length, than ctx.keyId. That meant
+// the same raw key could resolve to two different synthetic identities
+// depending on which tool touched it first, splitting a single user's data
+// across the backend. Standardizing on the single ctx.keyId the caller
+// already has fixes that inconsistency.
 
-function decodeJwtClaim(token: string, claim: string): string | undefined {
-  try {
-    const part = token.split('.')[1]
-    if (!part) return undefined
-    const json = Buffer.from(part, 'base64url').toString('utf8')
-    const payload = JSON.parse(json) as Record<string, unknown>
-    const v = payload[claim]
-    return typeof v === 'string' && v ? v : undefined
-  } catch {
-    return undefined
+/** Best-effort, unverified read of a gateway session token's claims — safe here only because the
+ *  token came straight from our own gateway in direct response to our own authorize() call; we are
+ *  reading a claim WE just minted a request for, not trusting an arbitrary bearer token from an
+ *  external caller. Tries every dot-separated segment rather than assuming a fixed position, since
+ *  the real gateway token is 2-part (payload.signature), not a standard 3-part header.payload.signature JWT. */
+function decodeGatewayClaims(token: string): Record<string, unknown> {
+  for (const segment of token.split('.')) {
+    try {
+      const normalized = segment.replace(/-/g, '+').replace(/_/g, '/')
+      const json = Buffer.from(normalized, 'base64').toString('utf8')
+      const parsed = JSON.parse(json) as unknown
+      if (parsed && typeof parsed === 'object') return parsed as Record<string, unknown>
+    } catch {
+      // try the next segment
+    }
   }
+  return {}
 }
 
-function backendForwardHeaders(uidOrKeyId: { uid?: string; keyId: string }): Record<string, string> {
-  const h: Record<string, string> = { 'x-gateway-admin-secret': MCP_GATEWAY_FORWARD_SECRET }
-  if (uidOrKeyId.uid) h['x-gateway-uid'] = uidOrKeyId.uid
-  else h['x-gateway-key-id'] = uidOrKeyId.keyId
-  return h
-}
-
-async function resolveBackendIdentity(apiKey: string, keyId: string): Promise<{ uid?: string; keyId: string }> {
+/** Exchange the raw API key for a gateway session token and resolve a backend-forwardable identity:
+ *  the bound Supabase uid if there is one, else the caller-supplied `keyId` (ctx.keyId). Never throws
+ *  "could not resolve identity" — keyId is always available as a guaranteed fallback. */
+export async function resolveGatewayIdentity(apiKey: string, keyId: string): Promise<{ uid?: string; keyId: string }> {
   // Piggyback on the same /tts/authorize check every other tool already makes; also surfaces
-  // unauthorized/payment_required the same way so isolate_voice's errors stay consistent with the rest.
+  // unauthorized/payment_required the same way so every bridged tool's errors stay consistent.
   const { token } = await authorize(apiKey, 'piper')
-  const uid = decodeJwtClaim(token, 'uid')
+  const claims = decodeGatewayClaims(token)
+  const uid = typeof claims.uid === 'string' && claims.uid ? claims.uid : undefined
   return { uid, keyId }
+}
+
+/** Build the `x-gateway-admin-secret` + `x-gateway-uid`/`x-gateway-key-id` headers requireAuthOrApiKey
+ *  trusts in place of a Supabase JWT. Does not set Content-Type — callers with a JSON body add that
+ *  themselves so this can also be used as-is for multipart/form-data requests (isolate_voice). */
+export function gatewayIdentityHeaders(identity: { uid?: string; keyId: string }): Record<string, string> {
+  if (!MCP_GATEWAY_FORWARD_SECRET) {
+    throw new UpstreamError('upstream', 'This feature is not configured on this deployment (missing MCP_GATEWAY_FORWARD_SECRET).', false)
+  }
+  const headers: Record<string, string> = { 'x-gateway-admin-secret': MCP_GATEWAY_FORWARD_SECRET }
+  if (identity.uid) headers['x-gateway-uid'] = identity.uid
+  else headers['x-gateway-key-id'] = identity.keyId
+  return headers
+}
+
+/** Convenience wrapper: resolve identity and build headers in one call. */
+export async function resolveGatewayIdentityHeaders(apiKey: string, keyId: string): Promise<Record<string, string>> {
+  return gatewayIdentityHeaders(await resolveGatewayIdentity(apiKey, keyId))
 }
 
 export interface IsolationSubmitResult { job_id: string; status: string }
@@ -171,7 +215,7 @@ export async function isolateVoice(opts: {
   wantInstrumental: boolean
   timeoutMs: number
 }): Promise<IsolationSubmitResult> {
-  const identity = await resolveBackendIdentity(opts.apiKey, opts.keyId)
+  const identity = await resolveGatewayIdentity(opts.apiKey, opts.keyId)
   const form = new FormData()
   form.append('input', new Blob([new Uint8Array(opts.buffer)], { type: opts.mimeType }), 'input')
   form.append(
@@ -185,7 +229,7 @@ export async function isolateVoice(opts: {
   try {
     r = await fetch(`${BACKEND_URL}/api/voice-isolate/isolations`, {
       method: 'POST',
-      headers: backendForwardHeaders(identity),
+      headers: gatewayIdentityHeaders(identity),
       body: form,
       signal: AbortSignal.timeout(opts.timeoutMs),
     })
@@ -213,11 +257,11 @@ export interface IsolationStatusResult { status: string; [key: string]: unknown 
 export async function getVoiceIsolationStatus(opts: {
   apiKey: string; keyId: string; jobId: string; timeoutMs: number
 }): Promise<IsolationStatusResult> {
-  const identity = await resolveBackendIdentity(opts.apiKey, opts.keyId)
+  const identity = await resolveGatewayIdentity(opts.apiKey, opts.keyId)
   let r: Response
   try {
     r = await fetch(`${BACKEND_URL}/api/voice-isolate/isolations/${encodeURIComponent(opts.jobId)}`, {
-      headers: backendForwardHeaders(identity),
+      headers: gatewayIdentityHeaders(identity),
       signal: AbortSignal.timeout(opts.timeoutMs),
     })
   } catch {
@@ -237,11 +281,11 @@ export async function getVoiceIsolationStatus(opts: {
 export async function getVoiceIsolationAudio(opts: {
   apiKey: string; keyId: string; jobId: string; stem: 'vocals' | 'instrumental'; timeoutMs: number
 }): Promise<Buffer> {
-  const identity = await resolveBackendIdentity(opts.apiKey, opts.keyId)
+  const identity = await resolveGatewayIdentity(opts.apiKey, opts.keyId)
   let r: Response
   try {
     r = await fetch(`${BACKEND_URL}/api/voice-isolate/isolations/${encodeURIComponent(opts.jobId)}/audio?stem=${opts.stem}`, {
-      headers: backendForwardHeaders(identity),
+      headers: gatewayIdentityHeaders(identity),
       signal: AbortSignal.timeout(opts.timeoutMs),
     })
   } catch {
@@ -329,42 +373,6 @@ export async function transcribe(opts: {
   return body
 }
 
-function decodeGatewayUid(token: string): string | undefined {
-  try {
-    const parts = token.split('.')
-    if (parts.length < 2) return undefined
-    const json = Buffer.from(parts[1].replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8')
-    const payload = JSON.parse(json) as { uid?: string }
-    return typeof payload.uid === 'string' ? payload.uid : undefined
-  } catch {
-    return undefined
-  }
-}
-
-/** Validate the raw API key against the gateway and resolve a backend-forwardable identity: the bound
- *  Supabase uid if there is one, else a synthetic key-id identity derived from the key itself. */
-async function resolveGatewayIdentity(key: string): Promise<{ uid?: string; keyId: string }> {
-  const { token } = await authorize(key, 'piper')
-  const uid = decodeGatewayUid(token)
-  // No real gateway key id is exposed to this process; fall back to a stable per-key identity derived
-  // from the key so requests from the same key still map to the same backend user when there's no bound uid.
-  const keyId = createHash('sha256').update(key).digest('hex').slice(0, 32)
-  return { uid, keyId }
-}
-
-function forwardHeaders(identity: { uid?: string; keyId: string }): Record<string, string> {
-  if (!MCP_GATEWAY_FORWARD_SECRET) {
-    throw new UpstreamError('upstream', 'Dubbing is not configured on this deployment (missing MCP_GATEWAY_FORWARD_SECRET).', false)
-  }
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    'x-gateway-admin-secret': MCP_GATEWAY_FORWARD_SECRET,
-  }
-  if (identity.uid) headers['x-gateway-uid'] = identity.uid
-  else headers['x-gateway-key-id'] = identity.keyId
-  return headers
-}
-
 export interface DubSubmitResult { job_id: string; status: string }
 export interface DubStatusResult {
   job_id: string
@@ -376,18 +384,19 @@ export interface DubStatusResult {
 
 export async function submitDub(opts: {
   key: string
+  keyId: string
   audioBase64: string
   filename: string
   targetLanguage: string
   sourceLanguage?: string
   voiceId?: string
 }): Promise<DubSubmitResult> {
-  const identity = await resolveGatewayIdentity(opts.key)
+  const identity = await resolveGatewayIdentity(opts.key, opts.keyId)
   let r: Response
   try {
     r = await fetch(`${BACKEND_URL}/api/dub`, {
       method: 'POST',
-      headers: forwardHeaders(identity),
+      headers: { 'Content-Type': 'application/json', ...gatewayIdentityHeaders(identity) },
       body: JSON.stringify({
         audio_base64: opts.audioBase64,
         filename: opts.filename,
@@ -411,12 +420,12 @@ export async function submitDub(opts: {
   return body
 }
 
-export async function getDubStatus(key: string, jobId: string): Promise<DubStatusResult> {
-  const identity = await resolveGatewayIdentity(key)
+export async function getDubStatus(key: string, keyId: string, jobId: string): Promise<DubStatusResult> {
+  const identity = await resolveGatewayIdentity(key, keyId)
   let r: Response
   try {
     r = await fetch(`${BACKEND_URL}/api/dub/${encodeURIComponent(jobId)}`, {
-      headers: forwardHeaders(identity),
+      headers: { 'Content-Type': 'application/json', ...gatewayIdentityHeaders(identity) },
       cache: 'no-store',
       signal: AbortSignal.timeout(10_000),
     })
@@ -479,41 +488,6 @@ export async function getDubStatus(key: string, jobId: string): Promise<DubStatu
 const SOUND_EFFECTS_BACKEND_URL = process.env.READALOUD_BACKEND_URL || process.env.NEXT_PUBLIC_API_URL || 'https://listenai-backend.fly.dev'
 
 export interface SoundEffectJobResult { job_id: string; status: string; cache_hit?: boolean; audio_url?: string; error?: { code: string; message: string } }
-
-/** Decode (not verify — see comment above) the `uid` / key-id claims out of a gateway session JWT. */
-function decodeGatewayIdentity(token: string): { uid?: string; keyId?: string } {
-  const parts = token.split('.')
-  if (parts.length < 2) return {}
-  try {
-    const payload = JSON.parse(Buffer.from(parts[1]!.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8')) as Record<string, unknown>
-    const uid = typeof payload.uid === 'string' ? payload.uid : undefined
-    const keyIdRaw = payload.key_id ?? payload.keyId ?? payload.kid
-    const keyId = typeof keyIdRaw === 'string' ? keyIdRaw : undefined
-    return { uid, keyId }
-  } catch {
-    return {}
-  }
-}
-
-/** Exchange the raw API key for gateway-forwarded identity headers the backend's requireAuthOrApiKey trusts. */
-export async function gatewayForwardHeaders(apiKey: string): Promise<Record<string, string>> {
-  const secret = process.env.MCP_GATEWAY_FORWARD_SECRET
-  if (!secret) {
-    throw new UpstreamError('upstream', 'Sound effect generation is not configured on this server (missing gateway forward secret).', false)
-  }
-  // Engine choice doesn't matter for identity resolution — sound effects
-  // aren't a TTS engine — so an arbitrary valid engine is used purely to
-  // reuse the existing authorize() call.
-  const { token } = await authorize(apiKey, 'piper')
-  const { uid, keyId } = decodeGatewayIdentity(token)
-  if (!uid && !keyId) {
-    throw new UpstreamError('upstream', 'Could not resolve an identity for this API key from the gateway session token.', true)
-  }
-  const headers: Record<string, string> = { 'x-gateway-admin-secret': secret }
-  if (uid) headers['x-gateway-uid'] = uid
-  else headers['x-gateway-key-id'] = keyId!
-  return headers
-}
 
 export async function submitSoundEffectJob(identityHeaders: Record<string, string>, prompt: string, durationSec: number): Promise<SoundEffectJobResult> {
   let r: Response

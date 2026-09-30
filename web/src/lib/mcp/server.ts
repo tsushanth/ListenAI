@@ -16,7 +16,7 @@ import {
   UpstreamError, authorize, authorizeStt, fetchPiperHealth, synthesize, transcribe, type ErrorCode,
   isolateVoice, getVoiceIsolationStatus, getVoiceIsolationAudio,
   submitDub, getDubStatus,
-  submitSoundEffectJob, pollSoundEffectJob, fetchAudioBytes, gatewayForwardHeaders,
+  submitSoundEffectJob, pollSoundEffectJob, fetchAudioBytes, resolveGatewayIdentityHeaders,
 } from './upstream.ts'
 import { pcm16ToWav, pcmDurationSeconds } from './wav.ts'
 import { AudiobooksApiError, createAudiobook, getAudiobookStatus, exportAudiobook } from './audiobooksClient.ts'
@@ -276,7 +276,7 @@ export function createMcpServer(ctx: RequestContext): McpServer {
   }, async (args): Promise<CallToolResult> => {
     const parsed = createAudiobookSchema.parse(args)
     try {
-      const result = await createAudiobook(ctx.apiKey, parsed)
+      const result = await createAudiobook(ctx.apiKey, ctx.keyId, parsed)
       return {
         content: [{ type: 'text', text: `Created audiobook ${result.audiobook_id} with ${result.chapter_count} chapter(s), status: ${result.status}. Poll get_audiobook_status with this id.` }],
         structuredContent: result as unknown as Record<string, unknown>,
@@ -298,7 +298,7 @@ export function createMcpServer(ctx: RequestContext): McpServer {
   }, async (args): Promise<CallToolResult> => {
     const parsed = audiobookIdSchema.parse(args)
     try {
-      const result = await getAudiobookStatus(ctx.apiKey, parsed.audiobook_id)
+      const result = await getAudiobookStatus(ctx.apiKey, ctx.keyId, parsed.audiobook_id)
       const readyCount = result.chapters_completed ?? result.chapters_ready ?? result.chapters.filter((c) => c.status === 'ready').length
       return {
         content: [{ type: 'text', text: `Audiobook ${result.audiobook_id}: ${result.status} (${readyCount}/${result.chapter_count} chapters ready).${result.error ? ` Error: ${result.error.message}` : ''}` }],
@@ -322,7 +322,7 @@ export function createMcpServer(ctx: RequestContext): McpServer {
   }, async (args): Promise<CallToolResult> => {
     const parsed = audiobookIdSchema.parse(args)
     try {
-      const result = await exportAudiobook(ctx.apiKey, parsed.audiobook_id)
+      const result = await exportAudiobook(ctx.apiKey, ctx.keyId, parsed.audiobook_id)
       return {
         content: [{ type: 'text', text: result.audio_url ? `Exported audiobook ${result.audiobook_id}: ${result.audio_url}` : `Export status for ${result.audiobook_id}: ${result.export_status ?? result.status}` }],
         structuredContent: result as unknown as Record<string, unknown>,
@@ -361,6 +361,7 @@ export function createMcpServer(ctx: RequestContext): McpServer {
     try {
       const result = await submitDub({
         key: ctx.apiKey,
+        keyId: ctx.keyId,
         audioBase64: parsed.audio_base64,
         filename: parsed.filename,
         targetLanguage: parsed.target_language,
@@ -390,7 +391,7 @@ export function createMcpServer(ctx: RequestContext): McpServer {
   }, async (args): Promise<CallToolResult> => {
     const parsed = dubStatusSchema.parse(args)
     try {
-      const result = await getDubStatus(ctx.apiKey, parsed.job_id)
+      const result = await getDubStatus(ctx.apiKey, ctx.keyId, parsed.job_id)
       const summary = result.status === 'ready'
         ? `Dub ready: ${result.audio_url}`
         : result.status === 'failed'
@@ -425,7 +426,7 @@ export function createMcpServer(ctx: RequestContext): McpServer {
       // Resolve the gateway-forwarded identity headers once and reuse them
       // across the submit + poll calls below, rather than re-exchanging the
       // API key with the gateway on every poll.
-      const identityHeaders = await gatewayForwardHeaders(ctx.apiKey)
+      const identityHeaders = await resolveGatewayIdentityHeaders(ctx.apiKey, ctx.keyId)
       const submitted = await submitSoundEffectJob(identityHeaders, parsed.prompt, parsed.duration_sec)
       let result = submitted
       const deadline = Date.now() + SOUND_EFFECT_POLL_TIMEOUT_MS

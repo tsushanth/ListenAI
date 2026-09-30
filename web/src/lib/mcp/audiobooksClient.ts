@@ -17,8 +17,7 @@
 // own secret or a separate one scoped to "web MCP server → backend". Without it, every call
 // below fails closed with 401 rather than forwarding the raw key as an invalid bearer token.
 
-import { createHash } from 'node:crypto'
-import { authorize } from './upstream.ts'
+import { resolveGatewayIdentityHeaders as sharedResolveGatewayIdentityHeaders } from './upstream.ts'
 
 // NOTE: fixed during a live redeploy debugging session — this defaulted to
 // 'https://api.readaloudai.org' (the realtime-tts GATEWAY), but /api/audiobooks
@@ -35,74 +34,30 @@ export class AudiobooksApiError extends Error {
   }
 }
 
-/** Decodes a gateway session token's claims without verifying the signature — safe here because
- *  we only read it to forward an *already-trusted* identity (the gateway signed it after
- *  validating the raw key), never to authenticate the request ourselves.
- *
- *  NOTE: fixed during a live redeploy debugging session. This assumed a standard 3-part
- *  header.payload.signature JWT and always read split('.')[1] as the payload — but the real
- *  gateway token (confirmed by calling POST /tts/authorize directly) is 2-part,
- *  payload.signature, so the real claims are in split('.')[0], not [1]. On top of that, this
- *  particular key's token carries only {id, exp} - no uid or key_id claim at all - so even
- *  decoding the right segment yields nothing to key off. Now tries every dot-separated segment
- *  and returns the first one that parses as a JSON object, so it's not hostage to which segment
- *  position happens to hold the payload for a given token shape. */
-function decodeJwtClaims(token: string): Record<string, unknown> {
-  for (const segment of token.split('.')) {
-    try {
-      const normalized = segment.replace(/-/g, '+').replace(/_/g, '/')
-      const json = Buffer.from(normalized, 'base64').toString('utf8')
-      const parsed = JSON.parse(json) as unknown
-      if (parsed && typeof parsed === 'object') return parsed as Record<string, unknown>
-    } catch {
-      // try the next segment
-    }
+// Identity resolution (decoding the gateway session token's claims, falling back to the
+// caller's key-id hash when there's no bound uid) used to be reimplemented here separately
+// from upstream.ts's other bridged tools — including the bug that caused a live outage: this
+// copy assumed a standard 3-part header.payload.signature JWT and always read split('.')[1] as
+// the payload, but the real gateway token (confirmed by calling POST /tts/authorize directly)
+// is 2-part, payload.signature, and this particular key's token carries only {id, exp} — no uid
+// or key_id claim at all, so requiring one out of the token meant every unbound key 401'd with
+// "Could not resolve an identity" (masked behind route.ts's generic "Invalid or revoked API
+// key." because a 401 UpstreamError anywhere in a tool call sets ctx.authFailed, which
+// overrides the real tool response with that message). Now consolidated into upstream.ts's
+// resolveGatewayIdentityHeaders, which tries every dot-separated token segment and falls back
+// to the caller-supplied keyId (ctx.keyId) rather than a locally re-derived hash — the same
+// fallback identity every other bridged tool (isolate_voice, dub_audio, sound effects) now uses,
+// so the same raw key resolves to the same backend identity regardless of which tool touched it
+// first. It also reads MCP_GATEWAY_FORWARD_SECRET (not the unprefixed GATEWAY_FORWARD_SECRET
+// this file used to read, which was never provisioned anywhere and always 401'd).
+
+async function call<T>(apiKey: string, keyId: string, method: 'GET' | 'POST', path: string, body?: unknown): Promise<T> {
+  let identityHeaders: Record<string, string>
+  try {
+    identityHeaders = await sharedResolveGatewayIdentityHeaders(apiKey, keyId)
+  } catch (e) {
+    throw new AudiobooksApiError(401, e instanceof Error ? e.message : 'Could not resolve identity for this API key.')
   }
-  return {}
-}
-
-/** Exchanges the raw API key for a gateway session token (same call upstream.ts's authorize()
- *  makes for TTS) and resolves the identity headers requireAuthOrApiKey expects from it. */
-async function resolveGatewayIdentityHeaders(apiKey: string): Promise<Record<string, string>> {
-  // Was reading GATEWAY_FORWARD_SECRET (unprefixed) - every other bridged tool
-  // (isolate_voice, dub_audio, sound effects, and the top-level route.ts
-  // connect-time check) reads MCP_GATEWAY_FORWARD_SECRET. The unprefixed var
-  // was never provisioned anywhere, so this always 401'd - confirmed live,
-  // masked behind route.ts's generic "Invalid or revoked API key." because a
-  // 401 UpstreamError anywhere in a tool call sets ctx.authFailed, which
-  // overrides the real tool response with that message.
-  const forwardSecret = process.env.MCP_GATEWAY_FORWARD_SECRET
-  if (!forwardSecret) {
-    throw new AudiobooksApiError(
-      401,
-      'Audiobooks API access is not configured on this deployment (missing MCP_GATEWAY_FORWARD_SECRET).'
-    )
-  }
-
-  // 'audiobooks' is not a real engine the gateway recognizes - it rejected
-  // it with 401 every time, confirmed live against the deployed MCP server.
-  // The other three bridged tools (isolate_voice, dub_audio, sound effects)
-  // all use 'piper' here too: it's just used to authenticate the key via
-  // the gateway's existing /tts/authorize, not to actually select an engine.
-  const { token } = await authorize(apiKey, 'piper')
-  const claims = decodeJwtClaims(token)
-  const uid = typeof claims.uid === 'string' && claims.uid ? claims.uid : undefined
-  // No token-carried key_id fallback anymore: this token's actual claims are
-  // just {id, exp} - no uid, no key_id - so requiring one out of the token
-  // meant every unbound key 401'd with "Could not resolve an identity",
-  // confirmed live. Mirrors dub's resolveGatewayIdentity in upstream.ts: a
-  // stable hash of the raw key itself is always available, so this path can
-  // never fail to resolve *some* identity, bound or not.
-  const keyId = uid ? undefined : createHash('sha256').update(apiKey).digest('hex').slice(0, 32)
-
-  const headers: Record<string, string> = { 'x-gateway-admin-secret': forwardSecret }
-  if (uid) headers['x-gateway-uid'] = uid
-  else if (keyId) headers['x-gateway-key-id'] = keyId
-  return headers
-}
-
-async function call<T>(apiKey: string, method: 'GET' | 'POST', path: string, body?: unknown): Promise<T> {
-  const identityHeaders = await resolveGatewayIdentityHeaders(apiKey)
 
   let r: Response
   try {
@@ -169,9 +124,10 @@ export interface ExportAudiobookResult {
 
 export function createAudiobook(
   apiKey: string,
+  keyId: string,
   params: { title: string; voice_id: string; speed?: number; text: string }
 ): Promise<CreateAudiobookResult> {
-  return call(apiKey, 'POST', '/api/audiobooks', {
+  return call(apiKey, keyId, 'POST', '/api/audiobooks', {
     title: params.title,
     voice_id: params.voice_id,
     speed: params.speed,
@@ -180,10 +136,10 @@ export function createAudiobook(
   })
 }
 
-export function getAudiobookStatus(apiKey: string, audiobookId: string): Promise<AudiobookStatusResult> {
-  return call(apiKey, 'GET', `/api/audiobooks/${encodeURIComponent(audiobookId)}/status`)
+export function getAudiobookStatus(apiKey: string, keyId: string, audiobookId: string): Promise<AudiobookStatusResult> {
+  return call(apiKey, keyId, 'GET', `/api/audiobooks/${encodeURIComponent(audiobookId)}/status`)
 }
 
-export function exportAudiobook(apiKey: string, audiobookId: string): Promise<ExportAudiobookResult> {
-  return call(apiKey, 'POST', `/api/audiobooks/${encodeURIComponent(audiobookId)}/export`)
+export function exportAudiobook(apiKey: string, keyId: string, audiobookId: string): Promise<ExportAudiobookResult> {
+  return call(apiKey, keyId, 'POST', `/api/audiobooks/${encodeURIComponent(audiobookId)}/export`)
 }
