@@ -23,7 +23,6 @@ export const listVoicesInput = {
 }
 export const listVoicesSchema = z.object(listVoicesInput)
 
-<<<<<<< HEAD
 // ============================================================================
 // Audiobooks MVP (backend/src/routes/audiobooks.ts) — chapter detection +
 // batch same-voice TTS per chapter + ffmpeg export. See audiobooksClient.ts
