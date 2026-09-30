@@ -57,7 +57,12 @@ async function resolveGatewayIdentityHeaders(apiKey: string): Promise<Record<str
     )
   }
 
-  const { token } = await authorize(apiKey, 'audiobooks')
+  // 'audiobooks' is not a real engine the gateway recognizes - it rejected
+  // it with 401 every time, confirmed live against the deployed MCP server.
+  // The other three bridged tools (isolate_voice, dub_audio, sound effects)
+  // all use 'piper' here too: it's just used to authenticate the key via
+  // the gateway's existing /tts/authorize, not to actually select an engine.
+  const { token } = await authorize(apiKey, 'piper')
   const claims = decodeJwtClaims(token)
   const uid = typeof claims.uid === 'string' && claims.uid ? claims.uid : undefined
   const keyId = typeof claims.key_id === 'string' && claims.key_id ? claims.key_id : undefined
