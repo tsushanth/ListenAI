@@ -26,9 +26,13 @@ FROM node:20-alpine AS production
 WORKDIR /app
 
 # Install ffmpeg for audio conversion (WAV to MP3)
-# Install Python + modal CLI for voice-convert deployment orchestration
+# Install Python + modal CLI for voice-convert/voice-isolate deployment orchestration.
+# Unpinned deliberately: Modal's server rejects old client versions outright
+# ("client version too old") once they age out, so a hardcoded pin (was
+# 0.63.0) silently breaks every per-user self-serve deploy once that
+# happens - confirmed live during a real voice-isolate deploy test.
 RUN apk add --no-cache ffmpeg python3 py3-pip && \
-    pip3 install modal==0.63.0 --break-system-packages
+    pip3 install modal --break-system-packages
 
 # Create non-root user
 RUN addgroup -g 1001 -S nodejs && \
