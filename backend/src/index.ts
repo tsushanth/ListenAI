@@ -41,8 +41,10 @@ import { voiceStudioApiKeyRouter } from './routes/voiceStudioApiKey.js';
 import { orpheusVoiceStudioApiKeyRouter } from './routes/orpheusVoiceStudioApiKey.js';
 import { orpheusVoiceStudioRouter } from './routes/orpheusVoiceStudio.js';
 import { dubRouter } from './routes/dub.js';
+import { soundEffectsRouter } from './routes/soundEffects.js';
 import { aggregateLatencyMetrics, checkSupabaseHealth, checkStorageHealth } from './lib/supabaseClient.js';
 import { startWorker, stopWorker } from './workers/ttsJobWorker.js';
+import { startSoundEffectJobWorker, stopSoundEffectJobWorker } from './workers/soundEffectJobWorker.js';
 import { checkPubSubHealth } from './lib/pubsub.js';
 import { initRolloutFromEnv } from './lib/rollout.js';
 import { reportUsageToStripe } from './lib/realtimeTtsBilling.js';
@@ -253,6 +255,17 @@ app.use('/api/stt', requireAuthOrApiKey, sttRouter);
 // translation + existing TTS pipeline (dark unless STT_WORKER_URL is configured). See
 // routes/dub.ts header for scope boundaries (no video, in-memory jobs only).
 app.use('/api/dub', requireAuthOrApiKey, dubRouter);
+// Sound effects — text-to-sound-effect generation on a shared Modal worker (see
+// backend/modal/sound_effects_worker.py), async job API mirroring the (unmerged)
+// text-to-music feature branch's textToMusic.ts. Dark unless SOUND_EFFECTS_WORKER_URL
+// is configured (soundEffects.ts's routes still respond, but jobs never leave 'queued'
+// without the worker below actually running — mirrors MUSIC_WORKER_ENABLED's gating).
+// Uses requireAuthOrApiKey (not requireAuth): this is a billed, MCP-reachable route, and
+// requireAuth's default-user fallback would let an unauthenticated/invalid caller get
+// billed to a shared default user. requireAuthOrApiKey has no such fallback — it accepts
+// either a real Supabase JWT or a gateway-forwarded API-key identity, and rejects (401)
+// anything else. See MCP_AUTH_BRIDGE.md.
+app.use('/api/sound-effects', requireAuthOrApiKey, soundEffectsRouter);
 // strict Supabase auth like the API-key routes above.
 app.use('/api/voice-studio', voiceStudioRouter);
 
@@ -335,6 +348,15 @@ const server = app.listen(PORT, () => {
       enabled: true,
     });
   }
+
+  // Embedded polling worker for sound effect generation jobs — mirrors the
+  // text-to-music feature branch's MUSIC_WORKER_ENABLED gate. Off by
+  // default: a deploy with no Modal worker provisioned should not spin up
+  // a poll loop that will just fail every callModalWorker() call.
+  if (process.env.SOUND_EFFECT_WORKER_ENABLED === 'true') {
+    logger.info('Starting sound effect job worker');
+    startSoundEffectJobWorker();
+  }
 });
 
 // Graceful shutdown
@@ -344,6 +366,9 @@ function shutdown(signal: string) {
   // Stop worker if running
   if (process.env.TTS_WORKER_ENABLED === 'true') {
     stopWorker();
+  }
+  if (process.env.SOUND_EFFECT_WORKER_ENABLED === 'true') {
+    stopSoundEffectJobWorker();
   }
 
   server.close(() => {
