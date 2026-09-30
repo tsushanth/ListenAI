@@ -246,7 +246,14 @@ def cleanup(job_id: str) -> dict:
     image=web_image,
     secrets=[convert_secret] if convert_secret else [],
     volumes={"/jobs": jobs},
-    timeout=60,
+    # 60s was not enough: api()'s own container (web_image) is light, but its POST /convert handler
+    # makes a synchronous submit.remote() call into a container using `image` above -- a much heavier
+    # image (clones seed-vc, installs transformers/whisper/onnxruntime/etc.) than isolate_job.py's.
+    # On this app's very first real deploy, that cold image pull alone exceeded 60s, so every first
+    # conversion after a fresh per-user deploy failed with "function execution timed out" -- confirmed
+    # by a live production smoke test (three real submissions, each timing out at ~60-64s). Bumped to
+    # give a cold submit() container real headroom; isolate_job.py's lighter image doesn't need this.
+    timeout=240,
 )
 @modal.asgi_app()
 def api():
