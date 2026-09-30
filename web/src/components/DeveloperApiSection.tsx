@@ -17,7 +17,10 @@ export default function DeveloperApiSection() {
   const [issuing, setIssuing] = useState(false)
   const [billingActive, setBillingActive] = useState(false)
   const [billingLoading, setBillingLoading] = useState(false)
-  const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin')
+  const [authMode, setAuthMode] = useState<'signin' | 'signup' | 'forgot'>('signin')
+  const [recovering, setRecovering] = useState(false)
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [authSubmitting, setAuthSubmitting] = useState(false)
@@ -28,7 +31,15 @@ export default function DeveloperApiSection() {
       setSession(data.session)
       setAuthLoading(false)
     })
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => setSession(s))
+    const { data: sub } = supabase.auth.onAuthStateChange((event, s) => {
+      setSession(s)
+      // The emailed reset link signs the user in with a short-lived recovery session; make them
+      // choose a new password before showing the account, instead of dropping them into it.
+      if (event === 'PASSWORD_RECOVERY') {
+        setRecovering(true)
+        document.getElementById('get-started')?.scrollIntoView()
+      }
+    })
     return () => sub.subscription.unsubscribe()
   }, [])
 
@@ -56,7 +67,15 @@ export default function DeveloperApiSection() {
     setError(null)
     setAuthNotice(null)
     try {
-      if (authMode === 'signup') {
+      if (authMode === 'forgot') {
+        const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${window.location.origin}/developers`,
+        })
+        if (resetError) throw resetError
+        // Same message whether or not the address has an account, so this can't be used to probe for accounts.
+        setAuthNotice('If an account exists for that email, we sent a link to reset your password. It can take a minute to arrive; check spam too.')
+        setAuthMode('signin')
+      } else if (authMode === 'signup') {
         const { data, error: signUpError } = await supabase.auth.signUp({ email, password })
         if (signUpError) throw signUpError
         if (!data.session) {
@@ -71,6 +90,28 @@ export default function DeveloperApiSection() {
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Authentication failed')
+    } finally {
+      setAuthSubmitting(false)
+    }
+  }
+
+  const submitNewPassword = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError(null)
+    if (newPassword !== confirmPassword) {
+      setError('The two passwords do not match.')
+      return
+    }
+    setAuthSubmitting(true)
+    try {
+      const { error: updateError } = await supabase.auth.updateUser({ password: newPassword })
+      if (updateError) throw updateError
+      setRecovering(false)
+      setNewPassword('')
+      setConfirmPassword('')
+      setAuthNotice('Password updated. You are signed in.')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not update the password')
     } finally {
       setAuthSubmitting(false)
     }
@@ -149,10 +190,47 @@ export default function DeveloperApiSection() {
           <div className="flex items-center gap-2 text-white/60">
             <Loader2 size={18} className="animate-spin" /> Loading…
           </div>
+        ) : recovering && session ? (
+          <div>
+            <p className="text-white/70 mb-4">Choose a new password for {session.user.email}.</p>
+            <form onSubmit={submitNewPassword} className="space-y-3 max-w-sm">
+              <input
+                type="password"
+                required
+                minLength={6}
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="New password"
+                autoComplete="new-password"
+                className="w-full bg-dark-tertiary border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-primary"
+              />
+              <input
+                type="password"
+                required
+                minLength={6}
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Confirm new password"
+                autoComplete="new-password"
+                className="w-full bg-dark-tertiary border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-primary"
+              />
+              {error && <p className="text-sm text-red-400">{error}</p>}
+              <button
+                type="submit"
+                disabled={authSubmitting}
+                className="inline-flex items-center gap-2 bg-white text-black font-semibold px-5 py-2.5 rounded-lg hover:bg-white/90 transition-colors disabled:opacity-50"
+              >
+                {authSubmitting ? <Loader2 size={18} className="animate-spin" /> : null}
+                Update password
+              </button>
+            </form>
+          </div>
         ) : !session ? (
           <div>
             <p className="text-white/70 mb-4">
-              Sign in to generate an API key for the realtime TTS service.
+              {authMode === 'forgot'
+                ? 'Enter your email and we will send you a link to reset your password.'
+                : 'Sign in to generate an API key for the realtime TTS service.'}
             </p>
             <p className="text-xs text-white/50 mb-4">
               Latency note: a cold worker (idle for a couple minutes) can take several
@@ -174,15 +252,18 @@ export default function DeveloperApiSection() {
                 placeholder="you@example.com"
                 className="w-full bg-dark-tertiary border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-primary"
               />
-              <input
-                type="password"
-                required
-                minLength={6}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Password"
-                className="w-full bg-dark-tertiary border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-primary"
-              />
+              {authMode !== 'forgot' && (
+                <input
+                  type="password"
+                  required
+                  minLength={6}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Password"
+                  autoComplete={authMode === 'signup' ? 'new-password' : 'current-password'}
+                  className="w-full bg-dark-tertiary border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-primary"
+                />
+              )}
               {error && <p className="text-sm text-red-400">{error}</p>}
               <div className="flex items-center gap-3">
                 <button
@@ -191,20 +272,33 @@ export default function DeveloperApiSection() {
                   className="inline-flex items-center gap-2 bg-white text-black font-semibold px-5 py-2.5 rounded-lg hover:bg-white/90 transition-colors disabled:opacity-50"
                 >
                   {authSubmitting ? <Loader2 size={18} className="animate-spin" /> : null}
-                  {authMode === 'signup' ? 'Create account' : 'Sign in'}
+                  {authMode === 'signup' ? 'Create account' : authMode === 'forgot' ? 'Send reset link' : 'Sign in'}
                 </button>
                 <button
                   type="button"
                   onClick={() => {
-                    setAuthMode(authMode === 'signup' ? 'signin' : 'signup')
+                    setAuthMode(authMode === 'signin' ? 'signup' : 'signin')
                     setError(null)
                     setAuthNotice(null)
                   }}
                   className="text-sm text-white/50 hover:text-white transition-colors"
                 >
-                  {authMode === 'signup' ? 'Already have an account? Sign in' : "Don't have an account? Sign up"}
+                  {authMode === 'signin' ? "Don't have an account? Sign up" : authMode === 'forgot' ? 'Back to sign in' : 'Already have an account? Sign in'}
                 </button>
               </div>
+              {authMode === 'signin' && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuthMode('forgot')
+                    setError(null)
+                    setAuthNotice(null)
+                  }}
+                  className="text-sm text-white/50 hover:text-white transition-colors"
+                >
+                  Forgot password?
+                </button>
+              )}
             </form>
           </div>
         ) : (
