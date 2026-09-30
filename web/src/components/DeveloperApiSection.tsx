@@ -117,6 +117,22 @@ export default function DeveloperApiSection() {
     }
   }
 
+  const signInWithGoogle = async () => {
+    setError(null)
+    setAuthNotice(null)
+    setAuthSubmitting(true)
+    // Full-page redirect to Google and back; Supabase restores the session from the URL on return
+    // (detectSessionInUrl). The return URL must be on the project's redirect allow list.
+    const { error: oauthError } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: `${window.location.origin}/developers` },
+    })
+    if (oauthError) {
+      setError(oauthError.message)
+      setAuthSubmitting(false)
+    }
+  }
+
   const signOut = async () => {
     await supabase.auth.signOut()
     setKeys([])
@@ -241,6 +257,28 @@ export default function DeveloperApiSection() {
               <p className="text-sm text-green-300 bg-green-500/10 border border-green-500/30 rounded-lg px-3 py-2 mb-4">
                 {authNotice}
               </p>
+            )}
+
+            {authMode !== 'forgot' && (
+              <div className="max-w-sm mb-4">
+                <button
+                  type="button"
+                  onClick={signInWithGoogle}
+                  disabled={authSubmitting}
+                  className="w-full inline-flex items-center justify-center gap-2 bg-white text-black font-semibold px-5 py-2.5 rounded-lg hover:bg-white/90 transition-colors disabled:opacity-50"
+                >
+                  <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
+                    <path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.9 2.4 30.4 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.1C12.4 13.6 17.7 9.5 24 9.5z"/>
+                    <path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.5 5.8c4.4-4.1 7.1-10.1 7.1-17.5z"/>
+                    <path fill="#FBBC05" d="M10.5 28.7c-.5-1.5-.8-3-.8-4.7s.3-3.2.8-4.7l-7.9-6.1C.9 16.4 0 20.100 0 24s.9 7.600 2.600 10.800l7.900-6.100z"/>
+                    <path fill="#34A853" d="M24 48c6.500 0 11.900-2.100 15.900-5.800l-7.500-5.800c-2.100 1.400-4.800 2.300-8.400 2.300-6.300 0-11.600-4.100-13.500-9.800l-7.900 6.100C6.500 42.600 14.600 48 24 48z"/>
+                  </svg>
+                  Continue with Google
+                </button>
+                <div className="flex items-center gap-3 my-4 text-xs text-white/40">
+                  <span className="flex-1 h-px bg-white/10" /> or use email <span className="flex-1 h-px bg-white/10" />
+                </div>
+              </div>
             )}
 
             <form onSubmit={submitAuth} className="space-y-3 max-w-sm">
