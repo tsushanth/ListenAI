@@ -1,4 +1,4 @@
--- backend/supabase/migrations/018_add_music_jobs.sql
+-- backend/supabase/migrations/024_add_music_jobs.sql
 -- Mirrors tts_jobs (see 002_add_tts_jobs_cache.sql, 007_add_cloned_voice_job_fields.sql)
 -- but simplified: no chunking/progress tracking, since music generation is a
 -- single Modal call per job, not a multi-chunk synthesis pipeline.

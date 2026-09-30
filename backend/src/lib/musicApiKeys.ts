@@ -1,5 +1,5 @@
 // Persistent API keys for the text-to-music API. See
-// supabase/migrations/020_add_music_api_keys.sql for the storage design:
+// supabase/migrations/026_add_music_api_keys.sql for the storage design:
 // only a SHA-256 hash of the raw key is ever stored; the raw key is
 // returned to the caller exactly once, at creation time.
 import crypto from 'crypto';

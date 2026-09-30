@@ -5,7 +5,7 @@
 -- Row Level Security and with its RPCs EXECUTE-able by the public `anon` and
 -- `authenticated` Postgres roles by default (Postgres grants EXECUTE on
 -- newly created functions to PUBLIC unless revoked), then had to ship a
--- second migration (019_secure_music_jobs.sql) to close that hole after the
+-- second migration (025_secure_music_jobs.sql) to close that hole after the
 -- fact. Since none of the RPCs in 018_add_sound_effect_jobs.sql check
 -- auth.uid() internally, leaving that in place here would let any holder of
 -- the anon key impersonate any user: read another user's sound_effect_jobs
@@ -44,7 +44,7 @@
 --   * Each RPC below is individually REVOKEd from PUBLIC, anon, and
 --     authenticated with its exact argument signature (Postgres requires
 --     the full signature to disambiguate, even with no overloads), matching
---     019_secure_music_jobs.sql's fix one-for-one for the sound effect
+--     025_secure_music_jobs.sql's fix one-for-one for the sound effect
 --     table's five equivalent functions.
 
 ALTER TABLE sound_effect_jobs ENABLE ROW LEVEL SECURITY;

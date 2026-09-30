@@ -1,4 +1,4 @@
--- backend/supabase/migrations/019_secure_music_jobs.sql
+-- backend/supabase/migrations/025_secure_music_jobs.sql
 --
 -- SECURITY FIX: music_jobs had no Row Level Security enabled, and its RPCs
 -- (create_music_job, claim_next_music_job, update_music_job_status,
@@ -35,7 +35,7 @@ ALTER TABLE music_jobs ENABLE ROW LEVEL SECURITY;
 -- retained table-level SELECT/INSERT/UPDATE grants.
 
 -- REVOKE EXECUTE on each music_jobs RPC, with the exact argument lists as
--- declared in 018_add_music_jobs.sql (Postgres requires the full signature
+-- declared in 024_add_music_jobs.sql (Postgres requires the full signature
 -- to disambiguate overloads, even though none of these are overloaded).
 REVOKE EXECUTE ON FUNCTION create_music_job(UUID, TEXT, INTEGER, TEXT) FROM PUBLIC, anon, authenticated;
 REVOKE EXECUTE ON FUNCTION claim_next_music_job() FROM PUBLIC, anon, authenticated;

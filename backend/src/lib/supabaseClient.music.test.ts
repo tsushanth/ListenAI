@@ -1,6 +1,6 @@
 // Run: npx tsx --test src/lib/supabaseClient.music.test.ts
 // Requires a local Supabase instance (`supabase start`) with migration
-// 018_add_music_jobs.sql applied.
+// 024_add_music_jobs.sql applied.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 

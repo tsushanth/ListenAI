@@ -1,6 +1,6 @@
 -- backend/supabase/migrations/018_add_sound_effect_jobs.sql
 -- Sound Effects generation jobs. Mirrors music_jobs from the (unmerged)
--- text-to-music feature branch's 018_add_music_jobs.sql, which itself
+-- text-to-music feature branch's 024_add_music_jobs.sql, which itself
 -- mirrors tts_jobs (see 002_add_tts_jobs_cache.sql,
 -- 007_add_cloned_voice_job_fields.sql) but simplified: no chunking/progress
 -- tracking, since sound effect generation is a single Modal call per job,
