@@ -565,7 +565,7 @@ dubRouter.post('/', upload.single('audio'), asyncHandler(async (req: Authenticat
 
   // The speech-to-text step runs on the caller's own Modal deployment (there is no shared worker).
   const manager = getDeploymentManager();
-  const target = await manager.resolveTarget(userId, 'dub');
+  const target = await manager.resolveTarget(userId, 'dub', { forNewWork: true });
   if (!target) {
     res.status(400).json({
       error: 'Dubbing is not deployed. Deploy first (POST /api/dub/deploy), wait until its status is "ready", then submit.',

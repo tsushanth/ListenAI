@@ -87,6 +87,7 @@ export type DenyCode =
   | 'not_configured'
   | 'deployments_disabled'
   | 'payment_required'
+  | 'account_required'
   | 'user_cap'
   | 'global_cap'
   | 'daily_cap';
@@ -215,10 +216,10 @@ export function isDeploymentService(v: unknown): v is DeploymentService {
   return typeof v === 'string' && Object.prototype.hasOwnProperty.call(SERVICE_SPECS, v);
 }
 
-/** Matches an app this system created: <prefix>-user-<8 hex>-<4 hex>. Used to find orphans. */
+/** Matches an app this system created: <prefix>-user-<8 hex of the account id>-<8 hex random>. Used to find orphans. */
 export function managedAppPattern(): RegExp {
   const prefixes = Object.values(SERVICE_SPECS).map((s) => s.appPrefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
-  return new RegExp(`^(?:${prefixes.join('|')})-user-[0-9a-f]{8}-[0-9a-f]{4}$`);
+  return new RegExp(`^(?:${prefixes.join('|')})-user-[0-9a-f]{8}-[0-9a-f]{8}$`);
 }
 
 // ----------------------------------------------------------------------------------------------
@@ -235,22 +236,33 @@ export interface DeployLimits {
   maxDeploysPerUserPerDay: number;
   volumeRetentionMs: number;
   requirePaymentMethod: boolean;
+  /** Most `modal deploy` child processes this backend runs at once. */
+  maxConcurrentDeploys: number;
 }
 
 const MIN = 60_000;
 const HOUR = 3_600_000;
 
+const TRUTHY = new Set(['true', '1', 'yes', 'on']);
+
+/** Positive finite number or a loud error: a NaN cap would make `count >= cap` always false and switch the cap off. */
+function positive(name: string, v: unknown): number {
+  if (typeof v !== 'number' || !Number.isFinite(v) || v <= 0) throw new Error(`${name} must be a positive number (got ${String(v)})`);
+  return v;
+}
+
 export function limitsFromConfig(c: typeof config = config): DeployLimits {
   return {
-    disabled: c.MODAL_DEPLOYMENTS_DISABLED === 'true',
-    idleTtlMs: c.MODAL_DEPLOY_IDLE_TTL_MIN * MIN,
-    maxAgeMs: c.MODAL_DEPLOY_MAX_AGE_MIN * MIN,
-    deployTimeoutMs: c.MODAL_DEPLOY_TIMEOUT_MIN * MIN,
-    maxActivePerUser: c.MODAL_MAX_ACTIVE_PER_USER,
-    maxActiveGlobal: c.MODAL_MAX_ACTIVE_GLOBAL,
-    maxDeploysPerUserPerDay: c.MODAL_MAX_DEPLOYS_PER_USER_PER_DAY,
-    volumeRetentionMs: c.MODAL_VOLUME_RETENTION_HOURS * HOUR,
-    requirePaymentMethod: c.MODAL_DEPLOY_REQUIRE_PAYMENT_METHOD !== 'false',
+    disabled: TRUTHY.has(String(c.MODAL_DEPLOYMENTS_DISABLED).trim().toLowerCase()),
+    idleTtlMs: positive('MODAL_DEPLOY_IDLE_TTL_MIN', c.MODAL_DEPLOY_IDLE_TTL_MIN) * MIN,
+    maxAgeMs: positive('MODAL_DEPLOY_MAX_AGE_MIN', c.MODAL_DEPLOY_MAX_AGE_MIN) * MIN,
+    deployTimeoutMs: positive('MODAL_DEPLOY_TIMEOUT_MIN', c.MODAL_DEPLOY_TIMEOUT_MIN) * MIN,
+    maxActivePerUser: positive('MODAL_MAX_ACTIVE_PER_USER', c.MODAL_MAX_ACTIVE_PER_USER),
+    maxActiveGlobal: positive('MODAL_MAX_ACTIVE_GLOBAL', c.MODAL_MAX_ACTIVE_GLOBAL),
+    maxDeploysPerUserPerDay: positive('MODAL_MAX_DEPLOYS_PER_USER_PER_DAY', c.MODAL_MAX_DEPLOYS_PER_USER_PER_DAY),
+    volumeRetentionMs: positive('MODAL_VOLUME_RETENTION_HOURS', c.MODAL_VOLUME_RETENTION_HOURS) * HOUR,
+    requirePaymentMethod: !['false', '0', 'no', 'off'].includes(String(c.MODAL_DEPLOY_REQUIRE_PAYMENT_METHOD).trim().toLowerCase()),
+    maxConcurrentDeploys: Math.max(1, Math.floor(positive('MODAL_MAX_CONCURRENT_DEPLOYS', c.MODAL_MAX_CONCURRENT_DEPLOYS))),
   };
 }
 
@@ -258,9 +270,22 @@ export function limitsFromConfig(c: typeof config = config): DeployLimits {
 // Store
 // ----------------------------------------------------------------------------------------------
 
+export interface ClaimCaps {
+  maxPerUser: number;
+  maxGlobal: number;
+  maxDaily: number;
+  /** Start of the window the daily cap counts over. */
+  dailySinceIso: string;
+}
+
+export type ClaimResult = { row: DeploymentRow } | { conflict: true } | { denied: 'user_cap' | 'global_cap' | 'daily_cap' };
+
 export interface DeploymentStore {
-  /** `conflict` is true when the one-live-deployment-per-user-per-service index rejected the insert. */
-  insert(row: NewDeployment): Promise<{ row?: DeploymentRow; conflict?: boolean }>;
+  /**
+   * Atomically check the caps and insert, so concurrent requests cannot all pass a count and then all insert. Checks, in
+   * order: one live deployment per user and service (`conflict`), then the per-user, global and daily caps (`denied`).
+   */
+  claim(row: NewDeployment, caps: ClaimCaps): Promise<ClaimResult>;
   getById(id: string): Promise<DeploymentRow | null>;
   getLive(userId: string, service: DeploymentService): Promise<DeploymentRow | null>;
   /** Most recent deployment for this user and service in any status, so a failed or stopped one is still visible. */
@@ -273,8 +298,6 @@ export interface DeploymentStore {
   listByStatus(statuses: DeploymentStatus[], limit: number): Promise<DeploymentRow[]>;
   /** Rows whose cleanup (stopped_at) never completed: 'failed' rows needing cleanup. */
   listFailedNeedingCleanup(limit: number): Promise<DeploymentRow[]>;
-  countLive(userId?: string): Promise<number>;
-  countCreatedSince(userId: string, sinceIso: string): Promise<number>;
   listVolumesDue(nowIso: string, limit: number): Promise<DeploymentRow[]>;
 }
 
@@ -285,13 +308,27 @@ export function createSupabaseStore(client = supabase): DeploymentStore {
     return res.data as R;
   };
   return {
-    async insert(row) {
-      const res = await client.from(T).insert(row).select().single();
-      if (res.error) {
-        if (res.error.code === '23505') return { conflict: true };
-        throw new Error(`modal_deployments insert: ${res.error.message}`);
-      }
-      return { row: res.data as DeploymentRow };
+    async claim(row, caps) {
+      // One database function does the checks and the insert under an advisory lock (see migration 030).
+      const { data, error } = await client.rpc('claim_modal_deployment', {
+        p_user_id: row.user_id,
+        p_service: row.service,
+        p_app_name: row.app_name,
+        p_modal_url: row.modal_url,
+        p_secret_name: row.secret_name,
+        p_modal_secret: row.modal_secret,
+        p_volume_names: row.volume_names,
+        p_max_user: caps.maxPerUser,
+        p_max_global: caps.maxGlobal,
+        p_max_daily: caps.maxDaily,
+        p_daily_since: caps.dailySinceIso,
+      });
+      if (error) throw new Error(`modal_deployments claim: ${error.message}`);
+      const out = data as { result: 'inserted' | 'conflict' | 'denied'; code?: 'user_cap' | 'global_cap' | 'daily_cap'; row?: DeploymentRow };
+      if (out.result === 'inserted' && out.row) return { row: out.row };
+      if (out.result === 'conflict') return { conflict: true };
+      if (out.result === 'denied' && out.code) return { denied: out.code };
+      throw new Error(`modal_deployments claim: unexpected result ${JSON.stringify(out)}`);
     },
     async getById(id) {
       const res = await client.from(T).select('*').eq('id', id).maybeSingle();
@@ -331,18 +368,6 @@ export function createSupabaseStore(client = supabase): DeploymentStore {
       const res = await client.from(T).select('*').eq('status', 'failed').is('stopped_at', null).limit(limit);
       return (unwrap(res, 'listFailedNeedingCleanup') ?? []) as DeploymentRow[];
     },
-    async countLive(userId) {
-      let q = client.from(T).select('id', { count: 'exact', head: true }).in('status', LIVE_STATUSES);
-      if (userId) q = q.eq('user_id', userId);
-      const res = await q;
-      if (res.error) throw new Error(`modal_deployments countLive: ${res.error.message}`);
-      return res.count ?? 0;
-    },
-    async countCreatedSince(userId, sinceIso) {
-      const res = await client.from(T).select('id', { count: 'exact', head: true }).eq('user_id', userId).gte('created_at', sinceIso);
-      if (res.error) throw new Error(`modal_deployments countCreatedSince: ${res.error.message}`);
-      return res.count ?? 0;
-    },
     async listVolumesDue(nowIso, limit) {
       const res = await client
         .from(T)
@@ -371,9 +396,17 @@ export interface DeploymentManagerDeps {
   /** False when MODAL_TOKEN_ID/SECRET are missing: deploys are refused with `not_configured`. */
   cliConfigured: boolean;
   hasPaymentMethod: (userId: string) => Promise<boolean>;
+  /** Only account ids may deploy. Defaults to a UUID check; an API key's own id is not an account and is refused cleanly. */
+  validateUserId?: (userId: string) => boolean;
   now?: () => Date;
   randomHex?: (bytes: number) => string;
 }
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+/** Error text shown to users when a deployment failed: the raw CLI output (paths, token ids) stays in the row for operators. */
+export const PUBLIC_DEPLOY_ERROR = 'The deployment failed. Try again; if it keeps failing, contact support.';
+/** New work is not accepted this close to a deployment's maximum age: a long job submitted now would be killed mid-run. */
+export const NEW_WORK_MARGIN_MS = 5 * 60_000;
 
 const hex = (n: number) => randomBytes(n).toString('hex');
 const errMsg = (e: unknown) => (e instanceof Error ? e.message : String(e));
@@ -385,9 +418,13 @@ export class DeploymentManager {
   private readonly workspace: string;
   private readonly cliConfigured: boolean;
   private readonly hasPaymentMethod: (userId: string) => Promise<boolean>;
+  private readonly validateUserId: (userId: string) => boolean;
   private readonly nowFn: () => Date;
   private readonly rand: (bytes: number) => string;
   private readonly inFlight = new Set<Promise<void>>();
+  // Bounds how many `modal deploy` child processes run at once on this machine.
+  private activeDeploys = 0;
+  private readonly deployWaiters: Array<() => void> = [];
 
   constructor(deps: DeploymentManagerDeps) {
     this.store = deps.store;
@@ -396,6 +433,7 @@ export class DeploymentManager {
     this.workspace = deps.workspace;
     this.cliConfigured = deps.cliConfigured;
     this.hasPaymentMethod = deps.hasPaymentMethod;
+    this.validateUserId = deps.validateUserId ?? ((id) => UUID_RE.test(id));
     this.nowFn = deps.now ?? (() => new Date());
     this.rand = deps.randomHex ?? hex;
   }
@@ -429,7 +467,7 @@ export class DeploymentManager {
       status: row.status,
       app_name: row.app_name,
       modal_url: row.modal_url,
-      error: row.error,
+      error: row.error ? PUBLIC_DEPLOY_ERROR : null,
       job_count: row.job_count,
       created_at: row.created_at,
       ready_at: row.ready_at,
@@ -464,6 +502,13 @@ export class DeploymentManager {
     if (!this.cliConfigured) {
       return { kind: 'denied', code: 'not_configured', message: `${capitalise(spec.label)} deployment is not configured on this backend.` };
     }
+    if (!this.validateUserId(userId)) {
+      return {
+        kind: 'denied',
+        code: 'account_required',
+        message: 'Deployments need a signed-in account. This credential is not linked to one.',
+      };
+    }
 
     const existing = await this.store.getLive(userId, service);
     if (existing) return { kind: 'exists', deployment: this.toPublic(existing) };
@@ -475,42 +520,79 @@ export class DeploymentManager {
         message: 'Add a payment method to deploy. Deployments run GPU resources that are billed to your account.',
       };
     }
-    if ((await this.store.countLive(userId)) >= this.limits.maxActivePerUser) {
-      return { kind: 'denied', code: 'user_cap', message: `You can have at most ${this.limits.maxActivePerUser} active deployments. Tear one down first.` };
-    }
-    if ((await this.store.countLive()) >= this.limits.maxActiveGlobal) {
-      return { kind: 'denied', code: 'global_cap', message: 'Deployment capacity is full right now. Try again in a few minutes.' };
-    }
-    const dayAgo = this.iso(-24 * HOUR);
-    if ((await this.store.countCreatedSince(userId, dayAgo)) >= this.limits.maxDeploysPerUserPerDay) {
-      return { kind: 'denied', code: 'daily_cap', message: `Daily deployment limit reached (${this.limits.maxDeploysPerUserPerDay} per 24 hours).` };
-    }
 
-    const suffix = `-user-${userId.replace(/-/g, '').slice(0, 8)}-${this.rand(2)}`;
+    const suffix = `-user-${userId.replace(/-/g, '').slice(0, 8)}-${this.rand(4)}`;
     const appName = `${spec.appPrefix}${suffix}`;
-    const inserted = await this.store.insert({
-      user_id: userId,
-      service,
-      app_name: appName,
-      modal_url: `https://${this.workspace}--${appName}-${spec.urlLabel}.modal.run`,
-      secret_name: `${spec.secretPrefix}${suffix}`,
-      modal_secret: this.rand(32),
-      volume_names: spec.volumePrefixes.map((p) => `${p}${suffix}`),
-    });
-    if (inserted.conflict || !inserted.row) {
+    // Modal builds the endpoint subdomain as "<workspace>--<app>-<label>" and rejects anything over 63 characters. A
+    // workspace name that makes this too long would deploy an app whose URL never works, so refuse it up front.
+    const subdomain = `${this.workspace}--${appName}-${spec.urlLabel}`;
+    if (subdomain.length > 63) {
+      log.error({ subdomain, length: subdomain.length }, 'modal endpoint subdomain exceeds 63 characters; shorten MODAL_WORKSPACE or the app prefix');
+      return { kind: 'denied', code: 'not_configured', message: `${capitalise(spec.label)} deployment is not configured on this backend.` };
+    }
+    // The caps are checked and the row inserted in one atomic step, so concurrent requests cannot all pass a count and
+    // then all insert (which would overshoot the per-user and global caps).
+    const claimed = await this.store.claim(
+      {
+        user_id: userId,
+        service,
+        app_name: appName,
+        modal_url: `https://${this.workspace}--${appName}-${spec.urlLabel}.modal.run`,
+        secret_name: `${spec.secretPrefix}${suffix}`,
+        modal_secret: this.rand(32),
+        volume_names: spec.volumePrefixes.map((p) => `${p}${suffix}`),
+      },
+      {
+        maxPerUser: this.limits.maxActivePerUser,
+        maxGlobal: this.limits.maxActiveGlobal,
+        maxDaily: this.limits.maxDeploysPerUserPerDay,
+        dailySinceIso: this.iso(-24 * HOUR),
+      },
+    );
+    if ('conflict' in claimed) {
       const live = await this.store.getLive(userId, service);
       if (live) return { kind: 'exists', deployment: this.toPublic(live) };
-      throw new Error('modal_deployments insert conflicted but no live row was found');
+      throw new Error('modal_deployments claim conflicted but no live row was found');
+    }
+    if ('denied' in claimed) {
+      const messages = {
+        user_cap: `You can have at most ${this.limits.maxActivePerUser} active deployments. Tear one down first.`,
+        global_cap: 'Deployment capacity is full right now. Try again in a few minutes.',
+        daily_cap: `Daily deployment limit reached (${this.limits.maxDeploysPerUserPerDay} per 24 hours).`,
+      } as const;
+      return { kind: 'denied', code: claimed.denied, message: messages[claimed.denied] };
     }
 
-    const row = inserted.row;
+    const row = claimed.row;
     const job = this.runDeploy(row, suffix).catch((err) => log.error({ err: errMsg(err), id: row.id }, 'unexpected deploy failure'));
     this.inFlight.add(job);
     void job.finally(() => this.inFlight.delete(job));
     return { kind: 'accepted', deployment: this.toPublic(row) };
   }
 
+  private async acquireDeploySlot(): Promise<void> {
+    while (this.activeDeploys >= this.limits.maxConcurrentDeploys) {
+      await new Promise<void>((resolve) => this.deployWaiters.push(resolve));
+    }
+    this.activeDeploys++;
+  }
+
+  private releaseDeploySlot(): void {
+    this.activeDeploys--;
+    this.deployWaiters.shift()?.();
+  }
+
   private async runDeploy(row: DeploymentRow, suffix: string): Promise<void> {
+    // Wait for a slot while still 'requested', so deploy_started_at (and the stuck-deploy timeout) measures real deploy time.
+    await this.acquireDeploySlot();
+    try {
+      await this.runDeployLocked(row, suffix);
+    } finally {
+      this.releaseDeploySlot();
+    }
+  }
+
+  private async runDeployLocked(row: DeploymentRow, suffix: string): Promise<void> {
     const spec = SERVICE_SPECS[row.service];
     const started = await this.store.transition(row.id, ['requested'], { status: 'deploying', deploy_started_at: this.iso() });
     if (!started) return; // torn down before it began
@@ -527,7 +609,10 @@ export class DeploymentManager {
       log.error({ id: row.id, service: row.service, err: message }, 'modal deployment failed');
       reportFailure(`modal:deploy:${row.service}`, new Error(message), { deployment: row.id });
       const failed = await this.store.transition(row.id, ['requested', 'deploying'], { status: 'failed', error: message, stop_reason: 'deploy_failed' });
-      if (failed) await this.cleanup(failed);
+      // Clean up whatever state the row is in now. If a teardown already ran during the deploy (so the transition above
+      // found nothing to fail), the Secret created mid-deploy still has to be removed.
+      const latest = failed ?? (await this.store.getById(row.id));
+      if (latest) await this.cleanup(latest);
       return;
     }
 
@@ -548,12 +633,16 @@ export class DeploymentManager {
 
   // -- use -----------------------------------------------------------------------------------
 
-  /** Where to send this user's jobs, or null if they have no usable deployment (none, not ready, idle- or age-expired). */
-  async resolveTarget(userId: string, service: DeploymentService): Promise<DeployTarget | null> {
+  /**
+   * Where to send this user's jobs, or null if they have no usable deployment (none, not ready, idle- or age-expired).
+   * Pass `forNewWork: true` when submitting a job: it is refused in the last few minutes of the deployment's life, since
+   * a long job submitted then would be killed mid-run. Polling and fetching results must not pass it.
+   */
+  async resolveTarget(userId: string, service: DeploymentService, opts: { forNewWork?: boolean } = {}): Promise<DeployTarget | null> {
     const row = await this.store.getLive(userId, service);
     if (!row || row.status !== 'ready') return null;
     const now = this.now().getTime();
-    if (row.expires_at && Date.parse(row.expires_at) <= now) return null;
+    if (row.expires_at && Date.parse(row.expires_at) - (opts.forNewWork ? NEW_WORK_MARGIN_MS : 0) <= now) return null;
     if (row.last_used_at && Date.parse(row.last_used_at) + this.limits.idleTtlMs <= now) return null;
     return { deploymentId: row.id, url: row.modal_url, secret: row.modal_secret, lastUsedAt: row.last_used_at, jobCount: row.job_count };
   }
@@ -582,14 +671,17 @@ export class DeploymentManager {
     return out === 'noop' ? 'stopping' : out;
   }
 
-  /** Idempotent. Returns what happened so the caller can report it. */
+  /**
+   * Idempotent. 'stopped' only when Modal confirmed the app and its Secret are gone; 'stopping' when that is not
+   * confirmed yet (a retry is scheduled, or the system gave up and alerted: see cleanup()).
+   */
   async teardown(id: string, reason: string): Promise<'stopped' | 'stopping' | 'noop'> {
     const row = await this.store.getById(id);
     if (!row) return 'noop';
     if (row.status === 'stopped') return 'noop';
     if (row.status === 'failed') {
       if (row.stopped_at) return 'noop';
-      return (await this.cleanup(row)) ? 'stopped' : 'stopping';
+      return (await this.cleanup(row)) === 'done' ? 'stopped' : 'stopping';
     }
     let target = row;
     if (row.status !== 'stopping') {
@@ -601,11 +693,17 @@ export class DeploymentManager {
       if (!moved) return 'noop'; // someone else is already tearing it down
       target = moved;
     }
-    return (await this.cleanup(target)) ? 'stopped' : 'stopping';
+    return (await this.cleanup(target)) === 'done' ? 'stopped' : 'stopping';
   }
 
-  /** Stops the app and removes its Secret. Returns true when everything is gone (Volumes follow after retention). */
-  async cleanup(row: DeploymentRow): Promise<boolean> {
+  /**
+   * Stops the app and removes its Secret (Volumes follow after the retention window).
+   *   'done'    everything is gone.
+   *   'retry'   Modal did not confirm; the row is (or stays) 'stopping' and the reaper retries it.
+   *   'gave_up' MAX_TEARDOWN_ATTEMPTS failures. The row leaves the live set so the user is not blocked and the reaper stops
+   *             retrying, an alert is sent once, and the app (which may still be running) is left to the orphan sweep.
+   */
+  async cleanup(row: DeploymentRow): Promise<'done' | 'retry' | 'gave_up'> {
     try {
       await this.cli.appStop(row.app_name);
       await this.cli.secretDelete(row.secret_name);
@@ -613,13 +711,23 @@ export class DeploymentManager {
       const attempts = row.attempts + 1;
       const message = redact(errMsg(err), [row.modal_secret]).slice(0, 500);
       if (attempts >= MAX_TEARDOWN_ATTEMPTS) {
-        // Give up retrying but say so loudly: this app may still be running on our bill.
         reportFailure('modal:teardown_stuck', new Error(message), { deployment: row.id, app: row.app_name });
-        await this.store.patch(row.id, { attempts, error: message, stopped_at: this.iso() });
-        return true;
+        const settled = { attempts, error: message, stopped_at: this.iso(), volume_delete_at: row.volume_names.length ? this.iso(this.limits.volumeRetentionMs) : null };
+        if (row.status === 'failed') {
+          await this.store.patch(row.id, settled);
+        } else {
+          await this.store.transition(row.id, ['stopping', 'stopped'], { ...settled, status: 'stopped', stop_reason: 'teardown_failed' });
+        }
+        return 'gave_up';
       }
-      await this.store.patch(row.id, { attempts, error: message });
-      return false;
+      if (row.status === 'stopped') {
+        // A late cleanup (a deploy finished after its teardown) failed on a row that was already marked stopped. Put it
+        // back on the retry path: no reaper step would ever look at a 'stopped' row again, and the app is running.
+        await this.store.transition(row.id, ['stopped'], { status: 'stopping', stopping_at: this.iso(), stopped_at: null, attempts, error: message });
+      } else {
+        await this.store.patch(row.id, { attempts, error: message });
+      }
+      return 'retry';
     }
     const patch: Partial<DeploymentRow> = {
       stopped_at: this.iso(),
@@ -630,7 +738,7 @@ export class DeploymentManager {
     } else {
       await this.store.transition(row.id, ['stopping'], { ...patch, status: 'stopped' });
     }
-    return true;
+    return 'done';
   }
 }
 

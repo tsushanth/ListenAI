@@ -14,7 +14,9 @@
 
 CREATE TABLE IF NOT EXISTS modal_deployments (
   id                 UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id            UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  -- SET NULL, not CASCADE: deleting an account must not erase the record of an app that may still be running on our
+  -- Modal bill. The reaper and the orphan sweep keep working on rows with no user.
+  user_id            UUID REFERENCES auth.users(id) ON DELETE SET NULL,
   service            TEXT NOT NULL CHECK (service IN ('convert', 'isolate', 'sound_effect', 'music', 'dub')),
   app_name           TEXT NOT NULL,
   modal_url          TEXT NOT NULL,
@@ -56,3 +58,77 @@ CREATE POLICY "Service role full access on modal_deployments" ON modal_deploymen
   FOR ALL TO service_role USING (true) WITH CHECK (true);
 REVOKE ALL ON modal_deployments FROM anon, authenticated;
 GRANT ALL ON modal_deployments TO service_role;
+
+-- ============================================================================
+-- Atomic claim: check the caps and insert in one step.
+--
+-- Counting rows and then inserting leaves a window in which many concurrent requests all pass the count and all insert,
+-- overshooting the per-user and global caps. This function takes a transaction-scoped advisory lock first, so claims are
+-- serialised: every claim sees every earlier claim. Checks run in this order and the first failure wins:
+--   conflict   the user already has a live deployment of this service (also enforced by the unique index above)
+--   user_cap   the user already has p_max_user live deployments
+--   global_cap there are already p_max_global live deployments
+--   daily_cap  the user created p_max_daily deployments since p_daily_since
+-- Returns jsonb: {result:'inserted', row:{...}} | {result:'conflict'} | {result:'denied', code:'...'}
+-- ============================================================================
+CREATE OR REPLACE FUNCTION public.claim_modal_deployment(
+  p_user_id      UUID,
+  p_service      TEXT,
+  p_app_name     TEXT,
+  p_modal_url    TEXT,
+  p_secret_name  TEXT,
+  p_modal_secret TEXT,
+  p_volume_names TEXT[],
+  p_max_user     INTEGER,
+  p_max_global   INTEGER,
+  p_max_daily    INTEGER,
+  p_daily_since  TIMESTAMPTZ
+) RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  live_user    INTEGER;
+  live_global  INTEGER;
+  created_days INTEGER;
+  new_row      modal_deployments;
+BEGIN
+  PERFORM pg_advisory_xact_lock(hashtext('modal_deployments_claim'));
+
+  IF EXISTS (
+    SELECT 1 FROM modal_deployments
+     WHERE user_id = p_user_id AND service = p_service
+       AND status IN ('requested', 'deploying', 'ready', 'stopping')
+  ) THEN
+    RETURN jsonb_build_object('result', 'conflict');
+  END IF;
+
+  SELECT count(*) INTO live_user FROM modal_deployments
+   WHERE user_id = p_user_id AND status IN ('requested', 'deploying', 'ready', 'stopping');
+  IF live_user >= p_max_user THEN
+    RETURN jsonb_build_object('result', 'denied', 'code', 'user_cap');
+  END IF;
+
+  SELECT count(*) INTO live_global FROM modal_deployments
+   WHERE status IN ('requested', 'deploying', 'ready', 'stopping');
+  IF live_global >= p_max_global THEN
+    RETURN jsonb_build_object('result', 'denied', 'code', 'global_cap');
+  END IF;
+
+  SELECT count(*) INTO created_days FROM modal_deployments
+   WHERE user_id = p_user_id AND created_at >= p_daily_since;
+  IF created_days >= p_max_daily THEN
+    RETURN jsonb_build_object('result', 'denied', 'code', 'daily_cap');
+  END IF;
+
+  INSERT INTO modal_deployments (user_id, service, app_name, modal_url, secret_name, modal_secret, volume_names)
+  VALUES (p_user_id, p_service, p_app_name, p_modal_url, p_secret_name, p_modal_secret, COALESCE(p_volume_names, '{}'))
+  RETURNING * INTO new_row;
+
+  RETURN jsonb_build_object('result', 'inserted', 'row', to_jsonb(new_row));
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.claim_modal_deployment(UUID, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT[], INTEGER, INTEGER, INTEGER, TIMESTAMPTZ) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.claim_modal_deployment(UUID, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT[], INTEGER, INTEGER, INTEGER, TIMESTAMPTZ) TO service_role;

@@ -41,7 +41,11 @@ export class ModalCliError extends Error {
   }
 }
 
-const NOT_FOUND = /not found|does not exist|no such|could not find|no app/i;
+// "Already gone" is only tolerated for a not-found about the thing being deleted. A usage error (a renamed flag or
+// command in a newer, unpinned CLI) must never read as success: "No such option: --allow-missing" would otherwise make
+// a failed stop look like a completed one while the app keeps running.
+const NOT_FOUND = /not found|does not exist|could not be found|could not find/i;
+const USAGE_ERROR = /no such (option|command)|unknown (option|command)|usage:|missing (argument|option)|invalid value|got unexpected/i;
 
 /** Replace every occurrence of each secret in `text` so it can be logged or stored. */
 export function redact(text: string, secrets: string[]): string {
@@ -86,7 +90,7 @@ export function createModalCli(options: CreateModalCliOptions = {}): ModalCli {
     } catch (err) {
       const e = err as { stderr?: string; stdout?: string; message?: string; killed?: boolean; code?: number | string };
       const tail = redact(String(e.stderr || e.stdout || e.message || 'unknown error'), scrub).trim().slice(-400);
-      const notFound = NOT_FOUND.test(tail);
+      const notFound = NOT_FOUND.test(tail) && !USAGE_ERROR.test(tail);
       if (notFound && opts.allowMissing) return '';
       const reason = e.killed ? 'timed out' : `exit ${e.code ?? '?'}`;
       throw new ModalCliError(`modal ${args[0]} ${args[1] ?? ''} failed (${reason}): ${tail}`.trim(), notFound);
@@ -115,11 +119,16 @@ export function createModalCli(options: CreateModalCliOptions = {}): ModalCli {
       } catch {
         throw new ModalCliError('modal app list returned output that is not JSON');
       }
-      return rows.map((r) => ({
+      const apps = rows.map((r) => ({
         id: String(r['App ID'] ?? ''),
         name: String(r['Description'] ?? ''),
         state: String(r['State'] ?? ''),
       }));
+      // If the CLI renames these JSON keys every name reads as '' and the orphan sweep would silently match nothing.
+      if (apps.length > 0 && apps.every((a) => !a.name)) {
+        throw new ModalCliError('modal app list returned rows with no recognisable app names; its JSON format may have changed');
+      }
+      return apps;
     },
     async volumeDelete(name) {
       await exec(['volume', 'delete', name, '--yes', '--allow-missing'], { allowMissing: true });

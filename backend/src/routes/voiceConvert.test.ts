@@ -574,3 +574,27 @@ test('a job status without gpu_seconds records nothing', async () => {
   setUsageRecorderForTests(null);
   uninstallFetchMock();
 });
+
+// ---------------------------------------------------------------------------
+// A lapsed subscription must not trap a running deployment (it runs on our Modal bill until stopped)
+// ---------------------------------------------------------------------------
+
+test('billing inactive: GET and DELETE /deploy still work, so a user can always tear down; submitting is still 402', async () => {
+  installFetchMock();
+  resetState();
+  billingActive = false;
+  userConfigs.set(resolvedUserId, { modal_url: MODAL_BASE, modal_secret: 'my-secret' });
+  const s = await boot();
+
+  const status = await s.call('valid-token', 'GET', '/deploy');
+  assert.equal(status.status, 200, 'status is visible');
+  const del = await s.call('valid-token', 'DELETE', '/deploy');
+  assert.equal(del.status, 200, 'teardown is not billing-gated');
+  assert.equal((await del.json()).deleted, true);
+  assert.equal(harness.store.liveFor(resolvedUserId, 'convert'), undefined, 'the deployment is gone');
+
+  const submit = await s.call('valid-token', 'POST', '/conversions', buildForm(Buffer.from('src'), Buffer.from('tgt'), CONSENT_STATEMENT));
+  assert.equal(submit.status, 402, 'new work still needs an active subscription or credits');
+  s.close();
+  uninstallFetchMock();
+});

@@ -109,7 +109,7 @@ test('per-user Volumes are deleted only after the retention window, once', async
 
   h.clock.advance(2 * 60 * MIN);
   assert.equal((await runReaperOnce(h.manager)).volumesDeleted, 1);
-  assert.deepEqual(h.cli.calls.filter((c) => c.op === 'volumeDelete').map((c) => c.args[0]), ['voice-convert-dev-jobs-user-usera-abcd']);
+  assert.deepEqual(h.cli.calls.filter((c) => c.op === 'volumeDelete').map((c) => c.args[0]), ['voice-convert-dev-jobs-user-usera-abcd1234']);
   assert.ok((await h.store.getById(id))?.volumes_deleted_at);
 
   h.cli.calls.length = 0;
@@ -143,12 +143,12 @@ test('orphan scan stops managed apps that no live row owns and nothing else', as
   assert.equal(ok.kind, 'accepted');
   await h.manager.whenIdle();
   const owned = ok.kind === 'accepted' ? ok.deployment.app_name : '';
-  assert.equal(owned, 'voice-convert-dev-user-0123abcd-abcd');
+  assert.equal(owned, 'voice-convert-dev-user-0123abcd-abcd1234');
 
   h.cli.apps = [
     { id: 'ap-owned', name: owned, state: 'deployed' },
-    { id: 'ap-orphan', name: 'voice-isolate-dev-user-deadbeef-1234', state: 'deployed' },
-    { id: 'ap-stopped', name: 'voice-convert-dev-user-feedface-0001', state: 'stopped' },
+    { id: 'ap-orphan', name: 'voice-isolate-dev-user-deadbeef-12345678', state: 'deployed' },
+    { id: 'ap-stopped', name: 'voice-convert-dev-user-feedface-00000001', state: 'stopped' },
     { id: 'ap-hand', name: 'voice-convert-dev', state: 'deployed' }, // hand-deployed, no per-user suffix
     { id: 'ap-other', name: 'realtime-tts-worker', state: 'deployed' },
   ];
@@ -162,7 +162,7 @@ test('orphan scan is skipped unless requested, and stops at most a handful per p
   const h = makeHarness();
   h.cli.apps = Array.from({ length: 12 }, (_, i) => ({
     id: `ap-${i}`,
-    name: `voice-convert-dev-user-${(0xabc00000 + i).toString(16)}-0001`,
+    name: `voice-convert-dev-user-${(0xabc00000 + i).toString(16)}-00000001`,
     state: 'deployed',
   }));
   h.cli.calls.length = 0;
@@ -179,7 +179,7 @@ test('one failing step does not stop the others', async () => {
   await h.manager.teardown(id, 'user');
   h.clock.advance(25 * 60 * MIN);
   h.cli.failOn.set('volumeDelete', new Error('volume step is broken'));
-  h.cli.apps = [{ id: 'ap-orphan', name: 'voice-isolate-dev-user-deadbeef-1234', state: 'deployed' }];
+  h.cli.apps = [{ id: 'ap-orphan', name: 'voice-isolate-dev-user-deadbeef-12345678', state: 'deployed' }];
   const r = await runReaperOnce(h.manager, { scanOrphans: true });
   assert.equal(r.volumesDeleted, 0);
   assert.equal(r.orphansStopped, 1, 'orphan cleanup still ran');

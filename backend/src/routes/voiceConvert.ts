@@ -25,8 +25,8 @@ interface ModalCfg {
 }
 
 /** The user's ready deployment, or null (none, still deploying, idle- or age-expired, torn down). No shared fallback worker. */
-async function getUserModalConfig(userId: string): Promise<ModalCfg | null> {
-  const target = await getDeploymentManager().resolveTarget(userId, 'convert');
+async function getUserModalConfig(userId: string, forNewWork = false): Promise<ModalCfg | null> {
+  const target = await getDeploymentManager().resolveTarget(userId, 'convert', { forNewWork });
   return target ? { modal_url: target.url, modal_secret: target.secret, target } : null;
 }
 
@@ -71,7 +71,12 @@ async function modalAudio(cfg: { modal_url: string; modal_secret: string }, path
 // Helpers
 // --------------------------------------------------------------------------
 
-async function requireUser(req: Request, res: Response): Promise<string | null> {
+/**
+ * Who is calling, WITHOUT the billing check. Deployment management (status and teardown) uses this: a user whose
+ * credits ran out or whose subscription lapsed must still be able to see and tear down their own deployment, since it
+ * runs on our Modal bill until it is stopped. The payment requirement for starting one is enforced by the manager.
+ */
+async function resolveIdentity(req: Request, res: Response): Promise<string | null> {
   // Identity: req.userId is set upstream by requireAuthOrApiKey (gateway-forwarded API key OR verified JWT);
   // fall back to verifying the bearer token ourselves so the router still works mounted standalone.
   let userId = (req as Request & { userId?: string }).userId;
@@ -83,6 +88,14 @@ async function requireUser(req: Request, res: Response): Promise<string | null> 
     if (error || !user) { res.status(401).json({ error: 'Invalid token.' }); return null; }
     userId = user.id;
   }
+
+  (req as Request & { userId?: string }).userId = userId;
+  return userId;
+}
+
+async function requireUser(req: Request, res: Response): Promise<string | null> {
+  const userId = await resolveIdentity(req, res);
+  if (!userId) return null;
 
   // Billing is checked for EVERY resolved identity, including one already set by requireAuthOrApiKey. (The
   // sibling routes short-circuit on a pre-set req.userId and skip this check, which would let any
@@ -96,6 +109,10 @@ async function requireUser(req: Request, res: Response): Promise<string | null> 
 
 async function requireUserMiddleware(req: Request, res: Response, next: NextFunction) {
   if (await requireUser(req, res)) next();
+}
+
+async function requireIdentityMiddleware(req: Request, res: Response, next: NextFunction) {
+  if (await resolveIdentity(req, res)) next();
 }
 
 function cleanStr(v: unknown, max: number): string {
@@ -137,7 +154,8 @@ export const voiceConvertRouter: Router = (() => {
   // Deployment management
   // ------------------------------------------------------------------------
 
-  mountDeploymentRoutes(r, 'convert', requireUserMiddleware);
+  // Identity only: see resolveIdentity().
+  mountDeploymentRoutes(r, 'convert', requireIdentityMiddleware);
 
   // ------------------------------------------------------------------------
   // Conversion jobs
@@ -150,7 +168,7 @@ export const voiceConvertRouter: Router = (() => {
   ]), async (req, res, next) => {
     try {
       const userId = (req as Request & { userId?: string }).userId!;
-      const modalCfg = await getUserModalConfig(userId);
+      const modalCfg = await getUserModalConfig(userId, true); // new work: refused in the last minutes of a deployment's life
       if (!modalCfg) {
         res.status(400).json({ error: 'Voice conversion is not configured. Deploy a converter first (POST /api/voice-convert/deploy).', code: 'deployment_required' });
         return;

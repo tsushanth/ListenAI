@@ -11,6 +11,7 @@ import { getDeploymentManager, SERVICE_SPECS, type DeployLimits, type Deployment
 
 const DENY_STATUS: Record<DenyCode, number> = {
   payment_required: 402,
+  account_required: 403,
   user_cap: 429,
   daily_cap: 429,
   global_cap: 503,

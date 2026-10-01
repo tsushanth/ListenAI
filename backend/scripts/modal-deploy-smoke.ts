@@ -26,7 +26,9 @@ if (!isDeploymentService(arg) || !SERVICE_SPECS[arg].available) {
   process.exit(2);
 }
 const SERVICE: DeploymentService = arg;
-const USER = '5a0e5a0e-0000-0000-0000-000000000000'; // throwaway; matches the managed-app name pattern
+// Throwaway user. 'smoketst' is deliberately NOT hex, so the app name does not match the orphan sweep's pattern: a
+// production reaper sharing this Modal workspace (but not this in-memory store) must never stop the smoke app.
+const USER = 'smoketst-0000-0000-0000-000000000000';
 const results: Array<{ step: string; ok: boolean; detail: string }> = [];
 const check = (step: string, ok: boolean, detail = '') => {
   results.push({ step, ok, detail });
@@ -45,6 +47,7 @@ async function main() {
     workspace: process.env.MODAL_WORKSPACE || 't-sushanth',
     cliConfigured: true,
     hasPaymentMethod: async () => true,
+    validateUserId: () => true, // this id is not a UUID on purpose (see USER)
   });
 
   let deploymentId = '';

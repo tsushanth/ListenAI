@@ -26,8 +26,8 @@ interface ModalCfg {
 }
 
 /** The user's ready deployment, or null (none, still deploying, idle- or age-expired, torn down). No shared fallback worker. */
-async function getUserModalConfig(userId: string): Promise<ModalCfg | null> {
-  const target = await getDeploymentManager().resolveTarget(userId, 'isolate');
+async function getUserModalConfig(userId: string, forNewWork = false): Promise<ModalCfg | null> {
+  const target = await getDeploymentManager().resolveTarget(userId, 'isolate', { forNewWork });
   return target ? { modal_url: target.url, modal_secret: target.secret, target } : null;
 }
 
@@ -72,13 +72,14 @@ async function modalAudio(cfg: { modal_url: string; modal_secret: string }, path
 // Helpers
 // --------------------------------------------------------------------------
 
-async function requireUser(req: Request, res: Response): Promise<string | null> {
+/**
+ * Who is calling, WITHOUT the billing check. Deployment management (status and teardown) uses this: a user whose
+ * credits ran out or whose subscription lapsed must still be able to see and tear down their own deployment, since it
+ * runs on our Modal bill until it is stopped. The payment requirement for starting one is enforced by the manager.
+ */
+async function resolveIdentity(req: Request, res: Response): Promise<string | null> {
   const cached = (req as Request & { userId?: string }).userId;
-  if (cached) {
-    // Identity already resolved by requireAuthOrApiKey: the subscription gate must still apply.
-    if (!(await hasUsageAllowance(cached))) { res.status(402).json({ error: freeCreditsExhaustedMessage('voice isolation') }); return null; }
-    return cached;
-  }
+  if (cached) return cached; // already resolved by requireAuthOrApiKey
 
   const token = (req.headers.authorization || '').replace(/^Bearer /, '');
   if (!token) { res.status(401).json({ error: 'Sign in required.' }); return null; }
@@ -86,15 +87,24 @@ async function requireUser(req: Request, res: Response): Promise<string | null> 
   const { data: { user }, error } = await supabase.auth.getUser(token);
   if (error || !user) { res.status(401).json({ error: 'Invalid token.' }); return null; }
 
-  const active = await hasUsageAllowance(user.id);
-  if (!active) { res.status(402).json({ error: freeCreditsExhaustedMessage('voice isolation') }); return null; }
-
   (req as Request & { userId?: string }).userId = user.id;
   return user.id;
 }
 
+async function requireUser(req: Request, res: Response): Promise<string | null> {
+  const userId = await resolveIdentity(req, res);
+  if (!userId) return null;
+  // The subscription gate applies to every resolved identity, including one already set by requireAuthOrApiKey.
+  if (!(await hasUsageAllowance(userId))) { res.status(402).json({ error: freeCreditsExhaustedMessage('voice isolation') }); return null; }
+  return userId;
+}
+
 async function requireUserMiddleware(req: Request, res: Response, next: NextFunction) {
   if (await requireUser(req, res)) next();
+}
+
+async function requireIdentityMiddleware(req: Request, res: Response, next: NextFunction) {
+  if (await resolveIdentity(req, res)) next();
 }
 
 function cleanStr(v: unknown, max: number): string {
@@ -136,7 +146,8 @@ export const voiceIsolateRouter: Router = (() => {
   // Deployment management
   // ------------------------------------------------------------------------
 
-  mountDeploymentRoutes(r, 'isolate', requireUserMiddleware);
+  // Identity only: see resolveIdentity().
+  mountDeploymentRoutes(r, 'isolate', requireIdentityMiddleware);
 
   // ------------------------------------------------------------------------
   // Isolation jobs
@@ -148,7 +159,7 @@ export const voiceIsolateRouter: Router = (() => {
   ]), async (req, res, next) => {
     try {
       const userId = (req as Request & { userId?: string }).userId!;
-      const modalCfg = await getUserModalConfig(userId);
+      const modalCfg = await getUserModalConfig(userId, true); // new work: refused in the last minutes of a deployment's life
       if (!modalCfg) {
         res.status(400).json({ error: 'Voice isolation is not configured. Deploy an isolator first.' });
         return;

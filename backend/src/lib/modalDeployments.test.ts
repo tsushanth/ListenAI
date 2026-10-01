@@ -34,14 +34,14 @@ test('deploy creates the secret, deploys the Modal file with per-user names, and
   assert.match(value, /^0+1$/); // the 32-byte secret generated for this deployment
   const [file, env] = h.cli.calls[1].args as [string, Record<string, string>];
   assert.equal(file, 'modal/convert_job.py');
-  assert.equal(env.VOICE_CONVERT_APP_SUFFIX, '-user-usera-abcd');
-  assert.equal(env.VOICE_CONVERT_SECRET_NAME, 'voice-convert-user-usera-abcd');
+  assert.equal(env.VOICE_CONVERT_APP_SUFFIX, '-user-usera-abcd1234');
+  assert.equal(env.VOICE_CONVERT_SECRET_NAME, 'voice-convert-user-usera-abcd1234');
 
   const row = [...h.store.rows.values()][0];
   assert.equal(row.status, 'ready');
-  assert.equal(row.app_name, 'voice-convert-dev-user-usera-abcd');
-  assert.equal(row.modal_url, 'https://test-ws--voice-convert-dev-user-usera-abcd-api.modal.run');
-  assert.deepEqual(row.volume_names, ['voice-convert-dev-jobs-user-usera-abcd']);
+  assert.equal(row.app_name, 'voice-convert-dev-user-usera-abcd1234');
+  assert.equal(row.modal_url, 'https://test-ws--voice-convert-dev-user-usera-abcd1234-api.modal.run');
+  assert.deepEqual(row.volume_names, ['voice-convert-dev-jobs-user-usera-abcd1234']);
   assert.equal(row.ready_at, h.clock.now().toISOString());
   assert.equal(row.expires_at, new Date(h.clock.ms + 4 * 60 * MIN).toISOString());
 });
@@ -67,15 +67,15 @@ test('deploying again while one is live returns the existing deployment instead 
 
 test('a race that loses the unique-index insert resolves to the winner', async () => {
   const h = makeHarness();
-  const realInsert = h.store.insert.bind(h.store);
+  const realClaim = h.store.claim.bind(h.store);
   let first = true;
-  h.store.insert = async (n) => {
+  h.store.claim = async (n, caps) => {
     if (first) {
       first = false;
-      await realInsert(n); // the "other request" wins
+      await realClaim(n, caps); // the "other request" wins
       return { conflict: true };
     }
-    return realInsert(n);
+    return realClaim(n, caps);
   };
   const out = await h.manager.deploy('user-a', 'convert');
   assert.equal(out.kind, 'exists');
@@ -161,7 +161,7 @@ test('resolveTarget returns the url and secret only for a ready, unexpired, non-
   const target = await h.manager.resolveTarget('user-a', 'convert');
   assert.ok(target);
   assert.equal(target.deploymentId, id);
-  assert.equal(target.url, 'https://test-ws--voice-convert-dev-user-usera-abcd-api.modal.run');
+  assert.equal(target.url, 'https://test-ws--voice-convert-dev-user-usera-abcd1234-api.modal.run');
   assert.match(target.secret, /^0+1$/);
 
   h.clock.advance(31 * MIN);
@@ -302,7 +302,7 @@ test('a teardown during deploy wins: the app that finishes deploying afterwards 
 test('every registry entry produces names the orphan matcher recognises', async () => {
   const pattern = managedAppPattern();
   for (const spec of Object.values(SERVICE_SPECS)) {
-    assert.ok(pattern.test(`${spec.appPrefix}-user-0123abcd-ef01`), spec.service);
+    assert.ok(pattern.test(`${spec.appPrefix}-user-0123abcd-ef012345`), spec.service);
   }
   assert.equal(pattern.test('voice-convert-dev'), false, 'a hand-deployed app without the per-user suffix is not ours to stop');
   assert.equal(pattern.test('realtime-tts-worker'), false);
@@ -317,27 +317,22 @@ test('all five services are available', () => {
 });
 
 test('every service produces an endpoint subdomain within Modal\'s 63 character limit', () => {
-  // "<workspace>--<app>-<function>"; a 20 character workspace is longer than any realistic one.
-  const workspace = 'a'.repeat(20);
+  // "<workspace>--<app>-<function>"; 16 characters is longer than the 10 character workspace in use.
+  const workspace = 'a'.repeat(16);
   for (const spec of Object.values(SERVICE_SPECS)) {
-    const label = `${workspace}--${spec.appPrefix}-user-0123abcd-ef01-${spec.urlLabel}`;
+    const label = `${workspace}--${spec.appPrefix}-user-0123abcd-ef012345-${spec.urlLabel}`;
     assert.ok(label.length <= 63, `${spec.service}: ${label.length} chars (${label})`);
   }
 });
 
-test('a service flagged unavailable is refused without touching Modal or the database', async () => {
+test('a workspace name that would push an endpoint past 63 characters is refused before anything is deployed', async () => {
   const h = makeHarness();
-  const spec = SERVICE_SPECS.convert as { available: boolean; unavailableReason?: string };
-  const before = { available: spec.available, reason: spec.unavailableReason };
-  spec.available = false;
-  spec.unavailableReason = 'test: worker not ready';
-  try {
-    const out = await h.manager.deploy('user-a', 'convert');
-    assert.deepEqual([out.kind, out.kind === 'denied' && out.code], ['denied', 'service_unavailable']);
-    assert.equal(h.store.rows.size, 0);
-    assert.equal(h.cli.calls.length, 0);
-  } finally {
-    spec.available = before.available;
-    spec.unavailableReason = before.reason;
-  }
+  const long = new (h.manager.constructor as new (d: object) => typeof h.manager)({
+    store: h.store, cli: h.cli, limits: h.manager.limits, workspace: 'w'.repeat(40), cliConfigured: true,
+    hasPaymentMethod: async () => true, validateUserId: () => true, now: h.clock.now,
+  });
+  const out = await long.deploy('user-a', 'convert');
+  assert.deepEqual([out.kind, out.kind === 'denied' && out.code], ['denied', 'not_configured']);
+  assert.equal(h.store.rows.size, 0);
+  assert.equal(h.cli.calls.length, 0);
 });

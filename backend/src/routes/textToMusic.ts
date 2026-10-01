@@ -126,7 +126,7 @@ textToMusicRouter.post('/job', asyncHandler(async (req: Request, res: Response) 
 
   // Generation runs on the caller's own Modal deployment (there is no shared worker). Cache hits above need none.
   const manager = getDeploymentManager();
-  const target = await manager.resolveTarget(userId, 'music');
+  const target = await manager.resolveTarget(userId, 'music', { forNewWork: true });
   if (!target) {
     res.status(400).json({
       error: 'Text-to-music is not deployed. Deploy first (POST /api/music/deploy), wait until its status is "ready", then submit.',

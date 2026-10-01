@@ -21,10 +21,10 @@ interface BillingRow { Description: string; 'Interval Start': string; Cost: stri
 
 const day = (d: Date) => d.toISOString().slice(0, 10);
 
-/** Which service a per-user app belongs to, from its name: <appPrefix>-user-<8 hex>-<4 hex>. */
+/** Which service a per-user app belongs to, from its name: <appPrefix>-user-<8 hex>-<8 hex>. */
 export function serviceForApp(appName: string): DeploymentService | null {
   for (const spec of Object.values(SERVICE_SPECS)) {
-    if (new RegExp(`^${spec.appPrefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}-user-[0-9a-f]{8}-[0-9a-f]{4}$`).test(appName)) return spec.service;
+    if (new RegExp(`^${spec.appPrefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}-user-[0-9a-f]{8}-[0-9a-f]{8}$`).test(appName)) return spec.service;
   }
   return null;
 }

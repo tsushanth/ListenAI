@@ -113,11 +113,16 @@ export async function runReaperOnce(manager: DeploymentManager, opts: { scanOrph
   // 6. orphans
   if (opts.scanOrphans) {
     await step('orphans', async () => {
+      // Ask Modal for its apps FIRST, then read our rows. A deployment that finishes during the sweep is then either absent
+      // from the app list or already has its row, so it can never look like an orphan. (Rows first would let an app that
+      // appears and gets its row in between be stopped.) Every row that could own an app is considered: live ones and
+      // rows still being cleaned up.
+      const apps = await cli.appList();
       const owned = new Set<string>();
-      const rows: DeploymentRow[] = await store.listByStatus(LIVE_STATUSES, 2000);
+      const rows: DeploymentRow[] = await store.listByStatus(LIVE_STATUSES, 1000);
       for (const r of rows) owned.add(r.app_name);
       const pattern = managedAppPattern();
-      for (const app of await cli.appList()) {
+      for (const app of apps) {
         if (result.orphansStopped >= MAX_ORPHAN_STOPS_PER_RUN) break;
         if (!pattern.test(app.name) || !app.state.toLowerCase().startsWith('deployed') || owned.has(app.name)) continue;
         await cli.appStop(app.id || app.name);

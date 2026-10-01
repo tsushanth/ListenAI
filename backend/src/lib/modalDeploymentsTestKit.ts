@@ -9,6 +9,8 @@ import type {
   DeploymentStore,
   DeployLimits,
   NewDeployment,
+  ClaimCaps,
+  ClaimResult,
 } from './modalDeployments.js';
 import { DeploymentManager, LIVE_STATUSES } from './modalDeployments.js';
 
@@ -29,10 +31,13 @@ export class MemoryStore implements DeploymentStore {
     return this.clock.now().toISOString();
   }
 
-  async insert(n: NewDeployment) {
-    for (const r of this.rows.values()) {
-      if (r.user_id === n.user_id && r.service === n.service && LIVE_STATUSES.includes(r.status)) return { conflict: true };
-    }
+  /** Mirrors the database function claim_modal_deployment: one atomic check-and-insert. */
+  async claim(n: NewDeployment, caps: ClaimCaps): Promise<ClaimResult> {
+    const rows = [...this.rows.values()];
+    if (rows.some((r) => r.user_id === n.user_id && r.service === n.service && LIVE_STATUSES.includes(r.status))) return { conflict: true };
+    if (rows.filter((r) => r.user_id === n.user_id && LIVE_STATUSES.includes(r.status)).length >= caps.maxPerUser) return { denied: 'user_cap' };
+    if (rows.filter((r) => LIVE_STATUSES.includes(r.status)).length >= caps.maxGlobal) return { denied: 'global_cap' };
+    if (rows.filter((r) => r.user_id === n.user_id && r.created_at >= caps.dailySinceIso).length >= caps.maxDaily) return { denied: 'daily_cap' };
     const id = `dep-${++this.seq}`;
     const t = this.stamp();
     const row: DeploymentRow = {
@@ -59,11 +64,11 @@ export class MemoryStore implements DeploymentStore {
     return mine[0] ? { ...mine[0] } : null;
   }
   /** Synchronous: put a ready deployment in place, as if the user had already deployed. For route tests. */
-  seedReady(userId: string, service: DeploymentService, url: string, secret: string): DeploymentRow {
+  seedReady(userId: string, service: DeploymentService, url: string, secret: string, appName?: string): DeploymentRow {
     const id = `dep-${++this.seq}`;
     const t = this.stamp();
     const row: DeploymentRow = {
-      id, user_id: userId, service, app_name: `seed-${id}`, modal_url: url, secret_name: `seed-secret-${id}`, modal_secret: secret,
+      id, user_id: userId, service, app_name: appName ?? `seed-${id}`, modal_url: url, secret_name: `seed-secret-${id}`, modal_secret: secret,
       volume_names: [], status: 'ready', error: null, attempts: 0, job_count: 0, gpu_seconds: 0,
       created_at: t, updated_at: t, deploy_started_at: t, ready_at: t, last_used_at: t,
       expires_at: new Date(this.clock.ms + 4 * 3_600_000).toISOString(),
@@ -71,6 +76,10 @@ export class MemoryStore implements DeploymentStore {
     };
     this.rows.set(id, row);
     return row;
+  }
+  /** Number of live rows, for assertions. */
+  async countLiveForTest(): Promise<number> {
+    return [...this.rows.values()].filter((r) => LIVE_STATUSES.includes(r.status)).length;
   }
   /** Synchronous read of the user's live deployment, for assertions. */
   liveFor(userId: string, service: DeploymentService): DeploymentRow | undefined {
@@ -102,12 +111,6 @@ export class MemoryStore implements DeploymentStore {
   async listFailedNeedingCleanup(limit: number) {
     return [...this.rows.values()].filter((r) => r.status === 'failed' && !r.stopped_at).slice(0, limit).map((r) => ({ ...r }));
   }
-  async countLive(userId?: string) {
-    return [...this.rows.values()].filter((r) => LIVE_STATUSES.includes(r.status) && (!userId || r.user_id === userId)).length;
-  }
-  async countCreatedSince(userId: string, sinceIso: string) {
-    return [...this.rows.values()].filter((r) => r.user_id === userId && r.created_at >= sinceIso).length;
-  }
   async listVolumesDue(nowIso: string, limit: number) {
     return [...this.rows.values()]
       .filter((r) => !r.volumes_deleted_at && r.volume_delete_at && r.volume_delete_at <= nowIso)
@@ -127,6 +130,14 @@ export class FakeCli implements ModalCli {
   /** op name -> error to throw (every time, or the next N times if `failTimes` is set). */
   failOn = new Map<string, Error>();
   failTimes = new Map<string, number>();
+  /** Called inside appList(), before it answers: lets a test change state in the middle of an orphan sweep. */
+  onAppList: (() => Promise<void> | void) | null = null;
+  /** Each deploy() takes this long, and the number running at once is tracked. */
+  deployDelayMs = 0;
+  maxConcurrentDeploys = 0;
+  private activeDeploys = 0;
+  /** When set, a gated deploy() throws this after being released: a deploy that FAILS late, after something else already ran. */
+  failDeployAfterGate: Error | null = null;
   /** When set, deploy() waits for release() so a test can interleave a teardown mid-deploy. */
   gateDeploy = false;
   private gate: { promise: Promise<void>; release: () => void } | null = null;
@@ -166,10 +177,18 @@ export class FakeCli implements ModalCli {
     this.record('secretDelete', name);
   }
   async deploy(file: string, env: Record<string, string>, timeoutMs: number) {
-    this.record('deploy', file, env, timeoutMs);
-    if (this.gateDeploy) {
-      this.onDeployStart?.();
-      await this.gate?.promise;
+    this.activeDeploys++;
+    this.maxConcurrentDeploys = Math.max(this.maxConcurrentDeploys, this.activeDeploys);
+    try {
+      this.record('deploy', file, env, timeoutMs);
+      if (this.deployDelayMs) await new Promise((r) => setTimeout(r, this.deployDelayMs));
+      if (this.gateDeploy) {
+        this.onDeployStart?.();
+        await this.gate?.promise;
+        if (this.failDeployAfterGate) throw this.failDeployAfterGate;
+      }
+    } finally {
+      this.activeDeploys--;
     }
   }
   async appStop(appName: string) {
@@ -177,7 +196,9 @@ export class FakeCli implements ModalCli {
   }
   async appList() {
     this.record('appList');
-    return this.apps;
+    const answer = [...this.apps];
+    await this.onAppList?.();
+    return answer;
   }
   async volumeDelete(name: string) {
     this.record('volumeDelete', name);
@@ -194,6 +215,7 @@ export const TEST_LIMITS: DeployLimits = {
   maxDeploysPerUserPerDay: 10,
   volumeRetentionMs: 24 * 3_600_000,
   requirePaymentMethod: true,
+  maxConcurrentDeploys: 3,
 };
 
 export interface Harness {
@@ -204,7 +226,7 @@ export interface Harness {
   paying: Set<string>;
 }
 
-export function makeHarness(opts: { limits?: Partial<DeployLimits>; cliConfigured?: boolean } = {}): Harness {
+export function makeHarness(opts: { limits?: Partial<DeployLimits>; cliConfigured?: boolean; strictUserIds?: boolean } = {}): Harness {
   const clock = new FakeClock();
   const store = new MemoryStore(clock);
   const cli = new FakeCli();
@@ -217,9 +239,11 @@ export function makeHarness(opts: { limits?: Partial<DeployLimits>; cliConfigure
     workspace: 'test-ws',
     cliConfigured: opts.cliConfigured ?? true,
     hasPaymentMethod: async (u) => paying.has(u),
+    // Production accepts only account ids (UUIDs). Most tests use readable ids like 'user-a', so the check is off unless asked for.
+    validateUserId: opts.strictUserIds ? undefined : () => true,
     now: clock.now,
     // Deterministic: 2 bytes -> "abcd"-style, 32 bytes -> distinct per call so secrets are unique per deployment.
-    randomHex: (bytes) => (bytes === 2 ? 'abcd' : String(++n).padStart(bytes * 2, '0')),
+    randomHex: (bytes) => (bytes === 4 ? 'abcd1234' : String(++n).padStart(bytes * 2, '0')),
   });
   return { manager, store, cli, clock, paying };
 }

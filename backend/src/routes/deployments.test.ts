@@ -110,7 +110,8 @@ test('GET /deploy: 404 when the user never deployed; a failed deploy is visible 
   const get = await call('GET', '/feature/deploy');
   assert.equal(get.status, 200);
   assert.equal(get.body.status, 'failed');
-  assert.match(get.body.error, /image build failed/);
+  assert.match(get.body.error, /deployment failed/i);
+  assert.doesNotMatch(get.text, /image build failed/, 'raw CLI output is not shown to users');
   close();
 });
 

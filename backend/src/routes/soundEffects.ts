@@ -118,7 +118,7 @@ soundEffectsRouter.post('/job', asyncHandler(async (req: Request, res: Response)
 
   // Generation runs on the caller's own Modal deployment (there is no shared worker). Cache hits above need none.
   const manager = getDeploymentManager();
-  const target = await manager.resolveTarget(userId, 'sound_effect');
+  const target = await manager.resolveTarget(userId, 'sound_effect', { forNewWork: true });
   if (!target) {
     res.status(400).json({
       error: 'Sound effects are not deployed. Deploy first (POST /api/sound-effects/deploy), wait until its status is "ready", then submit.',

@@ -5,6 +5,10 @@ import type { EnvConfig } from '../types/index.js';
 // Environment Variable Schema
 // ============================================================================
 
+// A required-positive-number environment setting, read from a string with a default.
+const positiveNumber = (def: string) =>
+  z.string().default(def).transform(Number).refine((n) => Number.isFinite(n) && n > 0, { message: 'must be a positive number' });
+
 const envSchema = z.object({
   PORT: z.string().transform(Number).default('8080'),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
@@ -87,17 +91,20 @@ const envSchema = z.object({
   // workspace, so these limits are what stop a user (or a bug) from running up our bill.
   // Kill switch: set MODAL_DEPLOYMENTS_DISABLED=true to refuse every new deploy; running ones still tear down.
   MODAL_DEPLOYMENTS_DISABLED: z.string().default('false'),
-  // Tear a ready deployment down after this long with no jobs, and after this long regardless of use.
-  MODAL_DEPLOY_IDLE_TTL_MIN: z.string().transform(Number).default('30'),
-  MODAL_DEPLOY_MAX_AGE_MIN: z.string().transform(Number).default('240'),
+  // Every number below must be a positive number: a garbage value (NaN) would make `count >= cap` always false and
+  // silently switch the cap off, so the server refuses to boot instead.
+  MODAL_DEPLOY_IDLE_TTL_MIN: positiveNumber('30'),
+  MODAL_DEPLOY_MAX_AGE_MIN: positiveNumber('240'),
   // A deployment still requested/deploying after this long is failed and cleaned up.
-  MODAL_DEPLOY_TIMEOUT_MIN: z.string().transform(Number).default('10'),
+  MODAL_DEPLOY_TIMEOUT_MIN: positiveNumber('10'),
   // Concurrency and rate caps. One active deployment per user per service is enforced by the database.
-  MODAL_MAX_ACTIVE_PER_USER: z.string().transform(Number).default('3'),
-  MODAL_MAX_ACTIVE_GLOBAL: z.string().transform(Number).default('20'),
-  MODAL_MAX_DEPLOYS_PER_USER_PER_DAY: z.string().transform(Number).default('10'),
+  MODAL_MAX_ACTIVE_PER_USER: positiveNumber('3'),
+  MODAL_MAX_ACTIVE_GLOBAL: positiveNumber('20'),
+  MODAL_MAX_DEPLOYS_PER_USER_PER_DAY: positiveNumber('10'),
+  // How many `modal deploy` processes this backend runs at once (each is a heavyweight child process).
+  MODAL_MAX_CONCURRENT_DEPLOYS: positiveNumber('3'),
   // Per-user job Volumes outlive the app so results can still be fetched; deleted this long after teardown.
-  MODAL_VOLUME_RETENTION_HOURS: z.string().transform(Number).default('24'),
+  MODAL_VOLUME_RETENTION_HOURS: positiveNumber('24'),
   // GPU deployments land on our Modal bill, so require a real payment method (not just free credits).
   MODAL_DEPLOY_REQUIRE_PAYMENT_METHOD: z.string().default('true'),
 

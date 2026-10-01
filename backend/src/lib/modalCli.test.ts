@@ -119,3 +119,37 @@ test('redact ignores very short strings so it cannot blank out ordinary words', 
   assert.equal(redact('abc def', ['ab', '']), 'abc def');
   assert.equal(redact('token=abcdef1234', ['abcdef1234']), 'token=[redacted]');
 });
+
+// ---------------------------------------------------------------------------------------------
+// Review findings: a usage error must never be mistaken for "already gone"
+// ---------------------------------------------------------------------------------------------
+
+test('a CLI usage error (renamed flag or command) is a failure, not "already gone": otherwise a failed stop reads as success', async () => {
+  // The CLI is not version-pinned; if it ever renames --allow-missing, Click says "No such option". That must surface.
+  for (const stderr of [
+    'Error: No such option: --allow-missing',
+    "Error: No such command 'delete'.",
+    'Usage: modal secret delete [OPTIONS] NAME\nTry \'modal secret delete -h\' for help.\nError: Missing argument NAME',
+  ]) {
+    const { cli } = cliWith(() => failure(stderr));
+    await assert.rejects(() => cli.secretDelete('x'), ModalCliError, `secretDelete swallowed: ${stderr.slice(0, 40)}`);
+    await assert.rejects(() => cli.volumeDelete('x'), ModalCliError, `volumeDelete swallowed: ${stderr.slice(0, 40)}`);
+    await assert.rejects(() => cli.appStop('x'), ModalCliError, `appStop swallowed: ${stderr.slice(0, 40)}`);
+  }
+});
+
+test('"not found" about the thing being deleted is still tolerated (idempotent teardown)', async () => {
+  for (const stderr of ["Error: App 'voice-convert-dev-user-1' not found", 'Secret does not exist', 'Volume foo could not be found']) {
+    const { cli } = cliWith(() => failure(stderr));
+    await cli.appStop('x');
+    await cli.secretDelete('x');
+    await cli.volumeDelete('x');
+  }
+});
+
+test('appList that returns rows but no recognisable names throws, so a renamed JSON key cannot silently disable the orphan sweep', async () => {
+  const renamed = cliWith(() => ({ stdout: JSON.stringify([{ app_id: 'ap-1', name: 'voice-convert-dev-user-aaaaaaaa-0001', state: 'deployed' }]) }));
+  await assert.rejects(() => renamed.cli.appList(), /unexpected|recogni[sz]/i);
+  const empty = cliWith(() => ({ stdout: '[]' }));
+  assert.deepEqual(await empty.cli.appList(), [], 'an empty workspace is fine');
+});
