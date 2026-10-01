@@ -40,6 +40,24 @@ test('commands are argv arrays, never shell strings, and carry the Modal credent
   assert.equal(seen[0].env.MODAL_TOKEN_SECRET, 'as-very-secret-token');
 });
 
+test('credentials are only overridden when given, so a locally logged-in profile keeps working', async () => {
+  const seen: Seen[] = [];
+  const run: CliRunner = async (file, args, opts) => { seen.push({ file, args, env: opts.env, timeout: opts.timeout }); return { stdout: '', stderr: '' }; };
+  const before = { id: process.env.MODAL_TOKEN_ID, secret: process.env.MODAL_TOKEN_SECRET };
+  process.env.MODAL_TOKEN_ID = 'from-profile-id';
+  process.env.MODAL_TOKEN_SECRET = 'from-profile-secret';
+  try {
+    await createModalCli({ run }).appStop('x'); // no tokens passed
+    assert.equal(seen[0].env.MODAL_TOKEN_ID, 'from-profile-id');
+    assert.equal(seen[0].env.MODAL_TOKEN_SECRET, 'from-profile-secret');
+    await createModalCli({ run, tokenId: 'explicit-id', tokenSecret: 'explicit-secret' }).appStop('x');
+    assert.equal(seen[1].env.MODAL_TOKEN_ID, 'explicit-id');
+  } finally {
+    if (before.id === undefined) delete process.env.MODAL_TOKEN_ID; else process.env.MODAL_TOKEN_ID = before.id;
+    if (before.secret === undefined) delete process.env.MODAL_TOKEN_SECRET; else process.env.MODAL_TOKEN_SECRET = before.secret;
+  }
+});
+
 test('errors never contain the per-user secret or the Modal token', async () => {
   const { cli } = cliWith(() =>
     failure('Error: bad request for CONVERT_SECRET=topsecretvalue99 using token as-very-secret-token'),

@@ -62,12 +62,14 @@ export interface CreateModalCliOptions {
 export function createModalCli(options: CreateModalCliOptions = {}): ModalCli {
   const run: CliRunner = options.run ?? ((file, args, opts) => execFileAsync(file, args, { ...opts, maxBuffer: 8 * 1024 * 1024 }));
 
-  const baseEnv = (): NodeJS.ProcessEnv => ({
-    ...process.env,
-    MODAL_TOKEN_ID: options.tokenId || '',
-    MODAL_TOKEN_SECRET: options.tokenSecret || '',
-    MODAL_SERVER_URL: 'https://api.modal.com',
-  });
+  // Only override credentials we were given. Blanking them would break a developer machine that is logged in
+  // through ~/.modal.toml (the smoke script uses that); production passes explicit tokens.
+  const baseEnv = (): NodeJS.ProcessEnv => {
+    const env: NodeJS.ProcessEnv = { ...process.env, MODAL_SERVER_URL: process.env.MODAL_SERVER_URL || 'https://api.modal.com' };
+    if (options.tokenId) env.MODAL_TOKEN_ID = options.tokenId;
+    if (options.tokenSecret) env.MODAL_TOKEN_SECRET = options.tokenSecret;
+    return env;
+  };
 
   async function exec(
     args: string[],
