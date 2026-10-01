@@ -8,6 +8,7 @@ import { generateSoundEffectAudioPath } from '../lib/cacheKey.js';
 import { logger } from '../lib/logger.js';
 import { reportSoundEffectGenerationUsage } from '../lib/realtimeTtsBilling.js';
 import { getDeploymentManager } from '../lib/modalDeployments.js';
+import { recordModalUsage } from '../lib/modalUsage.js';
 
 const workerLogger = logger.child({ module: 'sound-effect-worker' });
 
@@ -27,6 +28,8 @@ export interface ModalResult {
   audio: Buffer;
   /** Seconds of GPU time the worker reports it spent on this request (X-GPU-Seconds), if it said. */
   gpuSeconds: number | null;
+  /** The deployment that served the request, so its usage can be attributed. */
+  deploymentId: string;
 }
 
 export async function callModalWorker(job: Pick<DBSoundEffectJob, 'user_id' | 'prompt' | 'duration_sec'>): Promise<ModalResult> {
@@ -55,7 +58,11 @@ export async function callModalWorker(job: Pick<DBSoundEffectJob, 'user_id' | 'p
   // Number(null) is 0, so check for a missing header first: "the worker did not say" must not read as "zero seconds".
   const header = response.headers.get('x-gpu-seconds');
   const gpu = header === null || header.trim() === '' ? NaN : Number(header);
-  return { audio: Buffer.from(await response.arrayBuffer()), gpuSeconds: Number.isFinite(gpu) && gpu >= 0 ? gpu : null };
+  return {
+    audio: Buffer.from(await response.arrayBuffer()),
+    gpuSeconds: Number.isFinite(gpu) && gpu >= 0 ? gpu : null,
+    deploymentId: target.deploymentId,
+  };
 }
 
 export interface SoundEffectWorkerDeps {
@@ -81,11 +88,15 @@ export async function processOneJob(deps: SoundEffectWorkerDeps = defaultDeps): 
   workerLogger.info({ jobId: job.id }, 'Processing sound effect job');
 
   try {
-    const { audio: audioBuffer, gpuSeconds } = await deps.callModalWorker(job);
+    const { audio: audioBuffer, gpuSeconds, deploymentId } = await deps.callModalWorker(job);
     const audioPath = generateSoundEffectAudioPath(job.id);
     await deps.uploadAudio(audioPath, audioBuffer);
     await deps.updateStatus(job.id, 'ready', { audioPath });
     workerLogger.info({ jobId: job.id, audioPath, gpuSeconds }, 'Sound effect job ready');
+    // Shadow mode: record the measured GPU time. Not billed; compared against Modal's own bill (modalUsage.ts).
+    if (gpuSeconds !== null) {
+      await recordModalUsage({ deploymentId, userId: job.user_id, service: 'sound_effect', jobId: job.id, gpuSeconds });
+    }
     // Billed per second of generated audio (rounded up, with a minimum), see AUDIO_JOB_PRICING.
     await reportSoundEffectGenerationUsage(job.user_id, job.duration_sec, job.id).catch((err) => {
       workerLogger.error({ err, jobId: job.id }, 'Failed to report usage after successful job');

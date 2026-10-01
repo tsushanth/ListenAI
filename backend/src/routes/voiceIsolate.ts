@@ -6,6 +6,7 @@ import express, { Router, Request, Response, NextFunction } from 'express';
 import rateLimit from 'express-rate-limit';
 import multer from 'multer';
 import { getDeploymentManager, type DeployTarget } from '../lib/modalDeployments.js';
+import { recordModalUsage } from '../lib/modalUsage.js';
 import { mountDeploymentRoutes } from './deployments.js';
 import { supabase } from '../lib/supabaseClient.js';
 import { hasUsageAllowance, freeCreditsExhaustedMessage, reportVoiceIsolateUsage } from '../lib/realtimeTtsBilling.js';
@@ -222,6 +223,11 @@ export const voiceIsolateRouter: Router = (() => {
       const st = await modalRequest<{ status: string; [key: string]: unknown }>(modalCfg, `/isolate/${req.params.id}`);
 
       if (st.status === 'done' || st.status === 'failed') {
+        // Shadow mode: record the GPU seconds the worker measured for this job (done or failed, both used the GPU).
+        // Idempotent per job, so re-polling a finished job does not count it twice. Not billed; see lib/modalUsage.ts.
+        if (typeof st.gpu_seconds === 'number') {
+          await recordModalUsage({ deploymentId: modalCfg.target.deploymentId, userId, service: 'isolate', jobId: req.params.id, gpuSeconds: st.gpu_seconds });
+        }
         // Read the row first so a client re-polling an already-completed job is not billed again
         // (the meter event's identifier also dedupes within Stripe's window, this covers beyond it).
         const { data: prior } = await supabase.from('voice_isolations')

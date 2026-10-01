@@ -6,6 +6,7 @@ import express from 'express';
 import '../lib/modalDeploymentsTestEnv.js'; // sets env before config loads (must precede the imports below)
 import { makeHarness, type Harness } from '../lib/modalDeploymentsTestKit.js';
 import { setDeploymentManagerForTests } from '../lib/modalDeployments.js';
+import { setUsageRecorderForTests, type UsageEventInput } from '../lib/modalUsage.js';
 import type { AddressInfo } from 'node:net';
 
 process.env.SUPABASE_URL ??= 'http://localhost:54321';
@@ -17,7 +18,7 @@ process.env.NODE_ENV = 'test';
 // ---------------------------------------------------------------------------
 // Mock state
 // ---------------------------------------------------------------------------
-const modalJobs = new Map<string, { status: string; audio?: Buffer }>();
+const modalJobs = new Map<string, { status: string; audio?: Buffer; gpu_seconds?: number }>();
 const modalRequests: Array<{ method: string; path: string }> = [];
 // The user's Modal deployment now lives in the deployment manager (lib/modalDeployments.ts). These tests seed a
 // ready deployment through an in-memory store; `userConfigs` keeps the old set/get/delete/clear shape.
@@ -110,7 +111,7 @@ function installFetchMock() {
         modalRequests.push({ method: 'GET', path: `/convert/${id}` });
         const j = modalJobs.get(id);
         if (!j) return new Response(JSON.stringify({ error: 'not found' }), { status: 404, headers: { 'Content-Type': 'application/json' } });
-        return new Response(JSON.stringify({ job_id: id, status: j.status }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+        return new Response(JSON.stringify({ job_id: id, status: j.status, ...(j.gpu_seconds !== undefined ? { gpu_seconds: j.gpu_seconds } : {}) }), { status: 200, headers: { 'Content-Type': 'application/json' } });
       }
 
       const audioMatch = path.match(/^\/convert\/([^\/]+)\/result$/);
@@ -494,5 +495,82 @@ test('GET /deploy works for gateway-forwarded callers (404 when none)', async ()
   const s = await boot({ withGatewayAuth: true });
   assert.equal((await s.callH(GW(), 'GET', '/deploy')).status, 404);
   s.close();
+  uninstallFetchMock();
+});
+
+
+// ---------------------------------------------------------------------------
+// Shadow-mode usage recording: the GPU seconds the worker measured for a job
+// ---------------------------------------------------------------------------
+
+function captureUsage() {
+  const events: UsageEventInput[] = [];
+  const seen = new Set<string>(); // mimics the database function: idempotent per (service, job_id)
+  setUsageRecorderForTests({
+    record: async (ev) => {
+      events.push(ev);
+      const key = `${ev.service}:${ev.jobId}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    },
+  });
+  return events;
+}
+
+test('polling a finished job records its measured GPU seconds against the deployment, for done and failed jobs', async () => {
+  installFetchMock();
+  resetState();
+  const events = captureUsage();
+  userConfigs.set(resolvedUserId, { modal_url: MODAL_BASE, modal_secret: 'my-secret' });
+  modalJobs.set('job-done', { status: 'done', gpu_seconds: 12.5 });
+  modalJobs.set('job-failed', { status: 'failed', gpu_seconds: 3 });
+  modalJobs.set('job-running', { status: 'processing' });
+  const s = await boot();
+
+  assert.equal((await s.call('valid-token', 'GET', '/conversions/job-done')).status, 200);
+  assert.equal((await s.call('valid-token', 'GET', '/conversions/job-failed')).status, 200);
+  assert.equal((await s.call('valid-token', 'GET', '/conversions/job-running')).status, 200);
+
+  const dep = harness.store.liveFor(resolvedUserId, 'convert');
+  assert.deepEqual(
+    events.map((e) => [e.jobId, e.gpuSeconds, e.service, e.deploymentId]),
+    [['job-done', 12.5, 'convert', dep?.id], ['job-failed', 3, 'convert', dep?.id]],
+    'finished jobs are recorded; a job still running is not',
+  );
+  s.close();
+  setUsageRecorderForTests(null);
+  uninstallFetchMock();
+});
+
+test('re-polling a finished job is reported again but counted once (idempotent per job)', async () => {
+  installFetchMock();
+  resetState();
+  const events = captureUsage();
+  userConfigs.set(resolvedUserId, { modal_url: MODAL_BASE, modal_secret: 'my-secret' });
+  modalJobs.set('job-once', { status: 'done', gpu_seconds: 7 });
+  const s = await boot();
+  for (let i = 0; i < 3; i++) await s.call('valid-token', 'GET', '/conversions/job-once');
+  assert.equal(events.length, 3, 'the route reports each poll');
+  let counted = 0;
+  const seen = new Set<string>();
+  for (const e of events) { if (!seen.has(e.jobId)) { seen.add(e.jobId); counted++; } }
+  assert.equal(counted, 1, 'the database function keeps it to one');
+  s.close();
+  setUsageRecorderForTests(null);
+  uninstallFetchMock();
+});
+
+test('a job status without gpu_seconds records nothing', async () => {
+  installFetchMock();
+  resetState();
+  const events = captureUsage();
+  userConfigs.set(resolvedUserId, { modal_url: MODAL_BASE, modal_secret: 'my-secret' });
+  modalJobs.set('job-nogpu', { status: 'done' });
+  const s = await boot();
+  await s.call('valid-token', 'GET', '/conversions/job-nogpu');
+  assert.equal(events.length, 0);
+  s.close();
+  setUsageRecorderForTests(null);
   uninstallFetchMock();
 });

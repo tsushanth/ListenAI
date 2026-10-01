@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import '../lib/modalDeploymentsTestEnv.js'; // must precede the imports below: sets env before config loads
 import { makeHarness } from '../lib/modalDeploymentsTestKit.js';
 import { setDeploymentManagerForTests } from '../lib/modalDeployments.js';
+import { setUsageRecorderForTests, type UsageEventInput } from '../lib/modalUsage.js';
 import { callModalWorker, processOneJob, DeploymentRequiredError, type SoundEffectWorkerDeps } from './soundEffectJobWorker.js';
 
 const MIN = 60_000;
@@ -41,6 +42,7 @@ test('the Modal call goes to the job owner\'s deployment with that deployment\'s
   assert.deepEqual(JSON.parse(seen[0].body), { prompt: 'glass shattering', duration_sec: 3 });
   assert.deepEqual([...result.audio], [1, 2, 3]);
   assert.equal(result.gpuSeconds, 4.25);
+  assert.match(result.deploymentId, /^dep-/, 'identifies the deployment that served it');
   setDeploymentManagerForTests(null);
 });
 
@@ -107,7 +109,7 @@ function deps(over: Partial<SoundEffectWorkerDeps> & { updates?: Array<[string, 
     claimJob: async () => job(),
     updateStatus: (async (id: string, status: string, extra: Record<string, unknown>) => { updates.push([id, status, extra]); }) as never,
     uploadAudio: (async () => undefined) as never,
-    callModalWorker: async () => ({ audio: Buffer.from([1]), gpuSeconds: 1.5 }),
+    callModalWorker: async () => ({ audio: Buffer.from([1]), gpuSeconds: 1.5, deploymentId: 'dep-9' }),
     ...over,
   };
 }
@@ -136,4 +138,42 @@ test('any other error fails the job with GENERATION_FAILED', async () => {
 
 test('with no queued job there is nothing to do', async () => {
   assert.equal(await processOneJob(deps({ claimJob: async () => null })), false);
+});
+
+// ---------------------------------------------------------------------------------------------
+// shadow-mode usage recording
+// ---------------------------------------------------------------------------------------------
+
+function captureUsage() {
+  const events: UsageEventInput[] = [];
+  setUsageRecorderForTests({ record: async (ev) => { events.push(ev); return true; } });
+  return events;
+}
+const quickFetch = () => new Response('[]', { status: 200, headers: { 'Content-Type': 'application/json' } });
+
+test('a successful job records its measured GPU seconds against the deployment that served it', async () => {
+  const events = captureUsage();
+  await withFetch(quickFetch, () => processOneJob(deps()));
+  assert.deepEqual(events, [{ deploymentId: 'dep-9', userId: 'user-a', service: 'sound_effect', jobId: 'job-1', gpuSeconds: 1.5 }]);
+  setUsageRecorderForTests(null);
+});
+
+test('a job whose worker did not report GPU seconds records nothing (unknown is not zero)', async () => {
+  const events = captureUsage();
+  await withFetch(quickFetch, () => processOneJob(deps({ callModalWorker: async () => ({ audio: Buffer.from([1]), gpuSeconds: null, deploymentId: 'dep-9' }) })));
+  assert.equal(events.length, 0);
+  setUsageRecorderForTests(null);
+});
+
+test('a failed job records no usage, and a recorder outage does not fail a finished job', async () => {
+  const events = captureUsage();
+  const updates: Array<[string, string, Record<string, unknown>]> = [];
+  await processOneJob(deps({ updates, callModalWorker: async () => { throw new Error('worker 500'); } }));
+  assert.equal(events.length, 0);
+
+  setUsageRecorderForTests({ record: async () => { throw new Error('usage db down'); } });
+  const ok: Array<[string, string, Record<string, unknown>]> = [];
+  await withFetch(quickFetch, () => processOneJob(deps({ updates: ok })));
+  assert.equal(ok.at(-1)?.[1], 'ready', 'the user still gets their audio');
+  setUsageRecorderForTests(null);
 });

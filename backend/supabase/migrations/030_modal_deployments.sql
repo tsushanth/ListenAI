@@ -55,3 +55,4 @@ DROP POLICY IF EXISTS "Service role full access on modal_deployments" ON modal_d
 CREATE POLICY "Service role full access on modal_deployments" ON modal_deployments
   FOR ALL TO service_role USING (true) WITH CHECK (true);
 REVOKE ALL ON modal_deployments FROM anon, authenticated;
+GRANT ALL ON modal_deployments TO service_role;
