@@ -1,12 +1,13 @@
 // Manual smoke test of the self-serve deployment lifecycle against REAL Modal. Not part of `npm test`.
 //
-//   npx tsx scripts/modal-deploy-smoke.ts [isolate|sound_effect]     (default: isolate)
+//   npx tsx scripts/modal-deploy-smoke.ts [isolate|sound_effect|music]     (default: isolate)
 //
 // Uses your logged-in Modal profile (or MODAL_TOKEN_ID/SECRET) and an in-memory store, so it never touches the
 // database. It deploys one real per-user app for a throwaway user, checks that the app is deployed and that its
 // per-user secret actually protects it, tears it down, and checks that the app, Secret and Volume are really gone.
 //   isolate       CPU only. A few cents.
 //   sound_effect  also runs one real 1-second GPU generation (A10G, model cold start): roughly 10-15 cents.
+//   music         also runs one real 15-second GPU generation (A10G, finetuned model + LoRA): roughly 15-25 cents.
 // Everything is cleaned up in a finally block even if a check fails.
 import '../src/lib/modalDeploymentsTestEnv.js'; // dummy Supabase env so config loads; the store here is in memory
 import { execFile } from 'node:child_process';
@@ -19,7 +20,7 @@ import { MemoryStore, TEST_LIMITS, type FakeClock } from '../src/lib/modalDeploy
 const run = promisify(execFile);
 const arg = process.argv[2] ?? 'isolate';
 if (!isDeploymentService(arg) || !SERVICE_SPECS[arg].available) {
-  console.error(`unknown or unavailable service "${arg}". Use isolate or sound_effect.`);
+  console.error(`unknown or unavailable service "${arg}". Use isolate, sound_effect or music.`);
   process.exit(2);
 }
 const SERVICE: DeploymentService = arg;
@@ -78,12 +79,16 @@ async function main() {
       const authBody = (await withAuth.json().catch(() => ({}))) as { status?: string };
       check('request with the secret is accepted (200, unknown job)', withAuth.status === 200 && authBody.status === 'unknown', `HTTP ${withAuth.status} ${JSON.stringify(authBody)}`);
     } else {
-      // sound_effect: the first request starts an A10G container and loads the model from the shared read-only Volume.
+      // sound_effect / music: the first request starts an A10G container and loads the model from the shared read-only Volume.
       const gen = (headers: Record<string, string>) =>
         fetch(`${row.modal_url}/generate`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', ...headers },
-          body: JSON.stringify({ prompt: 'a single short glass tap', duration_sec: 1 }),
+          body: JSON.stringify(
+            SERVICE === 'music'
+              ? { prompt: 'calm ambient piano loop', duration_sec: 15 } // music's minimum
+              : { prompt: 'a single short glass tap', duration_sec: 1 },
+          ),
           signal: AbortSignal.timeout(600_000),
         });
       const noAuth = await gen({});

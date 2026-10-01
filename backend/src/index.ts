@@ -337,18 +337,8 @@ app.use(errorHandler);
 
 const PORT = config.PORT;
 
-// Fail fast and loud BEFORE the server starts accepting traffic, rather than
-// inside the app.listen() callback: a misconfiguration caught only after the
-// port is already bound would crash the whole process (taking down TTS,
-// Stripe webhooks, everything) instead of cleanly failing the deploy.
-// MUSIC_WORKER_ENABLED=true with no URL configured is always a
-// misconfiguration, never an intentional state — every queued music job
-// would silently fail otherwise.
-if (process.env.MUSIC_WORKER_ENABLED === 'true' && !process.env.MUSIC_WORKER_URL) {
-  throw new Error(
-    'MUSIC_WORKER_ENABLED=true but MUSIC_WORKER_URL is not set — refusing to start the music job worker against an empty URL. Set MUSIC_WORKER_URL (and MUSIC_WORKER_SHARED_SECRET) or unset MUSIC_WORKER_ENABLED.'
-  );
-}
+// Music generation runs on each user's own Modal deployment (lib/modalDeployments.ts), so there is no shared worker
+// URL to validate at boot any more. MUSIC_WORKER_ENABLED only controls whether this process polls for music jobs.
 
 const server = app.listen(PORT, () => {
   logger.info({ port: PORT, env: config.NODE_ENV }, 'Server started');

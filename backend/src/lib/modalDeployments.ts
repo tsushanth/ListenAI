@@ -176,16 +176,15 @@ export const SERVICE_SPECS: Record<DeploymentService, ServiceSpec> = {
   music: {
     service: 'music',
     label: 'text-to-music',
-    available: false,
-    unavailableReason: 'The music worker source has not been located and parameterised.',
+    available: true,
     modalFile: 'modal/music_worker.py',
     appPrefix: 'music-readaloud',
-    secretPrefix: 'music',
-    secretKey: 'MUSIC_SECRET',
+    secretPrefix: 'music-readaloud',
+    secretKey: 'MUSIC_WORKER_SHARED_SECRET',
     suffixEnv: 'MUSIC_APP_SUFFIX',
     secretNameEnv: 'MUSIC_SECRET_NAME',
-    urlLabel: 'api',
-    volumePrefixes: [],
+    urlLabel: 'web', // the worker's web function is named `web`
+    volumePrefixes: [], // generation is synchronous and returns audio bytes; checkpoints are a shared read-only Volume
   },
   dub: {
     service: 'dub',

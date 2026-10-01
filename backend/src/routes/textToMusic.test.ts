@@ -7,6 +7,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import express from 'express';
 import type { AddressInfo } from 'node:net';
+import '../lib/modalDeploymentsTestEnv.js'; // sets env before config loads (must precede the imports below)
+import { makeHarness, type Harness } from '../lib/modalDeploymentsTestKit.js';
+import { setDeploymentManagerForTests } from '../lib/modalDeployments.js';
 
 process.env.SUPABASE_URL ??= 'http://localhost:54321';
 process.env.SUPABASE_SERVICE_ROLE_KEY ??= 'test';
@@ -122,7 +125,17 @@ function buildTestApp(userId: string) {
   };
 }
 
-async function boot(userId = '00000000-0000-0000-0000-000000000001') {
+// Generation runs on the caller's own Modal deployment, so by default each booted user has a ready one.
+let harness: Harness = makeHarness();
+function useHarness(seedFor?: string): Harness {
+  harness = makeHarness();
+  setDeploymentManagerForTests(harness.manager);
+  if (seedFor) harness.store.seedReady(seedFor, 'music', 'https://music-user.modal.run', 'music-secret-value');
+  return harness;
+}
+
+async function boot(userId = '00000000-0000-0000-0000-000000000001', opts: { deployed?: boolean } = {}) {
+  useHarness(opts.deployed === false ? undefined : userId);
   const buildApp = buildTestApp(userId);
   const app = await buildApp();
   const server = app.listen(0);
@@ -236,5 +249,76 @@ test('POST /job returns 503 when the music worker is not enabled', async () => {
     s.close();
   } finally {
     process.env.MUSIC_WORKER_ENABLED = saved;
+  }
+});
+
+
+// ---------------------------------------------------------------------------
+// Self-serve deployment: generation runs on the caller's own Modal app
+// ---------------------------------------------------------------------------
+
+test('POST /job without a ready deployment -> 400 deployment_required, and no job is created', async () => {
+  const s = await boot('00000000-0000-0000-0000-0000000000c1', { deployed: false });
+  const before = jobCounter;
+  const res = await s.call('POST', '/job', { prompt: 'music-needs-a-deployment-unique', duration_sec: 30 });
+  assert.equal(res.status, 400);
+  const body = await res.json();
+  assert.equal(body.code, 'deployment_required');
+  assert.match(body.error, /POST \/api\/music\/deploy/);
+  assert.equal(jobCounter, before, 'nothing queued for a worker that does not exist');
+  s.close();
+});
+
+test('POST /job counts the job on the deployment and restarts its idle clock', async () => {
+  const uid = '00000000-0000-0000-0000-0000000000c2';
+  const s = await boot(uid);
+  harness.clock.advance(20 * 60_000);
+  const res = await s.call('POST', '/job', { prompt: 'music-counts-the-job-unique', duration_sec: 20 });
+  assert.equal(res.status, 202);
+  const row = harness.store.liveFor(uid, 'music');
+  assert.equal(row?.job_count, 1);
+  assert.equal(row?.last_used_at, harness.clock.now().toISOString());
+  s.close();
+});
+
+test('the deploy endpoints are mounted: deploy, status, teardown, and a job works once deployed', async () => {
+  const uid = '00000000-0000-0000-0000-0000000000c3';
+  const s = await boot(uid, { deployed: false });
+  harness.paying.add(uid);
+
+  assert.equal((await s.call('GET', '/deploy')).status, 404);
+  const post = await s.call('POST', '/deploy');
+  assert.equal(post.status, 202);
+  assert.equal((await post.json()).service, 'music');
+  await harness.manager.whenIdle();
+  assert.equal((await (await s.call('GET', '/deploy')).json()).status, 'ready');
+
+  const call = harness.cli.calls.find((c) => c.op === 'deploy');
+  assert.equal(call?.args[0], 'modal/music_worker.py');
+  const env = call?.args[1] as Record<string, string>;
+  assert.match(env.MUSIC_APP_SUFFIX, /^-user-/);
+  assert.match(env.MUSIC_SECRET_NAME, /^music-readaloud-user-/);
+
+  assert.equal((await s.call('POST', '/job', { prompt: 'music-after-deploy-unique', duration_sec: 20 })).status, 202);
+  assert.equal((await s.call('DELETE', '/deploy')).status, 200);
+  assert.equal((await s.call('POST', '/job', { prompt: 'music-after-teardown-unique', duration_sec: 20 })).status, 400);
+  s.close();
+});
+
+test('deploy is refused when music is not provisioned, so no GPU starts for a feature that cannot earn its cost', async () => {
+  const uid = '00000000-0000-0000-0000-0000000000c4';
+  const s = await boot(uid, { deployed: false });
+  harness.paying.add(uid);
+  const price = process.env.MUSIC_GENERATION_PRICE_ID;
+  delete process.env.MUSIC_GENERATION_PRICE_ID; // not provisioned: no billing price configured
+  try {
+    const res = await s.call('POST', '/deploy');
+    assert.equal(res.status, 503);
+    assert.equal((await res.json()).code, 'service_unavailable');
+    assert.equal(harness.cli.calls.length, 0, 'Modal was never touched');
+    assert.equal(harness.store.rows.size, 0);
+  } finally {
+    process.env.MUSIC_GENERATION_PRICE_ID = price;
+    s.close();
   }
 });

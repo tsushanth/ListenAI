@@ -84,7 +84,7 @@ test('a race that loses the unique-index insert resolves to the winner', async (
 test('each denial reason is reported and nothing is created', async (t) => {
   await t.test('service whose worker is not available yet', async () => {
     const h = makeHarness();
-    const out = await h.manager.deploy('user-a', 'music');
+    const out = await h.manager.deploy('user-a', 'dub');
     assert.deepEqual([out.kind, out.kind === 'denied' && out.code], ['denied', 'service_unavailable']);
     assert.equal(h.store.rows.size, 0);
   });
@@ -314,9 +314,9 @@ test('every registry entry produces names the orphan matcher recognises', async 
   assert.equal(pattern.test('realtime-tts-worker'), false);
 });
 
-test('convert, isolate and sound effects are available; music and dub are not until their workers are built', () => {
+test('convert, isolate, sound effects and music are available; dub is not until its worker is built', () => {
   const available = Object.values(SERVICE_SPECS).filter((s) => s.available).map((s) => s.service).sort();
-  assert.deepEqual(available, ['convert', 'isolate', 'sound_effect']);
+  assert.deepEqual(available, ['convert', 'isolate', 'music', 'sound_effect']);
   for (const s of Object.values(SERVICE_SPECS)) {
     if (!s.available) assert.ok(s.unavailableReason, `${s.service} explains why it is unavailable`);
   }

@@ -21,8 +21,17 @@ const DENY_STATUS: Record<DenyCode, number> = {
 
 const uid = (req: Request): string => (req as Request & { userId?: string }).userId!;
 
+export interface MountOptions {
+  /**
+   * Checked before a deploy is accepted. Return a message to refuse (503), or null to allow. Use it when a feature has
+   * its own provisioning gate (for example text-to-music is refused unless a billing price is configured), so a user
+   * cannot start GPU resources for something that cannot earn its cost.
+   */
+  precondition?: () => string | null;
+}
+
 /** Adds GET/POST/DELETE `/deploy` for one service to an existing router. `requireUser` must set req.userId. */
-export function mountDeploymentRoutes(r: Router, service: DeploymentService, requireUser: RequestHandler): void {
+export function mountDeploymentRoutes(r: Router, service: DeploymentService, requireUser: RequestHandler, opts: MountOptions = {}): void {
   const label = SERVICE_SPECS[service].label;
 
   r.get('/deploy', requireUser, async (req: Request, res: Response, next: NextFunction) => {
@@ -40,6 +49,11 @@ export function mountDeploymentRoutes(r: Router, service: DeploymentService, req
 
   r.post('/deploy', requireUser, async (req: Request, res: Response, next: NextFunction) => {
     try {
+      const refusal = opts.precondition?.() ?? null;
+      if (refusal) {
+        res.status(503).json({ error: refusal, code: 'service_unavailable' });
+        return;
+      }
       const out = await getDeploymentManager().deploy(uid(req), service);
       if (out.kind === 'accepted') {
         res.status(202).json(out.deployment);

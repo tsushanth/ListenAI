@@ -41,7 +41,7 @@ test('on success, uploads audio and marks the job ready', async () => {
   const claimJob = recorder(async () => ({ id: 'job-1', prompt: 'ambient loop', duration_sec: 30 } as any));
   const updateStatus = recorder(async () => undefined);
   const uploadAudio = recorder(async () => undefined);
-  const callModalWorker = recorder(async () => Buffer.from('fake-wav-bytes'));
+  const callModalWorker = recorder(async () => ({ audio: Buffer.from('fake-wav-bytes'), gpuSeconds: null, deploymentId: 'dep-1' }));
 
   const result = await processOneJob({
     claimJob: claimJob.fn as any,
