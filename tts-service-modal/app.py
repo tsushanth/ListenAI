@@ -33,7 +33,9 @@ image = (
     )
 )
 
-app = modal.App("readaloud-tts", image=image)
+# Context for humans/AIs: `modal dict get infra-context <app-name>` (who calls this app, evidence, spend). Keep tags in sync.
+TAGS = {"status": "low-use", "owner": "backend-api-tts", "context": "modal-dict-infra-context", "verified": "2026-10-01"}
+app = modal.App("readaloud-tts", image=image, tags=TAGS)
 
 
 @app.cls(
