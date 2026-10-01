@@ -100,6 +100,8 @@ export interface DeployTarget {
   deploymentId: string;
   url: string;
   secret: string;
+  lastUsedAt: string | null;
+  jobCount: number;
 }
 
 // ----------------------------------------------------------------------------------------------
@@ -253,6 +255,8 @@ export interface DeploymentStore {
   insert(row: NewDeployment): Promise<{ row?: DeploymentRow; conflict?: boolean }>;
   getById(id: string): Promise<DeploymentRow | null>;
   getLive(userId: string, service: DeploymentService): Promise<DeploymentRow | null>;
+  /** Most recent deployment for this user and service in any status, so a failed or stopped one is still visible. */
+  getLatest(userId: string, service: DeploymentService): Promise<DeploymentRow | null>;
   listForUser(userId: string, limit?: number): Promise<DeploymentRow[]>;
   /** Compare-and-set: applies `patch` only if the row is currently in one of `from`. Returns the new row or null. */
   transition(id: string, from: DeploymentStatus[], patch: Partial<DeploymentRow>): Promise<DeploymentRow | null>;
@@ -288,6 +292,10 @@ export function createSupabaseStore(client = supabase): DeploymentStore {
     async getLive(userId, service) {
       const res = await client.from(T).select('*').eq('user_id', userId).eq('service', service).in('status', LIVE_STATUSES).maybeSingle();
       return unwrap(res, 'getLive') as DeploymentRow | null;
+    },
+    async getLatest(userId, service) {
+      const res = await client.from(T).select('*').eq('user_id', userId).eq('service', service).order('created_at', { ascending: false }).limit(1).maybeSingle();
+      return unwrap(res, 'getLatest') as DeploymentRow | null;
     },
     async listForUser(userId, limit = 20) {
       const res = await client.from(T).select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(limit);
@@ -345,6 +353,7 @@ export function createSupabaseStore(client = supabase): DeploymentStore {
 // ----------------------------------------------------------------------------------------------
 
 export const MAX_TEARDOWN_ATTEMPTS = 5;
+const TOUCH_THROTTLE_MS = 60_000;
 
 export interface DeploymentManagerDeps {
   store: DeploymentStore;
@@ -424,8 +433,9 @@ export class DeploymentManager {
     };
   }
 
+  /** The user's most recent deployment for this service in any status, or null if they never had one. */
   async getForUser(userId: string, service: DeploymentService): Promise<PublicDeployment | null> {
-    const row = await this.store.getLive(userId, service);
+    const row = await this.store.getLatest(userId, service);
     return row ? this.toPublic(row) : null;
   }
 
@@ -537,17 +547,32 @@ export class DeploymentManager {
     const now = this.now().getTime();
     if (row.expires_at && Date.parse(row.expires_at) <= now) return null;
     if (row.last_used_at && Date.parse(row.last_used_at) + this.limits.idleTtlMs <= now) return null;
-    return { deploymentId: row.id, url: row.modal_url, secret: row.modal_secret };
+    return { deploymentId: row.id, url: row.modal_url, secret: row.modal_secret, lastUsedAt: row.last_used_at, jobCount: row.job_count };
   }
 
-  /** Record that a job was just routed here. Resets the idle clock. */
-  async touch(deploymentId: string): Promise<void> {
-    const row = await this.store.getById(deploymentId);
-    if (!row || row.status !== 'ready') return;
-    await this.store.patch(deploymentId, { last_used_at: this.iso(), job_count: row.job_count + 1 });
+  /**
+   * Record activity so the idle clock restarts. `job: true` also counts a newly submitted job. Plain activity
+   * (polling a job, fetching a result) only writes if the last write was over a minute ago, so a client that
+   * polls every few seconds does not turn into a database write per poll.
+   */
+  async touch(target: DeployTarget, opts: { job?: boolean } = {}): Promise<void> {
+    if (opts.job) {
+      await this.store.patch(target.deploymentId, { last_used_at: this.iso(), job_count: target.jobCount + 1 });
+      return;
+    }
+    if (target.lastUsedAt && this.now().getTime() - Date.parse(target.lastUsedAt) < TOUCH_THROTTLE_MS) return;
+    await this.store.patch(target.deploymentId, { last_used_at: this.iso() });
   }
 
   // -- teardown ------------------------------------------------------------------------------
+
+  /** Tear down the user's live deployment for a service, if any. */
+  async teardownForUser(userId: string, service: DeploymentService, reason = 'user'): Promise<'stopped' | 'stopping' | 'none'> {
+    const live = await this.store.getLive(userId, service);
+    if (!live) return 'none';
+    const out = await this.teardown(live.id, reason);
+    return out === 'noop' ? 'stopping' : out;
+  }
 
   /** Idempotent. Returns what happened so the caller can report it. */
   async teardown(id: string, reason: string): Promise<'stopped' | 'stopping' | 'noop'> {

@@ -5,59 +5,38 @@
 import express, { Router, Request, Response, NextFunction } from 'express';
 import rateLimit from 'express-rate-limit';
 import multer from 'multer';
-import { exec } from 'child_process';
-import { promisify } from 'util';
-import { config } from '../lib/config.js';
+import { getDeploymentManager, type DeployTarget } from '../lib/modalDeployments.js';
+import { mountDeploymentRoutes } from './deployments.js';
 import { supabase } from '../lib/supabaseClient.js';
 import { hasUsageAllowance, freeCreditsExhaustedMessage, reportVoiceIsolateUsage } from '../lib/realtimeTtsBilling.js';
 import { logger } from '../lib/logger.js';
 
 const log = logger.child({ module: 'voiceIsolate' });
 
-const execAsync = promisify(exec);
 
 // --------------------------------------------------------------------------
-// Per-user deployment helpers
+// Per-user deployment: where this user's jobs go (lifecycle lives in lib/modalDeployments.ts)
 // --------------------------------------------------------------------------
 
-interface UserDeployment {
-  app_name: string;
+interface ModalCfg {
   modal_url: string;
   modal_secret: string;
-  status: string;
-  job_count: number;
+  target: DeployTarget;
 }
 
-async function getUserDeployment(userId: string): Promise<UserDeployment | null> {
-  const { data, error } = await supabase
-    .from('user_voice_isolate_deployments')
-    .select('app_name, modal_url, modal_secret, status')
-    .eq('user_id', userId)
-    .single();
-  if (error || !data || Array.isArray(data)) return null;
-  return data as UserDeployment;
+/** The user's ready deployment, or null (none, still deploying, idle- or age-expired, torn down). No shared fallback worker. */
+async function getUserModalConfig(userId: string): Promise<ModalCfg | null> {
+  const target = await getDeploymentManager().resolveTarget(userId, 'isolate');
+  return target ? { modal_url: target.url, modal_secret: target.secret, target } : null;
 }
 
-async function getGlobalFallback(): Promise<{ modal_url: string; modal_secret: string } | null> {
-  if (config.VOICE_ISOLATE_URL && config.VOICE_ISOLATE_SECRET) {
-    return { modal_url: config.VOICE_ISOLATE_URL, modal_secret: config.VOICE_ISOLATE_SECRET };
+/** Any job call is activity: restarts the idle clock so a deployment someone is using is not reaped. */
+async function touch(cfg: ModalCfg, opts: { job?: boolean } = {}): Promise<void> {
+  try {
+    await getDeploymentManager().touch(cfg.target, opts);
+  } catch (err) {
+    log.warn({ err }, 'failed to record deployment activity (non-critical)');
   }
-  return null;
-}
-
-async function getUserModalConfig(userId: string): Promise<{ modal_url: string; modal_secret: string } | null> {
-  const dep = await getUserDeployment(userId);
-  if (dep && dep.status === 'ready') {
-    return { modal_url: dep.modal_url, modal_secret: dep.modal_secret };
-  }
-  return getGlobalFallback();
-}
-
-function randomHex(len: number): string {
-  const hex = '0123456789abcdef';
-  let s = '';
-  for (let i = 0; i < len; i++) s += hex[Math.floor(Math.random() * 16)];
-  return s;
 }
 
 function authHeaders(secret: string) {
@@ -86,46 +65,6 @@ async function modalAudio(cfg: { modal_url: string; modal_secret: string }, path
     throw new Error(`Modal voice-isolate returned HTTP ${res.status}: ${text}`);
   }
   return Buffer.from(await res.arrayBuffer());
-}
-
-// --------------------------------------------------------------------------
-// Modal CLI helpers
-// --------------------------------------------------------------------------
-
-function modalEnv(): NodeJS.ProcessEnv {
-  return {
-    ...process.env,
-    MODAL_TOKEN_ID: config.MODAL_TOKEN_ID || '',
-    MODAL_TOKEN_SECRET: config.MODAL_TOKEN_SECRET || '',
-    MODAL_SERVER_URL: 'https://api.modal.com',
-  };
-}
-
-async function modalSecretCreate(name: string, key: string, value: string): Promise<void> {
-  // Current Modal CLI (`modal secret create --help`) takes plain KEY=VALUE
-  // pairs, not base64 — there is no --base64 flag. `value` here is always
-  // our own randomHex(32) output (alphanumeric, no shell metacharacters),
-  // so passing it unescaped through this shell string is safe for this
-  // call site specifically, not in general.
-  const cmd = `modal secret create ${name} ${key}=${value} --force`;
-  await execAsync(cmd, { env: modalEnv(), timeout: 30000 });
-}
-
-async function modalDeploy(appSuffix: string, secretName: string): Promise<void> {
-  const deployEnv = {
-    ...modalEnv(),
-    VOICE_ISOLATE_APP_SUFFIX: appSuffix,
-    VOICE_ISOLATE_SECRET_NAME: secretName,
-  };
-  const { stdout, stderr } = await execAsync(
-    'modal deploy modal/isolate_job.py',
-    { env: deployEnv, timeout: 180000, cwd: process.cwd() }
-  );
-  log.info({ stdout, stderr }, 'modal deploy output');
-}
-
-async function modalAppStop(appName: string): Promise<void> {
-  await execAsync(`modal app stop ${appName}`, { env: modalEnv(), timeout: 30000 });
 }
 
 // --------------------------------------------------------------------------
@@ -196,91 +135,7 @@ export const voiceIsolateRouter: Router = (() => {
   // Deployment management
   // ------------------------------------------------------------------------
 
-  r.get('/deploy', requireUserMiddleware, async (req, res, next) => {
-    try {
-      const userId = (req as Request & { userId?: string }).userId!;
-      const dep = await getUserDeployment(userId);
-      if (!dep) { res.status(404).json({ error: 'No deployment found.' }); return; }
-      // Never return the secret
-      res.json({ app_name: dep.app_name, modal_url: dep.modal_url, status: dep.status });
-    } catch (e) { next(e); }
-  });
-
-  r.post('/deploy', requireUserMiddleware, async (req, res, next) => {
-    try {
-      const userId = (req as Request & { userId?: string }).userId!;
-      const existing = await getUserDeployment(userId);
-      if (existing) {
-        res.status(409).json({ error: 'You already have an active deployment.', deployment: { app_name: existing.app_name, modal_url: existing.modal_url, status: existing.status } });
-        return;
-      }
-
-      // Check backend Modal credentials
-      if (!config.MODAL_TOKEN_ID || !config.MODAL_TOKEN_SECRET) {
-        res.status(503).json({ error: 'Voice isolation deployment is not configured on this backend.' });
-        return;
-      }
-
-      const suffix = `user-${userId.slice(0, 8)}-${randomHex(4)}`;
-      const appName = `voice-isolate-dev-${suffix}`;
-      const secretName = `voice-isolate-${suffix}`;
-      const secretValue = randomHex(32);
-      const workspace = config.MODAL_WORKSPACE || 't-sushanth';
-      const modalUrl = `https://${workspace}--${appName}-api.modal.run`;
-
-      // Insert deploying row
-      await supabase.from('user_voice_isolate_deployments').insert({
-        user_id: userId,
-        app_name: appName,
-        modal_url: modalUrl,
-        modal_secret: secretValue,
-        status: 'deploying',
-        job_count: 0,
-      });
-
-      // Fire-and-forget the actual deployment (Update DB on finish)
-      (async () => {
-        try {
-          await modalSecretCreate(secretName, 'ISOLATE_SECRET', secretValue);
-          await modalDeploy(`-${suffix}`, secretName);
-          await supabase.from('user_voice_isolate_deployments')
-            .update({ status: 'ready', updated_at: new Date().toISOString() })
-            .eq('user_id', userId);
-          log.info({ userId, appName }, 'voice isolate deployment ready');
-        } catch (err: unknown) {
-          const msg = err instanceof Error ? err.message : String(err);
-          log.error({ userId, appName, err }, 'voice isolate deployment failed');
-          await supabase.from('user_voice_isolate_deployments')
-            .update({ status: 'failed', updated_at: new Date().toISOString() })
-            .eq('user_id', userId);
-        }
-      })();
-
-      res.status(202).json({ app_name: appName, modal_url: modalUrl, status: 'deploying' });
-    } catch (e) { next(e); }
-  });
-
-  r.delete('/deploy', requireUserMiddleware, async (req, res, next) => {
-    try {
-      const userId = (req as Request & { userId?: string }).userId!;
-      const dep = await getUserDeployment(userId);
-      if (!dep) { res.status(404).json({ error: 'No deployment found.' }); return; }
-
-      if (dep.status === 'ready' || dep.status === 'deploying') {
-        await supabase.from('user_voice_isolate_deployments')
-          .update({ status: 'stopping', updated_at: new Date().toISOString() })
-          .eq('user_id', userId);
-      }
-
-      // Best-effort stop
-      try { await modalAppStop(dep.app_name); } catch (err: unknown) {
-        log.warn({ userId, app_name: dep.app_name, err }, 'modal app stop failed (may already be stopped)');
-      }
-
-      await supabase.from('user_voice_isolate_deployments').delete().eq('user_id', userId);
-      res.json({ deleted: true });
-    } catch (e) { next(e); }
-  });
+  mountDeploymentRoutes(r, 'isolate', requireUserMiddleware);
 
   // ------------------------------------------------------------------------
   // Isolation jobs
@@ -348,14 +203,8 @@ export const voiceIsolateRouter: Router = (() => {
       });
       if (dbError) log.warn({ dbError }, 'Failed to insert voice_isolations row (non-critical)');
 
-      // Track job count on deployment
-      const dep = await getUserDeployment(userId);
-      if (dep) {
-        await supabase.from('user_voice_isolate_deployments')
-          .update({ job_count: dep.job_count + 1, updated_at: new Date().toISOString() })
-          .eq('user_id', userId);
-      }
-
+      // Count the job and restart the deployment's idle clock
+      await touch(modalCfg, { job: true });
       const statusCode = result.status === 'rejected' ? 400 : 202;
       res.status(statusCode).json({ job_id: result.job_id, status: result.status });
     } catch (e) { next(e); }
@@ -368,6 +217,7 @@ export const voiceIsolateRouter: Router = (() => {
       if (!userId) return;
       const modalCfg = await getUserModalConfig(userId);
       if (!modalCfg) { res.status(400).json({ error: 'Voice isolation is not configured.' }); return; }
+      await touch(modalCfg);
 
       const st = await modalRequest<{ status: string; [key: string]: unknown }>(modalCfg, `/isolate/${req.params.id}`);
 
@@ -401,6 +251,7 @@ export const voiceIsolateRouter: Router = (() => {
       if (!userId) return;
       const modalCfg = await getUserModalConfig(userId);
       if (!modalCfg) { res.status(400).json({ error: 'Voice isolation is not configured.' }); return; }
+      await touch(modalCfg);
       const stem = req.query.stem === 'instrumental' ? 'instrumental' : 'vocals';
       const wav = await modalAudio(modalCfg, `/isolate/${req.params.id}/result?stem=${stem}`);
       res.set({ 'Content-Type': 'audio/wav', 'Cache-Control': 'private, max-age=300' }).send(wav);
@@ -414,6 +265,7 @@ export const voiceIsolateRouter: Router = (() => {
       if (!userId) return;
       const modalCfg = await getUserModalConfig(userId);
       if (!modalCfg) { res.status(400).json({ error: 'Voice isolation is not configured.' }); return; }
+      await touch(modalCfg);
       await modalRequest(modalCfg, `/isolate/${req.params.id}`, { method: 'DELETE' });
       await supabase.from('voice_isolations')
         .delete()

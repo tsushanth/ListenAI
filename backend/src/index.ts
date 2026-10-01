@@ -39,6 +39,9 @@ import { voiceStudioRouter } from './routes/voiceStudio.js';
 import { voiceDesignRouter } from './routes/voiceDesign.js';
 import { voiceConvertRouter } from './routes/voiceConvert.js';
 import { voiceIsolateRouter } from './routes/voiceIsolate.js';
+import { deploymentsListRouter } from './routes/deployments.js';
+import { getDeploymentManager } from './lib/modalDeployments.js';
+import { startDeploymentReaper, stopDeploymentReaper } from './lib/deploymentReaper.js';
 import { voiceCloneRouter } from './routes/voiceClone.js';
 import { sttRouter } from './routes/stt.js';
 import { voiceStudioApiKeyRouter } from './routes/voiceStudioApiKey.js';
@@ -270,6 +273,9 @@ app.use('/api/voice-convert', requireAuthOrApiKey, voiceConvertRouter);
 // requireAuthOrApiKey) before falling back to JWT verification, so no changes were needed inside
 // voiceIsolate.ts itself — see MCP_AUTH_BRIDGE.md.
 app.use('/api/voice-isolate', requireAuthOrApiKey, voiceIsolateRouter);
+// Self-serve Modal deployments across every feature (convert, isolate, ...): list the caller's deployments and the
+// limits that apply. Deploy / status / teardown live under each feature's own /deploy path (routes/deployments.ts).
+app.use('/api/deployments', requireAuthOrApiKey, deploymentsListRouter);
 // Voice clone — XTTS v2 instant voice cloning (dark unless XTTS_CLONE_URL is configured)
 app.use('/api/voice-clone', voiceCloneRouter);
 app.use('/api/stt', requireAuthOrApiKey, sttRouter);
@@ -347,6 +353,14 @@ if (process.env.MUSIC_WORKER_ENABLED === 'true' && !process.env.MUSIC_WORKER_URL
 const server = app.listen(PORT, () => {
   logger.info({ port: PORT, env: config.NODE_ENV }, 'Server started');
 
+  // Automatic teardown of self-serve Modal deployments (idle, over-age, stuck, orphaned, leftover Volumes).
+  // Runs even when new deploys are disabled, so turning the kill switch on still drains what is running. Safe on
+  // several machines at once: every state change is a compare-and-set in the database. fly.toml keeps
+  // min_machines_running = 1, so at least one machine is always up to run it.
+  if (config.MODAL_TOKEN_ID && config.MODAL_TOKEN_SECRET) {
+    startDeploymentReaper(getDeploymentManager());
+  }
+
   // Run latency aggregation on startup (after short delay) and every 6 hours
   // This is best-effort - fine if Cloud Run scales down and misses some runs
   const SIX_HOURS_MS = 6 * 60 * 60 * 1000;
@@ -420,6 +434,7 @@ function shutdown(signal: string) {
   if (process.env.MUSIC_WORKER_ENABLED === 'true') {
     stopMusicJobWorker();
   }
+  stopDeploymentReaper();
 
   server.close(() => {
     logger.info('HTTP server closed');

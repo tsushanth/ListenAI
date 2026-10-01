@@ -53,6 +53,36 @@ export class MemoryStore implements DeploymentStore {
     }
     return null;
   }
+  async getLatest(userId: string, service: DeploymentService) {
+    const mine = [...this.rows.values()].filter((r) => r.user_id === userId && r.service === service);
+    mine.sort((a, b) => (a.created_at === b.created_at ? Number(b.id.slice(4)) - Number(a.id.slice(4)) : a.created_at < b.created_at ? 1 : -1));
+    return mine[0] ? { ...mine[0] } : null;
+  }
+  /** Synchronous: put a ready deployment in place, as if the user had already deployed. For route tests. */
+  seedReady(userId: string, service: DeploymentService, url: string, secret: string): DeploymentRow {
+    const id = `dep-${++this.seq}`;
+    const t = this.stamp();
+    const row: DeploymentRow = {
+      id, user_id: userId, service, app_name: `seed-${id}`, modal_url: url, secret_name: `seed-secret-${id}`, modal_secret: secret,
+      volume_names: [], status: 'ready', error: null, attempts: 0, job_count: 0, gpu_seconds: 0,
+      created_at: t, updated_at: t, deploy_started_at: t, ready_at: t, last_used_at: t,
+      expires_at: new Date(this.clock.ms + 4 * 3_600_000).toISOString(),
+      stopping_at: null, stopped_at: null, stop_reason: null, volume_delete_at: null, volumes_deleted_at: null,
+    };
+    this.rows.set(id, row);
+    return row;
+  }
+  /** Synchronous read of the user's live deployment, for assertions. */
+  liveFor(userId: string, service: DeploymentService): DeploymentRow | undefined {
+    return [...this.rows.values()].find((r) => r.user_id === userId && r.service === service && LIVE_STATUSES.includes(r.status));
+  }
+  /** Remove the user's live deployment for a service (synchronous), for route tests that re-seed. */
+  removeLive(userId: string, service: DeploymentService) {
+    for (const [id, r] of this.rows) if (r.user_id === userId && r.service === service && LIVE_STATUSES.includes(r.status)) this.rows.delete(id);
+  }
+  clear() {
+    this.rows.clear();
+  }
   async listForUser(userId: string) {
     return [...this.rows.values()].filter((r) => r.user_id === userId).map((r) => ({ ...r }));
   }

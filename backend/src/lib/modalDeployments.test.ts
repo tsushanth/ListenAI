@@ -174,15 +174,43 @@ test('resolveTarget returns the url and secret only for a ready, unexpired, non-
   assert.equal(await h.manager.resolveTarget('user-a', 'convert'), null, 'idle past the timeout is not usable even before the reaper runs');
 });
 
-test('touch resets the idle clock and counts the job', async () => {
+test('a submitted job resets the idle clock and is counted', async () => {
   const h = makeHarness();
   const id = await deployReady(h);
   h.clock.advance(25 * MIN);
-  await h.manager.touch(id);
+  const target = await h.manager.resolveTarget('user-a', 'convert');
+  assert.ok(target);
+  await h.manager.touch(target, { job: true });
   h.clock.advance(25 * MIN); // 50 minutes since deploy, but only 25 since the last job
   assert.ok(await h.manager.resolveTarget('user-a', 'convert'));
   const row = await h.store.getById(id);
   assert.equal(row?.job_count, 1);
+});
+
+test('plain activity (polling) keeps a deployment alive but does not write on every poll', async () => {
+  const h = makeHarness();
+  const id = await deployReady(h);
+  let writes = 0;
+  const realPatch = h.store.patch.bind(h.store);
+  h.store.patch = async (...a) => { writes++; return realPatch(...a); };
+
+  h.clock.advance(20 * MIN);
+  let target = await h.manager.resolveTarget('user-a', 'convert');
+  assert.ok(target);
+  await h.manager.touch(target); // last write was 20 minutes ago: writes
+  assert.equal(writes, 1);
+
+  for (let i = 0; i < 5; i++) {
+    h.clock.advance(5_000); // polling every few seconds
+    target = await h.manager.resolveTarget('user-a', 'convert');
+    assert.ok(target);
+    await h.manager.touch(target);
+  }
+  assert.equal(writes, 1, 'throttled: no further writes inside a minute');
+  assert.equal((await h.store.getById(id))?.job_count, 0, 'polling is not a job');
+
+  h.clock.advance(25 * MIN); // idle clock restarted at the 20 minute touch, so this is 25 min later: still usable
+  assert.ok(await h.manager.resolveTarget('user-a', 'convert'));
 });
 
 test('resolveTarget stops working at the maximum age even if the deployment is busy', async () => {
@@ -190,7 +218,9 @@ test('resolveTarget stops working at the maximum age even if the deployment is b
   const id = await deployReady(h);
   for (let i = 0; i < 9; i++) {
     h.clock.advance(25 * MIN);
-    await h.manager.touch(id);
+    const t = await h.manager.resolveTarget('user-a', 'convert');
+    assert.ok(t);
+    await h.manager.touch(t, { job: true });
   }
   // 225 minutes in, still under the 240 limit.
   assert.ok(await h.manager.resolveTarget('user-a', 'convert'));

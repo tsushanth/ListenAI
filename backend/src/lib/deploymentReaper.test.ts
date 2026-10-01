@@ -19,7 +19,9 @@ test('an idle deployment is torn down and a recently used one is left alone', as
   const idle = await ready(h, 'user-a');
   const busy = await ready(h, 'user-b');
   h.clock.advance(20 * MIN);
-  await h.manager.touch(busy);
+  const busyTarget = await h.manager.resolveTarget('user-b', 'convert');
+  assert.ok(busyTarget);
+  await h.manager.touch(busyTarget, { job: true });
   h.clock.advance(15 * MIN); // idle: 35 min since use; busy: 15 min
 
   const r = await runReaperOnce(h.manager);
@@ -32,13 +34,16 @@ test('an idle deployment is torn down and a recently used one is left alone', as
 test('a deployment past its maximum age is torn down even though it is busy', async () => {
   const h = makeHarness();
   const id = await ready(h);
-  for (let i = 0; i < 10; i++) {
+  for (let i = 0; i < 9; i++) {
     h.clock.advance(25 * MIN);
-    await h.manager.touch(id); // never idle
+    const t = await h.manager.resolveTarget('user-a', 'convert');
+    assert.ok(t);
+    await h.manager.touch(t, { job: true }); // never idle
   }
-  // 250 minutes after deploy, limit is 240.
+  h.clock.advance(20 * MIN); // 245 minutes after deploy (limit 240), but only 20 minutes since the last job
   const r = await runReaperOnce(h.manager);
   assert.equal(r.expiredTornDown, 1);
+  assert.equal(r.idleTornDown, 0);
   assert.equal((await h.store.getById(id))?.stop_reason, 'max_age');
 });
 

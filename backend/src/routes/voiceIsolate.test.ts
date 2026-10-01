@@ -6,6 +6,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import express from 'express';
+import '../lib/modalDeploymentsTestEnv.js'; // sets env before config loads (must precede the imports below)
+import { makeHarness, type Harness } from '../lib/modalDeploymentsTestKit.js';
+import { setDeploymentManagerForTests } from '../lib/modalDeployments.js';
 import type { AddressInfo } from 'node:net';
 
 process.env.SUPABASE_URL ??= 'http://localhost:54321';
@@ -19,7 +22,25 @@ process.env.NODE_ENV = 'test';
 // ---------------------------------------------------------------------------
 const modalJobs = new Map<string, { status: string; vocals?: Buffer; instrumental?: Buffer }>();
 const modalRequests: Array<{ method: string; path: string }> = [];
-const userConfigs = new Map<string, { modal_url: string; modal_secret: string }>();
+// The user's Modal deployment now lives in the deployment manager (lib/modalDeployments.ts). These tests seed a
+// ready deployment through an in-memory store; `userConfigs` keeps the old set/get/delete/clear shape.
+let harness: Harness = makeHarness();
+setDeploymentManagerForTests(harness.manager);
+const userConfigs = {
+  set(userId: string, cfg: { modal_url: string; modal_secret: string }) {
+    harness.store.removeLive(userId, 'isolate');
+    harness.store.seedReady(userId, 'isolate', cfg.modal_url, cfg.modal_secret);
+  },
+  get(userId: string): { modal_url: string; modal_secret: string } | undefined {
+    const r = harness.store.liveFor(userId, 'isolate');
+    return r ? { modal_url: r.modal_url, modal_secret: r.modal_secret } : undefined;
+  },
+  delete(userId: string) { harness.store.removeLive(userId, 'isolate'); },
+  clear() {
+    harness = makeHarness();
+    setDeploymentManagerForTests(harness.manager);
+  },
+};
 let resolvedUserId = 'test-user-1';
 let billingActive = true;
 
@@ -58,36 +79,6 @@ function installFetchMock() {
           active: true,
         }]), { status: 200, headers: { 'Content-Type': 'application/json' } });
       }
-      return new Response('[]', { status: 200, headers: { 'Content-Type': 'application/json' } });
-    }
-
-    // Supabase REST — user_voice_isolate_deployments
-    if (url.includes('/rest/v1/user_voice_isolate_deployments')) {
-      const u = new URL(url);
-      const uid = u.searchParams.get('user_id')?.replace(/^eq\./, '');
-      const method = (init?.method || 'GET').toUpperCase();
-
-      if (method === 'GET') {
-        const cfg = userConfigs.get(resolvedUserId);
-        if (!cfg) return new Response(JSON.stringify(null), { status: 200, headers: { 'Content-Type': 'application/json' } });
-        return new Response(JSON.stringify({ user_id: resolvedUserId, modal_url: cfg.modal_url, modal_secret: cfg.modal_secret, status: 'ready', app_name: 'test-app', job_count: 0 }),
-          { status: 200, headers: { 'Content-Type': 'application/json' } });
-      }
-
-      if (method === 'POST' || method === 'PUT' || method === 'PATCH') {
-        const body = JSON.parse((init?.body as string) || '{}');
-        const record = Array.isArray(body) ? body[0] : body;
-        if (record.modal_url && record.modal_secret) {
-          userConfigs.set(resolvedUserId, { modal_url: record.modal_url, modal_secret: record.modal_secret });
-        }
-        return new Response(JSON.stringify([record]), { status: 200, headers: { 'Content-Type': 'application/json' } });
-      }
-
-      if (method === 'DELETE') {
-        if (uid === resolvedUserId) userConfigs.delete(resolvedUserId);
-        return new Response('[]', { status: 200, headers: { 'Content-Type': 'application/json' } });
-      }
-
       return new Response('[]', { status: 200, headers: { 'Content-Type': 'application/json' } });
     }
 
