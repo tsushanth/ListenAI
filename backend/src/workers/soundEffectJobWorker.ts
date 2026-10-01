@@ -7,7 +7,7 @@ import { claimNextSoundEffectJob, updateSoundEffectJobStatus, uploadSoundEffectA
 import { generateSoundEffectAudioPath } from '../lib/cacheKey.js';
 import { logger } from '../lib/logger.js';
 import { reportSoundEffectGenerationUsage } from '../lib/realtimeTtsBilling.js';
-import { getDeploymentManager } from '../lib/modalDeployments.js';
+import { getDeploymentManager, DeploymentRequiredError } from '../lib/modalDeployments.js';
 import { recordModalUsage } from '../lib/modalUsage.js';
 
 const workerLogger = logger.child({ module: 'sound-effect-worker' });
@@ -16,13 +16,8 @@ const POLL_INTERVAL_MS = 3000;
 const STUCK_JOB_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
 const STUCK_JOB_CHECK_INTERVAL_MS = 60 * 1000;
 
-/** The job's owner has no ready deployment (never deployed, torn down, or idle/age expired). */
-export class DeploymentRequiredError extends Error {
-  constructor() {
-    super('No active sound effects deployment for this user.');
-    this.name = 'DeploymentRequiredError';
-  }
-}
+// Shared with the routes and the dub flow (lib/modalDeployments.ts); re-exported so existing imports keep working.
+export { DeploymentRequiredError };
 
 export interface ModalResult {
   audio: Buffer;
@@ -35,7 +30,7 @@ export interface ModalResult {
 export async function callModalWorker(job: Pick<DBSoundEffectJob, 'user_id' | 'prompt' | 'duration_sec'>): Promise<ModalResult> {
   const manager = getDeploymentManager();
   const target = await manager.resolveTarget(job.user_id, 'sound_effect');
-  if (!target) throw new DeploymentRequiredError();
+  if (!target) throw new DeploymentRequiredError('sound_effect');
 
   const response = await fetch(`${target.url}/generate`, {
     method: 'POST',

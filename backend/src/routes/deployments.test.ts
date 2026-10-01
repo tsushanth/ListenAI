@@ -91,13 +91,6 @@ test('refusals use distinct status codes and a machine-readable code', async (t)
     assert.equal(r.body.code, 'deployments_disabled');
     close();
   });
-  await t.test('a service whose worker is not built yet -> 503 service_unavailable', async () => {
-    const { call, close } = await boot('dub');
-    const r = await call('POST', '/feature/deploy');
-    assert.equal(r.status, 503);
-    assert.equal(r.body.code, 'service_unavailable');
-    close();
-  });
   await t.test('no sign-in -> 401 and nothing is created', async () => {
     const { call, h, close } = await boot();
     const r = await call('POST', '/feature/deploy', null);

@@ -2,7 +2,7 @@ import { claimNextMusicJob, updateMusicJobStatus, uploadMusicAudio, DBMusicJob, 
 import { generateMusicAudioPath } from '../lib/cacheKey.js';
 import { logger } from '../lib/logger.js';
 import { reportMusicGenerationUsage } from '../lib/realtimeTtsBilling.js';
-import { getDeploymentManager } from '../lib/modalDeployments.js';
+import { getDeploymentManager, DeploymentRequiredError } from '../lib/modalDeployments.js';
 import { recordModalUsage } from '../lib/modalUsage.js';
 
 const workerLogger = logger.child({ module: 'music-worker' });
@@ -11,13 +11,8 @@ const POLL_INTERVAL_MS = 3000;
 const STUCK_JOB_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
 const STUCK_JOB_CHECK_INTERVAL_MS = 60 * 1000;
 
-/** The job's owner has no ready deployment (never deployed, torn down, or idle/age expired). */
-export class DeploymentRequiredError extends Error {
-  constructor() {
-    super('No active text-to-music deployment for this user.');
-    this.name = 'DeploymentRequiredError';
-  }
-}
+// Shared with the routes and the dub flow (lib/modalDeployments.ts); re-exported so existing imports keep working.
+export { DeploymentRequiredError };
 
 export interface ModalResult {
   audio: Buffer;
@@ -31,7 +26,7 @@ export interface ModalResult {
 export async function callModalWorker(job: Pick<DBMusicJob, 'user_id' | 'prompt' | 'duration_sec'>): Promise<ModalResult> {
   const manager = getDeploymentManager();
   const target = await manager.resolveTarget(job.user_id, 'music');
-  if (!target) throw new DeploymentRequiredError();
+  if (!target) throw new DeploymentRequiredError('music');
 
   const response = await fetch(`${target.url}/generate`, {
     method: 'POST',

@@ -1,8 +1,10 @@
 // Dubbing v1: upload a source-language audio file, get back a target-language
 // audio file with roughly the same segment timing. Pipeline:
-//   1. STT  — transcribe + segment the source audio, via the same gateway
-//             session-token hand-off as stt.ts (worker-stt-prod does not
-//             accept a static secret — see authorizeStt() below).
+//   1. STT  — transcribe + segment the source audio on the CALLER'S OWN Modal
+//             deployment (POST /api/dub/deploy; lib/modalDeployments.ts). The
+//             worker is the vendored worker-stt-prod (modal/dub_worker.py); it
+//             verifies an HMAC session token, which this route mints itself with
+//             that deployment's own secret (lib/dubSessionToken.ts).
 //   2. MT   — translate each segment's text via Claude (mirrors extract.ts's
 //             LLM cleanup pattern).
 //   3. TTS  — synthesize each translated segment with the existing self-hosted
@@ -23,11 +25,9 @@
 //     tts.ts's job pattern uses a `tts_jobs` Postgres table; a real v2 of
 //     dubbing should get its own `dub_jobs` table and migration instead.
 //
-// STT NOTE: this route's transcribeSourceAudio()/authorizeStt() duplicate
-// stt.ts's gateway-authorize logic locally rather than importing it, to keep
-// this file's dependency surface small — both call the same external
-// worker-stt-prod service the same way and share the STT_API_KEY config.
-// Worth consolidating into a shared helper as a follow-up.
+// STT NOTE: the standalone /api/stt product (stt.ts) still uses the shared gateway-fronted worker. Dubbing no longer
+// does: its speech-to-text step runs on the user's own deployment, and only that step is a Modal resource (translation
+// is Claude, synthesis is the platform's TTS).
 
 import { Router, Request, Response, NextFunction, RequestHandler } from 'express';
 import { randomUUID } from 'crypto';
@@ -35,6 +35,10 @@ import multer from 'multer';
 import { z } from 'zod';
 import Anthropic from '@anthropic-ai/sdk';
 import { config } from '../lib/config.js';
+import { getDeploymentManager, DeploymentRequiredError } from '../lib/modalDeployments.js';
+import { mintDubSessionToken } from '../lib/dubSessionToken.js';
+import { recordModalUsage } from '../lib/modalUsage.js';
+import { mountDeploymentRoutes } from './deployments.js';
 import { logger } from '../lib/logger.js';
 import { ttsProvider } from '../lib/ttsProviderClient.js';
 import { normalizeVoiceId, getDefaultVoiceId } from '../lib/voiceMapping.js';
@@ -48,39 +52,6 @@ const dubLogger = logger.child({ module: 'dub' });
 // ============================================================================
 // Config / external service client
 // ============================================================================
-
-// worker-stt-prod does NOT accept a static bearer secret (confirmed against its own app.py: it
-// verifies an HMAC session token minted by the gateway's POST /stt/authorize, same contract
-// routes/stt.ts already uses). A STT_WORKER_URL/STT_WORKER_SECRET static-secret design would
-// fail against the real worker every time - caught during a live end-to-end dubbing test.
-// Reusing stt.ts's exact working gateway-authorize pattern and its already-provisioned
-// STT_API_KEY instead of a second, broken integration path.
-const STT_GATEWAY_URL = config.STT_GATEWAY_URL || 'https://api.readaloudai.org';
-const STT_API_KEY = config.STT_API_KEY;
-
-interface SttAuthorizeResult { token: string; url: string }
-
-async function authorizeStt(): Promise<SttAuthorizeResult> {
-  if (!STT_API_KEY) throw new Error('Speech-to-text is not configured; dubbing is not available in this environment.');
-  let upstream: globalThis.Response;
-  try {
-    upstream = await fetch(`${STT_GATEWAY_URL}/stt/authorize`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ key: STT_API_KEY, mode: 'batch' }),
-      signal: AbortSignal.timeout(10_000),
-    });
-  } catch (err) {
-    throw new Error(`Could not reach the speech-to-text gateway: ${(err as Error).message}`);
-  }
-  if (!upstream.ok) {
-    const text = await upstream.text().catch(() => '');
-    throw new Error(`STT authorize failed with HTTP ${upstream.status}: ${text}`);
-  }
-  const body = (await upstream.json().catch(() => null)) as { token?: string; url?: string } | null;
-  if (!body?.token || !body.url) throw new Error('STT authorize returned an unexpected response');
-  return { token: body.token, url: body.url };
-}
 
 const anthropic = config.ANTHROPIC_API_KEY
   ? new Anthropic({ apiKey: config.ANTHROPIC_API_KEY })
@@ -104,26 +75,33 @@ interface SttResult {
   /** Total audio length in seconds (worker-reported, else the end of the last segment). Billing basis. */
   durationSec: number;
   segments: SttSegment[];
+  /** GPU seconds the worker reports for this request (shadow-mode usage), if it said. */
+  gpuSeconds: number | null;
+  /** The deployment that served it, so usage can be attributed. */
+  deploymentId: string;
 }
 
 /**
- * Transcribe and segment the source audio via worker-stt-prod, using the same
- * gateway-authorize + raw-bytes-POST pattern as stt.ts's callWorker(). The
- * worker's actual response has `segments: [{ id, start, end, text }, ...]`
- * (see stt.ts's TranscribeResult) — mapped down to this file's simpler
- * SttSegment shape (start, end, text) since dubbing doesn't need segment ids.
+ * Transcribe and segment the source audio on the job owner's own Modal deployment. The worker's response has
+ * `segments: [{ id, start, end, text }, ...]` (see stt.ts's TranscribeResult); mapped down to this file's simpler
+ * SttSegment shape since dubbing doesn't need segment ids.
  */
 async function transcribeSourceAudio(
   audioBuffer: Buffer,
   _filename: string,
   mimetype: string,
-  sourceLanguage: string | undefined
+  sourceLanguage: string | undefined,
+  userId: string,
+  jobId: string
 ): Promise<SttResult> {
-  const { token, url } = await authorizeStt();
+  const manager = getDeploymentManager();
+  const target = await manager.resolveTarget(userId, 'dub');
+  if (!target) throw new DeploymentRequiredError('dub');
+  const token = mintDubSessionToken(target.secret, `dub:${userId}:${jobId}`);
   const qs = new URLSearchParams();
   if (sourceLanguage) qs.set('language', sourceLanguage);
 
-  const res = await fetch(`${url}/v1/stt?${qs.toString()}`, {
+  const res = await fetch(`${target.url}/v1/stt?${qs.toString()}`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': mimetype || 'application/octet-stream' },
     body: new Uint8Array(audioBuffer),
@@ -132,23 +110,28 @@ async function transcribeSourceAudio(
 
   if (!res.ok) {
     const text = await res.text().catch(() => '');
-    throw new Error(`worker-stt-prod returned HTTP ${res.status}: ${text}`);
+    throw new Error(`dub STT worker returned HTTP ${res.status}: ${text}`);
   }
+
+  // Activity: keep the deployment alive while a dub is running (throttled, not a write per call).
+  await manager.touch(target).catch((err) => dubLogger.warn({ err }, 'failed to record deployment activity (non-critical)'));
 
   const body = (await res.json()) as {
     language: string | null;
     duration?: number;
+    gpu_seconds?: number;
     segments?: Array<{ id: number; start: number; end: number; text: string }>;
   };
   if (!Array.isArray(body.segments)) {
-    throw new Error('worker-stt-prod returned an unexpected response shape (missing segments[])');
+    throw new Error('dub STT worker returned an unexpected response shape (missing segments[])');
   }
   const segments = body.segments.map((s) => ({ start: s.start, end: s.end, text: s.text }));
   const lastEnd = segments.reduce((m, s) => Math.max(m, s.end), 0);
   const durationSec = typeof body.duration === 'number' && Number.isFinite(body.duration) && body.duration > 0
     ? Math.max(body.duration, lastEnd)
     : lastEnd;
-  return { language: body.language, durationSec, segments };
+  const gpuSeconds = typeof body.gpu_seconds === 'number' && Number.isFinite(body.gpu_seconds) && body.gpu_seconds >= 0 ? body.gpu_seconds : null;
+  return { language: body.language, durationSec, segments, gpuSeconds, deploymentId: target.deploymentId };
 }
 
 /**
@@ -432,7 +415,11 @@ async function runDubJob(
 ): Promise<void> {
   try {
     // 1. STT
-    const stt = await transcribeSourceAudio(audioBuffer, filename, mimetype, job.sourceLanguage ?? undefined);
+    const stt = await transcribeSourceAudio(audioBuffer, filename, mimetype, job.sourceLanguage ?? undefined, job.userId, job.id);
+    // Shadow mode: record the measured GPU time. Not billed; compared against Modal's own bill (modalUsage.ts).
+    if (stt.gpuSeconds !== null) {
+      await recordModalUsage({ deploymentId: stt.deploymentId, userId: job.userId, service: 'dub', jobId: job.id, gpuSeconds: stt.gpuSeconds });
+    }
     if (stt.segments.length === 0) {
       throw new Error('Transcription returned no segments — nothing to dub.');
     }
@@ -537,12 +524,27 @@ export const dubRouter = Router();
 // external STT service; if that service or Claude aren't configured, 404
 // rather than a confusing 500 mid-pipeline.
 dubRouter.use((_req, res, next) => {
-  if (!STT_API_KEY || !anthropic) {
+  if (!anthropic) {
     res.status(404).json({ error: 'Not found' });
     return;
   }
   next();
 });
+
+// requireAuthOrApiKey (mounted in front of this router in index.ts) sets req.user (and req.userId); the shared deploy
+// routes read req.userId.
+function requireDubUser(req: Request, res: Response, next: NextFunction) {
+  const r = req as Request & { userId?: string; user?: { id?: string } };
+  r.userId ??= r.user?.id;
+  if (!r.userId) {
+    res.status(401).json({ error: 'Sign in required.' });
+    return;
+  }
+  next();
+}
+
+// Self-serve lifecycle: POST/GET/DELETE /deploy brings up, reports on, and tears down the caller's own STT deployment.
+mountDeploymentRoutes(dubRouter, 'dub', requireDubUser);
 
 const submitBodySchema = z.object({
   target_language: z.string().min(2).max(40),
@@ -558,6 +560,17 @@ dubRouter.post('/', upload.single('audio'), asyncHandler(async (req: Authenticat
 
   if (!(await hasUsageAllowance(userId))) {
     res.status(402).json({ error: freeCreditsExhaustedMessage('dubbing') });
+    return;
+  }
+
+  // The speech-to-text step runs on the caller's own Modal deployment (there is no shared worker).
+  const manager = getDeploymentManager();
+  const target = await manager.resolveTarget(userId, 'dub');
+  if (!target) {
+    res.status(400).json({
+      error: 'Dubbing is not deployed. Deploy first (POST /api/dub/deploy), wait until its status is "ready", then submit.',
+      code: 'deployment_required',
+    });
     return;
   }
 
@@ -592,6 +605,7 @@ dubRouter.post('/', upload.single('audio'), asyncHandler(async (req: Authenticat
     updatedAt: new Date().toISOString(),
   };
   dubJobs.set(job.id, job);
+  await manager.touch(target, { job: true }).catch((err) => dubLogger.warn({ err }, 'failed to record deployment activity (non-critical)'));
 
   dubLogger.info(
     { jobId: job.id, userId, targetLanguage: target_language, sourceLanguage: source_language, bytes: file.size },

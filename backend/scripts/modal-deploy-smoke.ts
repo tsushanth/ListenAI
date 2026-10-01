@@ -1,6 +1,6 @@
 // Manual smoke test of the self-serve deployment lifecycle against REAL Modal. Not part of `npm test`.
 //
-//   npx tsx scripts/modal-deploy-smoke.ts [isolate|sound_effect|music]     (default: isolate)
+//   npx tsx scripts/modal-deploy-smoke.ts [isolate|sound_effect|music|dub]     (default: isolate)
 //
 // Uses your logged-in Modal profile (or MODAL_TOKEN_ID/SECRET) and an in-memory store, so it never touches the
 // database. It deploys one real per-user app for a throwaway user, checks that the app is deployed and that its
@@ -8,6 +8,7 @@
 //   isolate       CPU only. A few cents.
 //   sound_effect  also runs one real 1-second GPU generation (A10G, model cold start): roughly 10-15 cents.
 //   music         also runs one real 15-second GPU generation (A10G, finetuned model + LoRA): roughly 15-25 cents.
+//   dub           also transcribes 2 seconds of audio on an L4 (speech-to-text worker, model baked into the image): a few cents.
 // Everything is cleaned up in a finally block even if a check fails.
 import '../src/lib/modalDeploymentsTestEnv.js'; // dummy Supabase env so config loads; the store here is in memory
 import { execFile } from 'node:child_process';
@@ -15,12 +16,13 @@ import { promisify } from 'node:util';
 import { DeploymentManager, SERVICE_SPECS, isDeploymentService, type DeploymentService } from '../src/lib/modalDeployments.js';
 import { createModalCli } from '../src/lib/modalCli.js';
 import { runReaperOnce } from '../src/lib/deploymentReaper.js';
+import { mintDubSessionToken } from '../src/lib/dubSessionToken.js';
 import { MemoryStore, TEST_LIMITS, type FakeClock } from '../src/lib/modalDeploymentsTestKit.js';
 
 const run = promisify(execFile);
 const arg = process.argv[2] ?? 'isolate';
 if (!isDeploymentService(arg) || !SERVICE_SPECS[arg].available) {
-  console.error(`unknown or unavailable service "${arg}". Use isolate, sound_effect or music.`);
+  console.error(`unknown or unavailable service "${arg}". Use isolate, sound_effect, music or dub.`);
   process.exit(2);
 }
 const SERVICE: DeploymentService = arg;
@@ -78,6 +80,35 @@ async function main() {
       // The status route answers 200 {"status":"unknown"} for a job id it has never seen (isolate_job.py status()).
       const authBody = (await withAuth.json().catch(() => ({}))) as { status?: string };
       check('request with the secret is accepted (200, unknown job)', withAuth.status === 200 && authBody.status === 'unknown', `HTTP ${withAuth.status} ${JSON.stringify(authBody)}`);
+    } else if (SERVICE === 'dub') {
+      // The STT worker authenticates with an HMAC session token the backend mints with the deployment's own secret.
+      // The first request starts an L4 container (the model is baked into the image).
+      const health = await fetch(`${row.modal_url}/health`, { signal: AbortSignal.timeout(300_000) });
+      const hb = (await health.json().catch(() => ({}))) as { status?: string };
+      check('worker answers /health (endpoint URL is right)', health.status === 200 && hb.status === 'healthy', `HTTP ${health.status} ${JSON.stringify(hb)}`);
+      // 2 seconds of 16 kHz 16-bit mono silence as a WAV.
+      const pcm = Buffer.alloc(16000 * 2 * 2);
+      const header = Buffer.alloc(44);
+      header.write('RIFF', 0); header.writeUInt32LE(36 + pcm.length, 4); header.write('WAVEfmt ', 8);
+      header.writeUInt32LE(16, 16); header.writeUInt16LE(1, 20); header.writeUInt16LE(1, 22);
+      header.writeUInt32LE(16000, 24); header.writeUInt32LE(32000, 28); header.writeUInt16LE(2, 32); header.writeUInt16LE(16, 34);
+      header.write('data', 36); header.writeUInt32LE(pcm.length, 40);
+      const wav = Buffer.concat([header, pcm]);
+      const stt = (auth: string | null) =>
+        fetch(`${row.modal_url}/v1/stt?language=en`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'audio/wav', ...(auth ? { Authorization: `Bearer ${auth}` } : {}) },
+          body: new Uint8Array(wav),
+          signal: AbortSignal.timeout(300_000),
+        });
+      const noAuth = await stt(null);
+      check('transcribe without a token is rejected (401)', noAuth.status === 401, `HTTP ${noAuth.status}`);
+      const wrong = await stt(mintDubSessionToken('some-other-deployments-secret', 'smoke'));
+      check('a token signed with another deployment\'s secret is rejected (401)', wrong.status === 401, `HTTP ${wrong.status}`);
+      const ok = await stt(mintDubSessionToken(row.modal_secret, 'dub:smoke:1'));
+      const body = (await ok.json().catch(() => ({}))) as { segments?: unknown[]; gpu_seconds?: number; duration?: number };
+      check('transcribe with the deployment\'s own token succeeds', ok.status === 200 && Array.isArray(body.segments), `HTTP ${ok.status}, duration ${body.duration}`);
+      check('worker reports measured gpu_seconds in the response', typeof body.gpu_seconds === 'number' && body.gpu_seconds >= 0, `gpu_seconds=${body.gpu_seconds}`);
     } else {
       // sound_effect / music: the first request starts an A10G container and loads the model from the shared read-only Volume.
       const gen = (headers: Record<string, string>) =>

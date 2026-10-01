@@ -82,12 +82,6 @@ test('a race that loses the unique-index insert resolves to the winner', async (
 });
 
 test('each denial reason is reported and nothing is created', async (t) => {
-  await t.test('service whose worker is not available yet', async () => {
-    const h = makeHarness();
-    const out = await h.manager.deploy('user-a', 'dub');
-    assert.deepEqual([out.kind, out.kind === 'denied' && out.code], ['denied', 'service_unavailable']);
-    assert.equal(h.store.rows.size, 0);
-  });
   await t.test('kill switch', async () => {
     const h = makeHarness({ limits: { disabled: true } });
     const out = await h.manager.deploy('user-a', 'convert');
@@ -314,9 +308,9 @@ test('every registry entry produces names the orphan matcher recognises', async 
   assert.equal(pattern.test('realtime-tts-worker'), false);
 });
 
-test('convert, isolate, sound effects and music are available; dub is not until its worker is built', () => {
+test('all five services are available', () => {
   const available = Object.values(SERVICE_SPECS).filter((s) => s.available).map((s) => s.service).sort();
-  assert.deepEqual(available, ['convert', 'isolate', 'music', 'sound_effect']);
+  assert.deepEqual(available, ['convert', 'dub', 'isolate', 'music', 'sound_effect']);
   for (const s of Object.values(SERVICE_SPECS)) {
     if (!s.available) assert.ok(s.unavailableReason, `${s.service} explains why it is unavailable`);
   }
@@ -328,5 +322,22 @@ test('every service produces an endpoint subdomain within Modal\'s 63 character 
   for (const spec of Object.values(SERVICE_SPECS)) {
     const label = `${workspace}--${spec.appPrefix}-user-0123abcd-ef01-${spec.urlLabel}`;
     assert.ok(label.length <= 63, `${spec.service}: ${label.length} chars (${label})`);
+  }
+});
+
+test('a service flagged unavailable is refused without touching Modal or the database', async () => {
+  const h = makeHarness();
+  const spec = SERVICE_SPECS.convert as { available: boolean; unavailableReason?: string };
+  const before = { available: spec.available, reason: spec.unavailableReason };
+  spec.available = false;
+  spec.unavailableReason = 'test: worker not ready';
+  try {
+    const out = await h.manager.deploy('user-a', 'convert');
+    assert.deepEqual([out.kind, out.kind === 'denied' && out.code], ['denied', 'service_unavailable']);
+    assert.equal(h.store.rows.size, 0);
+    assert.equal(h.cli.calls.length, 0);
+  } finally {
+    spec.available = before.available;
+    spec.unavailableReason = before.reason;
   }
 });

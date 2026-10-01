@@ -189,18 +189,27 @@ export const SERVICE_SPECS: Record<DeploymentService, ServiceSpec> = {
   dub: {
     service: 'dub',
     label: 'dubbing',
-    available: false,
-    unavailableReason: 'The combined dub STT+TTS worker has not been built.',
+    available: true,
+    // Dubbing chains speech-to-text, Claude translation and the platform's own TTS. Only the speech-to-text step is a
+    // Modal resource, so the per-user app is the STT worker (vendored from realtime-tts/worker-stt-prod).
     modalFile: 'modal/dub_worker.py',
     appPrefix: 'dub-readaloud',
-    secretPrefix: 'dub',
-    secretKey: 'DUB_SECRET',
+    secretPrefix: 'dub-readaloud',
+    secretKey: 'MODAL_SESSION_SECRET', // the worker verifies HMAC session tokens signed with this (lib/dubSessionToken.ts)
     suffixEnv: 'DUB_APP_SUFFIX',
     secretNameEnv: 'DUB_SECRET_NAME',
-    urlLabel: 'api',
-    volumePrefixes: [],
+    urlLabel: 'stt-web', // class STT's `web` method: Modal names class endpoints <app>-<class>-<method>
+    volumePrefixes: [], // the model is baked into the image; requests are synchronous
   },
 };
+
+/** The job's owner has no ready deployment (never deployed, torn down, or idle/age expired). Thrown by workers and routes. */
+export class DeploymentRequiredError extends Error {
+  constructor(readonly service?: DeploymentService) {
+    super(service ? `No active ${SERVICE_SPECS[service].label} deployment for this user.` : 'No active deployment for this user.');
+    this.name = 'DeploymentRequiredError';
+  }
+}
 
 export function isDeploymentService(v: unknown): v is DeploymentService {
   return typeof v === 'string' && Object.prototype.hasOwnProperty.call(SERVICE_SPECS, v);

@@ -33,12 +33,12 @@ mock.module('@anthropic-ai/sdk', {
 const FORWARD_SECRET = 'test-forward-secret';
 const VALID_JWT = 'valid-jwt-for-user-1';
 const JWT_USER_ID = 'user-jwt-1';
-const STT_URL = 'https://stt-worker.example.test';
+// Dubbing's STT step runs on the CALLER'S OWN Modal deployment; boot() seeds one at this URL for the signed-in user.
+const DUB_URL = 'https://dub-user-worker.example.test';
+const DUB_SECRET = 'dub-deployment-secret-value';
 
 process.env.SUPABASE_JWT_SECRET ??= 'test';
 process.env.NODE_ENV = 'test';
-process.env.STT_GATEWAY_URL = STT_URL;
-process.env.STT_API_KEY = 'stt-secret';
 process.env.ANTHROPIC_API_KEY = 'test-anthropic-key';
 process.env.GATEWAY_FORWARD_SECRET = FORWARD_SECRET;
 
@@ -77,6 +77,8 @@ interface MockSegment { start: number; end: number; text: string }
 
 let sttSegments: MockSegment[] = [{ start: 0, end: 2, text: 'Hello there.' }];
 let sttStatus = 200;
+let sttGpuSeconds: number | undefined;
+const sttRequests: Array<{ url: string; auth: string }> = [];
 // Controls the billing gate (isBillingActiveForUser -> getBillingForUser), which queries
 // the `realtimetts_billing` table via plain PostgREST — mirrors soundEffects.test.ts. Defaults to active.
 let billingActive = true;
@@ -86,6 +88,8 @@ let freeCreditsUsed: number | null = 10000;
 function resetMocks() {
   sttSegments = [{ start: 0, end: 2, text: 'Hello there.' }];
   sttStatus = 200;
+  sttGpuSeconds = undefined;
+  sttRequests.length = 0;
   currentTranslationReply = '["Hola."]';
   anthropicCalls.length = 0;
   billingActive = true;
@@ -130,18 +134,14 @@ function installFetchMock(supabaseUrl: string) {
       return new Response(JSON.stringify(rows), { status: 200, headers: { 'Content-Type': 'application/json' } });
     }
 
-    // STT gateway authorize hand-off (POST {key, mode} -> {token, url})
-    if (url === `${STT_URL}/stt/authorize`) {
-      return new Response(JSON.stringify({ token: 'stt-session-token', url: STT_URL }), { status: 200, headers: { 'Content-Type': 'application/json' } });
-    }
-
-    // STT worker itself (raw audio bytes -> transcript+segments)
-    if (url.startsWith(`${STT_URL}/v1/stt`)) {
+    // The caller's own dub STT deployment (raw audio bytes -> transcript+segments). Auth is an HMAC session token.
+    if (url.startsWith(`${DUB_URL}/v1/stt`)) {
+      sttRequests.push({ url, auth: String((init?.headers as Record<string, string>)?.Authorization ?? '') });
       if (sttStatus !== 200) {
         return new Response('worker error', { status: sttStatus });
       }
       const segments = sttSegments.map((s, i) => ({ id: i, ...s }));
-      return new Response(JSON.stringify({ language: 'en', segments }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+      return new Response(JSON.stringify({ language: 'en', segments, ...(sttGpuSeconds !== undefined ? { gpu_seconds: sttGpuSeconds } : {}) }), { status: 200, headers: { 'Content-Type': 'application/json' } });
     }
 
     // Supabase storage (uploadAudioToCache / getSignedAudioUrl) and anything else Supabase-related.
@@ -163,7 +163,7 @@ function uninstallFetchMock() {
 // ---------------------------------------------------------------------------
 // Boot helpers
 // ---------------------------------------------------------------------------
-async function boot(supabaseUrl: string) {
+async function boot(supabaseUrl: string, opts: { deployed?: boolean } = {}) {
   process.env.SUPABASE_URL = supabaseUrl;
   process.env.SUPABASE_SERVICE_ROLE_KEY = 'test';
 
@@ -175,6 +175,13 @@ async function boot(supabaseUrl: string) {
     import(`../lib/ttsProviderClient.js${bust}`),
     import('../middleware/errorHandler.js'),
   ]);
+
+  // Loaded here, not at the top of the file: config.ts must see SUPABASE_URL (the stub above) when it first loads.
+  const { makeHarness } = await import('../lib/modalDeploymentsTestKit.js');
+  const { setDeploymentManagerForTests } = await import('../lib/modalDeployments.js');
+  const harness = makeHarness();
+  setDeploymentManagerForTests(harness.manager);
+  if (opts.deployed !== false) harness.store.seedReady(JWT_USER_ID, 'dub', DUB_URL, DUB_SECRET);
 
   const app = express();
   app.use(express.json());
@@ -190,7 +197,7 @@ async function boot(supabaseUrl: string) {
       body: body instanceof FormData ? body : body ? JSON.stringify(body) : undefined,
     });
 
-  return { call, close: () => server.close(), ttsProvider: ttsProviderModule.ttsProvider };
+  return { call, close: () => { server.close(); setDeploymentManagerForTests(null); }, ttsProvider: ttsProviderModule.ttsProvider, harness };
 }
 
 function buildForm(opts: { audio?: Buffer; mimetype?: string; target_language?: string; source_language?: string; voice_id?: string; filename?: string } = {}) {
@@ -503,6 +510,125 @@ test('STT worker failure fails the job rather than throwing unhandled', async ()
     const result = await waitForJob(s.call, job_id, jwtHeaders);
     assert.equal(result.status, 'failed');
     assert.match(result.error, /500/);
+  } finally {
+    s.close();
+    uninstallFetchMock();
+  }
+});
+
+
+// ===========================================================================
+// Self-serve deployment: the STT step runs on the caller's own Modal app
+// ===========================================================================
+test('POST /api/dub without a ready deployment -> 400 deployment_required, and no job is created', async () => {
+  installFetchMock(SHARED_STUB.url);
+  resetMocks();
+  const s = await boot(SHARED_STUB.url, { deployed: false });
+  try {
+    const res = await s.call(jwtHeaders, 'POST', '/', buildForm());
+    assert.equal(res.status, 400);
+    const body = await res.json();
+    assert.equal(body.code, 'deployment_required');
+    assert.match(body.error, /POST \/api\/dub\/deploy/);
+    assert.equal(sttRequests.length, 0, 'nothing was sent to a worker that does not exist');
+  } finally {
+    s.close();
+    uninstallFetchMock();
+  }
+});
+
+test('the STT call goes to the caller\'s own deployment with a session token signed by that deployment\'s secret', async () => {
+  installFetchMock(SHARED_STUB.url);
+  resetMocks();
+  const s = await boot(SHARED_STUB.url);
+  try {
+    const submit = await s.call(jwtHeaders, 'POST', '/', buildForm({ source_language: 'en' }));
+    const { job_id } = await submit.json();
+    await waitForJob(s.call, job_id, jwtHeaders);
+
+    assert.equal(sttRequests.length, 1);
+    assert.ok(sttRequests[0].url.startsWith(`${DUB_URL}/v1/stt`), 'the user\'s own worker');
+    assert.match(sttRequests[0].url, /language=en/);
+    const token = sttRequests[0].auth.replace(/^Bearer /, '');
+    const [payload, sig] = token.split('.');
+    const { createHmac } = await import('node:crypto');
+    assert.equal(sig, createHmac('sha256', DUB_SECRET).update(payload).digest('base64url'), 'signed with the deployment\'s own secret');
+    const claims = JSON.parse(Buffer.from(payload, 'base64url').toString());
+    assert.match(claims.id, new RegExp(`^dub:${JWT_USER_ID}:${job_id}$`));
+    assert.ok(claims.exp > Date.now(), 'expiry is in the future, in milliseconds');
+  } finally {
+    s.close();
+    uninstallFetchMock();
+  }
+});
+
+test('a dub job records the worker\'s measured GPU seconds against the deployment, and none when it did not report them', async () => {
+  const { setUsageRecorderForTests } = await import('../lib/modalUsage.js');
+  const events: Array<{ service: string; jobId: string; gpuSeconds: number; deploymentId: string | null }> = [];
+  setUsageRecorderForTests({ record: async (ev) => { events.push(ev); return true; } });
+  installFetchMock(SHARED_STUB.url);
+  resetMocks();
+  const s = await boot(SHARED_STUB.url);
+  try {
+    sttGpuSeconds = 8.25;
+    const first = await (await s.call(jwtHeaders, 'POST', '/', buildForm())).json();
+    await waitForJob(s.call, first.job_id, jwtHeaders);
+    assert.equal(events.length, 1);
+    assert.deepEqual([events[0].service, events[0].jobId, events[0].gpuSeconds], ['dub', first.job_id, 8.25]);
+    assert.equal(events[0].deploymentId, s.harness.store.liveFor(JWT_USER_ID, 'dub')?.id);
+
+    sttGpuSeconds = undefined;
+    const second = await (await s.call(jwtHeaders, 'POST', '/', buildForm())).json();
+    await waitForJob(s.call, second.job_id, jwtHeaders);
+    assert.equal(events.length, 1, 'an unreported measurement is not recorded as zero');
+  } finally {
+    setUsageRecorderForTests(null);
+    s.close();
+    uninstallFetchMock();
+  }
+});
+
+test('submitting restarts the deployment idle clock and counts the job', async () => {
+  installFetchMock(SHARED_STUB.url);
+  resetMocks();
+  const s = await boot(SHARED_STUB.url);
+  try {
+    s.harness.clock.advance(20 * 60_000);
+    const res = await s.call(jwtHeaders, 'POST', '/', buildForm());
+    assert.equal(res.status, 202);
+    const row = s.harness.store.liveFor(JWT_USER_ID, 'dub');
+    assert.equal(row?.job_count, 1);
+    assert.equal(row?.last_used_at, s.harness.clock.now().toISOString());
+  } finally {
+    s.close();
+    uninstallFetchMock();
+  }
+});
+
+test('the deploy endpoints are mounted: deploy, status, teardown, and a job can be submitted once deployed', async () => {
+  installFetchMock(SHARED_STUB.url);
+  resetMocks();
+  const s = await boot(SHARED_STUB.url, { deployed: false });
+  try {
+    s.harness.paying.add(JWT_USER_ID);
+    assert.equal((await s.call(jwtHeaders, 'GET', '/deploy')).status, 404);
+    const post = await s.call(jwtHeaders, 'POST', '/deploy');
+    assert.equal(post.status, 202);
+    assert.equal((await post.json()).service, 'dub');
+    await s.harness.manager.whenIdle();
+    assert.equal((await (await s.call(jwtHeaders, 'GET', '/deploy')).json()).status, 'ready');
+
+    const call = s.harness.cli.calls.find((c) => c.op === 'deploy');
+    assert.equal(call?.args[0], 'modal/dub_worker.py');
+    const env = call?.args[1] as Record<string, string>;
+    assert.match(env.DUB_APP_SUFFIX, /^-user-/);
+    assert.match(env.DUB_SECRET_NAME, /^dub-readaloud-user-/);
+    const secretCall = s.harness.cli.calls.find((c) => c.op === 'secretCreate');
+    assert.equal(secretCall?.args[1], 'MODAL_SESSION_SECRET', 'the worker verifies tokens signed with this key');
+
+    assert.equal((await s.call(jwtHeaders, 'POST', '/', buildForm())).status, 202);
+    assert.equal((await s.call(jwtHeaders, 'DELETE', '/deploy')).status, 200);
+    assert.equal((await s.call(jwtHeaders, 'POST', '/', buildForm())).status, 400, 'a torn-down deployment needs a fresh deploy');
   } finally {
     s.close();
     uninstallFetchMock();
