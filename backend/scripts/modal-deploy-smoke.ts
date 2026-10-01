@@ -1,11 +1,12 @@
 // Manual smoke test of the self-serve deployment lifecycle against REAL Modal. Not part of `npm test`.
 //
-//   npx tsx scripts/modal-deploy-smoke.ts [isolate|sound_effect|music|dub]     (default: isolate)
+//   npx tsx scripts/modal-deploy-smoke.ts [convert|isolate|sound_effect|music|dub]     (default: isolate)
 //
 // Uses your logged-in Modal profile (or MODAL_TOKEN_ID/SECRET) and an in-memory store, so it never touches the
 // database. It deploys one real per-user app for a throwaway user, checks that the app is deployed and that its
 // per-user secret actually protects it, tears it down, and checks that the app, Secret and Volume are really gone.
 //   isolate       CPU only. A few cents.
+//   convert       CPU only (no job is run, only the endpoint and its auth are checked). A few cents.
 //   sound_effect  also runs one real 1-second GPU generation (A10G, model cold start): roughly 10-15 cents.
 //   music         also runs one real 15-second GPU generation (A10G, finetuned model + LoRA): roughly 15-25 cents.
 //   dub           also transcribes 2 seconds of audio on an L4 (speech-to-text worker, model baked into the image): a few cents.
@@ -22,7 +23,7 @@ import { MemoryStore, TEST_LIMITS, type FakeClock } from '../src/lib/modalDeploy
 const run = promisify(execFile);
 const arg = process.argv[2] ?? 'isolate';
 if (!isDeploymentService(arg) || !SERVICE_SPECS[arg].available) {
-  console.error(`unknown or unavailable service "${arg}". Use isolate, sound_effect, music or dub.`);
+  console.error(`unknown or unavailable service "${arg}". Use convert, isolate, sound_effect, music or dub.`);
   process.exit(2);
 }
 const SERVICE: DeploymentService = arg;
@@ -75,12 +76,12 @@ async function main() {
     check('Modal lists the app as deployed', !!mine && String(mine['State']).startsWith('deployed'), mine ? mine['State'] : 'not found');
 
     // The per-user secret really protects the endpoint (the first request cold-starts a container: allow time)
-    if (SERVICE === 'isolate') {
-      const probe = `${row.modal_url}/isolate/does-not-exist`;
+    if (SERVICE === 'isolate' || SERVICE === 'convert') {
+      // Both expose GET /<service>/<job_id>, which answers 200 {"status":"unknown"} for an id it has never seen.
+      const probe = `${row.modal_url}/${SERVICE}/does-not-exist`;
       const noAuth = await fetch(probe, { signal: AbortSignal.timeout(150_000) });
       check('request without the secret is rejected (401)', noAuth.status === 401, `HTTP ${noAuth.status}`);
       const withAuth = await fetch(probe, { headers: { Authorization: `Bearer ${row.modal_secret}` }, signal: AbortSignal.timeout(150_000) });
-      // The status route answers 200 {"status":"unknown"} for a job id it has never seen (isolate_job.py status()).
       const authBody = (await withAuth.json().catch(() => ({}))) as { status?: string };
       check('request with the secret is accepted (200, unknown job)', withAuth.status === 200 && authBody.status === 'unknown', `HTTP ${withAuth.status} ${JSON.stringify(authBody)}`);
     } else if (SERVICE === 'dub') {

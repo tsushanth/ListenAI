@@ -12,6 +12,7 @@ import { isIP } from 'node:net'
 import { z } from 'zod'
 import { GATEWAY, UpstreamError, gatewayIdentityHeaders, resolveGatewayIdentity, type ErrorCode } from './upstream.ts'
 
+import { deploymentRequiredError } from './deployments.ts'
 import { SlidingWindowLimiter } from './ratelimit.ts'
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'https://listenai-backend.fly.dev'
@@ -185,30 +186,6 @@ const CONVERT_CONSENT_STATEMENT =
   'I confirm that I have the legal right to use both the source audio and the target voice reference, ' +
   'and that this conversion does not impersonate any person without their consent.'
 
-const DEPLOY_WAIT_MESSAGE =
-  'Voice conversion runs on a private GPU converter that is set up on your first use. It is being provisioned now (about 3 minutes); call convert_voice again then.'
-
-/** API-key callers have no browser to click "Deploy". The backend's POST /deploy is itself reachable via the
- *  bridge, so on a 'deployment_required' response we kick it off (or find it already running) and tell the
- *  caller to retry. A previously failed deployment is torn down and redeployed once. Always throws. */
-async function provisionConverterAndAsk(headers: Record<string, string>): Promise<never> {
-  const deploy = () => backendFetch(`${BACKEND_URL}/api/voice-convert/deploy`, { method: 'POST', headers }, 'voice conversion')
-  let r = await deploy()
-  if (r.status === 409) {
-    const body = (await r.json().catch(() => null)) as { deployment?: { status?: string } } | null
-    if (body?.deployment?.status === 'failed') {
-      await backendFetch(`${BACKEND_URL}/api/voice-convert/deploy`, { method: 'DELETE', headers }, 'voice conversion')
-      r = await deploy()
-    } else {
-      throw new UpstreamError('capacity', DEPLOY_WAIT_MESSAGE, true)
-    }
-  }
-  if (r.status === 202 || r.status === 409) throw new UpstreamError('capacity', DEPLOY_WAIT_MESSAGE, true)
-  if (r.status === 503) throw new UpstreamError('upstream', 'Voice conversion is not available on this deployment (converter provisioning is not configured).', false)
-  await throwForStatus(r, 'Voice conversion')
-  throw new UpstreamError('upstream', 'Unexpected response while provisioning the voice converter.', true)
-}
-
 export async function submitVoiceConversion(opts: {
   apiKey: string; keyId: string
   source: Buffer; sourceMime: string; target: Buffer; targetMime: string
@@ -221,7 +198,7 @@ export async function submitVoiceConversion(opts: {
   const r = await backendFetch(`${BACKEND_URL}/api/voice-convert/conversions`, { method: 'POST', headers, body: form }, 'voice conversion')
   if (r.status === 400) {
     const body = (await r.json().catch(() => null)) as { code?: string; error?: string } | null
-    if (body?.code === 'deployment_required') return provisionConverterAndAsk(headers)
+    if (body?.code === 'deployment_required') throw deploymentRequiredError('convert')
     throw new UpstreamError('invalid_input', body?.error || 'The voice conversion backend rejected the request.', false)
   }
   if (!r.ok) await throwForStatus(r, 'Voice conversion')

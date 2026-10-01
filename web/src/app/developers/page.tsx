@@ -160,6 +160,7 @@ curl -L -X POST "<url>/v1/stt?language=auto" \\
                   Speech to text and voice cloning have their own key-based routes, described in their
                   sections.
                 </p>
+                <p><b>0. Deploy.</b> The speech-to-text step runs on your own deployment: <code>POST /api/dub/deploy</code> and wait for <code>ready</code> (see <a href="#deployments" style={{ textDecoration: 'underline' }}>Deployments</a>); submits without one fail with <code>400</code> <code>deployment_required</code>.</p>
                 <p><b>1. Submit.</b> <code>POST https://api.readaloudai.org/api/dub</code>,
                   <code>Authorization: Bearer &lt;your session token&gt;</code> (or use the MCP tool <code>dub_audio</code> with an API key; the tool takes clips up to 25&nbsp;MB),
                   <code>multipart/form-data</code> with an <code>audio</code> file (wav, flac, ogg,
@@ -189,6 +190,7 @@ curl -L -X POST "<url>/v1/stt?language=auto" \\
                   as dubbing above: a session token, or an API key through the MCP tool{' '}
                   <code>generate_sound_effect</code> (1&ndash;12 seconds).
                 </p>
+                <p><b>0. Deploy.</b> <code>POST /api/sound-effects/deploy</code> and wait for <code>ready</code> (see <a href="#deployments" style={{ textDecoration: 'underline' }}>Deployments</a>); requests without one fail with <code>400</code> <code>deployment_required</code>.</p>
                 <p><b>1. Submit.</b> <code>POST https://api.readaloudai.org/api/sound-effects/job</code>,
                   <code>Authorization: Bearer &lt;your session token&gt;</code>, JSON{' '}
                   <code>{'{ "prompt": "…", "duration_sec": 1-12 }'}</code>. An identical prompt+duration you&rsquo;ve
@@ -206,6 +208,44 @@ curl -L -X POST "<url>/v1/stt?language=auto" \\
                 </ul>
                 <p><b>Price:</b> $0.0015 per second of generated audio ($0.09 per minute), rounded up to the next second with a 4 second minimum, so a 12 second effect is $0.018. Cache hits are always free. On your invoice it appears as character equivalents on the same meter as text-to-speech (150 per second).</p>
 
+                <h3 id="deployments">Deployments (bring up, use, tear down)</h3>
+                <p>
+                  Voice conversion, voice isolation, sound effects and dubbing each run on a private GPU
+                  app that belongs to your account. Nothing is deployed until you ask, and nothing is shared
+                  with other users. The lifecycle is the same for all four:
+                </p>
+                <ol>
+                  <li><b>Deploy.</b> <code>POST &lt;feature&gt;/deploy</code> returns <code>202</code> and starts your app (usually 1&ndash;3 minutes).{' '}
+                    Paths: <code>/api/voice-convert/deploy</code>, <code>/api/voice-isolate/deploy</code>, <code>/api/sound-effects/deploy</code>, <code>/api/dub/deploy</code>.</li>
+                  <li><b>Wait.</b> <code>GET &lt;feature&gt;/deploy</code> returns the deployment; use it when <code>status</code> is <code>ready</code>.{' '}
+                    States: <code>requested</code>, <code>deploying</code>, <code>ready</code>, <code>stopping</code>, <code>stopped</code>, <code>failed</code>.{' '}
+                    <code>GET /api/deployments</code> lists all of yours with the current limits.</li>
+                  <li><b>Use.</b> Call the feature as documented. Without a ready deployment, requests fail with <code>400</code> and <code>code: "deployment_required"</code>.</li>
+                  <li><b>Tear down.</b> <code>DELETE &lt;feature&gt;/deploy</code> stops the app. Any leftover stored files are removed within 24 hours.</li>
+                </ol>
+                <p>
+                  <b>Automatic teardown.</b> A deployment is also stopped after an idle period with no jobs, and after a maximum
+                  age, so a forgotten one cannot keep running. The exact limits, plus your per-account cap on active deployments and
+                  deploys per day, are returned by <code>GET /api/deployments</code>. A stopped or failed deployment can be replaced by
+                  deploying again.
+                </p>
+                <p>
+                  <b>Billing.</b> Usage is billed at the per-use rates listed with each feature and below. You are not charged for time a
+                  deployment sits idle. GPU seconds are measured and recorded per deployment so Modal resource
+                  billing can be added; it is not charged today.
+                </p>
+                <ul>
+                  <li><code>402</code> deploying needs a payment method on file. <code>403</code> deploying needs a signed-in account (not an anonymous key).</li>
+                  <li><code>409</code> you already have a deployment for this feature (the response includes it).</li>
+                  <li><code>429</code> you reached your active-deployment or daily-deploy limit. <code>503</code> deployments are disabled or at capacity; retry later.</li>
+                </ul>
+                <p>
+                  <b>With an API key (MCP).</b> Use the <code>manage_deployment</code> tool with{' '}
+                  <code>service</code> (<code>convert</code>, <code>isolate</code>, <code>sound_effect</code> or <code>dub</code>) and{' '}
+                  <code>action</code> (<code>deploy</code>, <code>status</code> or <code>teardown</code>). The feature tools never start a
+                  deployment for you; they return <code>invalid_input</code> telling you to deploy first.
+                </p>
+
                 <h3 id="voice-isolate-convert">Voice isolation &amp; voice conversion</h3>
                 <p>
                   Two related tools, each spinning up your own on-demand GPU container so your
@@ -215,13 +255,9 @@ curl -L -X POST "<url>/v1/stt?language=auto" \\
                   recording in a target voice. Try isolation in the browser at{' '}
                   <Link href="/isolate-voice" style={{ textDecoration: 'underline' }}>/isolate-voice</Link>. Both accept a session
                   token, or an API key through the MCP tools <code>isolate_voice</code> and{' '}
-                  <code>convert_voice</code> (see Credentials under dubbing above). Not every
-                  container step is automatic for API-key callers: <code>convert_voice</code> sets up
-                  your private converter on the first call (about 3 minutes, and it returns a
-                  temporary error until it is ready, so call it again), but <code>isolate_voice</code> does
-                  not deploy for you. Deploy isolation first, from{' '}
-                  <Link href="/isolate-voice" style={{ textDecoration: 'underline' }}>/isolate-voice</Link> while signed in
-                  to the same account; until then isolation requests fail with <code>400</code>.
+                  <code>convert_voice</code> (see Credentials under dubbing above). Like every GPU
+                  feature here, they run on a deployment you bring up and tear down yourself (see{' '}
+                  <a href="#deployments" style={{ textDecoration: 'underline' }}>Deployments</a>).
                 </p>
                 <p><b>Known limitation.</b> Isolation is Demucs, which was built for music. On real speech
                   recordings (room noise, crosstalk, reverb) it removes less noise than dedicated speech
@@ -235,10 +271,8 @@ curl -L -X POST "<url>/v1/stt?language=auto" \\
                   credits, then needs a payment method. Voice conversion also has a browser page at{' '}
                   <Link href="/convert-voice" style={{ textDecoration: 'underline' }}>/convert-voice</Link>.
                 </p>
-                <p><b>1. Deploy your container.</b> <code>POST /api/voice-isolate/deploy</code> or{' '}
-                  <code>POST /api/voice-convert/deploy</code> (same session-token auth). Check status with{' '}
-                  <code>GET .../deploy</code>, tear down with <code>DELETE .../deploy</code> when you&rsquo;re done
-                  &mdash; you aren&rsquo;t billed for idle deploy time, only completed jobs (see pricing below).
+                <p><b>1. Deploy.</b> <code>POST /api/voice-isolate/deploy</code> or{' '}
+                  <code>POST /api/voice-convert/deploy</code>, then wait for <code>status: "ready"</code>.
                 </p>
                 <p><b>2. Submit a job.</b> <code>POST /api/voice-isolate/isolations</code> (multipart{' '}
                   <code>input</code> file) or <code>POST /api/voice-convert/conversions</code> (multipart{' '}
@@ -252,11 +286,10 @@ curl -L -X POST "<url>/v1/stt?language=auto" \\
                   result (raw WAV bytes).
                 </p>
                 <ul>
-                  <li><code>400</code> no deployment, missing/bad file, or missing/wrong <code>consent_statement</code>.</li>
-                  <li><code>400</code> with <code>code: "deployment_required"</code> (conversion): no converter yet. <code>POST /api/voice-convert/deploy</code>, poll <code>GET</code> until <code>status: "ready"</code> (about 3 minutes), then retry.</li>
+                  <li><code>400</code> missing/bad file, or missing/wrong <code>consent_statement</code>.</li>
+                  <li><code>400</code> with <code>code: "deployment_required"</code>: no ready deployment. Deploy first (see Deployments).</li>
                   <li><code>401</code> not signed in. <code>402</code> your free credits are used up. Add a payment method.</li>
-                  <li><code>409</code> a deployment already exists. <code>429</code> over 10 requests/hour.</li>
-                  <li><code>503</code> the GPU backend isn&rsquo;t configured in this environment.</li>
+                  <li><code>429</code> over 10 requests/hour.</li>
                 </ul>
                 <p><b>Price:</b> voice isolation is $0.05 per minute of input audio, with a 10 second minimum. Voice conversion is $0.10 per minute of source audio, with a 30 second minimum ($0.05). Both are billed by the second rounded up, only for completed jobs. On your invoice they appear as character equivalents on the same meter as text-to-speech (isolation 5,000 per minute, conversion 10,000 per minute). Voice design is billed per generated voice on its own meter.</p>
 

@@ -27,47 +27,12 @@ export interface ConversionStatus {
   stderr_tail?: string
 }
 
-export interface Deployment {
-  app_name: string
-  modal_url: string
-  status: 'deploying' | 'ready' | 'stopping' | 'stopped' | 'failed'
-}
-
 export const voiceConvertApi = {
   getConsentText(): string {
     return CONSENT_STATEMENT
   },
 
-  // ------------------------------------------------------------------------
-  // Deployment lifecycle
-  // ------------------------------------------------------------------------
-
-  async getDeployment(): Promise<Deployment | null> {
-    const res = await fetch(`${API_BASE_URL}/api/voice-convert/deploy`, {
-      headers: { Authorization: `Bearer ${await token()}` },
-    })
-    if (res.status === 404) return null
-    if (!res.ok) return fail(res)
-    return res.json()
-  },
-
-  async deploy(): Promise<Deployment> {
-    const res = await fetch(`${API_BASE_URL}/api/voice-convert/deploy`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${await token()}`, 'Content-Type': 'application/json' },
-    })
-    if (!res.ok) return fail(res)
-    return res.json()
-  },
-
-  async destroy(): Promise<{ deleted: boolean }> {
-    const res = await fetch(`${API_BASE_URL}/api/voice-convert/deploy`, {
-      method: 'DELETE',
-      headers: { Authorization: `Bearer ${await token()}` },
-    })
-    if (!res.ok) return fail(res)
-    return res.json()
-  },
+  // Deploy / status / teardown for the converter live in deploymentsApi.ts (shared by every tool).
 
   // ------------------------------------------------------------------------
   // Conversion jobs

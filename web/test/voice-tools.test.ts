@@ -133,58 +133,120 @@ test('backend status codes map onto the shared ErrorCode scheme', async () => {
   } finally { restore() }
 })
 
-test('convert_voice first use: deployment_required triggers POST /deploy and returns a retryable capacity error', async () => {
+const dm = await import('../src/lib/mcp/deployments.ts')
+const up = await import('../src/lib/mcp/upstream.ts')
+
+function isDeployRequired(service: string) {
+  return (e: unknown) => e instanceof UpstreamError && e.code === 'invalid_input' && e.retryable === false &&
+    new RegExp(`service "${service}" and action "deploy"`).test(e.message)
+}
+
+test('convert_voice without a deployment tells the caller to deploy explicitly and never starts one', async () => {
   install()
-  handler = (c) => {
-    if (c.url.endsWith('/conversions')) return json(400, { error: 'not configured', code: 'deployment_required' })
-    if (c.url.endsWith('/deploy') && c.method === 'POST') return json(202, { status: 'deploying' })
-    return undefined
-  }
+  handler = (c) => c.url.endsWith('/conversions') ? json(400, { error: 'not configured', code: 'deployment_required' }) : undefined
   try {
     await assert.rejects(
       vt.submitVoiceConversion({ ...ctx, source: Buffer.from('a'), sourceMime: 'audio/wav', target: Buffer.from('b'), targetMime: 'audio/wav' }),
-      (e: unknown) => e instanceof UpstreamError && e.code === 'capacity' && e.retryable === true && /3 minutes/.test(e.message),
+      isDeployRequired('convert'),
     )
-    assert.ok(calls.some((c) => c.url.endsWith('/api/voice-convert/deploy') && c.method === 'POST'))
-    const conv = calls.find((c) => c.url.endsWith('/conversions'))!
-    assert.equal(conv.headers['x-gateway-admin-secret'], 'test-forward-secret')
-    const form = conv.body as FormData
-    assert.match(String(form.get('consent_statement')), /legal right to use both the source audio/)
+    assert.equal(calls.some((c) => c.url.endsWith('/deploy')), false)
   } finally { restore() }
 })
 
-test('convert_voice: an in-flight deployment (409 deploying) is reported as still provisioning, not redeployed', async () => {
+test('isolate, dub and sound effects also report deployment_required without deploying', async () => {
   install()
-  handler = (c) => {
-    if (c.url.endsWith('/conversions')) return json(400, { code: 'deployment_required', error: 'x' })
-    if (c.url.endsWith('/deploy') && c.method === 'POST') return json(409, { deployment: { status: 'deploying' } })
-    return undefined
-  }
+  handler = () => json(400, { error: 'x', code: 'deployment_required' })
   try {
-    await assert.rejects(
-      vt.submitVoiceConversion({ ...ctx, source: Buffer.from('a'), sourceMime: 'audio/wav', target: Buffer.from('b'), targetMime: 'audio/wav' }),
-      (e: unknown) => e instanceof UpstreamError && e.code === 'capacity',
-    )
-    assert.equal(calls.filter((c) => c.url.endsWith('/deploy')).length, 1)
+    await assert.rejects(up.isolateVoice({ apiKey: ctx.apiKey, keyId: ctx.keyId, buffer: Buffer.from('a'), mimeType: 'audio/wav', wantInstrumental: false, timeoutMs: 5000 }), isDeployRequired('isolate'))
+    await assert.rejects(up.submitDub({ key: ctx.apiKey, keyId: ctx.keyId, audioBase64: 'QUJD', filename: 'a.wav', targetLanguage: 'es' }), isDeployRequired('dub'))
+    await assert.rejects(up.submitSoundEffectJob({ 'x-gateway-admin-secret': 's', 'x-gateway-key-id': 'k' }, 'rain', 3), isDeployRequired('sound_effect'))
+    assert.equal(calls.some((c) => c.url.endsWith('/deploy')), false)
   } finally { restore() }
 })
 
-test('convert_voice: a failed deployment is deleted and redeployed once', async () => {
+test('a 400 without deployment_required stays a plain invalid_input', async () => {
   install()
-  let deploys = 0
+  handler = () => json(400, { error: 'bad audio' })
+  try {
+    await assert.rejects(up.submitDub({ key: ctx.apiKey, keyId: ctx.keyId, audioBase64: 'QUJD', filename: 'a.wav', targetLanguage: 'es' }),
+      (e: unknown) => e instanceof UpstreamError && e.code === 'invalid_input' && /bad audio/.test(e.message))
+  } finally { restore() }
+})
+
+const H = { 'x-gateway-admin-secret': 's', 'x-gateway-key-id': 'k' }
+const DEPLOY_PATHS: Record<string, string> = {
+  convert: '/api/voice-convert/deploy', isolate: '/api/voice-isolate/deploy', sound_effect: '/api/sound-effects/deploy', dub: '/api/dub/deploy',
+}
+
+test('manage_deployment hits each service path and hides the Modal app name and url', async () => {
+  for (const [service, path] of Object.entries(DEPLOY_PATHS)) {
+    install()
+    handler = () => json(202, { status: 'deploying', app_name: 'secret-app', modal_url: 'https://modal.test/x' })
+    try {
+      const r = await dm.manageDeployment(service as 'convert', 'deploy', H)
+      assert.equal(calls[0].url, `https://backend.test${path}`)
+      assert.equal(calls[0].method, 'POST')
+      assert.equal(calls[0].headers['x-gateway-key-id'], 'k')
+      assert.equal(r.data.status, 'deploying')
+      assert.equal(JSON.stringify(r).includes('secret-app'), false)
+      assert.equal(JSON.stringify(r).includes('modal.test'), false)
+    } finally { restore() }
+  }
+})
+
+test('manage_deployment status: none, ready with auto-teardown, and teardown', async () => {
+  install()
+  handler = () => json(404, { error: 'No deployment found.' })
+  try { assert.equal((await dm.manageDeployment('dub', 'status', H)).data.status, 'none') } finally { restore() }
+
+  install()
+  handler = () => json(200, { status: 'ready', seconds_until_auto_teardown: 600 })
+  try {
+    const r = await dm.manageDeployment('dub', 'status', H)
+    assert.equal(r.data.status, 'ready')
+    assert.match(r.text, /10 min/)
+  } finally { restore() }
+
+  install()
+  handler = (c) => c.method === 'DELETE' ? json(200, { deleted: true, status: 'stopped', message: 'torn down' }) : undefined
+  try {
+    const r = await dm.manageDeployment('dub', 'teardown', H)
+    assert.equal(calls[0].method, 'DELETE')
+    assert.equal(r.data.status, 'stopped')
+  } finally { restore() }
+})
+
+test('manage_deployment deploy: existing live deployment is reported, failed one is cleared and redeployed once', async () => {
+  install()
+  handler = () => json(409, { deployment: { status: 'ready' } })
+  try {
+    const r = await dm.manageDeployment('isolate', 'deploy', H)
+    assert.equal(r.data.status, 'ready')
+    assert.equal(calls.length, 1)
+  } finally { restore() }
+
+  install()
+  let posts = 0
   handler = (c) => {
-    if (c.url.endsWith('/conversions')) return json(400, { code: 'deployment_required', error: 'x' })
-    if (c.url.endsWith('/deploy') && c.method === 'POST') { deploys++; return deploys === 1 ? json(409, { deployment: { status: 'failed' } }) : json(202, { status: 'deploying' }) }
-    if (c.url.endsWith('/deploy') && c.method === 'DELETE') return json(200, { deleted: true })
-    return undefined
+    if (c.method === 'POST') { posts++; return posts === 1 ? json(409, { deployment: { status: 'failed' } }) : json(202, { status: 'deploying' }) }
+    return json(200, { deleted: true })
   }
   try {
-    await assert.rejects(
-      vt.submitVoiceConversion({ ...ctx, source: Buffer.from('a'), sourceMime: 'audio/wav', target: Buffer.from('b'), targetMime: 'audio/wav' }),
-      (e: unknown) => e instanceof UpstreamError && e.code === 'capacity',
-    )
-    assert.deepEqual(calls.filter((c) => c.url.endsWith('/deploy')).map((c) => c.method), ['POST', 'DELETE', 'POST'])
+    const r = await dm.manageDeployment('isolate', 'deploy', H)
+    assert.deepEqual(calls.map((c) => c.method), ['POST', 'DELETE', 'POST'])
+    assert.equal(r.data.status, 'deploying')
   } finally { restore() }
+})
+
+test('manage_deployment maps refusals to error codes', async () => {
+  const cases: Array<[number, string]> = [[402, 'payment_required'], [403, 'unauthorized'], [429, 'rate_limited'], [503, 'capacity'], [401, 'unauthorized']]
+  for (const [status, code] of cases) {
+    install()
+    handler = () => json(status, { error: 'nope', code: 'x' })
+    try {
+      await assert.rejects(dm.manageDeployment('convert', 'deploy', H), (e: unknown) => e instanceof UpstreamError && e.code === code, `status ${status}`)
+    } finally { restore() }
+  }
 })
 
 test('convert_voice: a normal submit returns the job', async () => {
@@ -285,6 +347,7 @@ test('all new tools are registered with correct read/destructive annotations', a
     design_voice: { readOnly: false, destructive: false },
     get_voice_design: { readOnly: true, destructive: false },
     convert_voice: { readOnly: false, destructive: false },
+    manage_deployment: { readOnly: false, destructive: false },
     get_voice_conversion: { readOnly: true, destructive: false },
     create_voice_clone: { readOnly: false, destructive: false },
     upload_voice_clone_dataset: { readOnly: false, destructive: false },

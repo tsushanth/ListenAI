@@ -18,6 +18,7 @@ import {
   submitDub, getDubStatus,
   submitSoundEffectJob, pollSoundEffectJob, fetchAudioBytes, resolveGatewayIdentityHeaders,
 } from './upstream.ts'
+import { manageDeployment, manageDeploymentInput, manageDeploymentSchema } from './deployments.ts'
 import { pcm16ToWav, pcmDurationSeconds } from './wav.ts'
 import { AudiobooksApiError, createAudiobook, getAudiobookStatus, exportAudiobook } from './audiobooksClient.ts'
 import {
@@ -62,7 +63,7 @@ function toolError(code: ErrorCode, message: string, retryable: boolean): CallTo
 
 export function createMcpServer(ctx: RequestContext): McpServer {
   const server = new McpServer({ name: 'readaloud-ai', version: '1.0.0' }, {
-    instructions: 'ReadAloud AI text-to-speech, speech-to-text, voice isolation, dubbing, sound effects, audiobooks, voice design, voice conversion and voice cloning. Use text_to_speech to turn short text into a WAV audio clip. Use list_voices before picking a non-default voice. Use isolate_voice to separate vocals from a song/clip, then poll get_voice_isolation for the result. Use speech_to_text to transcribe spoken audio. Use create_audiobook to turn long text or an ePub into a chaptered audiobook, then get_audiobook_status and export_audiobook. Use dub_audio to re-voice a spoken audio clip into another language (audio in, audio out — no video), then get_dub_status to poll for the result. Use generate_sound_effect to make a short sound effect from a text description. Use design_voice to generate a synthetic voice from a description (poll get_voice_design), and convert_voice to re-speak a clip in a target voice (poll get_voice_conversion). To clone a voice: create_voice_clone, upload_voice_clone_dataset, commit_voice_clone_dataset (billed, needs confirms_charge), get_voice_clone_status until ready, then deploy_voice_clone and use custom:<voice_id> in text_to_speech; delete_voice_clone removes it.',
+    instructions: 'ReadAloud AI text-to-speech, speech-to-text, voice isolation, dubbing, sound effects, audiobooks, voice design, voice conversion and voice cloning. Use text_to_speech to turn short text into a WAV audio clip. Use list_voices before picking a non-default voice. Voice conversion, voice isolation, sound effects and dubbing each run on your own private GPU app: call manage_deployment (deploy) first, wait for status "ready", use the tool, then manage_deployment (teardown) when finished; it also stops automatically when idle. Use isolate_voice to separate vocals from a song/clip, then poll get_voice_isolation for the result. Use speech_to_text to transcribe spoken audio. Use create_audiobook to turn long text or an ePub into a chaptered audiobook, then get_audiobook_status and export_audiobook. Use dub_audio to re-voice a spoken audio clip into another language (audio in, audio out — no video), then get_dub_status to poll for the result. Use generate_sound_effect to make a short sound effect from a text description. Use design_voice to generate a synthetic voice from a description (poll get_voice_design), and convert_voice to re-speak a clip in a target voice (poll get_voice_conversion). To clone a voice: create_voice_clone, upload_voice_clone_dataset, commit_voice_clone_dataset (billed, needs confirms_charge), get_voice_clone_status until ready, then deploy_voice_clone and use custom:<voice_id> in text_to_speech; delete_voice_clone removes it.',
   })
 
   server.registerTool('text_to_speech', {
@@ -97,6 +98,31 @@ export function createMcpServer(ctx: RequestContext): McpServer {
         return toolError(e.code, e.message, e.retryable)
       }
       return toolError('upstream', 'Unexpected error while generating speech.', true)
+    }
+  })
+
+  server.registerTool('manage_deployment', {
+    title: 'Manage GPU deployment',
+    description:
+      `Bring up, check, or tear down the private GPU app behind convert_voice, isolate_voice, generate_sound_effect or dub_audio. ` +
+      `These features run on an app that belongs to you: call with action "deploy" first (takes about 1-3 minutes), poll with ` +
+      `action "status" until it is "ready", use the feature, then call with action "teardown" when finished. Usage is billed at ` +
+      `the published per-use rates; it also stops automatically after an idle period or a maximum age. ` +
+      `Errors: payment_required (add a payment method), rate_limited (deployment cap reached), capacity (not available right now).`,
+    inputSchema: manageDeploymentInput,
+    annotations: { title: 'Manage GPU deployment', readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+  }, async (args): Promise<CallToolResult> => {
+    const parsed = manageDeploymentSchema.parse(args)
+    try {
+      const headers = await resolveGatewayIdentityHeaders(ctx.apiKey, ctx.keyId)
+      const out = await manageDeployment(parsed.service, parsed.action, headers)
+      return { content: [{ type: 'text', text: out.text }], structuredContent: out.data }
+    } catch (e) {
+      if (e instanceof UpstreamError) {
+        if (e.code === 'unauthorized') ctx.authFailed = true
+        return toolError(e.code, e.message, e.retryable)
+      }
+      return toolError('upstream', 'Unexpected error while managing the deployment.', true)
     }
   })
 

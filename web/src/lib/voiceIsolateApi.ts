@@ -24,41 +24,12 @@ export interface IsolateJobStatus {
   stderr_tail?: string
 }
 
-export interface IsolateDeployment {
-  app_name: string
-  modal_url: string
-  status: 'deploying' | 'ready' | 'stopping' | 'stopped' | 'failed'
-}
-
 export const voiceIsolateApi = {
   getConsentText(): string {
     return CONSENT_STATEMENT
   },
 
-  async getDeployment(): Promise<IsolateDeployment | null> {
-    const res = await fetch(`${API_BASE_URL}/api/voice-isolate/deploy`, { headers: await authHeaders() })
-    if (res.status === 404) return null
-    if (!res.ok) return fail(res)
-    return res.json()
-  },
-
-  async deploy(): Promise<IsolateDeployment> {
-    const res = await fetch(`${API_BASE_URL}/api/voice-isolate/deploy`, {
-      method: 'POST',
-      headers: await authHeaders(true),
-    })
-    if (!res.ok) return fail(res)
-    return res.json()
-  },
-
-  async destroy(): Promise<{ deleted: boolean }> {
-    const res = await fetch(`${API_BASE_URL}/api/voice-isolate/deploy`, {
-      method: 'DELETE',
-      headers: await authHeaders(),
-    })
-    if (!res.ok) return fail(res)
-    return res.json()
-  },
+  // Deploy / status / teardown for the isolator live in deploymentsApi.ts (shared by every tool).
 
   async create(params: { input: File; wantInstrumental: boolean }): Promise<IsolateJob> {
     const form = new FormData()

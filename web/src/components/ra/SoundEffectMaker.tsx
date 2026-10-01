@@ -9,12 +9,15 @@ import {
   ErrorNotice, LoadingCard, PriceNote, SignInGate, Working, toUiError, useSessionEmail, useUnmountFlag,
   type UiError,
 } from './ToolShared'
+import DeploymentPanel from './DeploymentPanel'
 
 type Stage = 'idle' | 'submitting' | 'polling' | 'ready'
 
 export default function SoundEffectMaker() {
   const email = useSessionEmail()
   const cancelled = useUnmountFlag()
+  // Whether the user's own GPU worker is running (controlled by <DeploymentPanel/> below).
+  const [deployReady, setDeployReady] = useState(false)
   const [prompt, setPrompt] = useState('')
   const [duration, setDuration] = useState(4)
   const [stage, setStage] = useState<Stage>('idle')
@@ -27,6 +30,7 @@ export default function SoundEffectMaker() {
   useEffect(() => () => { if (urlRef.current?.startsWith('blob:')) URL.revokeObjectURL(urlRef.current) }, [])
 
   const validate = (): string | null => {
+    if (!deployReady) return 'Start your sound effects generator first.'
     const p = prompt.trim()
     if (!p) return 'Describe the sound you want.'
     if (p.length > SFX_MAX_PROMPT) return `Prompt is too long (${p.length}/${SFX_MAX_PROMPT} characters).`
@@ -78,6 +82,8 @@ export default function SoundEffectMaker() {
     <div className="ra-vs">
       <ErrorNotice error={error} />
 
+      <DeploymentPanel service="sound_effect" noun="sound effects generator" signedIn={!!email} onReadyChange={setDeployReady} />
+
       <div className="ra-vs-card">
         <div className="ra-vs-form">
           <label>
@@ -113,7 +119,7 @@ export default function SoundEffectMaker() {
         <PriceNote tool="soundEffects" />
 
         <div className="ra-cta" style={{ marginTop: 16 }}>
-          <button className="ra-btn solid" onClick={submit} disabled={busy || !prompt.trim()}>
+          <button className="ra-btn solid" onClick={submit} disabled={busy || !prompt.trim() || !deployReady}>
             {busy ? 'Generating...' : 'Generate sound effect'}
           </button>
         </div>

@@ -5,8 +5,8 @@ import { supabase } from '@/lib/supabaseClient'
 import {
   voiceConvertApi,
   type ConversionJob,
-  type Deployment,
 } from '@/lib/voiceConvertApi'
+import DeploymentPanel from './DeploymentPanel'
 
 type Stage = 'idle' | 'uploading' | 'polling' | 'ready' | 'failed'
 
@@ -27,10 +27,8 @@ function fmtSize(bytes: number): string {
 export default function VoiceConverter() {
   const [sessionEmail, setSessionEmail] = useState<string | null>(null)
 
-  // Deployment
-  const [deployment, setDeployment] = useState<Deployment | null | undefined>(undefined)
-  const [deploying, setDeploying] = useState(false)
-  const [destroying, setDestroying] = useState(false)
+  // Whether the user's own GPU worker is running (controlled by <DeploymentPanel/> below).
+  const [deployReady, setDeployReady] = useState(false)
 
   // Conversion
   const [sourceFile, setSourceFile] = useState<File | null>(null)
@@ -50,73 +48,18 @@ export default function VoiceConverter() {
     })
   }, [])
 
-  const loadDeployment = useCallback(async () => {
-    try {
-      const dep = await voiceConvertApi.getDeployment()
-      setDeployment(dep)
-      if (dep?.status === 'deploying') {
-        // Poll deployment status
-        pollDeployment()
-      }
-    } catch {
-      setDeployment(null)
-    }
-  }, [])
-
+  // When the worker stops (by the user or by the system), drop any half-finished conversion: its results are gone.
   useEffect(() => {
-    if (sessionEmail) loadDeployment()
-  }, [sessionEmail, loadDeployment])
-
-  const pollDeployment = useCallback(async () => {
-    let attempts = 0
-    const interval = setInterval(async () => {
-      if (cancelled.current) { clearInterval(interval); return }
-      try {
-        const dep = await voiceConvertApi.getDeployment()
-        setDeployment(dep)
-        if (dep?.status === 'ready' || dep?.status === 'failed' || dep == null) {
-          clearInterval(interval)
-          setDeploying(false)
-        }
-      } catch {
-        // keep polling
-      }
-      attempts++
-      if (attempts > 60) { clearInterval(interval); setDeploying(false) }
-    }, 3000)
-  }, [])
-
-  const deploy = async () => {
-    setError(null); setDeploying(true)
-    try {
-      const dep = await voiceConvertApi.deploy()
-      setDeployment(dep)
-      if (dep.status === 'deploying') {
-        pollDeployment()
-      }
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Could not start deployment.')
-      setDeploying(false)
-    }
-  }
-
-  const destroy = async () => {
-    setError(null); setDestroying(true)
-    try {
-      await voiceConvertApi.destroy()
-      setDeployment(null)
-      resetConversion()
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Could not destroy deployment.')
-    } finally { setDestroying(false) }
-  }
+    if (!deployReady) resetConversion()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deployReady])
 
   // ------------------------------------------------------------------------
   // Conversion
   // ------------------------------------------------------------------------
 
   const validate = useCallback((): string | null => {
-    if (!deployment || deployment.status !== 'ready') return 'Deploy a converter first.'
+    if (!deployReady) return 'Start your voice converter first.'
     if (!sourceFile) return 'Choose a source audio file.'
     if (!targetFile) return 'Choose a target voice reference file.'
     if (!isValidAudio(sourceFile)) return `Source file type not supported: ${sourceFile.name}`
@@ -125,7 +68,7 @@ export default function VoiceConverter() {
     if (targetFile.size > 25 * 1024 * 1024) return `Target file too large: ${fmtSize(targetFile.size)} (max 25 MB).`
     if (!consent) return 'You must confirm the consent statement to continue.'
     return null
-  }, [sourceFile, targetFile, consent, deployment])
+  }, [sourceFile, targetFile, consent, deployReady])
 
   const submit = async () => {
     if (cancelled.current) return
@@ -196,66 +139,10 @@ export default function VoiceConverter() {
     <div className="ra-vs">
       {error && <p className="ra-err" role="alert">{error}</p>}
 
-      {/* Deployment section */}
-      <div className="ra-vs-card" style={{ marginBottom: 20 }}>
-        <h3 style={{ marginBottom: 8 }}>Your voice converter</h3>
-        {deployment === undefined ? (
-          <p className="ra-small">Checking deployment…</p>
-        ) : deployment === null ? (
-          <>
-            <p className="ra-lede" style={{ fontSize: '1rem' }}>
-              Deploy your own GPU-powered voice converter. It runs on your own Modal account
-              (free credits available) and shuts down when not in use. Audio never touches our servers.
-            </p>
-            <div className="ra-cta" style={{ marginTop: 12 }}>
-              <button className="ra-btn solid" onClick={deploy} disabled={deploying}>
-                {deploying ? 'Deploying…' : 'Deploy converter'}
-              </button>
-            </div>
-          </>
-        ) : deployment.status === 'deploying' ? (
-          <div className="ra-vs-training" style={{ marginTop: 8 }}>
-            <div className="ra-vs-spin" aria-hidden="true" />
-            <div>
-              <h3 style={{ margin: 0 }}>Deploying converter</h3>
-              <p>Building your Seed-VC GPU container. This takes 1–2 minutes.</p>
-            </div>
-          </div>
-        ) : deployment.status === 'ready' ? (
-          <>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-              <span className="ra-vs-pill ready" style={{ fontSize: '.75rem' }}>
-                Ready
-              </span>
-              <span className="ra-small">{deployment.modal_url}</span>
-              <div style={{ marginLeft: 'auto' }} className="ra-cta">
-                <button className="ra-btn ghost danger" onClick={destroy} disabled={destroying}>
-                  {destroying ? 'Stopping…' : 'Stop converter'}
-                </button>
-              </div>
-            </div>
-            <p className="ra-small" style={{ marginTop: 8 }}>
-              Your converter only costs money while processing audio. Keep it stopped when not in use.
-            </p>
-          </>
-        ) : deployment.status === 'failed' ? (
-          <>
-            <p className="ra-vs-notice bad" role="alert">
-              Deployment failed. Try again or contact support.
-            </p>
-            <div className="ra-cta">
-              <button className="ra-btn solid" onClick={deploy} disabled={deploying}>
-                Retry deployment
-              </button>
-            </div>
-          </>
-        ) : (
-          <p className="ra-small">Status: {deployment.status}</p>
-        )}
-      </div>
+      <DeploymentPanel service="convert" noun="voice converter" signedIn={!!sessionEmail} onReadyChange={setDeployReady} />
 
       {/* Conversion form */}
-      {deployment?.status === 'ready' && (
+      {deployReady && (
         <div className="ra-vs-card">
           <div className="ra-vs-form two" style={{ marginBottom: 20 }}>
             <div>

@@ -8,6 +8,7 @@ import {
   ErrorNotice, LoadingCard, PriceNote, SignInGate, Working, toUiError, useSessionEmail, useUnmountFlag,
   type UiError,
 } from './ToolShared'
+import DeploymentPanel from './DeploymentPanel'
 
 type Stage = 'idle' | 'uploading' | 'processing' | 'ready'
 
@@ -21,6 +22,8 @@ const LANGUAGES = [
 export default function Dubber() {
   const email = useSessionEmail()
   const cancelled = useUnmountFlag()
+  // Whether the user's own GPU worker is running (controlled by <DeploymentPanel/> below).
+  const [deployReady, setDeployReady] = useState(false)
   const [file, setFile] = useState<File | null>(null)
   const [target, setTarget] = useState('Spanish')
   const [source, setSource] = useState('')
@@ -43,6 +46,7 @@ export default function Dubber() {
   }, [stage])
 
   const validate = (): string | null => {
+    if (!deployReady) return 'Start your dubbing worker first.'
     if (!file) return 'Choose an audio file.'
     const fileErr = validateAudio(file, AUDIO_RULES.dub)
     if (fileErr) return fileErr
@@ -107,6 +111,8 @@ export default function Dubber() {
     <div className="ra-vs">
       <ErrorNotice error={error} />
 
+      <DeploymentPanel service="dub" noun="dubbing worker" signedIn={!!email} onReadyChange={setDeployReady} />
+
       <div className="ra-vs-card">
         <div className="ra-vs-form two" style={{ marginTop: 0 }}>
           <div>
@@ -157,7 +163,7 @@ export default function Dubber() {
         <PriceNote tool="dubbing" />
 
         <div className="ra-cta" style={{ marginTop: 16 }}>
-          {stage === 'idle' && <button className="ra-btn solid" onClick={submit} disabled={!file}>Dub audio</button>}
+          {stage === 'idle' && <button className="ra-btn solid" onClick={submit} disabled={!file || !deployReady}>Dub audio</button>}
           {busy && <button className="ra-btn solid" disabled>{stage === 'uploading' ? 'Uploading...' : `Dubbing... ${elapsed}s`}</button>}
           {stage === 'ready' && <button className="ra-btn ghost" onClick={reset}>Dub another</button>}
         </div>

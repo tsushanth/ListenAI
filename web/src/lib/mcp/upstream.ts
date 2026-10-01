@@ -1,5 +1,6 @@
 import WebSocket from 'ws'
 import { MAX_AUDIO_SECONDS, REQUEST_TIMEOUT_MS } from './schemas.ts'
+import { deploymentRequiredError } from './deployments.ts'
 import { BYTES_PER_SAMPLE, SAMPLE_RATE } from './wav.ts'
 
 export const GATEWAY = process.env.TTS_GATEWAY_URL || 'https://api.readaloudai.org'
@@ -240,7 +241,8 @@ export async function isolateVoice(opts: {
   if (r.status === 402) throw new UpstreamError('payment_required', 'Your free credits are used up (voice isolation). Add a payment method in the developer console at https://readaloudai.org/developers#get-started, then try again.')
   if (r.status === 429) throw new UpstreamError('rate_limited', 'Too many isolation jobs. Wait a moment and retry.', true)
   if (r.status === 400) {
-    const body = (await r.json().catch(() => null)) as { error?: string } | null
+    const body = (await r.json().catch(() => null)) as { error?: string; code?: string } | null
+    if (body?.code === 'deployment_required') throw deploymentRequiredError('isolate')
     throw new UpstreamError('invalid_input', body?.error || 'The isolation backend rejected the request.')
   }
   if (!r.ok) {
@@ -414,6 +416,11 @@ export async function submitDub(opts: {
   if (r.status === 402) throw new UpstreamError('payment_required', 'This key has used up its free characters.')
   if (r.status === 429) throw new UpstreamError('rate_limited', 'The API is rate limiting this key. Wait a moment and retry.', true)
   if (r.status === 404) throw new UpstreamError('upstream', 'Dubbing is not available yet on this deployment.', false)
+  if (r.status === 400) {
+    const body = (await r.json().catch(() => null)) as { error?: string; code?: string } | null
+    if (body?.code === 'deployment_required') throw deploymentRequiredError('dub')
+    throw new UpstreamError('invalid_input', body?.error || 'The dubbing backend rejected the request.', false)
+  }
   if (!r.ok) throw new UpstreamError('upstream', `The ReadAloud AI API returned ${r.status}.`, r.status >= 500)
   const body = (await r.json().catch(() => null)) as DubSubmitResult | null
   if (!body?.job_id) throw new UpstreamError('upstream', 'Unexpected response from the ReadAloud AI API.', true)
@@ -505,6 +512,11 @@ export async function submitSoundEffectJob(identityHeaders: Record<string, strin
   if (r.status === 401) throw new UpstreamError('unauthorized', 'Invalid or expired credentials for sound effect generation.')
   if (r.status === 402) throw new UpstreamError('payment_required', 'Your free credits are used up (sound effects). Add a payment method at https://readaloudai.org/developers#get-started, then try again.')
   if (r.status === 429) throw new UpstreamError('rate_limited', 'Sound effect generation is being rate limited. Wait a moment and retry.', true)
+  if (r.status === 400) {
+    const body = (await r.json().catch(() => null)) as { error?: string; code?: string } | null
+    if (body?.code === 'deployment_required') throw deploymentRequiredError('sound_effect')
+    throw new UpstreamError('invalid_input', body?.error || 'The sound effects service rejected the request.', false)
+  }
   if (!r.ok && r.status !== 202) throw new UpstreamError('upstream', `The sound effects service returned ${r.status}.`, r.status >= 500)
   const body = (await r.json().catch(() => null)) as SoundEffectJobResult | null
   if (!body?.job_id) throw new UpstreamError('upstream', 'Unexpected response from the sound effects service.', true)
