@@ -162,16 +162,16 @@ export const SERVICE_SPECS: Record<DeploymentService, ServiceSpec> = {
   sound_effect: {
     service: 'sound_effect',
     label: 'sound effects',
-    available: false,
-    unavailableReason: 'The sound-effects worker is not yet parameterised for per-user deployments.',
+    available: true,
     modalFile: 'modal/sound_effects_worker.py',
-    appPrefix: 'sound-effects-readaloud',
-    secretPrefix: 'sound-effects',
-    secretKey: 'SOUND_EFFECTS_SECRET',
+    // Short on purpose: Modal's endpoint subdomain is "<workspace>--<app>-<function>" and is capped at 63 characters.
+    appPrefix: 'sfx-readaloud',
+    secretPrefix: 'sfx-readaloud',
+    secretKey: 'SOUND_EFFECTS_WORKER_SHARED_SECRET',
     suffixEnv: 'SOUND_EFFECTS_APP_SUFFIX',
     secretNameEnv: 'SOUND_EFFECTS_SECRET_NAME',
-    urlLabel: 'api',
-    volumePrefixes: [],
+    urlLabel: 'web', // the worker's web function is named `web`
+    volumePrefixes: [], // generation is synchronous and returns audio bytes; checkpoints are a shared read-only Volume
   },
   music: {
     service: 'music',

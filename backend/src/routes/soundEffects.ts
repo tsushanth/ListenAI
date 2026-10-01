@@ -14,7 +14,7 @@
 // else. It also sets `req.userId` (as read below), which the actual
 // `requireAuth` middleware never set — so swapping it in also fixes a
 // latent bug where `userId` would have been `undefined` on every request.
-import { Router, Request, Response } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { asyncHandler } from '../middleware/errorHandler.js';
 import { ValidationError, NotFoundError } from '../types/index.js';
@@ -27,6 +27,8 @@ import {
 } from '../lib/supabaseClient.js';
 import { hasUsageAllowance, freeCreditsExhaustedMessage } from '../lib/realtimeTtsBilling.js';
 import { logger } from '../lib/logger.js';
+import { getDeploymentManager } from '../lib/modalDeployments.js';
+import { mountDeploymentRoutes } from './deployments.js';
 
 const soundEffectsLogger = logger.child({ module: 'sound-effects' });
 
@@ -53,6 +55,19 @@ interface StrictAuthedRequest extends Request {
 }
 
 export const soundEffectsRouter = Router();
+
+// requireAuthOrApiKey (mounted in front of this router in index.ts) has already resolved req.userId; a request
+// that reaches here without one must not proceed.
+function requireUserId(req: Request, res: Response, next: NextFunction) {
+  if (!(req as StrictAuthedRequest).userId) {
+    res.status(401).json({ error: 'Sign in required.' });
+    return;
+  }
+  next();
+}
+
+// Self-serve lifecycle: POST/GET/DELETE /deploy brings up, reports on, and tears down the caller's own Modal app.
+mountDeploymentRoutes(soundEffectsRouter, 'sound_effect', requireUserId);
 
 soundEffectsRouter.post('/job', asyncHandler(async (req: Request, res: Response) => {
   const userId = (req as StrictAuthedRequest).userId!;
@@ -101,7 +116,19 @@ soundEffectsRouter.post('/job', asyncHandler(async (req: Request, res: Response)
     return;
   }
 
+  // Generation runs on the caller's own Modal deployment (there is no shared worker). Cache hits above need none.
+  const manager = getDeploymentManager();
+  const target = await manager.resolveTarget(userId, 'sound_effect');
+  if (!target) {
+    res.status(400).json({
+      error: 'Sound effects are not deployed. Deploy first (POST /api/sound-effects/deploy), wait until its status is "ready", then submit.',
+      code: 'deployment_required',
+    });
+    return;
+  }
+
   const job = await createSoundEffectJob({ userId, prompt, durationSec: duration_sec, cacheKey });
+  await manager.touch(target, { job: true }).catch((err) => soundEffectsLogger.warn({ err }, 'failed to record deployment activity (non-critical)'));
   soundEffectsLogger.info({ jobId: job.id, cacheKey }, 'Sound effect job created');
 
   res.status(202).json({
@@ -159,6 +186,13 @@ soundEffectsRouter.get('/job/:jobId', asyncHandler(async (req: Request, res: Res
     job_id: job.id,
     status: job.status,
     audio_url: audioUrl,
-    error: job.error_code ? { code: job.error_code, message: 'Sound effect generation failed' } : undefined,
+    error: job.error_code
+      ? {
+          code: job.error_code,
+          message: job.error_code === 'DEPLOYMENT_REQUIRED'
+            ? 'Your sound effects deployment is not running. Deploy it again and resubmit.'
+            : 'Sound effect generation failed',
+        }
+      : undefined,
   });
 }));

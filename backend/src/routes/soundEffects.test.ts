@@ -11,6 +11,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import express from 'express';
 import type { AddressInfo } from 'node:net';
+import '../lib/modalDeploymentsTestEnv.js'; // sets env before config loads (must precede the imports below)
+import { makeHarness, type Harness } from '../lib/modalDeploymentsTestKit.js';
+import { setDeploymentManagerForTests } from '../lib/modalDeployments.js';
 
 process.env.SUPABASE_URL ??= 'http://localhost:54321';
 process.env.SUPABASE_SERVICE_ROLE_KEY ??= 'test';
@@ -20,7 +23,7 @@ process.env.NODE_ENV = 'test';
 // caches it (see apiKeyAuth.test.ts's own comment on this), so this must be set up front
 // rather than inside bootWithRealAuth() below, which runs after other imports in this
 // file have already triggered config.ts's first load.
-const FORWARD_SECRET = 'sfx-test-forward-secret';
+const FORWARD_SECRET = 'test-forward-secret'; // the value modalDeploymentsTestEnv sets (it loads first)
 process.env.GATEWAY_FORWARD_SECRET ??= FORWARD_SECRET;
 
 // ---------------------------------------------------------------------------
@@ -139,7 +142,17 @@ function buildTestApp(userId: string) {
   };
 }
 
-async function boot(userId = '00000000-0000-0000-0000-000000000001') {
+// Generation runs on the caller's own Modal deployment, so by default each booted user has a ready one.
+let harness: Harness = makeHarness();
+function useHarness(seedFor?: string): Harness {
+  harness = makeHarness();
+  setDeploymentManagerForTests(harness.manager);
+  if (seedFor) harness.store.seedReady(seedFor, 'sound_effect', 'https://sfx-user.modal.run', 'sfx-secret-value');
+  return harness;
+}
+
+async function boot(userId = '00000000-0000-0000-0000-000000000001', opts: { deployed?: boolean } = {}) {
+  useHarness(opts.deployed === false ? undefined : userId);
   const buildApp = buildTestApp(userId);
   const app = await buildApp();
   const server = app.listen(0);
@@ -306,7 +319,8 @@ test('GET /job/:jobId on a malformed, non-UUID, non-cache- id returns 404, not 5
 // shared default user and billed against it.
 // ---------------------------------------------------------------------------
 
-async function bootWithRealAuth(): Promise<{ base: string; close: () => void }> {
+async function bootWithRealAuth(seedFor?: string): Promise<{ base: string; close: () => void }> {
+  useHarness(seedFor);
   const [{ requireAuthOrApiKey }, { soundEffectsRouter: router }, { errorHandler }] = await Promise.all([
     import(`../middleware/apiKeyAuth.js?t=${Date.now()}-${Math.random()}`),
     import('./soundEffects.js'),
@@ -363,8 +377,8 @@ test('POST /job with the wrong gateway-forward secret is rejected with 401, even
 });
 
 test('POST /job with a valid gateway-forwarded API key identity succeeds and bills that resolved user, not a shared default', async () => {
-  const s = await bootWithRealAuth();
   const uid = '00000000-0000-0000-0000-0000000000aa';
+  const s = await bootWithRealAuth(uid);
   const res = await fetch(`${s.base}/job`, {
     method: 'POST',
     headers: {
@@ -377,5 +391,100 @@ test('POST /job with a valid gateway-forwarded API key identity succeeds and bil
   assert.equal(res.status, 202);
   const job = jobsById.get((await res.json()).job_id);
   assert.equal(job?.user_id, uid);
+  s.close();
+});
+
+
+// ---------------------------------------------------------------------------
+// Self-serve deployment: generation runs on the caller's own Modal app
+// ---------------------------------------------------------------------------
+
+test('POST /job without a ready deployment -> 400 deployment_required, and no job is created', async () => {
+  const s = await boot('00000000-0000-0000-0000-0000000000b1', { deployed: false });
+  const before = jobsById.size;
+  const res = await s.call('POST', '/job', { prompt: 'needs-a-deployment-unique', duration_sec: 3 });
+  assert.equal(res.status, 400);
+  const body = await res.json();
+  assert.equal(body.code, 'deployment_required');
+  assert.match(body.error, /POST \/api\/sound-effects\/deploy/);
+  assert.equal(jobsById.size, before, 'nothing queued for a worker that does not exist');
+  s.close();
+});
+
+test('POST /job counts the job on the deployment and restarts its idle clock', async () => {
+  const uid = '00000000-0000-0000-0000-0000000000b2';
+  const s = await boot(uid);
+  harness.clock.advance(20 * 60_000);
+  const res = await s.call('POST', '/job', { prompt: 'counts-the-job-unique', duration_sec: 2 });
+  assert.equal(res.status, 202);
+  const row = harness.store.liveFor(uid, 'sound_effect');
+  assert.equal(row?.job_count, 1);
+  assert.equal(row?.last_used_at, harness.clock.now().toISOString());
+  s.close();
+});
+
+test('a cache hit needs no deployment (no GPU work happens)', async () => {
+  const uid = '00000000-0000-0000-0000-0000000000b3';
+  // Another user generated it earlier, so it is ready and cached.
+  const cached: FakeJob = {
+    id: 'job-cached-x', user_id: 'someone-else', status: 'ready', prompt: 'cache-without-deployment-unique',
+    duration_sec: 3, cache_key: '', audio_path: 'sfx/x.wav', error_code: null, error_message: null,
+  };
+  const { computeSoundEffectCacheKey } = await import('../lib/cacheKey.js');
+  cached.cache_key = computeSoundEffectCacheKey({ prompt: cached.prompt, durationSec: 3 });
+  jobsById.set(cached.id, cached);
+  jobsByCacheKey.set(cached.cache_key, cached);
+
+  const s = await boot(uid, { deployed: false });
+  const res = await s.call('POST', '/job', { prompt: cached.prompt, duration_sec: 3 });
+  assert.equal(res.status, 202);
+  assert.equal((await res.json()).cache_hit, true);
+  s.close();
+});
+
+test('a job that failed because the deployment was gone says so, instead of a generic failure', async () => {
+  const uid = '00000000-0000-0000-0000-0000000000b4';
+  const s = await boot(uid);
+  const job: FakeJob = {
+    id: '11111111-1111-4111-8111-111111111111', user_id: uid, status: 'failed', prompt: 'p', duration_sec: 2,
+    cache_key: 'k-dep-gone', audio_path: null, error_code: 'DEPLOYMENT_REQUIRED', error_message: 'No active sound effects deployment for this user.',
+  };
+  jobsById.set(job.id, job);
+  const res = await s.call('GET', `/job/${job.id}`);
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.equal(body.error.code, 'DEPLOYMENT_REQUIRED');
+  assert.match(body.error.message, /deployment is not running/i);
+  s.close();
+});
+
+test('the deploy endpoints are mounted on this router: deploy, status, teardown', async () => {
+  const uid = '00000000-0000-0000-0000-0000000000b5';
+  const s = await boot(uid, { deployed: false });
+  harness.paying.add(uid);
+
+  assert.equal((await s.call('GET', '/deploy')).status, 404);
+  const post = await s.call('POST', '/deploy');
+  assert.equal(post.status, 202);
+  assert.equal((await post.json()).service, 'sound_effect');
+  await harness.manager.whenIdle();
+
+  const get = await s.call('GET', '/deploy');
+  assert.equal((await get.json()).status, 'ready');
+  const file = harness.cli.calls.find((c) => c.op === 'deploy')?.args[0];
+  assert.equal(file, 'modal/sound_effects_worker.py');
+  const env = harness.cli.calls.find((c) => c.op === 'deploy')?.args[1] as Record<string, string>;
+  assert.match(env.SOUND_EFFECTS_APP_SUFFIX, /^-user-/);
+  assert.match(env.SOUND_EFFECTS_SECRET_NAME, /^sfx-readaloud-user-/);
+
+  // A job can now be submitted against it.
+  const job = await s.call('POST', '/job', { prompt: 'after-deploy-unique', duration_sec: 2 });
+  assert.equal(job.status, 202);
+
+  const del = await s.call('DELETE', '/deploy');
+  assert.equal(del.status, 200);
+  // ...and once torn down, submitting needs a fresh deployment again.
+  const after = await s.call('POST', '/job', { prompt: 'after-teardown-unique', duration_sec: 2 });
+  assert.equal(after.status, 400);
   s.close();
 });

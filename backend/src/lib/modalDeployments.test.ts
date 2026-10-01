@@ -314,10 +314,19 @@ test('every registry entry produces names the orphan matcher recognises', async 
   assert.equal(pattern.test('realtime-tts-worker'), false);
 });
 
-test('only convert and isolate are available until the other workers are parameterised', () => {
+test('convert, isolate and sound effects are available; music and dub are not until their workers are built', () => {
   const available = Object.values(SERVICE_SPECS).filter((s) => s.available).map((s) => s.service).sort();
-  assert.deepEqual(available, ['convert', 'isolate']);
+  assert.deepEqual(available, ['convert', 'isolate', 'sound_effect']);
   for (const s of Object.values(SERVICE_SPECS)) {
     if (!s.available) assert.ok(s.unavailableReason, `${s.service} explains why it is unavailable`);
+  }
+});
+
+test('every service produces an endpoint subdomain within Modal\'s 63 character limit', () => {
+  // "<workspace>--<app>-<function>"; a 20 character workspace is longer than any realistic one.
+  const workspace = 'a'.repeat(20);
+  for (const spec of Object.values(SERVICE_SPECS)) {
+    const label = `${workspace}--${spec.appPrefix}-user-0123abcd-ef01-${spec.urlLabel}`;
+    assert.ok(label.length <= 63, `${spec.service}: ${label.length} chars (${label})`);
   }
 });

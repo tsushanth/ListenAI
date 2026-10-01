@@ -45,6 +45,8 @@ sub-2s; the music endpoint's 15s floor makes no sense here).
 """
 
 import math
+import os
+import time
 
 import modal
 
@@ -84,7 +86,23 @@ image = (
 # lacks stable_audio_tools.models.lora.load_and_apply_loras), which in turn
 # requires Python <3.11 and torch 2.7.1.
 
-app = modal.App("sound-effects-worker-readaloud", image=image)
+# Per-user deployments (lib/modalDeployments.ts) set SOUND_EFFECTS_APP_SUFFIX and SOUND_EFFECTS_SECRET_NAME so each
+# user gets their own app and their own bearer secret, exactly like convert_job.py / isolate_job.py. Without a
+# suffix this is the original shared worker (app and secret names unchanged).
+#
+# The per-user app name is deliberately short: Modal builds the endpoint's subdomain as
+# "<workspace>--<app>-<function>" and that label cannot exceed 63 characters.
+APP_SUFFIX = os.environ.get("SOUND_EFFECTS_APP_SUFFIX", "")
+SECRET_NAME = os.environ.get("SOUND_EFFECTS_SECRET_NAME", "sound-effects-worker-shared-secret")
+PER_USER = bool(APP_SUFFIX)
+
+app = modal.App(("sfx-readaloud" + APP_SUFFIX) if PER_USER else "sound-effects-worker-readaloud", image=image)
+
+# Model weights live on one shared Volume. A per-user app mounts it read-only (it must never be able to alter the
+# shared weights, and must fail at deploy rather than silently create an empty Volume if it is missing).
+_checkpoints = modal.Volume.from_name("sound-effects-checkpoints", create_if_missing=not PER_USER)
+if PER_USER:
+    _checkpoints = _checkpoints.read_only()
 
 
 def validate_generate_request(body: dict) -> tuple[bool, str | None]:
@@ -121,10 +139,11 @@ def build_conditioning(prompt: str, duration_sec: float) -> list[dict]:
 @app.function(
     gpu="A10G",
     scaledown_window=120,
-    max_containers=5,
+    # A per-user deployment gets one GPU container, so one user cannot fan out into many on our Modal bill.
+    max_containers=1 if PER_USER else 5,
     timeout=180,
-    secrets=[modal.Secret.from_name("sound-effects-worker-shared-secret")],
-    volumes={"/checkpoints": modal.Volume.from_name("sound-effects-checkpoints", create_if_missing=True)},
+    secrets=[modal.Secret.from_name(SECRET_NAME)],
+    volumes={"/checkpoints": _checkpoints},
 )
 @modal.concurrent(max_inputs=4)
 @modal.asgi_app()
@@ -230,8 +249,12 @@ def web():
                     tmp.seek(0)
                     return tmp.read()
 
+            started = time.monotonic()
             wav_bytes = await asyncio.to_thread(_run_generation)
-            return Response(content=wav_bytes, media_type="audio/wav")
+            # Wall-clock seconds the GPU spent on this request. The backend records it per job so usage can be
+            # billed on measured resource time and reconciled against Modal's own bill.
+            gpu_seconds = round(time.monotonic() - started, 3)
+            return Response(content=wav_bytes, media_type="audio/wav", headers={"X-GPU-Seconds": str(gpu_seconds)})
         except Exception as e:  # noqa: BLE001 — surface as 500, let caller mark job failed
             response.status_code = 500
             return {"error": f"generation failed: {e}"}
