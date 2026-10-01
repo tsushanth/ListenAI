@@ -83,6 +83,24 @@ const envSchema = z.object({
   MODAL_TOKEN_SECRET: z.string().optional(),
   MODAL_WORKSPACE: z.string().optional(),
 
+  // Self-serve Modal deployment lifecycle (lib/modalDeployments.ts): every deployment runs in OUR Modal
+  // workspace, so these limits are what stop a user (or a bug) from running up our bill.
+  // Kill switch: set MODAL_DEPLOYMENTS_DISABLED=true to refuse every new deploy; running ones still tear down.
+  MODAL_DEPLOYMENTS_DISABLED: z.string().default('false'),
+  // Tear a ready deployment down after this long with no jobs, and after this long regardless of use.
+  MODAL_DEPLOY_IDLE_TTL_MIN: z.string().transform(Number).default('30'),
+  MODAL_DEPLOY_MAX_AGE_MIN: z.string().transform(Number).default('240'),
+  // A deployment still requested/deploying after this long is failed and cleaned up.
+  MODAL_DEPLOY_TIMEOUT_MIN: z.string().transform(Number).default('10'),
+  // Concurrency and rate caps. One active deployment per user per service is enforced by the database.
+  MODAL_MAX_ACTIVE_PER_USER: z.string().transform(Number).default('3'),
+  MODAL_MAX_ACTIVE_GLOBAL: z.string().transform(Number).default('20'),
+  MODAL_MAX_DEPLOYS_PER_USER_PER_DAY: z.string().transform(Number).default('10'),
+  // Per-user job Volumes outlive the app so results can still be fetched; deleted this long after teardown.
+  MODAL_VOLUME_RETENTION_HOURS: z.string().transform(Number).default('24'),
+  // GPU deployments land on our Modal bill, so require a real payment method (not just free credits).
+  MODAL_DEPLOY_REQUIRE_PAYMENT_METHOD: z.string().default('true'),
+
   // API-key front door for voice cloning (mirrors the Supabase web flow above, same intake/consent/quota
   // rules, different auth). Only the gateway (realtime-tts-gateway) calls this path, after it has already
   // validated the caller's API key and resolved an owning identity; it proves that to us with this shared
