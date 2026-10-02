@@ -287,7 +287,12 @@ app.use('/api/dub', requireAuthOrApiKey, dubRouter);
 // billed to a shared default user. requireAuthOrApiKey has no such fallback — it accepts
 // either a real Supabase JWT or a gateway-forwarded API-key identity, and rejects (401)
 // anything else. See MCP_AUTH_BRIDGE.md.
-app.use('/api/sound-effects', requireAuthOrApiKey, soundEffectsRouter);
+// Hidden by default: measured cold-start cost exceeds the price (docs/MONEY_PATH_COSTS.md) and the
+// worker app is not deployed. Set SOUND_EFFECTS_PUBLIC=true to re-enable (also needs the MCP/web flag).
+app.use('/api/sound-effects', (_req, res, next) => {
+  if (process.env.SOUND_EFFECTS_PUBLIC === 'true') return next();
+  res.status(503).json({ error: 'Sound effects are temporarily unavailable.' });
+}, requireAuthOrApiKey, soundEffectsRouter);
 // strict Supabase auth like the API-key routes above.
 app.use('/api/voice-studio', voiceStudioRouter);
 

@@ -34,7 +34,7 @@ export default function DevelopersPage() {
             <p className="ra-lede" style={{ marginBottom: 24 }}>Sign in, create a key, and it works straight away.</p>
             <div className="ra-dark-panel"><DeveloperApiSection /></div>
             <p className="ra-small" id="free-credits" style={{ marginTop: 16 }}>
-              <b>Free credits.</b> Every account gets a one-time grant of free credits (worth $0.10, about 10,000 characters of speech), shared across speech, transcription, dubbing, sound effects, voice isolation, voice conversion and voice design. Long jobs use more credits than short ones. When they run out those tools return <code>402</code> until you add a payment method; after that you pay as you go. Accounts without a payment method can hold one active API key, and text to speech through a key has its own 10,000 character allowance per key. Voice cloning and music generation always need a payment method.
+              <b>Free credits.</b> Every account gets a one-time grant of free credits (worth $0.10, about 10,000 characters of speech), shared across speech, transcription, dubbing, voice isolation, voice conversion and voice design. Long jobs use more credits than short ones. When they run out those tools return <code>402</code> until you add a payment method; after that you pay as you go. Accounts without a payment method can hold one active API key, and text to speech through a key has its own 10,000 character allowance per key. Voice cloning and music generation always need a payment method.
             </p>
           </div>
         </section>
@@ -144,7 +144,7 @@ curl -L -X POST "<url>/v1/stt?language=auto" \\
                   so it fits the original segment&rsquo;s timing. Try it in the browser at{' '}
                   <Link href="/dub" style={{ textDecoration: 'underline' }}>/dub</Link>.
                 </p>
-                <p><b>Credentials.</b> The REST endpoints below (dubbing, sound effects, voice
+                <p><b>Credentials.</b> The REST endpoints below (dubbing, voice
                   isolation, voice conversion, voice design and audiobooks) accept either a signed-in{' '}
                   <b>session token</b> (<code>Authorization: Bearer &lt;session token&gt;</code>) or an
                   API key that our own <Link href="/developers/mcp" style={{ textDecoration: 'underline' }}>MCP server</Link>{' '}
@@ -152,11 +152,11 @@ curl -L -X POST "<url>/v1/stt?language=auto" \\
                   directly: the <code>key</code>/<code>authorize</code> flow used elsewhere on this page
                   does not apply here, and there is no way to send the key straight to these paths. To
                   use an API key, call the matching MCP tool (<code>dub_audio</code>,{' '}
-                  <code>generate_sound_effect</code>, <code>isolate_voice</code>,{' '}
+                  <code>isolate_voice</code>,{' '}
                   <code>convert_voice</code>, <code>design_voice</code>, the audiobook tools).
                   Through MCP, the work is billed to the account the key belongs to. Keys you create
                   in the console above belong to your account; a key that is not tied to an account
-                  gets <code>402</code> from dubbing, sound effects, voice design and voice conversion. Free credits are per account, so they follow the account, not the key.
+                  gets <code>402</code> from dubbing, voice design and voice conversion. Free credits are per account, so they follow the account, not the key.
                   Speech to text and voice cloning have their own key-based routes, described in their
                   sections.
                 </p>
@@ -182,29 +182,7 @@ curl -L -X POST "<url>/v1/stt?language=auto" \\
                 <p><b>Known limitations.</b> Audio only &mdash; no video muxing or subtitle burn-in. Segment timing is a v1 approximation (whole-segment speed scaling, not real phoneme-level alignment), so lip-sync-grade timing shouldn&rsquo;t be expected. Jobs run in-memory on a single instance rather than a durable queue, so a deploy or restart while a job is in flight will lose it &mdash; resubmit if that happens. Each segment over 2,000 characters is truncated.</p>
 
                 <h3 id="sound-effects">Sound effects</h3>
-                <p>
-                  Generate a short sound effect from a text prompt (Stable Audio Open 1.0).{' '}
-                  Try it in the browser at{' '}
-                  <Link href="/sound-effects" style={{ textDecoration: 'underline' }}>/sound-effects</Link>. Same credentials
-                  as dubbing above: a session token, or an API key through the MCP tool{' '}
-                  <code>generate_sound_effect</code> (1&ndash;12 seconds).
-                </p>
-                <p><b>1. Submit.</b> <code>POST https://api.readaloudai.org/api/sound-effects/job</code>,
-                  <code>Authorization: Bearer &lt;your session token&gt;</code>, JSON{' '}
-                  <code>{'{ "prompt": "…", "duration_sec": 1-12 }'}</code>. An identical prompt+duration you&rsquo;ve
-                  already generated comes back immediately as a free cache hit:{' '}
-                  <code>{'{ job_id: "cache-…", status: "ready", cache_hit: true, audio_url }'}</code>. Otherwise{' '}
-                  <code>202</code> with <code>{'{ job_id, status: "processing", cache_hit: false, estimated_wait_sec }'}</code>.
-                </p>
-                <p><b>2. Poll.</b> <code>GET /api/sound-effects/job/:job_id</code> returns{' '}
-                  <code>{'{ status, audio_url, error }'}</code>.
-                </p>
-                <ul>
-                  <li><code>400</code> prompt missing/too long (500 chars max), or <code>duration_sec</code> out of range (1&ndash;12s).</li>
-                  <li><code>402</code> your free credits are used up. Add a payment method.</li>
-                  <li><code>404</code> unknown job.</li>
-                </ul>
-                <p><b>Price:</b> $0.0015 per second of generated audio ($0.09 per minute), rounded up to the next second with a 4 second minimum, so a 12 second effect is $0.018. Cache hits are always free. On your invoice it appears as character equivalents on the same meter as text-to-speech (150 per second).</p>
+                <p>Sound effect generation is temporarily unavailable while we rework its cost. It will return here when it is ready.</p>
 
                 <h3 id="voice-isolate-convert">Voice isolation &amp; voice conversion</h3>
                 <p>
@@ -293,7 +271,7 @@ curl -L -X POST "<url>/v1/stt?language=auto" \\
                   &mdash; if a chapter-marker or concatenation edge case turns up, <Link href="mailto:support@readaloudai.org" style={{ textDecoration: 'underline' }}>let us know</Link>.</p>
 
                 <h3>Pricing and benchmarks</h3>
-                <p>Piper $0.004 and Kokoro $0.01 per 1,000 characters; speech to text $0.11 per hour of audio; dubbing $0.15 per audio minute, voice conversion $0.10 per audio minute, sound effects $0.09 per minute of generated audio ($0.0015 per second) and voice isolation $0.05 per audio minute, each billed by the second rounded up (with the minimums above); audiobooks bill per character like regular text-to-speech. Cloning a voice through the API costs $2.50 per voice when you commit the dataset. Audio-based usage appears on your invoice as character equivalents on the text-to-speech meter ($0.01 per 1,000). See <Link href="/#engines" style={{ textDecoration: 'underline' }}>engines and benchmarks</Link> for how we measured latency against ElevenLabs.</p>
+                <p>Piper $0.004 and Kokoro $0.01 per 1,000 characters; speech to text $0.11 per hour of audio; dubbing $0.15 per audio minute, voice conversion $0.10 per audio minute, and voice isolation $0.05 per audio minute, each billed by the second rounded up (with the minimums above); audiobooks bill per character like regular text-to-speech. Cloning a voice through the API costs $2.50 per voice when you commit the dataset. Audio-based usage appears on your invoice as character equivalents on the text-to-speech meter ($0.01 per 1,000). See <Link href="/#engines" style={{ textDecoration: 'underline' }}>engines and benchmarks</Link> for how we measured latency against ElevenLabs.</p>
               </div>
               <div><CodeTabs /></div>
             </div>

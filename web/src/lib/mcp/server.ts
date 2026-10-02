@@ -62,7 +62,7 @@ function toolError(code: ErrorCode, message: string, retryable: boolean): CallTo
 
 export function createMcpServer(ctx: RequestContext): McpServer {
   const server = new McpServer({ name: 'readaloud-ai', version: '1.0.0' }, {
-    instructions: 'ReadAloud AI text-to-speech, speech-to-text, voice isolation, dubbing, sound effects, audiobooks, voice design, voice conversion and voice cloning. Use text_to_speech to turn short text into a WAV audio clip. Use list_voices before picking a non-default voice. Use isolate_voice to separate vocals from a song/clip, then poll get_voice_isolation for the result. Use speech_to_text to transcribe spoken audio. Use create_audiobook to turn long text or an ePub into a chaptered audiobook, then get_audiobook_status and export_audiobook. Use dub_audio to re-voice a spoken audio clip into another language (audio in, audio out — no video), then get_dub_status to poll for the result. Use generate_sound_effect to make a short sound effect from a text description. Use design_voice to generate a synthetic voice from a description (poll get_voice_design), and convert_voice to re-speak a clip in a target voice (poll get_voice_conversion). To clone a voice: create_voice_clone, upload_voice_clone_dataset, commit_voice_clone_dataset (billed, needs confirms_charge), get_voice_clone_status until ready, then deploy_voice_clone and use custom:<voice_id> in text_to_speech; delete_voice_clone removes it.',
+    instructions: 'ReadAloud AI text-to-speech, speech-to-text, voice isolation, dubbing, audiobooks, voice design, voice conversion and voice cloning. Use text_to_speech to turn short text into a WAV audio clip. Use list_voices before picking a non-default voice. Use isolate_voice to separate vocals from a song/clip, then poll get_voice_isolation for the result. Use speech_to_text to transcribe spoken audio. Use create_audiobook to turn long text or an ePub into a chaptered audiobook, then get_audiobook_status and export_audiobook. Use dub_audio to re-voice a spoken audio clip into another language (audio in, audio out — no video), then get_dub_status to poll for the result. Use generate_sound_effect to make a short sound effect from a text description. Use design_voice to generate a synthetic voice from a description (poll get_voice_design), and convert_voice to re-speak a clip in a target voice (poll get_voice_conversion). To clone a voice: create_voice_clone, upload_voice_clone_dataset, commit_voice_clone_dataset (billed, needs confirms_charge), get_voice_clone_status until ready, then deploy_voice_clone and use custom:<voice_id> in text_to_speech; delete_voice_clone removes it.',
   })
 
   server.registerTool('text_to_speech', {
@@ -418,59 +418,61 @@ export function createMcpServer(ctx: RequestContext): McpServer {
     }
   })
 
-  server.registerTool('generate_sound_effect', {
-    title: 'Generate sound effect',
-    description:
-      `Generate a short sound effect clip (e.g. "glass shattering", "footsteps on gravel", "door creaking open") from a text description, and return it as an inline WAV clip. ` +
-      `Not for music or songs — describe a sound event, not a musical style or lyrics. ` +
-      `Duration: 1-${SOUND_EFFECT_MAX_DURATION_SEC} seconds (default 3s). Generation runs on a GPU worker and can take up to ${Math.round(SOUND_EFFECT_POLL_TIMEOUT_MS / 1000)}s; ` +
-      `if it doesn't finish in time, the result includes a job id and the caller should be told generation is still in progress rather than assuming failure. ` +
-      `Uses the caller's billing, so avoid calling it repeatedly for the same prompt/duration — identical requests are cached and not re-billed. ` +
-      `Errors are returned with a code: capacity (temporary, retry), payment_required (subscription required), rate_limited (wait).`,
-    inputSchema: soundEffectInput,
-    annotations: { title: 'Generate sound effect', readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
-  }, async (args): Promise<CallToolResult> => {
-    const parsed = soundEffectSchema.parse(args)
-    const rl = soundEffectLimiter.check(ctx.keyId)
-    if (!rl.ok) return toolError('rate_limited', `Too many sound effect requests for this key. Try again in ${rl.retryAfterSec} s.`, true)
-    try {
-      // Resolve the gateway-forwarded identity headers once and reuse them
-      // across the submit + poll calls below, rather than re-exchanging the
-      // API key with the gateway on every poll.
-      const identityHeaders = await resolveGatewayIdentityHeaders(ctx.apiKey, ctx.keyId)
-      const submitted = await submitSoundEffectJob(identityHeaders, parsed.prompt, parsed.duration_sec)
-      let result = submitted
-      const deadline = Date.now() + SOUND_EFFECT_POLL_TIMEOUT_MS
-      while (result.status !== 'ready' && result.status !== 'failed' && Date.now() < deadline) {
-        await new Promise((r) => setTimeout(r, SOUND_EFFECT_POLL_INTERVAL_MS))
-        result = await pollSoundEffectJob(identityHeaders, result.job_id)
-      }
-      if (result.status === 'failed') {
-        return toolError('upstream', result.error?.message ?? 'Sound effect generation failed.', true)
-      }
-      if (result.status !== 'ready' || !result.audio_url) {
-        // Still generating past our poll budget — hand back the job id rather
-        // than blocking the tool call indefinitely.
-        return {
-          content: [{ type: 'text', text: `Still generating (job ${result.job_id}). This can take a bit longer than ${Math.round(SOUND_EFFECT_POLL_TIMEOUT_MS / 1000)}s for a cold GPU worker — tell the user generation is in progress rather than that it failed.` }],
-          structuredContent: { job_id: result.job_id, status: result.status },
+  if (process.env.SOUND_EFFECTS_PUBLIC === 'true') {
+    server.registerTool('generate_sound_effect', {
+      title: 'Generate sound effect',
+      description:
+        `Generate a short sound effect clip (e.g. "glass shattering", "footsteps on gravel", "door creaking open") from a text description, and return it as an inline WAV clip. ` +
+        `Not for music or songs — describe a sound event, not a musical style or lyrics. ` +
+        `Duration: 1-${SOUND_EFFECT_MAX_DURATION_SEC} seconds (default 3s). Generation runs on a GPU worker and can take up to ${Math.round(SOUND_EFFECT_POLL_TIMEOUT_MS / 1000)}s; ` +
+        `if it doesn't finish in time, the result includes a job id and the caller should be told generation is still in progress rather than assuming failure. ` +
+        `Uses the caller's billing, so avoid calling it repeatedly for the same prompt/duration — identical requests are cached and not re-billed. ` +
+        `Errors are returned with a code: capacity (temporary, retry), payment_required (subscription required), rate_limited (wait).`,
+      inputSchema: soundEffectInput,
+      annotations: { title: 'Generate sound effect', readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+    }, async (args): Promise<CallToolResult> => {
+      const parsed = soundEffectSchema.parse(args)
+      const rl = soundEffectLimiter.check(ctx.keyId)
+      if (!rl.ok) return toolError('rate_limited', `Too many sound effect requests for this key. Try again in ${rl.retryAfterSec} s.`, true)
+      try {
+        // Resolve the gateway-forwarded identity headers once and reuse them
+        // across the submit + poll calls below, rather than re-exchanging the
+        // API key with the gateway on every poll.
+        const identityHeaders = await resolveGatewayIdentityHeaders(ctx.apiKey, ctx.keyId)
+        const submitted = await submitSoundEffectJob(identityHeaders, parsed.prompt, parsed.duration_sec)
+        let result = submitted
+        const deadline = Date.now() + SOUND_EFFECT_POLL_TIMEOUT_MS
+        while (result.status !== 'ready' && result.status !== 'failed' && Date.now() < deadline) {
+          await new Promise((r) => setTimeout(r, SOUND_EFFECT_POLL_INTERVAL_MS))
+          result = await pollSoundEffectJob(identityHeaders, result.job_id)
         }
+        if (result.status === 'failed') {
+          return toolError('upstream', result.error?.message ?? 'Sound effect generation failed.', true)
+        }
+        if (result.status !== 'ready' || !result.audio_url) {
+          // Still generating past our poll budget — hand back the job id rather
+          // than blocking the tool call indefinitely.
+          return {
+            content: [{ type: 'text', text: `Still generating (job ${result.job_id}). This can take a bit longer than ${Math.round(SOUND_EFFECT_POLL_TIMEOUT_MS / 1000)}s for a cold GPU worker — tell the user generation is in progress rather than that it failed.` }],
+            structuredContent: { job_id: result.job_id, status: result.status },
+          }
+        }
+        const wav = await fetchAudioBytes(result.audio_url)
+        return {
+          content: [
+            { type: 'audio', data: wav.toString('base64'), mimeType: 'audio/wav' },
+            { type: 'text', text: `Generated a ${parsed.duration_sec}s sound effect for "${parsed.prompt}".${result.cache_hit ? ' (cache hit — not re-billed)' : ''}` },
+          ],
+        }
+      } catch (e) {
+        if (e instanceof UpstreamError) {
+          if (e.code === 'unauthorized') ctx.authFailed = true
+          return toolError(e.code, e.message, e.retryable)
+        }
+        return toolError('upstream', 'Unexpected error while generating a sound effect.', true)
       }
-      const wav = await fetchAudioBytes(result.audio_url)
-      return {
-        content: [
-          { type: 'audio', data: wav.toString('base64'), mimeType: 'audio/wav' },
-          { type: 'text', text: `Generated a ${parsed.duration_sec}s sound effect for "${parsed.prompt}".${result.cache_hit ? ' (cache hit — not re-billed)' : ''}` },
-        ],
-      }
-    } catch (e) {
-      if (e instanceof UpstreamError) {
-        if (e.code === 'unauthorized') ctx.authFailed = true
-        return toolError(e.code, e.message, e.retryable)
-      }
-      return toolError('upstream', 'Unexpected error while generating a sound effect.', true)
-    }
-  })
+    })
+  }
 
   // ==========================================================================
   // Voice design, voice conversion and voice cloning. Contiguous block at the end of the registrations;
