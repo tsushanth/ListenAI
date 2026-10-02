@@ -14,7 +14,7 @@
 import Stripe from 'stripe';
 import { supabase } from './supabaseClient.js';
 import { logger } from './logger.js';
-import { drainGatewayUsage } from './ttsGatewayClient.js';
+import { drainGatewayUsage, normalizeGatewayDrain } from './ttsGatewayClient.js';
 
 const billingLogger = logger.child({ module: 'realtimeTtsBilling' });
 
@@ -501,7 +501,23 @@ export function billableChars(u: { chars: number; piperChars?: number; audioSeco
 // gateway has already zeroed its own counters by the time drainGatewayUsage
 // returns) — acceptable at this volume, see keys.js's drainUsage comment.
 export async function reportUsageToStripe(deps: UsageReportDeps = defaultUsageDeps): Promise<void> {
-  const usage = await deps.drain();
+  const { usage, freeChars } = normalizeGatewayDrain(await deps.drain());
+
+  // Free-tier usage per OWNER (the gateway's shared pool across all of the user's keys). The gateway already
+  // enforces the allowance, so this only keeps the credit ledger honest. Deducted whole via consumeFreeCredits
+  // (capped at what remains, never charged beyond it); comped users are skipped. These chars are NOT in
+  // `usage` (free keys are never in the paid entries), so nothing is counted twice.
+  for (const f of freeChars) {
+    try {
+      if (!f?.owner || !(f.chars > 0)) continue;
+      const target = await resolveMeterTarget(f.owner, deps.getBilling);
+      if (target.kind === 'comped') continue;
+      await deductFreeCredits(f.owner, f.chars, 'gateway free-tier usage', undefined, deps.consumeFreeCredits);
+    } catch (err) {
+      billingLogger.error({ err, owner: f.owner, chars: f.chars }, 'Failed to deduct gateway free-tier usage from free credits');
+    }
+  }
+
   if (usage.length === 0) return;
 
   for (const entry of usage) {
@@ -520,7 +536,7 @@ export async function reportUsageToStripe(deps: UsageReportDeps = defaultUsageDe
       }
       if (chars <= 0) continue; // e.g. a sub-0.16 s STT remainder rounds to nothing; don't send empty meter events
       if (target.kind === 'free') {
-        // Free-tier gateway keys are not normally drained, so this is an anomaly; count it against the user's credits.
+        // Paid entries for a user with no active billing (e.g. a lapsed subscription): count it against the user's credits.
         await deductFreeCredits(keyRecord.user_id, chars, 'gateway usage', undefined, deps.consumeFreeCredits);
         continue;
       }

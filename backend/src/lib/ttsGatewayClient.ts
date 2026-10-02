@@ -15,14 +15,17 @@ function requireAdminSecret(): string {
 
 // `owner` (the Supabase user id) is embedded by the gateway in this key's session tokens as `uid`, which is
 // how per-user resources such as custom voices follow the user across keys.
-export async function issueGatewayKey(label: string, owner?: string): Promise<{ id: string; key: string }> {
+// `freeChars` (optional) is the user's remaining free credits: the gateway clamps it and uses it to LOWER the
+// owner's shared free pool (it can never raise it), so the gateway never grants more than the credit ledger
+// says. Omit it for billing-active users. An older gateway ignores the field.
+export async function issueGatewayKey(label: string, owner?: string, freeChars?: number): Promise<{ id: string; key: string }> {
   const res = await fetch(`${config.TTS_GATEWAY_URL}/admin/keys`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${requireAdminSecret()}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify(owner ? { label, owner } : { label }),
+    body: JSON.stringify({ label, ...(owner ? { owner } : {}), ...(owner && freeChars !== undefined ? { freeChars: Math.max(0, Math.floor(freeChars)) } : {}) }),
   });
   if (!res.ok) {
     const body = await res.text().catch(() => '');
@@ -59,13 +62,37 @@ export interface GatewayUsageEntry {
   audioSeconds?: number;
 }
 
-export async function drainGatewayUsage(): Promise<GatewayUsageEntry[]> {
+// Free-tier characters consumed by one OWNER (all their non-billing keys share one pool) since the last drain.
+export interface GatewayFreeUsage {
+  owner: string;
+  chars: number;
+}
+
+// New gateways answer an `includeFree` drain with this object; older ones with the bare entries array.
+export interface GatewayDrainResult {
+  usage: GatewayUsageEntry[];
+  freeChars: GatewayFreeUsage[];
+}
+
+/** Accepts either gateway shape (legacy array, or { usage, freeChars }) and returns the object form. */
+export function normalizeGatewayDrain(raw: GatewayUsageEntry[] | Partial<GatewayDrainResult> | null | undefined): GatewayDrainResult {
+  if (Array.isArray(raw)) return { usage: raw, freeChars: [] };
+  return {
+    usage: Array.isArray(raw?.usage) ? raw.usage : [],
+    freeChars: Array.isArray(raw?.freeChars) ? raw.freeChars : [],
+  };
+}
+
+// Drains paid usage (per key) AND, from a gateway that supports it, free-tier usage per owner. Returns the
+// legacy array when the gateway is older (it ignores `includeFree`), so callers must normalizeGatewayDrain().
+export async function drainGatewayUsage(): Promise<GatewayUsageEntry[] | GatewayDrainResult> {
   const res = await fetch(`${config.TTS_GATEWAY_URL}/admin/usage/drain`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${requireAdminSecret()}`,
       'Content-Type': 'application/json',
     },
+    body: JSON.stringify({ includeFree: true }),
   });
   if (!res.ok) {
     const body = await res.text().catch(() => '');
