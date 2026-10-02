@@ -219,3 +219,73 @@ test('reportAudioJobUsage: no active billing sends nothing; a Stripe failure doe
     createMeterEvent: async () => { throw new Error('stripe down'); },
   }));
 });
+
+// ---------------------------------------------------------------------------
+// Gateway free-tier usage (per owner) -> user's free credits
+// ---------------------------------------------------------------------------
+
+async function runDrain(drainResult: any, opts: { active?: Record<string, boolean>; comped?: string[] } = {}) {
+  const { reportUsageToStripe } = await modP;
+  const events: any[] = [];
+  const consumed: Array<{ userId: string; units: number }> = [];
+  await reportUsageToStripe({
+    drain: async () => drainResult,
+    getKeyOwner: async (id) => ({ user_id: `owner-of-${id}` }),
+    getBilling: async (uid) =>
+      opts.comped?.includes(uid) ? ({ user_id: uid, active: true, comped: true } as any)
+      : opts.active && uid in opts.active ? ({ user_id: uid, stripe_customer_id: `cus_${uid}`, active: opts.active[uid] } as any) : null,
+    createMeterEvent: async (p) => { events.push(p); return {}; },
+    consumeFreeCredits: async (userId, units) => { consumed.push({ userId, units }); return units; },
+  });
+  return { events, consumed };
+}
+
+test('drain freeChars: deducted from the owner free credits, paid entries untouched', async () => {
+  const { events, consumed } = await runDrain({
+    usage: [{ id: 'paidkey', chars: 100 }],
+    freeChars: [{ owner: 'free-user', chars: 4200 }],
+  }, { active: { 'owner-of-paidkey': true } });
+  assert.deepEqual(consumed, [{ userId: 'free-user', units: 4200 }]);
+  assert.equal(events.length, 1);
+  assert.equal(events[0].payload.value, '100');                 // paid usage unchanged, free chars not billed to Stripe
+});
+
+test('drain freeChars only (no paid usage) still deducts', async () => {
+  const { events, consumed } = await runDrain({ usage: [], freeChars: [{ owner: 'u9', chars: 10 }] });
+  assert.deepEqual(consumed, [{ userId: 'u9', units: 10 }]);
+  assert.equal(events.length, 0);
+});
+
+test('drain freeChars: comped owners and non-positive entries are skipped', async () => {
+  const { consumed } = await runDrain({
+    usage: [],
+    freeChars: [{ owner: 'comped-u', chars: 500 }, { owner: 'u1', chars: 0 }, { owner: '', chars: 5 }],
+  }, { comped: ['comped-u'] });
+  assert.deepEqual(consumed, []);
+});
+
+test('legacy gateway (bare array) still works and deducts no free credits', async () => {
+  const { events, consumed } = await runDrain([{ id: 'k', chars: 7 }], { active: { 'owner-of-k': true } });
+  assert.equal(events.length, 1);
+  assert.deepEqual(consumed, []);
+});
+
+test('a failing free-credit deduction does not block paid usage reporting', async () => {
+  const { reportUsageToStripe } = await modP;
+  const events: any[] = [];
+  await reportUsageToStripe({
+    drain: async () => ({ usage: [{ id: 'k', chars: 9 }], freeChars: [{ owner: 'u', chars: 5 }] }),
+    getKeyOwner: async () => ({ user_id: 'p' }),
+    getBilling: async (uid) => (uid === 'u' ? (() => { throw new Error('db down'); })() : ({ user_id: uid, stripe_customer_id: 'cus_p', active: true } as any)),
+    createMeterEvent: async (p) => { events.push(p); return {}; },
+    consumeFreeCredits: async () => 0,
+  });
+  assert.equal(events.length, 1);
+});
+
+test('normalizeGatewayDrain accepts both shapes', async () => {
+  const { normalizeGatewayDrain } = await import('./ttsGatewayClient.js');
+  assert.deepEqual(normalizeGatewayDrain([{ id: 'a', chars: 1 }]), { usage: [{ id: 'a', chars: 1 }], freeChars: [] });
+  assert.deepEqual(normalizeGatewayDrain({ usage: [], freeChars: [{ owner: 'o', chars: 2 }] }), { usage: [], freeChars: [{ owner: 'o', chars: 2 }] });
+  assert.deepEqual(normalizeGatewayDrain(undefined), { usage: [], freeChars: [] });
+});

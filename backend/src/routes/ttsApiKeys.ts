@@ -129,9 +129,9 @@ ttsApiKeysRouter.post(
   asyncHandler(async (req, res) => {
     const billingActive = await isBillingActiveForUser(req.userId!);
     const activeCount = await countActiveKeysForUser(req.userId!);
-    // The gateway's free tier (10,000 chars) is per KEY, so without a payment method a user gets ONE key:
-    // more keys would stack more free allowances. (Revoke + re-create still resets that key's counter;
-    // closing that needs a gateway change, see the free-credits follow-up notes.)
+    // Without a payment method a user gets ONE key. (Newer gateways also share one free pool across all of a
+    // user's keys, revoked ones included, so this cap is no longer what stops stacking; an older gateway
+    // still counts the free tier per key and revoke + re-create would reset it.)
     if (!billingActive && activeCount >= MAX_ACTIVE_KEYS_PER_USER_FREE) {
       res.status(429).json({
         error: `Free accounts can have ${MAX_ACTIVE_KEYS_PER_USER_FREE} active API key. Revoke it or add a payment method (https://readaloudai.org/developers#get-started) to create more.`,
@@ -145,7 +145,16 @@ ttsApiKeysRouter.post(
       return;
     }
     const label = typeof req.body?.label === 'string' ? req.body.label.slice(0, 200) : null;
-    const { id: gatewayKeyId, key } = await issueGatewayKey(label || `readaloud user ${req.userId}`, req.userId);
+    // Free users: hand the gateway the user's remaining free credits so its shared pool never exceeds the ledger.
+    // remaining === 0 is NOT sent: getFreeCredits fails closed (0) on a transient lookup error, and an override
+    // can only ever lower the gateway pool, so a blip would permanently zero a user's allowance. The gateway
+    // pool still enforces its own exhaustion, and drained free usage is deducted from the ledger anyway.
+    let freeChars: number | undefined;
+    if (!billingActive) {
+      const remaining = (await getFreeCredits(req.userId!)).remaining;
+      if (remaining > 0) freeChars = remaining;
+    }
+    const { id: gatewayKeyId, key } = await issueGatewayKey(label || `readaloud user ${req.userId}`, req.userId, freeChars);
     // The gateway requires a key to be explicitly billing-enabled before it'll
     // run any TTS through it (see realtime-tts's keys.js). Real gate: only
     // enable it if this user has an active realtimetts_billing row (a real
