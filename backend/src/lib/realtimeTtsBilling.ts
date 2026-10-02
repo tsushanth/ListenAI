@@ -68,12 +68,23 @@ export const STT_CHARS_PER_SECOND = 3.0556;
 // ($0.01 per 1,000 characters), so a price of $P per audio-minute is P / 0.00001 units per minute.
 // Same invoice trade-off as STT/Piper: the "characters" quantity is an equivalent, not raw characters.
 //
-// Prices (USD per audio-minute) vs measured/derived cost and ElevenLabs list price. Full arithmetic
-// is in the commit message of the change that introduced this block:
-//   dubbing   $0.15  cost ~$0.052/min (STT 0.0005 + translation ~0.0075 + TTS 0.044)   EL $0.33-0.50
-//   isolation $0.05  cost floor ~$0.016/min (worker-demucs-fly/PRICING.md)             EL $0.12
-//   convert   $0.10  cost ~$0.029/min (anchored on ~48 A10G-seconds per short job)     EL $0.12
-//   sfx       $0.09  per second of generated audio ($0.0015/s); cache hits stay free   EL $0.12
+// Prices (USD per audio-minute), re-derived 2026-10-02 from MEASURED Modal runs (A10G/L4/T4 at Modal's
+// published per-second rates: A10 $0.000306, L4 $0.000222, T4 $0.000164; modal.com/pricing). "warm" = container
+// already up; "cold-isolated" = one job on an idle app, which pays container boot + model load + the idle
+// scaledown tail (60 s default; 120 s for the SFX/STT workers) that nobody else amortizes. Source of record:
+// docs/MONEY_PATH_COSTS.md.
+//   service   warm cost                         cold-isolated cost        price            vs EL list
+//   stt       $0.0114/audio-hour (L4, measured) ~$0.03/job (15 s boot + 120 s tail)   $0.11/h   EL Scribe $0.22/h
+//   dub       ~$0.0071/min (STT 0.0002 measured + translation ~0.0066 ESTIMATED from tokens + TTS 0.0003 measured)
+//             cold-isolated >= $0.031 (STT part only; TTS worker cold cost not measured)   $0.15/min   EL $0.33-0.50
+//   isolate   $0.0025 per 61 s job (8.1 GPU-s, A10G) $0.025/job (20 s boot + 60 s tail) $0.05/min    EL $0.12
+//   convert   $0.0088/min (28.7 GPU-s per audio-min) $0.035 (30 s clip) - $0.048 (61 s clip)  $0.10/min   EL $0.12
+//   sfx       $0.0019 per 12 s clip (6.3 s A10G)  $0.054/clip (56 s boot + 120 s tail)  $0.0015/s  EL $0.12/min
+// Every price is >= 2.5x warm cost (smallest margin: sfx 9x, convert 11x) and below ElevenLabs. The per-minute rates
+// therefore stay as they were; what changed is the MINIMUM charge, which now covers a cold-isolated job at >= 1.5x
+// for dub, isolate and convert (a 10 s clip used to bring in $0.008 against ~$0.025-0.035 of cold-start cost).
+// Sound effects are NOT fixed by a minimum: a cold-isolated 12 s clip costs 3x its $0.018 price, and covering that
+// would take ~$0.27/min, above ElevenLabs. It is profitable only while a worker stays warm (see MONEY_PATH_COSTS.md).
 // minBillableSeconds covers the fixed per-job cost (GPU cold start / model load / LLM call) that a
 // very short clip would otherwise not pay for.
 export type AudioJobService = 'dub' | 'isolate' | 'convert' | 'sound_effect';
@@ -82,9 +93,9 @@ export type AudioJobService = 'dub' | 'isolate' | 'convert' | 'sound_effect';
 export const METER_USD_PER_UNIT = 0.00001;
 
 export const AUDIO_JOB_PRICING: Record<AudioJobService, { unitsPerMinute: number; minBillableSeconds: number }> = {
-  dub: { unitsPerMinute: 15000, minBillableSeconds: 10 }, // $0.15/min
-  isolate: { unitsPerMinute: 5000, minBillableSeconds: 10 }, // $0.05/min
-  convert: { unitsPerMinute: 10000, minBillableSeconds: 30 }, // $0.10/min, 30 s minimum = $0.05 (the old flat price)
+  dub: { unitsPerMinute: 15000, minBillableSeconds: 30 }, // $0.15/min, 30 s minimum = $0.075
+  isolate: { unitsPerMinute: 5000, minBillableSeconds: 45 }, // $0.05/min, 45 s minimum = $0.0375 (1.5x cold-isolated cost)
+  convert: { unitsPerMinute: 10000, minBillableSeconds: 45 }, // $0.10/min, 45 s minimum = $0.075
   sound_effect: { unitsPerMinute: 9000, minBillableSeconds: 4 }, // $0.09/min = $0.0015/s
 };
 

@@ -182,6 +182,11 @@ def run_conversion(job_id: str, diffusion_steps: int = 30, length_adjust: float 
     """Runs seed-vc's batch inference.py (zero-shot VC, no training) as a subprocess: this is the
     library's own non-realtime entrypoint, deliberately not real-time-gui.py or the streaming app.
     length-adjust=1.0 (default) keeps the source's original timing/prosody."""
+    # A fresh GPU container can start before the submit() commit is visible; without this the job
+    # raised FileNotFoundError on job.json, stayed 'queued' forever and the container idled until killed
+    # (seen 2026-10-02 benchmarking). reload() makes the committed job.json visible.
+    jobs.reload()
+
     import glob, json, subprocess, time
 
     d = _job_dir(job_id)

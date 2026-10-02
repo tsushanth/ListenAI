@@ -151,29 +151,39 @@ test('billableAudioUnits: rounds up to the next whole second', async () => {
 
 test('billableAudioUnits: minimums and unusable durations bill the minimum, never zero', async () => {
   const { billableAudioUnits } = await modP;
-  assert.equal(billableAudioUnits('isolate', 0.5), Math.round((10 * 5000) / 60));    // 10 s minimum
-  assert.equal(billableAudioUnits('convert', 5), 5000);                              // 30 s minimum = $0.05
+  assert.equal(billableAudioUnits('isolate', 0.5), Math.round((45 * 5000) / 60));    // 45 s minimum = $0.0375
+  assert.equal(billableAudioUnits('convert', 5), 7500);                              // 45 s minimum = $0.075
   assert.equal(billableAudioUnits('sound_effect', 1), Math.round((4 * 9000) / 60));  // 4 s minimum = $0.006
   for (const bad of [0, -3, NaN, Infinity, null, undefined]) {
-    assert.equal(billableAudioUnits('dub', bad as any), 2500, `dub duration ${String(bad)}`); // 10 s minimum
+    assert.equal(billableAudioUnits('dub', bad as any), 7500, `dub duration ${String(bad)}`); // 30 s minimum = $0.075
   }
 });
 
-test('billableAudioUnits: every price stays >= 2.5x its documented cost and below ElevenLabs', async () => {
+test('billableAudioUnits: every price stays >= 2.5x MEASURED warm cost and below ElevenLabs', async () => {
   const { AUDIO_JOB_PRICING, METER_USD_PER_UNIT } = await modP;
   const usdPerMin = (svc: any) => AUDIO_JOB_PRICING[svc as 'dub'].unitsPerMinute * METER_USD_PER_UNIT;
-  // cost per audio-minute (see the pricing comment in realtimeTtsBilling.ts) and ElevenLabs list price
+  // Warm cost per audio-minute and ElevenLabs list price (see the pricing comment in realtimeTtsBilling.ts and
+  // docs/MONEY_PATH_COSTS.md, measured on Modal 2026-10-02). dub's translation part (~0.0066) is an ESTIMATE.
   const table: Array<[string, number, number]> = [
-    ['dub', 0.0520, 0.33],        // STT 0.0005 + translation ~0.0075 + TTS 0.044; EL dubbing $0.33-0.50
-    ['isolate', 0.016, 0.12],     // worker-demucs-fly/PRICING.md floor
-    ['convert', 0.0293, 0.12],    // ~48 A10G-s per 30 s job at $0.0003056/s = $0.0293/min
+    ['dub', 0.0071, 0.33],        // STT 0.0002 + translation ~0.0066 (est.) + TTS 0.0003; EL dubbing $0.33-0.50
+    ['isolate', 0.0025, 0.12],    // 8.1 A10G-s per 61 s job
+    ['convert', 0.0088, 0.12],    // 28.7 A10G-s per audio-minute
+    ['sound_effect', 0.0019 * 5, 0.12], // 6.3 A10G-s per 12 s clip = $0.0019, i.e. $0.0095 per generated minute
   ];
   for (const [svc, cost, eleven] of table) {
     const p = usdPerMin(svc);
     assert.ok(p >= 2.5 * cost, `${svc}: $${p}/min vs cost $${cost}/min`);
     assert.ok(p < eleven, `${svc}: $${p}/min must undercut ElevenLabs $${eleven}/min`);
   }
-  assert.ok(usdPerMin('sound_effect') < 0.12);
+});
+
+test('billableAudioUnits: the minimum charge covers a cold-isolated job at >= 1.5x (dub, isolate, convert)', async () => {
+  const { billableAudioUnits, METER_USD_PER_UNIT } = await modP;
+  const minUsd = (svc: any) => billableAudioUnits(svc, 0) * METER_USD_PER_UNIT;
+  // Cold-isolated cost = container boot + model load + idle scaledown tail on one job (measured/derived, see docs).
+  assert.ok(minUsd('isolate') >= 1.5 * 0.025);
+  assert.ok(minUsd('convert') >= 1.5 * 0.035);
+  assert.ok(minUsd('dub') >= 1.5 * 0.031);
 });
 
 test('reportAudioJobUsage: sends one meter event on the shared character meter with the weighted value', async () => {

@@ -135,6 +135,11 @@ def run_isolation(job_id: str, want_instrumental: bool = False):
     demucs`), the package's standard non-realtime entrypoint. Two stems are produced from the
     model's four (vocals, drums, bass, other): vocals kept as-is, and, if requested, an
     "instrumental" stem built by summing drums+bass+other."""
+    # A fresh GPU container can start before the submit() commit is visible; without this the job
+    # raised FileNotFoundError on job.json, stayed 'queued' forever and the container idled until killed
+    # (seen 2026-10-02 benchmarking). reload() makes the committed job.json visible.
+    jobs.reload()
+
     import glob, json, subprocess, time
 
     d = _job_dir(job_id)

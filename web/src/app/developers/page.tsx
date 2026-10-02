@@ -178,7 +178,7 @@ curl -L -X POST "<url>/v1/stt?language=auto" \\
                   <li><code>402</code> your free credits are used up. Add a payment method.</li>
                   <li><code>404</code> unknown job, or a job that belongs to someone else.</li>
                 </ul>
-                <p><b>Price:</b> $0.15 per minute of source audio, billed by the second rounded up, with a 10 second minimum, once the job completes. Failed jobs are not billed. On your invoice it appears as character equivalents on the same meter as text-to-speech (250 per second of audio; 15,000 per minute).</p>
+                <p><b>Price:</b> $0.15 per minute of source audio, billed by the second rounded up, with a 30 second minimum ($0.075), once the job completes. Failed jobs are not billed. On your invoice it appears as character equivalents on the same meter as text-to-speech (250 per second of audio; 15,000 per minute).</p>
                 <p><b>Known limitations.</b> Audio only &mdash; no video muxing or subtitle burn-in. Segment timing is a v1 approximation (whole-segment speed scaling, not real phoneme-level alignment), so lip-sync-grade timing shouldn&rsquo;t be expected. Jobs run in-memory on a single instance rather than a durable queue, so a deploy or restart while a job is in flight will lose it &mdash; resubmit if that happens. Each segment over 2,000 characters is truncated.</p>
 
                 <h3 id="sound-effects">Sound effects</h3>
@@ -258,7 +258,7 @@ curl -L -X POST "<url>/v1/stt?language=auto" \\
                   <li><code>409</code> a deployment already exists. <code>429</code> over 10 requests/hour.</li>
                   <li><code>503</code> the GPU backend isn&rsquo;t configured in this environment.</li>
                 </ul>
-                <p><b>Price:</b> voice isolation is $0.05 per minute of input audio, with a 10 second minimum. Voice conversion is $0.10 per minute of source audio, with a 30 second minimum ($0.05). Both are billed by the second rounded up, only for completed jobs. On your invoice they appear as character equivalents on the same meter as text-to-speech (isolation 5,000 per minute, conversion 10,000 per minute). Voice design is billed per generated voice on its own meter.</p>
+                <p><b>Price:</b> voice isolation is $0.05 per minute of input audio, with a 45 second minimum ($0.0375). Voice conversion is $0.10 per minute of source audio, with a 45 second minimum ($0.075). Both are billed by the second rounded up, only for completed jobs. On your invoice they appear as character equivalents on the same meter as text-to-speech (isolation 5,000 per minute, conversion 10,000 per minute). Voice design is billed per generated voice on its own meter.</p>
 
                 <h3 id="audiobooks">Audiobooks</h3>
                 <p>
