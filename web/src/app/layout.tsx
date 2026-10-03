@@ -10,7 +10,7 @@ const mono = JetBrains_Mono({ subsets: ['latin'], variable: '--font-mono', displ
 
 export const metadata: Metadata = {
   title: 'ReadAloud AI - Realtime text-to-speech API',
-  description: 'A streaming text-to-speech API for voice agents and apps: about 170 ms to first audio, from $4 per million characters. Also available as the ReadAloud AI reader for Android and web.',
+  description: 'A streaming text-to-speech API for voice agents and apps: about 200 ms to first audio, from $4 per million characters. Also available as the ReadAloud AI reader for Android and web.',
   keywords: ['text to speech API', 'realtime TTS', 'voice agent', 'streaming TTS', 'text to speech', 'TTS', 'audio articles', 'voice cloning', 'AI voice', 'read aloud', 'accessibility'],
   authors: [{ name: 'ReadAloud AI' }],
   icons: {
@@ -26,7 +26,7 @@ export const metadata: Metadata = {
   manifest: '/site.webmanifest',
   openGraph: {
     title: 'ReadAloud AI - Realtime text-to-speech API',
-    description: 'Streaming text-to-speech for voice agents and apps. About 170 ms to first audio, from $4 per million characters.',
+    description: 'Streaming text-to-speech for voice agents and apps. About 200 ms to first audio, from $4 per million characters.',
     url: 'https://readaloudai.org',
     siteName: 'ReadAloud AI',
     type: 'website',
@@ -34,7 +34,7 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     title: 'ReadAloud AI - Realtime text-to-speech API',
-    description: 'Streaming text-to-speech for voice agents and apps. About 170 ms to first audio, from $4 per million characters.',
+    description: 'Streaming text-to-speech for voice agents and apps. About 200 ms to first audio, from $4 per million characters.',
   },
 }
 

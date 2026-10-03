@@ -13,7 +13,7 @@ export default function Home() {
           <div className="ra-wrap">
             <h1>Text to speech that keeps up with a phone call</h1>
             <p className="ra-lede">
-              A streaming voice API for agents and apps. Audio starts in about 170 ms and costs from $4 per million characters.
+              A streaming voice API for agents and apps. Audio starts in about 200 ms and costs from $4 per million characters.
             </p>
             <div className="ra-cta">
               <Link href="/developers#get-started" className="ra-btn solid">Get an API key</Link>
@@ -26,8 +26,8 @@ export default function Home() {
         <section className="ra-wrap" aria-label="Key numbers">
           <div className="ra-facts">
             <div className="ra-fact">
-              <b>About 170 ms</b>
-              <span>To first audio, measured from a machine in San Jose. ElevenLabs Flash measured about 173 ms the same way.</span>
+              <b>About 200 ms</b>
+              <span>To first audio, measured from a machine in San Jose. ElevenLabs Flash measured about 165 ms the same way, at ten times the price.</span>
             </div>
             <div className="ra-fact">
               <b>$4 per million characters</b>
@@ -63,16 +63,15 @@ export default function Home() {
               <table className="ra-table">
                 <thead><tr><th>Service</th><th>Time to first audio (warm)</th><th>Price per 1M characters</th></tr></thead>
                 <tbody>
-                  <tr><td className="hl">ReadAloud Piper</td><td className="hl">168&ndash;171 ms</td><td className="hl">$4</td></tr>
-                  <tr><td>ElevenLabs Flash v2.5</td><td>173&ndash;174 ms</td><td>$40</td></tr>
-                  <tr><td>ElevenLabs Multilingual v2</td><td>about 1.0&ndash;1.1 s</td><td>$80</td></tr>
+                  <tr><td className="hl">ReadAloud Piper</td><td className="hl">about 205 ms</td><td className="hl">$4</td></tr>
+                  <tr><td>ElevenLabs Flash v2.5</td><td>about 165 ms</td><td>$40</td></tr>
+                  <tr><td>ElevenLabs Multilingual v2</td><td>about 1.05 s</td><td>$80</td></tr>
                 </tbody>
               </table>
             </div>
             <p className="ra-small" style={{ marginTop: 14 }}>
-              Measured September 2026 from one machine in San Jose, interleaved, in the same hour, on short call-center sentences, as time to the
-              first audio byte on a warm streaming connection. ElevenLabs advertises 75 ms for Flash; that is model latency, while these figures are end to end, including the network. Piper and ElevenLabs Flash are within measurement noise, so we do not claim to be
-              faster. Results vary by location and time of day. ElevenLabs prices are its published API list prices as of 2026-09; the latency and quality figures are from our own runs. Voice quality is subjective, and
+              Measured October 2026 from one machine in San Jose, interleaved over several minutes, in the same hour, on short call-center sentences, as time to the
+              first audio byte on a warm streaming connection. ElevenLabs advertises 75 ms for Flash; that is model latency, while these figures are end to end, including the network. ElevenLabs Flash is about 40 ms faster than Piper at the median (24 requests each); Piper costs a tenth as much. Results vary by location and time of day. ElevenLabs prices are its published API list prices as of 2026-09; the latency and quality figures are from our own runs. Voice quality is subjective, and
               ElevenLabs offers far more voices and languages. The scripts are in our{' '}
               <a href="https://github.com/tsushanth/realtime-tts/tree/main/benchmarks">public benchmarks folder</a>.
             </p>
@@ -153,7 +152,7 @@ export default function Home() {
               <div className="rec">
                 <h3 style={{ fontSize: '1.2rem' }}>Piper</h3>
                 <div className="big">$0.004 <small>per 1,000 characters</small></div>
-                <ul><li>About 170 ms to first audio</li><li>Built for live calls</li><li>No minimums, no plan to manage</li></ul>
+                <ul><li>About 200 ms to first audio</li><li>Built for live calls</li><li>No minimums, no plan to manage</li></ul>
               </div>
               <div>
                 <h3 style={{ fontSize: '1.2rem' }}>Kokoro</h3>
@@ -192,7 +191,7 @@ export default function Home() {
             <div><h2>Questions</h2></div>
             <div className="ra-faq">
               <details><summary>Which languages does it speak?</summary><p>English today. More languages are on the roadmap, and we would rather say so plainly than list languages we cannot yet do well.</p></details>
-              <details><summary>How many calls can it handle at once?</summary><p>Piper is capped at 4 simultaneous streams per server for now, and rejects extra connections with a clear error instead of slowing everyone down. If you need more capacity, email us.</p></details>
+              <details><summary>How many calls can it handle at once?</summary><p>Each Piper server handles up to 12 simultaneous streams, and a second server starts automatically under load. Beyond that, new connections get an &ldquo;at capacity&rdquo; error and should retry shortly. If you need guaranteed capacity, email us.</p></details>
               <details><summary>Why is it so much cheaper than ElevenLabs?</summary><p>Piper is a small model that runs on ordinary CPUs, so we do not pay for an always-on GPU. The trade-off is fewer voices and a less expressive read than the largest models.</p></details>
               <details><summary>Can I hear how it compares before I commit?</summary><p>Yes. Type your own text into the demo above, then use your free 10,000 characters to test it in your own app.</p></details>
             </div>
