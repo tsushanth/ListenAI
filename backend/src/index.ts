@@ -39,7 +39,8 @@ import { voiceStudioRouter } from './routes/voiceStudio.js';
 import { voiceDesignRouter } from './routes/voiceDesign.js';
 import { voiceConvertRouter } from './routes/voiceConvert.js';
 import { voiceIsolateRouter } from './routes/voiceIsolate.js';
-import { voiceCloneRouter } from './routes/voiceClone.js';
+// XTTS v2 voice cloning removed: non-commercial license, see takedown/xtts-voice-cloning branch.
+// import { voiceCloneRouter } from './routes/voiceClone.js';
 import { sttRouter } from './routes/stt.js';
 import { voiceStudioApiKeyRouter } from './routes/voiceStudioApiKey.js';
 import { orpheusVoiceStudioApiKeyRouter } from './routes/orpheusVoiceStudioApiKey.js';
@@ -270,8 +271,8 @@ app.use('/api/voice-convert', requireAuthOrApiKey, voiceConvertRouter);
 // requireAuthOrApiKey) before falling back to JWT verification, so no changes were needed inside
 // voiceIsolate.ts itself — see MCP_AUTH_BRIDGE.md.
 app.use('/api/voice-isolate', requireAuthOrApiKey, voiceIsolateRouter);
-// Voice clone — XTTS v2 instant voice cloning (dark unless XTTS_CLONE_URL is configured)
-app.use('/api/voice-clone', voiceCloneRouter);
+// Voice clone — XTTS v2 instant voice cloning removed (non-commercial license).
+// app.use('/api/voice-clone', voiceCloneRouter);
 app.use('/api/stt', requireAuthOrApiKey, sttRouter);
 // Dubbing v1 — audio-in/audio-out re-voicing via STT (external worker-stt-prod) + Claude
 // translation + existing TTS pipeline (dark unless STT_WORKER_URL is configured). See
