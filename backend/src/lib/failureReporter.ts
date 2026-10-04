@@ -2,11 +2,12 @@
  * Sends backend failures to the unified app-failure-reporter Worker (dedupes and emails).
  * Fire-and-forget: never throws, never blocks a request. Set FAILURE_REPORTER_DISABLED=1 to silence (tests/dev).
  * Never pass user content (transcripts, note text, emails) as message or context.
+ * The ingest key comes only from FAILURE_REPORTER_KEY (a Fly secret); with no key set, reporting is off.
  */
 const ENDPOINT = process.env.FAILURE_REPORTER_URL || 'https://app-failure-reporter.t-sushanth.workers.dev/v1/report';
-const KEY = process.env.FAILURE_REPORTER_KEY || 'afr_9adcdf8324b13e8e5cd9cd1eb178b55c';
+const KEY = process.env.FAILURE_REPORTER_KEY || '';
 const APP_VERSION = process.env.FLY_IMAGE_REF || process.env.K_REVISION || process.env.npm_package_version || 'unknown';
-const DISABLED = process.env.FAILURE_REPORTER_DISABLED === '1' || process.env.NODE_ENV === 'test' || process.env.NODE_ENV === 'development';
+const DISABLED = !KEY || process.env.FAILURE_REPORTER_DISABLED === '1' || process.env.NODE_ENV === 'test' || process.env.NODE_ENV === 'development';
 
 type Kind = 'crash' | 'failure' | 'backend_error';
 
