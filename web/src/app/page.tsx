@@ -173,11 +173,24 @@ export default function Home() {
               <p className="ra-lede">
                 Upload a recording, get a transcript with word timestamps. Whisper large-v3-turbo, the same key, $0.11 per hour of audio.
               </p>
+              <div className="ra-table-wrap" style={{ marginTop: 20 }}>
+                <table className="ra-table">
+                  <thead><tr><th>Batch speech to text</th><th>Price per hour of audio</th></tr></thead>
+                  <tbody>
+                    <tr><td className="hl">ReadAloud</td><td className="hl">$0.11</td></tr>
+                    <tr><td>ElevenLabs Scribe (API list price, as of 2026-10)</td><td>$0.22</td></tr>
+                  </tbody>
+                </table>
+              </div>
+              <p className="ra-small" style={{ marginTop: 12 }}>
+                Cold start: the first request after a quiet period takes about 10 seconds while our GPU starts. After that, a short clip typically
+                comes back in about a second (our own measurement, October 2026, from one machine). Billed by the second of audio; failed requests are not billed.
+              </p>
               <p style={{ marginTop: 16 }}><Link href="/developers#speech-to-text" style={{ textDecoration: 'underline' }}>Read the docs</Link></p>
             </div>
             <div className="ra-ref" style={{ marginTop: 0 }}>
               <ul>
-                <li>That is half of ElevenLabs Scribe&rsquo;s batch list price of $0.22 per hour (as of 2026-09; its realtime price is $0.39 per hour). We have not compared accuracy with Scribe.</li>
+                <li>That is half of ElevenLabs Scribe&rsquo;s batch API list price (its realtime price is $0.39 per hour). We have not compared accuracy with Scribe.</li>
                 <li>Word error rate was 2.6% on clean read English and 2.8% on simulated phone audio. Real calls are noisier, so test on yours.</li>
                 <li>Batch only for now: no live transcription, speaker labels or entity detection.</li>
                 <li>Accepts wav, flac, mp3, ogg, m4a and raw mu-law or A-law phone audio. Up to 200 MB or 3 hours per file.</li>
