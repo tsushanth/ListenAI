@@ -28,6 +28,30 @@ export interface Transcription {
   segments?: SttSegment[]
 }
 
+const WARM_KEY = 'ra_stt_warm_at'
+const WARM_MIN_INTERVAL_MS = 3 * 60_000
+let warmAtMemory = 0
+
+/**
+ * Best-effort GPU pre-warm: POST /api/stt/warm, at most once per 3 minutes per browser (localStorage, with an
+ * in-memory fallback). Never throws, never shows UI; every error is ignored. The backend ignores it unless the
+ * improved worker is enabled, and rate-limits it, so a missed or repeated call is harmless.
+ */
+export async function warmStt(): Promise<void> {
+  try {
+    const now = Date.now()
+    let last = warmAtMemory
+    try {
+      const stored = Number(window.localStorage.getItem(WARM_KEY))
+      if (Number.isFinite(stored) && stored > last) last = stored
+    } catch { /* storage unavailable */ }
+    if (now - last < WARM_MIN_INTERVAL_MS) return
+    warmAtMemory = now
+    try { window.localStorage.setItem(WARM_KEY, String(now)) } catch { /* storage unavailable */ }
+    await fetch(`${API_BASE_URL}/api/stt/warm`, { method: 'POST', headers: await authHeaders() })
+  } catch { /* ignore */ }
+}
+
 export const sttApi = {
   async transcribe(params: { audio: File; language?: string; wordTimestamps: boolean }): Promise<Transcription> {
     const form = new FormData()

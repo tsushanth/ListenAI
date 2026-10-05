@@ -1,7 +1,7 @@
 'use client'
 
-import { useMemo, useState } from 'react'
-import { sttApi, buildCues, toSrt, toVtt, fmtClock, type Transcription } from '@/lib/sttApi'
+import { useEffect, useMemo, useState } from 'react'
+import { sttApi, warmStt, buildCues, toSrt, toVtt, fmtClock, type Transcription } from '@/lib/sttApi'
 import { AUDIO_RULES, acceptAttr, fmtSize, validateAudio } from '@/lib/audioFiles'
 import {
   ErrorNotice, LoadingCard, PriceNote, SignInGate, Working, downloadText, toUiError, useSessionEmail,
@@ -19,6 +19,9 @@ export default function Transcriber() {
   const [result, setResult] = useState<Transcription | null>(null)
   const [error, setError] = useState<UiError | null>(null)
   const [copied, setCopied] = useState(false)
+
+  // Pre-warm the transcription GPU once the user is known to be signed in (throttled to once per 3 min in warmStt).
+  useEffect(() => { if (email) void warmStt() }, [email])
 
   const cues = useMemo(() => (result ? buildCues(result) : []), [result])
 
@@ -81,7 +84,7 @@ export default function Transcriber() {
                 type="file"
                 accept={acceptAttr(AUDIO_RULES.stt)}
                 disabled={stage === 'working'}
-                onChange={(e) => { setFile(e.target.files?.[0] ?? null); setError(null) }}
+                onChange={(e) => { setFile(e.target.files?.[0] ?? null); setError(null); if (email) void warmStt() }}
               />
             </label>
             {file && <p className="ra-small" style={{ marginTop: 4 }}>{file.name} · {fmtSize(file.size)}</p>}
