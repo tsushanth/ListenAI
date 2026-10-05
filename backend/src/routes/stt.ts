@@ -44,7 +44,8 @@ import { SttLimiter } from '../lib/sttLimits.js';
 import { parseKeyterms } from '../lib/sttKeyterms.js';
 import { removeQuiet, sniffFile, streamToFile, sttTmpDir, tmpPath, UploadTooLargeError, workerBody } from '../lib/sttUpload.js';
 
-const log = logger.child({ module: 'stt' });
+const moduleLog = logger.child({ module: 'stt' });
+const log = moduleLog;
 
 // --------------------------------------------------------------------------
 // Options (config-driven; tests override via createSttRouters)
@@ -67,6 +68,25 @@ export interface SttOptions {
   workerTimeoutMs: number;
   /** Billing hook (per-second metering). Defaults to reportSttUsage; injectable for tests. */
   reportUsage: (userId: string, audioSeconds: number) => Promise<void>;
+  /** Improved worker (Modal ra-stt-shadow-w22). Percent 0 (default) or a missing url/token = off. */
+  improvedUrl?: string;
+  improvedToken?: string;
+  /** Integer 0-100: share of requests sent to the improved worker first. */
+  improvedPercent: number;
+  improvedTimeoutMs: number;
+  /** On improved-worker failure (network, timeout, 5xx, 429, 401), retry once on the production path. */
+  improvedFallback: boolean;
+  /** Random source in [0,1); injectable for tests. */
+  rng: () => number;
+  now: () => number;
+  /** Timeout of the fire-and-forget /health call behind POST /warm. */
+  warmTimeoutMs: number;
+  /** At most one upstream warm call per this window per backend instance. */
+  warmDedupeMs: number;
+  /** Per-user cap on POST /warm calls per minute (429 beyond). */
+  warmPerUserPerMin: number;
+  /** Logger override (tests capture output). */
+  logger?: typeof logger;
 }
 
 function defaultOptions(): SttOptions {
@@ -84,6 +104,16 @@ function defaultOptions(): SttOptions {
     settingsTtlMs: 60_000,
     workerTimeoutMs: 15 * 60_000, // worker enforces its own 900s/request cap; give some slack
     reportUsage: reportSttUsage,
+    improvedUrl: config.STT_IMPROVED_URL,
+    improvedToken: config.STT_IMPROVED_TOKEN,
+    improvedPercent: config.STT_IMPROVED_PERCENT,
+    improvedTimeoutMs: config.STT_IMPROVED_TIMEOUT_MS,
+    improvedFallback: config.STT_IMPROVED_FALLBACK,
+    rng: Math.random,
+    now: Date.now,
+    warmTimeoutMs: 20_000,
+    warmDedupeMs: 60_000,
+    warmPerUserPerMin: 6,
   };
 }
 
@@ -138,8 +168,7 @@ interface TranscribeResult {
 
 const isObj = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
 
-/** POST the audio file (streamed from disk) to worker-stt-prod's /v1/stt, authenticated with a freshly minted session token. */
-async function callWorker(opts: {
+interface WorkerCall {
   file: { path: string; size: number; mime: string };
   language?: string;
   wordTimestamps: boolean;
@@ -147,8 +176,17 @@ async function callWorker(opts: {
   smartFormat: boolean;
   signal: AbortSignal;
   timeoutMs: number;
-}): Promise<TranscribeResult> {
-  const { token, url } = await authorizeStt();
+}
+
+/** Non-2xx from a worker. `status` drives the improved-worker fallback decision. */
+class WorkerHttpError extends Error {
+  constructor(readonly status: number, message: string) { super(message); this.name = 'WorkerHttpError'; }
+}
+/** The worker answered 200 with a body that is not the contract shape. */
+class WorkerBadResponse extends Error { constructor(message: string) { super(message); this.name = 'WorkerBadResponse'; } }
+
+/** POST the audio file (streamed from disk) to a worker's /v1/stt (same contract for production and improved workers). */
+async function postToWorker(baseUrl: string, token: string, label: string, opts: WorkerCall, includeErrorBody: boolean): Promise<TranscribeResult> {
   const qs = new URLSearchParams();
   if (opts.language) qs.set('language', opts.language);
   if (opts.wordTimestamps) qs.set('word_timestamps', 'true');
@@ -156,7 +194,7 @@ async function callWorker(opts: {
   for (const t of opts.keyterms) qs.append('keyterm', t);
 
   const body = workerBody(opts.file.path, opts.file.size, opts.file.mime);
-  const res = await fetch(`${url}/v1/stt?${qs.toString()}`, {
+  const res = await fetch(`${baseUrl}/v1/stt?${qs.toString()}`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}`, ...body.headers },
     body: body.body,
@@ -164,12 +202,13 @@ async function callWorker(opts: {
     signal: AbortSignal.any([AbortSignal.timeout(opts.timeoutMs), opts.signal]),
   } as RequestInit);
   if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(`worker-stt-prod returned HTTP ${res.status}: ${text.slice(0, 500)}`);
+    const text = includeErrorBody ? await res.text().catch(() => '') : '';
+    await res.body?.cancel().catch(() => undefined);
+    throw new WorkerHttpError(res.status, `${label} returned HTTP ${res.status}${includeErrorBody ? `: ${text.slice(0, 500)}` : ''}`);
   }
   const json = (await res.json().catch(() => null)) as Record<string, unknown> | null;
   if (!json || typeof json.text !== 'string' || typeof json.duration !== 'number' || !Number.isFinite(json.duration) || json.duration < 0) {
-    throw new Error('worker-stt-prod returned an unexpected response');
+    throw new WorkerBadResponse(`${label} returned an unexpected response`);
   }
   return {
     text: json.text,
@@ -181,6 +220,42 @@ async function callWorker(opts: {
     quality: isObj(json.quality) ? json.quality : undefined,
     dictionary: isObj(json.dictionary) ? json.dictionary : undefined,
   };
+}
+
+/** Production path: authorize with the gateway (fresh short-lived session token), then call worker-stt-prod. */
+async function callWorker(opts: WorkerCall): Promise<TranscribeResult> {
+  const { token, url } = await authorizeStt();
+  return postToWorker(url, token, 'worker-stt-prod', opts, true);
+}
+
+type WorkerKind = 'improved' | 'prod';
+
+type ImprovedFailure =
+  | { kind: 'abort' }
+  | { kind: 'client'; status: number; code: string; message: string }
+  | { kind: 'fallback'; reason: string; status?: number };
+
+/**
+ * Decide what an improved-worker failure means. Client went away -> abort (no fallback). 4xx other than 401/429 is the
+ * caller's own error and is returned as-is. 401 (our token is wrong), 429, 5xx, network errors, timeouts and malformed
+ * 200 bodies are the worker's fault -> eligible for fallback to the production path.
+ */
+function classifyImprovedFailure(err: unknown, clientAborted: boolean): ImprovedFailure {
+  if (clientAborted) return { kind: 'abort' };
+  if (err instanceof WorkerHttpError) {
+    const s = err.status;
+    if (s === 401) return { kind: 'fallback', reason: 'unauthorized', status: s };
+    if (s === 429) return { kind: 'fallback', reason: 'rate_limited', status: s };
+    if (s >= 500) return { kind: 'fallback', reason: 'http_5xx', status: s };
+    if (s >= 400) {
+      if (s === 413) return { kind: 'client', status: 413, code: 'payload_too_large', message: 'File too large for the transcription worker.' };
+      return { kind: 'client', status: s, code: s === 400 || s === 415 || s === 422 ? 'bad_audio' : 'bad_request', message: 'The audio could not be processed.' };
+    }
+    return { kind: 'fallback', reason: 'http_other', status: s };
+  }
+  if (err instanceof WorkerBadResponse) return { kind: 'fallback', reason: 'bad_response' };
+  const name = (err as { name?: string } | null)?.name;
+  return { kind: 'fallback', reason: name === 'TimeoutError' || name === 'AbortError' ? 'timeout' : 'network' };
 }
 
 // --------------------------------------------------------------------------
@@ -355,6 +430,14 @@ type CtxReq = AuthedReq & { stt?: Ctx };
 
 export function createSttRouters(overrides: Partial<SttOptions> = {}): { sttRouter: Router; sttCompatRouter: Router } {
   const opts: SttOptions = { ...defaultOptions(), ...overrides };
+  const log = opts.logger ? opts.logger.child({ module: 'stt' }) : moduleLog;
+  const improvedUrl = (opts.improvedUrl ?? '').trim().replace(/\/+$/, '');
+  const improvedToken = (opts.improvedToken ?? '').trim();
+  const rawPercent = Number(opts.improvedPercent);
+  const improvedPercent = Number.isFinite(rawPercent) ? Math.max(0, Math.min(100, Math.floor(rawPercent))) : 0;
+  /** Improved worker is only ever used when fully configured AND percent > 0. */
+  const improvedEnabled = improvedPercent > 0 && !!improvedUrl && !!improvedToken;
+  if (improvedPercent > 0 && !improvedEnabled) log.warn({ percent: improvedPercent }, 'STT_IMPROVED_PERCENT > 0 but STT_IMPROVED_URL/TOKEN not both set: improved worker disabled');
   const tmpDir = sttTmpDir(opts.tmpDir || config.STT_TMP_DIR);
   const limiter = new SttLimiter({
     ratePerMin: opts.ratePerMin,
@@ -546,8 +629,8 @@ export function createSttRouters(overrides: Partial<SttOptions> = {}): { sttRout
   // ---- core flow ------------------------------------------------------------
 
   type Outcome =
-    | { ok: true; id: string; result: TranscribeResult }
-    | { ok: false; id?: string; status: number; code: string; message: string };
+    | { ok: true; id: string; result: TranscribeResult; worker: WorkerKind }
+    | { ok: false; id?: string; status: number; code: string; message: string; worker?: WorkerKind };
 
   /**
    * Insert a metadata row, call the worker, finish the row, bill on success only. Transcript text/words/segments
@@ -576,11 +659,34 @@ export function createSttRouters(overrides: Partial<SttOptions> = {}): { sttRout
     if (insertErr) throw insertErr;
     const id = row.id as string;
 
+    const t0 = opts.now();
+    let worker: WorkerKind = 'prod';
     try {
-      const result = await callWorker({
+      const call: WorkerCall = {
         file: ctx.file!, language: p.language, wordTimestamps: p.wordTimestamps, keyterms: p.keyterms, smartFormat: p.smartFormat,
         signal: ctx.abort.signal, timeoutMs: opts.workerTimeoutMs,
-      });
+      };
+      let result: TranscribeResult | undefined;
+      let fallbackReason: string | undefined;
+      if (improvedEnabled && opts.rng() < improvedPercent / 100) {
+        try {
+          result = await postToWorker(improvedUrl, improvedToken, 'improved worker', { ...call, timeoutMs: opts.improvedTimeoutMs }, false);
+          worker = 'improved';
+        } catch (err: unknown) {
+          const d = classifyImprovedFailure(err, ctx.abort.signal.aborted);
+          if (d.kind === 'client') {
+            // The caller's own bad request (400 bad audio, 413 ...): not a worker fault, never retried, never billed.
+            await supabase.from('stt_transcriptions').update({ status: 'failed', error: `improved worker HTTP ${d.status}`, completed_at: new Date().toISOString() }).eq('id', id);
+            log.warn({ id, worker: 'improved', status: d.status, surface: p.surface }, 'STT improved worker rejected the request (client error, no fallback)');
+            return { ok: false, id, status: d.status, code: d.code, message: d.message, worker: 'improved' };
+          }
+          if (d.kind === 'abort' || !opts.improvedFallback) { worker = 'improved'; throw err; }
+          fallbackReason = d.reason;
+          if (d.reason === 'unauthorized') log.error({ id, worker: 'improved', status: 401, surface: p.surface }, 'STT improved worker rejected our token (401): server misconfiguration, falling back to prod');
+          else log.warn({ id, worker: 'improved', reason: d.reason, status: d.status, surface: p.surface }, 'STT improved worker failed, falling back to prod');
+        }
+      }
+      if (!result) result = await callWorker(call);
       const completedAt = new Date();
       const update: Record<string, unknown> = {
         status: 'done',
@@ -599,13 +705,14 @@ export function createSttRouters(overrides: Partial<SttOptions> = {}): { sttRout
       if (updErr) log.warn({ err: updErr, id }, 'STT row update failed (non-critical)');
 
       opts.reportUsage(ctx.userId, result.duration).catch((err: unknown) =>
-        log.warn({ err, userId: ctx.userId, id, duration: result.duration }, 'STT billing report failed (non-critical)'));
-      return { ok: true, id, result };
+        log.warn({ err, userId: ctx.userId, id, duration: result!.duration }, 'STT billing report failed (non-critical)'));
+      log.info({ id, worker, fallback_reason: fallbackReason ?? null, surface: p.surface, audio_seconds: result.duration, elapsed_ms: opts.now() - t0 }, 'STT served');
+      return { ok: true, id, result, worker };
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
       await supabase.from('stt_transcriptions').update({ status: 'failed', error: message.slice(0, 500), completed_at: new Date().toISOString() }).eq('id', id);
-      log.error({ err, userId: ctx.userId, id }, 'STT transcription failed');
-      return { ok: false, id, status: 502, code: 'upstream_failed', message: 'Transcription failed. Please try again.' };
+      log.error({ err, userId: ctx.userId, id, worker }, 'STT transcription failed');
+      return { ok: false, id, status: 502, code: 'upstream_failed', message: 'Transcription failed. Please try again.', worker };
     }
   }
 
@@ -656,6 +763,7 @@ export function createSttRouters(overrides: Partial<SttOptions> = {}): { sttRout
 
       const out = await runTranscription(ctx, { surface: 'api', language, wordTimestamps, keyterms, smartFormat: false, mimeSniffed: ctx.file!.mime, size: ctx.file!.size });
       await ctx.done();
+      if (out.worker) res.setHeader('X-STT-Worker', out.worker);
       if (!out.ok) { res.status(out.status).json({ id: out.id, status: 'failed', error: out.message }); return; }
       const r = out.result;
       res.status(201).json({
@@ -701,6 +809,40 @@ export function createSttRouters(overrides: Partial<SttOptions> = {}): { sttRout
   // Delete-my-transcript. Deliberately NOT behind the billing gate: a user must always be able to delete their data.
   legacy.delete('/transcriptions/:id', identityOnly('legacy'), (req, res, next) => { void deleteHandler('legacy', req, res, next); });
 
+  // ---- pre-warm ---------------------------------------------------------------
+  // Each warm can start a GPU container (cost), so: only active when the improved worker is enabled, at most one
+  // upstream /health call per warmDedupeMs per instance, and warmPerUserPerMin calls per user per minute (429).
+  let lastWarmAt = -Infinity;
+  const warmHits = new Map<string, number[]>();
+  legacy.post('/warm', identityOnly('legacy'), (req, res) => {
+    if (!improvedEnabled) { res.status(202).json({ warming: false }); return; }
+    const now = opts.now();
+    const subject = subjectOf(req as AuthedReq, (req as AuthedReq).userId!);
+    const recent = (warmHits.get(subject) ?? []).filter((t) => now - t < 60_000);
+    if (recent.length >= opts.warmPerUserPerMin) {
+      const retry = Math.max(1, Math.ceil((60_000 - (now - recent[0]!)) / 1000));
+      warmHits.set(subject, recent);
+      res.setHeader('Retry-After', String(retry));
+      res.status(429).json({ error: 'Too many warm-up requests.' });
+      return;
+    }
+    recent.push(now);
+    warmHits.set(subject, recent);
+    if (warmHits.size > 5000) for (const [k, v] of warmHits) if (!v.some((t) => now - t < 60_000)) warmHits.delete(k);
+
+    // "warming: true" also covers a warm call fired within the dedupe window (the worker is already starting/warm).
+    if (now - lastWarmAt >= opts.warmDedupeMs) {
+      lastWarmAt = now;
+      try {
+        fetch(`${improvedUrl}/health`, { method: 'GET', signal: AbortSignal.timeout(opts.warmTimeoutMs) })
+          .then((r) => r.arrayBuffer())
+          .catch(() => undefined);
+      } catch { /* swallow: warming is best effort */ }
+      log.info({ worker: 'improved' }, 'STT warm fired');
+    }
+    res.status(202).json({ warming: true });
+  });
+
   legacy.use(errorHandler('legacy'));
 
   // ==========================================================================
@@ -737,6 +879,7 @@ export function createSttRouters(overrides: Partial<SttOptions> = {}): { sttRout
 
       const out = await runTranscription(ctx, { surface: 'listen', language, wordTimestamps: true, keyterms, smartFormat, mimeSniffed: ctx.file!.mime, size: ctx.file!.size });
       await ctx.done();
+      if (out.worker) res.setHeader('X-STT-Worker', out.worker);
       if (!out.ok) { sendErr(res, 'deepgram', out.status, out.code, out.message, out.id); return; }
       res.setHeader('X-Request-Id', out.id);
       res.json(deepgramBody(out.id, out.result, punctuate));
@@ -768,6 +911,7 @@ export function createSttRouters(overrides: Partial<SttOptions> = {}): { sttRout
 
       const out = await runTranscription(ctx, { surface: 'audio_transcriptions', language, wordTimestamps: withWords, keyterms, smartFormat: false, mimeSniffed: ctx.file!.mime, size: ctx.file!.size });
       await ctx.done();
+      if (out.worker) res.setHeader('X-STT-Worker', out.worker);
       if (!out.ok) { sendErr(res, 'openai', out.status, out.code, out.message); return; }
       res.setHeader('X-Request-Id', out.id);
       if (format === 'text') { res.type('text/plain').send(`${out.result.text}\n`); return; }

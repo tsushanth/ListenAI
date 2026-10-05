@@ -90,6 +90,13 @@ const envSchema = z.object({
   STT_KEYTERMS_MAX_QUERY_BYTES: z.string().transform(Number).default('7000'),
   STT_DEFAULT_RETENTION_DAYS: z.string().transform(Number).default('0'),
   STT_MAX_RETENTION_DAYS: z.string().transform(Number).default('30'),
+  // Improved batch worker (Modal app ra-stt-shadow-w22; see routes/stt.ts). PERCENT 0 (default) = feature off:
+  // nothing changes. The worker takes `Authorization: Bearer STT_IMPROVED_TOKEN` directly (no gateway authorize).
+  STT_IMPROVED_URL: z.string().url().optional(),
+  STT_IMPROVED_TOKEN: z.string().optional(),
+  STT_IMPROVED_PERCENT: z.string().transform(Number).default('0'),
+  STT_IMPROVED_TIMEOUT_MS: z.string().transform(Number).default('120000'),
+  STT_IMPROVED_FALLBACK: z.string().transform((v) => !['false', '0', 'no', 'off'].includes(v.trim().toLowerCase())).default('true'),
 
   // Modal CLI credentials — used by backend to deploy/destroy voice-convert apps on behalf of users.
   MODAL_TOKEN_ID: z.string().optional(),

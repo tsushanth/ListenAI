@@ -45,6 +45,11 @@ export interface EnvConfig {
   STT_KEYTERMS_MAX_QUERY_BYTES: number;
   STT_DEFAULT_RETENTION_DAYS: number;
   STT_MAX_RETENTION_DAYS: number;
+  STT_IMPROVED_URL?: string;
+  STT_IMPROVED_TOKEN?: string;
+  STT_IMPROVED_PERCENT: number;
+  STT_IMPROVED_TIMEOUT_MS: number;
+  STT_IMPROVED_FALLBACK: boolean;
   MODAL_TOKEN_ID?: string;
   MODAL_TOKEN_SECRET?: string;
   MODAL_WORKSPACE?: string;
