@@ -36,6 +36,15 @@ export interface EnvConfig {
   XTTS_CLONE_SECRET?: string;
   STT_GATEWAY_URL?: string;
   STT_API_KEY?: string;
+  STT_MAX_UPLOAD_MB: number;
+  STT_TMP_DIR?: string;
+  STT_RATE_LIMIT_PER_MIN: number;
+  STT_MAX_CONCURRENT_PER_KEY: number;
+  STT_MAX_CONCURRENT_GLOBAL: number;
+  STT_MAX_KEYTERMS: number;
+  STT_KEYTERMS_MAX_QUERY_BYTES: number;
+  STT_DEFAULT_RETENTION_DAYS: number;
+  STT_MAX_RETENTION_DAYS: number;
   MODAL_TOKEN_ID?: string;
   MODAL_TOKEN_SECRET?: string;
   MODAL_WORKSPACE?: string;

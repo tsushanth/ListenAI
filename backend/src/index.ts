@@ -40,7 +40,7 @@ import { voiceDesignRouter } from './routes/voiceDesign.js';
 import { voiceConvertRouter } from './routes/voiceConvert.js';
 import { voiceIsolateRouter } from './routes/voiceIsolate.js';
 import { voiceCloneRouter } from './routes/voiceClone.js';
-import { sttRouter } from './routes/stt.js';
+import { sttRouter, sttCompatRouter } from './routes/stt.js';
 import { voiceStudioApiKeyRouter } from './routes/voiceStudioApiKey.js';
 import { orpheusVoiceStudioApiKeyRouter } from './routes/orpheusVoiceStudioApiKey.js';
 import { orpheusVoiceStudioRouter } from './routes/orpheusVoiceStudio.js';
@@ -273,6 +273,9 @@ app.use('/api/voice-isolate', requireAuthOrApiKey, voiceIsolateRouter);
 // Voice clone — XTTS v2 instant voice cloning (dark unless XTTS_CLONE_URL is configured)
 app.use('/api/voice-clone', voiceCloneRouter);
 app.use('/api/stt', requireAuthOrApiKey, sttRouter);
+// Deepgram-shaped POST /v1/listen + OpenAI-shaped POST /v1/audio/transcriptions (+ DELETE /v1/transcriptions/:id).
+// Same dark-unless-STT_API_KEY posture, same auth bridge, same authorize-then-worker flow as /api/stt above.
+app.use('/v1', requireAuthOrApiKey, sttCompatRouter);
 // Dubbing v1 — audio-in/audio-out re-voicing via STT (external worker-stt-prod) + Claude
 // translation + existing TTS pipeline (dark unless STT_WORKER_URL is configured). See
 // routes/dub.ts header for scope boundaries (no video, in-memory jobs only).

@@ -77,6 +77,19 @@ const envSchema = z.object({
   // routes/realtimeTts.ts), not a worker URL/secret pair.
   STT_GATEWAY_URL: z.string().url().optional(),
   STT_API_KEY: z.string().optional(),
+  // STT API hardening (routes/stt.ts). All optional; defaults are conservative.
+  //  - uploads stream to a temp file (never memory); STT_TMP_DIR defaults to <os tmpdir>/stt-uploads
+  //  - limits are per API key (gateway key id) or per user, enforced in-process (see lib/sttLimits.ts)
+  //  - retention: transcript text is NOT stored unless a retention period is set (default 0 = metadata only)
+  STT_MAX_UPLOAD_MB: z.string().transform(Number).default('200'),
+  STT_TMP_DIR: z.string().optional(),
+  STT_RATE_LIMIT_PER_MIN: z.string().transform(Number).default('60'),
+  STT_MAX_CONCURRENT_PER_KEY: z.string().transform(Number).default('4'),
+  STT_MAX_CONCURRENT_GLOBAL: z.string().transform(Number).default('8'),
+  STT_MAX_KEYTERMS: z.string().transform(Number).default('1000'),
+  STT_KEYTERMS_MAX_QUERY_BYTES: z.string().transform(Number).default('7000'),
+  STT_DEFAULT_RETENTION_DAYS: z.string().transform(Number).default('0'),
+  STT_MAX_RETENTION_DAYS: z.string().transform(Number).default('30'),
 
   // Modal CLI credentials — used by backend to deploy/destroy voice-convert apps on behalf of users.
   MODAL_TOKEN_ID: z.string().optional(),
