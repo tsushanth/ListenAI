@@ -32,8 +32,6 @@ export interface EnvConfig {
   VOICE_CONVERT_SECRET?: string;
   VOICE_ISOLATE_URL?: string;
   VOICE_ISOLATE_SECRET?: string;
-  XTTS_CLONE_URL?: string;
-  XTTS_CLONE_SECRET?: string;
   STT_GATEWAY_URL?: string;
   STT_API_KEY?: string;
   STT_MAX_UPLOAD_MB: number;
@@ -497,7 +495,7 @@ export interface DBTTSJob {
   // Cloned voice fields (for voice cloning jobs)
   cloned_voice_id: string | null;
   voice_url: string | null;
-  cloning_model: 'chatterbox' | 'xtts' | null;
+  cloning_model: 'chatterbox' | null;
 
   // Timestamps
   created_at: string;

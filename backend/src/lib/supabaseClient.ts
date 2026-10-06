@@ -1031,7 +1031,7 @@ export async function createTTSJob(params: {
   // Cloned voice fields (optional)
   clonedVoiceId?: string;
   voiceUrl?: string;
-  cloningModel?: 'chatterbox' | 'xtts';
+  cloningModel?: 'chatterbox';
 }): Promise<DBTTSJob> {
   // Create the job via RPC (bypasses PostgREST table cache)
   const { data: jobId, error } = await supabase.rpc('create_tts_job', {

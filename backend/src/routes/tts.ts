@@ -957,14 +957,11 @@ ttsRouter.get('/job/:jobId', asyncHandler(async (req: AuthenticatedRequest, res:
     const remainingAudioSec = estimatedDurationSec - job.progress_sec;
 
     // Cloned voices are much slower than Kokoro
-    // XTTS: ~0.5x realtime (synthesis takes 2x audio duration)
     // Chatterbox: ~0.3x realtime (synthesis takes 3.3x audio duration)
     // Kokoro GPU: ~8x realtime
     let synthesisRate: number;
     if (job.cloning_model === 'chatterbox') {
       synthesisRate = 0.3;  // 3.3x slower than realtime
-    } else if (job.cloning_model === 'xtts') {
-      synthesisRate = 0.5;  // 2x slower than realtime
     } else {
       synthesisRate = 8;  // Kokoro GPU is fast
     }
@@ -1088,7 +1085,7 @@ const clonedVoiceSynthSchema = z.object({
   voice_id: z.string().min(1).describe('Cloned voice ID (UUID from cloned_voices table)'),
   voice_url: z.string().url().describe('URL to reference audio file (from Supabase Storage)'),
   speed: z.number().min(0.5).max(3.0).default(1.0),  // Allow up to 3x speed to match iOS playback options
-  model: z.enum(['chatterbox', 'xtts']).default('chatterbox').describe('Voice cloning model: chatterbox (quality) or xtts (fast)'),
+  model: z.enum(['chatterbox']).default('chatterbox').describe('Voice cloning model'),
 });
 
 ttsRouter.post('/cloned', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
@@ -1110,7 +1107,7 @@ ttsRouter.post('/cloned', asyncHandler(async (req: AuthenticatedRequest, res: Re
     'Cloned voice synthesis request'
   );
 
-  // 2. Get cloning TTS service URL (Chatterbox/XTTS host, separate from Kokoro)
+  // 2. Get cloning TTS service URL (Chatterbox host, separate from Kokoro)
   const cloningTtsUrl = process.env.CHATTERBOX_URL || process.env.GPU_TTS_URL;
   if (!cloningTtsUrl) {
     ttsLogger.error('CHATTERBOX_URL (or GPU_TTS_URL) not configured');
@@ -1196,7 +1193,7 @@ const clonedJobRequestSchema = z.object({
   voice_id: z.string().min(1).describe('Cloned voice ID (UUID from cloned_voices table)'),
   voice_url: z.string().url().describe('URL to reference audio file (from Supabase Storage)'),
   speed: z.number().min(0.5).max(3.0).default(1.0),
-  model: z.enum(['chatterbox', 'xtts']).default('chatterbox').describe('Voice cloning model'),
+  model: z.enum(['chatterbox']).default('chatterbox').describe('Voice cloning model'),
   article_id: z.string().uuid().optional(),
   article_title: z.string().max(500).optional(),
 });
@@ -1245,7 +1242,7 @@ ttsRouter.post('/job-cloned', asyncHandler(async (req: AuthenticatedRequest, res
   }
 
   // 3. Compute cache key (includes voice_id and model for uniqueness)
-  const modelId = model === 'chatterbox' ? 'chatterbox-v1' : 'xtts-v2';
+  const modelId = 'chatterbox-v1';
   const cacheKey = computeCacheKey({
     text,
     voiceId: `cloned-${voiceId}`,  // Prefix to distinguish from regular voices
@@ -1307,11 +1304,11 @@ ttsRouter.post('/job-cloned', asyncHandler(async (req: AuthenticatedRequest, res
   }
 
   // 7. Estimate wait time
-  // Cloned voices are slower: XTTS ~0.5x realtime, Chatterbox ~0.3x realtime
+  // Cloned voices are slower: Chatterbox ~0.3x realtime
   // Audio duration = characterCount / 12.5 chars per second
   // Synthesis time = audioDuration * synthesisMultiplier
   const audioDurationSec = characterCount / 12.5;
-  const synthesisMultiplier = model === 'xtts' ? 2.0 : 3.3;  // XTTS faster, Chatterbox slower
+  const synthesisMultiplier = 3.3;  // Chatterbox ~0.3x realtime
   const estimatedWaitSec = Math.ceil(audioDurationSec * synthesisMultiplier) + 5;  // +5s overhead
 
   ttsLogger.info(
