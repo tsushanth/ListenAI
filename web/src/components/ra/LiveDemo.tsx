@@ -11,6 +11,7 @@ const PRESETS = [
   'Your extension is six six three five.',
 ]
 const MAX_CHARS = 200
+const DEMO_VOICE = 'custom:en-us-warm-f'
 const SR = 24000
 
 // Anonymous demo analytics (see src/lib/demoEvent.ts): which example or "custom" (length only), time to first audio, audio played.
@@ -135,13 +136,15 @@ export default function LiveDemo() {
       return
     }
 
+    // House voice (Kokoro-distilled Piper). If the worker doesn't know it, retry once with the baked-in default.
+    let voice = DEMO_VOICE
     const ws = new WebSocket(`${auth.url}?token=${auth.token}`)
     ws.binaryType = 'arraybuffer'
     wsRef.current = ws
     ws.onopen = () => {
       setPhase('waiting')
       t0Ref.current = performance.now()
-      ws.send(JSON.stringify({ type: 'synthesize', text: clean, voice: 'default', speed: 1.0 }))
+      ws.send(JSON.stringify({ type: 'synthesize', text: clean, voice, speed: 1.0 }))
       rafRef.current = requestAnimationFrame(loop)
     }
     ws.onmessage = (e) => {
@@ -150,6 +153,11 @@ export default function LiveDemo() {
         if (m.type === 'done' || m.type === 'cancelled') {
           track(m.type === 'done' ? 'done' : 'stopped', { preset, chars: clean.length, audioMs: Math.max(0, (nextRef.current - startRef.current) * 1000) })
           finishSoon()
+        }
+        if (m.type === 'error' && voice !== 'default' && !gotFirstRef.current && /unknown voice/i.test(m.message)) {
+          voice = 'default'
+          ws.send(JSON.stringify({ type: 'synthesize', text: clean, voice, speed: 1.0 }))
+          return
         }
         if (m.type === 'error') {
           track('error', { preset, chars: clean.length, reason: /capacity/i.test(m.message) ? 'capacity' : 'server_error' })
