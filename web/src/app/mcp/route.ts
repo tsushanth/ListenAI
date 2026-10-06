@@ -3,7 +3,7 @@ import { NextRequest } from 'next/server'
 import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js'
 import { createMcpServer, type RequestContext } from '@/lib/mcp/server'
 import { SlidingWindowLimiter } from '@/lib/mcp/ratelimit'
-import { UpstreamError, authorize } from '@/lib/mcp/upstream'
+import { UpstreamError, authorize, warmStt } from '@/lib/mcp/upstream'
 import { resourceMetadataUrl } from '@/lib/oauth/config'
 import { oauthConfigured } from '@/lib/oauth/crypto'
 import { looksLikeOAuthToken, verifyAccessToken } from '@/lib/oauth/tokens'
@@ -107,6 +107,8 @@ export async function POST(req: NextRequest) {
   }
 
   const ctx: RequestContext = { apiKey, keyId: createHash('sha256').update(apiKey).digest('hex').slice(0, 16) }
+  // Session start (the one `initialize` of this stateless server): start warming the cold STT worker. Fire-and-forget.
+  if (messages.some((x) => x && typeof x === 'object' && (x as { method?: string }).method === 'initialize')) warmStt(apiKey, ctx.keyId)
   const server = createMcpServer(ctx)
   const transport = new WebStandardStreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true })
   await server.connect(transport)

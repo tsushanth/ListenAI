@@ -324,6 +324,28 @@ export async function authorizeStt(key: string): Promise<{ token: string; url: s
   return { token: body.token, url: body.url }
 }
 
+// Best-effort STT warm-up hint, fired once per MCP session start. The gateway validates the key and dedupes
+// (60 s); older gateways without the route answer 404, which is ignored like every other failure. Never throws,
+// never logs the key, never awaited by session setup. Local dedupe is per key hash (stateless server: a session
+// is one `initialize`), so reconnect storms from one key send at most one hint per minute per instance.
+const warmSentAt = new Map<string, number>()
+const WARM_DEDUPE_MS = 60_000
+export function warmStt(key: string, keyId: string, now = Date.now()): void {
+  const last = warmSentAt.get(keyId)
+  if (last !== undefined && now - last < WARM_DEDUPE_MS) return
+  if (warmSentAt.size > 1000) warmSentAt.forEach((t, k) => { if (now - t >= WARM_DEDUPE_MS) warmSentAt.delete(k) })
+  warmSentAt.set(keyId, now)
+  try {
+    fetch(`${GATEWAY}/stt/warm`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key }),
+      cache: 'no-store',
+      signal: AbortSignal.timeout(3_000),
+    }).then((r) => r.body?.cancel(), () => {}).catch(() => {})
+  } catch { /* best effort */ }
+}
+
 export interface TranscribeResult {
   text: string
   language: string
