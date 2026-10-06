@@ -977,12 +977,12 @@ async function processClonedVoiceJob(
   text: string,
   clonedVoiceId: string,
   voiceUrl: string,
-  cloningModel: 'chatterbox' | 'xtts',
+  cloningModel: 'chatterbox',
   speed: number,
   cacheKey: string,
   charCount: number
 ): Promise<void> {
-  // Cloned-voice synthesis (Chatterbox or XTTS) runs on its own host, separate
+  // Cloned-voice synthesis (Chatterbox) runs on its own host, separate
   // from the Kokoro Fly worker that GPU_TTS_URL points at. Use CHATTERBOX_URL
   // for the /synthesize-cloned endpoint; fall back to GPU_TTS_URL for back-compat
   // with deployments where both pointed at the same service.
@@ -998,7 +998,7 @@ async function processClonedVoiceJob(
   // intermediate connection drop.
   const submitUrl = `${cloningTtsUrl}/jobs/synthesize-cloned`;
   const jobStatusUrlBase = `${cloningTtsUrl}/jobs`;
-  const modelId = cloningModel === 'chatterbox' ? 'chatterbox-v1' : 'xtts-v2';
+  const modelId = 'chatterbox-v1';
 
   workerLogger.info({
     jobId,
@@ -1009,7 +1009,7 @@ async function processClonedVoiceJob(
   }, 'Starting cloned voice synthesis via async job pattern');
 
   // Estimate chunks for progress tracking
-  const chunkSize = cloningModel === 'chatterbox' ? 500 : 500;  // Both use 500 char chunks
+  const chunkSize = 500;
   const totalChunks = Math.ceil(charCount / chunkSize);
 
   // Update job with chunk info
@@ -1024,7 +1024,7 @@ async function processClonedVoiceJob(
   const synthesisStart = Date.now();
 
   // Calculate timeout based on text length and model
-  // Chatterbox: ~0.3x realtime, XTTS: ~0.5x realtime
+  // Chatterbox: ~0.3x realtime
   // Audio duration ≈ charCount / 12.5 chars per second
   // Add generous margin for model loading and processing
   const estimatedAudioDurationSec = charCount / 12.5;
@@ -1034,7 +1034,7 @@ async function processClonedVoiceJob(
   // ahead, 3x. So the worker timeout has to cover synth + chatterbox-side queue.
   // 45 min covers ~2-3 jobs ahead at worst-case 15 min each.
   // TODO: when chatterbox moves to GPU, drop multiplier to ~4 and minimum to 2 min.
-  const synthesisMultiplier = cloningModel === 'chatterbox' ? 30.0 : 2.5;
+  const synthesisMultiplier = 30.0;
   const timeoutMs = Math.max(
     45 * 60 * 1000,  // Minimum 45 min — accounts for chatterbox queue depth on CPU box
     Math.ceil(estimatedAudioDurationSec * synthesisMultiplier * 1000) + 60_000
@@ -1147,7 +1147,7 @@ async function processClonedVoiceJob(
 
     // Calculate audio duration (WAV format: 24kHz, 16-bit, mono)
     // Duration = (bytes - 44 header) / (sample_rate * bytes_per_sample * channels)
-    const sampleRate = cloningModel === 'chatterbox' ? 24000 : 24000;  // Both use 24kHz
+    const sampleRate = 24000;  // Chatterbox outputs 24kHz
     const bytesPerSample = 2;  // 16-bit
     const channels = 1;  // Mono
     const audioDataSize = audioBuffer.length - 44;  // Subtract WAV header
@@ -1410,7 +1410,7 @@ async function processJob(message: TTSJobMessage): Promise<void> {
     // 5. Check if this is a cloned voice job
     const clonedVoiceId = jobData.cloned_voice_id as string | null;
     const voiceUrl = jobData.voice_url as string | null;
-    const cloningModel = jobData.cloning_model as 'chatterbox' | 'xtts' | null;
+    const cloningModel = jobData.cloning_model as 'chatterbox' | null;
     const isClonedVoiceJob = !!(clonedVoiceId && voiceUrl && cloningModel);
 
     if (isClonedVoiceJob) {
