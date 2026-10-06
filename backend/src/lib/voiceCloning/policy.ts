@@ -43,11 +43,11 @@ export const DEFAULT_POLICY: ClonePolicy = {
 
   minReferenceSec: 8,
   maxReferenceSec: 120,
-  minSnrDb: 15, // REPORT: 10 dB noisy refs dropped Chatterbox similarity 0.68 -> 0.33
+  minSnrDb: 18, // dev measurement (n=8 clean LibriVox refs): 22.7-32.7 dB; 10 dB white-noise ref read 15.3 (estimator over-reads ~5 dB)
   minSpeechRatio: 0.5,
   maxClippingRatio: 0.02,
-  minWindowSimilarity: 0.3, // heuristic, unmeasured
-  maxMusicProb: 0.5, // heuristic, unmeasured
+  minWindowSimilarity: 0.6, // dev measurement: single-speaker refs 0.74-0.89, two-speaker concat 0.47; 0.3 would not have caught it
+  maxMusicProb: 0.3, // dev measurement: speech <=0.015, piano 0.79, speech over piano 0.45
   minConsentSec: 3,
   maxConsentSec: 40,
 
