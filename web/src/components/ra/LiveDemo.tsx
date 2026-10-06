@@ -13,6 +13,15 @@ const PRESETS = [
 const MAX_CHARS = 200
 const SR = 24000
 
+// Anonymous demo analytics (see src/lib/demoEvent.ts): which example or "custom" (length only), time to first audio, audio played.
+function track(kind: string, extra: Record<string, unknown> = {}) {
+  try {
+    let sid = sessionStorage.getItem('ra_demo_sid')
+    if (!sid) { sid = Math.random().toString(36).slice(2, 12) + Date.now().toString(36); sessionStorage.setItem('ra_demo_sid', sid) }
+    fetch('/api/demo-event', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind, sid, ...extra }), keepalive: true }).catch(() => {})
+  } catch {}
+}
+
 type Phase = 'idle' | 'connecting' | 'waiting' | 'playing' | 'error'
 
 export default function LiveDemo() {
@@ -104,6 +113,8 @@ export default function LiveDemo() {
     barsRef.current = []; gotFirstRef.current = false
     const clean = text.trim().slice(0, MAX_CHARS)
     if (!clean) { setMessage('Type something to hear it.'); return }
+    const preset = PRESETS.indexOf(clean)
+    track('play', { preset, chars: clean.length })
 
     const AC = window.AudioContext || (window as any).webkitAudioContext
     const ctx: AudioContext = new AC({ sampleRate: SR })
@@ -118,6 +129,7 @@ export default function LiveDemo() {
     } catch {}
     if (!auth) {
       const idx = PRESETS.indexOf(clean)
+      track('sample_fallback', { preset: idx, chars: clean.length })
       if (idx >= 0) { playSample(idx); setMessage('The live demo is offline right now, so this is a recorded sample.'); return }
       setPhase('error'); setMessage('The live demo is offline right now. Pick one of the example sentences to hear a recorded sample.')
       return
@@ -135,8 +147,12 @@ export default function LiveDemo() {
     ws.onmessage = (e) => {
       if (typeof e.data === 'string') {
         const m = JSON.parse(e.data)
-        if (m.type === 'done' || m.type === 'cancelled') finishSoon()
+        if (m.type === 'done' || m.type === 'cancelled') {
+          track(m.type === 'done' ? 'done' : 'stopped', { preset, chars: clean.length, audioMs: Math.max(0, (nextRef.current - startRef.current) * 1000) })
+          finishSoon()
+        }
         if (m.type === 'error') {
+          track('error', { preset, chars: clean.length, reason: /capacity/i.test(m.message) ? 'capacity' : 'server_error' })
           setPhase('error')
           setMessage(/capacity/i.test(m.message) ? 'The demo is busy. Try again in a few seconds.' : 'Something went wrong. Try again.')
           cancelAnimationFrame(rafRef.current)
@@ -147,7 +163,9 @@ export default function LiveDemo() {
       if (!c) return
       if (!gotFirstRef.current) {
         gotFirstRef.current = true
-        setFirstMs(Math.round(performance.now() - t0Ref.current))
+        const first = Math.round(performance.now() - t0Ref.current)
+        setFirstMs(first)
+        track('first_audio', { preset, chars: clean.length, firstMs: first })
         setPhase('playing')
         nextRef.current = c.currentTime + 0.03
         startRef.current = nextRef.current
@@ -168,7 +186,7 @@ export default function LiveDemo() {
         barsRef.current.push(Math.min(1, Math.sqrt(sum / win) * 4.5))
       }
     }
-    ws.onerror = () => { setPhase('error'); setMessage('Could not reach the voice server. Try again.') }
+    ws.onerror = () => { track('error', { preset, chars: clean.length, reason: 'ws_error' }); setPhase('error'); setMessage('Could not reach the voice server. Try again.') }
   }
 
   const busy = phase === 'connecting' || phase === 'waiting' || phase === 'playing'
