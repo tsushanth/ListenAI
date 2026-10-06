@@ -105,7 +105,7 @@ class KokoroTTS:
         import soundfile as sf
         import kokoro_langs as kl
 
-        voice, lang_code = kl.plan(voice, language, kl.is_direct_kokoro_voice(voice))
+        voice, lang_code = kl.plan(voice, language, kl.is_direct_kokoro_voice(voice))  # raises NonEnglishDisabled unless KOKORO_NON_ENGLISH_ENABLED=1
         pipeline = self.pipelines.get(lang_code)
 
         # Preprocess (same as GPU service)
@@ -248,7 +248,11 @@ def web():
         """(voice, lang_code, pipeline). A native Kokoro voice id decides the lang_code; for generic/English aliases the
         request language decides (non-English text is never read with an English voice)."""
         direct = kl.is_direct_kokoro_voice(voice_id)
-        voice, lang_code = kl.plan(voice_id if direct else resolve_voice(voice_id), language, direct)
+        try:
+            voice, lang_code = kl.plan(voice_id if direct else resolve_voice(voice_id), language, direct)
+        except kl.NonEnglishDisabled as e:
+            # Owner voice-provenance gate: Kokoro non-English is OFF unless KOKORO_NON_ENGLISH_ENABLED=1.
+            raise HTTPException(status_code=403, detail=str(e))
         return voice, lang_code, pipelines.get(lang_code)
 
     def preprocess(text: str, lang_code: str = 'a') -> str:

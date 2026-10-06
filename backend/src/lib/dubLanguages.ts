@@ -7,6 +7,9 @@
 // (a=American, b=British, e=Spanish, f=French, h=Hindi, i=Italian, p=Brazilian Portuguese, j=Japanese,
 // z=Mandarin). Voice ids are from the Kokoro-82M VOICES.md.
 //
+// OFFERED NOW: en and es only (Spanish-only pilot). fr is fully wired (Piper fr-fr-mls-m/f) but `offered: false`: Piper French
+// did not fit the timeline on dialogue (worst drift 7-20 s) and has ~2x Kokoro's WER; flip `offered` to re-enable.
+//
 // ENGINES (owner decision 2026-10-06, memory project_voice_provenance_gate): es and fr dub with PIPER voices whose data and
 // lineage are clean (tier A in realtime-tts voices/catalog.json, CC BY 4.0): fr-fr-mls-f/m (Multilingual LibriSpeech) and
 // es-pilot-f/m (CML-TTS; a PILOT model, ~15.4k steps, WER ~0.21 by Whisper, accent unlabelled, quality unverified by ear).
@@ -71,7 +74,8 @@ const ES: DubLanguage = {
   note: 'Spanish uses a PILOT Piper voice (CML-TTS, 15.4k training steps, accent unlabelled): quality is unverified by ear and the speakers are LibriVox readers.',
 };
 const FR: DubLanguage = {
-  code: 'fr', variant: 'fr', name: 'French', bcp47: 'fr-FR', engine: 'piper', offered: true, kokoroLangCode: 'f', speedRange: PIPER_SPEED,
+  code: 'fr', variant: 'fr', name: 'French', bcp47: 'fr-FR', engine: 'piper', offered: false, // Spanish-only pilot (owner 2026-10-06); French code path stays, flip to re-enable
+  kokoroLangCode: 'f', speedRange: PIPER_SPEED,
   voices: { female: ['fr-fr-mls-f'], male: ['fr-fr-mls-m'] },
   charsPerSec: PIPER_CPS_FR, cpsMeasured: true,
   note: 'French voices are audiobook-paced Multilingual LibriSpeech readers; expect a slow, read-aloud delivery.',
@@ -128,7 +132,7 @@ export function resolveDubLanguage(input: string): DubLanguage | null {
 }
 
 export function supportedDubLanguageList(): string[] {
-  return ['en', 'es', 'fr'];
+  return ['en', 'es'];
 }
 
 // Kokoro voice ids: <lang letter><gender f|m>_<name>. ja/zh letters (j, z) are excluded: see header.

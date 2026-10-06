@@ -1,15 +1,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { getDubTtsBackend, PiperWorkerClient, createDubSynth } from './dubTts.js';
+import { getDubTtsBackend, PiperWorkerClient, ModalPiperClient, createDubSynth } from './dubTts.js';
 import { resolveDubLanguage } from './dubLanguages.js';
-import { decodeWavPcm16 } from './dubTiming.js';
+import { decodeWavPcm16, encodeWavPcm16 } from './dubTiming.js';
 
-test('DUB_TTS_BACKEND defaults to gpu; cpu is opt-in; garbage falls back to gpu', () => {
-  assert.equal(getDubTtsBackend({}), 'gpu');
+test('DUB_TTS_BACKEND defaults to modal-cpu (cheapest); gpu and gateway cpu are opt-in; garbage falls back to the default', () => {
+  assert.equal(getDubTtsBackend({}), 'modal-cpu');
+  assert.equal(getDubTtsBackend({ DUB_TTS_BACKEND: 'modal-cpu' }), 'modal-cpu');
+  assert.equal(getDubTtsBackend({ DUB_TTS_BACKEND: 'gpu' }), 'gpu');
   assert.equal(getDubTtsBackend({ DUB_TTS_BACKEND: 'cpu' }), 'cpu');
   assert.equal(getDubTtsBackend({ DUB_TTS_BACKEND: ' CPU ' }), 'cpu');
-  assert.equal(getDubTtsBackend({ DUB_TTS_BACKEND: 'gpu' }), 'gpu');
-  assert.equal(getDubTtsBackend({ DUB_TTS_BACKEND: 'tpu' }), 'gpu');
+  assert.equal(getDubTtsBackend({ DUB_TTS_BACKEND: 'tpu' }), 'modal-cpu');
 });
 
 function pcm(seconds: number, sr = 24000): Buffer {
@@ -107,4 +108,71 @@ test('createDubSynth: cpu backend without a gateway key fails up front with an a
     () => createDubSynth(resolveDubLanguage('fr')!, { env: { DUB_TTS_BACKEND: 'cpu' }, providerSynth: async () => Buffer.alloc(0) } as never),
     /DUB_PIPER_API_KEY|STT_API_KEY/
   );
+});
+
+// ---------------------------------------------------------------- modal-cpu (dedicated Piper function)
+const wavResponse = (sec: number) => {
+  const p = pcm(sec);
+  const samples = new Int16Array(p.length / 2);
+  for (let i = 0; i < samples.length; i++) samples[i] = p.readInt16LE(i * 2);
+  return new Response(encodeWavPcm16(samples, 24000), { status: 200, headers: { 'Content-Type': 'audio/wav' } });
+};
+
+test('ModalPiperClient POSTs the readaloud /synthesize contract with a Bearer secret and returns the WAV as-is', async () => {
+  const { f, log } = fakeFetch([() => wavResponse(1.0)]);
+  const c = new ModalPiperClient({ url: 'https://dub.example.modal.run/', secret: 's3', fetchImpl: f });
+  const wav = await c.synth('hola', 'es-pilot-m', 1.1, 'es');
+  assert.equal(log[0]!.url, 'https://dub.example.modal.run/synthesize');
+  assert.deepEqual(log[0]!.body, { text: 'hola', voice_id: 'es-pilot-m', language: 'es', speed: 1.1 });
+  assert.equal(log[0]!.auth, 'Bearer s3');
+  assert.ok(Math.abs(decodeWavPcm16(wav)!.samples.length / 24000 - 1.0) < 1e-6);
+});
+
+test('ModalPiperClient retries transient 5xx/429 (cold start, scale-up) and fails clearly on 401/400/404 without retrying', async () => {
+  const busy = () => new Response('cold', { status: 503 });
+  const ok = fakeFetch([busy, () => new Response('x', { status: 502 }), () => wavResponse(0.5)]);
+  const c = new ModalPiperClient({ url: 'https://d', secret: 's', fetchImpl: ok.f, retryDelayMs: 0 });
+  assert.ok((await c.synth('a', 'es-pilot-m', 1, 'es')).length > 44);
+  assert.equal(ok.log.length, 3);
+  for (const status of [401, 400, 404]) {
+    const r = fakeFetch([() => new Response(JSON.stringify({ detail: `bad ${status}` }), { status })]);
+    await assert.rejects(() => new ModalPiperClient({ url: 'https://d', secret: 's', fetchImpl: r.f, retryDelayMs: 0 }).synth('a', 'es-pilot-m', 1, 'es'), new RegExp(`${status}`));
+    assert.equal(r.log.length, 1);
+  }
+  const dead = fakeFetch([busy]);
+  await assert.rejects(() => new ModalPiperClient({ url: 'https://d', secret: 's', fetchImpl: dead.f, retryDelayMs: 0, maxRetries: 2 }).synth('a', 'es-pilot-m', 1, 'es'), /503/);
+  assert.equal(dead.log.length, 3);
+});
+
+test('createDubSynth: modal-cpu (the default) sends Piper languages to the dedicated function and English to the provider', async () => {
+  const { f, log } = fakeFetch([() => wavResponse(0.5)]);
+  const prov: string[] = [];
+  const env = { DUB_PIPER_MODAL_URL: 'https://dub.example.modal.run', DUB_PIPER_MODAL_SECRET: 'sec' };
+  const deps = { env, fetchImpl: f, providerSynth: async (_l: unknown, _t: string, v: string) => { prov.push(v); return Buffer.from('w'); } };
+  const es = await createDubSynth(resolveDubLanguage('es')!, deps as never);
+  await es('hola', 'es-pilot-f', 1);
+  assert.equal(log[0]!.url, 'https://dub.example.modal.run/synthesize');
+  assert.equal(log[0]!.auth, 'Bearer sec');
+  const en = await createDubSynth(resolveDubLanguage('en')!, deps as never);
+  await en('hello', 'am_adam', 1);
+  assert.deepEqual(prov, ['am_adam']);
+});
+
+test('createDubSynth: modal-cpu without URL/secret fails up front naming the env vars (and English still works unconfigured)', async () => {
+  await assert.rejects(
+    () => createDubSynth(resolveDubLanguage('es')!, { env: {}, providerSynth: async () => Buffer.alloc(0) } as never),
+    /DUB_PIPER_MODAL_URL.*DUB_PIPER_MODAL_SECRET/s
+  );
+  await assert.rejects(
+    () => createDubSynth(resolveDubLanguage('es')!, { env: { DUB_PIPER_MODAL_URL: 'https://d' }, providerSynth: async () => Buffer.alloc(0) } as never),
+    /DUB_PIPER_MODAL_SECRET/
+  );
+  const en = await createDubSynth(resolveDubLanguage('en')!, { env: {}, providerSynth: async () => Buffer.from('w') } as never);
+  assert.ok((await en('hi', 'am_adam', 1)).length > 0);
+});
+
+test('modal-cpu needs no gateway key (the point of the dedicated function)', async () => {
+  const env = { DUB_PIPER_MODAL_URL: 'https://d', DUB_PIPER_MODAL_SECRET: 's' }; // no DUB_PIPER_API_KEY / STT key
+  const s = await createDubSynth(resolveDubLanguage('es')!, { env, fetchImpl: fakeFetch([() => wavResponse(0.2)]).f, providerSynth: async () => Buffer.alloc(0), fallbackApiKey: undefined } as never);
+  assert.ok((await s('a', 'es-pilot-m', 1)).length > 44);
 });

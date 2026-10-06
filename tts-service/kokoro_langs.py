@@ -10,6 +10,7 @@ shipped). Fix: one pipeline per lang_code, chosen from the voice id first and th
 ja/zh are catalogued for completeness but need misaki[ja]/misaki[zh] which the images do not install; the dubbing
 route does not offer them.
 """
+import os
 import re
 from typing import Callable, Dict, List, Optional
 
@@ -59,7 +60,20 @@ def lang_code_for(voice_id: Optional[str], language: Optional[str]) -> str:
     return _ISO_TO_LANG_CODE.get(base, "a")
 
 
-def plan(voice: str, language: Optional[str], voice_is_explicit: bool):
+class NonEnglishDisabled(Exception):
+    """Kokoro non-English synthesis was requested while KOKORO_NON_ENGLISH_ENABLED is off (owner voice-provenance rule)."""
+
+
+def non_english_enabled(env=None) -> bool:
+    """Kokoro es/fr/hi/it/pt/ja/zh synthesis is OFF unless KOKORO_NON_ENGLISH_ENABLED is 1/true/yes/on.
+
+    Owner rule 2026-10-06 (voice provenance): Kokoro's non-English voices have no data statement, so they must not serve
+    traffic by default. English (a/b) is unaffected. Set the flag only for local/dev work."""
+    env = os.environ if env is None else env
+    return str(env.get("KOKORO_NON_ENGLISH_ENABLED", "")).strip().lower() in ("1", "true", "yes", "on")
+
+
+def plan(voice: str, language: Optional[str], voice_is_explicit: bool, allow_non_english: Optional[bool] = None):
     """(voice, lang_code) to synthesize with.
 
     - A voice the caller asked for by its native Kokoro id (voice_is_explicit) decides the lang_code: it can only
@@ -68,6 +82,17 @@ def plan(voice: str, language: Optional[str], voice_is_explicit: bool):
       decides: a non-English language swaps in that language's default voice, so non-English text is never read
       by an English voice; English aliases keep their own accent (American or British).
     """
+    allowed = non_english_enabled() if allow_non_english is None else allow_non_english
+    chosen, lc = _plan(voice, language, voice_is_explicit)
+    if not is_english(lc) and not allowed:
+        raise NonEnglishDisabled(
+            f"Kokoro non-English synthesis (voice {chosen!r}, lang_code {lc!r}) is disabled on this service: set "
+            "KOKORO_NON_ENGLISH_ENABLED=1 to enable it (voice-provenance rule: off by default)."
+        )
+    return chosen, lc
+
+
+def _plan(voice: str, language: Optional[str], voice_is_explicit: bool):
     if voice_is_explicit and is_direct_kokoro_voice(voice):
         return voice, voice[0]
     lang_code = lang_code_for(None, language)

@@ -108,6 +108,14 @@ def _env_flag(name: str) -> bool:
 
 EDGE_TTS_ENABLED = _env_flag("ALLOW_UNLICENSED_EDGE_TTS")
 
+# Owner voice-provenance rule (2026-10-06): Kokoro's non-English voices (es/fr/hi/it/pt/ja/zh) have no data statement, so
+# they are OFF unless KOKORO_NON_ENGLISH_ENABLED=1. English voices are unaffected.
+KOKORO_NON_ENGLISH_ENABLED = _env_flag("KOKORO_NON_ENGLISH_ENABLED")
+_KOKORO_GATE_MSG = (
+    "Kokoro non-English synthesis is disabled on this worker (voice-provenance rule): "
+    "set KOKORO_NON_ENGLISH_ENABLED=1 to enable it (local/dev only)"
+)
+
 
 class LanguageNotServed(Exception):
     """Raised when the only engine for a language is the disabled (unlicensed) Edge TTS fallback."""
@@ -334,6 +342,8 @@ def synthesize_with_kokoro_onnx(text: str, voice_id: str, speed: float, language
     concatenated with brief silence between them."""
     import numpy as np
 
+    if onnx_lang_for_voice(voice_id) is not None and not KOKORO_NON_ENGLISH_ENABLED:
+        raise LanguageNotServed(_KOKORO_GATE_MSG)  # checked before any model load
     model = load_kokoro()
     processed_text = preprocess_text_for_kokoro(text)
     # A native non-English voice fixes the language regardless of the `language` hint (see route_voice_for_language).
@@ -508,6 +518,8 @@ def route_voice_for_language(voice_id: str, language: str) -> tuple:
     # A native non-English voice asked for by id wins over the language routing below: the caller chose a Kokoro
     # voice, and the voice id fixes the G2P (the dubbing route sends language 'es' with em_alex, etc.).
     if onnx_lang_for_voice(voice_id) is not None:
+        if not KOKORO_NON_ENGLISH_ENABLED:
+            raise LanguageNotServed(_KOKORO_GATE_MSG)
         return ("kokoro", voice_id)
     # Edge TTS path (dev-only flag; otherwise an explicit error, never a silent engine switch)
     if lang in EDGE_TTS_LANG_MAP:

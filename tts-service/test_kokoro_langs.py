@@ -82,16 +82,16 @@ def test_default_voice_per_lang_code():
 
 
 def test_plan_explicit_native_voice_decides_everything():
-    assert kl.plan("em_alex", "en-US", True) == ("em_alex", "e")
-    assert kl.plan("ff_siwis", None, True) == ("ff_siwis", "f")
+    assert kl.plan("em_alex", "en-US", True, True) == ("em_alex", "e")
+    assert kl.plan("ff_siwis", None, True, True) == ("ff_siwis", "f")
     assert kl.plan("bf_emma", "en", True) == ("bf_emma", "b")
 
 
 def test_plan_generic_voice_with_non_english_language_gets_that_language_default_voice():
     # e.g. voice 'default' (-> af_heart) + language es: never read Spanish with an English voice
-    assert kl.plan("af_heart", "es", False) == ("em_alex", "e")
-    assert kl.plan("am_adam", "fr-FR", False) == ("ff_siwis", "f")
-    assert kl.plan("af_heart", "hi", False) == ("hm_omega", "h")
+    assert kl.plan("af_heart", "es", False, True) == ("em_alex", "e")
+    assert kl.plan("am_adam", "fr-FR", False, True) == ("ff_siwis", "f")
+    assert kl.plan("af_heart", "hi", False, True) == ("hm_omega", "h")
 
 
 def test_plan_english_aliases_keep_their_accent():
@@ -105,4 +105,35 @@ def test_plan_unknown_language_is_english_passthrough():
 
 
 def test_plan_explicit_flag_false_for_native_voice_still_matches_language():
-    assert kl.plan("em_alex", "es", False) == ("em_alex", "e")
+    assert kl.plan("em_alex", "es", False, True) == ("em_alex", "e")
+
+
+# ---- owner voice-provenance gate: Kokoro non-English synthesis is OFF unless KOKORO_NON_ENGLISH_ENABLED=1
+def test_gate_is_off_by_default_and_flag_values():
+    assert kl.non_english_enabled({}) is False
+    assert kl.non_english_enabled({"KOKORO_NON_ENGLISH_ENABLED": "0"}) is False
+    assert kl.non_english_enabled({"KOKORO_NON_ENGLISH_ENABLED": "1"}) is True
+    assert kl.non_english_enabled({"KOKORO_NON_ENGLISH_ENABLED": " true "}) is True
+
+
+@pytest.mark.parametrize("voice,lang,explicit", [
+    ("em_alex", "es", True), ("ff_siwis", "fr", True), ("hm_omega", "hi", True), ("if_sara", "it", True),
+    ("pf_dora", "pt-BR", True), ("af_heart", "es", False), ("am_adam", "fr", False), ("em_alex", "en-US", True),
+])
+def test_non_english_kokoro_is_refused_by_default_with_a_clear_error(voice, lang, explicit):
+    with pytest.raises(kl.NonEnglishDisabled, match="KOKORO_NON_ENGLISH_ENABLED"):
+        kl.plan(voice, lang, explicit, False)
+
+
+def test_default_reads_the_environment(monkeypatch):
+    monkeypatch.delenv("KOKORO_NON_ENGLISH_ENABLED", raising=False)
+    with pytest.raises(kl.NonEnglishDisabled):
+        kl.plan("em_alex", "es", True)
+    monkeypatch.setenv("KOKORO_NON_ENGLISH_ENABLED", "1")
+    assert kl.plan("em_alex", "es", True) == ("em_alex", "e")
+
+
+def test_english_is_never_gated():
+    assert kl.plan("af_heart", "en", False, False) == ("af_heart", "a")
+    assert kl.plan("bf_emma", "en-GB", True, False) == ("bf_emma", "b")
+    assert kl.plan("am_adam", "de", False, False) == ("am_adam", "a")  # unknown language stays the English passthrough

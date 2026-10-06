@@ -40,6 +40,7 @@ const STT_URL = 'https://stt-worker.example.test';
 
 process.env.SUPABASE_JWT_SECRET ??= 'test';
 process.env.NODE_ENV = 'test';
+process.env.DUB_TTS_BACKEND = 'gpu'; // route tests mock the ttsProvider (gpu path); modal-cpu has its own test below
 process.env.STT_GATEWAY_URL = STT_URL;
 process.env.STT_API_KEY = 'stt-secret';
 process.env.ANTHROPIC_API_KEY = 'test-anthropic-key';
@@ -428,21 +429,82 @@ test('a Spanish dub sends language "es" and the Piper es-pilot voice to the TTS 
   }
 });
 
-test('French routes to the Piper fr-fr-mls voice', async (t) => {
+test('French is not offered in the Spanish-only pilot: 400 "not offered yet", no job, no TTS call', async (t) => {
   installFetchMock(SHARED_STUB.url);
   resetMocks();
   const s = await boot(SHARED_STUB.url);
   const calls: SynthCall[] = [];
   installFakeTts(t, s.ttsProvider, calls);
   try {
-    currentTranslationReply = JSON.stringify(['Bonjour tout le monde.']);
-    const submit = await s.call(jwtHeaders, 'POST', '/', buildForm({ target_language: 'fr' }));
+    for (const lang of ['fr', 'French', 'fr-FR']) {
+      const r = await s.call(jwtHeaders, 'POST', '/', buildForm({ target_language: lang }));
+      assert.equal(r.status, 400, lang);
+      const body = JSON.stringify(await r.json());
+      assert.match(body, /not offered yet/i, lang);
+      assert.match(body, /Offered: en, es/, lang);
+    }
+    assert.equal(calls.length, 0);
+    assert.equal(anthropicCalls.length, 0);
+  } finally {
+    s.close();
+    uninstallFetchMock();
+  }
+});
+
+test('default backend modal-cpu: Spanish goes to the dedicated Piper function with the Bearer secret, never the provider', async (t) => {
+  installFetchMock(SHARED_STUB.url);
+  resetMocks();
+  process.env.DUB_TTS_BACKEND = 'modal-cpu';
+  process.env.DUB_PIPER_MODAL_URL = 'https://dub-piper.test';
+  process.env.DUB_PIPER_MODAL_SECRET = 'test-secret';
+  currentTranslationReply = JSON.stringify(['Hola a todos.']);
+  const s = await boot(SHARED_STUB.url);
+  const providerCalls: SynthCall[] = [];
+  installFakeTts(t, s.ttsProvider, providerCalls);
+  const seen: Array<{ auth?: string; body: any }> = [];
+  const inner = globalThis.fetch;
+  globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = typeof input === 'string' ? input : input.toString();
+    if (url === 'https://dub-piper.test/synthesize') {
+      seen.push({ auth: (init?.headers as Record<string, string>)?.Authorization, body: JSON.parse(String(init?.body)) });
+      const n = Math.max(1, Math.round((JSON.parse(String(init?.body)).text.length / 15 / JSON.parse(String(init?.body)).speed) * 24000));
+      return new Response(encodeWavPcm16(new Int16Array(n).fill(4000), 24000), { status: 200, headers: { 'Content-Type': 'audio/wav' } });
+    }
+    return inner(input, init);
+  }) as typeof fetch;
+  try {
+    const submit = await s.call(jwtHeaders, 'POST', '/', buildForm({ target_language: 'es' }));
     const { job_id } = await submit.json();
     const result = await waitForJob(s.call, job_id, jwtHeaders);
     assert.equal(result.status, 'ready', result.error);
-    assert.ok(calls.every((c) => c.voice.provider_voice_id === 'fr-fr-mls-m' && c.voice.settings.language === 'fr' && c.voice.language === 'fr-FR'));
-    assert.ok(calls.every((c) => !/^[a-z]f_|^[a-z]m_/.test(c.voice.provider_voice_id)), 'never a Kokoro voice for French');
+    assert.ok(seen.length >= 1);
+    assert.ok(seen.every((x) => x.auth === 'Bearer test-secret' && x.body.voice_id === 'es-pilot-m' && x.body.language === 'es'));
+    assert.equal(providerCalls.length, 0);
   } finally {
+    process.env.DUB_TTS_BACKEND = 'gpu';
+    delete process.env.DUB_PIPER_MODAL_URL;
+    delete process.env.DUB_PIPER_MODAL_SECRET;
+    globalThis.fetch = inner;
+    s.close();
+    uninstallFetchMock();
+  }
+});
+
+test('default backend modal-cpu without its URL/secret fails the job with an actionable error', async (t) => {
+  installFetchMock(SHARED_STUB.url);
+  resetMocks();
+  process.env.DUB_TTS_BACKEND = 'modal-cpu';
+  currentTranslationReply = JSON.stringify(['Hola.']);
+  const s = await boot(SHARED_STUB.url);
+  installFakeTts(t, s.ttsProvider, []);
+  try {
+    const submit = await s.call(jwtHeaders, 'POST', '/', buildForm({ target_language: 'es' }));
+    const { job_id } = await submit.json();
+    const result = await waitForJob(s.call, job_id, jwtHeaders);
+    assert.equal(result.status, 'failed');
+    assert.match(result.error, /DUB_PIPER_MODAL_URL/);
+  } finally {
+    process.env.DUB_TTS_BACKEND = 'gpu';
     s.close();
     uninstallFetchMock();
   }

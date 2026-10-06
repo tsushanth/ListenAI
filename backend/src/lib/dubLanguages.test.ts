@@ -26,18 +26,18 @@ test('resolveDubLanguage returns null for languages with no voices at all', () =
   }
 });
 
-test('only en, es and fr are offered; hi/it/pt/ja/zh are known but not offered yet (easy to re-enable)', () => {
-  assert.deepEqual(supportedDubLanguageList(), ['en', 'es', 'fr']);
-  for (const l of ['hi', 'it', 'pt', 'pt-BR', 'Hindi', 'Italian']) {
+test('only en and es are offered (Spanish-only pilot); fr/hi/it/pt/ja/zh are known but not offered yet (easy to re-enable)', () => {
+  assert.deepEqual(supportedDubLanguageList(), ['en', 'es']);
+  for (const l of ['fr', 'French', 'fr-FR', 'hi', 'it', 'pt', 'pt-BR', 'Hindi', 'Italian']) {
     const d = resolveDubLanguage(l);
     assert.ok(d, l);
     assert.equal(d!.offered, false, l);
   }
   for (const l of ['ja', 'zh', 'Japanese', 'Chinese']) assert.equal(resolveDubLanguage(l)?.offered ?? false, false, l);
-  for (const l of ['en', 'es', 'fr']) assert.equal(resolveDubLanguage(l)!.offered, true, l);
+  for (const l of ['en', 'es']) assert.equal(resolveDubLanguage(l)!.offered, true, l);
 });
 
-test('es and fr dub with clean-provenance Piper voices, never Kokoro', () => {
+test('es and fr (when re-enabled) use clean-provenance Piper voices, never Kokoro', () => {
   const es = resolveDubLanguage('es')!;
   const fr = resolveDubLanguage('fr')!;
   assert.equal(es.engine, 'piper');

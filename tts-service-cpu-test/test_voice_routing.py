@@ -46,13 +46,13 @@ def test_resolve_voice_unknown_still_falls_back_to_heart():
     assert m.resolve_voice("nonsense") == "af_heart"
 
 
-def test_explicit_native_voice_routes_to_kokoro_not_edge_even_when_language_is_in_the_edge_map():
+def test_explicit_native_voice_routes_to_kokoro_not_edge_even_when_language_is_in_the_edge_map(kokoro_on):
     assert m.route_voice_for_language("em_alex", "es") == ("kokoro", "em_alex")
     assert m.route_voice_for_language("ff_siwis", "fr") == ("kokoro", "ff_siwis")
     assert m.route_voice_for_language("hm_omega", "hi") == ("kokoro", "hm_omega")
 
 
-def test_explicit_native_voice_wins_over_a_wrong_language_hint():
+def test_explicit_native_voice_wins_over_a_wrong_language_hint(kokoro_on):
     assert m.route_voice_for_language("em_alex", "en-US") == ("kokoro", "em_alex")
 
 
@@ -81,6 +81,33 @@ def test_flag_default_comes_from_env_ALLOW_UNLICENSED_EDGE_TTS():
         assert m._env_flag("EDGE_TEST_FLAG") is True
     finally:
         del os.environ["EDGE_TEST_FLAG"]
+
+
+import pytest
+
+
+@pytest.fixture
+def kokoro_on():
+    m.KOKORO_NON_ENGLISH_ENABLED = True
+    yield
+    m.KOKORO_NON_ENGLISH_ENABLED = False
+
+
+def test_kokoro_non_english_is_off_by_default_and_refuses_with_a_clear_error():
+    assert m.KOKORO_NON_ENGLISH_ENABLED is False
+    for v, lang in [("em_alex", "es"), ("ff_siwis", "fr"), ("hm_omega", "hi"), ("if_sara", "it"), ("pf_dora", "pt"), ("jf_alpha", "ja"), ("zm_yunxi", "zh"), ("em_alex", "en-US")]:
+        with pytest.raises(m.LanguageNotServed, match="KOKORO_NON_ENGLISH_ENABLED"):
+            m.route_voice_for_language(v, lang)
+
+
+def test_kokoro_synthesis_path_is_gated_too_not_only_routing():
+    with pytest.raises(m.LanguageNotServed, match="KOKORO_NON_ENGLISH_ENABLED"):
+        m.synthesize_with_kokoro_onnx("hola", "em_alex", 1.0, language="es")
+
+
+def test_english_kokoro_is_never_gated():
+    assert m.route_voice_for_language("af_heart", "en") == ("kokoro", "af_heart")
+    assert m.route_voice_for_language("bf_emma", "en-gb")[0] == "kokoro"
 
 
 def test_onnx_lang_for_native_voice_prefix():
