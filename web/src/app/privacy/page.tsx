@@ -11,7 +11,7 @@ export default function PrivacyPage() {
         <h1 className="text-4xl font-bold text-white mb-8">Privacy Policy</h1>
 
         <div className="prose prose-invert max-w-none">
-          <p className="text-gray-400 mb-6">Last updated: February 2026</p>
+          <p className="text-gray-400 mb-6">Last updated: October 2026</p>
 
           <section className="mb-8">
             <h2 className="text-2xl font-semibold text-white mb-4">1. Information We Collect</h2>
@@ -141,7 +141,31 @@ export default function PrivacyPage() {
           </section>
 
           <section className="mb-8">
-            <h2 className="text-2xl font-semibold text-white mb-4">9. Contact Us</h2>
+            <h2 className="text-2xl font-semibold text-white mb-4">9. Website Visits and the Homepage Demo</h2>
+            <p className="text-gray-300 mb-4">
+              When you visit readaloudai.org we count the page load, without cookies and without any script running in your browser.
+              For each visit we record:
+            </p>
+            <ul className="list-disc pl-6 text-gray-300 space-y-2">
+              <li>The page you loaded and the time</li>
+              <li>The website that sent you here (the site name only, not the address of the page you came from)</li>
+              <li>Your browser&apos;s user-agent string</li>
+              <li>Your approximate location (country and city), worked out from your IP address</li>
+              <li>An anonymous visitor ID made from your IP address, browser and the date, which changes every day, so we cannot follow you from one day to the next</li>
+            </ul>
+            <p className="text-gray-300 mt-4 mb-4">
+              We do not store IP addresses ourselves. They are sent to our analytics provider, PostHog (posthog.com), only so it can work out
+              the approximate location. We do not count requests that look like bots or automated checks.
+            </p>
+            <p className="text-gray-300">
+              When you play the voice demo on the homepage, we also record which example sentence you chose (or that you typed your own text and how
+              long it was), how long the first audio took, how much audio played, and whether it finished or failed. The text you type is sent to our voice
+              server to make the audio, but it is not included in these analytics records.
+            </p>
+          </section>
+
+          <section className="mb-8">
+            <h2 className="text-2xl font-semibold text-white mb-4">10. Contact Us</h2>
             <p className="text-gray-300">
               If you have any questions about this Privacy Policy, please contact us at{' '}
               <a href="mailto:privacy@readaloudai.org" className="text-primary hover:text-primary-dark">
