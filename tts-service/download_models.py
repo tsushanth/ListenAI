@@ -51,6 +51,29 @@ def download_kokoro():
         except Exception as e:
             print(f"⚠ failed: {e}")
 
+    # Non-English voices (dubbing): one pipeline per lang_code, voices downloaded now so first use is not a cold HF fetch.
+    foreign = {
+        'e': ['ef_dora', 'em_alex', 'em_santa'],
+        'f': ['ff_siwis'],
+        'h': ['hf_alpha', 'hf_beta', 'hm_omega', 'hm_psi'],
+        'i': ['if_sara', 'im_nicola'],
+        'p': ['pf_dora', 'pm_alex', 'pm_santa'],
+    }
+    for lang_code, vs in foreign.items():
+        try:
+            p = KPipeline(lang_code=lang_code)
+        except Exception as e:
+            print(f"⚠ pipeline {lang_code} failed: {e}")
+            continue
+        for voice in vs:
+            print(f"Pre-downloading voice: {voice}...", end=" ")
+            try:
+                for gs, ps, audio in p('Prueba.', voice=voice):
+                    pass
+                print("✓")
+            except Exception as e:
+                print(f"⚠ failed: {e}")
+
     print("=" * 50)
     print("✓ Kokoro fully cached")
     print("=" * 50)

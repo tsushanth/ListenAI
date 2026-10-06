@@ -3,6 +3,8 @@ ReadAloud AI - Kokoro TTS on Modal (T4 GPU)
 Serverless GPU with true scale-to-zero and per-second billing.
 """
 
+import os
+
 import modal
 
 # Define the container image with all dependencies
@@ -31,11 +33,30 @@ image = (
         "print('All voices cached')"
         "\""
     )
+    .pip_install(
+        # Non-English Kokoro (es/fr/hi/it/pt) phonemises through espeak-ng via misaki.espeak.
+        "phonemizer-fork==3.3.2",
+        "espeakng-loader==0.2.4",
+    )
+    .run_commands(
+        # Pre-download the non-English voices (one KPipeline per lang_code) so first use is not a cold HF fetch.
+        "python3 -c \""
+        "from kokoro import KPipeline; "
+        "m = {'e': ['ef_dora','em_alex','em_santa'], 'f': ['ff_siwis'], 'h': ['hf_alpha','hf_beta','hm_omega','hm_psi'], "
+        "'i': ['if_sara','im_nicola'], 'p': ['pf_dora','pm_alex','pm_santa']}; "
+        "[next(KPipeline(lang_code=lc)('Prueba.', voice=v)) for lc, vs in m.items() for v in vs]; "
+        "print('Non-English voices cached')"
+        "\""
+    )
+    .add_local_python_source("kokoro_langs")
 )
 
 # Context for humans/AIs: `modal dict get infra-context <app-name>` (who calls this app, evidence, spend). Keep tags in sync.
 TAGS = {"status": "low-use", "owner": "backend-api-tts", "context": "modal-dict-infra-context", "verified": "2026-10-01"}
-app = modal.App("readaloud-tts", image=image, tags=TAGS)
+# Name override is for ephemeral verification runs ONLY (e.g. READALOUD_TTS_APP_NAME=ra-dub-verify-tts modal serve ...)
+# so a test deploy can never replace the production app of the same name.
+APP_NAME = os.environ.get("READALOUD_TTS_APP_NAME", "readaloud-tts")
+app = modal.App(APP_NAME, image=image, tags=TAGS)
 
 
 @app.cls(
@@ -58,18 +79,25 @@ class KokoroTTS:
         import time
         start = time.time()
         from kokoro import KPipeline
-        self.pipeline = KPipeline(lang_code='a')
+        import kokoro_langs as kl
+        # One KPipeline per Kokoro lang_code; English is loaded eagerly, others on first use.
+        self.pipelines = kl.PipelineCache(lambda lc: KPipeline(lang_code=lc))
+        self.pipeline = self.pipelines.get('a')
         self.load_time = time.time() - start
         print(f"Kokoro model loaded in {self.load_time:.2f}s")
 
     @modal.method()
-    def synthesize(self, text: str, voice: str = "af_heart", speed: float = 1.0) -> dict:
+    def synthesize(self, text: str, voice: str = "af_heart", speed: float = 1.0, language: str = "en") -> dict:
         """Synthesize text to speech, return audio bytes + timing."""
         import time
         import io
         import re
         import numpy as np
         import soundfile as sf
+        import kokoro_langs as kl
+
+        voice, lang_code = kl.plan(voice, language, kl.is_direct_kokoro_voice(voice))
+        pipeline = self.pipelines.get(lang_code)
 
         # Preprocess (same as GPU service)
         text = re.sub(r'\n{2,}', '\n\n', text)
@@ -81,12 +109,15 @@ class KokoroTTS:
                 para = re.sub(r'\s+', ' ', para)
                 processed.append(para)
         processed_text = '\n\n'.join(processed).strip()
-        processed_text = re.sub(r'(\d+)"', r'\1 inches', processed_text)
+        if kl.is_english(lang_code):
+            processed_text = re.sub(r'(\d+)"', r'\1 inches', processed_text)
+        else:
+            processed_text = kl.preprocess_non_english(processed_text)
 
         start = time.time()
 
         all_audio = []
-        for _gs, _ps, audio in self.pipeline(processed_text, voice=voice, speed=speed):
+        for _gs, _ps, audio in pipeline(processed_text, voice=voice, speed=speed):
             all_audio.append(audio)
 
         if len(all_audio) > 1:
@@ -138,7 +169,9 @@ def web():
 
     # Load model globally for this container
     from kokoro import KPipeline
-    pipeline = KPipeline(lang_code='a')
+    import kokoro_langs as kl
+    pipelines = kl.PipelineCache(lambda lc: KPipeline(lang_code=lc))
+    pipelines.get('a')  # English eagerly (cold start); other languages build on first request
 
     KOKORO_VOICES = {
         "af_heart": "American Female (Heart)", "af_bella": "American Female (Bella)",
@@ -161,11 +194,20 @@ def web():
     def resolve_voice(voice_id: str) -> str:
         if voice_id in BUILTIN_VOICES:
             return BUILTIN_VOICES[voice_id]
-        if re.match(r'^[ab][fm]_\w+$', voice_id) and voice_id in KOKORO_VOICES:
+        if kl.is_direct_kokoro_voice(voice_id):
             return voice_id
         return "af_heart"
 
-    def preprocess(text: str) -> str:
+    def pick(voice_id: str, language: str):
+        """(voice, lang_code, pipeline). A native Kokoro voice id decides the lang_code; for generic/English aliases the
+        request language decides (non-English text is never read with an English voice)."""
+        direct = kl.is_direct_kokoro_voice(voice_id)
+        voice, lang_code = kl.plan(voice_id if direct else resolve_voice(voice_id), language, direct)
+        return voice, lang_code, pipelines.get(lang_code)
+
+    def preprocess(text: str, lang_code: str = 'a') -> str:
+        if not kl.is_english(lang_code):
+            return kl.preprocess_non_english(text)
         text = re.sub(r'\n{2,}', '\n\n', text)
         paragraphs = text.split('\n\n')
         processed = [re.sub(r'\s+', ' ', p.strip()) for p in paragraphs if p.strip()]
@@ -198,8 +240,8 @@ def web():
 
     @web_app.post("/synthesize")
     async def synthesize(request: SynthesizeRequest):
-        voice = resolve_voice(request.voice_id)
-        processed_text = preprocess(request.text)
+        voice, lang_code, pipeline = pick(request.voice_id, request.language)
+        processed_text = preprocess(request.text, lang_code)
         start = time.time()
 
         try:
@@ -220,7 +262,8 @@ def web():
                 media_type="audio/wav",
                 headers={
                     "X-Cache": "MISS",
-                    "X-Voice-ID": request.voice_id,
+                    "X-Voice-ID": voice,
+                    "X-Lang-Code": lang_code,
                     "X-Model": "kokoro-modal-t4",
                     "X-Synthesis-Time-Ms": str(int(synthesis_time * 1000)),
                     "X-Character-Count": str(len(request.text)),
@@ -232,8 +275,8 @@ def web():
 
     @web_app.post("/synthesize-long")
     async def synthesize_long(request: SynthesizeLongRequest):
-        voice = resolve_voice(request.voice_id)
-        processed_text = preprocess(request.text)
+        voice, lang_code, pipeline = pick(request.voice_id, request.language)
+        processed_text = preprocess(request.text, lang_code)
         start = time.time()
 
         try:
@@ -254,6 +297,8 @@ def web():
                 media_type="audio/wav",
                 headers={
                     "X-Cache": "MISS",
+                    "X-Voice-ID": voice,
+                    "X-Lang-Code": lang_code,
                     "X-Model": "kokoro-modal-t4",
                     "X-Synthesis-Time-Ms": str(int(synthesis_time * 1000)),
                     "X-Character-Count": str(len(request.text)),

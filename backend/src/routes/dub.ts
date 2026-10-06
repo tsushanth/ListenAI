@@ -1,33 +1,26 @@
-// Dubbing v1: upload a source-language audio file, get back a target-language
-// audio file with roughly the same segment timing. Pipeline:
-//   1. STT  — transcribe + segment the source audio, via the same gateway
-//             session-token hand-off as stt.ts (worker-stt-prod does not
-//             accept a static secret — see authorizeStt() below).
-//   2. MT   — translate each segment's text via Claude (mirrors extract.ts's
-//             LLM cleanup pattern).
-//   3. TTS  — synthesize each translated segment with the existing self-hosted
-//             TTS pipeline, adjusting `speed` per segment so its synthesized
-//             duration approximately matches the source segment's duration.
-//   4. Concatenate the per-segment audio buffers in order and return one file.
-//             (Each segment comes back from ttsProvider.synthesize as a full,
-//             independent WAV file — see the PCM-splicing note below on why
-//             this can't just be a raw Buffer.concat of those buffers.)
+// Dubbing: upload a source-language audio file, get back a target-language audio file on the source timeline.
+// Pipeline:
+//   1. STT  - transcribe + segment the source audio, via the same gateway session-token hand-off as stt.ts
+//             (worker-stt-prod does not accept a static secret - see authorizeStt() below).
+//   2. Clean - drop STT hallucinations / segments past the audio end, merge sub-second backchannels
+//             (lib/dubTiming.ts sanitizeSegments).
+//   3. MT   - translate each segment via Claude with a per-segment length budget (chars the target language
+//             can speak in the source slot), one shorten pass for segments that blow the budget.
+//   4. TTS  - synthesize each segment with the language-correct Kokoro voice (lib/dubLanguages.ts), measure its
+//             real duration at speed 1 and re-synthesize at the speed that fits the source slot
+//             (lib/dubPipeline.ts, ported from the S3 kit's arm C).
+//   5. Place - lay segments on the source timeline with silence in the gaps, one 24 kHz mono WAV as long as
+//             the source (lib/dubTiming.ts placeSegments).
+//   SRT/VTT export: GET /api/dub/:jobId/subtitles.
 //
-// Explicitly OUT OF SCOPE for this pass (see report):
-//   - Video. This is audio-in -> audio-out only. No muxing, no subtitles burn-in.
-//   - Real forced alignment / phoneme-level timing. Speed-matching here is a
-//     v1 approximation: whole-segment speed scaling, nothing more.
-//   - Persistent job storage. Jobs live in an in-memory Map (like the STT
-//     service this depends on, this is a first pass) — a process restart
-//     loses in-flight jobs and this does not scale past a single instance.
-//     tts.ts's job pattern uses a `tts_jobs` Postgres table; a real v2 of
-//     dubbing should get its own `dub_jobs` table and migration instead.
+// Still OUT OF SCOPE (see the PR notes):
+//   - Video muxing, background-music preservation, voice cloning (S5), real diarization (the STT worker
+//     returns no speaker labels; if a segment carries `speaker` we map it to a distinct stock voice).
+//   - Persistent job storage. Jobs live in an in-memory Map: a process restart loses in-flight jobs and this
+//     does not scale past a single instance. A real v2 should get a `dub_jobs` table.
 //
-// STT NOTE: this route's transcribeSourceAudio()/authorizeStt() duplicate
-// stt.ts's gateway-authorize logic locally rather than importing it, to keep
-// this file's dependency surface small — both call the same external
-// worker-stt-prod service the same way and share the STT_API_KEY config.
-// Worth consolidating into a shared helper as a follow-up.
+// STT NOTE: transcribeSourceAudio()/authorizeStt() duplicate stt.ts's gateway-authorize logic locally rather
+// than importing it, to keep this file's dependency surface small. Worth consolidating as a follow-up.
 
 import { Router, Request, Response, NextFunction, RequestHandler } from 'express';
 import { randomUUID } from 'crypto';
@@ -37,7 +30,18 @@ import Anthropic from '@anthropic-ai/sdk';
 import { config } from '../lib/config.js';
 import { logger } from '../lib/logger.js';
 import { ttsProvider } from '../lib/ttsProviderClient.js';
-import { normalizeVoiceId, getDefaultVoiceId } from '../lib/voiceMapping.js';
+import {
+  resolveDubLanguage, assignSpeakerVoices, supportedDubLanguageList, type DubLanguage,
+} from '../lib/dubLanguages.js';
+import {
+  sanitizeSegments, lengthBudget, toSrt, toVtt, type SanitizedSegment, type DropReason, type Cue,
+} from '../lib/dubTiming.js';
+import { fitAndPlace, type FitResult } from '../lib/dubPipeline.js';
+import {
+  buildTranslationSystemPrompt, buildTranslationUserPrompt, parseTranslationReply, overBudgetIndexes,
+  chunkRanges, TRANSLATION_BATCH, type TranslationInputItem,
+} from '../lib/dubTranslation.js';
+import { probeAudioDurationSec } from '../lib/audioProbe.js';
 import { uploadAudioToCache, getSignedAudioUrl } from '../lib/supabaseClient.js';
 import { hasUsageAllowance, freeCreditsExhaustedMessage, reportDubbingUsage } from '../lib/realtimeTtsBilling.js';
 import type { AuthenticatedRequest, DBVoice } from '../types/index.js';
@@ -89,20 +93,21 @@ const TRANSLATION_MODEL = 'claude-sonnet-4-6';
 
 const MAX_AUDIO_MB = 50;
 const MAX_SEGMENT_CHARS = 2000;
-const MIN_SPEED = 0.5;
-const MAX_SPEED = 2.0; // narrower than tts.ts's 3.0 cap — large speed-ups mangle intelligibility
-const CHARS_PER_SECOND_AT_SPEED_1 = 12.5; // matches config.ts's CHARS_PER_SECOND; used to estimate natural TTS duration before synthesizing
 
 interface SttSegment {
   start: number; // seconds
   end: number; // seconds
   text: string;
+  /** Speaker label if the STT worker diarizes. worker-stt-prod does not today, so this is normally undefined. */
+  speaker?: string;
 }
 
 interface SttResult {
   language: string | null;
-  /** Total audio length in seconds (worker-reported, else the end of the last segment). Billing basis. */
+  /** Total audio length in seconds (worker-reported, else the end of the last segment). Billing basis if nothing better is known. */
   durationSec: number;
+  /** Duration reported by the worker itself, if any. Unlike durationSec this is not inflated by a hallucinated last segment. */
+  reportedDurationSec: number | null;
   segments: SttSegment[];
 }
 
@@ -138,102 +143,97 @@ async function transcribeSourceAudio(
   const body = (await res.json()) as {
     language: string | null;
     duration?: number;
-    segments?: Array<{ id: number; start: number; end: number; text: string }>;
+    segments?: Array<{ id: number; start: number; end: number; text: string; speaker?: string | number | null }>;
   };
   if (!Array.isArray(body.segments)) {
     throw new Error('worker-stt-prod returned an unexpected response shape (missing segments[])');
   }
-  const segments = body.segments.map((s) => ({ start: s.start, end: s.end, text: s.text }));
+  const segments: SttSegment[] = body.segments.map((s) => ({
+    start: s.start, end: s.end, text: s.text,
+    ...(s.speaker !== undefined && s.speaker !== null && String(s.speaker) !== '' ? { speaker: String(s.speaker) } : {}),
+  }));
   const lastEnd = segments.reduce((m, s) => Math.max(m, s.end), 0);
-  const durationSec = typeof body.duration === 'number' && Number.isFinite(body.duration) && body.duration > 0
-    ? Math.max(body.duration, lastEnd)
-    : lastEnd;
-  return { language: body.language, durationSec, segments };
+  const reported = typeof body.duration === 'number' && Number.isFinite(body.duration) && body.duration > 0 ? body.duration : null;
+  const durationSec = reported !== null ? Math.max(reported, lastEnd) : lastEnd;
+  return { language: body.language, durationSec, reportedDurationSec: reported, segments };
 }
 
 /**
- * Translate segment texts with Claude. Mirrors extract.ts's
- * `cleanContentWithLLM` pattern (system prompt + single completion call) but
- * translates a batch of segments at once, asking for a JSON array back so
- * segment boundaries survive translation instead of drifting if we
- * concatenated text and re-split it ourselves.
+ * Translate segment texts with Claude, with a per-segment length budget so the dub can fit the source slot
+ * without a 2x speed-up. Batches of TRANSLATION_BATCH segments (a long job would otherwise risk the
+ * max_tokens cap truncating the JSON); each batch retries once on a malformed/mismatched reply; segments
+ * still far over budget get one shorten pass. Asks for a JSON array back so segment boundaries survive
+ * translation instead of drifting if we concatenated text and re-split it ourselves.
  */
-async function translateSegments(
-  segments: SttSegment[],
-  targetLanguage: string
-): Promise<string[]> {
-  if (!anthropic) {
-    throw new Error('ANTHROPIC_API_KEY is not configured; cannot translate dubbing segments.');
+async function callClaudeForTranslations(system: string, items: TranslationInputItem[]): Promise<string[]> {
+  if (!anthropic) throw new Error('ANTHROPIC_API_KEY is not configured; cannot translate dubbing segments.');
+  let lastErr: Error | undefined;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const completion = await anthropic.messages.create({
+      model: TRANSLATION_MODEL,
+      system,
+      messages: [{ role: 'user', content: buildTranslationUserPrompt(items) }],
+      max_tokens: 8000,
+      temperature: 0.1,
+    });
+    const firstBlock = completion.content[0];
+    const raw = firstBlock && firstBlock.type === 'text' ? firstBlock.text : '';
+    try {
+      return parseTranslationReply(raw, items.length);
+    } catch (err) {
+      lastErr = err as Error;
+    }
   }
-  if (segments.length === 0) return [];
+  throw lastErr ?? new Error('Translation failed');
+}
 
-  const systemPrompt = `You are a professional dubbing translator. You will receive a JSON array of transcript segments from a spoken-audio source.
-
-Translate each segment's "text" into ${targetLanguage}. Rules:
-1. Return a JSON array of strings, same length and same order as the input, with ONLY the translated text for each segment.
-2. Keep each translation natural to SPEAK aloud (this is for dubbing, not subtitles) — prefer phrasing a speaker would actually say.
-3. Do not merge, split, reorder, or drop segments. If a segment is empty or non-speech (e.g. "[music]"), return an empty string for it.
-4. Do not add commentary, numbering, or explanations. Return ONLY the JSON array of strings.`;
-
-  const userPrompt = JSON.stringify(segments.map((s) => s.text));
-
-  const completion = await anthropic.messages.create({
-    model: TRANSLATION_MODEL,
-    system: systemPrompt,
-    messages: [{ role: 'user', content: userPrompt }],
-    max_tokens: 8000,
-    temperature: 0.1,
+async function translateSegments(
+  segments: SanitizedSegment[],
+  lang: DubLanguage,
+  sourceName: string
+): Promise<{ translations: string[]; shortened: number }> {
+  if (segments.length === 0) return { translations: [], shortened: 0 };
+  const system = buildTranslationSystemPrompt(lang, sourceName);
+  const items: TranslationInputItem[] = segments.map((s) => {
+    const b = lengthBudget(s.end - s.start, lang.code);
+    return { text: s.text, maxChars: b.maxChars, targetChars: b.targetChars };
   });
 
-  const firstBlock = completion.content[0];
-  const raw = firstBlock && firstBlock.type === 'text' ? firstBlock.text : '';
-
-  let parsed: unknown;
-  try {
-    // Claude sometimes wraps JSON in a fenced code block despite instructions; strip it defensively.
-    const jsonText = raw.trim().replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '');
-    parsed = JSON.parse(jsonText);
-  } catch (err) {
-    throw new Error(`Translation response was not valid JSON: ${(err as Error).message}`);
+  const translations: string[] = [];
+  for (const [from, to] of chunkRanges(items.length, TRANSLATION_BATCH)) {
+    translations.push(...(await callClaudeForTranslations(system, items.slice(from, to))));
   }
 
-  if (!Array.isArray(parsed) || parsed.length !== segments.length) {
-    throw new Error(
-      `Translation response had ${Array.isArray(parsed) ? parsed.length : 'non-array'} entries, expected ${segments.length}`
-    );
+  // One shorten pass for translations that are clearly over budget (they would otherwise force a clamped speed-up).
+  const over = overBudgetIndexes(translations, items);
+  if (over.length > 0) {
+    try {
+      const shortenSystem = `${system}\n\nThe "text" of each item below is ALREADY a ${lang.name} translation that is too long. Rewrite it in ${lang.name}, keeping the meaning but staying within max_chars.`;
+      const shortened = await callClaudeForTranslations(
+        shortenSystem,
+        over.map((i) => ({ text: translations[i]!, maxChars: items[i]!.maxChars, targetChars: items[i]!.targetChars }))
+      );
+      let used = 0;
+      over.forEach((i, k) => {
+        const cand = shortened[k]!.trim();
+        if (cand && cand.length < translations[i]!.length) { translations[i] = cand; used++; }
+      });
+      return { translations, shortened: used };
+    } catch (err) {
+      dubLogger.warn({ err }, 'Dub shorten pass failed (non-critical); using the over-budget translations');
+    }
   }
-
-  return parsed.map((v) => (typeof v === 'string' ? v : ''));
+  return { translations, shortened: 0 };
 }
 
 /**
- * Synthesize one segment's translated text, adjusting `speed` so the
- * resulting audio approximately matches `targetDurationSec`.
- *
- * v1 approximation: we estimate "natural" (speed=1) duration from character
- * count using the same CHARS_PER_SECOND heuristic tts.ts already uses for
- * job wait estimates (there's no cheaper way to know real TTS duration
- * without actually synthesizing), then pick speed = natural / target,
- * clamped to [MIN_SPEED, MAX_SPEED]. We do NOT re-synthesize iteratively to
- * true up the estimate against actual output duration — one shot only.
+ * Synthesize one piece of translated text through the self-hosted (Kokoro) provider and return the WAV.
+ * The language and the Kokoro voice id are passed through as-is: before this fix the voice always said
+ * language 'en-US' and normalizeVoiceId() coerced every non-American/British voice to am_adam.
+ * (The selfhosted path ignores `format` and always returns WAV - see ttsProviderClient.ts.)
  */
-async function synthesizeSegment(
-  text: string,
-  voiceId: string,
-  targetDurationSec: number
-): Promise<{ audioBuffer: Buffer; durationMs?: number; speedUsed: number }> {
-  const trimmed = text.trim();
-  if (!trimmed) {
-    return { audioBuffer: Buffer.alloc(0), speedUsed: 1 };
-  }
-
-  const naturalDurationSec = Math.max(trimmed.length / CHARS_PER_SECOND_AT_SPEED_1, 0.1);
-  let speed = targetDurationSec > 0.05 ? naturalDurationSec / targetDurationSec : 1;
-  speed = Math.min(MAX_SPEED, Math.max(MIN_SPEED, speed));
-
-  // ttsProvider.synthesize takes a DBVoice, not a raw provider request —
-  // build a minimal one, same shape tts.ts constructs for the self-hosted
-  // (Kokoro) path.
+async function synthesizeWav(lang: DubLanguage, text: string, voiceId: string, speed: number): Promise<Buffer> {
+  const now = new Date().toISOString();
   const voice: DBVoice = {
     id: voiceId,
     name: 'Dubbing voice',
@@ -241,163 +241,70 @@ async function synthesizeSegment(
     style: 'conversational',
     category: 'general',
     provider: 'selfhosted',
-    provider_voice_id: normalizeVoiceId(voiceId),
+    provider_voice_id: voiceId,
     provider_model_id: null,
-    language: 'en-US',
+    language: lang.bcp47,
     gender: null,
     is_premium: false,
     tier_required: 'free',
-    settings: {},
+    // ttsProviderClient reads settings.language and sends it as the service's `language` field.
+    settings: { language: lang.code },
     sample_audio_url: null,
     sample_text: '',
     sort_order: 1,
     is_active: true,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
+    created_at: now,
+    updated_at: now,
   };
-
-  // NOTE: the selfhosted (Kokoro) TTS path ignores `format` entirely and
-  // always returns WAV bytes regardless of what's requested here — confirmed
-  // in ttsProviderClient.ts's synthesizeShort()/synthesizeLong(), both of
-  // which hardcode `format: 'wav'` on their response. Requesting 'wav'
-  // explicitly (rather than 'mp3', which was never actually honored) keeps
-  // this call honest about what it actually gets back.
-  const result = await ttsProvider.synthesize(voice, trimmed, { speed, format: 'wav' });
-
-  return { audioBuffer: result.audioBuffer, durationMs: result.durationMs, speedUsed: speed };
+  const result = await ttsProvider.synthesize(voice, text, { speed, format: 'wav' });
+  return result.audioBuffer;
 }
 
 // ============================================================================
-// WAV splicing
-// ============================================================================
-//
-// Each per-segment buffer from synthesizeSegment() is itself a complete,
-// independent WAV file (RIFF header + fmt chunk + data chunk) — confirmed
-// against ttsProviderClient.ts. A naive Buffer.concat() of these would glue
-// multiple RIFF/WAVE headers back to back, which is not valid WAV: a
-// standards-conforming reader stops at the first data chunk's declared
-// length and ignores everything after it, silently truncating playback to
-// just the first segment. To produce one genuinely valid file, we parse each
-// segment's fmt/data chunks, concatenate the raw PCM payloads only, and
-// write a single WAV header sized for the combined PCM data.
-
-interface WavPcm {
-  pcm: Buffer;
-  numChannels: number;
-  sampleRate: number;
-  bitsPerSample: number;
-}
-
-/**
- * Parse a WAV buffer's `fmt ` and `data` chunks (searching chunk-by-chunk
- * rather than assuming fixed offsets, since an optional chunk like `LIST`
- * can appear before `data`). Returns null if `buffer` isn't a valid
- * RIFF/WAVE file or is too short to contain both required chunks.
- */
-function parseWavPcm(buffer: Buffer): WavPcm | null {
-  if (buffer.length < 12 || buffer.toString('ascii', 0, 4) !== 'RIFF' || buffer.toString('ascii', 8, 12) !== 'WAVE') {
-    return null;
-  }
-
-  let offset = 12;
-  let numChannels: number | undefined;
-  let sampleRate: number | undefined;
-  let bitsPerSample: number | undefined;
-  let pcm: Buffer | undefined;
-
-  while (offset + 8 <= buffer.length) {
-    const chunkId = buffer.toString('ascii', offset, offset + 4);
-    const chunkSize = buffer.readUInt32LE(offset + 4);
-    const chunkStart = offset + 8;
-    const chunkEnd = Math.min(chunkStart + chunkSize, buffer.length);
-
-    if (chunkId === 'fmt ') {
-      numChannels = buffer.readUInt16LE(chunkStart + 2);
-      sampleRate = buffer.readUInt32LE(chunkStart + 4);
-      bitsPerSample = buffer.readUInt16LE(chunkStart + 14);
-    } else if (chunkId === 'data') {
-      pcm = buffer.subarray(chunkStart, chunkEnd);
-    }
-
-    // Chunks are word-aligned: a chunk with an odd size has one byte of padding after it.
-    offset = chunkStart + chunkSize + (chunkSize % 2);
-  }
-
-  if (numChannels === undefined || sampleRate === undefined || bitsPerSample === undefined || !pcm) {
-    return null;
-  }
-  return { pcm, numChannels, sampleRate, bitsPerSample };
-}
-
-/** Build a standard 44-byte canonical WAV header for the given PCM format/length. */
-function buildWavHeader(opts: { numChannels: number; sampleRate: number; bitsPerSample: number; dataLength: number }): Buffer {
-  const { numChannels, sampleRate, bitsPerSample, dataLength } = opts;
-  const blockAlign = numChannels * (bitsPerSample / 8);
-  const byteRate = sampleRate * blockAlign;
-
-  const header = Buffer.alloc(44);
-  header.write('RIFF', 0, 'ascii');
-  header.writeUInt32LE(36 + dataLength, 4);
-  header.write('WAVE', 8, 'ascii');
-  header.write('fmt ', 12, 'ascii');
-  header.writeUInt32LE(16, 16); // fmt chunk size (PCM)
-  header.writeUInt16LE(1, 20); // audio format = PCM
-  header.writeUInt16LE(numChannels, 22);
-  header.writeUInt32LE(sampleRate, 24);
-  header.writeUInt32LE(byteRate, 28);
-  header.writeUInt16LE(blockAlign, 32);
-  header.writeUInt16LE(bitsPerSample, 34);
-  header.write('data', 36, 'ascii');
-  header.writeUInt32LE(dataLength, 40);
-  return header;
-}
-
-/**
- * Splice a sequence of per-segment WAV buffers into one valid WAV file by
- * extracting each segment's PCM payload and re-wrapping the concatenated PCM
- * in a single header. Empty buffers (from empty/non-speech segments — see
- * synthesizeSegment) are skipped since they carry no header to parse.
- * Segments are expected to share the same format (they all come from the
- * same TTS voice/provider); if a segment doesn't parse as WAV, it's dropped
- * rather than corrupting the whole file.
- */
-function spliceWavSegments(buffers: Buffer[]): Buffer {
-  const parsed = buffers.map((b) => (b.length > 0 ? parseWavPcm(b) : null)).filter((p): p is WavPcm => p !== null);
-  if (parsed.length === 0) {
-    return Buffer.alloc(0);
-  }
-
-  const { numChannels, sampleRate, bitsPerSample } = parsed[0]!;
-  const pcm = Buffer.concat(parsed.map((p) => p.pcm));
-  const header = buildWavHeader({ numChannels, sampleRate, bitsPerSample, dataLength: pcm.length });
-  return Buffer.concat([header, pcm]);
-}
-
-// ============================================================================
-// Job store (in-memory — see file header note on why this is v1-only)
+// Job store (in-memory - see file header note on why this is v1-only)
 // ============================================================================
 
 type DubJobStatus = 'processing' | 'ready' | 'failed';
 
 interface DubSegmentResult {
   index: number;
+  /** Indexes of the original STT segments covered (more than one when sub-second backchannels were merged). */
+  source_indexes: number[];
   source_text: string;
   translated_text: string;
   start_sec: number;
   end_sec: number;
   speed_used: number;
+  /** Duration of the placed audio. */
+  synth_sec: number;
+  clamped: boolean;
+  tts_calls: number;
+  /** Where the segment actually starts in the dub, and how far that is from start_sec (drift >= 0). */
+  placed_start_sec: number;
+  drift_sec: number;
+  speaker: string | null;
+  voice_id: string;
+  skipped?: string;
 }
 
 interface DubJob {
   id: string;
   userId: string;
   status: DubJobStatus;
-  targetLanguage: string;
+  targetLanguage: string; // as submitted
+  targetLanguageCode: DubLanguage['code'];
   sourceLanguage: string | null;
-  voiceId: string;
+  /** voice_id requested by the caller (may be ignored if it is not a voice of the target language). */
+  voiceId: string | null;
   createdAt: string;
   updatedAt: string;
   segments?: DubSegmentResult[];
+  dropped?: Array<{ index: number; reason: DropReason; text: string }>;
+  voices?: Array<{ speaker: string | null; voice_id: string }>;
+  diarization?: 'stt_speaker_labels' | 'unavailable_single_voice';
+  warnings?: string[];
+  maxDriftSec?: number;
+  audioDurationSec?: number | null;
   audioPath?: string;
   audioUrl?: string;
   error?: string;
@@ -406,7 +313,7 @@ interface DubJob {
 const dubJobs = new Map<string, DubJob>();
 
 // Best-effort cleanup so this doesn't leak memory across a long-running
-// process — jobs older than an hour are dropped. Not a substitute for real
+// process - jobs older than an hour are dropped. Not a substitute for real
 // persistence; see file header.
 const JOB_TTL_MS = 60 * 60 * 1000;
 setInterval(() => {
@@ -426,6 +333,7 @@ function touchJob(job: DubJob) {
 
 async function runDubJob(
   job: DubJob,
+  lang: DubLanguage,
   audioBuffer: Buffer,
   filename: string,
   mimetype: string
@@ -434,75 +342,107 @@ async function runDubJob(
     // 1. STT
     const stt = await transcribeSourceAudio(audioBuffer, filename, mimetype, job.sourceLanguage ?? undefined);
     if (stt.segments.length === 0) {
-      throw new Error('Transcription returned no segments — nothing to dub.');
+      throw new Error('Transcription returned no segments - nothing to dub.');
     }
 
-    // Guard against pathologically long segments blowing the translation prompt.
-    const segments = stt.segments.map((s) => ({
+    // Independent audio length: the last STT segment end cannot be trusted (Whisper tail hallucinations).
+    const probed = await probeAudioDurationSec(audioBuffer, mimetype);
+    const audioDurationSec = probed ?? stt.reportedDurationSec;
+    job.audioDurationSec = audioDurationSec;
+
+    // 2. Clean: drop hallucinations / past-the-end segments, merge sub-second backchannels.
+    const truncated = stt.segments.map((s) => ({
       ...s,
       text: s.text.length > MAX_SEGMENT_CHARS ? s.text.slice(0, MAX_SEGMENT_CHARS) : s.text,
     }));
-
-    // 2. Translate
-    const translations = await translateSegments(segments, job.targetLanguage);
-
-    // 3. Synthesize each segment with speed-matching
-    const buffers: Buffer[] = [];
-    const segmentResults: DubSegmentResult[] = [];
-
-    for (let i = 0; i < segments.length; i++) {
-      const seg = segments[i]!;
-      const translated = translations[i] ?? '';
-      const targetDurationSec = Math.max(seg.end - seg.start, 0.1);
-
-      const { audioBuffer: segAudio, speedUsed } = await synthesizeSegment(
-        translated,
-        job.voiceId,
-        targetDurationSec
-      );
-
-      buffers.push(segAudio);
-      segmentResults.push({
-        index: i,
-        source_text: seg.text,
-        translated_text: translated,
-        start_sec: seg.start,
-        end_sec: seg.end,
-        speed_used: speedUsed,
-      });
+    const { kept: segments, dropped } = sanitizeSegments(truncated, audioDurationSec);
+    job.dropped = dropped.map((d) => ({ index: d.index, reason: d.reason, text: (stt.segments[d.index]?.text ?? '').slice(0, 200) }));
+    if (segments.length === 0) {
+      throw new Error('No usable speech segments after removing silence/hallucinated segments - nothing to dub.');
     }
 
-    // 4. Splice. v1 approximation: no silence-gap padding between segments
-    // and no container-level remuxing (no ffmpeg in this repo — see file
-    // header) — segments are placed back to back with no regard for the
-    // source segment gaps. This is NOT a raw Buffer.concat of the per-segment
-    // buffers though: each one is its own complete WAV file (RIFF header +
-    // PCM data), so naive concatenation would glue multiple headers together
-    // into an invalid file that most players truncate at the first segment.
-    // spliceWavSegments() strips each segment down to its PCM payload and
-    // wraps the combined PCM in a single valid header (see WAV splicing
-    // section above) — not a substitute for real audio muxing.
-    const finalAudio = spliceWavSegments(buffers);
+    // 3. Voices: one stock voice per speaker label (a single voice when the STT output has no labels).
+    const speakers: Array<string | undefined> = [];
+    for (const s of segments) if (!speakers.includes(s.speaker)) speakers.push(s.speaker);
+    const assignment = assignSpeakerVoices(lang, speakers, job.voiceId ?? undefined);
+    const warnings: string[] = [];
+    if (assignment.ignoredRequestedVoice) {
+      warnings.push(`voice_id "${assignment.ignoredRequestedVoice}" is not a ${lang.name} voice and was ignored; using the default ${lang.name} voice.`);
+    }
+    if (assignment.collapsed) warnings.push(`More speakers than ${lang.name} stock voices: some speakers share a voice.`);
+    if (lang.note) warnings.push(lang.note);
+    job.diarization = speakers.some((sp) => sp !== undefined) ? 'stt_speaker_labels' : 'unavailable_single_voice';
+    job.voices = speakers.map((sp) => ({ speaker: sp ?? null, voice_id: assignment.voiceBySpeaker.get(sp)! }));
+    job.warnings = warnings;
 
+    // 4. Translate (with length budget)
+    const sourceCode = job.sourceLanguage ?? stt.language ?? 'en';
+    const sourceName = resolveDubLanguage(sourceCode)?.name ?? sourceCode;
+    const { translations } = await translateSegments(segments, lang, sourceName);
+
+    // 5. Synthesize with measured-duration refit and place on the source timeline.
+    const fit = await fitAndPlace({
+      segments: segments.map((seg, i) => ({
+        index: i,
+        slotStart: seg.start,
+        slotEnd: seg.end,
+        text: translations[i] ?? '',
+        speaker: seg.speaker,
+        voiceId: assignment.voiceBySpeaker.get(seg.speaker)!,
+      })),
+      synth: (text, voiceId, speed) => synthesizeWav(lang, text, voiceId, speed),
+      sourceDurationSec: audioDurationSec ?? segments[segments.length - 1]!.end,
+    });
+
+    const segmentResults: DubSegmentResult[] = segments.map((seg, i) => {
+      const f: FitResult = fit.segments[i]!;
+      return {
+        index: i,
+        source_indexes: seg.sourceIndexes,
+        source_text: seg.text,
+        translated_text: translations[i] ?? '',
+        start_sec: seg.start,
+        end_sec: seg.end,
+        speed_used: f.speedUsed,
+        synth_sec: f.synthSec,
+        clamped: f.clamped,
+        tts_calls: f.ttsCalls,
+        placed_start_sec: f.placedStartSec,
+        drift_sec: f.driftSec,
+        speaker: seg.speaker ?? null,
+        voice_id: f.voiceId,
+        ...(f.skipped ? { skipped: f.skipped } : {}),
+      };
+    });
+    if (segmentResults.every((r) => r.skipped)) {
+      throw new Error('Text-to-speech produced no audio for any segment.');
+    }
+    const skippedCount = segmentResults.filter((r) => r.skipped === 'undecodable_audio').length;
+    if (skippedCount > 0) warnings.push(`${skippedCount} segment(s) could not be synthesized and are silent in the dub.`);
+
+    const finalAudio = fit.wav;
     const audioPath = `audio/dubbing/${job.userId}/${job.id}.wav`;
     await uploadAudioToCache(audioPath, finalAudio, 'wav');
     const audioUrl = await getSignedAudioUrl(audioPath);
 
     job.segments = segmentResults;
+    job.maxDriftSec = fit.maxDriftSec;
     job.audioPath = audioPath;
     job.audioUrl = audioUrl ?? undefined;
     job.status = 'ready';
     touchJob(job);
 
     dubLogger.info(
-      { jobId: job.id, segments: segmentResults.length, bytes: finalAudio.length },
+      { jobId: job.id, lang: lang.code, segments: segmentResults.length, dropped: dropped.length, maxDriftSec: fit.maxDriftSec, bytes: finalAudio.length },
       'Dubbing job completed'
     );
 
     // Billed per second of SOURCE audio (rounded up, with a minimum) on the character meter, see
-    // AUDIO_JOB_PRICING in realtimeTtsBilling.ts. Fire-and-forget: never awaited into the job
-    // result, and a metering failure must never turn a successful dub into a failed job.
-    reportDubbingUsage(job.userId, stt.durationSec, job.id).catch((err: unknown) =>
+    // AUDIO_JOB_PRICING in realtimeTtsBilling.ts. Use the independently known audio length when we have it
+    // so a hallucinated tail segment is never billed. Fire-and-forget: a metering failure must never turn a
+    // successful dub into a failed job.
+    const billedSec = audioDurationSec ?? stt.durationSec;
+    reportDubbingUsage(job.userId, billedSec, job.id).catch((err: unknown) =>
       dubLogger.warn({ err, jobId: job.id, userId: job.userId }, 'Dubbing billing report failed (non-critical)')
     );
   } catch (error) {
@@ -581,13 +521,22 @@ dubRouter.post('/', upload.single('audio'), asyncHandler(async (req: Authenticat
 
   const { target_language, source_language, voice_id } = parseResult.data;
 
+  const lang = resolveDubLanguage(target_language);
+  if (!lang) {
+    throw new ValidationError(
+      `Target language "${target_language}" is not supported for dubbing. Supported: ${supportedDubLanguageList().join(', ')}.`,
+      { supported: supportedDubLanguageList() }
+    );
+  }
+
   const job: DubJob = {
     id: randomUUID(),
     userId,
     status: 'processing',
     targetLanguage: target_language,
+    targetLanguageCode: lang.code,
     sourceLanguage: source_language ?? null,
-    voiceId: voice_id ?? getDefaultVoiceId(),
+    voiceId: voice_id ?? null,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
@@ -601,7 +550,7 @@ dubRouter.post('/', upload.single('audio'), asyncHandler(async (req: Authenticat
   // Fire-and-forget: async processing, client polls GET /api/dub/:jobId.
   // (No queue/worker infra for this feature yet — runs inline in this
   // process, same tradeoff as the in-memory job store above.)
-  void runDubJob(job, file.buffer, file.originalname || 'source-audio', file.mimetype);
+  void runDubJob(job, lang, file.buffer, file.originalname || 'source-audio', file.mimetype);
 
   res.status(202).json({
     job_id: job.id,
@@ -627,12 +576,56 @@ dubRouter.get('/:jobId', asyncHandler(async (req: AuthenticatedRequest, res: Res
   res.json({
     job_id: job.id,
     status: job.status,
-    target_language: job.targetLanguage,
+    target_language: job.targetLanguageCode,
     source_language: job.sourceLanguage,
     audio_url: job.audioUrl,
+    audio_duration_sec: job.audioDurationSec ?? undefined,
+    max_start_drift_sec: job.maxDriftSec,
     segments: job.segments,
+    dropped_segments: job.dropped,
+    voices: job.voices,
+    diarization: job.diarization,
+    warnings: job.warnings,
     error: job.error,
     created_at: job.createdAt,
     updated_at: job.updatedAt,
   });
+}));
+
+// --------------------------------------------------------------------------
+// GET /api/dub/:jobId/subtitles?format=srt|vtt&text=translated|source
+// Cues use the DUB timeline for translated text (so they match the audio we return) and the SOURCE timeline
+// for source text.
+// --------------------------------------------------------------------------
+dubRouter.get('/:jobId/subtitles', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+  const userId = req.user.id;
+  const { jobId } = req.params;
+  if (!jobId) throw new ValidationError('Job ID is required');
+
+  const job = dubJobs.get(jobId);
+  if (!job || job.userId !== userId) throw new NotFoundError('Dubbing job');
+
+  const format = String(req.query['format'] ?? 'srt').toLowerCase();
+  if (format !== 'srt' && format !== 'vtt') throw new ValidationError('format must be "srt" or "vtt"');
+  const which = String(req.query['text'] ?? 'translated').toLowerCase();
+  if (which !== 'translated' && which !== 'source') throw new ValidationError('text must be "translated" or "source"');
+
+  if (job.status !== 'ready' || !job.segments) {
+    res.status(409).json({ error: `Dubbing job is ${job.status}; subtitles are available once it is ready.` });
+    return;
+  }
+
+  const cues: Cue[] = job.segments
+    .filter((s) => !(which === 'translated' && s.skipped))
+    .map((s) =>
+      which === 'translated'
+        ? { start: s.placed_start_sec, end: s.placed_start_sec + (s.synth_sec > 0 ? s.synth_sec : s.end_sec - s.start_sec), text: s.translated_text }
+        : { start: s.start_sec, end: s.end_sec, text: s.source_text }
+    );
+
+  const body = format === 'srt' ? toSrt(cues) : toVtt(cues);
+  res
+    .status(200)
+    .type(format === 'srt' ? 'application/x-subrip; charset=utf-8' : 'text/vtt; charset=utf-8')
+    .send(body);
 }));

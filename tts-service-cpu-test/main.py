@@ -117,6 +117,22 @@ EDGE_TTS_LANG_MAP = {
     "pt": {"female": "pt-BR-FranciscaNeural", "male": "pt-BR-AntonioNeural"},
 }
 
+# kokoro-onnx `lang` (espeak language) for a native non-English Kokoro voice, keyed by the voice id's first letter.
+# Used when a caller (e.g. the dubbing route) asks for a native voice such as em_alex / ff_siwis / hm_omega explicitly:
+# that request is served by Kokoro with the right G2P instead of being rerouted to Edge TTS. English voices (a/b)
+# are intentionally absent: the English path is unchanged.
+KOKORO_ONNX_LANG_BY_VOICE_PREFIX = {
+    "e": "es", "f": "fr-fr", "h": "hi", "i": "it", "p": "pt-br", "j": "ja", "z": "cmn",
+}
+
+
+def onnx_lang_for_voice(voice_id: str):
+    """kokoro-onnx lang for a native non-English voice id, else None."""
+    if voice_id in KOKORO_VOICES and voice_id[:1] in KOKORO_ONNX_LANG_BY_VOICE_PREFIX:
+        return KOKORO_ONNX_LANG_BY_VOICE_PREFIX[voice_id[:1]]
+    return None
+
+
 # Map builtin voice IDs to Kokoro voices (same as GPU service)
 BUILTIN_VOICES = {
     "default": {"name": "Heart (Default)", "kokoro_voice": "af_heart"},
@@ -254,6 +270,12 @@ def chunk_for_kokoro(text: str, language: str, max_chars: int = 25) -> list:
         max_chars = 400
         if len(text) <= max_chars:
             return [text]
+    elif lang.split("-")[0] in ("es", "fr", "it", "pt"):
+        # Latin-script, ~1 phoneme per char like English: 25-char chunks would shred a dubbing segment into choppy
+        # pieces with 150 ms gaps (and wreck its timing). 300 chars stays far below the 510-phoneme cap.
+        max_chars = 300
+        if len(text) <= max_chars:
+            return [text]
 
     sentences = re.split(r"(?<=[。！？\.!?])\s*", text)
     sentences = [s.strip() for s in sentences if s.strip()]
@@ -299,7 +321,11 @@ def synthesize_with_kokoro_onnx(text: str, voice_id: str, speed: float, language
 
     model = load_kokoro()
     processed_text = preprocess_text_for_kokoro(text)
-    kokoro_lang = kokoro_lang_for(language)
+    # A native non-English voice fixes the language regardless of the `language` hint (see route_voice_for_language).
+    native_lang = onnx_lang_for_voice(voice_id)
+    kokoro_lang = native_lang or kokoro_lang_for(language)
+    if native_lang:
+        language = native_lang
 
     chunks = chunk_for_kokoro(processed_text, language)
     logger.info(
@@ -443,7 +469,7 @@ def resolve_voice(voice_id: str) -> str:
         return voice_info["kokoro_voice"]
 
     # Check if it's a direct Kokoro voice ID
-    if re.match(r'^[ab][fm]_\w+$', voice_id) and voice_id in KOKORO_VOICES:
+    if voice_id in KOKORO_VOICES:  # any language: af_/am_/bf_/bm_ and em_/ff_/hm_/... (was [ab][fm]_ only)
         return voice_id
 
     # Default fallback
@@ -464,6 +490,10 @@ def route_voice_for_language(voice_id: str, language: str) -> tuple:
       4. Else fall back to the resolved English voice (preserves legacy behavior).
     """
     lang = (language or "en").lower()
+    # A native non-English voice asked for by id wins over the language routing below: the caller chose a Kokoro
+    # voice, and the voice id fixes the G2P (the dubbing route sends language 'es' with em_alex, etc.).
+    if onnx_lang_for_voice(voice_id) is not None:
+        return ("kokoro", voice_id)
     # Edge TTS path
     if lang in EDGE_TTS_LANG_MAP:
         # Best-effort: anything from `am_*`/`bm_*`/`jm_*`/etc. → male voice, else female.

@@ -51,6 +51,7 @@ COPY download_models.py .
 RUN python download_models.py
 
 # Copy application code
+COPY kokoro_langs.py .
 COPY main.py .
 
 # Environment variables

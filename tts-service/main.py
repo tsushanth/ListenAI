@@ -15,6 +15,8 @@ import re
 import time
 import hashlib
 import logging
+
+import kokoro_langs as kl
 import tempfile
 import shutil
 from typing import Optional, List
@@ -291,11 +293,24 @@ def load_xtts():
 
     return xtts_model
 
-def load_kokoro():
-    """Load Kokoro-82M model."""
+_kokoro_pipelines = kl.PipelineCache(lambda lc: _build_kokoro_pipeline(lc))
+
+
+def _build_kokoro_pipeline(lang_code: str):
+    from kokoro import KPipeline
+    start_time = time.time()
+    p = KPipeline(lang_code=lang_code)  # one pipeline per Kokoro lang_code (a/b English, e Spanish, f French, h Hindi, ...)
+    logger.info(f"Kokoro pipeline lang_code={lang_code!r} loaded in {time.time() - start_time:.2f}s")
+    return p
+
+
+def load_kokoro(lang_code: str = 'a'):
+    """Load Kokoro-82M for a lang_code. English ('a') stays in the `kokoro_pipeline` global that health checks read."""
     global kokoro_pipeline
-    if kokoro_pipeline is not None:
-        return kokoro_pipeline
+    pipeline = _kokoro_pipelines.get(lang_code)
+    if lang_code == 'a':
+        kokoro_pipeline = pipeline
+    return pipeline
 
     logger.info("Loading Kokoro-82M model...")
     start_time = time.time()
@@ -430,6 +445,8 @@ KOKORO_VOICES = {
     "bm_george": "British Male - George",
     "bm_lewis": "British Male - Lewis",
 }
+# Non-English voices (es/fr/hi/it/pt-br) so dubbing can ask for them by id; see kokoro_langs.py.
+KOKORO_VOICES.update(kl.KOKORO_VOICES)
 
 # Unified voice presets with mappings for each model
 BUILTIN_VOICES = {
@@ -1150,18 +1167,21 @@ def preprocess_text_for_kokoro(text: str) -> str:
     return text
 
 
-def synthesize_with_kokoro(text: str, voice_info: dict, speed: float) -> tuple:
-    """Synthesize using Kokoro-82M model."""
-    pipeline = load_kokoro()
+def synthesize_with_kokoro(text: str, voice_info: dict, speed: float, language: str = None) -> tuple:
+    """Synthesize using Kokoro-82M model, with the KPipeline for the voice's / request's language."""
     voice = voice_info.get("kokoro_voice", "am_adam")  # Default to Adam (male) voice
 
     # Log warning if falling back to default voice
     if voice == "am_adam" and "kokoro_voice" not in voice_info:
         logger.warning(f"No kokoro_voice in voice_info, falling back to am_adam. voice_info: {voice_info}")
 
-    # Preprocess text to handle paragraph breaks properly
-    processed_text = preprocess_text_for_kokoro(text)
-    logger.info(f"Kokoro synthesis with voice: {voice}, voice_info: {voice_info}, original len: {len(text)}, processed len: {len(processed_text)}")
+    # The voice id's first letter IS Kokoro's lang_code; the request language decides when the voice is a generic/English alias.
+    voice, lang_code = kl.plan(voice, language, bool(voice_info.get("explicit_kokoro")))
+    pipeline = load_kokoro(lang_code)
+
+    # English keeps the legacy pronunciation fixes; other languages must not get them (they corrupt e.g. Italian 'in').
+    processed_text = preprocess_text_for_kokoro(text) if kl.is_english(lang_code) else kl.preprocess_non_english(text)
+    logger.info(f"Kokoro synthesis with voice: {voice}, lang_code: {lang_code}, original len: {len(text)}, processed len: {len(processed_text)}")
 
     # Kokoro returns a generator of (graphemes, phonemes, audio) tuples
     # For single text, we get one result
@@ -1216,12 +1236,13 @@ async def synthesize(request: SynthesizeRequest, background_tasks: BackgroundTas
 
         # If not found, check if it's a direct Kokoro voice ID (e.g., am_adam, af_bella)
         if voice_info is None:
-            if re.match(r'^[ab][fm]_\w+$', request.voice_id) and request.voice_id in KOKORO_VOICES:
+            if kl.is_direct_kokoro_voice(request.voice_id):
                 # It's a valid Kokoro voice ID - create voice_info on the fly
                 logger.info(f"Using direct Kokoro voice ID: {request.voice_id}")
                 voice_info = {
                     "name": KOKORO_VOICES.get(request.voice_id, request.voice_id),
                     "kokoro_voice": request.voice_id,
+                    "explicit_kokoro": True,
                     "xtts_speaker": XTTS_DEFAULT_SPEAKER,
                 }
             else:
@@ -1232,7 +1253,7 @@ async def synthesize(request: SynthesizeRequest, background_tasks: BackgroundTas
         # Synthesize based on model type
         if model_type == "kokoro":
             wav_array, sample_rate = synthesize_with_kokoro(
-                request.text, voice_info, request.speed
+                request.text, voice_info, request.speed, request.language
             )
         else:
             wav_array, sample_rate = synthesize_with_xtts(
@@ -1293,11 +1314,12 @@ async def synthesize_long(request: SynthesizeLongRequest):
 
     # If not found, check if it's a direct Kokoro voice ID
     if voice_info is None:
-        if re.match(r'^[ab][fm]_\w+$', request.voice_id) and request.voice_id in KOKORO_VOICES:
+        if kl.is_direct_kokoro_voice(request.voice_id):
             logger.info(f"Using direct Kokoro voice ID: {request.voice_id}")
             voice_info = {
                 "name": KOKORO_VOICES.get(request.voice_id, request.voice_id),
                 "kokoro_voice": request.voice_id,
+                    "explicit_kokoro": True,
                 "xtts_speaker": XTTS_DEFAULT_SPEAKER,
             }
         else:
@@ -1321,7 +1343,7 @@ async def synthesize_long(request: SynthesizeLongRequest):
             else:
                 logger.info(f"Kokoro fast path: synthesizing {total_chars} chars in single pass")
                 combined_audio, sample_rate = synthesize_with_kokoro(
-                    request.text, voice_info, request.speed
+                    request.text, voice_info, request.speed, request.language
                 )
 
                 audio_buffer = io.BytesIO()
@@ -1431,11 +1453,12 @@ async def synthesize_stream(request: SynthesizeLongRequest):
 
     # If not found, check if it's a direct Kokoro voice ID
     if voice_info is None:
-        if re.match(r'^[ab][fm]_\w+$', request.voice_id) and request.voice_id in KOKORO_VOICES:
+        if kl.is_direct_kokoro_voice(request.voice_id):
             logger.info(f"Using direct Kokoro voice ID: {request.voice_id}")
             voice_info = {
                 "name": KOKORO_VOICES.get(request.voice_id, request.voice_id),
                 "kokoro_voice": request.voice_id,
+                    "explicit_kokoro": True,
                 "xtts_speaker": XTTS_DEFAULT_SPEAKER,
             }
         else:
@@ -1462,7 +1485,7 @@ async def synthesize_stream(request: SynthesizeLongRequest):
                     # Synthesize based on model type
                     if model_type == "kokoro":
                         wav_array, sr = synthesize_with_kokoro(
-                            chunk_text_content, voice_info, request.speed
+                            chunk_text_content, voice_info, request.speed, request.language
                         )
                     else:
                         wav_array, sr = synthesize_with_xtts(

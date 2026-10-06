@@ -12,6 +12,9 @@ pydantic==2.5.3
 
 # Kokoro-82M - Fast, lightweight, Apache 2.0 license (commercial OK)
 kokoro==0.9.4
+# Non-English Kokoro (es/fr/hi/it/pt) phonemises through espeak-ng via misaki.espeak:
+phonemizer-fork==3.3.2
+espeakng-loader==0.2.4
 
 # NOTE: Chatterbox TTS is installed separately in Dockerfile with --no-build-isolation
 # to avoid pkuseg build issues
