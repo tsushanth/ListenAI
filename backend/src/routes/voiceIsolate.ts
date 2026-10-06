@@ -11,6 +11,7 @@ import { config } from '../lib/config.js';
 import { supabase } from '../lib/supabaseClient.js';
 import { hasUsageAllowance, freeCreditsExhaustedMessage, reportVoiceIsolateUsage } from '../lib/realtimeTtsBilling.js';
 import { logger } from '../lib/logger.js';
+import { decideDeploy } from '../lib/perUserDeploy.js';
 
 const log = logger.child({ module: 'voiceIsolate' });
 
@@ -25,13 +26,14 @@ interface UserDeployment {
   modal_url: string;
   modal_secret: string;
   status: string;
+  updated_at?: string | null;
   job_count: number;
 }
 
 async function getUserDeployment(userId: string): Promise<UserDeployment | null> {
   const { data, error } = await supabase
     .from('user_voice_isolate_deployments')
-    .select('app_name, modal_url, modal_secret, status')
+    .select('app_name, modal_url, modal_secret, status, updated_at')
     .eq('user_id', userId)
     .single();
   if (error || !data || Array.isArray(data)) return null;
@@ -128,6 +130,9 @@ async function modalAppStop(appName: string): Promise<void> {
   await execAsync(`modal app stop ${appName}`, { env: modalEnv(), timeout: 30000 });
 }
 
+// Indirection so tests can stub the Modal CLI (no subprocess in unit tests).
+export const modalOps = { secretCreate: modalSecretCreate, deploy: modalDeploy, appStop: modalAppStop };
+
 // --------------------------------------------------------------------------
 // Helpers
 // --------------------------------------------------------------------------
@@ -200,7 +205,12 @@ export const voiceIsolateRouter: Router = (() => {
     try {
       const userId = (req as Request & { userId?: string }).userId!;
       const dep = await getUserDeployment(userId);
-      if (!dep) { res.status(404).json({ error: 'No deployment found.' }); return; }
+      if (!dep) {
+        // A shared endpoint serves everyone: report it as ready instead of a 404 that sends clients into POST /deploy.
+        if (await getGlobalFallback()) { res.json({ status: 'ready', shared: true }); return; }
+        res.status(404).json({ error: 'No deployment found.' });
+        return;
+      }
       // Never return the secret
       res.json({ app_name: dep.app_name, modal_url: dep.modal_url, status: dep.status });
     } catch (e) { next(e); }
@@ -210,8 +220,22 @@ export const voiceIsolateRouter: Router = (() => {
     try {
       const userId = (req as Request & { userId?: string }).userId!;
       const existing = await getUserDeployment(userId);
-      if (existing) {
-        res.status(409).json({ error: 'You already have an active deployment.', deployment: { app_name: existing.app_name, modal_url: existing.modal_url, status: existing.status } });
+      const decision = decideDeploy({
+        existing,
+        sharedConfigured: !!(await getGlobalFallback()),
+        perUserDeployForced: process.env.VOICE_PER_USER_DEPLOY === '1',
+      });
+      if (decision.action === 'shared') {
+        // The backend already has a shared, always-available endpoint: no per-user `modal deploy` (209 s uncached,
+        // against a 180 s timeout) and nothing to wait for.
+        res.status(200).json({ status: 'ready', shared: true });
+        return;
+      }
+      if (decision.action === 'conflict') {
+        res.status(409).json({
+          error: decision.reason === 'in_progress' ? 'A deployment is already in progress.' : 'You already have an active deployment.',
+          deployment: existing && { app_name: existing.app_name, modal_url: existing.modal_url, status: existing.status },
+        });
         return;
       }
 
@@ -228,8 +252,16 @@ export const voiceIsolateRouter: Router = (() => {
       const workspace = config.MODAL_WORKSPACE || 't-sushanth';
       const modalUrl = `https://${workspace}--${appName}-api.modal.run`;
 
-      // Insert deploying row
-      await supabase.from('user_voice_isolate_deployments').insert({
+      if (decision.action === 'retry' && existing) {
+        // A failed (or stuck) attempt used to block this user forever. Drop the dead row, stop whatever it left
+        // behind (best effort; scripts/cleanup-stale-voice-deployments.ts sweeps leftovers) and start over.
+        log.info({ userId, previous: existing.app_name, previousStatus: existing.status }, 'retrying isolate deployment');
+        await supabase.from('user_voice_isolate_deployments').delete().eq('user_id', userId);
+        modalOps.appStop(existing.app_name).catch((err: unknown) => log.warn({ userId, err }, 'stop of previous isolate app failed (non-critical)'));
+      }
+
+      // Insert deploying row. user_id is the primary key, so a concurrent POST loses here instead of double-deploying.
+      const { error: insertError } = await supabase.from('user_voice_isolate_deployments').insert({
         user_id: userId,
         app_name: appName,
         modal_url: modalUrl,
@@ -237,22 +269,28 @@ export const voiceIsolateRouter: Router = (() => {
         status: 'deploying',
         job_count: 0,
       });
+      if (insertError) {
+        res.status(409).json({ error: 'A deployment is already in progress.' });
+        return;
+      }
 
       // Fire-and-forget the actual deployment (Update DB on finish)
       (async () => {
         try {
-          await modalSecretCreate(secretName, 'ISOLATE_SECRET', secretValue);
-          await modalDeploy(`-${suffix}`, secretName);
+          await modalOps.secretCreate(secretName, 'ISOLATE_SECRET', secretValue);
+          await modalOps.deploy(`-${suffix}`, secretName);
           await supabase.from('user_voice_isolate_deployments')
             .update({ status: 'ready', updated_at: new Date().toISOString() })
-            .eq('user_id', userId);
+            .eq('user_id', userId)
+            .eq('app_name', appName); // a late finish of a superseded attempt must not touch its replacement
           log.info({ userId, appName }, 'voice isolate deployment ready');
         } catch (err: unknown) {
           const msg = err instanceof Error ? err.message : String(err);
           log.error({ userId, appName, err }, 'voice isolate deployment failed');
           await supabase.from('user_voice_isolate_deployments')
             .update({ status: 'failed', updated_at: new Date().toISOString() })
-            .eq('user_id', userId);
+            .eq('user_id', userId)
+            .eq('app_name', appName); // a late finish of a superseded attempt must not touch its replacement
         }
       })();
 
@@ -273,7 +311,7 @@ export const voiceIsolateRouter: Router = (() => {
       }
 
       // Best-effort stop
-      try { await modalAppStop(dep.app_name); } catch (err: unknown) {
+      try { await modalOps.appStop(dep.app_name); } catch (err: unknown) {
         log.warn({ userId, app_name: dep.app_name, err }, 'modal app stop failed (may already be stopped)');
       }
 
