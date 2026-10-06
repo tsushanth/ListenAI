@@ -42,6 +42,7 @@ import {
   chunkRanges, TRANSLATION_BATCH, type TranslationInputItem,
 } from '../lib/dubTranslation.js';
 import { probeAudioDurationSec } from '../lib/audioProbe.js';
+import { createDubSynth } from '../lib/dubTts.js';
 import { uploadAudioToCache, getSignedAudioUrl } from '../lib/supabaseClient.js';
 import { hasUsageAllowance, freeCreditsExhaustedMessage, reportDubbingUsage } from '../lib/realtimeTtsBilling.js';
 import type { AuthenticatedRequest, DBVoice } from '../types/index.js';
@@ -228,7 +229,7 @@ async function translateSegments(
 
 /**
  * Synthesize one piece of translated text through the self-hosted (Kokoro) provider and return the WAV.
- * The language and the Kokoro voice id are passed through as-is: before this fix the voice always said
+ * The language and the voice id (Kokoro for English, Piper house voice for es/fr) are passed through as-is: before this fix the voice always said
  * language 'en-US' and normalizeVoiceId() coerced every non-American/British voice to am_adam.
  * (The selfhosted path ignores `format` and always returns WAV - see ttsProviderClient.ts.)
  */
@@ -380,7 +381,12 @@ async function runDubJob(
     const sourceName = resolveDubLanguage(sourceCode)?.name ?? sourceCode;
     const { translations } = await translateSegments(segments, lang, sourceName);
 
-    // 5. Synthesize with measured-duration refit and place on the source timeline.
+    // 5. Synthesize with measured-duration refit and place on the source timeline. Backend: DUB_TTS_BACKEND=gpu|cpu (lib/dubTts.ts).
+    const synth = await createDubSynth(lang, {
+      providerSynth: synthesizeWav,
+      defaultGatewayUrl: STT_GATEWAY_URL,
+      fallbackApiKey: STT_API_KEY,
+    });
     const fit = await fitAndPlace({
       segments: segments.map((seg, i) => ({
         index: i,
@@ -390,7 +396,10 @@ async function runDubJob(
         speaker: seg.speaker,
         voiceId: assignment.voiceBySpeaker.get(seg.speaker)!,
       })),
-      synth: (text, voiceId, speed) => synthesizeWav(lang, text, voiceId, speed),
+      synth,
+      trimSilence: lang.engine === 'piper',
+      minSpeed: lang.speedRange.min,
+      maxSpeed: lang.speedRange.max,
       sourceDurationSec: audioDurationSec ?? segments[segments.length - 1]!.end,
     });
 
@@ -525,6 +534,12 @@ dubRouter.post('/', upload.single('audio'), asyncHandler(async (req: Authenticat
   if (!lang) {
     throw new ValidationError(
       `Target language "${target_language}" is not supported for dubbing. Supported: ${supportedDubLanguageList().join(', ')}.`,
+      { supported: supportedDubLanguageList() }
+    );
+  }
+  if (!lang.offered) {
+    throw new ValidationError(
+      `Dubbing into ${lang.name} is not offered yet. Offered: ${supportedDubLanguageList().join(', ')}.`,
       { supported: supportedDubLanguageList() }
     );
   }

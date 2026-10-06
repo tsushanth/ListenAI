@@ -7,13 +7,19 @@
 // (a=American, b=British, e=Spanish, f=French, h=Hindi, i=Italian, p=Brazilian Portuguese, j=Japanese,
 // z=Mandarin). Voice ids are from the Kokoro-82M VOICES.md.
 //
-// Languages deliberately NOT offered:
-//  - ja / zh: Kokoro supports them but needs misaki[ja]/misaki[zh] (pyopenjtalk, jieba...) which the TTS
-//    service images do not install, and nobody has listened to them. Add after a listening pass.
-//  - de, ko, ar, ru, ...: Kokoro has no voices for them. Failing with a 400 beats silently reading German
-//    with an English voice.
+// ENGINES (owner decision 2026-10-06, memory project_voice_provenance_gate): es and fr dub with PIPER voices whose data and
+// lineage are clean (tier A in realtime-tts voices/catalog.json, CC BY 4.0): fr-fr-mls-f/m (Multilingual LibriSpeech) and
+// es-pilot-f/m (CML-TTS; a PILOT model, ~15.4k steps, WER ~0.21 by Whisper, accent unlabelled, quality unverified by ear).
+// Kokoro is NOT used for Spanish/French (Kokoro Spanish has no data statement). English keeps Kokoro as before.
+// The CC BY 4.0 attribution strings for the Piper voices are in each voice's owner.json / catalog.json and must be shown
+// wherever the output is published.
+//
+// Languages known but NOT offered yet (`offered: false` -> 400 "not offered yet"): hi, it, pt (Kokoro only, no listening
+// pass, no demand), ja, zh (Kokoro needs misaki[ja/zh], not installed). Re-enable by flipping `offered` once there is a
+// provenance-clean engine/voice and a listening pass; nothing else needs to change.
+// Languages with no voices at all (de, ko, ar, ru, ...): resolveDubLanguage returns null -> 400 "not supported".
 
-export type DubLanguageCode = 'en' | 'es' | 'fr' | 'hi' | 'it' | 'pt';
+export type DubLanguageCode = 'en' | 'es' | 'fr' | 'hi' | 'it' | 'pt' | 'ja' | 'zh';
 
 export interface DubLanguage {
   code: DubLanguageCode;
@@ -22,12 +28,18 @@ export interface DubLanguage {
   /** Name used in the translation prompt. */
   name: string;
   bcp47: string;
-  /** Kokoro KPipeline lang_code. */
+  /** TTS engine family: 'piper' voices are served by the Piper worker, 'kokoro' by the Kokoro services. */
+  engine: 'kokoro' | 'piper';
+  /** Offered for dubbing right now? false -> the route answers 400 "not offered yet". */
+  offered: boolean;
+  /** Kokoro KPipeline lang_code (also the espeak language family letter; informational for Piper voices). */
   kokoroLangCode: string;
+  /** Allowed speed (Piper: 1/length_scale) range for the measured-duration refit. */
+  speedRange: { min: number; max: number };
   voices: { female: string[]; male: string[] };
   /**
-   * Characters per second Kokoro produces at speed 1.0. MEASURED for es/fr/hi from the S3 run (median of
-   * unclamped 1.5 s+ segments: es 16.6, fr 17.2, hi 11.1). en/it/pt are NOT measured (estimates); the
+   * Characters per second the voice produces at speed 1.0. MEASURED for the offered Piper es/fr voices (see the constants
+   * below) and for Kokoro hi (S3: 11.1); en/it/pt/ja/zh are NOT measured (estimates); the
    * measured-duration refit corrects any error, this only sizes the translator's length budget.
    */
   charsPerSec: number;
@@ -36,45 +48,59 @@ export interface DubLanguage {
   note?: string;
 }
 
+// MEASURED (Piper es-pilot-m/f 16.1/15.6, fr-fr-mls-m/f 15.0/15.2 chars/s at speed 1.0: median over ~55 S3 translations of 1.5 s+ slots).
+const PIPER_CPS_ES = 15.8;
+const PIPER_CPS_FR = 15.1;
+const KOKORO_SPEED = { min: 0.8, max: 1.7 };
+const PIPER_SPEED = { min: 0.8, max: 1.5 }; // Piper: speed = 1/length_scale; see PR notes for the measured trade-off
+
 const EN_US: DubLanguage = {
-  code: 'en', variant: 'en-us', name: 'English', bcp47: 'en-US', kokoroLangCode: 'a',
+  code: 'en', variant: 'en-us', name: 'English', bcp47: 'en-US', engine: 'kokoro', offered: true, kokoroLangCode: 'a', speedRange: KOKORO_SPEED,
   voices: { female: ['af_heart', 'af_bella', 'af_nicole', 'af_sarah', 'af_sky'], male: ['am_adam', 'am_michael'] },
   charsPerSec: 15, cpsMeasured: false,
 };
 const EN_GB: DubLanguage = {
-  code: 'en', variant: 'en-gb', name: 'English (British)', bcp47: 'en-GB', kokoroLangCode: 'b',
+  code: 'en', variant: 'en-gb', name: 'English (British)', bcp47: 'en-GB', engine: 'kokoro', offered: true, kokoroLangCode: 'b', speedRange: KOKORO_SPEED,
   voices: { female: ['bf_emma', 'bf_isabella'], male: ['bm_george', 'bm_lewis'] },
   charsPerSec: 15, cpsMeasured: false,
 };
 const ES: DubLanguage = {
-  code: 'es', variant: 'es', name: 'Spanish', bcp47: 'es-ES', kokoroLangCode: 'e',
-  voices: { female: ['ef_dora'], male: ['em_alex', 'em_santa'] },
-  charsPerSec: 16.6, cpsMeasured: true,
+  code: 'es', variant: 'es', name: 'Spanish', bcp47: 'es-ES', engine: 'piper', offered: true, kokoroLangCode: 'e', speedRange: PIPER_SPEED,
+  voices: { female: ['es-pilot-f'], male: ['es-pilot-m'] },
+  charsPerSec: PIPER_CPS_ES, cpsMeasured: true,
+  note: 'Spanish uses a PILOT Piper voice (CML-TTS, 15.4k training steps, accent unlabelled): quality is unverified by ear and the speakers are LibriVox readers.',
 };
 const FR: DubLanguage = {
-  code: 'fr', variant: 'fr', name: 'French', bcp47: 'fr-FR', kokoroLangCode: 'f',
-  // Kokoro ships exactly one French voice: every French speaker collapses onto it.
-  voices: { female: ['ff_siwis'], male: [] },
-  charsPerSec: 17.2, cpsMeasured: true,
-  note: 'Only one French stock voice exists, so multiple speakers share a voice.',
+  code: 'fr', variant: 'fr', name: 'French', bcp47: 'fr-FR', engine: 'piper', offered: true, kokoroLangCode: 'f', speedRange: PIPER_SPEED,
+  voices: { female: ['fr-fr-mls-f'], male: ['fr-fr-mls-m'] },
+  charsPerSec: PIPER_CPS_FR, cpsMeasured: true,
+  note: 'French voices are audiobook-paced Multilingual LibriSpeech readers; expect a slow, read-aloud delivery.',
 };
+// Not offered (see header). Kokoro-only, unlistened; kept so re-enabling is a one-line flip once a clean engine exists.
 const HI: DubLanguage = {
-  code: 'hi', variant: 'hi', name: 'Hindi', bcp47: 'hi-IN', kokoroLangCode: 'h',
+  code: 'hi', variant: 'hi', name: 'Hindi', bcp47: 'hi-IN', engine: 'kokoro', offered: false, kokoroLangCode: 'h', speedRange: KOKORO_SPEED,
   voices: { female: ['hf_alpha', 'hf_beta'], male: ['hm_omega', 'hm_psi'] },
   charsPerSec: 11.1, cpsMeasured: true,
-  note: 'Hindi intelligibility is the weakest of the supported languages (S3: 46% ASR error, partly confounded by the ASR).',
 };
 const IT: DubLanguage = {
-  code: 'it', variant: 'it', name: 'Italian', bcp47: 'it-IT', kokoroLangCode: 'i',
+  code: 'it', variant: 'it', name: 'Italian', bcp47: 'it-IT', engine: 'kokoro', offered: false, kokoroLangCode: 'i', speedRange: KOKORO_SPEED,
   voices: { female: ['if_sara'], male: ['im_nicola'] },
   charsPerSec: 16, cpsMeasured: false,
-  note: 'Not yet listened to or measured.',
 };
 const PT: DubLanguage = {
-  code: 'pt', variant: 'pt-br', name: 'Brazilian Portuguese', bcp47: 'pt-BR', kokoroLangCode: 'p',
+  code: 'pt', variant: 'pt-br', name: 'Brazilian Portuguese', bcp47: 'pt-BR', engine: 'kokoro', offered: false, kokoroLangCode: 'p', speedRange: KOKORO_SPEED,
   voices: { female: ['pf_dora'], male: ['pm_alex', 'pm_santa'] },
   charsPerSec: 16, cpsMeasured: false,
-  note: 'Not yet listened to or measured. Brazilian Portuguese only.',
+};
+const JA: DubLanguage = {
+  code: 'ja', variant: 'ja', name: 'Japanese', bcp47: 'ja-JP', engine: 'kokoro', offered: false, kokoroLangCode: 'j', speedRange: KOKORO_SPEED,
+  voices: { female: ['jf_alpha'], male: ['jm_kumo'] },
+  charsPerSec: 7, cpsMeasured: false,
+};
+const ZH: DubLanguage = {
+  code: 'zh', variant: 'zh', name: 'Chinese (Mandarin)', bcp47: 'zh-CN', engine: 'kokoro', offered: false, kokoroLangCode: 'z', speedRange: KOKORO_SPEED,
+  voices: { female: ['zf_xiaobei'], male: ['zm_yunjian'] },
+  charsPerSec: 5.5, cpsMeasured: false,
 };
 
 const BY_KEY: Record<string, DubLanguage> = {
@@ -84,9 +110,14 @@ const BY_KEY: Record<string, DubLanguage> = {
   hindi: HI, hi: HI,
   italian: IT, it: IT, italiano: IT,
   portuguese: PT, pt: PT, 'pt-br': PT, 'brazilian portuguese': PT,
+  japanese: JA, ja: JA,
+  chinese: ZH, zh: ZH, mandarin: ZH, 'zh-cn': ZH,
 };
 
-/** Resolve a free-text language (name, ISO code, or locale like es-MX / fr_FR) to a supported dub language, or null. */
+/**
+ * Resolve a free-text language (name, ISO code, or locale like es-MX / fr_FR) to a known dub language, or null if we have
+ * no voices for it at all. A returned language may still have `offered: false`.
+ */
 export function resolveDubLanguage(input: string): DubLanguage | null {
   const key = (input ?? '').trim().toLowerCase().replace(/_/g, '-');
   if (!key) return null;
@@ -97,7 +128,7 @@ export function resolveDubLanguage(input: string): DubLanguage | null {
 }
 
 export function supportedDubLanguageList(): string[] {
-  return ['en', 'es', 'fr', 'hi', 'it', 'pt'];
+  return ['en', 'es', 'fr'];
 }
 
 // Kokoro voice ids: <lang letter><gender f|m>_<name>. ja/zh letters (j, z) are excluded: see header.

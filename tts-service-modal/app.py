@@ -48,8 +48,17 @@ image = (
         "print('Non-English voices cached')"
         "\""
     )
-    .add_local_python_source("kokoro_langs")
+    .pip_install(
+        # Piper (CPU, ONNX) for the dubbing voices; same pin as realtime-tts worker-piper-fly.
+        "piper-tts==1.8.0",
+        "scipy",
+    )
+    .add_local_python_source("kokoro_langs", "piper_engine")
 )
+
+# Dubbing voices (es-pilot-f/m, fr-fr-mls-f/m; tier A, CC BY 4.0) live on this Modal volume as <id>/model.onnx + owner.json.
+# piper_engine.DUB_PIPER_VOICES is the allowlist: nothing else on the volume can be served from here.
+HOUSE_VOICES = modal.Volume.from_name("house-voices")
 
 # Context for humans/AIs: `modal dict get infra-context <app-name>` (who calls this app, evidence, spend). Keep tags in sync.
 TAGS = {"status": "low-use", "owner": "backend-api-tts", "context": "modal-dict-infra-context", "verified": "2026-10-01"}
@@ -145,6 +154,9 @@ class KokoroTTS:
 # FastAPI web endpoint for HTTP access (same API as Cloud Run service)
 @app.function(
     gpu="T4",
+    # Piper dubbing voices run on CPU inside this container (onnxruntime, 2 threads each); with Modal's default
+    # fractional CPU reservation they synthesize ~5x slower than the catalog's cpu_rtf (measured), so reserve cores.
+    cpu=4,
     scaledown_window=90,  # see KokoroTTS class above for rationale
     # allow_concurrent_inputs is deprecated in favor of @modal.concurrent,
     # but the docs don't show a confirmed stacking order with @modal.asgi_app()
@@ -152,6 +164,7 @@ class KokoroTTS:
     # decorator order on a function with a hard budget cap watching it.
     allow_concurrent_inputs=10,
     image=image,
+    volumes={"/house-voices": HOUSE_VOICES.read_only()},
 )
 @modal.asgi_app()
 def web():
@@ -172,6 +185,39 @@ def web():
     import kokoro_langs as kl
     pipelines = kl.PipelineCache(lambda lc: KPipeline(lang_code=lc))
     pipelines.get('a')  # English eagerly (cold start); other languages build on first request
+
+    import piper_engine
+    piper_registry = piper_engine.PiperRegistry("/house-voices")
+
+    def piper_wav(text: str, voice_id: str, speed: float) -> bytes:
+        """WAV (24 kHz PCM16 mono) of an allowlisted Piper dubbing voice; speed = Piper length_scale control."""
+        audio = piper_registry.synth(text, voice_id, speed)
+        pcm = (np.clip(audio, -1.0, 1.0) * 32767.0).astype(np.int16)
+        buf = io.BytesIO()
+        sf.write(buf, pcm, piper_engine.OUT_SR, format='WAV', subtype='PCM_16')
+        return buf.getvalue()
+
+    async def piper_response(request):
+        from fastapi.concurrency import run_in_threadpool
+        start = time.time()
+        try:
+            data = await run_in_threadpool(piper_wav, request.text, request.voice_id, request.speed)
+        except piper_engine.PiperVoiceError as e:
+            raise HTTPException(status_code=404, detail=str(e))
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+        return StreamingResponse(
+            io.BytesIO(data),
+            media_type="audio/wav",
+            headers={
+                "X-Cache": "MISS",
+                "X-Engine": "piper",
+                "X-Voice-ID": request.voice_id,
+                "X-Model": "piper-modal",
+                "X-Synthesis-Time-Ms": str(int((time.time() - start) * 1000)),
+                "X-Character-Count": str(len(request.text)),
+            },
+        )
 
     KOKORO_VOICES = {
         "af_heart": "American Female (Heart)", "af_bella": "American Female (Bella)",
@@ -240,6 +286,8 @@ def web():
 
     @web_app.post("/synthesize")
     async def synthesize(request: SynthesizeRequest):
+        if piper_engine.is_dub_piper_voice(request.voice_id):
+            return await piper_response(request)
         voice, lang_code, pipeline = pick(request.voice_id, request.language)
         processed_text = preprocess(request.text, lang_code)
         start = time.time()
@@ -275,6 +323,8 @@ def web():
 
     @web_app.post("/synthesize-long")
     async def synthesize_long(request: SynthesizeLongRequest):
+        if piper_engine.is_dub_piper_voice(request.voice_id):
+            return await piper_response(request)
         voice, lang_code, pipeline = pick(request.voice_id, request.language)
         processed_text = preprocess(request.text, lang_code)
         start = time.time()

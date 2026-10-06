@@ -102,3 +102,37 @@ test('fitAndPlace: bounded concurrency still preserves segment order', async () 
   assert.deepEqual(r.segments.map((s) => s.index), segs.map((s) => s.index));
   assert.ok(r.segments.every((s, i) => i === 0 || s.placedStartSec >= r.segments[i - 1]!.placedStartSec));
 });
+
+// ---- silence trimming (Piper voices carry long lead-in/trailing silence that inflates the measured duration)
+function withSilence(speechSec: number, leadSec: number, trailSec: number, cps: number, text: string) {
+  const lead = new Int16Array(Math.round(leadSec * SR));
+  const speech = new Int16Array(Math.round(speechSec * SR)).fill(6000);
+  const trail = new Int16Array(Math.round(trailSec * SR));
+  const all = new Int16Array(lead.length + speech.length + trail.length);
+  all.set(speech, lead.length);
+  return encodeWavPcm16(all, SR);
+}
+
+test('fitAndPlace trimSilence: lead-in/trailing silence is removed so the refit sees the speech duration', async () => {
+  const synth = async (text: string) => withSilence(text.length / 10, 0.6, 0.8, 10, text);
+  const trimmed = await fitAndPlace({ segments: [inp(0, 0, 5, 'x'.repeat(50))], synth, sourceDurationSec: 6, trimSilence: true });
+  // speech is 5.0 s, slot is 5 s: within tolerance at speed 1 with no refit once the 1.4 s of silence is trimmed
+  assert.equal(trimmed.segments[0]!.ttsCalls, 1);
+  assert.ok(Math.abs(trimmed.segments[0]!.synthSec - 5.0) < 0.2, String(trimmed.segments[0]!.synthSec));
+  const untrimmed = await fitAndPlace({ segments: [inp(0, 0, 5, 'x'.repeat(50))], synth, sourceDurationSec: 6 });
+  assert.ok(untrimmed.segments[0]!.synthSec > trimmed.segments[0]!.synthSec + 0.5);
+});
+
+test('fitAndPlace trimSilence: speech onset lands at the slot start (no lead-in delay)', async () => {
+  const synth = async (text: string) => withSilence(text.length / 10, 0.5, 0.5, 10, text);
+  const r = await fitAndPlace({ segments: [inp(0, 2, 4, 'x'.repeat(20))], synth, sourceDurationSec: 6, trimSilence: true });
+  const d = decodeWavPcm16(r.wav)!;
+  const firstLoud = d.samples.findIndex((v) => Math.abs(v) > 2000);
+  assert.ok(Math.abs(firstLoud / SR - 2.0) < 0.1, `onset ${firstLoud / SR}`);
+});
+
+test('fitAndPlace trimSilence: an all-silent synthesis is kept as-is (never trimmed to nothing)', async () => {
+  const synth = async () => encodeWavPcm16(new Int16Array(SR), SR);
+  const r = await fitAndPlace({ segments: [inp(0, 0, 1, 'x'.repeat(10))], synth, sourceDurationSec: 2, trimSilence: true });
+  assert.ok(r.segments[0]!.synthSec > 0.9);
+});

@@ -58,7 +58,13 @@ if (cmd === 'prep') {
   const budgetFile = opt('budget-translations');
   const budget = budgetFile ? (JSON.parse(fs.readFileSync(budgetFile, 'utf8')) as Record<string, Record<string, string[]>>) : null;
   fs.mkdirSync(outDir, { recursive: true });
-  const VOICE: Record<string, string> = { es: 'em_alex', fr: 'ff_siwis', hi: 'hm_omega' };
+  const engine = opt('engine', 'kokoro')!;
+  const VOICE: Record<string, string> = engine === 'piper'
+    ? { es: opt('es-voice', 'es-pilot-m')!, fr: opt('fr-voice', 'fr-fr-mls-m')! }
+    : { es: 'em_alex', fr: 'ff_siwis', hi: 'hm_omega' };
+  const tagName = opt('tag', variant)!;
+  let serverSynthMs = 0;
+  let ttsCallsTotal = 0;
 
   const synthFor = (lang: string) => async (text: string, voiceId: string, speed: number): Promise<Buffer> => {
     for (let attempt = 0; attempt < 8; attempt++) {
@@ -68,7 +74,7 @@ if (cmd === 'prep') {
         body: JSON.stringify({ text, voice_id: voiceId, language: lang, speed, model: 'kokoro' }),
         signal: AbortSignal.timeout(180_000),
       });
-      if (r.ok) return Buffer.from(await r.arrayBuffer());
+      if (r.ok) { serverSynthMs += Number(r.headers.get('x-synthesis-time-ms') ?? 0); ttsCallsTotal++; return Buffer.from(await r.arrayBuffer()); }
       await new Promise((res) => setTimeout(res, 3000 * (attempt + 1)));
     }
     throw new Error('TTS failed after retries');
@@ -77,7 +83,7 @@ if (cmd === 'prep') {
   const t0 = Date.now();
   for (const clip of Object.keys(stt.res)) {
     for (const lang of langs) {
-      const tag = `${clip}__${lang}_${variant}`;
+      const tag = `${clip}__${lang}_${tagName}`;
       if (fs.existsSync(path.join(outDir, `${tag}.json`))) { console.log(tag, 'exists, skipping'); continue; } // resumable
       const c = stt.res[clip]!;
       const l = resolveDubLanguage(lang)!;
@@ -100,16 +106,22 @@ if (cmd === 'prep') {
         }
       }
       const voice = VOICE[l.code]!;
+      const tStart = Date.now();
+      const synthMs0 = serverSynthMs;
+      const calls0 = ttsCallsTotal;
       const r = await fitAndPlace({
         segments: segs.map((s, i) => ({ index: i, slotStart: s.start, slotEnd: s.end, text: texts[i] ?? '', voiceId: voice })),
         synth: synthFor(l.code),
         sourceDurationSec: c.dur,
         concurrency: 3,
+        trimSilence: l.engine === 'piper' && engine === 'piper',
+        minSpeed: l.speedRange.min,
+        maxSpeed: l.speedRange.max,
         ...fitOpts,
       });
       fs.writeFileSync(path.join(outDir, `${tag}.wav`), r.wav);
       fs.writeFileSync(path.join(outDir, `${tag}.json`), JSON.stringify({
-        clip, lang, variant, srcDur: c.dur, outDur: r.durationSec, maxDriftSec: r.maxDriftSec,
+        clip, lang, variant: tagName, voice, srcDur: c.dur, wallSec: (Date.now() - tStart) / 1000, serverSynthSec: (serverSynthMs - synthMs0) / 1000, ttsCalls: ttsCallsTotal - calls0, outDur: r.durationSec, maxDriftSec: r.maxDriftSec,
         intended: texts.filter((t) => t.trim()).join(' '),
         segments: r.segments.map((s, i) => ({
           ...s, text: texts[i], chars: (texts[i] ?? '').length, budget_max: lengthBudget(s.slotEnd - s.slotStart, l.code).maxChars,

@@ -56,10 +56,31 @@ def test_explicit_native_voice_wins_over_a_wrong_language_hint():
     assert m.route_voice_for_language("em_alex", "en-US") == ("kokoro", "em_alex")
 
 
-def test_legacy_callers_without_native_voice_keep_edge_routing_for_non_english():
-    assert m.route_voice_for_language("af_heart", "es")[0] == "edge"
-    assert m.route_voice_for_language("am_adam", "fr")[0] == "edge"
+def test_edge_tts_is_off_by_default_and_never_serves_paid_traffic():
+    import pytest
+    assert m.EDGE_TTS_ENABLED is False
+    for lang in ["es", "fr", "hi", "de", "ja", "zh", "ko", "it", "pt"]:
+        with pytest.raises(m.LanguageNotServed, match="Edge TTS"):
+            m.route_voice_for_language("af_heart", lang)
     assert m.route_voice_for_language("af_heart", "en") == ("kokoro", "af_heart")
+
+
+def test_edge_tts_only_with_the_explicit_unlicensed_dev_flag():
+    m.EDGE_TTS_ENABLED = True
+    try:
+        assert m.route_voice_for_language("af_heart", "es")[0] == "edge"
+        assert m.route_voice_for_language("am_adam", "fr") == ("edge", "male")
+    finally:
+        m.EDGE_TTS_ENABLED = False
+
+
+def test_flag_default_comes_from_env_ALLOW_UNLICENSED_EDGE_TTS():
+    assert m._env_flag("ALLOW_UNLICENSED_EDGE_TTS_UNSET_XYZ") is False
+    os.environ["EDGE_TEST_FLAG"] = "1"
+    try:
+        assert m._env_flag("EDGE_TEST_FLAG") is True
+    finally:
+        del os.environ["EDGE_TEST_FLAG"]
 
 
 def test_onnx_lang_for_native_voice_prefix():

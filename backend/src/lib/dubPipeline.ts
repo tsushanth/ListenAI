@@ -47,11 +47,29 @@ export interface FitOptions {
   maxSpeed?: number;
   /** Skip the refit when the speed-1 duration is already this close to the slot (default 8%). */
   tolerance?: number;
+  /** Trim lead-in/trailing silence of each synthesized segment (Piper voices carry ~0.3-0.8 s of it). */
+  trimSilence?: boolean;
   /** Extra refit rounds when the first refit still misses by > 15% and is not clamped (default 1). */
   extraRefits?: number;
 }
 
 const TARGET_SR = 24000;
+const TRIM_THRESHOLD = 0.015; // fraction of the segment's peak
+const TRIM_KEEP_SEC = 0.04;
+
+/** Remove leading/trailing samples below 1.5% of the peak, keeping 40 ms of margin. All-silent audio is returned unchanged. */
+export function trimSilence(x: Int16Array, sampleRate: number): Int16Array {
+  let peak = 0;
+  for (let i = 0; i < x.length; i++) { const a = Math.abs(x[i]!); if (a > peak) peak = a; }
+  if (peak === 0) return x;
+  const thr = peak * TRIM_THRESHOLD;
+  let a = 0;
+  let b = x.length - 1;
+  while (a < x.length && Math.abs(x[a]!) <= thr) a++;
+  while (b > a && Math.abs(x[b]!) <= thr) b--;
+  const keep = Math.round(TRIM_KEEP_SEC * sampleRate);
+  return x.subarray(Math.max(0, a - keep), Math.min(x.length, b + 1 + keep));
+}
 
 function resampleLinear(x: Int16Array, from: number, to: number): Int16Array {
   if (from === to) return x;
@@ -92,7 +110,7 @@ interface Synthed {
   skipped?: FitResult['skipped'];
 }
 
-async function fitOne(inp: FitInput, o: Required<Pick<FitOptions, 'synth' | 'minSpeed' | 'maxSpeed' | 'tolerance' | 'extraRefits'>>): Promise<Synthed> {
+async function fitOne(inp: FitInput, o: Required<Pick<FitOptions, 'synth' | 'minSpeed' | 'maxSpeed' | 'tolerance' | 'extraRefits' | 'trimSilence'>>): Promise<Synthed> {
   const base = { input: inp, speedUsed: 1, naturalSec: 0, clamped: false, calls: 0 };
   if (!inp.text.trim()) return { ...base, samples: null, skipped: 'empty_translation' };
   const slot = Math.max(inp.slotEnd - inp.slotStart, 0.1);
@@ -102,7 +120,8 @@ async function fitOne(inp: FitInput, o: Required<Pick<FitOptions, 'synth' | 'min
     base.calls++;
     const d = decodeWavPcm16(wav);
     if (!d || d.samples.length === 0) return null;
-    const s = resampleLinear(d.samples, d.sampleRate, TARGET_SR);
+    let s = resampleLinear(d.samples, d.sampleRate, TARGET_SR);
+    if (o.trimSilence) s = trimSilence(s, TARGET_SR);
     return { samples: s, sec: s.length / TARGET_SR };
   };
 
@@ -143,6 +162,7 @@ export async function fitAndPlace(opts: FitOptions): Promise<{
     maxSpeed: opts.maxSpeed ?? MAX_SPEED,
     tolerance: opts.tolerance ?? 0.08,
     extraRefits: opts.extraRefits ?? 1,
+    trimSilence: opts.trimSilence ?? false,
   };
   const synthed = await pool(opts.segments, opts.concurrency ?? 3, (s) => fitOne(s, o));
 

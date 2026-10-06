@@ -98,6 +98,21 @@ KOKORO_LANG_MAP = {
     "en-gb": ("en-gb",  "bf_emma",      "bm_george"),
 }
 
+# Edge TTS is an UNOFFICIAL Microsoft endpoint (edge-tts library) with no licence grant for third-party commercial use, so
+# it must never serve paid API traffic (owner decision 2026-10-06). It is OFF unless ALLOW_UNLICENSED_EDGE_TTS=1 is set
+# explicitly, which is for local development only. With it off, a request that would have fallen back to Edge fails with
+# an explicit error (HTTP 501) instead of silently changing engine.
+def _env_flag(name: str) -> bool:
+    return os.getenv(name, "").strip().lower() in ("1", "true", "yes", "on")
+
+
+EDGE_TTS_ENABLED = _env_flag("ALLOW_UNLICENSED_EDGE_TTS")
+
+
+class LanguageNotServed(Exception):
+    """Raised when the only engine for a language is the disabled (unlicensed) Edge TTS fallback."""
+
+
 # Languages routed to Edge TTS (Microsoft's free service, same as live
 # radio). CJK + Hindi need Edge because Kokoro's espeak G2P produces
 # garbage phonemes there. de isn't in Kokoro at all. es/fr/it/pt are
@@ -494,8 +509,13 @@ def route_voice_for_language(voice_id: str, language: str) -> tuple:
     # voice, and the voice id fixes the G2P (the dubbing route sends language 'es' with em_alex, etc.).
     if onnx_lang_for_voice(voice_id) is not None:
         return ("kokoro", voice_id)
-    # Edge TTS path
+    # Edge TTS path (dev-only flag; otherwise an explicit error, never a silent engine switch)
     if lang in EDGE_TTS_LANG_MAP:
+        if not EDGE_TTS_ENABLED:
+            raise LanguageNotServed(
+                f"language {lang!r} is not served by this worker: the Edge TTS fallback is unlicensed for commercial use "
+                "and disabled (set ALLOW_UNLICENSED_EDGE_TTS=1 for local development only)"
+            )
         # Best-effort: anything from `am_*`/`bm_*`/`jm_*`/etc. → male voice, else female.
         speaker = "male" if voice_id and voice_id[1:2] == "m" else "female"
         return ("edge", speaker)
@@ -521,7 +541,10 @@ def route_voice_for_language(voice_id: str, language: str) -> tuple:
 @app.post("/synthesize")
 async def synthesize(request: SynthesizeRequest, background_tasks: BackgroundTasks):
     """Synthesize text to speech using Kokoro ONNX (CPU) or Edge TTS fallback."""
-    engine, picked = route_voice_for_language(resolve_voice(request.voice_id), request.language)
+    try:
+        engine, picked = route_voice_for_language(resolve_voice(request.voice_id), request.language)
+    except LanguageNotServed as e:
+        raise HTTPException(status_code=501, detail=str(e))
 
     # Check cache (cache key includes engine + language so EN/JP don't collide)
     cache_key = get_cache_key(f"{engine}|{request.text}", picked, request.language, request.speed)
@@ -572,7 +595,10 @@ async def synthesize(request: SynthesizeRequest, background_tasks: BackgroundTas
 @app.post("/synthesize-long")
 async def synthesize_long(request: SynthesizeLongRequest):
     """Synthesize long text using Kokoro ONNX (CPU) or Edge TTS fallback."""
-    engine, picked = route_voice_for_language(resolve_voice(request.voice_id), request.language)
+    try:
+        engine, picked = route_voice_for_language(resolve_voice(request.voice_id), request.language)
+    except LanguageNotServed as e:
+        raise HTTPException(status_code=501, detail=str(e))
 
     cache_key = get_cache_key(f"{engine}|{request.text}", picked, request.language, request.speed)
     cached = get_cached_audio(cache_key)

@@ -401,7 +401,7 @@ function wavUpload(seconds: number): Buffer {
   return encodeWavPcm16(new Int16Array(Math.round(seconds * 8000)).fill(100), 8000);
 }
 
-test('a Spanish dub sends language "es" and a Spanish voice to the TTS service (not en-US / am_adam)', async (t) => {
+test('a Spanish dub sends language "es" and the Piper es-pilot voice to the TTS service (not en-US / am_adam / Kokoro)', async (t) => {
   installFetchMock(SHARED_STUB.url);
   resetMocks();
   sttSegments = [{ start: 0, end: 4, text: 'This is a reasonably long sentence to translate.' }];
@@ -418,32 +418,50 @@ test('a Spanish dub sends language "es" and a Spanish voice to the TTS service (
     for (const c of calls) {
       assert.equal(c.voice.settings.language, 'es');
       assert.equal(c.voice.language, 'es-ES');
-      assert.equal(c.voice.provider_voice_id, 'em_alex');
+      assert.equal(c.voice.provider_voice_id, 'es-pilot-m');
     }
     assert.equal(result.target_language, 'es');
-    assert.equal(result.voices[0].voice_id, 'em_alex');
+    assert.equal(result.voices[0].voice_id, 'es-pilot-m');
   } finally {
     s.close();
     uninstallFetchMock();
   }
 });
 
-test('French and Hindi route to their own Kokoro voices', async (t) => {
+test('French routes to the Piper fr-fr-mls voice', async (t) => {
   installFetchMock(SHARED_STUB.url);
   resetMocks();
   const s = await boot(SHARED_STUB.url);
   const calls: SynthCall[] = [];
   installFakeTts(t, s.ttsProvider, calls);
   try {
-    for (const [lang, voice, tag] of [['fr', 'ff_siwis', 'fr'], ['hi', 'hm_omega', 'hi']] as const) {
-      calls.length = 0;
-      currentTranslationReply = JSON.stringify(['Bonjour tout le monde.']);
-      const submit = await s.call(jwtHeaders, 'POST', '/', buildForm({ target_language: lang }));
-      const { job_id } = await submit.json();
-      const result = await waitForJob(s.call, job_id, jwtHeaders);
-      assert.equal(result.status, 'ready', result.error);
-      assert.ok(calls.every((c) => c.voice.provider_voice_id === voice && c.voice.settings.language === tag), lang);
+    currentTranslationReply = JSON.stringify(['Bonjour tout le monde.']);
+    const submit = await s.call(jwtHeaders, 'POST', '/', buildForm({ target_language: 'fr' }));
+    const { job_id } = await submit.json();
+    const result = await waitForJob(s.call, job_id, jwtHeaders);
+    assert.equal(result.status, 'ready', result.error);
+    assert.ok(calls.every((c) => c.voice.provider_voice_id === 'fr-fr-mls-m' && c.voice.settings.language === 'fr' && c.voice.language === 'fr-FR'));
+    assert.ok(calls.every((c) => !/^[a-z]f_|^[a-z]m_/.test(c.voice.provider_voice_id)), 'never a Kokoro voice for French');
+  } finally {
+    s.close();
+    uninstallFetchMock();
+  }
+});
+
+test('hi / it / pt-BR / ja / zh are rejected with 400 "not offered yet", with no job created and no TTS call', async (t) => {
+  installFetchMock(SHARED_STUB.url);
+  resetMocks();
+  const s = await boot(SHARED_STUB.url);
+  const calls: SynthCall[] = [];
+  installFakeTts(t, s.ttsProvider, calls);
+  try {
+    for (const lang of ['hi', 'Hindi', 'it', 'pt-BR', 'ja', 'zh']) {
+      const r = await s.call(jwtHeaders, 'POST', '/', buildForm({ target_language: lang }));
+      assert.equal(r.status, 400, lang);
+      assert.match(JSON.stringify(await r.json()), /not offered yet/i, lang);
     }
+    assert.equal(calls.length, 0);
+    assert.equal(anthropicCalls.length, 0);
   } finally {
     s.close();
     uninstallFetchMock();
@@ -478,7 +496,7 @@ test('an English voice_id passed with a Spanish target is ignored, and the job r
     const { job_id } = await submit.json();
     const result = await waitForJob(s.call, job_id, jwtHeaders);
     assert.equal(result.status, 'ready', result.error);
-    assert.ok(calls.every((c) => c.voice.provider_voice_id === 'em_alex'));
+    assert.ok(calls.every((c) => c.voice.provider_voice_id === 'es-pilot-m'));
     assert.ok(result.warnings.some((w: string) => /am_adam/.test(w)));
   } finally {
     s.close();
@@ -494,11 +512,11 @@ test('a Spanish voice_id is honoured', async (t) => {
   const calls: SynthCall[] = [];
   installFakeTts(t, s.ttsProvider, calls);
   try {
-    const submit = await s.call(jwtHeaders, 'POST', '/', buildForm({ target_language: 'es', voice_id: 'ef_dora' }));
+    const submit = await s.call(jwtHeaders, 'POST', '/', buildForm({ target_language: 'es', voice_id: 'es-pilot-f' }));
     const { job_id } = await submit.json();
     const result = await waitForJob(s.call, job_id, jwtHeaders);
     assert.equal(result.status, 'ready', result.error);
-    assert.ok(calls.every((c) => c.voice.provider_voice_id === 'ef_dora'));
+    assert.ok(calls.every((c) => c.voice.provider_voice_id === 'es-pilot-f'));
   } finally {
     s.close();
     uninstallFetchMock();
@@ -529,7 +547,7 @@ test('first synthesis is at speed 1 (measure), then refit to the slot - not the 
   }
 });
 
-test('speed is clamped to [0.8, 1.7]', async (t) => {
+test('speed is clamped to the language range (Piper es/fr: [0.8, 1.5])', async (t) => {
   installFetchMock(SHARED_STUB.url);
   resetMocks();
   sttSegments = [
@@ -545,8 +563,8 @@ test('speed is clamped to [0.8, 1.7]', async (t) => {
     const { job_id } = await submit.json();
     const result = await waitForJob(s.call, job_id, jwtHeaders);
     assert.equal(result.status, 'ready', result.error);
-    assert.ok(calls.every((c) => c.speed <= 1.7 + 1e-9 && c.speed >= 0.8 - 1e-9));
-    assert.equal(result.segments[0].speed_used, 1.7);
+    assert.ok(calls.every((c) => c.speed <= 1.5 + 1e-9 && c.speed >= 0.8 - 1e-9));
+    assert.equal(result.segments[0].speed_used, 1.5);
     assert.equal(result.segments[0].clamped, true);
   } finally {
     s.close();
