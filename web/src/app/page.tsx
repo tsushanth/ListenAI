@@ -72,8 +72,7 @@ export default function Home() {
             <p className="ra-small" style={{ marginTop: 14 }}>
               Measured October 2026 from one machine in San Jose, interleaved over several minutes, in the same hour, on short call-center sentences, as time to the
               first audio byte on a warm streaming connection. ElevenLabs advertises 75 ms for Flash; that is model latency, while these figures are end to end, including the network. ElevenLabs Flash is about 40 ms faster than Piper at the median (24 requests each); Piper costs a tenth as much. Results vary by location and time of day. ElevenLabs prices are its published API list prices as of 2026-09; the latency and quality figures are from our own runs. Voice quality is subjective, and
-              ElevenLabs offers far more voices and languages. The scripts are in our{' '}
-              <a href="https://github.com/tsushanth/realtime-tts/tree/main/benchmarks">public benchmarks folder</a>.
+              ElevenLabs offers far more voices and languages. We can share the benchmark scripts and raw results on request.
             </p>
 
             <h3 style={{ fontSize: '1.5rem', marginBottom: 12, marginTop: 40 }}>What you get for the price</h3>
@@ -95,8 +94,7 @@ export default function Home() {
               engines to each other, not as an absolute quality score. On this sample, Piper&rsquo;s error rate runs a bit higher than
               ElevenLabs&rsquo; and naturalness is essentially tied. We don&rsquo;t publish side-by-side audio samples; the sample size
               here (21 sentences) is small enough that we&rsquo;d rather you listen to Piper on your own text and judge for yourself.
-              Full methodology, per-language breakdown, and caveats are in the{' '}
-              <a href="https://github.com/tsushanth/realtime-tts/tree/main/eval">eval framework</a>, which we re-run after any engine change.
+              We re-run this evaluation after any engine change. Full methodology, the per-language breakdown and the caveats are available on request.
             </p>
           </div>
         </section>
