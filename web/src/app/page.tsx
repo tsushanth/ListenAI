@@ -184,7 +184,7 @@ export default function Home() {
               </div>
               <p className="ra-small" style={{ marginTop: 12 }}>
                 Cold start: the first request after a quiet period takes about 10 seconds while our GPU starts. After that, a short clip typically
-                comes back in about a second (our own measurement, October 2026, from one machine). Billed by the second of audio; failed requests are not billed.
+                comes back in about a second (our own measurement, October 2026, from one machine). Billed by the second of audio, 10 second minimum per request; failed requests are not billed.
               </p>
               <p style={{ marginTop: 16 }}><Link href="/developers#speech-to-text" style={{ textDecoration: 'underline' }}>Read the docs</Link></p>
             </div>
