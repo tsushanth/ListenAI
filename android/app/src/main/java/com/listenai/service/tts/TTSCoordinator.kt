@@ -5,7 +5,6 @@ import com.listenai.data.models.VoicePreset
 import com.listenai.data.models.VoiceProvider
 import com.listenai.data.models.VoiceQuality
 import com.listenai.service.usage.UsageTrackerService
-import com.listenai.service.voice.VoiceCloningService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -83,30 +82,17 @@ class TTSCoordinator(
                 throw TTSError.InvalidConfiguration("Cloned voice configuration is incomplete")
             }
 
-            // Fetch fresh cloned voice details from server (like iOS does)
-            // This ensures we have the correct audio URL
-            val voiceCloningService = VoiceCloningService.getInstance(context)
-            val clonedVoices = try {
-                voiceCloningService.listClonedVoices()
-            } catch (e: Exception) {
-                android.util.Log.e("TTSCoordinator", "Failed to fetch cloned voices: ${e.message}")
-                emptyList()
+            // Voice ids come from GET /api/voice-clones (UUIDs). Anything else is a legacy voice
+            // created before consent was required; the backend no longer accepts those.
+            if (!isUuid(voiceId)) {
+                throw TTSError.InvalidConfiguration("This voice was created before consent was required and can't be used. Please create it again.")
             }
 
-            val clonedVoice = clonedVoices.find { it.id == voiceId }
-            val voiceUrl = clonedVoice?.audioUrl ?: voice.sampleAudioUrl
-
-            if (voiceUrl.isNullOrEmpty()) {
-                android.util.Log.e("TTSCoordinator", "Cloned voice missing voiceUrl: voiceId=$voiceId, clonedVoice=$clonedVoice")
-                throw TTSError.InvalidConfiguration("Cloned voice audio URL not found")
-            }
-
-            android.util.Log.d("TTSCoordinator", "Using cloned voice synthesis: voiceId=$voiceId, voiceUrl=$voiceUrl")
+            android.util.Log.d("TTSCoordinator", "Using cloned voice synthesis: voiceId=$voiceId")
 
             val result = selfHostedService.synthesizeCloned(
                 text = text,
                 voiceId = voiceId,
-                voiceUrl = voiceUrl,
                 speed = options.speed,
                 onProgress = onProgress
             )
@@ -172,6 +158,9 @@ class TTSCoordinator(
 
         return result
     }
+
+    private fun isUuid(value: String): Boolean =
+        runCatching { java.util.UUID.fromString(value) }.isSuccess
 
     /**
      * Synthesize long text with progressive chunking

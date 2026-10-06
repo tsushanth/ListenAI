@@ -29,6 +29,9 @@ import com.listenai.data.models.VoiceProvider
 import com.listenai.data.models.VoiceQuality
 import com.listenai.data.models.VoiceStyle
 import com.listenai.data.models.VoiceTier
+import com.listenai.service.voice.ClonedVoice
+import com.listenai.service.voice.VoiceCloneErrors
+import com.listenai.service.voice.VoiceCloneException
 import com.listenai.service.voice.VoiceCloningService
 import com.listenai.ui.theme.Blue
 import com.listenai.ui.theme.Green
@@ -76,7 +79,7 @@ fun VoicePickerBottomSheet(
     val voiceChanged = tempSelectedVoice != null && tempSelectedVoice?.id != selectedVoice?.id
 
     // Load cloned voices
-    var clonedVoices by remember { mutableStateOf<List<VoiceCloningService.ClonedVoice>>(emptyList()) }
+    var clonedVoices by remember { mutableStateOf<List<ClonedVoice>>(emptyList()) }
     var isLoadingCloned by remember { mutableStateOf(true) }
 
     // Audio playback state
@@ -85,7 +88,7 @@ fun VoicePickerBottomSheet(
     var isPreviewLoading by remember { mutableStateOf(false) }
 
     // Delete confirmation dialog state
-    var voiceToDelete by remember { mutableStateOf<VoiceCloningService.ClonedVoice?>(null) }
+    var voiceToDelete by remember { mutableStateOf<ClonedVoice?>(null) }
     var isDeleting by remember { mutableStateOf(false) }
 
     // Cleanup media player on dismiss
@@ -109,7 +112,7 @@ fun VoicePickerBottomSheet(
     }
 
     // Preview voice function - synthesizes sample text using the cloned voice
-    fun playPreview(voice: VoiceCloningService.ClonedVoice) {
+    fun playPreview(voice: ClonedVoice) {
         scope.launch {
             // Toggle off if already playing
             if (playingVoiceId == voice.id && !isPreviewLoading) {
@@ -199,7 +202,7 @@ fun VoicePickerBottomSheet(
     }
 
     // Function to delete a voice
-    fun deleteVoice(voice: VoiceCloningService.ClonedVoice) {
+    fun deleteVoice(voice: ClonedVoice) {
         scope.launch {
             isDeleting = true
             try {
@@ -211,6 +214,8 @@ fun VoicePickerBottomSheet(
                 if (tempSelectedVoice?.id == "cloned_${voice.id}") {
                     tempSelectedVoice = null
                 }
+            } catch (e: VoiceCloneException) {
+                Toast.makeText(context, VoiceCloneErrors.map(e).message, Toast.LENGTH_LONG).show()
             } catch (e: Exception) {
                 android.util.Log.e("VoicePickerBottomSheet", "Failed to delete voice", e)
                 Toast.makeText(context, "Failed to delete voice", Toast.LENGTH_SHORT).show()
@@ -521,14 +526,14 @@ private fun parseHexColor(hex: String): Color {
  */
 @Composable
 private fun ClonedVoicesSection(
-    clonedVoices: List<VoiceCloningService.ClonedVoice>,
+    clonedVoices: List<ClonedVoice>,
     isLoading: Boolean,
     selectedVoiceId: String?,
     playingVoiceId: String?,
     isPreviewLoading: Boolean,
-    onClonedVoiceSelected: (VoiceCloningService.ClonedVoice) -> Unit,
-    onPlayPreview: (VoiceCloningService.ClonedVoice) -> Unit,
-    onDeleteVoice: (VoiceCloningService.ClonedVoice) -> Unit,
+    onClonedVoiceSelected: (ClonedVoice) -> Unit,
+    onPlayPreview: (ClonedVoice) -> Unit,
+    onDeleteVoice: (ClonedVoice) -> Unit,
     onCreateNewClone: () -> Unit
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
@@ -653,7 +658,7 @@ private fun ClonedVoicesSection(
  */
 @Composable
 private fun ClonedVoiceItem(
-    clonedVoice: VoiceCloningService.ClonedVoice,
+    clonedVoice: ClonedVoice,
     isSelected: Boolean,
     isPlaying: Boolean,
     isLoadingPreview: Boolean,
@@ -719,7 +724,7 @@ private fun ClonedVoiceItem(
             }
 
             Text(
-                text = if (isLoadingPreview) "Generating preview..." else (clonedVoice.description ?: "Custom voice clone"),
+                text = if (isLoadingPreview) "Generating preview..." else "Custom voice clone",
                 style = MaterialTheme.typography.bodySmall,
                 color = if (isLoadingPreview) Yellow else MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
@@ -776,7 +781,7 @@ private fun ClonedVoiceItem(
 /**
  * Convert ClonedVoice to VoicePreset for compatibility with existing TTS system
  */
-fun VoiceCloningService.ClonedVoice.toVoicePreset(): VoicePreset {
+fun ClonedVoice.toVoicePreset(): VoicePreset {
     return VoicePreset(
         id = "cloned_$id",
         name = name,
@@ -791,7 +796,7 @@ fun VoiceCloningService.ClonedVoice.toVoicePreset(): VoicePreset {
         style = VoiceStyle.CONVERSATIONAL,
         category = VoiceCategory.CUSTOM,
         tier = VoiceTier.FREE,
-        sampleAudioUrl = audioUrl,
+        sampleAudioUrl = null,  // reference audio never leaves the server
         avatarEmoji = null,
         accentColorHex = "#AF52DE"  // Purple for cloned voices
     )

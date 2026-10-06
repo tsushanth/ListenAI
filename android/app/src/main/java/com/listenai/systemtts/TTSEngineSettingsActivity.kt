@@ -65,7 +65,7 @@ import com.listenai.service.tts.KokoroModelDownloader
 import com.listenai.service.tts.SynthesisOptions
 import com.listenai.service.tts.TTSCoordinator
 import com.listenai.service.tts.TTSServiceFactory
-import com.listenai.service.voice.VoiceCloningService
+import com.listenai.service.voice.ClonedVoice
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -709,7 +709,7 @@ private fun SectionHeader(title: String, caption: String) {
 
 @Composable
 private fun ClonedVoiceRow(
-    clone: VoiceCloningService.ClonedVoice,
+    clone: ClonedVoice,
     isLoading: Boolean,
     isPlaying: Boolean,
     isOnDeviceLoading: Boolean,
@@ -753,7 +753,6 @@ private fun ClonedVoiceRow(
                 }
                 val caption = buildString {
                     append(if (systemWide) "On-device · works in TalkBack" else "Network preview only")
-                    clone.durationSec?.let { append(" · ${it.toInt()}s sample") }
                 }
                 Text(caption, fontSize = 12.sp,
                      color = MaterialTheme.colorScheme.onSurfaceVariant)

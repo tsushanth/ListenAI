@@ -10,7 +10,7 @@ import com.listenai.data.models.VoiceProvider
 import com.listenai.data.models.VoiceQuality
 import com.listenai.data.models.VoiceStyle
 import com.listenai.data.models.VoiceTier
-import com.listenai.service.voice.VoiceCloningService
+import com.listenai.service.voice.ClonedVoice
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -44,7 +44,7 @@ object VoiceCatalog {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     /** Snapshot of the most recently fetched cloned voices. */
-    private val clonedVoiceCache = AtomicReference<List<VoiceCloningService.ClonedVoice>>(emptyList())
+    private val clonedVoiceCache = AtomicReference<List<ClonedVoice>>(emptyList())
 
     /**
      * Kokoro voice embeddings shipped in `res/raw/kokoro_voice_*` and read by
@@ -94,25 +94,14 @@ object VoiceCatalog {
     }
 
     /**
-     * Trigger a background refresh of the cloned voices list from
-     * [VoiceCloningService]. Fire-and-forget — the next `onGetVoices()`
-     * call after completion will include the updated set.
+     * Cloned voices are NOT exposed through the system TTS engine. Consent-gated clones are
+     * cloud-only (the reference audio never leaves the server and a cold start takes 60 to 180 s),
+     * which a system-wide engine used by other apps and TalkBack cannot tolerate, and the
+     * consent was given for use inside this app. Kept as a no-op so existing callers compile.
      */
+    @Suppress("UNUSED_PARAMETER")
     fun refreshClonedVoices(context: Context) {
-        scope.launch {
-            try {
-                val service = VoiceCloningService.getInstance(context)
-                if (!service.isConfigured) {
-                    Log.w(TAG, "VoiceCloningService not configured yet — skip refresh")
-                    return@launch
-                }
-                val clones = service.listClonedVoices()
-                clonedVoiceCache.set(clones)
-                Log.i(TAG, "Cloned voice cache refreshed: ${clones.size} voices")
-            } catch (t: Throwable) {
-                Log.w(TAG, "Cloned voice refresh failed: ${t.message}")
-            }
-        }
+        clonedVoiceCache.set(emptyList())
     }
 
     /**
@@ -214,13 +203,13 @@ object VoiceCatalog {
     fun presets(): List<VoicePreset> = builtInPresets
 
     /** Currently cached cloned voices that are ready for synthesis. */
-    fun clonedVoices(): List<VoiceCloningService.ClonedVoice> = readyClones()
+    fun clonedVoices(): List<ClonedVoice> = readyClones()
 
     // ------------------------------------------------------------------
     // helpers
     // ------------------------------------------------------------------
 
-    private fun readyClones(): List<VoiceCloningService.ClonedVoice> {
+    private fun readyClones(): List<ClonedVoice> {
         return clonedVoiceCache.get().filter { it.isReady }
     }
 
@@ -229,7 +218,7 @@ object VoiceCatalog {
      * provider so TTSCoordinator's `isClonedVoice` check fires (it looks for
      * `providerModelId == "chatterbox"` or an id starting with "cloned_").
      */
-    private fun clonedToVoicePreset(c: VoiceCloningService.ClonedVoice): VoicePreset {
+    private fun clonedToVoicePreset(c: ClonedVoice): VoicePreset {
         return VoicePreset(
             id = "cloned_${c.id}",
             name = c.name,
@@ -245,7 +234,7 @@ object VoiceCatalog {
             tier = VoiceTier.PREMIUM,
             languageCode = "en-US",
             supportedLanguages = listOf("en-US"),
-            sampleAudioUrl = c.audioUrl,
+            sampleAudioUrl = null,
             sampleText = "This is a sample of ${c.name}.",
             avatarEmoji = "🎤",   // 🎤 mic
             accentColorHex = "#7C3AED"      // violet
@@ -265,7 +254,7 @@ object VoiceCatalog {
         )
     }
 
-    private fun buildSystemVoiceForCloned(c: VoiceCloningService.ClonedVoice): Voice {
+    private fun buildSystemVoiceForCloned(c: ClonedVoice): Voice {
         // Cloned voices currently round-trip to the chatterbox backend, so they
         // always require network. M3 (on-device cloning) flips this to false.
         val name = "$CLONED_PREFIX${c.id.lowercase()}-en-us"

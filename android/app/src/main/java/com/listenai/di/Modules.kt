@@ -17,9 +17,12 @@ import com.listenai.service.tts.CloudTTSService
 import com.listenai.service.tts.OnDeviceTTSService
 import com.listenai.service.tts.SelfHostedTTSService
 import com.listenai.service.tts.TTSCoordinator
+import com.listenai.service.auth.AuthService
 import com.listenai.service.auth.GoogleAuthService
 import com.listenai.service.usage.UsageTrackerService
 import com.listenai.service.settings.SettingsManager
+import com.listenai.service.voice.SupabaseVoiceCloneAuth
+import com.listenai.service.voice.VoiceCloneAuth
 import com.listenai.service.voice.VoiceCloningService
 import com.listenai.service.review.AppReviewService
 import com.listenai.service.notification.TTSNotificationService
@@ -96,14 +99,20 @@ val serviceModule = module {
 
     // Auth Services
     single { GoogleAuthService(androidContext()) }
+    // Supabase session (Google ID token -> backend /api/auth/google). Source of the Bearer token
+    // for the consent-gated voice cloning API.
+    single { AuthService(androidContext()) }
+    single<VoiceCloneAuth> { SupabaseVoiceCloneAuth(lazy { get<GoogleAuthService>() }, lazy { get<AuthService>() }) }
 
     // Gmail Service
     single { GmailService(get()) }
 
     // Voice Cloning Service (configured with backend URL)
-    single {
+    // createdAtStart: other code reaches the singleton via getInstance(context), so it must be
+    // configured (URL + token source) before anything uses it.
+    single(createdAtStart = true) {
         VoiceCloningService.getInstance(androidContext()).apply {
-            configure("https://listenai-backend.fly.dev")
+            configure(VoiceCloningService.DEFAULT_BACKEND_URL, get<VoiceCloneAuth>())
         }
     }
 
