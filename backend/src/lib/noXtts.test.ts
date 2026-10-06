@@ -9,7 +9,8 @@ import { fileURLToPath } from 'node:url';
 
 const SRC_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 // Built from parts so this file does not match its own search.
-const FORBIDDEN = new RegExp(['xt' + 'ts', 'co' + 'qui'].join('|'), 'i');
+// \b so that 'ChatterboxTTS' (which contains the letters x-T-T-S) is not a false positive.
+const FORBIDDEN = new RegExp(['\\bxt' + 'ts', 'co' + 'qui'].join('|'), 'i');
 
 function walk(dir: string, out: string[] = []): string[] {
   for (const name of readdirSync(dir)) {

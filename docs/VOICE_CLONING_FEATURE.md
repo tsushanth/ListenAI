@@ -1,3 +1,6 @@
+> **SUPERSEDED (2026-10).** This document describes the retired XTTS v2 design (non-commercial CPML license, removed from the codebase).
+> Current design, API and safeguards: [VOICE_CLONING_CONSENT.md](VOICE_CLONING_CONSENT.md).
+
 # Voice Cloning Feature Plan
 
 ## Overview
