@@ -223,7 +223,7 @@ body {
 /* Inline-code styling must not leak into code BLOCKS: light text on the light panel made every line of a block unreadable. */
 .ra-ref pre code { background: none; padding: 0; border-radius: 0; font-size: inherit; color: inherit; }
 /* A bare <pre> outside the dark .ra-code blocks gets its own panel instead of per-line highlights. */
-.ra-ref :not(.ra-code) > pre { background: var(--panel); padding: 14px 16px; border-radius: 10px; font-size: .85rem; line-height: 1.6; }
+.ra-ref > pre, .ra-ref :not(.ra-code) > pre { background: var(--panel); padding: 14px 16px; border-radius: 10px; font-size: .85rem; line-height: 1.6; }
 @media (prefers-reduced-motion: reduce) { .ra * { transition: none !important; animation: none !important; } }
 
 /* ===== Voice studio (/voices). Light .ra system; calm, one job per screen. ===== */
