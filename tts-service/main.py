@@ -251,6 +251,14 @@ app = FastAPI(
     version="2.0.0"
 )
 
+
+@app.exception_handler(kl.NonEnglishDisabled)
+async def _non_english_disabled_handler(request, exc):
+    """Owner voice-provenance gate: Kokoro non-English is off unless KOKORO_NON_ENGLISH_ENABLED=1 (see kokoro_langs.py)."""
+    from fastapi.responses import JSONResponse
+    return JSONResponse(status_code=403, content={"detail": str(exc)})
+
+
 # ============================================================================
 # TTS Model Loading
 # ============================================================================
@@ -1284,6 +1292,8 @@ async def synthesize(request: SynthesizeRequest, background_tasks: BackgroundTas
             }
         )
 
+    except kl.NonEnglishDisabled:
+        raise
     except Exception as e:
         logger.error(f"Synthesis failed: {e}")
         raise HTTPException(status_code=500, detail=f"Synthesis failed: {str(e)}")
@@ -1398,6 +1408,8 @@ async def synthesize_long(request: SynthesizeLongRequest):
             audio_buffer.seek(0)
             audio_data = audio_buffer.read()
 
+    except kl.NonEnglishDisabled:
+        raise
     except Exception as e:
         logger.error(f"Long synthesis failed: {e}")
         raise HTTPException(

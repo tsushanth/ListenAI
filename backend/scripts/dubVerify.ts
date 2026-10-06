@@ -3,6 +3,7 @@
 // per (clip, language, variant). Scoring (ASR WER, back-translation) happens elsewhere.
 //
 //   npx tsx scripts/dubVerify.ts prep   --data <S3 data dir> --out inputs.json
+//   (--bearer <secret> adds an Authorization header, for the dedicated dub_piper.py function)
 //   npx tsx scripts/dubVerify.ts run    --data <S3 data dir> --tts <base url> --variant K|P1|P2 --langs es,fr,hi --out <dir> [--budget-translations file.json]
 //
 // Variants: K = replica of the kit's arm C (raw segments, speed clamp 0.5-2.0, always one refit, no hallucination
@@ -70,7 +71,7 @@ if (cmd === 'prep') {
     for (let attempt = 0; attempt < 8; attempt++) {
       const r = await fetch(`${tts}/synthesize`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(opt('bearer') ? { Authorization: `Bearer ${opt('bearer')}` } : {}) },
         body: JSON.stringify({ text, voice_id: voiceId, language: lang, speed, model: 'kokoro' }),
         signal: AbortSignal.timeout(180_000),
       });
