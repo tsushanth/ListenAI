@@ -1,6 +1,6 @@
 #!/bin/bash
 # Load test script for TTS service
-# Tests both Kokoro (fast) and XTTS (high quality) models
+# Tests the Kokoro model
 # with varying text lengths and concurrent requests
 
 TTS_URL="${TTS_URL:-https://readaloud-tts-3t2vweivqa-uc.a.run.app}"
@@ -129,34 +129,17 @@ run_test "kokoro" "$LONG_TEXT" "  Kokoro long"
 echo ""
 
 # ============================================
-# Test 3: Single Request Performance (XTTS)
+# Test 3: Concurrent Requests (Kokoro)
 # ============================================
-echo -e "${BLUE}--- Test 3: XTTS Single Requests ---${NC}"
-echo "Short text (~5 words):"
-run_test "xtts" "$SHORT_TEXT" "  XTTS short"
-
-echo "Medium text (~30 words):"
-run_test "xtts" "$MEDIUM_TEXT" "  XTTS medium"
-echo ""
-
-# ============================================
-# Test 4: Concurrent Requests (Kokoro)
-# ============================================
-echo -e "${BLUE}--- Test 4: Kokoro Concurrent Requests ---${NC}"
+echo -e "${BLUE}--- Test 3: Kokoro Concurrent Requests ---${NC}"
 run_concurrent_test "kokoro" "$SHORT_TEXT" 3
 run_concurrent_test "kokoro" "$SHORT_TEXT" 5
 
 # ============================================
-# Test 5: Concurrent Requests (XTTS)
+# Test 4: Concurrent Mixed Requests
 # ============================================
-echo -e "${BLUE}--- Test 5: XTTS Concurrent Requests ---${NC}"
-run_concurrent_test "xtts" "$SHORT_TEXT" 2
-
-# ============================================
-# Test 6: Mixed Model Concurrent
-# ============================================
-echo -e "${BLUE}--- Test 6: Mixed Model Concurrent ---${NC}"
-echo -e "${YELLOW}Running 2 Kokoro + 1 XTTS concurrently...${NC}"
+echo -e "${BLUE}--- Test 4: Concurrent Mixed Requests ---${NC}"
+echo -e "${YELLOW}Running 3 Kokoro requests concurrently...${NC}"
 
 start_time=$(date +%s.%N)
 
@@ -174,9 +157,9 @@ start_time=$(date +%s.%N)
 
 (curl -s -X POST "$TTS_URL/synthesize" \
     -H "Content-Type: application/json" \
-    -d '{"text": "XTTS request one", "model": "xtts"}' \
+    -d '{"text": "Kokoro request three", "model": "kokoro"}' \
     -o /dev/null \
-    -w "XTTS 1: %{time_total}s HTTP %{http_code}\n") &
+    -w "Kokoro 3: %{time_total}s HTTP %{http_code}\n") &
 
 wait
 
@@ -194,9 +177,7 @@ echo -e "${BLUE}============================================${NC}"
 echo ""
 echo "Expected performance:"
 echo "  Kokoro: <1s for short, <5s for medium, <15s for long"
-echo "  XTTS:   15-20s for short, 60-120s for medium"
 echo ""
 echo "For production, consider:"
 echo "  - Use Kokoro as default (fast, Apache licensed)"
-echo "  - Reserve XTTS for voice cloning only"
 echo "  - Set min-instances=1 to avoid cold starts"

@@ -6,7 +6,6 @@ import { ChevronDown, Menu, X } from 'lucide-react'
 
 const TOOLS = [
   { href: '/design-voice', label: 'Design a voice' },
-  { href: '/clone-voice', label: 'Clone a voice' },
   { href: '/convert-voice', label: 'Convert voice' },
   { href: '/transcribe', label: 'Transcribe audio' },
   { href: '/dub', label: 'Dub audio' },

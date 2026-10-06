@@ -102,35 +102,10 @@ def download_chatterbox():
     print("✓ Chatterbox setup complete")
     print("=" * 50)
 
-def download_xtts():
-    """Download and cache XTTS v2 model for voice cloning."""
-    print("=" * 50)
-    print("Downloading XTTS v2 model for voice cloning...")
-    print("=" * 50)
-
-    try:
-        from TTS.api import TTS
-
-        # Initialize XTTS - this downloads the model
-        print("Loading XTTS v2 model...")
-        model = TTS("tts_models/multilingual/multi-dataset/xtts_v2").to("cpu")
-        print("✓ XTTS v2 model cached successfully")
-
-        # Clean up to free memory
-        del model
-
-    except Exception as e:
-        print(f"⚠ XTTS download failed (will download on first use): {e}")
-
-    print("=" * 50)
-    print("✓ XTTS setup complete")
-    print("=" * 50)
-
 if __name__ == "__main__":
     try:
         download_kokoro()
         download_chatterbox()
-        download_xtts()
         print("\n✓ All models downloaded successfully!")
     except Exception as e:
         print(f"\n✗ Error: {e}")

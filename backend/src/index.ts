@@ -39,7 +39,7 @@ import { voiceStudioRouter } from './routes/voiceStudio.js';
 import { voiceDesignRouter } from './routes/voiceDesign.js';
 import { voiceConvertRouter } from './routes/voiceConvert.js';
 import { voiceIsolateRouter } from './routes/voiceIsolate.js';
-import { voiceCloneRouter } from './routes/voiceClone.js';
+import { voiceClonesRouter, voiceCloneAdminRouter } from './routes/voiceClones.js';
 import { sttRouter, sttCompatRouter } from './routes/stt.js';
 import { voiceStudioApiKeyRouter } from './routes/voiceStudioApiKey.js';
 import { orpheusVoiceStudioApiKeyRouter } from './routes/orpheusVoiceStudioApiKey.js';
@@ -234,13 +234,19 @@ app.use('/api/latency', latencyRouter);
 // AI routes (requires auth) - for article summarization and analysis
 app.use('/api/ai', requireAuth, aiRouter);
 
+// Voice-clone abuse takedown (x-admin-key, no built-in default key). Mounted before the generic admin router.
+app.use('/api/admin/voice-clones', voiceCloneAdminRouter);
+
 // Admin routes (requires admin API key) - for rollout control and metrics
 app.use('/api/admin', adminRouter);
 
 // Pub/Sub push worker endpoint (auth via ?token= query param)
 app.use('/api/tts', workerPushRouter);
 
-// Cloned voices routes (requires auth) - for voice cloning with Chatterbox
+// Consent-gated voice cloning (Chatterbox Multilingual V3). Dark (503) unless VOICE_CLONE_SERVICE_URL/SECRET + STT_API_KEY are set.
+app.use('/api/voice-clones', voiceClonesRouter);
+
+// LEGACY cloned voices (device-ID keyed, no consent): creation is disabled in the router; see routes/clonedVoices.ts.
 app.use('/api/cloned-voices', clonedVoicesRouter);
 
 // Story generation (Lullaby Haven custom bedtime stories) — X-Device-ID gated,
@@ -270,8 +276,6 @@ app.use('/api/voice-convert', requireAuthOrApiKey, voiceConvertRouter);
 // requireAuthOrApiKey) before falling back to JWT verification, so no changes were needed inside
 // voiceIsolate.ts itself — see MCP_AUTH_BRIDGE.md.
 app.use('/api/voice-isolate', requireAuthOrApiKey, voiceIsolateRouter);
-// Voice clone — XTTS v2 instant voice cloning (dark unless XTTS_CLONE_URL is configured)
-app.use('/api/voice-clone', voiceCloneRouter);
 app.use('/api/stt', requireAuthOrApiKey, sttRouter);
 // Deepgram-shaped POST /v1/listen + OpenAI-shaped POST /v1/audio/transcriptions (+ DELETE /v1/transcriptions/:id).
 // Same dark-unless-STT_API_KEY posture, same auth bridge, same authorize-then-worker flow as /api/stt above.

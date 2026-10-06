@@ -1,5 +1,5 @@
 # ReadAloud AI TTS Service - Multi-Model CPU Version
-# Supports: XTTS v2 (high quality) and Kokoro-82M (fast, Apache licensed)
+# Supports: Kokoro-82M (fast, Apache licensed)
 # For Cloud Run deployment (no GPU)
 
 FROM python:3.11-slim
@@ -35,9 +35,6 @@ RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir transformers==4.42.4 && \
     pip install --no-cache-dir -r requirements.txt
 
-# Accept Coqui TOS for XTTS model
-ENV COQUI_TOS_AGREED=1
-
 # Set HuggingFace cache directory to persist in image
 ENV HF_HOME=/app/.cache/huggingface
 ENV HUGGINGFACE_HUB_CACHE=/app/.cache/huggingface/hub
@@ -47,7 +44,7 @@ RUN mkdir -p /app/.cache/huggingface/hub
 COPY download_models.py .
 
 # Pre-download all models and voices (baked into image for fast cold starts)
-# This downloads XTTS v2 (~1.8GB) and Kokoro-82M with all voice packs (~500MB)
+# This downloads Kokoro-82M with all voice packs (~500MB) and Chatterbox
 RUN python download_models.py
 
 # Copy application code

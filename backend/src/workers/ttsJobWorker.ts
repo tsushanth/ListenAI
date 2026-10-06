@@ -41,6 +41,8 @@ import {
   stopMetricsReporting,
 } from '../lib/metrics.js';
 import type { AudioFormat, DBVoice, TTSProvider } from '../types/index.js';
+import { getCloneDeps, eligibilityForSynthesis } from '../lib/voiceCloning/runtime.js';
+import { CLONE_MODEL_ID, getUsableVoice, recordOutput } from '../lib/voiceCloning/service.js';
 
 // ============================================================================
 // TTS Job Worker (Pub/Sub-based) with Preview-First Support
@@ -969,246 +971,54 @@ async function synthesizeWithElevenLabs(
 }
 
 /**
- * Process job using cloned voice via GPU TTS service.
- * Calls the /synthesize-cloned endpoint on the TTS service.
+ * Process a job for a consent-gated cloned voice (voice_clones row): re-checks, at synthesis time, that the
+ * voice is still active and the account still eligible (so a takedown or cancelled plan stops queued jobs),
+ * synthesises on the Chatterbox app (Perth-watermarked), retains the output hash, uploads and caches.
+ * Reference audio never leaves the serving app; this worker only sends text and a voice id.
  */
 async function processClonedVoiceJob(
   jobId: string,
+  userId: string,
   text: string,
   clonedVoiceId: string,
-  voiceUrl: string,
-  cloningModel: 'chatterbox' | 'xtts',
   speed: number,
   cacheKey: string,
   charCount: number
 ): Promise<void> {
-  // Cloned-voice synthesis (Chatterbox or XTTS) runs on its own host, separate
-  // from the Kokoro Fly worker that GPU_TTS_URL points at. Use CHATTERBOX_URL
-  // for the /synthesize-cloned endpoint; fall back to GPU_TTS_URL for back-compat
-  // with deployments where both pointed at the same service.
-  const cloningTtsUrl = process.env.CHATTERBOX_URL || process.env.GPU_TTS_URL;
-  if (!cloningTtsUrl) {
-    throw new Error('CHATTERBOX_URL (or GPU_TTS_URL) not configured for cloned voice synthesis');
-  }
+  const deps = getCloneDeps();
+  if (!deps) throw new Error('Voice cloning is not configured');
 
-  // Use the async job pattern (POST /jobs/synthesize-cloned → poll → download).
-  // The legacy /synthesize-cloned holds a single HTTP connection open for the
-  // full 8-17 min of synth, which doesn't survive Fly→Hetzner network resets.
-  // The async pattern splits the work into short calls that survive any
-  // intermediate connection drop.
-  const submitUrl = `${cloningTtsUrl}/jobs/synthesize-cloned`;
-  const jobStatusUrlBase = `${cloningTtsUrl}/jobs`;
-  const modelId = cloningModel === 'chatterbox' ? 'chatterbox-v1' : 'xtts-v2';
-
-  workerLogger.info({
-    jobId,
-    clonedVoiceId,
-    cloningModel,
-    charCount,
-    submitUrl,
-  }, 'Starting cloned voice synthesis via async job pattern');
-
-  // Estimate chunks for progress tracking
-  const chunkSize = cloningModel === 'chatterbox' ? 500 : 500;  // Both use 500 char chunks
-  const totalChunks = Math.ceil(charCount / chunkSize);
-
-  // Update job with chunk info
-  await supabase
-    .from('tts_jobs')
-    .update({
-      chunks_total: totalChunks,
-      chunks_completed: 0,
-    })
-    .eq('id', jobId);
+  const voice = await getUsableVoice(deps.store, clonedVoiceId, await eligibilityForSynthesis(userId));
+  await supabase.from('tts_jobs').update({ chunks_total: 1, chunks_completed: 0 }).eq('id', jobId);
 
   const synthesisStart = Date.now();
+  workerLogger.info({ jobId, clonedVoiceId, charCount, language: voice.language }, 'Starting cloned voice synthesis');
+  const synth = await deps.service.synthesize({ voiceId: voice.id, text, language: voice.language, speed });
+  const synthesisTimeMs = Date.now() - synthesisStart;
 
-  // Calculate timeout based on text length and model
-  // Chatterbox: ~0.3x realtime, XTTS: ~0.5x realtime
-  // Audio duration ≈ charCount / 12.5 chars per second
-  // Add generous margin for model loading and processing
-  const estimatedAudioDurationSec = charCount / 12.5;
-  // Chatterbox runs on a CPU-only Hetzner box (no GPU). Observed per-job synth
-  // is 8-17 min, BUT requests also queue at chatterbox itself (it processes
-  // serially). With one job ahead, total wall time = 2x synth time. With two
-  // ahead, 3x. So the worker timeout has to cover synth + chatterbox-side queue.
-  // 45 min covers ~2-3 jobs ahead at worst-case 15 min each.
-  // TODO: when chatterbox moves to GPU, drop multiplier to ~4 and minimum to 2 min.
-  const synthesisMultiplier = cloningModel === 'chatterbox' ? 30.0 : 2.5;
-  const timeoutMs = Math.max(
-    45 * 60 * 1000,  // Minimum 45 min — accounts for chatterbox queue depth on CPU box
-    Math.ceil(estimatedAudioDurationSec * synthesisMultiplier * 1000) + 60_000
-  );
+  // WAV, 16-bit mono: duration = (bytes - 44 header) / (sampleRate * 2)
+  const durationSec = Math.max(1, Math.round((synth.audio.length - 44) / (synth.sampleRate * 2)));
+  const audioPath = `audio/jobs/${jobId}_cloned.wav`;
+  await uploadAudioToCache(audioPath, synth.audio, 'wav');
+  await recordOutput(deps, { voiceId: voice.id, userId, audio: synth.audio, chars: charCount, synth });
 
-  workerLogger.info({
-    jobId,
-    estimatedAudioDurationSec: Math.round(estimatedAudioDurationSec),
-    timeoutMs,
-  }, 'Cloned voice synthesis timeout calculated');
+  await updateTTSJobProgress({ jobId, status: 'ready', audioPath, durationSec, progressSec: durationSec, chunksCompleted: 1 });
+  recordJobReady(jobId, durationSec, synth.audio.length, 1);
+  recordInferenceLatency(CLONE_MODEL_ID, synthesisTimeMs, true);
 
-  const apiKeyHeader: Record<string, string> = process.env.SELFHOSTED_TTS_API_KEY
-    ? { 'X-API-Key': process.env.SELFHOSTED_TTS_API_KEY }
-    : {};
+  await upsertCacheEntry({
+    cacheKey,
+    audioPath,
+    format: 'wav',
+    durationSec,
+    fileSizeBytes: synth.audio.length,
+    voiceId: `cloned-${clonedVoiceId}`,
+    modelId: CLONE_MODEL_ID,
+    speed,
+    textHash: cacheKey.split('-')[0] || cacheKey,
+  });
 
-  try {
-    // ---- Step 1: submit the synthesis job (returns immediately) ----
-    const submitResp = await fetch(submitUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...apiKeyHeader,
-      },
-      body: JSON.stringify({
-        text,
-        voice_id: clonedVoiceId,
-        voice_url: voiceUrl,
-        speed,
-        model: cloningModel,
-      }),
-      // 30s was failing on GPU service cold start (~40% job failure rate).
-      // Submit returns a job_id, the actual synthesis is async and bounded
-      // by the poll loop below (timeoutMs ≈ 73min for 144s audio).
-      signal: AbortSignal.timeout(120_000),
-    });
-
-    if (!submitResp.ok) {
-      const errorText = await submitResp.text();
-      throw new Error(`Submit failed: ${submitResp.status} - ${errorText}`);
-    }
-    const submitData = (await submitResp.json()) as { job_id: string; status: string };
-    const chatterboxJobId = submitData.job_id;
-
-    workerLogger.info({ jobId, chatterboxJobId }, 'Async job submitted to TTS service');
-
-    // ---- Step 2: poll for completion ----
-    const pollDeadline = Date.now() + timeoutMs;
-    let lastStatus = submitData.status;
-    let audioUrl: string | null = null;
-
-    while (Date.now() < pollDeadline) {
-      await new Promise((r) => setTimeout(r, 5_000));
-
-      const pollResp = await fetch(`${jobStatusUrlBase}/${chatterboxJobId}`, {
-        signal: AbortSignal.timeout(15_000),
-        headers: apiKeyHeader,
-      });
-
-      if (pollResp.status === 404) {
-        // Container restarted while job was queued — re-submit on next worker retry.
-        throw new Error(`TTS service lost job ${chatterboxJobId} (404). Likely container restart.`);
-      }
-      if (!pollResp.ok) {
-        // Transient poll error — keep trying.
-        workerLogger.warn({ jobId, chatterboxJobId, pollStatus: pollResp.status }, 'Poll transient error');
-        continue;
-      }
-
-      const pollData = (await pollResp.json()) as {
-        status: string;
-        audio_url?: string | null;
-        error?: string | null;
-      };
-      lastStatus = pollData.status;
-
-      if (pollData.status === 'done' && pollData.audio_url) {
-        audioUrl = pollData.audio_url;
-        break;
-      }
-      if (pollData.status === 'failed') {
-        throw new Error(`TTS service synthesis failed: ${pollData.error || 'unknown'}`);
-      }
-    }
-
-    if (!audioUrl) {
-      throw new Error(`Cloned voice synthesis timed out polling (last status: ${lastStatus})`);
-    }
-
-    // ---- Step 3: download the rendered audio ----
-    const audioPathOnService = audioUrl.startsWith('http')
-      ? audioUrl
-      : `${cloningTtsUrl}${audioUrl}`;
-    const audioResp = await fetch(audioPathOnService, {
-      signal: AbortSignal.timeout(120_000),
-      headers: apiKeyHeader,
-    });
-
-    if (!audioResp.ok) {
-      throw new Error(`Audio download failed: ${audioResp.status}`);
-    }
-
-    const audioBuffer = Buffer.from(await audioResp.arrayBuffer());
-    const synthesisTimeMs = Date.now() - synthesisStart;
-
-    workerLogger.info({
-      jobId,
-      synthesisTimeMs,
-      audioSize: audioBuffer.length,
-    }, 'Cloned voice synthesis completed');
-
-    // Calculate audio duration (WAV format: 24kHz, 16-bit, mono)
-    // Duration = (bytes - 44 header) / (sample_rate * bytes_per_sample * channels)
-    const sampleRate = cloningModel === 'chatterbox' ? 24000 : 24000;  // Both use 24kHz
-    const bytesPerSample = 2;  // 16-bit
-    const channels = 1;  // Mono
-    const audioDataSize = audioBuffer.length - 44;  // Subtract WAV header
-    const durationSec = Math.round(audioDataSize / (sampleRate * bytesPerSample * channels));
-
-    // Upload audio to storage using the shared audio bucket
-    const audioPath = `audio/jobs/${jobId}_cloned.wav`;
-    await uploadAudioToCache(audioPath, audioBuffer, 'wav');
-
-    // Update job as ready
-    await updateTTSJobProgress({
-      jobId,
-      status: 'ready',
-      audioPath,
-      durationSec,
-      progressSec: durationSec,
-      chunksCompleted: totalChunks,
-    });
-
-    // Record metrics
-    recordJobReady(jobId, durationSec, audioBuffer.length, totalChunks);
-    recordInferenceLatency(modelId, synthesisTimeMs, true);  // modelId, latencyMs, usedGpu
-
-    // Upsert cache entry for future requests
-    await upsertCacheEntry({
-      cacheKey,
-      audioPath,
-      format: 'wav',
-      durationSec,
-      fileSizeBytes: audioBuffer.length,
-      voiceId: `cloned-${clonedVoiceId}`,
-      modelId,
-      speed,
-      textHash: cacheKey.split('-')[0] || cacheKey,  // Extract hash from cache key
-    });
-
-    workerLogger.info({
-      jobId,
-      audioPath,
-      durationSec,
-      cacheKey,
-    }, 'Cloned voice job completed and cached');
-
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-
-    // Check if this was a timeout
-    const isTimeout = error instanceof Error && error.name === 'AbortError';
-
-    workerLogger.error({
-      jobId,
-      error: errorMessage,
-      isTimeout,
-      synthesisTimeMs: Date.now() - synthesisStart,
-    }, 'Cloned voice synthesis failed');
-
-    if (isTimeout) {
-      throw new Error(`Cloned voice synthesis timed out after ${timeoutMs / 1000}s`);
-    }
-    throw error;
-  }
+  workerLogger.info({ jobId, audioPath, durationSec, synthesisTimeMs, watermarkScore: synth.watermarkScore }, 'Cloned voice job completed');
 }
 
 /**
@@ -1409,9 +1219,8 @@ async function processJob(message: TTSJobMessage): Promise<void> {
 
     // 5. Check if this is a cloned voice job
     const clonedVoiceId = jobData.cloned_voice_id as string | null;
-    const voiceUrl = jobData.voice_url as string | null;
-    const cloningModel = jobData.cloning_model as 'chatterbox' | 'xtts' | null;
-    const isClonedVoiceJob = !!(clonedVoiceId && voiceUrl && cloningModel);
+    const cloningModel = jobData.cloning_model as 'chatterbox' | null;
+    const isClonedVoiceJob = !!(clonedVoiceId && cloningModel);
 
     if (isClonedVoiceJob) {
       // Process cloned voice job via GPU TTS service
@@ -1419,7 +1228,7 @@ async function processJob(message: TTSJobMessage): Promise<void> {
         { jobId, charCount, clonedVoiceId, cloningModel },
         'Processing cloned voice job'
       );
-      await processClonedVoiceJob(jobId, text, clonedVoiceId, voiceUrl, cloningModel, speed, cacheKey, charCount);
+      await processClonedVoiceJob(jobId, userId, text, clonedVoiceId, speed, cacheKey, charCount);
     } else {
       // 6. Choose synthesis provider based on model_id from client request
       // - model_id 'eleven_multilingual_v2' -> ElevenLabs (Premium)

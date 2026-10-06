@@ -1,7 +1,6 @@
 """
 ReadAloud AI - Self-Hosted TTS Service
 Multi-model TTS service supporting:
-- Coqui XTTS v2: High-quality voice cloning (non-commercial license)
 - Kokoro-82M: Fast, lightweight, commercially licensed (Apache 2.0)
 - Chatterbox: Voice cloning with reference audio, MIT license (commercial OK)
 
@@ -31,7 +30,6 @@ import soundfile as sf
 import httpx
 
 # Conditional imports - models loaded on demand
-TTS = None  # Coqui TTS
 KPipeline = None  # Kokoro
 ChatterboxModel = None  # Chatterbox
 
@@ -40,7 +38,7 @@ ChatterboxModel = None  # Chatterbox
 # ============================================================================
 
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
-DEFAULT_MODEL = os.getenv("DEFAULT_TTS_MODEL", "xtts")  # "xtts" or "kokoro"
+DEFAULT_MODEL = os.getenv("DEFAULT_TTS_MODEL", "kokoro")  # "kokoro" or "chatterbox"
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 API_KEY = os.getenv("TTS_API_KEY", "")  # Optional API key for auth
 PORT = int(os.getenv("PORT", "8080"))
@@ -53,9 +51,7 @@ AUDIO_CACHE_DIR = os.getenv("AUDIO_CACHE_DIR", "/app/audio_cache")
 CACHE_ENABLED = os.getenv("CACHE_ENABLED", "true").lower() == "true"
 
 # Model-specific settings
-XTTS_MODEL_NAME = "tts_models/multilingual/multi-dataset/xtts_v2"
 KOKORO_SAMPLE_RATE = 24000
-XTTS_SAMPLE_RATE = 24000
 CHATTERBOX_SAMPLE_RATE = 24000
 
 # Cloned voices cache directory (downloaded from Supabase)
@@ -247,7 +243,7 @@ def check_cuda_health() -> tuple[bool, str]:
 
 app = FastAPI(
     title="ReadAloud AI TTS Service",
-    description="Self-hosted TTS with voice cloning (Kokoro, Chatterbox, XTTS)",
+    description="Self-hosted TTS with voice cloning (Kokoro, Chatterbox)",
     version="2.0.0"
 )
 
@@ -256,42 +252,8 @@ app = FastAPI(
 # ============================================================================
 
 # Model instances (loaded on demand)
-xtts_model = None
 kokoro_pipeline = None
 chatterbox_model = None
-
-def load_xtts():
-    """Load XTTS v2 model."""
-    global xtts_model
-    if xtts_model is not None:
-        return xtts_model
-
-    logger.info(f"Loading XTTS model: {XTTS_MODEL_NAME}")
-    logger.info(f"Device: {DEVICE}")
-
-    start_time = time.time()
-
-    # PyTorch 2.6+ changed weights_only default to True, breaking TTS model loading.
-    # Monkey-patch torch.load to use weights_only=False for TTS compatibility.
-    # This is safe since we trust the TTS model checkpoints from HuggingFace.
-    import torch
-    _original_torch_load = torch.load
-    def _patched_torch_load(*args, **kwargs):
-        if 'weights_only' not in kwargs:
-            kwargs['weights_only'] = False
-        return _original_torch_load(*args, **kwargs)
-    torch.load = _patched_torch_load
-
-    from TTS.api import TTS
-    xtts_model = TTS(XTTS_MODEL_NAME).to(DEVICE)
-
-    # Restore original torch.load
-    torch.load = _original_torch_load
-
-    load_time = time.time() - start_time
-    logger.info(f"XTTS model loaded in {load_time:.2f}s")
-
-    return xtts_model
 
 _kokoro_pipelines = kl.PipelineCache(lambda lc: _build_kokoro_pipeline(lc))
 
@@ -352,8 +314,7 @@ def get_model(model_type: str):
         return load_kokoro()
     elif model_type == "chatterbox":
         return load_chatterbox()
-    else:
-        return load_xtts()
+    raise ValueError(f"Unknown model: {model_type}")
 
 @app.on_event("startup")
 async def startup_event():
@@ -364,7 +325,7 @@ async def startup_event():
     elif DEFAULT_MODEL == "chatterbox":
         load_chatterbox()
     else:
-        load_xtts()
+        load_kokoro()
 
     # Create directories
     os.makedirs(VOICE_SAMPLES_DIR, exist_ok=True)
@@ -380,7 +341,7 @@ class SynthesizeRequest(BaseModel):
     voice_id: str = Field(default="default")
     language: str = Field(default="en")
     speed: float = Field(default=1.0, ge=0.5, le=2.0)
-    model: str = Field(default="xtts", description="TTS model: 'xtts' or 'kokoro'")
+    model: str = Field(default="kokoro", description="TTS model: 'kokoro'")
 
 class SynthesizeLongRequest(BaseModel):
     """Request for synthesizing long documents (PDFs, articles, etc.)"""
@@ -388,7 +349,7 @@ class SynthesizeLongRequest(BaseModel):
     voice_id: str = Field(default="default")
     language: str = Field(default="en")
     speed: float = Field(default=1.0, ge=0.5, le=2.0)
-    model: str = Field(default="xtts", description="TTS model: 'xtts' or 'kokoro'")
+    model: str = Field(default="kokoro", description="TTS model: 'kokoro'")
     # Chunk size: 250 for self-hosted (CPU), 2000-3000 for cloud providers
     max_chunk_chars: int = Field(default=250, ge=50, le=5000)  # Characters per chunk
 
@@ -427,9 +388,6 @@ class HealthResponse(BaseModel):
 # Built-in Voice Presets
 # ============================================================================
 
-# XTTS v2 default speaker
-XTTS_DEFAULT_SPEAKER = "Ana Florence"
-
 # Kokoro voice IDs (from https://huggingface.co/hexgrad/Kokoro-82M/blob/main/VOICES.md)
 # Format: af_* = American Female, am_* = American Male, bf_* = British Female, etc.
 KOKORO_VOICES = {
@@ -455,7 +413,6 @@ BUILTIN_VOICES = {
         "description": "Warm & Clear female voice",
         "language": "en",
         "gender": "female",
-        "xtts_speaker": XTTS_DEFAULT_SPEAKER,
         "kokoro_voice": "af_nicole",
         "sample_file": None
     },
@@ -464,7 +421,6 @@ BUILTIN_VOICES = {
         "description": "Professional male narrator",
         "language": "en",
         "gender": "male",
-        "xtts_speaker": XTTS_DEFAULT_SPEAKER,
         "kokoro_voice": "am_adam",
         "sample_file": None
     },
@@ -474,7 +430,6 @@ BUILTIN_VOICES = {
         "description": "Professional male narrator",
         "language": "en",
         "gender": "male",
-        "xtts_speaker": XTTS_DEFAULT_SPEAKER,
         "kokoro_voice": "am_adam",
         "sample_file": None
     },
@@ -483,7 +438,6 @@ BUILTIN_VOICES = {
         "description": "Warm & Clear female voice",
         "language": "en",
         "gender": "female",
-        "xtts_speaker": XTTS_DEFAULT_SPEAKER,
         "kokoro_voice": "af_nicole",
         "sample_file": None
     },
@@ -492,7 +446,6 @@ BUILTIN_VOICES = {
         "description": "Calm & Soothing female voice",
         "language": "en",
         "gender": "female",
-        "xtts_speaker": XTTS_DEFAULT_SPEAKER,
         "kokoro_voice": "af_bella",
         "sample_file": None
     },
@@ -501,7 +454,6 @@ BUILTIN_VOICES = {
         "description": "Storyteller male voice",
         "language": "en",
         "gender": "male",
-        "xtts_speaker": XTTS_DEFAULT_SPEAKER,
         "kokoro_voice": "am_michael",
         "sample_file": None
     },
@@ -510,7 +462,6 @@ BUILTIN_VOICES = {
         "description": "Elegant British female voice",
         "language": "en",
         "gender": "female",
-        "xtts_speaker": XTTS_DEFAULT_SPEAKER,
         "kokoro_voice": "bf_emma",
         "sample_file": None
     },
@@ -519,7 +470,6 @@ BUILTIN_VOICES = {
         "description": "Deep British male voice",
         "language": "en",
         "gender": "male",
-        "xtts_speaker": XTTS_DEFAULT_SPEAKER,
         "kokoro_voice": "bm_george",
         "sample_file": None
     },
@@ -528,7 +478,6 @@ BUILTIN_VOICES = {
         "description": "Deep British male voice",
         "language": "en",
         "gender": "male",
-        "xtts_speaker": XTTS_DEFAULT_SPEAKER,
         "kokoro_voice": "bm_george",
         "sample_file": None
     },
@@ -537,7 +486,6 @@ BUILTIN_VOICES = {
         "description": "Calm & Soothing female voice",
         "language": "en",
         "gender": "female",
-        "xtts_speaker": XTTS_DEFAULT_SPEAKER,
         "kokoro_voice": "af_bella",
         "sample_file": None
     },
@@ -546,7 +494,6 @@ BUILTIN_VOICES = {
         "description": "Storyteller male voice",
         "language": "en",
         "gender": "male",
-        "xtts_speaker": XTTS_DEFAULT_SPEAKER,
         "kokoro_voice": "am_michael",
         "sample_file": None
     },
@@ -555,7 +502,6 @@ BUILTIN_VOICES = {
         "description": "Elegant & Articulate female voice",
         "language": "en",
         "gender": "female",
-        "xtts_speaker": XTTS_DEFAULT_SPEAKER,
         "kokoro_voice": "bf_emma",
         "sample_file": None
     },
@@ -564,7 +510,6 @@ BUILTIN_VOICES = {
         "description": "Default voice (Adam)",
         "language": "en",
         "gender": "male",
-        "xtts_speaker": XTTS_DEFAULT_SPEAKER,
         "kokoro_voice": "am_adam",
         "sample_file": None
     }
@@ -694,8 +639,6 @@ async def health_check():
         gpu_name = torch.cuda.get_device_name(0)
 
     models_loaded = []
-    if xtts_model is not None:
-        models_loaded.append("xtts")
     if kokoro_pipeline is not None:
         models_loaded.append("kokoro")
     if chatterbox_model is not None:
@@ -727,7 +670,7 @@ async def health_check():
         "status": status,
         "default_model": DEFAULT_MODEL,
         "models_loaded": models_loaded,
-        "models_available": ["xtts", "kokoro", "chatterbox"],
+        "models_available": ["kokoro", "chatterbox"],
         "device": DEVICE,
         "gpu_available": torch.cuda.is_available(),
         "gpu_name": gpu_name,
@@ -760,14 +703,6 @@ async def get_capabilities():
     except ImportError as e:
         chatterbox_import_error = str(e)
 
-    xtts_importable = False
-    xtts_import_error = None
-    try:
-        from TTS.api import TTS as XTTS_TTS
-        xtts_importable = True
-    except ImportError as e:
-        xtts_import_error = str(e)
-
     kokoro_importable = False
     kokoro_import_error = None
     try:
@@ -783,7 +718,6 @@ async def get_capabilities():
     # Model load status
     models_loaded = {
         "kokoro": kokoro_pipeline is not None,
-        "xtts": xtts_model is not None,
         "chatterbox": chatterbox_model is not None,
     }
 
@@ -796,15 +730,9 @@ async def get_capabilities():
                 "error": kokoro_import_error,
             },
             "voice_cloning": {
-                "available": chatterbox_importable or xtts_importable,
-                "models": [
-                    m for m, available in [
-                        ("chatterbox", chatterbox_importable),
-                        ("xtts", xtts_importable)
-                    ] if available
-                ],
+                "available": chatterbox_importable,
+                "models": ["chatterbox"] if chatterbox_importable else [],
                 "chatterbox_error": chatterbox_import_error,
-                "xtts_error": xtts_import_error,
             },
         },
         "hardware": {
@@ -843,266 +771,6 @@ async def list_voices():
             description=info["description"]
         ))
     return {"voices": voices}
-
-def synthesize_with_xtts(text: str, voice_info: dict, language: str, speed: float) -> tuple:
-    """Synthesize using XTTS v2 model."""
-    model = load_xtts()
-    speaker = voice_info.get("xtts_speaker", XTTS_DEFAULT_SPEAKER)
-    speaker_wav = None
-
-    # Check if there's a custom sample file for this voice
-    if voice_info.get("sample_file"):
-        sample_path = os.path.join(VOICE_SAMPLES_DIR, voice_info["sample_file"])
-        if os.path.exists(sample_path):
-            speaker_wav = sample_path
-            logger.info(f"Using custom voice sample: {sample_path}")
-
-    # Synthesize audio using XTTS v2
-    if speaker_wav:
-        wav = model.tts(
-            text=text,
-            speaker_wav=speaker_wav,
-            language=language,
-            speed=speed
-        )
-    else:
-        wav = model.tts(
-            text=text,
-            speaker=speaker,
-            language=language,
-            speed=speed
-        )
-
-    wav_array = np.array(wav)
-    sample_rate = model.synthesizer.output_sample_rate if hasattr(model, 'synthesizer') else XTTS_SAMPLE_RATE
-
-    return wav_array, sample_rate
-
-
-XTTS_MAX_CHUNK_CHARS = 500  # Maximum chars per chunk for XTTS
-
-
-def synthesize_with_xtts_cloned(
-    text: str,
-    reference_audio_path: str,
-    language: str = "en",
-    speed: float = 1.0
-) -> tuple:
-    """
-    Synthesize speech using XTTS v2 with voice cloning from a reference audio file.
-
-    XTTS v2 natively supports voice cloning via the speaker_wav parameter.
-    This provides an alternative to Chatterbox with different voice characteristics.
-
-    For long texts, this function automatically chunks the text and concatenates
-    the audio segments.
-
-    Args:
-        text: Text to synthesize
-        reference_audio_path: Path to the reference audio file for voice cloning
-        language: Language code (default: "en")
-        speed: Speech speed multiplier (0.5-2.0)
-
-    Returns:
-        tuple: (wav_array, sample_rate)
-    """
-    # Validate the reference audio file
-    is_valid, validation_msg = validate_audio_file(reference_audio_path, min_duration_sec=1.0)
-    if not is_valid:
-        metrics.record_failure("xtts", "audio_validation", validation_msg)
-        logger.error(f"Audio validation failed for XTTS: {reference_audio_path}: {validation_msg}")
-        raise HTTPException(
-            status_code=400,
-            detail=f"Reference audio file is invalid: {validation_msg}. Please re-record your voice clone."
-        )
-
-    # Check if we need to chunk the text
-    if len(text) > XTTS_MAX_CHUNK_CHARS:
-        logger.info(f"Text too long ({len(text)} chars), chunking for XTTS synthesis")
-        return synthesize_with_xtts_cloned_chunked(
-            text=text,
-            reference_audio_path=reference_audio_path,
-            language=language,
-            speed=speed
-        )
-
-    # Load XTTS model
-    model = load_xtts()
-    if model is None:
-        metrics.record_failure("xtts", "model_load", "XTTS model not available")
-        raise HTTPException(status_code=503, detail="XTTS model not available")
-
-    logger.info(f"XTTS cloned synthesis: text_len={len(text)}, ref_audio={reference_audio_path}, lang={language}")
-
-    start_time = time.time()
-
-    try:
-        # Clear CUDA cache before synthesis
-        if torch.cuda.is_available():
-            torch.cuda.empty_cache()
-
-        # Generate audio with XTTS using the reference audio for voice cloning
-        wav = model.tts(
-            text=text,
-            speaker_wav=reference_audio_path,
-            language=language,
-            speed=speed
-        )
-
-        wav_array = np.array(wav)
-        sample_rate = model.synthesizer.output_sample_rate if hasattr(model, 'synthesizer') else XTTS_SAMPLE_RATE
-
-        synthesis_time = time.time() - start_time
-        logger.info(f"XTTS cloned synthesis complete in {synthesis_time:.2f}s")
-
-        # Record success metric
-        metrics.record_success("xtts", int(synthesis_time * 1000), len(text))
-
-        return wav_array, sample_rate
-
-    except RuntimeError as e:
-        error_str = str(e)
-        synthesis_time = time.time() - start_time
-
-        # Check for CUDA errors
-        if "CUDA" in error_str or "device-side assert" in error_str:
-            metrics.record_failure("xtts", "cuda_error", error_str)
-            logger.critical(f"CUDA ERROR in XTTS cloned synthesis: {error_str}")
-
-            try:
-                if torch.cuda.is_available():
-                    torch.cuda.empty_cache()
-                    torch.cuda.synchronize()
-            except Exception as recovery_error:
-                logger.error(f"Failed to recover from CUDA error: {recovery_error}")
-
-            raise HTTPException(
-                status_code=503,
-                detail="GPU synthesis failed with CUDA error. The service may need restart."
-            )
-
-        metrics.record_failure("xtts", "runtime_error", error_str)
-        logger.error(f"XTTS cloned synthesis RuntimeError: {error_str}")
-        raise HTTPException(status_code=500, detail=f"XTTS voice cloning synthesis failed: {error_str}")
-
-    except Exception as e:
-        error_str = str(e)
-        metrics.record_failure("xtts", "unknown_error", error_str)
-        logger.error(f"XTTS cloned synthesis failed: {error_str}")
-        raise HTTPException(status_code=500, detail=f"XTTS voice cloning synthesis failed: {error_str}")
-
-
-def synthesize_with_xtts_cloned_chunked(
-    text: str,
-    reference_audio_path: str,
-    language: str = "en",
-    speed: float = 1.0
-) -> tuple:
-    """
-    Synthesize long text with XTTS by chunking and concatenating audio.
-
-    Args:
-        text: Long text to synthesize
-        reference_audio_path: Path to the reference audio file
-        language: Language code
-        speed: Speech speed multiplier
-
-    Returns:
-        tuple: (wav_array, sample_rate)
-    """
-    global xtts_model
-
-    # Load model first
-    model = load_xtts()
-    if model is None:
-        metrics.record_failure("xtts", "model_load", "XTTS model not available")
-        raise HTTPException(status_code=503, detail="XTTS model not available")
-
-    # Chunk the text
-    chunks = chunk_text(text, max_chunk_chars=XTTS_MAX_CHUNK_CHARS)
-    total_chunks = len(chunks)
-
-    logger.info(f"XTTS chunked synthesis: {total_chunks} chunks, total {len(text)} chars")
-
-    start_time = time.time()
-    audio_segments = []
-
-    # Small pause between chunks (0.3 seconds of silence)
-    pause_samples = int(0.3 * XTTS_SAMPLE_RATE)
-    silence = np.zeros(pause_samples, dtype=np.float32)
-
-    try:
-        for i, chunk in enumerate(chunks):
-            chunk_start = time.time()
-
-            # Clear CUDA cache before each chunk
-            if torch.cuda.is_available():
-                torch.cuda.empty_cache()
-
-            logger.info(f"XTTS synthesizing chunk {i+1}/{total_chunks}: {len(chunk)} chars")
-
-            # Generate audio for this chunk
-            wav = model.tts(
-                text=chunk,
-                speaker_wav=reference_audio_path,
-                language=language,
-                speed=speed
-            )
-
-            wav_array = np.array(wav)
-            audio_segments.append(wav_array)
-
-            # Add pause between chunks (except after last chunk)
-            if i < total_chunks - 1:
-                audio_segments.append(silence)
-
-            chunk_time = time.time() - chunk_start
-            logger.info(f"XTTS chunk {i+1}/{total_chunks} completed in {chunk_time:.2f}s")
-
-        # Concatenate all audio segments
-        final_audio = np.concatenate(audio_segments)
-        sample_rate = model.synthesizer.output_sample_rate if hasattr(model, 'synthesizer') else XTTS_SAMPLE_RATE
-
-        synthesis_time = time.time() - start_time
-        logger.info(f"XTTS chunked synthesis complete: {total_chunks} chunks in {synthesis_time:.2f}s")
-
-        # Record success metric
-        metrics.record_success("xtts", int(synthesis_time * 1000), len(text))
-
-        return final_audio, sample_rate
-
-    except RuntimeError as e:
-        error_str = str(e)
-        synthesis_time = time.time() - start_time
-
-        # Check for CUDA errors
-        if "CUDA" in error_str or "device-side assert" in error_str:
-            metrics.record_failure("xtts", "cuda_error", error_str)
-            logger.critical(f"CUDA ERROR in XTTS chunked synthesis: {error_str}")
-
-            try:
-                if torch.cuda.is_available():
-                    torch.cuda.empty_cache()
-                    torch.cuda.synchronize()
-                xtts_model = None
-            except Exception as recovery_error:
-                logger.error(f"Failed to recover from CUDA error: {recovery_error}")
-
-            raise HTTPException(
-                status_code=503,
-                detail="GPU synthesis failed with CUDA error. The service may need restart."
-            )
-
-        metrics.record_failure("xtts", "runtime_error", error_str)
-        logger.error(f"XTTS chunked synthesis RuntimeError: {error_str}")
-        raise HTTPException(status_code=500, detail=f"XTTS voice cloning synthesis failed: {error_str}")
-
-    except Exception as e:
-        error_str = str(e)
-        metrics.record_failure("xtts", "unknown_error", error_str)
-        logger.error(f"XTTS chunked synthesis failed: {error_str}")
-        raise HTTPException(status_code=500, detail=f"XTTS voice cloning synthesis failed: {error_str}")
-
 
 def preprocess_text_for_kokoro(text: str) -> str:
     """
@@ -1202,15 +870,13 @@ async def synthesize(request: SynthesizeRequest, background_tasks: BackgroundTas
     """
     Synthesize text to speech.
 
-    Supports multiple models:
-    - xtts: High-quality, supports voice cloning (slower on CPU)
-    - kokoro: Fast, lightweight, commercially licensed (Apache 2.0)
+    Model: kokoro (fast, lightweight, commercially licensed, Apache 2.0)
 
     Returns audio/wav stream.
     """
     model_type = request.model.lower()
-    if model_type not in ["xtts", "kokoro"]:
-        raise HTTPException(status_code=400, detail=f"Unknown model: {model_type}. Use 'xtts' or 'kokoro'")
+    if model_type != "kokoro":
+        raise HTTPException(status_code=400, detail=f"Unknown model: {model_type}. Use 'kokoro'")
 
     # Check cache first (include model in cache key)
     cache_key = get_cache_key(f"{model_type}|{request.text}", request.voice_id, request.language, request.speed)
@@ -1243,22 +909,15 @@ async def synthesize(request: SynthesizeRequest, background_tasks: BackgroundTas
                     "name": KOKORO_VOICES.get(request.voice_id, request.voice_id),
                     "kokoro_voice": request.voice_id,
                     "explicit_kokoro": True,
-                    "xtts_speaker": XTTS_DEFAULT_SPEAKER,
                 }
             else:
                 # Fall back to default
                 logger.warning(f"Unknown voice_id '{request.voice_id}', using default")
                 voice_info = BUILTIN_VOICES["default"]
 
-        # Synthesize based on model type
-        if model_type == "kokoro":
-            wav_array, sample_rate = synthesize_with_kokoro(
-                request.text, voice_info, request.speed, request.language
-            )
-        else:
-            wav_array, sample_rate = synthesize_with_xtts(
-                request.text, voice_info, request.language, request.speed
-            )
+        wav_array, sample_rate = synthesize_with_kokoro(
+            request.text, voice_info, request.speed, request.language
+        )
 
         # Write to buffer
         audio_buffer = io.BytesIO()
@@ -1296,11 +955,11 @@ async def synthesize_long(request: SynthesizeLongRequest):
     Returns a combined audio file with all chunks concatenated.
     This endpoint handles documents up to ~100 pages.
 
-    Supports models: 'xtts' (high quality) or 'kokoro' (fast, Apache licensed)
+    Model: 'kokoro' (fast, Apache licensed)
     """
     model_type = request.model.lower()
-    if model_type not in ["xtts", "kokoro"]:
-        raise HTTPException(status_code=400, detail=f"Unknown model: {model_type}. Use 'xtts' or 'kokoro'")
+    if model_type != "kokoro":
+        raise HTTPException(status_code=400, detail=f"Unknown model: {model_type}. Use 'kokoro'")
 
     # Chunk the text
     chunks = chunk_text(request.text, request.max_chunk_chars)
@@ -1320,7 +979,6 @@ async def synthesize_long(request: SynthesizeLongRequest):
                 "name": KOKORO_VOICES.get(request.voice_id, request.voice_id),
                 "kokoro_voice": request.voice_id,
                     "explicit_kokoro": True,
-                "xtts_speaker": XTTS_DEFAULT_SPEAKER,
             }
         else:
             logger.warning(f"Unknown voice_id '{request.voice_id}', using default")
@@ -1355,48 +1013,6 @@ async def synthesize_long(request: SynthesizeLongRequest):
 
             total_synthesis_time = time.time() - start_time
             total_chunks = 1
-        else:
-            # XTTS: use per-chunk synthesis (XTTS needs smaller text segments)
-            all_audio = []
-            sample_rate = XTTS_SAMPLE_RATE
-            total_synthesis_time = 0
-
-            for i, chunk_text_content in enumerate(chunks):
-                chunk_start = time.time()
-                logger.info(f"Synthesizing chunk {i+1}/{total_chunks}: {len(chunk_text_content)} chars")
-
-                # Check cache first (include model in cache key)
-                cache_key = get_cache_key(f"{model_type}|{chunk_text_content}", request.voice_id, request.language, request.speed)
-                cached = get_cached_audio(cache_key)
-
-                if cached:
-                    audio_buf = io.BytesIO(cached)
-                    cached_audio, cached_sr = sf.read(audio_buf)
-                    all_audio.append(cached_audio)
-                    sample_rate = cached_sr
-                    logger.info(f"Chunk {i+1} from cache")
-                else:
-                    wav_array, sample_rate = synthesize_with_xtts(
-                        chunk_text_content, voice_info, request.language, request.speed
-                    )
-
-                    all_audio.append(wav_array)
-
-                    chunk_buffer = io.BytesIO()
-                    sf.write(chunk_buffer, wav_array, sample_rate, format='WAV')
-                    chunk_buffer.seek(0)
-                    save_to_cache(cache_key, chunk_buffer.read())
-
-                chunk_time = time.time() - chunk_start
-                total_synthesis_time += chunk_time
-                logger.info(f"Chunk {i+1} completed in {chunk_time:.2f}s")
-
-            combined_audio = np.concatenate(all_audio)
-
-            audio_buffer = io.BytesIO()
-            sf.write(audio_buffer, combined_audio, sample_rate, format='WAV')
-            audio_buffer.seek(0)
-            audio_data = audio_buffer.read()
 
     except Exception as e:
         logger.error(f"Long synthesis failed: {e}")
@@ -1438,8 +1054,8 @@ async def synthesize_stream(request: SynthesizeLongRequest):
     import json
 
     model_type = request.model.lower()
-    if model_type not in ["xtts", "kokoro"]:
-        raise HTTPException(status_code=400, detail=f"Unknown model: {model_type}. Use 'xtts' or 'kokoro'")
+    if model_type != "kokoro":
+        raise HTTPException(status_code=400, detail=f"Unknown model: {model_type}. Use 'kokoro'")
 
     # Chunk the text
     chunks = chunk_text(request.text, request.max_chunk_chars)
@@ -1459,13 +1075,12 @@ async def synthesize_stream(request: SynthesizeLongRequest):
                 "name": KOKORO_VOICES.get(request.voice_id, request.voice_id),
                 "kokoro_voice": request.voice_id,
                     "explicit_kokoro": True,
-                "xtts_speaker": XTTS_DEFAULT_SPEAKER,
             }
         else:
             logger.warning(f"Unknown voice_id '{request.voice_id}', using default")
             voice_info = BUILTIN_VOICES["default"]
 
-    sample_rate = KOKORO_SAMPLE_RATE if model_type == "kokoro" else XTTS_SAMPLE_RATE
+    sample_rate = KOKORO_SAMPLE_RATE
 
     async def generate_chunks():
         """Generator that yields NDJSON lines as chunks are synthesized."""
@@ -1482,15 +1097,9 @@ async def synthesize_stream(request: SynthesizeLongRequest):
                     audio_data = cached
                     logger.info(f"Chunk {i+1} from cache")
                 else:
-                    # Synthesize based on model type
-                    if model_type == "kokoro":
-                        wav_array, sr = synthesize_with_kokoro(
-                            chunk_text_content, voice_info, request.speed, request.language
-                        )
-                    else:
-                        wav_array, sr = synthesize_with_xtts(
-                            chunk_text_content, voice_info, request.language, request.speed
-                        )
+                    wav_array, sr = synthesize_with_kokoro(
+                        chunk_text_content, voice_info, request.speed, request.language
+                    )
 
                     # Convert to WAV bytes
                     audio_buffer = io.BytesIO()
@@ -1931,7 +1540,7 @@ class SynthesizeWithClonedVoiceRequest(BaseModel):
     voice_id: str = Field(..., description="Unique ID for caching the voice file")
     speed: float = Field(default=1.0, ge=0.5, le=2.0)
     exaggeration: float = Field(default=0.5, ge=0.0, le=1.0, description="Emotion exaggeration level (Chatterbox only)")
-    model: str = Field(default="chatterbox", description="Voice cloning model: 'chatterbox' (default) or 'xtts'")
+    model: str = Field(default="chatterbox", description="Voice cloning model: 'chatterbox'")
 
 
 @app.post("/synthesize-cloned")
@@ -1939,9 +1548,7 @@ async def synthesize_with_cloned_voice(request: SynthesizeWithClonedVoiceRequest
     """
     Synthesize text using a cloned voice.
 
-    Supports two voice cloning models:
-    - chatterbox (default): MIT licensed, great for expressive voices
-    - xtts: XTTS v2, multilingual support, different voice characteristics
+    Voice cloning model: chatterbox (MIT licensed).
 
     The reference audio is downloaded from the provided URL (Supabase Storage)
     and cached locally for repeated use.
@@ -1950,10 +1557,10 @@ async def synthesize_with_cloned_voice(request: SynthesizeWithClonedVoiceRequest
     """
     # Validate model selection
     model_type = request.model.lower()
-    if model_type not in ["chatterbox", "xtts"]:
+    if model_type != "chatterbox":
         raise HTTPException(
             status_code=400,
-            detail=f"Unknown cloning model: {model_type}. Use 'chatterbox' or 'xtts'"
+            detail=f"Unknown cloning model: {model_type}. Use 'chatterbox'"
         )
 
     # Download/retrieve cached voice file
@@ -1978,21 +1585,12 @@ async def synthesize_with_cloned_voice(request: SynthesizeWithClonedVoiceRequest
     start_time = time.time()
 
     # Synthesize with the selected model
-    if model_type == "xtts":
-        wav_array, sample_rate = synthesize_with_xtts_cloned(
-            text=request.text,
-            reference_audio_path=voice_path,
-            language="en",
-            speed=request.speed
-        )
-    else:
-        # Default to Chatterbox
-        wav_array, sample_rate = synthesize_with_chatterbox(
-            text=request.text,
-            reference_audio_path=voice_path,
-            speed=request.speed,
-            exaggeration=request.exaggeration
-        )
+    wav_array, sample_rate = synthesize_with_chatterbox(
+        text=request.text,
+        reference_audio_path=voice_path,
+        speed=request.speed,
+        exaggeration=request.exaggeration
+    )
 
     # Write to buffer
     audio_buffer = io.BytesIO()
@@ -2064,34 +1662,26 @@ async def preview_cloned_voice(
     Generate a short preview of a cloned voice.
 
     Used during voice cloning setup to let users hear how their voice sounds.
-    Supports both 'chatterbox' (default) and 'xtts' models.
+    Model: 'chatterbox'.
     """
     # Validate model
     model_type = model.lower()
-    if model_type not in ["chatterbox", "xtts"]:
+    if model_type != "chatterbox":
         raise HTTPException(
             status_code=400,
-            detail=f"Unknown cloning model: {model_type}. Use 'chatterbox' or 'xtts'"
+            detail=f"Unknown cloning model: {model_type}. Use 'chatterbox'"
         )
 
     # Download voice file
     voice_path = await download_voice_file(voice_url, voice_id)
 
     # Synthesize preview with selected model
-    if model_type == "xtts":
-        wav_array, sample_rate = synthesize_with_xtts_cloned(
-            text=text,
-            reference_audio_path=voice_path,
-            language="en",
-            speed=1.0
-        )
-    else:
-        wav_array, sample_rate = synthesize_with_chatterbox(
-            text=text,
-            reference_audio_path=voice_path,
-            speed=1.0,
-            exaggeration=0.5
-        )
+    wav_array, sample_rate = synthesize_with_chatterbox(
+        text=text,
+        reference_audio_path=voice_path,
+        speed=1.0,
+        exaggeration=0.5
+    )
 
     # Write to buffer
     audio_buffer = io.BytesIO()

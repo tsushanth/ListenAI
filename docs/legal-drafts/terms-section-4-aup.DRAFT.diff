@@ -1,0 +1,70 @@
+DRAFT - NOT APPLIED, NOT APPROVED, REQUIRES LEGAL REVIEW.
+Proposed replacement for Section 4 of web/src/app/terms/page.tsx (expanded voice-cloning AUP and fraud policy).
+Written by an AI assistant from the safeguards in internal-docs/cost-lab/gtm/voice-cloning/REPORT.md. It is not
+legal advice. Review the bracketed [LEGAL REVIEW] note and the claims it makes about what the product does before
+publishing; those claims are only true once backend/ changes in this branch are deployed and the service is live.
+Apply with:  git apply docs/legal-drafts/terms-section-4-aup.DRAFT.diff   (from the repo root, only after approval)
+
+diff --git a/web/src/app/terms/page.tsx b/web/src/app/terms/page.tsx
+index 10412a2..2d92406 100644
+--- a/web/src/app/terms/page.tsx
++++ b/web/src/app/terms/page.tsx
+@@ -40,17 +40,52 @@ export default function TermsPage() {
+             </ul>
+           </section>
+ 
++          {/* DRAFT - NOT APPROVED - REQUIRES LEGAL REVIEW BEFORE PUBLISHING. See docs/VOICE_CLONING_CONSENT.md. */}
+           <section className="mb-8">
+-            <h2 className="text-2xl font-semibold text-white mb-4">4. Voice Cloning</h2>
++            <h2 className="text-2xl font-semibold text-white mb-4">4. Voice Cloning, Synthetic Voices and Acceptable Use</h2>
+             <p className="text-gray-300 mb-4">
+-              When using our voice cloning feature, you agree to:
++              Voice cloning is available only to signed-in paid accounts with a verified email address. By creating a
++              cloned voice you confirm that:
+             </p>
+             <ul className="list-disc pl-6 text-gray-300 space-y-2">
+-              <li>Only clone voices you have permission to clone (your own or with explicit consent)</li>
+-              <li>Not use cloned voices for impersonation, fraud, or malicious purposes</li>
+-              <li>Not create clones of public figures without authorization</li>
+-              <li>Accept responsibility for how you use cloned voices</li>
++              <li>The voice is your own. Cloning another person&apos;s voice is not available through the self-service feature. If you need a third-party narrator&apos;s voice, contact us first; we require that person&apos;s signed written release and their own live consent recording.</li>
++              <li>The consent recording you provide is a genuine, live recording of you reading the phrase we issued. You will not submit audio produced by a voice changer, a text-to-speech system, or any recording of another person.</li>
++              <li>You will not use a cloned voice, or any audio generated with it, to impersonate any real person, to deceive anyone about who is speaking, or to deceive anyone into believing generated audio is a real recording.</li>
+             </ul>
++            <p className="text-gray-300 mt-4 mb-2">You must not use cloned voices or generated audio for:</p>
++            <ul className="list-disc pl-6 text-gray-300 space-y-2">
++              <li>Fraud, scams, phishing or social engineering, including &quot;emergency&quot; or &quot;family member&quot; calls, fake customer-service or bank calls, and attempts to defeat voice authentication</li>
++              <li>Automated or prerecorded calls and messages (robocalls) to people who have not given the prior express consent that applicable law requires, or in violation of telemarketing and do-not-call rules</li>
++              <li>Political or election content that deceives people about what a real candidate or official said</li>
++              <li>Sexual or intimate content, content depicting or targeting minors, or content that harasses, threatens, defames or demeans a person</li>
++              <li>Content attributed to a public figure, or to anyone, without their authorization</li>
++              <li>Training, fine-tuning or improving any other voice or AI model, or reselling or sublicensing cloned voices</li>
++            </ul>
++            <p className="text-gray-300 mt-4 mb-2">You also agree not to:</p>
++            <ul className="list-disc pl-6 text-gray-300 space-y-2">
++              <li>Remove, alter or evade the inaudible watermark we embed in generated audio, or the safeguards described here, including by creating multiple accounts</li>
++              <li>Publish generated audio in a context where the law or the platform&apos;s rules require disclosing that it is synthetic, without that disclosure</li>
++            </ul>
++            <p className="text-gray-300 mt-4 mb-4">
++              <strong>What we do.</strong> We embed a watermark in every generated file and keep a hash of each generated
++              file for 90 days. We keep your consent recording, its transcript and its similarity score while the voice
++              exists and for 12 months after you delete it. We limit how many voices an account can create per day. We
++              may screen text for scam scripts. We do not use your recordings to train models.
++            </p>
++            <p className="text-gray-300 mb-4">
++              <strong>Enforcement.</strong> We may disable a voice, delete generated audio, suspend or terminate an
++              account, preserve evidence, and report suspected unlawful use to authorities, without prior notice and
++              without refund where we believe these terms have been broken. If you believe a voice imitates you or someone
++              you represent without permission, email abuse@readaloudai.org or use the report form; on a credible claim
++              we will disable the voice within 24 hours.
++            </p>
++            <p className="text-gray-300 mb-4">
++              <strong>Your responsibility.</strong> You are responsible for the content you generate and for how it is used.
++              [LEGAL REVIEW: indemnification wording, limitation of liability interaction with section 9, governing law,
++              and whether the 12-month consent retention and 90-day hash retention are acceptable under the biometric
++              privacy laws that apply to your users (for example Illinois BIPA and Texas CUBI), which may require a
++              separate written release at sign-up and a published retention schedule.]
++            </p>
+           </section>
+ 
+           <section className="mb-8">
