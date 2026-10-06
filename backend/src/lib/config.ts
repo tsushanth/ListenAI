@@ -88,6 +88,9 @@ const envSchema = z.object({
   STT_MAX_CONCURRENT_GLOBAL: z.string().transform(Number).default('8'),
   STT_MAX_KEYTERMS: z.string().transform(Number).default('1000'),
   STT_KEYTERMS_MAX_QUERY_BYTES: z.string().transform(Number).default('7000'),
+  // Minimum billed audio seconds per successful STT request (billing only; transcript/duration unchanged).
+  // 0 disables. Applied once, inside reportSttUsage. Non-numeric or negative values fall back to 10.
+  STT_MIN_BILLED_SECONDS: z.string().transform((v) => { const n = Number(v); return Number.isFinite(n) && n >= 0 ? n : 10; }).default('10'),
   STT_DEFAULT_RETENTION_DAYS: z.string().transform(Number).default('0'),
   STT_MAX_RETENTION_DAYS: z.string().transform(Number).default('30'),
   // Improved batch worker (Modal app ra-stt-shadow-w22; see routes/stt.ts). PERCENT 0 (default) = feature off:

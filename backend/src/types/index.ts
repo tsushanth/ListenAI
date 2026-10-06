@@ -43,6 +43,7 @@ export interface EnvConfig {
   STT_MAX_CONCURRENT_GLOBAL: number;
   STT_MAX_KEYTERMS: number;
   STT_KEYTERMS_MAX_QUERY_BYTES: number;
+  STT_MIN_BILLED_SECONDS: number;
   STT_DEFAULT_RETENTION_DAYS: number;
   STT_MAX_RETENTION_DAYS: number;
   STT_IMPROVED_URL?: string;

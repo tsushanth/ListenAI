@@ -14,6 +14,7 @@
 import Stripe from 'stripe';
 import { supabase } from './supabaseClient.js';
 import { logger } from './logger.js';
+import { config } from './config.js';
 import { drainGatewayUsage, normalizeGatewayDrain } from './ttsGatewayClient.js';
 
 const billingLogger = logger.child({ module: 'realtimeTtsBilling' });
@@ -670,7 +671,22 @@ export const reportSoundEffectGenerationUsage = (userId: string, durationSec: nu
 // STT_API_KEY is a house/backend key with no realtimetts_billing row of its own, its drained usage is
 // silently dropped by reportUsageToStripe's "no owning user record" branch, which is the intended
 // (if easy-to-miss) safety net here.
-export async function reportSttUsage(userId: string, audioSeconds: number): Promise<void> {
+//
+// Minimum billed duration: every successful request with audioSeconds > 0 is billed at least
+// STT_MIN_BILLED_SECONDS (default 10; 0 disables). Billing only: the transcript and the returned
+// `duration` are unchanged. The minimum is applied HERE and nowhere else (routes/stt.ts passes the raw
+// decoded duration), so it cannot be applied twice. Zero/negative/non-finite durations stay unbilled
+// (the minimum must never turn an empty-audio result into a charge), and failed requests never reach
+// this function.
+export function billableSttSeconds(audioSeconds: number, minSeconds: number = config.STT_MIN_BILLED_SECONDS): number {
+  if (!Number.isFinite(audioSeconds) || audioSeconds <= 0) return 0;
+  const min = Number.isFinite(minSeconds) && minSeconds > 0 ? minSeconds : 0;
+  return Math.max(audioSeconds, min);
+}
+
+export async function reportSttUsage(userId: string, rawAudioSeconds: number): Promise<void> {
+  const audioSeconds = billableSttSeconds(rawAudioSeconds);
+  if (audioSeconds <= 0) return;
   const target = await resolveMeterTarget(userId);
   if (target.kind === 'comped') {
     billingLogger.debug({ userId }, 'Comped user; STT usage not reported to Stripe');
@@ -692,7 +708,7 @@ export async function reportSttUsage(userId: string, audioSeconds: number): Prom
         value: String(chars),
       },
     });
-    billingLogger.debug({ userId, audioSeconds, chars }, 'STT usage reported');
+    billingLogger.debug({ userId, rawAudioSeconds, audioSeconds, chars }, 'STT usage reported');
   } catch (err) {
     billingLogger.error({ err, userId, audioSeconds }, 'Failed to report STT usage');
   }
