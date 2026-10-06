@@ -220,6 +220,10 @@ body {
 .ra-ref p, .ra-ref li { color: var(--ink2); max-width: 74ch; }
 .ra-ref ul { padding-left: 20px; display: grid; gap: 6px; }
 .ra-ref code, .ra code.inl { font-family: var(--font-mono), monospace; font-size: .85em; background: var(--panel); padding: 1px 6px; border-radius: 5px; }
+/* Inline-code styling must not leak into code BLOCKS: light text on the light panel made every line of a block unreadable. */
+.ra-ref pre code { background: none; padding: 0; border-radius: 0; font-size: inherit; color: inherit; }
+/* A bare <pre> outside the dark .ra-code blocks gets its own panel instead of per-line highlights. */
+.ra-ref > pre, .ra-ref :not(.ra-code) > pre { background: var(--panel); padding: 14px 16px; border-radius: 10px; font-size: .85rem; line-height: 1.6; }
 @media (prefers-reduced-motion: reduce) { .ra * { transition: none !important; animation: none !important; } }
 
 /* ===== Voice studio (/voices). Light .ra system; calm, one job per screen. ===== */
