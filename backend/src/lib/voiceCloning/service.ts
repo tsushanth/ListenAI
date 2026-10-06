@@ -3,6 +3,7 @@
 //   eligibility (verified email + payment) -> daily limit -> challenge -> reference gate ->
 //   consent (ASR + speaker similarity) -> create voice on the serving app -> persist consent + voice.
 import { createHash, randomUUID } from 'node:crypto';
+import { AppError } from '../../types/index.js';
 import type {
   AsrClient, BlobStore, CloneServiceClient, CloneStore, Eligibility, OutputHashRecord, SynthesisResult, VoiceCloneRow,
 } from './types.js';
@@ -18,9 +19,13 @@ export const SUPPORTED_LANGUAGES = new Set([
   'ar', 'da', 'de', 'el', 'en', 'es', 'fi', 'fr', 'he', 'hi', 'it', 'ja', 'ko', 'ms', 'nl', 'no', 'pl', 'pt', 'ru', 'sv', 'sw', 'tr', 'zh',
 ]);
 
-export class CloneError extends Error {
-  constructor(public status: number, public code: string, message: string, public details?: unknown) {
-    super(message);
+export class CloneError extends AppError {
+  constructor(status: number, code: string, message: string, details?: Record<string, unknown>) {
+    super(status, code, message, details);
+    this.name = 'CloneError';
+  }
+  get status(): number {
+    return this.statusCode;
   }
 }
 
@@ -207,7 +212,20 @@ export async function recordOutput(deps: Pick<CloneDeps, 'store' | 'policy' | 'n
   return rec;
 }
 
-/** Retention sweep: drop output hashes past their window. Intended for a daily cron (not wired here). */
-export function purgeExpired(deps: Pick<CloneDeps, 'store' | 'now'>) {
-  return deps.store.purgeExpiredOutputHashes(((deps.now ?? (() => new Date()))()).toISOString());
+/**
+ * Retention sweep: output hashes past 90 days, and consent evidence (row + clip) past deletion + 12 months.
+ * Intended for a daily scheduler; NOT scheduled by this change (needs an owner decision on where it runs).
+ */
+export async function purgeExpired(deps: Pick<CloneDeps, 'store' | 'now'> & { blobs?: BlobStore }) {
+  const now = ((deps.now ?? (() => new Date()))()).toISOString();
+  const outputHashes = await deps.store.purgeExpiredOutputHashes(now);
+  let consents = 0;
+  if (deps.blobs) {
+    for (const c of await deps.store.listExpiredConsents(now)) {
+      await deps.blobs.remove([c.clipPath]);
+      await deps.store.deleteConsent(c.id);
+      consents += 1;
+    }
+  }
+  return { outputHashes, consents };
 }

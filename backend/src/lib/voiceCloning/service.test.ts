@@ -271,6 +271,30 @@ test('output hash is recorded with watermark metadata and a 90 day expiry, then 
   assert.equal(rec.sha256, (await import('node:crypto')).createHash('sha256').update(audio).digest('hex'));
   assert.equal(rec.watermarkScheme, 'perth');
   assert.equal(rec.expiresAt, '2027-01-04T12:00:00.000Z');
-  assert.equal(await purgeExpired({ store: s.store, now: () => new Date('2027-01-05T00:00:00Z') }), 1);
+  assert.deepEqual(await purgeExpired({ store: s.store, now: () => new Date('2027-01-05T00:00:00Z') }), { outputHashes: 1, consents: 0 });
   assert.equal(s.store.outputs.length, 0);
+});
+
+test('retention sweep removes consent clip and row only after deletion + 12 months', async () => {
+  const s = setup();
+  const c = await challengeFor(s);
+  const { voice } = await createVoiceClone(s.deps, body(c.challengeId));
+  const clipPath = s.store.consents.get(voice.consentId)!.clipPath;
+  await deleteVoiceClone(s.deps, 'u1', voice.id);
+  const early = await purgeExpired({ store: s.store, blobs: s.blobs, now: () => new Date('2027-06-01T00:00:00Z') });
+  assert.equal(early.consents, 0);
+  assert.ok(s.blobs.objects.has(clipPath));
+  const late = await purgeExpired({ store: s.store, blobs: s.blobs, now: () => new Date('2027-10-07T00:00:00Z') });
+  assert.equal(late.consents, 1);
+  assert.ok(!s.blobs.objects.has(clipPath));
+  assert.equal(s.store.consents.size, 0);
+  assert.equal(s.store.voices.size, 0);
+});
+
+test('a live (never deleted) voice keeps its consent evidence indefinitely', async () => {
+  const s = setup();
+  const c = await challengeFor(s);
+  await createVoiceClone(s.deps, body(c.challengeId));
+  const r = await purgeExpired({ store: s.store, blobs: s.blobs, now: () => new Date('2040-01-01T00:00:00Z') });
+  assert.equal(r.consents, 0);
 });

@@ -127,10 +127,15 @@ export interface CloneStore {
   /** Deletes generated audio (job outputs + cache entries) for a voice; returns number of objects removed. */
   purgeVoiceOutputs(voiceId: string): Promise<number>;
   insertAbuseReport(r: AbuseReport): Promise<void>;
+  /** Consent rows whose retain_until has passed (voice already deleted). */
+  listExpiredConsents(now: string): Promise<Array<{ id: string; clipPath: string }>>;
+  /** Deletes the consent row (cascades to the already-deleted voice row). */
+  deleteConsent(id: string): Promise<void>;
 }
 
 export interface BlobStore {
   put(path: string, data: Buffer, contentType: string): Promise<void>;
+  remove(paths: string[]): Promise<void>;
 }
 
 export type BillingPlan = 'paid' | 'comped';

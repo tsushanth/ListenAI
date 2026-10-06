@@ -1,0 +1,180 @@
+-- ============================================================================
+-- Migration 033: consent-gated voice cloning (Chatterbox Multilingual V3)
+--
+-- DRAFT. NOT APPLIED to any Supabase project. Review, then apply deliberately.
+--
+-- Adds the tables behind routes/voiceClones.ts / lib/voiceCloning/:
+--   voice_consent_challenges   server-issued random phrase, single use, expiring
+--   voice_consents             the evidence: transcript, ASR WER, speaker-similarity score, threshold used,
+--                              path + sha256 of the consent clip, retain_until
+--   voice_clones               one row per cloned voice (status active|disabled|deleting|deleted)
+--   voice_clone_output_hashes  sha256 + watermark metadata of every generated output, 90 day expiry
+--   voice_clone_abuse_reports  takedown intake
+-- plus a private 'voice-consent' storage bucket for the consent recordings.
+--
+-- SECURITY (read before editing): ReadAloud has an open RLS problem on older tables (writable via the anon
+-- key). NOTHING here widens it: every new table has RLS enabled, a single policy TO service_role, and all
+-- anon/authenticated privileges revoked; the bucket is private and gets a RESTRICTIVE deny policy for
+-- anon/authenticated. Do not add permissive policies. Consent clips and output hashes are biometric-adjacent
+-- personal data.
+--
+-- user_id columns are NOT foreign keys to auth.users on purpose: consent evidence and output hashes must be
+-- able to outlive an account deletion for their retention window (counsel to confirm the windows).
+--
+-- Also: tts_jobs.cloned_voice_id used to reference the legacy cloned_voices table (migration 006). Gated
+-- clones live in voice_clones, so that foreign key is dropped (the column stays, nullable UUID). Existing
+-- rows and data are untouched. The 'xtts' value of the cloning_model enum (007) is left in place:
+-- Postgres cannot drop an enum value without rebuilding the type, and no code writes it any more.
+--
+-- Rollback: backend/supabase/rollbacks/033_rollback.sql
+-- ============================================================================
+
+BEGIN;
+
+-- ---------------------------------------------------------------------------
+-- 1. Consent challenges
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS voice_consent_challenges (
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id     UUID NOT NULL,
+    phrase      TEXT NOT NULL,
+    code_words  TEXT[] NOT NULL,
+    expires_at  TIMESTAMPTZ NOT NULL,
+    attempts    INTEGER NOT NULL DEFAULT 0,
+    consumed_at TIMESTAMPTZ,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_voice_consent_challenges_user ON voice_consent_challenges(user_id, created_at DESC);
+
+-- Atomic attempt counter (a read-modify-write from the app would let parallel requests under-count).
+CREATE OR REPLACE FUNCTION increment_voice_challenge_attempts(p_id UUID)
+RETURNS INTEGER LANGUAGE sql AS $$
+    UPDATE voice_consent_challenges SET attempts = attempts + 1 WHERE id = p_id RETURNING attempts;
+$$;
+REVOKE ALL ON FUNCTION increment_voice_challenge_attempts(UUID) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION increment_voice_challenge_attempts(UUID) TO service_role;
+
+-- ---------------------------------------------------------------------------
+-- 2. Consent evidence
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS voice_consents (
+    id                   UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id              UUID NOT NULL,
+    challenge_id         UUID NOT NULL REFERENCES voice_consent_challenges(id),
+    phrase               TEXT NOT NULL,
+    transcript           TEXT NOT NULL,
+    phrase_wer           NUMERIC(5,4) NOT NULL,
+    speaker_similarity   NUMERIC(5,4) NOT NULL,
+    similarity_threshold NUMERIC(5,4) NOT NULL,   -- the threshold in force when this was accepted
+    similarity_model     TEXT NOT NULL,
+    borderline           BOOLEAN NOT NULL DEFAULT FALSE,  -- accepted within the borderline margin: sample these
+    clip_path            TEXT NOT NULL,           -- object path in the private 'voice-consent' bucket
+    clip_sha256          TEXT NOT NULL,
+    clip_sec             NUMERIC(6,2),
+    retain_until         TIMESTAMPTZ,             -- NULL while the voice exists; set to deletion + 12 months on delete
+    created_at           TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_voice_consents_user ON voice_consents(user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_voice_consents_retain ON voice_consents(retain_until) WHERE retain_until IS NOT NULL;
+
+-- ---------------------------------------------------------------------------
+-- 3. Voices
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS voice_clones (
+    id               UUID PRIMARY KEY,            -- generated by the backend; also the voice id on the serving app
+    user_id          UUID NOT NULL,
+    name             TEXT NOT NULL,
+    language         TEXT NOT NULL,
+    status           TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active','disabled','deleting','deleted')),
+    -- Deleting the consent row (retention sweep) deletes the (already 'deleted') voice row with it.
+    consent_id       UUID NOT NULL REFERENCES voice_consents(id) ON DELETE CASCADE,
+    reference_sha256 TEXT NOT NULL,               -- hash only; reference audio itself lives on the serving app's volume
+    reference_sec    NUMERIC(6,2) NOT NULL,
+    model_id         TEXT NOT NULL,
+    disabled_reason  TEXT,
+    disabled_at      TIMESTAMPTZ,
+    deleted_at       TIMESTAMPTZ,
+    created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+-- The daily creation limit counts rows by created_at INCLUDING deleted ones.
+CREATE INDEX IF NOT EXISTS idx_voice_clones_user_created ON voice_clones(user_id, created_at DESC);
+
+-- ---------------------------------------------------------------------------
+-- 4. Output hashes (watermark metadata), 90 day retention
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS voice_clone_output_hashes (
+    id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    voice_id         UUID NOT NULL,
+    user_id          UUID NOT NULL,
+    sha256           TEXT NOT NULL,
+    bytes            INTEGER NOT NULL,
+    chars            INTEGER NOT NULL,
+    watermark_scheme TEXT NOT NULL,
+    watermark_score  NUMERIC(5,4),
+    created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    expires_at       TIMESTAMPTZ NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_voice_clone_output_hashes_sha ON voice_clone_output_hashes(sha256);
+CREATE INDEX IF NOT EXISTS idx_voice_clone_output_hashes_voice ON voice_clone_output_hashes(voice_id);
+CREATE INDEX IF NOT EXISTS idx_voice_clone_output_hashes_expiry ON voice_clone_output_hashes(expires_at);
+
+-- ---------------------------------------------------------------------------
+-- 5. Abuse reports
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS voice_clone_abuse_reports (
+    id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    voice_id         UUID,
+    reporter_contact TEXT NOT NULL,
+    category         TEXT NOT NULL,
+    details          TEXT NOT NULL,
+    status           TEXT NOT NULL DEFAULT 'open',
+    created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- ---------------------------------------------------------------------------
+-- 6. Lock everything to service_role (same posture as 029/030/032)
+-- ---------------------------------------------------------------------------
+DO $$
+DECLARE t TEXT;
+BEGIN
+    FOREACH t IN ARRAY ARRAY[
+        'voice_consent_challenges', 'voice_consents', 'voice_clones',
+        'voice_clone_output_hashes', 'voice_clone_abuse_reports'
+    ] LOOP
+        EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY', t);
+        EXECUTE format('DROP POLICY IF EXISTS "Service role full access on %s" ON %I', t, t);
+        EXECUTE format('CREATE POLICY "Service role full access on %s" ON %I FOR ALL TO service_role USING (true) WITH CHECK (true)', t, t);
+        EXECUTE format('REVOKE ALL ON %I FROM anon, authenticated', t);
+    END LOOP;
+END $$;
+
+-- ---------------------------------------------------------------------------
+-- 7. Private bucket for consent recordings
+-- ---------------------------------------------------------------------------
+INSERT INTO storage.buckets (id, name, public) VALUES ('voice-consent', 'voice-consent', false)
+ON CONFLICT (id) DO UPDATE SET public = false;
+
+-- RESTRICTIVE policies AND with every permissive one, so this holds even if a dashboard policy is broader.
+DROP POLICY IF EXISTS "deny anon access to voice-consent bucket" ON storage.objects;
+CREATE POLICY "deny anon access to voice-consent bucket" ON storage.objects
+    AS RESTRICTIVE FOR ALL TO anon, authenticated
+    USING (bucket_id <> 'voice-consent')
+    WITH CHECK (bucket_id <> 'voice-consent');
+
+-- ---------------------------------------------------------------------------
+-- 8. Gated clones are not rows of the legacy cloned_voices table
+-- ---------------------------------------------------------------------------
+DO $$
+DECLARE c RECORD;
+BEGIN
+    FOR c IN
+        SELECT con.conname
+          FROM pg_constraint con
+          JOIN pg_attribute a ON a.attrelid = con.conrelid AND a.attnum = ANY (con.conkey)
+         WHERE con.conrelid = 'tts_jobs'::regclass AND con.contype = 'f' AND a.attname = 'cloned_voice_id'
+    LOOP
+        EXECUTE format('ALTER TABLE tts_jobs DROP CONSTRAINT %I', c.conname);
+    END LOOP;
+END $$;
+
+COMMIT;

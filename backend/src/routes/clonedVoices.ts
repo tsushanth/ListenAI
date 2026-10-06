@@ -2,8 +2,6 @@ import { Router, Request, Response, NextFunction, RequestHandler } from 'express
 import { z } from 'zod';
 import { logger } from '../lib/logger.js';
 import {
-  createClonedVoice,
-  confirmClonedVoiceUpload,
   getUserClonedVoices,
   getClonedVoice,
   getClonedVoiceAudioUrl,
@@ -66,101 +64,23 @@ clonedVoicesRouter.use((req: Request, res: Response, next: NextFunction) => {
 });
 
 // ============================================================================
-// POST /cloned-voices - Create a new cloned voice
+// POST /cloned-voices, POST /cloned-voices/:id/confirm - DISABLED
 // ============================================================================
+// Creating a clone here required nothing but a client-chosen X-Device-ID: no sign-in, no payment, no consent,
+// no rate limit. New clones must go through /api/voice-clones (consent-gated, watermarked, rate limited).
+// Existing rows are left untouched (listing/deleting still work) but cannot be synthesised from: see
+// routes/tts.ts, which only accepts voices from voice_clones.
 
-const createVoiceSchema = z.object({
-  name: z.string().min(1).max(100),
-  description: z.string().max(500).optional(),
-  exaggeration: z.number().min(0).max(1).optional(),
-});
-
-clonedVoicesRouter.post('/', asyncHandler(async (req: DeviceRequest, res: Response) => {
-  const userId = req.deviceId;
-
-  // Validate request body
-  const parseResult = createVoiceSchema.safeParse(req.body);
-  if (!parseResult.success) {
-    throw new ValidationError('Invalid request body', {
-      errors: parseResult.error.flatten().fieldErrors,
-    });
-  }
-
-  const { name, description, exaggeration } = parseResult.data;
-
-  clonedVoicesLogger.info({ userId, name }, 'Creating cloned voice');
-
-  // Create the voice and get upload URL
-  const { voice, uploadUrl, expiresAt } = await createClonedVoice({
-    userId,
-    name,
-    description,
-    exaggeration,
+function consentRequired(_req: Request, res: Response): void {
+  res.status(410).json({
+    error: 'Creating voices here is no longer available. Voice cloning now requires a signed-in paid account and a live consent recording.',
+    code: 'consent_required',
+    use: '/api/voice-clones',
   });
+}
 
-  res.status(201).json({
-    id: voice.id,
-    name: voice.name,
-    upload_url: uploadUrl,
-    expires_at: expiresAt.toISOString(),
-  });
-}));
-
-// ============================================================================
-// POST /cloned-voices/:id/confirm - Confirm audio upload
-// ============================================================================
-
-const confirmUploadSchema = z.object({
-  duration_sec: z.number().positive(),
-  file_size_bytes: z.number().positive().int(),
-});
-
-clonedVoicesRouter.post('/:id/confirm', asyncHandler(async (req: DeviceRequest, res: Response) => {
-  const userId = req.deviceId;
-  const voiceId = req.params.id;
-
-  // Validate UUID format
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-  if (!uuidRegex.test(voiceId ?? '')) {
-    throw new ValidationError('Invalid voice ID format');
-  }
-
-  // Validate request body
-  const parseResult = confirmUploadSchema.safeParse(req.body);
-  if (!parseResult.success) {
-    throw new ValidationError('Invalid request body', {
-      errors: parseResult.error.flatten().fieldErrors,
-    });
-  }
-
-  const { duration_sec, file_size_bytes } = parseResult.data;
-
-  clonedVoicesLogger.info({ userId, voiceId, duration_sec }, 'Confirming voice upload');
-
-  const voice = await confirmClonedVoiceUpload({
-    voiceId: voiceId!,
-    userId,
-    durationSec: duration_sec,
-    fileSizeBytes: file_size_bytes,
-  });
-
-  // Get a signed URL for the audio
-  const audioUrl = await getClonedVoiceAudioUrl(voice.audio_path);
-
-  const voiceInfo: ClonedVoiceInfo = {
-    id: voice.id,
-    name: voice.name,
-    description: voice.description,
-    duration_sec: voice.duration_sec,
-    exaggeration: voice.exaggeration,
-    is_default: voice.is_default,
-    usage_count: voice.usage_count,
-    created_at: voice.created_at,
-    audio_url: audioUrl ?? undefined,
-  };
-
-  res.json(voiceInfo);
-}));
+clonedVoicesRouter.post('/', consentRequired);
+clonedVoicesRouter.post('/:id/confirm', consentRequired);
 
 // ============================================================================
 // GET /cloned-voices - List user's cloned voices

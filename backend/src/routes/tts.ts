@@ -63,7 +63,10 @@ import {
   AuthorizationError,
   QuotaExceededError,
   NotFoundError,
+  AppError,
 } from '../types/index.js';
+import { getCloneDeps, eligibilityForSynthesis } from '../lib/voiceCloning/runtime.js';
+import { CLONE_MODEL_ID, getUsableVoice, recordOutput } from '../lib/voiceCloning/service.js';
 
 // ============================================================================
 // Fast Lane Micro Generation (Inline)
@@ -957,11 +960,11 @@ ttsRouter.get('/job/:jobId', asyncHandler(async (req: AuthenticatedRequest, res:
     const remainingAudioSec = estimatedDurationSec - job.progress_sec;
 
     // Cloned voices are much slower than Kokoro
-    // Chatterbox: ~0.3x realtime (synthesis takes 3.3x audio duration)
+    // Chatterbox MTL V3 on an L4: ~1x realtime measured (RTF 0.94, REPORT.md; cold start extra)
     // Kokoro GPU: ~8x realtime
     let synthesisRate: number;
     if (job.cloning_model === 'chatterbox') {
-      synthesisRate = 0.3;  // 3.3x slower than realtime
+      synthesisRate = 1.0;
     } else {
       synthesisRate = 8;  // Kokoro GPU is fast
     }
@@ -1077,13 +1080,17 @@ ttsRouter.post('/job/:jobId/cancel', asyncHandler(async (req: AuthenticatedReque
 }));
 
 // ============================================================================
-// POST /tts/cloned - Synthesize with cloned voice via Chatterbox
+// POST /tts/cloned - Synthesize with a consent-gated cloned voice (sync, short text)
 // ============================================================================
+// voice_id must be a voice created through /api/voice-clones by THIS (really signed-in, paying) user and
+// still active. The client no longer supplies a reference-audio URL: the reference lives only on the
+// serving app. Legacy voices (cloned_voices table, no consent) are not accepted.
+
+const SYNC_CLONED_MAX_CHARS = 1500;
 
 const clonedVoiceSynthSchema = z.object({
-  text: z.string().min(1).max(MAX_TEXT_LENGTH),
-  voice_id: z.string().min(1).describe('Cloned voice ID (UUID from cloned_voices table)'),
-  voice_url: z.string().url().describe('URL to reference audio file (from Supabase Storage)'),
+  text: z.string().min(1).max(SYNC_CLONED_MAX_CHARS),
+  voice_id: z.string().uuid().describe('Cloned voice id from POST /api/voice-clones'),
   speed: z.number().min(0.5).max(3.0).default(1.0),  // Allow up to 3x speed to match iOS playback options
   model: z.enum(['chatterbox']).default('chatterbox').describe('Voice cloning model'),
 });
@@ -1091,95 +1098,31 @@ const clonedVoiceSynthSchema = z.object({
 ttsRouter.post('/cloned', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   const userId = req.user.id;
 
-  // 1. Validate request body
   const parseResult = clonedVoiceSynthSchema.safeParse(req.body);
   if (!parseResult.success) {
     throw new ValidationError(
       parseResult.error.errors.map((e) => `${e.path.join('.')}: ${e.message}`).join(', ')
     );
   }
-
-  const { text, voice_id: voiceId, voice_url: voiceUrl, speed, model } = parseResult.data;
+  const { text, voice_id: voiceId, speed } = parseResult.data;
   const characterCount = text.length;
 
-  ttsLogger.info(
-    { userId, voiceId, characterCount },
-    'Cloned voice synthesis request'
-  );
+  const deps = getCloneDeps();
+  if (!deps) throw new AppError(503, 'CLONING_UNAVAILABLE', 'Voice cloning is not available.');
+  const voice = await getUsableVoice(deps.store, voiceId, await eligibilityForSynthesis(userId));
 
-  // 2. Get cloning TTS service URL (Chatterbox host, separate from Kokoro)
-  const cloningTtsUrl = process.env.CHATTERBOX_URL || process.env.GPU_TTS_URL;
-  if (!cloningTtsUrl) {
-    ttsLogger.error('CHATTERBOX_URL (or GPU_TTS_URL) not configured');
-    throw new Error('Cloning TTS service not configured');
-  }
+  ttsLogger.info({ userId, voiceId, characterCount }, 'Cloned voice synthesis request');
+  const started = Date.now();
+  const synth = await deps.service.synthesize({ voiceId: voice.id, text, language: voice.language, speed });
+  await recordOutput(deps, { voiceId: voice.id, userId, audio: synth.audio, chars: characterCount, synth });
 
-  // 3. Forward request to tts-service /synthesize-cloned endpoint
-  const ttsServiceUrl = `${cloningTtsUrl}/synthesize-cloned`;
-
-  ttsLogger.info(
-    { ttsServiceUrl, voiceId, voiceUrl: voiceUrl.substring(0, 50) + '...', textLen: characterCount },
-    'Forwarding to GPU TTS service'
-  );
-
-  try {
-    const response = await fetch(ttsServiceUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'audio/wav',
-        ...(process.env.SELFHOSTED_TTS_API_KEY
-          ? { 'X-API-Key': process.env.SELFHOSTED_TTS_API_KEY }
-          : {}),
-      },
-      body: JSON.stringify({
-        text,
-        voice_id: voiceId,
-        voice_url: voiceUrl,
-        speed,
-        model,
-      }),
-    });
-
-    ttsLogger.info(
-      { status: response.status, voiceId },
-      'GPU TTS service response received'
-    );
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      ttsLogger.error(
-        { statusCode: response.status, error: errorText, voiceId, ttsServiceUrl },
-        'Cloned voice synthesis failed from GPU service'
-      );
-      throw new Error(`TTS service error: ${response.status} - ${errorText}`);
-    }
-
-    // 4. Stream audio response back to client
-    const contentType = response.headers.get('Content-Type') || 'audio/wav';
-    const synthesisTimeMs = response.headers.get('X-Synthesis-Time-Ms');
-
-    // Set response headers
-    res.setHeader('Content-Type', contentType);
-    res.setHeader('X-Voice-ID', voiceId);
-    res.setHeader('X-Model', 'chatterbox');
-    res.setHeader('X-Characters-Used', characterCount.toString());
-    if (synthesisTimeMs) {
-      res.setHeader('X-Synthesis-Time-Ms', synthesisTimeMs);
-    }
-
-    // Get array buffer and send
-    const audioBuffer = Buffer.from(await response.arrayBuffer());
-    res.send(audioBuffer);
-
-    ttsLogger.info(
-      { userId, voiceId, characterCount, synthesisTimeMs },
-      'Cloned voice synthesis completed'
-    );
-  } catch (error) {
-    ttsLogger.error({ error, voiceId }, 'Cloned voice synthesis error');
-    throw error;
-  }
+  res.setHeader('Content-Type', 'audio/wav');
+  res.setHeader('X-Voice-ID', voiceId);
+  res.setHeader('X-Model', synth.modelId);
+  res.setHeader('X-Watermark', synth.watermarkScheme);
+  res.setHeader('X-Characters-Used', characterCount.toString());
+  res.setHeader('X-Synthesis-Time-Ms', String(Date.now() - started));
+  res.send(synth.audio);
 }));
 
 // ============================================================================
@@ -1190,8 +1133,7 @@ ttsRouter.post('/cloned', asyncHandler(async (req: AuthenticatedRequest, res: Re
 
 const clonedJobRequestSchema = z.object({
   text: z.string().min(1).max(MAX_TEXT_LENGTH),
-  voice_id: z.string().min(1).describe('Cloned voice ID (UUID from cloned_voices table)'),
-  voice_url: z.string().url().describe('URL to reference audio file (from Supabase Storage)'),
+  voice_id: z.string().uuid().describe('Cloned voice id from POST /api/voice-clones'),
   speed: z.number().min(0.5).max(3.0).default(1.0),
   model: z.enum(['chatterbox']).default('chatterbox').describe('Voice cloning model'),
   article_id: z.string().uuid().optional(),
@@ -1209,13 +1151,18 @@ ttsRouter.post('/job-cloned', asyncHandler(async (req: AuthenticatedRequest, res
     });
   }
 
-  const { text, voice_id: voiceId, voice_url: voiceUrl, speed, model, article_id, article_title } = parseResult.data;
+  const { text, voice_id: voiceId, speed, model, article_id, article_title } = parseResult.data;
   const characterCount = text.length;
 
   ttsLogger.info(
     { userId, voiceId, characterCount, model },
     'Cloned voice job request received'
   );
+
+  // 2a. The voice must be consent-verified, owned by this signed-in paying user, and active.
+  const cloneDeps = getCloneDeps();
+  if (!cloneDeps) throw new AppError(503, 'CLONING_UNAVAILABLE', 'Voice cloning is not available.');
+  await getUsableVoice(cloneDeps.store, voiceId, await eligibilityForSynthesis(userId));
 
   // 2. Check quota (cloned voices use the same quota as regular synthesis)
   const debugBypassQuota = req.headers['x-debug-bypass-quota'] === 'true';
@@ -1242,7 +1189,7 @@ ttsRouter.post('/job-cloned', asyncHandler(async (req: AuthenticatedRequest, res
   }
 
   // 3. Compute cache key (includes voice_id and model for uniqueness)
-  const modelId = 'chatterbox-v1';
+  const modelId = CLONE_MODEL_ID;
   const cacheKey = computeCacheKey({
     text,
     voiceId: `cloned-${voiceId}`,  // Prefix to distinguish from regular voices
@@ -1291,7 +1238,6 @@ ttsRouter.post('/job-cloned', asyncHandler(async (req: AuthenticatedRequest, res
     articleTitle: article_title,
     // Cloned voice specific fields
     clonedVoiceId: voiceId,
-    voiceUrl,
     cloningModel: model,
   });
 
@@ -1304,12 +1250,12 @@ ttsRouter.post('/job-cloned', asyncHandler(async (req: AuthenticatedRequest, res
   }
 
   // 7. Estimate wait time
-  // Cloned voices are slower: Chatterbox ~0.3x realtime
+  // Cloned voices are slower: Chatterbox on an L4 measured ~1x realtime, plus a 60-180 s scale-to-zero cold start
   // Audio duration = characterCount / 12.5 chars per second
   // Synthesis time = audioDuration * synthesisMultiplier
   const audioDurationSec = characterCount / 12.5;
-  const synthesisMultiplier = 3.3;  // Chatterbox ~0.3x realtime
-  const estimatedWaitSec = Math.ceil(audioDurationSec * synthesisMultiplier) + 5;  // +5s overhead
+  const synthesisMultiplier = 1.0;
+  const estimatedWaitSec = Math.ceil(audioDurationSec * synthesisMultiplier) + 150;  // + cold start (60-180 s measured)
 
   ttsLogger.info(
     { jobId: job.id, cacheKey, estimatedWaitSec, model, characterCount },

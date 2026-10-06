@@ -51,11 +51,19 @@ export class MemoryStore implements CloneStore {
   }
   async purgeVoiceOutputs(voiceId: string) { this.purgedOutputsFor.push(voiceId); return 2; }
   async insertAbuseReport(r: AbuseReport) { this.reports.push(r); }
+  async listExpiredConsents(now: string) {
+    return [...this.consents.values()].filter((c) => c.retainUntil && c.retainUntil <= now).map((c) => ({ id: c.id, clipPath: c.clipPath }));
+  }
+  async deleteConsent(id: string) {
+    this.consents.delete(id);
+    for (const [vid, v] of this.voices) if (v.consentId === id) this.voices.delete(vid);
+  }
 }
 
 export class MemoryBlobs implements BlobStore {
   objects = new Map<string, Buffer>();
   async put(path: string, data: Buffer) { this.objects.set(path, data); }
+  async remove(paths: string[]) { for (const p of paths) this.objects.delete(p); }
 }
 
 export const GOOD_METRICS: AudioMetrics = { durationSec: 12, speechSec: 10, snrDb: 28, clippingRatio: 0, minWindowSimilarity: 0.7, musicProb: 0.02 };
