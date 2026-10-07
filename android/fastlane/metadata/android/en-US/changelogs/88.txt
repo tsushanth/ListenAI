@@ -1,0 +1,2 @@
+Voice cloning: create a voice from your own recording, sign in with Google or email, and a simpler, shorter setup.
+Layout fixes across the app: headers sit higher and the bottom tabs always open their own page.
