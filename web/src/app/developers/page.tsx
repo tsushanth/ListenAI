@@ -75,7 +75,7 @@ export default function DevelopersPage() {
                 <p><code>POST</code> to the <code>http_url</code> returned by authorize with <code>Authorization: Bearer &lt;token&gt;</code> and JSON <code>{'{ "text", "voice", "speed", "format" }'}</code>. The response streams raw audio as each sentence is ready, with <code>X-Sample-Rate</code> and <code>X-Audio-Format</code> headers. At capacity you get <code>503</code> with <code>Retry-After</code>.</p>
 
                 <h3>SDKs and MCP</h3>
-                <p>The API is plain WebSocket and HTTP, so any client works; Python and JavaScript client libraries are coming to PyPI and npm, and until then we can send them on request. Because a client takes your API key, use it from a server, not a browser. To use the voices from an AI assistant, see the <Link href="/developers/mcp" style={{ textDecoration: 'underline' }}>MCP server</Link>.</p>
+                <p>The API is plain WebSocket and HTTP, so any client works; official client libraries are on PyPI and npm: <code>pip install readaloud</code> and <code>npm install readaloud</code>. Because a client takes your API key, use it from a server, not a browser. To use the voices from an AI assistant, see the <Link href="/developers/mcp" style={{ textDecoration: 'underline' }}>MCP server</Link>.</p>
 
                 <h3>Capacity and errors</h3>
                 <p>Each Piper server handles up to 12 simultaneous streams, and a second server starts automatically under load. Beyond that you get <code>{'{ "type": "error", "message": "at capacity, retry shortly" }'}</code> and the socket closes with code <code>1013</code>. Retry with a short backoff.</p>
