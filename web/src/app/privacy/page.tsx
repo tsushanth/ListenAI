@@ -31,14 +31,15 @@ export default function PrivacyPage() {
             <h2 className="text-2xl font-semibold text-white mb-4">2. Voice Cloning Data</h2>
             <p className="text-gray-300 mb-4">
               Voice cloning is available only to signed-in, paying accounts with a verified email address. To create a
-              voice clone you give us two recordings: a reference recording of the voice to clone, and a short consent
-              recording in which you read aloud a phrase that we generate for you. We compare the consent recording with
-              the reference recording to check that they are the same speaker, and we transcribe it to check that the
-              phrase was read. A voice recording is personal data and may be biometric data under some laws.
+              voice clone you give us a reference recording of the voice to clone and confirm that the voice is your
+              own, and that you agree we may create a synthetic copy of it. We keep a record that you confirmed this. In
+              some configurations we also ask you to record a short consent phrase that we generate for you; when we do,
+              we compare that recording with the reference recording to check that they are the same speaker, and we
+              transcribe it to check that the phrase was read. A voice recording is personal data and may be biometric data under some laws.
             </p>
             <ul className="list-disc pl-6 text-gray-300 space-y-2">
               <li><strong>Reference recording:</strong> processed by Chatterbox (an open-source voice model) running on Modal&apos;s cloud GPU infrastructure under our account, and kept on that service&apos;s encrypted storage only while the voice exists. It is not stored in Supabase Storage.</li>
-              <li><strong>Consent recording:</strong> stored in a private Supabase Storage bucket together with its transcript, the date, and the similarity score, for as long as the voice exists and for 12 months after you delete it, so that we can answer abuse and legal claims.</li>
+              <li><strong>Consent record:</strong> we keep a record of your confirmation (the date and what you agreed to). When we ask for a consent phrase, the consent recording is also stored in a private Supabase Storage bucket together with its transcript and the similarity score. These are kept for as long as the voice exists and for 12 months after you delete it, so that we can answer abuse and legal claims.</li>
               <li><strong>Deleting a voice</strong> (in the app or by emailing support) removes the reference recording, the voice model data derived from it, and any cached copies on the cloning service. Audio generated with your voice and the consent record are handled as described in Section 5.</li>
               <li>We do not use your recordings, or audio generated from them, to train any model.</li>
               <li>Every file generated with a cloned voice carries an inaudible watermark, and we keep a hash (a fingerprint, not the audio) of each generated file for 90 days so that misuse can be traced.</li>
@@ -74,8 +75,8 @@ export default function PrivacyPage() {
               When you create a voice clone, your voice recording and synthesis text are sent to:
             </p>
             <ul className="list-disc pl-6 text-gray-300 space-y-2">
-              <li><strong>Chatterbox</strong> (open-source model, run by us on Modal, modal.com) &mdash; processes your reference recording and consent recording and your text to create and speak with your voice clone</li>
-              <li><strong>Speech-to-text service</strong> (our own transcription service) &mdash; transcribes the consent recording to check the phrase</li>
+              <li><strong>Chatterbox</strong> (open-source model, run by us on Modal, modal.com) &mdash; processes your reference recording (and the consent recording, when we ask for one) and your text to create and speak with your voice clone</li>
+              <li><strong>Speech-to-text service</strong> (our own transcription service) &mdash; transcribes the consent recording to check the phrase, when we ask for one</li>
             </ul>
 
             <h3 className="text-xl font-semibold text-white mb-3 mt-6">Backend &amp; Authentication</h3>
@@ -107,7 +108,7 @@ export default function PrivacyPage() {
             <ul className="list-disc pl-6 text-gray-300 space-y-2">
               <li><strong>TTS audio:</strong> Cached on our servers for up to 30 days for performance, then automatically deleted</li>
               <li><strong>Voice clones and reference recordings:</strong> Stored until you delete them via the app</li>
-              <li><strong>Consent records (recording, transcript, score):</strong> Kept while the voice exists and for 12 months after it is deleted</li>
+              <li><strong>Consent records (confirmation and, when collected, consent recording, transcript, score):</strong> Kept while the voice exists and for 12 months after it is deleted</li>
               <li><strong>Fingerprints of generated audio:</strong> Kept for 90 days</li>
               <li><strong>AI summaries:</strong> Not stored on our servers after delivery to your device</li>
               <li><strong>Account data:</strong> Retained while your account is active; deleted upon account deletion</li>

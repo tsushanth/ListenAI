@@ -8,7 +8,7 @@ import { supabase } from '@/lib/supabaseClient'
 import { voiceCloneApi, CloneApiError, type ClonedVoice, type ConsentChallenge } from '@/lib/voiceCloneApi'
 import {
   LANGUAGES, LIMITS, SAMPLE_SENTENCES, checkDuration, formatClock, secondsLeft, mapCloneError,
-  type MappedError,
+  type CloneFlow, type MappedError,
 } from '@/lib/voiceCloneErrors'
 import { useAudioRecorder, type Recording } from './useAudioRecorder'
 
@@ -322,6 +322,11 @@ function Wizard({ onCreated, onAuthLost }: { onCreated: (v: ClonedVoice) => void
   const [err, setErr] = useState<MappedError | null>(null)
   const [info, setInfo] = useState<string | null>(null)
   const stepHeading = useRef<HTMLHeadingElement>(null)
+  // null while GET /config is in flight. Anything but an explicit consent_required:false resolves to 'strict'.
+  const [flow, setFlow] = useState<CloneFlow | null>(null)
+  useEffect(() => { let live = true; voiceCloneApi.flow().then((f) => { if (live) setFlow(f) }); return () => { live = false } }, [])
+  const attest = flow === 'attest'
+  const refStep: Step = attest ? 2 : 3
 
   useEffect(() => { stepHeading.current?.focus() }, [step])
 
@@ -346,7 +351,7 @@ function Wizard({ onCreated, onAuthLost }: { onCreated: (v: ClonedVoice) => void
       case 'new_challenge': setChallenge(null); setConsent(null); setConsentKey((k) => k + 1); setStep(2); break
       case 'rerecord_consent': setConsent(null); setConsentKey((k) => k + 1); setStep(2); break
       case 'fix_consent': setConsent(null); setConsentKey((k) => k + 1); setStep(2); break
-      case 'fix_reference': setReference(null); setRefKey((k) => k + 1); setStep(3); break
+      case 'fix_reference': setReference(null); setRefKey((k) => k + 1); setStep(refStep); break
       default: break
     }
   }
@@ -365,10 +370,13 @@ function Wizard({ onCreated, onAuthLost }: { onCreated: (v: ClonedVoice) => void
   const refOk = !!reference && (refCheck?.ok ?? true)
 
   const submit = async () => {
-    if (!challenge || !consent || !reference) return
+    if (!reference) return
+    if (attest ? !own : !challenge || !consent) return
     setErr(null); setInfo(null); setBusy('create')
     try {
-      const v = await voiceCloneApi.create({ challengeId: challenge.challenge_id, name: name.trim() || 'My voice', language, consent: consent.blob, reference: reference.blob })
+      const v = attest
+        ? await voiceCloneApi.createAttested({ name: name.trim() || 'My voice', language, reference: reference.blob })
+        : await voiceCloneApi.create({ challengeId: challenge!.challenge_id, name: name.trim() || 'My voice', language, consent: consent!.blob, reference: reference.blob })
       onCreated(v)
       setStep(1); setChallenge(null); setConsent(null); setReference(null); setConsentKey((k) => k + 1); setRefKey((k) => k + 1); setOwn(false)
       setInfo(`Voice "${v.name}" is ready. Try it below.`)
@@ -382,8 +390,13 @@ function Wizard({ onCreated, onAuthLost }: { onCreated: (v: ClonedVoice) => void
   return (
     <section className="ra-vs-card" aria-labelledby="wiz-h">
       <h2 id="wiz-h" style={{ fontSize: '1.4rem' }}>Create a voice from your own recording</h2>
+      {flow === null && <p role="status" style={{ marginTop: 14 }}><Loader2 size={16} className="animate-spin" aria-label="Loading" /></p>}
+      {flow !== null && (
+      <>
       <ol className="ra-vs-steps" style={{ marginTop: 14 }}>
-        {stepItem(1, 'Name and language')}{stepItem(2, 'Say the consent phrase')}{stepItem(3, 'Reference recording')}
+        {attest
+          ? <>{stepItem(1, 'Name, language and confirmation')}{stepItem(2, 'Reference recording')}</>
+          : <>{stepItem(1, 'Name and language')}{stepItem(2, 'Say the consent phrase')}{stepItem(3, 'Reference recording')}</>}
       </ol>
 
       <div role="status" aria-live="polite">{info && <p style={{ background: '#E4F5E8', borderRadius: 10, padding: '10px 14px' }}>{info}</p>}</div>
@@ -402,21 +415,34 @@ function Wizard({ onCreated, onAuthLost }: { onCreated: (v: ClonedVoice) => void
               </select>
             </label>
           </div>
+          {attest ? (
           <div className="ra-vs-consent">
-            <p style={{ margin: 0 }}><strong>Your own voice only.</strong> You may only clone your own voice. Cloning someone else&apos;s voice, even with a file they gave you, is not allowed and is blocked by the next step: you must read a random phrase aloud, live, in this browser, and it has to sound like the reference.</p>
+            <p style={{ margin: 0 }}><strong>Your own voice only.</strong> You may only clone your own voice. Cloning someone else&apos;s voice, even with a file they gave you, is not allowed.</p>
             <p className="ra-small" style={{ margin: 0 }}>
-              What we keep: the consent recording is stored with its transcript, date and similarity score as evidence of your consent, for as long as the voice exists and 12 months after you delete it. The reference recording is kept only while the voice exists and is never used for training. Generated audio carries an inaudible watermark. Details in the <Link href="/privacy" style={{ textDecoration: 'underline' }}>privacy policy</Link>. Your voice recording may count as biometric data under some laws.
+              What we keep: we keep a record that you confirmed the voice is yours. The reference recording is kept only while the voice exists and is never used for training. Generated audio carries an inaudible watermark, and you can delete your voice at any time. Details in the <Link href="/privacy" style={{ textDecoration: 'underline' }}>privacy policy</Link>. Your voice recording may count as biometric data under some laws.
             </p>
             <label style={{ display: 'flex', gap: 10, alignItems: 'flex-start', fontWeight: 400 }}>
               <input type="checkbox" checked={own} onChange={(e) => setOwn(e.target.checked)} style={{ width: 20, height: 20, marginTop: 2 }} />
-              <span>This is my own voice, and I will record the consent phrase myself, right now. I understand the consent recording is stored as described.</span>
+              <span>This is my own voice, and I agree ReadAloud may create a synthetic copy of it.</span>
             </label>
           </div>
+          ) : (
+          <div className="ra-vs-consent">
+              <p style={{ margin: 0 }}><strong>Your own voice only.</strong> You may only clone your own voice. Cloning someone else&apos;s voice, even with a file they gave you, is not allowed and is blocked by the next step: you must read a random phrase aloud, live, in this browser, and it has to sound like the reference.</p>
+              <p className="ra-small" style={{ margin: 0 }}>
+                What we keep: the consent recording is stored with its transcript, date and similarity score as evidence of your consent, for as long as the voice exists and 12 months after you delete it. The reference recording is kept only while the voice exists and is never used for training. Generated audio carries an inaudible watermark. Details in the <Link href="/privacy" style={{ textDecoration: 'underline' }}>privacy policy</Link>. Your voice recording may count as biometric data under some laws.
+              </p>
+              <label style={{ display: 'flex', gap: 10, alignItems: 'flex-start', fontWeight: 400 }}>
+                <input type="checkbox" checked={own} onChange={(e) => setOwn(e.target.checked)} style={{ width: 20, height: 20, marginTop: 2 }} />
+                <span>This is my own voice, and I will record the consent phrase myself, right now. I understand the consent recording is stored as described.</span>
+              </label>
+            </div>
+          )}
           <button type="button" className="ra-btn solid" style={{ marginTop: 18 }} disabled={!own || !name.trim()} onClick={() => { setErr(null); setInfo(null); setStep(2) }}>Continue</button>
         </div>
       )}
 
-      {step === 2 && (
+      {step === 2 && !attest && (
         <div>
           <h3 ref={stepHeading} tabIndex={-1} style={{ marginTop: 0, outline: 'none' }}>Step 2: say the consent phrase</h3>
           <p className="ra-small" style={{ marginBottom: 10 }}>The consent recording must be recorded live in this browser. Uploading a file is not possible here: that is what stops someone from using a recording of another person. Read the phrase exactly as shown, including the code words, in a quiet room, with the same microphone you will use for the reference.</p>
@@ -443,25 +469,27 @@ function Wizard({ onCreated, onAuthLost }: { onCreated: (v: ClonedVoice) => void
         </div>
       )}
 
-      {step === 3 && (
+      {step === refStep && (
         <div>
-          <h3 ref={stepHeading} tabIndex={-1} style={{ marginTop: 0, outline: 'none' }}>Step 3: reference recording</h3>
+          <h3 ref={stepHeading} tabIndex={-1} style={{ marginTop: 0, outline: 'none' }}>Step {refStep}: reference recording</h3>
           <p className="ra-small" style={{ marginBottom: 10 }}>Record yourself talking naturally, or upload a clean recording of your voice. {LIMITS.referenceMinSec} to {LIMITS.referenceMaxSec} seconds; 30 to 60 seconds of continuous speech works best. Quiet room, no music, no other voices, not too loud.</p>
           <ClipInput key={refKey} id="reference" label="Reference recording" minSec={LIMITS.referenceMinSec} maxSec={LIMITS.referenceMaxSec} allowUpload value={reference} onChange={setReference} />
-          {challenge && (
+          {!attest && challenge && (
             <p className={left <= 60 ? 'ra-err' : 'ra-small'} style={{ marginTop: 14 }}>
               {expired ? 'Your consent phrase expired. Go back, get a new phrase and record it again; your reference is kept.' : `Consent phrase valid for ${formatClock(left)} more.`}
             </p>
           )}
           <div style={{ display: 'flex', gap: 12, marginTop: 20, flexWrap: 'wrap' }}>
-            <button type="button" className="ra-btn ghost" onClick={() => setStep(2)} disabled={busy === 'create'}>Back</button>
-            <button type="button" className="ra-btn solid" disabled={!refOk || !consentOk || busy === 'create'} onClick={submit}>
+            <button type="button" className="ra-btn ghost" onClick={() => setStep((refStep - 1) as Step)} disabled={busy === 'create'}>Back</button>
+            <button type="button" className="ra-btn solid" disabled={!refOk || (attest ? !own : !consentOk) || busy === 'create'} onClick={submit}>
               {busy === 'create' ? <><Loader2 size={16} className="animate-spin" aria-hidden="true" /> Checking and creating...</> : 'Create my voice'}
             </button>
           </div>
           {busy === 'create' && <p className="ra-small" role="status" style={{ marginTop: 10 }}>This can take up to 3 minutes the first time while the GPU starts. Keep this tab open.</p>}
-          {!consentOk && !expired && <p className="ra-small" style={{ marginTop: 8 }}>The consent recording is missing. Go back to step 2.</p>}
+          {!attest && !consentOk && !expired && <p className="ra-small" style={{ marginTop: 8 }}>The consent recording is missing. Go back to step 2.</p>}
         </div>
+      )}
+      </>
       )}
     </section>
   )
@@ -487,7 +515,7 @@ function VoiceList({ voices, loading, onDelete, err }: { voices: ClonedVoice[]; 
                   <span className={`ra-vs-pill ${v.status === 'active' ? 'deployed' : 'rejected'}`}>{v.status}</span>
                   <button type="button" className="ra-btn ghost" style={{ padding: '6px 12px' }} disabled={deleting === v.id} aria-label={`Delete voice ${v.name}`}
                     onClick={async () => {
-                      if (!window.confirm(`Delete "${v.name}"? Its reference audio and voice data are removed. Audio you already generated is not recalled, and the consent record is kept as described in the privacy policy. This cannot be undone.`)) return
+                      if (!window.confirm(`Delete "${v.name}"? Its reference audio and voice data are removed. Audio you already generated is not recalled, and the record of your confirmation or consent is kept as described in the privacy policy. This cannot be undone.`)) return
                       setDeleting(v.id); try { await onDelete(v) } finally { setDeleting(null) }
                     }}>
                     {deleting === v.id ? <Loader2 size={14} className="animate-spin" aria-hidden="true" /> : <Trash2 size={14} aria-hidden="true" />} Delete

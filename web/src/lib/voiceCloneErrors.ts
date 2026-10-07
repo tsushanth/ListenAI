@@ -30,6 +30,18 @@ export const SAMPLE_SENTENCES: Record<'en' | 'es', string> = {
   es: 'Hola, esta es mi voz clonada. El veloz zorro marrón salta sobre el perro perezoso y luego camina a casa en silencio.',
 }
 
+/** Which creation flow the page runs. 'strict' = live consent phrase (the safe default); 'attest' = checkbox attestation. */
+export type CloneFlow = 'strict' | 'attest'
+
+/**
+ * Pick the flow from GET /api/voice-clones/config. Only an explicit `consent_required: false` selects the short
+ * attestation flow. Anything else (true, missing, wrong type, null body, failed or 404 call) keeps the strict flow.
+ */
+export function selectCloneFlow(config: unknown): CloneFlow {
+  const v = (config as { consent_required?: unknown } | null | undefined)?.consent_required
+  return v === false ? 'attest' : 'strict'
+}
+
 export type DurationCheck = { ok: true } | { ok: false; reason: 'short' | 'long'; message: string }
 
 export function checkDuration(sec: number, min: number, max: number, what: string): DurationCheck {
@@ -162,8 +174,10 @@ export function mapCloneError(status: number, body: CloneErrorBody | null): Mapp
         recovery: 'fix_consent', failures: fs.map((f) => ({ code: f.code, advice: describeFailure(f.code, f.message) })),
       }
     }
+    case 'attestation_required':
+      return { code, title: 'Please confirm the voice is yours', message: 'Tick the box confirming that this is your own voice and that you agree ReadAloud may create a synthetic copy of it, then try again.', recovery: 'none' }
     case 'audio_required':
-      return { code, title: 'Both recordings are required', message: 'Both a consent recording and a reference recording are required (WAV, FLAC, OGG, MP3, M4A or WebM, at least a second long).', recovery: 'none' }
+      return { code, title: 'Both recordings are required', message: 'An audio recording is required, and in some configurations both a consent recording and a reference recording (WAV, FLAC, OGG, MP3, M4A or WebM, at least a second long).', recovery: 'none' }
     case 'upload_error':
       return { code, title: 'Upload problem', message: status === 413 ? `A file is too large (max ${LIMITS.maxUploadBytes / 1024 / 1024} MB).` : (serverText || 'The upload could not be read. Use a WAV, FLAC, OGG, MP3, M4A or WebM file.'), recovery: 'fix_reference' }
     case 'unsupported_language':

@@ -5,7 +5,7 @@ const m = await import('../src/lib/voiceCloneErrors.ts')
 
 test('every documented backend code maps to a titled message with a recovery', () => {
   const codes = ['unauthenticated', 'email_unverified', 'payment_required', 'daily_limit', 'creation_in_progress', 'rate_limited', 'unavailable',
-    'service_unavailable', 'asr_unavailable', 'challenge_expired', 'challenge_used', 'challenge_not_found', 'challenge_attempts_exhausted',
+    'service_unavailable', 'asr_unavailable', 'attestation_required', 'challenge_expired', 'challenge_used', 'challenge_not_found', 'challenge_attempts_exhausted',
     'phrase_mismatch', 'speaker_mismatch', 'reference_rejected', 'consent_clip_rejected', 'audio_required', 'upload_error', 'unsupported_language',
     'validation', 'deletion_pending', 'voice_not_found', 'voice_disabled', 'voice_unavailable', 'internal']
   for (const code of codes) {
@@ -85,4 +85,17 @@ test('every language option is a backend-supported code and samples fit the text
   const backend = ['ar', 'da', 'de', 'el', 'en', 'es', 'fi', 'fr', 'he', 'hi', 'it', 'ja', 'ko', 'ms', 'nl', 'no', 'pl', 'pt', 'ru', 'sv', 'sw', 'tr', 'zh']
   assert.deepEqual(m.LANGUAGES.map((l: { code: string }) => l.code).sort(), backend)
   for (const s of Object.values(m.SAMPLE_SENTENCES) as string[]) assert.ok(s.length <= m.LIMITS.maxTextChars)
+})
+
+test('attestation_required maps to a confirm-your-voice message with no recovery action', () => {
+  const e = m.mapCloneError(400, { code: 'attestation_required', error: 'x' })
+  assert.equal(e.recovery, 'none'); assert.match(e.message, /own voice/)
+})
+
+test('selectCloneFlow: only an explicit consent_required:false selects attestation; everything else is strict', () => {
+  assert.equal(m.selectCloneFlow({ consent_required: false }), 'attest')
+  assert.equal(m.selectCloneFlow({ consent_required: true }), 'strict')
+  for (const bad of [null, undefined, {}, { consent_required: 'false' }, { consent_required: 0 }, { consent_required: null }, 'x', []]) {
+    assert.equal(m.selectCloneFlow(bad), 'strict', JSON.stringify(bad))
+  }
 })

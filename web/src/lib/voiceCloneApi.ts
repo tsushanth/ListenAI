@@ -1,5 +1,5 @@
 import { API_BASE_URL, token } from './toolsApiCommon'
-import { mapCloneError, extensionForMime, type CloneErrorBody, type MappedError } from './voiceCloneErrors'
+import { mapCloneError, extensionForMime, selectCloneFlow, type CloneErrorBody, type CloneFlow, type MappedError } from './voiceCloneErrors'
 
 /** Thrown for every failed call; carries the mapped, user-facing error. */
 export class CloneApiError extends Error {
@@ -37,6 +37,21 @@ async function send(path: string, init: RequestInit = {}): Promise<Response> {
 export const voiceCloneApi = {
   async challenge(): Promise<ConsentChallenge> {
     return (await send('/api/voice-clones/consent-challenges', { method: 'POST' })).json()
+  },
+
+  /** Which flow to run. Never throws: any failure (network, 404, bad body) yields the strict flow, the safe default. */
+  async flow(): Promise<CloneFlow> {
+    try { return selectCloneFlow(await (await send('/api/voice-clones/config')).json()) } catch { return 'strict' }
+  },
+
+  /** Attestation mode: no challenge and no consent clip; the server records that the user attested. */
+  async createAttested(i: { name: string; language: string; reference: Blob | File }): Promise<ClonedVoice> {
+    const fd = new FormData()
+    fd.append('name', i.name)
+    fd.append('language', i.language)
+    fd.append('reference', i.reference, (i.reference as File).name || `reference.${extensionForMime(i.reference.type)}`)
+    fd.append('attested', 'true')
+    return (await send('/api/voice-clones', { method: 'POST', body: fd })).json()
   },
 
   async create(i: { challengeId: string; name: string; language: string; consent: Blob; reference: Blob | File }): Promise<ClonedVoice> {
