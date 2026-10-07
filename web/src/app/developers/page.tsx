@@ -63,13 +63,16 @@ export default function DevelopersPage() {
 
                 <h3>Messages you receive</h3>
                 <ul>
-                  <li><code>chunk_meta</code> a JSON frame, immediately followed by one binary audio frame, once per sentence.</li>
+                  <li><code>chunk_meta</code> a JSON frame, immediately followed by one binary audio frame, once per sentence. With the default Piper setting below, the first sentence of a request may arrive as two chunks.</li>
                   <li><code>done</code> the request finished. <code>cancelled</code> you stopped it. Only finished requests are billed.</li>
                   <li><code>error</code> with a <code>message</code>. The connection stays usable unless it is closed.</li>
                 </ul>
 
                 <h3>Audio formats</h3>
                 <p>Add <code>{'"format": "…"'}</code> to a synthesize message (Piper engine). <code>pcm_24000</code> is the default. For phone lines use <code>mulaw_8000</code> or <code>alaw_8000</code> (G.711, 8 kHz); <code>pcm_8000</code> is also available. Each <code>chunk_meta</code> reports the <code>format</code> and <code>sample_rate</code> of the audio that follows. An unknown format returns an error and the connection stays open.</p>
+
+                <h3>Faster first audio (Piper)</h3>
+                <p>Piper cuts the first sentence at its first clause (comma, semicolon, colon or dash) and streams the first half sooner, so audio starts roughly 40&ndash;55% faster on longer first sentences. It is on by default. Add <code>{'"first_chunk_split": false'}</code> to a synthesize message or HTTP body to turn it off for that request. Only <code>true</code> and <code>false</code> are accepted, anything else is ignored. The SDKs expose this as <code>firstChunkSplit</code> (JavaScript) and <code>first_chunk_split</code> (Python).</p>
 
                 <h3>HTTP streaming (Piper)</h3>
                 <p><code>POST</code> to the <code>http_url</code> returned by authorize with <code>Authorization: Bearer &lt;token&gt;</code> and JSON <code>{'{ "text", "voice", "speed", "format" }'}</code>. The response streams raw audio as each sentence is ready, with <code>X-Sample-Rate</code> and <code>X-Audio-Format</code> headers. At capacity you get <code>503</code> with <code>Retry-After</code>.</p>
