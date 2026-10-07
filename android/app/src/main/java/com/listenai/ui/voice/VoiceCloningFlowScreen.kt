@@ -11,6 +11,8 @@ import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -231,6 +233,9 @@ fun VoiceCloningFlowScreen(
                     name = state.name,
                     language = state.language,
                     canContinue = state.canContinueFromProfile,
+                    showAttestation = !state.consentRequired && !state.configLoading,
+                    attested = state.attested,
+                    onAttestedChange = vm::setAttested,
                     onNameChange = vm::setName,
                     onLanguageChange = vm::setLanguage,
                     onContinue = vm::continueFromProfile
@@ -367,7 +372,7 @@ private fun IntroStep(onNext: () -> Unit) {
             Spacer(modifier = Modifier.height(16.dp))
             FeatureRow(Icons.Default.Mic, "Create a voice from your own recording.")
             Spacer(modifier = Modifier.height(12.dp))
-            FeatureRow(Icons.Default.VerifiedUser, "You read a short phrase aloud so we can check it's really your voice. Only your own voice can be cloned.")
+            FeatureRow(Icons.Default.VerifiedUser, "You confirm the voice is yours.")
             Spacer(modifier = Modifier.height(12.dp))
             FeatureRow(Icons.Default.Shield, "Recordings aren't kept on this device or shared. You can delete the voice any time.")
             Spacer(modifier = Modifier.height(16.dp))
@@ -561,6 +566,9 @@ private fun ProfileStep(
     name: String,
     language: String,
     canContinue: Boolean,
+    showAttestation: Boolean,
+    attested: Boolean,
+    onAttestedChange: (Boolean) -> Unit,
     onNameChange: (String) -> Unit,
     onLanguageChange: (String) -> Unit,
     onContinue: () -> Unit
@@ -607,10 +615,28 @@ private fun ProfileStep(
                     }
                 }
             }
+            if (showAttestation) {
+                Spacer(modifier = Modifier.height(24.dp))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .toggleable(value = attested, role = Role.Checkbox, onValueChange = onAttestedChange),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Checkbox(checked = attested, onCheckedChange = null)
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        ATTESTATION_TEXT,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            }
         }
         Box(modifier = Modifier.padding(24.dp)) { PrimaryButton("Continue", onContinue, enabled = canContinue) }
     }
 }
+
+internal const val ATTESTATION_TEXT = "This is my own voice, and I agree ReadAloud may create a synthetic copy of it."
 
 private fun languageName(code: String): String =
     Locale(code).getDisplayLanguage(Locale.getDefault()).replaceFirstChar { it.titlecase() }.ifEmpty { code }
@@ -715,7 +741,7 @@ private fun ConsentStep(
             InfoCard("Record it live and in a quiet room. Uploading a file isn't allowed for this step. If you use a screen reader, listen to the phrase first, then pause the screen reader before you start recording.")
         }
 
-        Column(modifier = Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        Column(modifier = Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             if (state.consentClip != null && !isRecording) {
                 Text("Recorded ${state.consentClip.durationSec}s", style = MaterialTheme.typography.bodyMedium, color = Green)
                 Spacer(modifier = Modifier.height(12.dp))
@@ -776,7 +802,7 @@ private fun ReferenceStep(
             HighlightedReadingText(paragraphs = VoiceCloningService.SAMPLE_PARAGRAPHS, currentWordIndex = currentWordIndex)
         }
 
-        Column(modifier = Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        Column(modifier = Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             if (clip != null && !isRecording) {
                 Text("${clip.filename.take(32)} (${formatDuration(clip.durationSec)})", style = MaterialTheme.typography.bodyMedium, color = Green)
                 Spacer(modifier = Modifier.height(12.dp))

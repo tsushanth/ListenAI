@@ -12,6 +12,7 @@ import com.listenai.service.voice.ClonedVoice
 import com.listenai.service.voice.ConsentChallenge
 import com.listenai.service.voice.Recovery
 import com.listenai.service.voice.VoiceCloneClient
+import com.listenai.service.voice.VoiceCloneConfig
 import com.listenai.service.voice.VoiceCloneException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -32,16 +33,25 @@ class VoiceCloneFlowViewModelTest {
         var createResults = ArrayDeque<() -> ClonedVoice>()
         var challengeCalls = 0
         var createCalls = 0
-        var lastCreate: List<String> = emptyList()
+        var lastCreate: List<String?> = emptyList()
+        var lastAttested = false
+        var configCalls = 0
+        var configResult: () -> VoiceCloneConfig = { VoiceCloneConfig(consentRequired = true) }
+
+        override suspend fun getConfig(): VoiceCloneConfig {
+            configCalls++
+            return configResult()
+        }
 
         override suspend fun requestConsentChallenge(): ConsentChallenge {
             challengeCalls++
             return challengeResults.removeFirst().invoke()
         }
 
-        override suspend fun createVoice(challengeId: String, name: String, language: String, consent: AudioClip, reference: AudioClip): ClonedVoice {
+        override suspend fun createVoice(challengeId: String?, name: String, language: String, consent: AudioClip?, reference: AudioClip, attested: Boolean): ClonedVoice {
             createCalls++
-            lastCreate = listOf(challengeId, name, language, consent.filename, reference.filename)
+            lastAttested = attested
+            lastCreate = listOf(challengeId, name, language, consent?.filename, reference.filename)
             return createResults.removeFirst().invoke()
         }
 
@@ -76,6 +86,18 @@ class VoiceCloneFlowViewModelTest {
         continueFromProfile()
         setConsentClip(clip("consent.m4a", 6))
         continueFromConsent()
+    }
+
+    private fun attestationMode() {
+        client.configResult = { VoiceCloneConfig(consentRequired = false) }
+    }
+
+    /** Attestation-mode path up to REFERENCE: intro -> profile (name + checkbox) -> reference. */
+    private fun VoiceCloneFlowViewModel.toReferenceAttested() {
+        agreeAndContinue()
+        setName("Mine")
+        setAttested(true)
+        continueFromProfile()
     }
 
     private val scopeDispatcher get() = UnconfinedTestDispatcher()
@@ -460,5 +482,128 @@ class VoiceCloneFlowViewModelTest {
         assertTrue(vm.back()); assertEquals(CloneStep.PROFILE, vm.state.value.step)
         assertTrue(vm.back()); assertEquals(CloneStep.INTRO, vm.state.value.step)
         assertFalse(vm.back())
+    }
+
+    // ---- capability check + attestation mode ------------------------------------------
+
+    @Test
+    fun `config consent_required true keeps the strict flow including the phrase step`() {
+        val scope = TestScope(scopeDispatcher)
+        client.configResult = { VoiceCloneConfig(true) }
+        val vm = scope.vm()
+        assertEquals(1, client.configCalls)
+        assertTrue(vm.state.value.consentRequired)
+        client.challengeResults += { challenge("c1") }
+        vm.agreeAndContinue(); vm.setName("n")
+        assertTrue("strict mode needs no checkbox", vm.state.value.canContinueFromProfile)
+        vm.continueFromProfile()
+        assertEquals(CloneStep.CONSENT, vm.state.value.step)
+        assertEquals(1, client.challengeCalls)
+    }
+
+    @Test
+    fun `config failures and 404 fall back to strict`() {
+        val failures = listOf<() -> VoiceCloneConfig>(
+            { throw VoiceCloneException(404, "http_404", null) },
+            { throw VoiceCloneException.network(java.io.IOException("offline")) },
+            { throw VoiceCloneException(200, VoiceCloneException.CODE_MALFORMED, "bad") },
+            { throw IllegalStateException("boom") }
+        )
+        for (f in failures) {
+            val scope = TestScope(scopeDispatcher)
+            client.configResult = f
+            val vm = scope.vm()
+            assertTrue(vm.state.value.consentRequired)
+            assertFalse(vm.state.value.configLoading)
+            client.challengeResults += { challenge("c1") }
+            vm.agreeAndContinue(); vm.setName("n"); vm.continueFromProfile()
+            assertEquals(CloneStep.CONSENT, vm.state.value.step)
+        }
+    }
+
+    @Test
+    fun `profile continue waits while the config call is in flight`() {
+        val scope = TestScope(scopeDispatcher)
+        val gate = kotlinx.coroutines.CompletableDeferred<VoiceCloneConfig>()
+        val slow = object : VoiceCloneClient by client {
+            override suspend fun getConfig(): VoiceCloneConfig = gate.await()
+        }
+        val vm = VoiceCloneFlowViewModel(client = slow, initialSignedIn = true, clock = { now }, scopeOverride = scope)
+        vm.setName("n"); vm.setAttested(true)
+        assertTrue(vm.state.value.configLoading)
+        assertFalse(vm.state.value.canContinueFromProfile)
+        gate.complete(VoiceCloneConfig(false))
+        assertFalse(vm.state.value.configLoading)
+        assertFalse(vm.state.value.consentRequired)
+        assertTrue(vm.state.value.canContinueFromProfile)
+    }
+
+    @Test
+    fun `attestation mode steps are intro, sign-in, profile, reference, uploading, success`() {
+        val scope = TestScope(scopeDispatcher)
+        attestationMode()
+        client.createResults += { voice() }
+        val vm = scope.vm(signedIn = false)
+        val seen = mutableListOf(vm.state.value.step)
+        assertEquals(CloneStep.INTRO, seen.last())
+        vm.agreeAndContinue(); seen += vm.state.value.step
+        vm.signIn { Result.success(Unit) }; seen += vm.state.value.step
+        vm.setName("Mine"); vm.setAttested(true)
+        vm.continueFromProfile(); seen += vm.state.value.step
+        vm.setReferenceClip(clip("reference.m4a", 45))
+        vm.submit(); seen += vm.state.value.step
+        assertEquals(
+            listOf(CloneStep.INTRO, CloneStep.SIGN_IN, CloneStep.PROFILE, CloneStep.REFERENCE, CloneStep.SUCCESS),
+            seen
+        )
+        assertEquals(0, client.challengeCalls)
+        assertEquals(listOf<String?>(null, "Mine", "en", null, "reference.m4a"), client.lastCreate)
+        assertTrue(client.lastAttested)
+        assertEquals(listOf("v-1"), created.map { it.id })
+    }
+
+    @Test
+    fun `attestation checkbox gates continue and submit`() {
+        val scope = TestScope(scopeDispatcher)
+        attestationMode()
+        val vm = scope.vm()
+        vm.agreeAndContinue()
+        vm.setName("Mine")
+        assertFalse(vm.state.value.canContinueFromProfile)
+        vm.continueFromProfile()
+        assertEquals("unchecked box must not advance", CloneStep.PROFILE, vm.state.value.step)
+        vm.setAttested(true)
+        assertTrue(vm.state.value.canContinueFromProfile)
+        vm.setAttested(false)
+        assertFalse(vm.state.value.canContinueFromProfile)
+        vm.setAttested(true)
+        vm.continueFromProfile()
+        assertEquals(CloneStep.REFERENCE, vm.state.value.step)
+        vm.setReferenceClip(clip("reference.m4a", 45))
+        vm.setAttested(false)
+        vm.submit()
+        assertEquals(0, client.createCalls)
+        assertEquals(CloneStep.REFERENCE, vm.state.value.step)
+    }
+
+    @Test
+    fun `attestation mode back from reference returns to profile and a failed upload can retry`() {
+        val scope = TestScope(scopeDispatcher)
+        attestationMode()
+        client.createResults += { throw err(503, "service_unavailable") }
+        client.createResults += { voice() }
+        val vm = scope.vm()
+        vm.toReferenceAttested()
+        vm.setReferenceClip(clip("reference.m4a", 45))
+        vm.submit()
+        assertEquals(Recovery.RETRY, vm.state.value.failure?.recovery)
+        vm.recover()
+        assertEquals(CloneStep.SUCCESS, vm.state.value.step)
+        assertEquals(2, client.createCalls)
+
+        val vm2 = TestScope(scopeDispatcher).vm()
+        vm2.toReferenceAttested()
+        assertTrue(vm2.back())
+        assertEquals(CloneStep.PROFILE, vm2.state.value.step)
     }
 }

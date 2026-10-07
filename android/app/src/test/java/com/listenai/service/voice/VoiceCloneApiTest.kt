@@ -229,4 +229,59 @@ class VoiceCloneApiTest {
         assertEquals(VoiceCloneException.CODE_MALFORMED, e.code)
         assertNotNull(e.message)
     }
+
+    @Test
+    fun `config parses consent_required and works without a token`() = runBlocking {
+        token = null
+        server.enqueue(MockResponse().setBody("""{"consent_required":false}"""))
+        server.enqueue(MockResponse().setBody("""{"consent_required":true}"""))
+        assertFalse(api().getConfig().consentRequired)
+        val req = server.takeRequest()
+        assertEquals("GET", req.method)
+        assertEquals("/api/voice-clones/config", req.path)
+        assertNull(req.getHeader("Authorization"))
+        token = "tok-123"
+        assertTrue(api().getConfig().consentRequired)
+        assertEquals("Bearer tok-123", server.takeRequest().getHeader("Authorization"))
+    }
+
+    @Test
+    fun `config 404 and malformed bodies throw so the caller can fall back to strict`() {
+        server.enqueue(MockResponse().setResponseCode(404).setBody("""{"error":"Not found"}"""))
+        assertEquals(404, expectError { api().getConfig() }.httpStatus)
+        server.enqueue(MockResponse().setBody("""{"something":"else"}"""))
+        assertEquals(VoiceCloneException.CODE_MALFORMED, expectError { api().getConfig() }.code)
+        server.enqueue(MockResponse().setBody("not json"))
+        assertEquals(VoiceCloneException.CODE_MALFORMED, expectError { api().getConfig() }.code)
+    }
+
+    @Test
+    fun `attestation create sends attested true and no challenge_id and no consent part`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(201).setBody(
+                """{"id":"0b6d0a52-0000-4000-8000-0000000000aa","name":"My voice","language":"en","status":"active"}"""
+            )
+        )
+        val v = api().createVoice(
+            challengeId = null, name = "My voice", language = "en",
+            consent = null, reference = clip("reference.m4a", 40), attested = true
+        )
+        val body = server.takeRequest().body.readUtf8()
+        assertTrue(body.contains("name=\"attested\"") && body.contains("\r\n\r\ntrue\r\n"))
+        assertTrue(body.contains("name=\"name\"") && body.contains("My voice"))
+        assertTrue(body.contains("name=\"language\""))
+        assertTrue(body.contains("name=\"reference\"; filename=\"reference.m4a\""))
+        assertFalse(body.contains("challenge_id"))
+        assertFalse(body.contains("name=\"consent\""))
+        assertTrue(v.isReady)
+    }
+
+    @Test
+    fun `strict create does not send attested`() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(201).setBody("""{"id":"x","name":"n","language":"en","status":"active"}"""))
+        api().createVoice("ch-1", "n", "en", clip("consent.m4a", 6), clip("reference.m4a", 40))
+        val body = server.takeRequest().body.readUtf8()
+        assertFalse(body.contains("attested"))
+        assertTrue(body.contains("name=\"consent\""))
+    }
 }

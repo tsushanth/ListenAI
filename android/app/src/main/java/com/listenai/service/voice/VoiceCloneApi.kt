@@ -32,6 +32,9 @@ data class ConsentChallenge(
     fun isExpired(nowMillis: Long): Boolean = expiresAtMillis != null && nowMillis >= expiresAtMillis
 }
 
+/** Reply of GET /api/voice-clones/config. Older backends have no such route (404). */
+data class VoiceCloneConfig(val consentRequired: Boolean)
+
 /** Metadata of a voice created through the consent flow. Never contains audio. */
 data class ClonedVoice(
     val id: String,
@@ -89,12 +92,21 @@ class VoiceCloneException(
 /** Operations the app (and the view model) needs. Implemented by [VoiceCloneApi]. */
 interface VoiceCloneClient {
     suspend fun requestConsentChallenge(): ConsentChallenge
+
+    /** Capability check. Throws [VoiceCloneException] (e.g. 404 on an older backend); callers fall back to strict mode. */
+    suspend fun getConfig(): VoiceCloneConfig
+
+    /**
+     * Strict mode: [challengeId] and [consent] are set, [attested] is false.
+     * Attestation mode: [challengeId] and [consent] are null and [attested] is true.
+     */
     suspend fun createVoice(
-        challengeId: String,
+        challengeId: String?,
         name: String,
         language: String,
-        consent: AudioClip,
-        reference: AudioClip
+        consent: AudioClip?,
+        reference: AudioClip,
+        attested: Boolean = false
     ): ClonedVoice
 
     suspend fun listVoices(): List<ClonedVoice>
@@ -125,34 +137,57 @@ class VoiceCloneApi(
         )
     }
 
+    override suspend fun getConfig(): VoiceCloneConfig {
+        // Short timeout: this gates the first screens. Auth is attached when available but not required.
+        val quick = http.newBuilder().callTimeout(8, java.util.concurrent.TimeUnit.SECONDS).build()
+        val json = withContext(Dispatchers.IO) {
+            val builder = Request.Builder().url("$baseUrl/api/voice-clones/config").get().addHeader("Accept", "application/json")
+            accessToken()?.takeIf { it.isNotBlank() }?.let { builder.addHeader("Authorization", "Bearer $it") }
+            val response = try {
+                quick.newCall(builder.build()).execute()
+            } catch (e: IOException) {
+                throw VoiceCloneException.network(e)
+            }
+            response.use {
+                if (!it.isSuccessful) throw parseError(it)
+                try {
+                    JSONObject(it.body?.string().orEmpty())
+                } catch (e: Exception) {
+                    throw VoiceCloneException(it.code, VoiceCloneException.CODE_MALFORMED, "Unreadable server response")
+                }
+            }
+        }
+        if (!json.has("consent_required") || json.isNull("consent_required")) {
+            throw VoiceCloneException(200, VoiceCloneException.CODE_MALFORMED, "Missing 'consent_required' in response")
+        }
+        return VoiceCloneConfig(consentRequired = json.optBoolean("consent_required", true))
+    }
+
     override suspend fun createVoice(
-        challengeId: String,
+        challengeId: String?,
         name: String,
         language: String,
-        consent: AudioClip,
-        reference: AudioClip
+        consent: AudioClip?,
+        reference: AudioClip,
+        attested: Boolean
     ): ClonedVoice {
         val (consentBytes, referenceBytes) = withContext(Dispatchers.IO) {
             try {
-                consent.bytes() to reference.bytes()
+                consent?.bytes() to reference.bytes()
             } catch (e: IOException) {
                 throw VoiceCloneException.network(e)
             }
         }
-        val body = MultipartBody.Builder()
-            .setType(MultipartBody.FORM)
-            .addFormDataPart("challenge_id", challengeId)
-            .addFormDataPart("name", name)
-            .addFormDataPart("language", language)
-            .addFormDataPart(
-                "consent", consent.filename,
-                consentBytes.toRequestBody(consent.mimeType.toMediaType())
-            )
-            .addFormDataPart(
-                "reference", reference.filename,
-                referenceBytes.toRequestBody(reference.mimeType.toMediaType())
-            )
-            .build()
+        val builder = MultipartBody.Builder().setType(MultipartBody.FORM)
+        if (challengeId != null) builder.addFormDataPart("challenge_id", challengeId)
+        builder.addFormDataPart("name", name)
+        builder.addFormDataPart("language", language)
+        if (attested) builder.addFormDataPart("attested", "true")
+        if (consent != null && consentBytes != null) {
+            builder.addFormDataPart("consent", consent.filename, consentBytes.toRequestBody(consent.mimeType.toMediaType()))
+        }
+        builder.addFormDataPart("reference", reference.filename, referenceBytes.toRequestBody(reference.mimeType.toMediaType()))
+        val body = builder.build()
         val json = executeJson(Request.Builder().url("$baseUrl/api/voice-clones").post(body))
         return parseVoice(json)
     }

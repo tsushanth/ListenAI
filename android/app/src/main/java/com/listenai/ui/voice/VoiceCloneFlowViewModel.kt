@@ -66,11 +66,22 @@ data class CloneFlowState(
     val failureSource: FailureSource? = null,
     /** Local, pre-upload hint about the clip the user just made or picked. */
     val clipHint: String? = null,
-    val created: ClonedVoice? = null
+    val created: ClonedVoice? = null,
+    /**
+     * True = strict mode (live phrase step). Default is strict: it is only switched off when the
+     * backend positively reports `consent_required=false`. Unreachable / 404 / malformed stays strict.
+     */
+    val consentRequired: Boolean = true,
+    /** True while GET /config is in flight; Continue on the profile step waits for it. */
+    val configLoading: Boolean = false,
+    /** Attestation checkbox ("This is my own voice..."); only used when [consentRequired] is false. */
+    val attested: Boolean = false
 ) {
-    val canContinueFromProfile: Boolean get() = name.isNotBlank() && language in SUPPORTED_LANGUAGES
+    val canContinueFromProfile: Boolean
+        get() = name.isNotBlank() && language in SUPPORTED_LANGUAGES && !configLoading && (consentRequired || attested)
     val canContinueFromConsent: Boolean get() = challenge != null && consentClip != null
-    val canSubmit: Boolean get() = challenge != null && consentClip != null && referenceClip != null
+    val canSubmit: Boolean
+        get() = referenceClip != null && if (consentRequired) challenge != null && consentClip != null else attested
 }
 
 val SUPPORTED_LANGUAGES: Set<String> = linkedSetOf(
@@ -78,7 +89,9 @@ val SUPPORTED_LANGUAGES: Set<String> = linkedSetOf(
 )
 
 /**
- * Drives the consent-gated cloning flow:
+ * Drives the cloning flow. Default (attestation mode, backend reports consent_required=false):
+ *   intro -> sign in -> name/language + attestation checkbox -> record/pick reference -> upload.
+ * Strict mode (consent_required=true, or config unreachable / 404):
  *   sign in -> name/language -> request phrase -> record phrase -> record/pick reference -> upload.
  * All server error codes are mapped by [VoiceCloneErrors] and turned into a [Recovery] action here.
  */
@@ -114,6 +127,29 @@ class VoiceCloneFlowViewModel(
 
     private val _state = MutableStateFlow(CloneFlowState(signedIn = initialSignedIn, language = initialLanguage))
     val state: StateFlow<CloneFlowState> = _state.asStateFlow()
+
+    private var configJob: Job? = null
+
+    init {
+        loadConfig()
+    }
+
+    /** Capability check on entering the flow. Not cached across sessions; any failure means strict mode. */
+    private fun loadConfig() {
+        _state.update { it.copy(configLoading = true) }
+        configJob = scope.launch {
+            val required = try {
+                client.getConfig().consentRequired
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                true // 404 / older backend / offline / malformed: safe default
+            }
+            _state.update { it.copy(configLoading = false, consentRequired = required) }
+        }
+    }
+
+    fun setAttested(attested: Boolean) = _state.update { it.copy(attested = attested) }
 
     // ---- sign in -----------------------------------------------------------------------
 
@@ -221,8 +257,12 @@ class VoiceCloneFlowViewModel(
     fun continueFromProfile() {
         val s = _state.value
         if (!s.canContinueFromProfile) return
-        _state.update { it.copy(step = CloneStep.CONSENT, consentClip = null, referenceClip = null, clipHint = null, failure = null) }
-        requestChallenge()
+        if (s.consentRequired) {
+            _state.update { it.copy(step = CloneStep.CONSENT, consentClip = null, referenceClip = null, clipHint = null, failure = null) }
+            requestChallenge()
+        } else {
+            _state.update { it.copy(step = CloneStep.REFERENCE, consentClip = null, referenceClip = null, clipHint = null, failure = null) }
+        }
     }
 
     fun continueFromConsent() {
@@ -237,7 +277,7 @@ class VoiceCloneFlowViewModel(
             CloneStep.SIGN_IN -> CloneStep.INTRO
             CloneStep.PROFILE -> CloneStep.INTRO
             CloneStep.CONSENT -> CloneStep.PROFILE
-            CloneStep.REFERENCE -> CloneStep.CONSENT
+            CloneStep.REFERENCE -> if (s.consentRequired) CloneStep.CONSENT else CloneStep.PROFILE
             else -> return false
         }
         _state.update { it.copy(step = prev, clipHint = null) }
@@ -297,6 +337,10 @@ class VoiceCloneFlowViewModel(
     fun submit() {
         val s = _state.value
         if (!s.canSubmit || s.step == CloneStep.UPLOADING) return
+        if (!s.consentRequired) {
+            submitAttested(s)
+            return
+        }
         val challenge = s.challenge!!
         if (challenge.isExpired(clock())) {
             // Don't spend an upload on a challenge the server will reject.
@@ -312,6 +356,31 @@ class VoiceCloneFlowViewModel(
                     language = s.language,
                     consent = s.consentClip!!,
                     reference = s.referenceClip!!
+                )
+                _state.update { it.copy(step = CloneStep.SUCCESS, created = voice) }
+                onCreated(voice)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: VoiceCloneException) {
+                fail(e, FailureSource.SUBMIT)
+            } catch (e: Exception) {
+                fail(VoiceCloneException.network(e), FailureSource.SUBMIT)
+            }
+        }
+    }
+
+    /** Attestation mode: no challenge, no consent clip; the server records the user's attestation. */
+    private fun submitAttested(s: CloneFlowState) {
+        _state.update { it.copy(step = CloneStep.UPLOADING, failure = null) }
+        scope.launch {
+            try {
+                val voice = client.createVoice(
+                    challengeId = null,
+                    name = s.name.trim(),
+                    language = s.language,
+                    consent = null,
+                    reference = s.referenceClip!!,
+                    attested = true
                 )
                 _state.update { it.copy(step = CloneStep.SUCCESS, created = voice) }
                 onCreated(voice)
