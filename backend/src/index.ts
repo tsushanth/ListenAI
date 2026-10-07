@@ -29,6 +29,7 @@ import { storiesRouter } from './routes/stories.js';
 import { audiobooksRouter } from './routes/audiobooks.js';
 import { voiceMarketplaceRouter } from './routes/voiceMarketplace.js';
 import { stripeWebhookRouter } from './routes/stripeWebhook.js';
+import { revenueCatWebhookRouter } from './routes/revenuecatWebhook.js';
 import { authRouter } from './routes/auth.js';
 import { appConfigRouter } from './routes/appConfig.js';
 import { ttsApiKeysRouter, requireRealAuth } from './routes/ttsApiKeys.js';
@@ -98,6 +99,8 @@ app.use(compression());
 // Stripe webhook needs raw body for signature verification
 // Must be before express.json() middleware
 app.use('/api/webhooks', express.raw({ type: 'application/json' }), stripeWebhookRouter);
+// RevenueCat webhook shares the raw-body mount (Authorization-header secret, see routes/revenuecatWebhook.ts)
+app.use('/api/webhooks', revenueCatWebhookRouter);
 
 // Body parsing
 app.use(express.json({ limit: '1mb' }));

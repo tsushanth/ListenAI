@@ -1,0 +1,5 @@
+BEGIN;
+DROP FUNCTION IF EXISTS apply_revenuecat_event(TEXT, TEXT, UUID, BIGINT, TEXT, TEXT, TEXT, TEXT, TIMESTAMPTZ, TIMESTAMPTZ, TEXT);
+DROP TABLE IF EXISTS revenuecat_entitlements;
+DROP TABLE IF EXISTS revenuecat_webhook_events;
+COMMIT;
