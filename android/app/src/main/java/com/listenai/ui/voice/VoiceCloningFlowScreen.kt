@@ -205,8 +205,8 @@ fun VoiceCloningFlowScreen(
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
             when (state.step) {
-                CloneStep.INTRO -> IntroStep(
-                    signedIn = state.signedIn,
+                CloneStep.INTRO -> IntroStep(onNext = vm::agreeAndContinue)
+                CloneStep.SIGN_IN -> SignInStep(
                     signingIn = state.signingIn,
                     signInError = if (state.failureSource == FailureSource.SIGN_IN) state.failure?.message else null,
                     notice = state.authNotice,
@@ -219,8 +219,7 @@ fun VoiceCloningFlowScreen(
                     onForgotPassword = { email ->
                         if (auth != null) vm.sendPasswordReset(email) { auth.sendPasswordReset(email) }
                     },
-                    onClearMessages = vm::clearAuthMessages,
-                    onContinue = vm::agreeAndContinue
+                    onClearMessages = vm::clearAuthMessages
                 )
                 CloneStep.PROFILE -> ProfileStep(
                     name = state.name,
@@ -349,16 +348,44 @@ private fun InfoCard(text: String, icon: ImageVector = Icons.Default.Info, tint:
 }
 
 @Composable
-private fun IntroStep(
-    signedIn: Boolean,
+private fun IntroStep(onNext: () -> Unit) {
+    Column(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 24.dp, vertical = 8.dp)
+        ) {
+            Text(
+                text = "Voice Cloning",
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            FeatureRow(Icons.Default.Mic, "Create a voice from your own recording.")
+            Spacer(modifier = Modifier.height(12.dp))
+            FeatureRow(Icons.Default.VerifiedUser, "You read a short phrase aloud so we can check it's really your voice. Only your own voice can be cloned.")
+            Spacer(modifier = Modifier.height(12.dp))
+            FeatureRow(Icons.Default.Shield, "Recordings aren't kept on this device or shared. You can delete the voice any time.")
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = "By continuing, you confirm the voice is yours and agree to the processing of your voice recordings to create a synthetic voice. Audio made with it carries an inaudible watermark.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        Box(modifier = Modifier.padding(start = 24.dp, end = 24.dp, bottom = 24.dp, top = 8.dp)) {
+            PrimaryButton("Next", onNext)
+        }
+    }
+}
+
+@Composable
+private fun SignInStep(
     signingIn: Boolean,
     signInError: String?,
     notice: String?,
     onSignInWithPassword: (String, String) -> Unit,
     onCreateAccount: (String, String) -> Unit,
     onForgotPassword: (String) -> Unit,
-    onClearMessages: () -> Unit,
-    onContinue: () -> Unit
+    onClearMessages: () -> Unit
 ) {
     var email by rememberSaveable { mutableStateOf("") }
     // Never saved into instance state: kept in memory only.
@@ -375,95 +402,74 @@ private fun IntroStep(
 
     Column(modifier = Modifier.fillMaxSize()) {
         Column(
-            modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(24.dp)
+            modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 24.dp, vertical = 8.dp)
         ) {
             Text(
-                text = "Voice Cloning",
-                style = MaterialTheme.typography.headlineLarge,
+                text = if (creating) "Create account" else "Sign in",
+                style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold
             )
-            Spacer(modifier = Modifier.height(24.dp))
-            FeatureRow(Icons.Default.Mic, "Create a voice from your own recording and listen to your content in it.")
-            Spacer(modifier = Modifier.height(20.dp))
-            FeatureRow(Icons.Default.VerifiedUser, "To make sure it's your voice, you'll read a short phrase aloud, and we check it matches your recording. You can only clone your own voice.")
-            Spacer(modifier = Modifier.height(20.dp))
-            FeatureRow(Icons.Default.Shield, "Your recordings are not kept on this device or shared, and you can delete the voice at any time.")
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "By continuing, you confirm the voice is yours and you agree to the collection and processing of your voice recordings to create a synthetic voice. Audio generated with it carries an inaudible watermark.",
-                style = MaterialTheme.typography.bodySmall,
+                text = "Your cloned voice is tied to your account, so only you can use it. Cloning needs a verified email.",
+                style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(
-                text = "Voice cloning needs a verified email and an active paid plan.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+            Spacer(modifier = Modifier.height(20.dp))
+            OutlinedTextField(
+                value = email,
+                onValueChange = { email = it },
+                label = { Text("Email") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                enabled = !signingIn,
+                shape = PrimaryShape,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next, autoCorrect = false)
             )
-            if (!signedIn) {
-                Spacer(modifier = Modifier.height(16.dp))
-                InfoCard(
-                    if (creating) "Create an account to make a cloned voice. It's tied to your account so only you can use it."
-                    else "Sign in to create a cloned voice. It's tied to your account so only you can use it.",
-                    Icons.Default.Lock
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-                OutlinedTextField(
-                    value = email,
-                    onValueChange = { email = it },
-                    label = { Text("Email") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    enabled = !signingIn,
-                    shape = PrimaryShape,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next, autoCorrect = false)
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-                OutlinedTextField(
-                    value = password,
-                    onValueChange = { password = it },
-                    label = { Text("Password") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    enabled = !signingIn,
-                    shape = PrimaryShape,
-                    visualTransformation = if (showPassword) VisualTransformation.None else PasswordVisualTransformation(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done, autoCorrect = false),
-                    keyboardActions = KeyboardActions(onDone = { submit() }),
-                    trailingIcon = {
-                        IconButton(onClick = { showPassword = !showPassword }) {
-                            Icon(
-                                if (showPassword) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                                contentDescription = if (showPassword) "Hide password" else "Show password"
-                            )
-                        }
-                    }
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    TextButton(
-                        onClick = { creating = !creating; onClearMessages() },
-                        enabled = !signingIn
-                    ) { Text(if (creating) "Have an account? Sign in" else "Create account") }
-                    if (!creating) {
-                        TextButton(
-                            onClick = { onForgotPassword(email.trim()) },
-                            enabled = !signingIn && emailOk
-                        ) { Text("Forgot password?") }
+            Spacer(modifier = Modifier.height(12.dp))
+            OutlinedTextField(
+                value = password,
+                onValueChange = { password = it },
+                label = { Text("Password") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                enabled = !signingIn,
+                shape = PrimaryShape,
+                visualTransformation = if (showPassword) VisualTransformation.None else PasswordVisualTransformation(),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done, autoCorrect = false),
+                keyboardActions = KeyboardActions(onDone = { submit() }),
+                trailingIcon = {
+                    IconButton(onClick = { showPassword = !showPassword }) {
+                        Icon(
+                            if (showPassword) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                            contentDescription = if (showPassword) "Hide password" else "Show password"
+                        )
                     }
                 }
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                TextButton(
+                    onClick = { creating = !creating; onClearMessages() },
+                    enabled = !signingIn
+                ) { Text(if (creating) "Have an account? Sign in" else "Create account") }
                 if (!creating) {
-                    Text(
-                        text = "Enter your email above, then tap Forgot password? to get a reset link.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    TextButton(
+                        onClick = { onForgotPassword(email.trim()) },
+                        enabled = !signingIn && emailOk
+                    ) { Text("Forgot password?") }
                 }
+            }
+            if (!creating) {
+                Text(
+                    text = "Forgot it? Enter your email above, then tap Forgot password? for a reset link.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
 
-        // Outside the scrolling area on purpose: placed at the end of the scroll content this text sat
-        // below the fold on phones and was never seen. liveRegion makes TalkBack announce changes.
+        // Outside the scrolling area on purpose so it is always visible. liveRegion makes TalkBack announce changes.
         if (signInError != null) {
             Text(
                 text = signInError,
@@ -487,19 +493,15 @@ private fun IntroStep(
         }
 
         Box(modifier = Modifier.padding(start = 24.dp, end = 24.dp, bottom = 24.dp, top = 8.dp)) {
-            if (signedIn) {
-                PrimaryButton("Agree & Continue", onContinue)
-            } else {
-                PrimaryButton(
-                    when {
-                        signingIn -> if (creating) "Creating account..." else "Signing in..."
-                        creating -> "Create account"
-                        else -> "Sign in"
-                    },
-                    { submit() },
-                    enabled = canSubmit
-                )
-            }
+            PrimaryButton(
+                when {
+                    signingIn -> if (creating) "Creating account..." else "Signing in..."
+                    creating -> "Create account"
+                    else -> "Sign in"
+                },
+                { submit() },
+                enabled = canSubmit
+            )
         }
     }
 }
@@ -507,8 +509,8 @@ private fun IntroStep(
 @Composable
 private fun FeatureRow(icon: ImageVector, text: String) {
     Row(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.Top) {
-        Icon(icon, contentDescription = null, modifier = Modifier.size(28.dp))
-        Text(text = text, style = MaterialTheme.typography.bodyLarge)
+        Icon(icon, contentDescription = null, modifier = Modifier.size(24.dp))
+        Text(text = text, style = MaterialTheme.typography.bodyMedium)
     }
 }
 

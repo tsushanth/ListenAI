@@ -21,8 +21,11 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 enum class CloneStep {
-    /** Explains consent; requires sign-in. */
+    /** Short explainer of the consent check; "Next" goes to sign-in (or straight on when already signed in). */
     INTRO,
+
+    /** Email + password sign-in / account creation, on its own page so the form is never below the fold. */
+    SIGN_IN,
 
     /** Voice name and language. */
     PROFILE,
@@ -158,7 +161,7 @@ class VoiceCloneFlowViewModel(
             _state.update {
                 if (result.isSuccess) {
                     if (signedIn) {
-                        it.copy(signingIn = false, signedIn = true, failure = null, failureSource = null, authNotice = null, step = if (it.step == CloneStep.ERROR) CloneStep.INTRO else it.step)
+                        it.copy(signingIn = false, signedIn = true, failure = null, failureSource = null, authNotice = null, step = afterSignIn(it.step))
                     } else it.copy(signingIn = false)
                 } else {
                     it.copy(
@@ -177,9 +180,16 @@ class VoiceCloneFlowViewModel(
 
     // ---- navigation --------------------------------------------------------------------
 
+    /** "Next" on the intro: sign-in page when signed out, otherwise straight to the profile step. */
     fun agreeAndContinue() {
-        if (!_state.value.signedIn) return
-        _state.update { it.copy(step = CloneStep.PROFILE, failure = null) }
+        val next = if (_state.value.signedIn) CloneStep.PROFILE else CloneStep.SIGN_IN
+        _state.update { it.copy(step = next, failure = null, failureSource = null, authNotice = null) }
+    }
+
+    private fun afterSignIn(step: CloneStep): CloneStep = when (step) {
+        CloneStep.ERROR -> CloneStep.INTRO
+        CloneStep.SIGN_IN -> CloneStep.PROFILE
+        else -> step
     }
 
     fun setName(name: String) = _state.update { it.copy(name = name.take(MAX_NAME_LENGTH)) }
@@ -202,6 +212,7 @@ class VoiceCloneFlowViewModel(
     fun back(): Boolean {
         val s = _state.value
         val prev = when (s.step) {
+            CloneStep.SIGN_IN -> CloneStep.INTRO
             CloneStep.PROFILE -> CloneStep.INTRO
             CloneStep.CONSENT -> CloneStep.PROFILE
             CloneStep.REFERENCE -> CloneStep.CONSENT
@@ -312,7 +323,7 @@ class VoiceCloneFlowViewModel(
         val s = _state.value
         val failure = s.failure ?: return
         when (failure.recovery) {
-            Recovery.SIGN_IN -> _state.update { it.copy(step = CloneStep.INTRO, failure = null) }
+            Recovery.SIGN_IN -> _state.update { it.copy(step = CloneStep.SIGN_IN, failure = null) }
 
             Recovery.RETRY -> when (s.failureSource) {
                 FailureSource.CHALLENGE -> requestChallenge()

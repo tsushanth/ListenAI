@@ -77,14 +77,12 @@ fun BottomNavBar(
                 onClick = {
                     if (currentRoute != item.route) {
                         navController.navigate(item.route) {
-                            // Pop up to the start destination to avoid building up a stack
-                            popUpTo(Screen.Home.route) {
-                                saveState = true
-                            }
+                            // Pop up to the start destination to avoid building up a stack.
+                            // No saveState/restoreState: restoring a tab's saved stack re-opened whatever sub-screen was last
+                            // on top (e.g. Settings > Voice Cloning), so tapping Settings showed Voice Cloning instead of Settings.
+                            popUpTo(Screen.Home.route)
                             // Avoid multiple copies of the same destination
                             launchSingleTop = true
-                            // Restore state when reselecting a previously selected item
-                            restoreState = true
                         }
                     }
                 },

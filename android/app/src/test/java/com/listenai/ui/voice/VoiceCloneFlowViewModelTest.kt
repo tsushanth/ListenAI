@@ -95,16 +95,37 @@ class VoiceCloneFlowViewModelTest {
     }
 
     @Test
-    fun `signed-out user cannot leave the intro until signed in`() {
+    fun `signed-out user is sent to the sign-in page, and a successful sign-in continues to the profile step`() {
         val scope = TestScope(scopeDispatcher)
         val vm = scope.vm(signedIn = false)
-        vm.agreeAndContinue()
         assertEquals(CloneStep.INTRO, vm.state.value.step)
+        vm.agreeAndContinue()                                   // "Next" on the intro
+        assertEquals(CloneStep.SIGN_IN, vm.state.value.step)
+        assertFalse(vm.state.value.signedIn)
 
         vm.signIn { Result.success(Unit) }
         assertTrue(vm.state.value.signedIn)
+        assertEquals(CloneStep.PROFILE, vm.state.value.step)    // no second tap needed
+    }
+
+    @Test
+    fun `signed-in user skips the sign-in page`() {
+        val scope = TestScope(scopeDispatcher)
+        val vm = scope.vm(signedIn = true)
         vm.agreeAndContinue()
         assertEquals(CloneStep.PROFILE, vm.state.value.step)
+    }
+
+    @Test
+    fun `back from the sign-in page returns to the intro, and a failed sign-in stays on the sign-in page`() {
+        val scope = TestScope(scopeDispatcher)
+        val vm = scope.vm(signedIn = false)
+        vm.agreeAndContinue()
+        vm.signIn { Result.failure(IllegalStateException("x")) }
+        assertEquals(CloneStep.SIGN_IN, vm.state.value.step)
+        assertFalse(vm.state.value.signedIn)
+        assertTrue(vm.back())
+        assertEquals(CloneStep.INTRO, vm.state.value.step)
     }
 
     @Test
