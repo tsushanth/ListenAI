@@ -37,8 +37,8 @@ android {
         applicationId = "com.listenai"
         minSdk = 26
         targetSdk = 36
-        versionCode = 87
-        versionName = "2.14.43"
+        versionCode = 88
+        versionName = "2.14.44"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -264,6 +264,9 @@ dependencies {
     // Testing
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3")
+    // Real org.json for plain-JVM unit tests (the Android SDK's copy is a "not mocked" stub, which
+    // isReturnDefaultValues turns into silent nulls). Used by the voice cloning client tests.
+    testImplementation("org.json:json:20231013")
     // Pinned to 5.0.0-alpha.14 (not the app's own 4.12.0 okhttp dep) because some other
     // dependency in this project forces okhttp up to 5.0.0-alpha.14 project-wide; mockwebserver
     // 4.12.0 links against okhttp3.internal.Util, which that version doesn't have, and fails at

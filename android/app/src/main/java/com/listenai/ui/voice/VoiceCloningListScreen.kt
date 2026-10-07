@@ -26,6 +26,9 @@ import androidx.compose.ui.unit.dp
 import com.listenai.service.tts.TTSCoordinator
 import com.listenai.service.tts.SelfHostedTTSService
 import com.listenai.service.tts.SynthesisOptions
+import com.listenai.service.voice.ClonedVoice
+import com.listenai.service.voice.VoiceCloneErrors
+import com.listenai.service.voice.VoiceCloneException
 import com.listenai.service.voice.VoiceCloningService
 import com.listenai.service.notification.TTSNotificationService
 import com.listenai.ui.theme.Blue
@@ -60,7 +63,7 @@ fun VoiceCloningListScreen(
     val sampleText = "Hello, this is a preview of your cloned voice. I can read your articles with this unique sound."
 
     // State
-    var clonedVoices by remember { mutableStateOf<List<VoiceCloningService.ClonedVoice>>(emptyList()) }
+    var clonedVoices by remember { mutableStateOf<List<ClonedVoice>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     var isEditing by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
@@ -78,13 +81,18 @@ fun VoiceCloningListScreen(
     val previewCacheDir = remember { File(context.cacheDir, "cloned_voice_previews").apply { mkdirs() } }
 
     // Delete confirmation
-    var voiceToDelete by remember { mutableStateOf<VoiceCloningService.ClonedVoice?>(null) }
+    var voiceToDelete by remember { mutableStateOf<ClonedVoice?>(null) }
     var isDeleting by remember { mutableStateOf(false) }
 
-    // Rename dialog
-    var voiceToRename by remember { mutableStateOf<VoiceCloningService.ClonedVoice?>(null) }
-    var newVoiceName by remember { mutableStateOf("") }
-    var isRenaming by remember { mutableStateOf(false) }
+    // One-time note for users who had legacy (pre-consent) voices
+    var showLegacyNote by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { showLegacyNote = voiceCloningService.shouldShowLegacyVoicesNotice() }
+    if (showLegacyNote) {
+        LegacyVoicesDialog(onDismiss = {
+            voiceCloningService.markLegacyVoicesNoticeShown()
+            showLegacyNote = false
+        })
+    }
 
     // Cleanup on dispose
     DisposableEffect(Unit) {
@@ -98,10 +106,10 @@ fun VoiceCloningListScreen(
     LaunchedEffect(Unit) {
         try {
             clonedVoices = voiceCloningService.listClonedVoices(forceRefresh = true)
+        } catch (e: VoiceCloneException) {
+            errorMessage = VoiceCloneErrors.map(e).message
         } catch (e: Exception) {
-            if (e !is VoiceCloningService.VoiceCloningError.NotConfigured) {
-                errorMessage = e.message
-            }
+            errorMessage = "Couldn't load your voices."
         } finally {
             isLoading = false
         }
@@ -179,7 +187,7 @@ fun VoiceCloningListScreen(
     }
 
     // Preview voice function - synthesizes sample text using the cloned voice
-    fun previewVoice(voice: VoiceCloningService.ClonedVoice) {
+    fun previewVoice(voice: ClonedVoice) {
         scope.launch {
             // Toggle off if already playing
             if (playingVoiceId == voice.id && !isPreviewLoading) {
@@ -314,43 +322,27 @@ fun VoiceCloningListScreen(
     }
 
     // Handle "Notify me when ready" button
-    fun enableNotifyWhenReady(voice: VoiceCloningService.ClonedVoice) {
+    fun enableNotifyWhenReady(voice: ClonedVoice) {
         notifyWhenReadyVoiceId = voice.id
         showNotifyWhenReady = false
         Toast.makeText(context, "We'll notify you when the preview is ready", Toast.LENGTH_SHORT).show()
     }
 
     // Delete voice function
-    fun deleteVoice(voice: VoiceCloningService.ClonedVoice) {
+    fun deleteVoice(voice: ClonedVoice) {
         scope.launch {
             isDeleting = true
             try {
                 voiceCloningService.deleteClonedVoice(voice.id)
                 clonedVoices = clonedVoices.filter { it.id != voice.id }
                 Toast.makeText(context, "Voice deleted", Toast.LENGTH_SHORT).show()
+            } catch (e: VoiceCloneException) {
+                Toast.makeText(context, VoiceCloneErrors.map(e).message, Toast.LENGTH_LONG).show()
             } catch (e: Exception) {
                 Toast.makeText(context, "Failed to delete voice", Toast.LENGTH_SHORT).show()
             } finally {
                 isDeleting = false
                 voiceToDelete = null
-            }
-        }
-    }
-
-    // Rename voice function
-    fun renameVoice(voice: VoiceCloningService.ClonedVoice, newName: String) {
-        scope.launch {
-            isRenaming = true
-            try {
-                val updatedVoice = voiceCloningService.updateClonedVoice(voice.id, name = newName)
-                clonedVoices = clonedVoices.map { if (it.id == voice.id) updatedVoice else it }
-                Toast.makeText(context, "Voice renamed", Toast.LENGTH_SHORT).show()
-            } catch (e: Exception) {
-                Toast.makeText(context, "Failed to rename voice", Toast.LENGTH_SHORT).show()
-            } finally {
-                isRenaming = false
-                voiceToRename = null
-                newVoiceName = ""
             }
         }
     }
@@ -380,53 +372,6 @@ fun VoiceCloningListScreen(
             },
             dismissButton = {
                 TextButton(onClick = { voiceToDelete = null }) {
-                    Text("Cancel")
-                }
-            }
-        )
-    }
-
-    // Rename dialog
-    voiceToRename?.let { voice ->
-        LaunchedEffect(voice) {
-            newVoiceName = voice.name
-        }
-
-        AlertDialog(
-            onDismissRequest = {
-                voiceToRename = null
-                newVoiceName = ""
-            },
-            title = { Text("Rename Voice Clone") },
-            text = {
-                OutlinedTextField(
-                    value = newVoiceName,
-                    onValueChange = { newVoiceName = it },
-                    label = { Text("Voice Name") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = { renameVoice(voice, newVoiceName) },
-                    enabled = !isRenaming && newVoiceName.isNotBlank() && newVoiceName != voice.name
-                ) {
-                    if (isRenaming) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(16.dp),
-                            strokeWidth = 2.dp
-                        )
-                    } else {
-                        Text("Save")
-                    }
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = {
-                    voiceToRename = null
-                    newVoiceName = ""
-                }) {
                     Text("Cancel")
                 }
             }
@@ -478,7 +423,7 @@ fun VoiceCloningListScreen(
                     }
                     clonedVoices.isEmpty() -> {
                         // Empty state
-                        EmptyVoiceState()
+                        EmptyVoiceState(errorMessage)
                     }
                     else -> {
                         // Voice list
@@ -496,7 +441,6 @@ fun VoiceCloningListScreen(
                                     progress = if (playingVoiceId == voice.id) previewProgress else 0f,
                                     showNotifyOption = showNotifyWhenReady && notifyWhenReadyVoiceId == voice.id,
                                     onPreview = { previewVoice(voice) },
-                                    onRename = { voiceToRename = voice },
                                     onDelete = { voiceToDelete = voice },
                                     onNotifyWhenReady = { enableNotifyWhenReady(voice) }
                                 )
@@ -536,7 +480,7 @@ fun VoiceCloningListScreen(
 }
 
 @Composable
-private fun EmptyVoiceState() {
+private fun EmptyVoiceState(errorMessage: String? = null) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -573,23 +517,23 @@ private fun EmptyVoiceState() {
         Spacer(modifier = Modifier.height(8.dp))
 
         Text(
-            text = "You haven't created any voice clones yet.",
+            text = errorMessage ?: "You haven't created any voice clones yet. Cloning a voice needs a short recorded consent check.",
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center
         )
     }
 }
 
 @Composable
 private fun ClonedVoiceCard(
-    voice: VoiceCloningService.ClonedVoice,
+    voice: ClonedVoice,
     isPlaying: Boolean,
     isLoading: Boolean,
     isEditing: Boolean,
     progress: Float = 0f,
     showNotifyOption: Boolean = false,
     onPreview: () -> Unit,
-    onRename: () -> Unit,
     onDelete: () -> Unit,
     onNotifyWhenReady: () -> Unit = {}
 ) {
@@ -647,7 +591,7 @@ private fun ClonedVoiceCard(
 
                     // Show status text
                     Text(
-                        text = "Cloned Voice • Multilingual",
+                        text = "Cloned Voice • ${java.util.Locale(voice.language).displayLanguage}",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -680,14 +624,6 @@ private fun ClonedVoiceCard(
                 // Action buttons
                 if (isEditing) {
                     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                        IconButton(onClick = onRename) {
-                            Icon(
-                                Icons.Default.Edit,
-                                contentDescription = "Rename",
-                                tint = Blue,
-                                modifier = Modifier.size(24.dp)
-                            )
-                        }
                         IconButton(onClick = onDelete) {
                             Icon(
                                 Icons.Default.Delete,

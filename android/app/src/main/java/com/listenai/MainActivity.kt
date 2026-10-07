@@ -206,6 +206,10 @@ class MainActivity : AppCompatActivity() {
 
     private fun handleOAuthRedirect(intent: Intent?) {
         val uri = intent?.data ?: return
+        if (com.listenai.service.auth.GoogleAuthCallbacks.deliver(uri.toString())) {
+            // Supabase browser OAuth (PKCE) callback for voice-cloning sign-in.
+            return
+        }
         if (uri.scheme?.startsWith("com.googleusercontent.apps") == true) {
             Log.d("MainActivity", "Handling OAuth redirect: $uri")
             lifecycleScope.launch {

@@ -162,22 +162,23 @@ class GoogleAuthService(private val context: Context) {
     }
 
     /**
-     * Sign in with Google using Credential Manager
+     * Sign in with Google using Credential Manager.
+     *
+     * @param withNonce set false when the ID token will be exchanged with Supabase through the
+     * backend's /api/auth/google, which does not forward a raw nonce: Supabase rejects an ID
+     * token that carries a nonce claim unless the raw nonce is supplied too.
      */
-    suspend fun signIn(activityContext: Context): Result<UserProfile> {
+    suspend fun signIn(activityContext: Context, withNonce: Boolean = true): Result<UserProfile> {
         _isLoading.value = true
         _error.value = null
 
         return try {
-            // Generate nonce for security
-            val nonce = generateNonce()
-
             // Build Google ID option
             val googleIdOption = GetGoogleIdOption.Builder()
                 .setFilterByAuthorizedAccounts(false)
                 .setServerClientId(WEB_CLIENT_ID)
                 .setAutoSelectEnabled(true)
-                .setNonce(nonce)
+                .apply { if (withNonce) setNonce(generateNonce()) }
                 .build()
 
             // Build credential request

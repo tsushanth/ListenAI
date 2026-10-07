@@ -17,7 +17,7 @@ import androidx.compose.ui.unit.dp
 import com.listenai.R
 import com.listenai.service.marketplace.VoiceMarketplaceService
 import com.listenai.service.voice.VoiceCloningService
-import com.listenai.service.voice.VoiceCloningService.ClonedVoice
+import com.listenai.service.voice.ClonedVoice
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
@@ -53,13 +53,11 @@ fun ShareVoiceScreen(
     fun loadVoices() {
         scope.launch {
             isLoading = true
-            try {
-                clonedVoices = voiceCloningService.listClonedVoices(forceRefresh = true)
-            } catch (e: Exception) {
-                errorMessage = "Failed to load voices: ${e.message}"
-            } finally {
-                isLoading = false
-            }
+            // Consent-verified clones can only be used by the account that created them (the backend
+            // rejects synthesis for any other user), so they cannot be shared to the marketplace.
+            // Legacy clones are inert. Nothing is offered here until the marketplace has a consent model.
+            clonedVoices = emptyList()
+            isLoading = false
         }
     }
 
@@ -150,11 +148,11 @@ fun ShareVoiceScreen(
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
-                            stringResource(R.string.no_cloned_voices),
+                            "Sharing isn't available for cloned voices",
                             style = MaterialTheme.typography.titleMedium
                         )
                         Text(
-                            stringResource(R.string.no_cloned_voices_hint),
+                            "Cloned voices are created with a consent check and can only be used by their owner.",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -207,13 +205,6 @@ fun ShareVoiceScreen(
                                         style = MaterialTheme.typography.bodyLarge,
                                         fontWeight = FontWeight.Medium
                                     )
-                                    voice.durationSec?.let { duration ->
-                                        Text(
-                                            "${String.format("%.1f", duration)}s sample",
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    }
                                 }
                             }
                         }

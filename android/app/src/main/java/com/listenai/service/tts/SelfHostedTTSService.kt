@@ -8,6 +8,9 @@ import com.listenai.data.models.VoiceQuality
 import com.listenai.data.models.VoiceStyle
 import com.listenai.data.models.VoiceCategory
 import com.listenai.data.models.VoiceTier
+import com.listenai.service.voice.VoiceCloneErrors
+import com.listenai.service.voice.VoiceCloneException
+import com.listenai.service.voice.VoiceCloningService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -25,7 +28,7 @@ import java.util.UUID
 import java.util.concurrent.TimeUnit
 
 /**
- * Self-hosted TTS service using Kokoro/XTTS backend.
+ * Self-hosted TTS service using the Kokoro backend (cloned voices go through the consent-gated Chatterbox API).
  * Provides standard quality voices that are fast and unlimited.
  */
 class SelfHostedTTSService(private val context: Context) : TTSService {
@@ -351,9 +354,9 @@ class SelfHostedTTSService(private val context: Context) : TTSService {
      * Poll job status with retry logic for transient network errors.
      * Returns null on transient errors (to continue polling), throws only on persistent failures.
      */
-    private fun pollJobStatusWithRetry(jobId: String): JSONObject? {
+    private fun pollJobStatusWithRetry(jobId: String, authToken: String? = null): JSONObject? {
         return try {
-            val result = pollJobStatus(jobId)
+            val result = pollJobStatus(jobId, authToken)
             consecutivePollFailures = 0  // Reset on success
             result
         } catch (e: Exception) {
@@ -374,12 +377,19 @@ class SelfHostedTTSService(private val context: Context) : TTSService {
     /**
      * Poll job status from the backend
      */
-    private fun pollJobStatus(jobId: String): JSONObject {
+    private fun pollJobStatus(jobId: String, authToken: String? = null): JSONObject {
         val request = Request.Builder()
             .url("$baseUrl/api/tts/job/$jobId")
             .get()
             .addHeader("Accept", "application/json")
-            .addHeader("X-Debug-Bypass-Quota", "true")  // TODO: Remove for production
+            .apply {
+                if (authToken != null) {
+                    // Cloned-voice jobs are user-scoped: authenticate, and never send the debug quota bypass.
+                    addHeader("Authorization", "Bearer $authToken")
+                } else {
+                    addHeader("X-Debug-Bypass-Quota", "true")  // TODO: Remove for production
+                }
+            }
             .build()
 
         val response = try {
@@ -493,22 +503,20 @@ class SelfHostedTTSService(private val context: Context) : TTSService {
     }
 
     /**
-     * Synthesize text using a cloned voice via job-based API with progress tracking.
-     * Uses the /api/tts/job-cloned endpoint which supports real progress updates like iOS.
+     * Synthesize text using a consent-gated cloned voice via the job-based API.
+     * POST /api/tts/job-cloned {text, voice_id, speed}, then poll /api/tts/job/:id. Both calls carry
+     * the signed-in user's Supabase access token; there is no client-supplied reference URL.
+     * A cold start of the serving app can add 60 to 180 s.
      *
      * @param text The text to synthesize
-     * @param voiceId The cloned voice ID (UUID from cloned_voices table)
-     * @param voiceUrl The URL to the reference audio file (from Supabase Storage)
+     * @param voiceId The voice id (UUID) from GET /api/voice-clones
      * @param speed Playback speed multiplier (0.5 - 2.0, default 1.0)
-     * @param model Voice cloning model ("chatterbox" or "xtts", default "chatterbox")
      * @return SynthesisResult containing the audio file
      */
     suspend fun synthesizeCloned(
         text: String,
         voiceId: String,
-        voiceUrl: String,
         speed: Float = 1.0f,
-        model: String = "chatterbox",
         onProgress: (SynthesisProgress) -> Unit = {}
     ): SynthesisResult = withContext(Dispatchers.IO) {
         if (text.isEmpty()) {
@@ -526,27 +534,9 @@ class SelfHostedTTSService(private val context: Context) : TTSService {
                 totalCharacters = text.length
             ))
 
-            // Build request body for job-based cloned voice synthesis
             val clampedSpeed = speed.coerceIn(0.5f, 2.0f)
 
-            android.util.Log.d("SelfHostedTTS", "Synthesizing cloned voice via job API: voiceId=$voiceId, model=$model, speed=$clampedSpeed, textLength=${text.length}")
-
-            val requestBody = JSONObject().apply {
-                put("text", text)
-                put("voice_id", voiceId)
-                put("voice_url", voiceUrl)
-                put("speed", clampedSpeed)
-                put("model", model)
-            }
-
-            val request = Request.Builder()
-                .url("$baseUrl/api/tts/job-cloned")  // Use job-based API for progress tracking
-                .post(requestBody.toString().toRequestBody("application/json".toMediaType()))
-                .addHeader("Content-Type", "application/json")
-                .addHeader("Accept", "application/json")
-                .addHeader("Authorization", "Bearer ")  // Empty token - backend defaults to pro user
-                .addHeader("X-Debug-Bypass-Quota", "true")  // TODO: Remove for production
-                .build()
+            android.util.Log.d("SelfHostedTTS", "Synthesizing cloned voice via job API: voiceId=$voiceId, speed=$clampedSpeed, textLength=${text.length}")
 
             onProgress(SynthesisProgress.INITIAL.copy(
                 overallProgress = 0.05f,
@@ -554,34 +544,13 @@ class SelfHostedTTSService(private val context: Context) : TTSService {
                 totalCharacters = text.length
             ))
 
-            android.util.Log.d("SelfHostedTTS", "Making request to $baseUrl/api/tts/job-cloned")
-
-            val response = try {
-                httpClient.newCall(request).execute()
-            } catch (e: java.net.UnknownHostException) {
-                android.util.Log.e("SelfHostedTTS", "DNS resolution failed: ${e.message}")
-                throw TTSError.NetworkError("Unable to connect to TTS server. Please check your internet connection.")
-            } catch (e: java.net.SocketTimeoutException) {
-                android.util.Log.e("SelfHostedTTS", "Connection timeout: ${e.message}")
-                throw TTSError.NetworkError("Connection timed out. Cloned voice synthesis can take longer.")
-            } catch (e: java.io.IOException) {
-                android.util.Log.e("SelfHostedTTS", "Network error: ${e.message}")
-                throw TTSError.NetworkError("Network error: ${e.message}")
+            val job = try {
+                VoiceCloningService.getInstance(context).api.createSynthesisJob(text, voiceId, clampedSpeed)
+            } catch (e: VoiceCloneException) {
+                throw cloneErrorToTTSError(e, text.length)
             }
-
-            android.util.Log.d("SelfHostedTTS", "Cloned voice job response code: ${response.code}")
-
-            if (!response.isSuccessful) {
-                val errorBody = response.body?.string() ?: "Unknown error"
-                android.util.Log.e("SelfHostedTTS", "Error response: $errorBody")
-                handleErrorResponse(response.code, errorBody, text.length)
-            }
-
-            // Parse job response
-            val responseBody = response.body?.string() ?: throw TTSError.AudioEncodingFailed("Empty response")
-            val jobResponse = JSONObject(responseBody)
-            val jobId = jobResponse.getString("job_id")
-            val initialStatus = jobResponse.getString("status")
+            val jobId = job.jobId
+            val initialStatus = job.status
 
             android.util.Log.d("SelfHostedTTS", "Cloned voice job started: jobId=$jobId, status=$initialStatus")
 
@@ -596,7 +565,7 @@ class SelfHostedTTSService(private val context: Context) : TTSService {
             // If immediately ready (cache hit), download audio
             if (initialStatus == "ready") {
                 activeClonedJobs.remove(voiceId)
-                val audioUrl = jobResponse.optString("audio_url").takeIf { it.isNotEmpty() }
+                val audioUrl = job.audioUrl
                 if (audioUrl != null) {
                     return@withContext downloadAndSaveClonedAudio(
                         audioUrl, jobId, text, voiceId, startTime, onProgress
@@ -618,8 +587,8 @@ class SelfHostedTTSService(private val context: Context) : TTSService {
                 Thread.sleep(pollInterval)
                 pollCount++
 
-                // Poll with retry logic
-                val statusResponse = pollJobStatusWithRetry(jobId)
+                // Poll with retry logic (authenticated: the job belongs to the signed-in user)
+                val statusResponse = pollJobStatusWithRetry(jobId, cloneAccessToken())
                 if (statusResponse == null) {
                     android.util.Log.w("SelfHostedTTS", "Transient poll error, continuing...")
                     continue
@@ -840,6 +809,18 @@ class SelfHostedTTSService(private val context: Context) : TTSService {
         }
     }
 
+    /** Current Supabase access token for cloned-voice calls, or null when signed out. */
+    private suspend fun cloneAccessToken(): String? =
+        VoiceCloningService.getInstance(context).authState?.accessToken()
+
+    /** Maps a cloning API failure to the TTS error type the playback UI already understands. */
+    private fun cloneErrorToTTSError(e: VoiceCloneException, requiredChars: Int): TTSError {
+        // Plan/quota exhaustion (402 from the quota check) is distinct from payment_required (no paid plan).
+        if (e.httpStatus == 402 && e.code != "payment_required") return TTSError.QuotaExceeded(0, requiredChars)
+        if (e.code == VoiceCloneException.CODE_NETWORK) return TTSError.NetworkError(e.serverMessage ?: "Network error")
+        return TTSError.InvalidConfiguration(VoiceCloneErrors.map(e).message)
+    }
+
     private fun handleErrorResponse(code: Int, body: String, requiredChars: Int = 0) {
         val json = try {
             JSONObject(body)
@@ -983,7 +964,7 @@ class SelfHostedTTSService(private val context: Context) : TTSService {
                 Thread.sleep(pollInterval)
                 pollCount++
 
-                val statusResponse = pollJobStatusWithRetry(activeJob.jobId)
+                val statusResponse = pollJobStatusWithRetry(activeJob.jobId, cloneAccessToken())
                 if (statusResponse == null) {
                     continue
                 }

@@ -181,12 +181,8 @@ class ChatterboxOnDeviceService private constructor(
     }
 
     override suspend fun downloadVoice(voice: VoicePreset) {
-        // Pull the speaker embedding for this cloned voice onto disk so
-        // the next synthesize() call can use it. Three-step:
-        //   1. Locate the source audio (the user's original sample)
-        //   2. Decode to 16 kHz mono PCM
-        //   3. Run speech_encoder.onnx to produce a 256-dim embedding
-        //   4. Persist via storeEmbedding()
+        // Previously pulled the user's original sample and derived a speaker embedding on-device.
+        // Not possible for consent-gated voices (see below).
         val voiceId = voice.providerVoiceId ?: voice.id
         if (embeddingCache.containsKey(voiceId) ||
             File(embeddingsDir, "$voiceId.bin").exists()
@@ -194,65 +190,10 @@ class ChatterboxOnDeviceService private constructor(
             Log.i(tag, "downloadVoice: embedding for $voiceId already on disk")
             return
         }
-        if (!ensureSessions()) {
-            Log.w(tag, "downloadVoice: ONNX sessions not loaded; cannot extract embedding")
-            return
-        }
-
-        // Step 1 — locate the audio file. VoiceCloningService is the source
-        // of truth for user-recorded samples; it handles the auth + signed
-        // URL flow that backend storage requires.
-        val cloningService = com.listenai.service.voice.VoiceCloningService.getInstance(context)
-        val audioFile: File = try {
-            cloningService.downloadPreviewAudio(voiceId)
-        } catch (t: Throwable) {
-            Log.w(tag, "downloadVoice: audio download failed for $voiceId — ${t.message}")
-            return
-        }
-
-        // Steps 2-3 — decode to mono PCM at 16 kHz (the typical speaker-
-        // encoder rate). AudioDecoder uses MediaExtractor + MediaCodec so
-        // it handles M4A / MP3 / AAC / WAV / OPUS uniformly.
-        val pcm = AudioDecoder.decodeToMonoPcm(audioFile, targetSampleRate = 16_000)
-        if (pcm == null || pcm.isEmpty()) {
-            Log.w(tag, "downloadVoice: audio decode failed for $voiceId")
-            return
-        }
-        val floatPcm = AudioDecoder.pcmToFloat(pcm)
-        Log.i(tag, "downloadVoice: decoded ${pcm.size} samples (${floatPcm.size / 16000f}s) for $voiceId")
-
-        // Step 4 — run speech_encoder.onnx to produce the 256-dim embedding.
-        //
-        // TODO(M2.6-7): the speech_encoder export's exact input/output
-        // tensor names need verification. Common patterns:
-        //
-        //   Path A — raw audio in, embedding out:
-        //     inputs:  "input_features" or "audio" : [1, samples]  fp32
-        //              "attention_mask"            : [1, samples]  int64 (all 1s)
-        //     output:  "embeddings" / "pooler_output" : [1, 256] fp32
-        //
-        //   Path B — pre-computed mel spectrogram in:
-        //     inputs:  "input_features" : [1, n_mels=80, frames] fp32
-        //     output:  "embeddings"     : [1, 256] fp32
-        //
-        // For Path B we'd need to compute the mel-spectrogram here using
-        // the same FFT/n_mels/window/hop_length as the chatterbox
-        // ChatterboxFeatureExtractor on the server. Until that's verified
-        // this remains the last TODO before clones synthesize on-device.
-        //
-        // val encoder = voiceEncoderSession!!
-        // val audioTensor = OnnxTensor.createTensor(
-        //     env, FloatBuffer.wrap(floatPcm), longArrayOf(1, floatPcm.size.toLong())
-        // )
-        // try {
-        //     val out = encoder.run(mapOf("input_features" to audioTensor))
-        //     val embedding = out[0].value as Array<FloatArray>
-        //     storeEmbedding(voiceId, embedding[0])
-        //     Log.i(tag, "downloadVoice: embedding stored for $voiceId")
-        // } finally {
-        //     audioTensor.close()
-        // }
-        Log.w(tag, "downloadVoice: PCM ready (${floatPcm.size} samples); ONNX speech_encoder pass still TODO (M2.6-7)")
+        // Consent-gated cloned voices are cloud-only: the reference audio is held server-side and
+        // is never downloadable, so no on-device embedding can be derived for them any more.
+        // (The legacy path fetched the user's original sample from storage; that API is gone.)
+        Log.w(tag, "downloadVoice: on-device cloning is not available for consent-gated voices; skipping $voiceId")
     }
 
     // ------------------------------------------------------------------
@@ -404,21 +345,10 @@ class ChatterboxOnDeviceService private constructor(
      * the model downloader puts on disk.
      */
     private fun locateReferenceAudio(voice: VoicePreset): File? {
-        val voiceId = voice.providerVoiceId ?: voice.id
-        // VoiceCloningService.downloadPreviewAudio(...) caches into the
-        // app's cache dir. The exact name depends on its implementation —
-        // safest path: re-call it (it short-circuits when the file exists).
-        return try {
-            kotlinx.coroutines.runBlocking {
-                com.listenai.service.voice.VoiceCloningService
-                    .getInstance(context)
-                    .downloadPreviewAudio(voiceId)
-            }
-        } catch (t: Throwable) {
-            Log.w(tag, "locateReferenceAudio: couldn't fetch reference for $voiceId — falling back to default voice (${t.message})")
-            val defaultVoice = ChatterboxModelDownloader.getInstance(context).defaultVoiceFile
-            if (defaultVoice.exists()) defaultVoice else null
-        }
+        // Cloned voices have no downloadable reference any more (see downloadVoice); only the
+        // bundled default voice is available on-device.
+        val defaultVoice = ChatterboxModelDownloader.getInstance(context).defaultVoiceFile
+        return if (defaultVoice.exists()) defaultVoice else null
     }
 
     /**

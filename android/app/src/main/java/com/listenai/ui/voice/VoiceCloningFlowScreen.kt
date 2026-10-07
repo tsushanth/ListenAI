@@ -1,16 +1,18 @@
 package com.listenai.ui.voice
 
 import android.Manifest
+import android.app.Activity
+import android.content.ContextWrapper
 import android.content.pm.PackageManager
-import android.media.MediaRecorder
 import android.net.Uri
-import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -18,7 +20,18 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.error
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -27,17 +40,21 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
-import com.listenai.service.voice.VoiceCloningService
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.viewmodel.viewModelFactory
+import androidx.lifecycle.viewmodel.initializer
 import com.listenai.service.review.AppReviewService
-import com.listenai.ui.theme.Blue
+import com.listenai.service.voice.AudioClips
+import com.listenai.service.voice.Recovery
+import com.listenai.service.voice.VoiceCloningService
 import com.listenai.ui.theme.Green
 import com.listenai.ui.theme.Purple
 import com.listenai.ui.theme.Red
@@ -45,23 +62,21 @@ import com.listenai.ui.theme.Yellow
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
-import java.io.File
+import java.util.Locale
 
-/**
- * Voice cloning flow steps
- */
-enum class VoiceCloningStep {
-    INTRO,
-    PROFILE,
-    RECORDING,
-    PROCESSING,
-    SUCCESS,
-    ERROR
+private fun android.content.Context.findActivity(): Activity? {
+    var c = this
+    while (c is ContextWrapper) {
+        if (c is Activity) return c
+        c = c.baseContext
+    }
+    return null
 }
 
 /**
- * Multi-step voice cloning flow screen.
- * Steps: Intro → Profile Setup → Recording → Processing → Success
+ * Consent-gated voice cloning flow:
+ * Intro (sign in) -> Profile -> Say the phrase -> Reference recording -> Upload -> Done.
+ * Server rules and error codes: docs/VOICE_CLONING_CONSENT.md.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -71,270 +86,201 @@ fun VoiceCloningFlowScreen(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val voiceCloningService: VoiceCloningService = koinInject()
+    val cloning: VoiceCloningService = koinInject()
     val appReviewService: AppReviewService = koinInject()
+    val auth = cloning.authState
 
-    // Flow state
-    var currentStep by remember { mutableStateOf(VoiceCloningStep.INTRO) }
-    var voiceName by remember { mutableStateOf("") }
-    var errorMessage by remember { mutableStateOf("") }
-
-    // Recording state
-    var isRecording by remember { mutableStateOf(false) }
-    var isPaused by remember { mutableStateOf(false) }
-    var recordingDuration by remember { mutableIntStateOf(0) }
-    var recordedFileUri by remember { mutableStateOf<Uri?>(null) }
-    var mediaRecorder by remember { mutableStateOf<MediaRecorder?>(null) }
-    var recordingFile by remember { mutableStateOf<File?>(null) }
-
-    // Permission state
-    var hasRecordPermission by remember {
-        mutableStateOf(
-            ContextCompat.checkSelfPermission(
-                context,
-                Manifest.permission.RECORD_AUDIO
-            ) == PackageManager.PERMISSION_GRANTED
-        )
-    }
-
-    val permissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission()
-    ) { granted ->
-        hasRecordPermission = granted
-    }
-
-    // File picker for the "upload an existing audio clip" path. Mirrors the
-    // record flow but lets users hand us audio they recorded elsewhere — the
-    // intended use case is screen-reader users (the on-screen read-aloud
-    // sample isn't usable for them since TalkBack speaks the prompt and the
-    // mic picks it up). Selecting a file populates `recordedFileUri` and
-    // `recordingDuration` so the existing Continue button + createClone
-    // path work unchanged.
-    val audioFilePicker = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.OpenDocument()
-    ) { uri: Uri? ->
-        if (uri == null) return@rememberLauncherForActivityResult
-        try {
-            // Persist read access so we can pass the URI to the service layer
-            // after returning from the picker activity.
-            context.contentResolver.takePersistableUriPermission(
-                uri,
-                android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
-            )
-        } catch (_: SecurityException) {
-            // Some pickers (e.g., third-party file managers) don't grant
-            // persistable permission. The transient grant is enough for the
-            // immediate upload since we read the bytes inline.
-        }
-
-        // Pull duration from the picked file so the existing "minimum 30s"
-        // gating + the recommended-length copy keep working.
-        val retriever = android.media.MediaMetadataRetriever()
-        val durationSec: Int = try {
-            retriever.setDataSource(context, uri)
-            val durationMs = retriever
-                .extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_DURATION)
-                ?.toLongOrNull() ?: 0L
-            (durationMs / 1000L).toInt()
-        } catch (e: Exception) {
-            errorMessage = "Could not read the selected audio file. Try a different file (WAV, M4A, or MP3)."
-            currentStep = VoiceCloningStep.ERROR
-            return@rememberLauncherForActivityResult
-        } finally {
-            try { retriever.release() } catch (_: Exception) {}
-        }
-
-        recordedFileUri = uri
-        recordingDuration = durationSec
-        isRecording = false
-        isPaused = false
-    }
-
-    // Recording timer
-    LaunchedEffect(isRecording, isPaused) {
-        if (isRecording && !isPaused) {
-            while (isRecording && !isPaused) {
-                delay(1000)
-                recordingDuration++
+    val vm: VoiceCloneFlowViewModel = viewModel(
+        factory = viewModelFactory {
+            initializer {
+                VoiceCloneFlowViewModel(
+                    client = cloning.api,
+                    initialSignedIn = auth?.isSignedIn?.value == true,
+                    initialLanguage = VoiceCloneFlowViewModel.languageFor(Locale.getDefault().language),
+                    onCreated = { cloning.invalidateCache() }
+                )
             }
         }
-    }
+    )
+    val state by vm.state.collectAsState()
 
-    // Navigation functions
-    fun goBack() {
-        when (currentStep) {
-            VoiceCloningStep.PROFILE -> currentStep = VoiceCloningStep.INTRO
-            VoiceCloningStep.RECORDING -> currentStep = VoiceCloningStep.PROFILE
-            VoiceCloningStep.ERROR -> currentStep = VoiceCloningStep.RECORDING
-            else -> {}
+    // Keep the VM's sign-in flag in sync with the auth service.
+    val signedIn by (auth?.isSignedIn ?: remember { kotlinx.coroutines.flow.MutableStateFlow(false) }).collectAsState()
+    LaunchedEffect(signedIn) { vm.onSignedInChanged(signedIn) }
+
+    // Recording
+    val recorder = remember { ClipRecorder(context) }
+    var recordingFor by remember { mutableStateOf<String?>(null) } // "consent" | "reference"
+    var paused by remember { mutableStateOf(false) }
+    var seconds by remember { mutableIntStateOf(0) }
+    var pendingRecordTarget by remember { mutableStateOf<String?>(null) }
+
+    fun beginRecording(target: String) {
+        val err = recorder.start("voiceclone_$target")
+        if (err != null) {
+            vm.setClipHint(err)
+        } else {
+            recordingFor = target
+            paused = false
+            seconds = 0
+            vm.setClipHint(null)
         }
     }
 
-    // Recording functions
-    fun startRecording() {
-        if (!hasRecordPermission) {
+    // RECORD_AUDIO is the only runtime permission used. File selection goes through the system picker.
+    val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        val target = pendingRecordTarget
+        pendingRecordTarget = null
+        if (granted && target != null) beginRecording(target)
+        else if (!granted) vm.setClipHint("Microphone permission is needed to record. You can allow it in system settings.")
+    }
+
+    fun startRecording(target: String) {
+        val granted = ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+        if (granted) beginRecording(target) else {
+            pendingRecordTarget = target
             permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
-            return
         }
-
-        try {
-            val file = File(context.cacheDir, "voice_clone_${System.currentTimeMillis()}.m4a")
-            recordingFile = file
-
-            mediaRecorder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                MediaRecorder(context)
-            } else {
-                @Suppress("DEPRECATION")
-                MediaRecorder()
-            }.apply {
-                setAudioSource(MediaRecorder.AudioSource.MIC)
-                setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
-                setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
-                setAudioEncodingBitRate(128000)
-                setAudioSamplingRate(44100)
-                setOutputFile(file.absolutePath)
-                prepare()
-                start()
-            }
-
-            isRecording = true
-            isPaused = false
-            recordingDuration = 0
-        } catch (e: Exception) {
-            errorMessage = "Failed to start recording: ${e.message}"
-            currentStep = VoiceCloningStep.ERROR
-        }
-    }
-
-    fun pauseRecording() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            mediaRecorder?.pause()
-        }
-        isPaused = true
-    }
-
-    fun resumeRecording() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            mediaRecorder?.resume()
-        }
-        isPaused = false
     }
 
     fun stopRecording() {
-        try {
-            mediaRecorder?.apply {
-                stop()
-                release()
-            }
-            mediaRecorder = null
-            isRecording = false
-            isPaused = false
+        val target = recordingFor ?: return
+        val clip = recorder.stop()
+        recordingFor = null
+        paused = false
+        if (clip == null) {
+            vm.setClipHint("Nothing was recorded. Try again.")
+        } else if (target == "consent") vm.setConsentClip(clip) else vm.setReferenceClip(clip)
+    }
 
-            recordingFile?.let { file ->
-                if (file.exists() && file.length() > 0) {
-                    recordedFileUri = Uri.fromFile(file)
-                }
-            }
-        } catch (e: Exception) {
-            errorMessage = "Failed to stop recording: ${e.message}"
+    // System document picker (no storage / media permission) for an existing reference recording.
+    val filePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        val picked = AudioClips.fromUri(context, uri)
+        if (picked.clip != null) vm.setReferenceClip(picked.clip) else vm.setClipHint(picked.error)
+    }
+
+    LaunchedEffect(recordingFor, paused) {
+        while (recordingFor != null && !paused) {
+            delay(1000)
+            seconds++
         }
     }
 
-    // Create clone function
-    fun createClone() {
-        val uri = recordedFileUri ?: return
-        val name = voiceName.trim().ifEmpty { "My Voice" }
-
-        currentStep = VoiceCloningStep.PROCESSING
-
-        scope.launch {
-            try {
-                voiceCloningService.createInstantClone(
-                    name = name,
-                    audioSampleUri = uri
-                )
-                currentStep = VoiceCloningStep.SUCCESS
-
-                // Record voice clone success for app review prompts
-                appReviewService.recordVoiceCloneSuccess()
-                appReviewService.checkAndTriggerFeedbackPrompt()
-            } catch (e: Exception) {
-                errorMessage = e.message ?: "Failed to create voice clone"
-                currentStep = VoiceCloningStep.ERROR
-            }
+    // Stop the mic if the user leaves the step mid-recording; drop recorded temp files on exit.
+    LaunchedEffect(state.step) {
+        if (recordingFor != null) {
+            recorder.release()
+            recordingFor = null
+        }
+        if (state.step == CloneStep.SUCCESS) {
+            appReviewService.recordVoiceCloneSuccess()
+            appReviewService.checkAndTriggerFeedbackPrompt()
         }
     }
-
-    // Cleanup on dispose
     DisposableEffect(Unit) {
         onDispose {
-            mediaRecorder?.release()
-            mediaRecorder = null
+            recorder.release()
+            context.cacheDir.listFiles { f -> f.name.startsWith("voiceclone_") }?.forEach { it.delete() }
         }
     }
 
     Scaffold(
         topBar = {
-            if (currentStep != VoiceCloningStep.PROCESSING && currentStep != VoiceCloningStep.SUCCESS) {
-                TopAppBar(
-                    title = { },
-                    navigationIcon = {
-                        IconButton(onClick = {
-                            if (currentStep == VoiceCloningStep.INTRO) {
-                                onCancel()
-                            } else {
-                                goBack()
-                            }
-                        }) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                        }
-                    },
-                    actions = {
-                        IconButton(onClick = onCancel) {
-                            Icon(Icons.Default.Close, contentDescription = "Cancel")
-                        }
+            if (state.step != CloneStep.UPLOADING && state.step != CloneStep.SUCCESS) {
+                // Compact header: the host already applies the status-bar inset, so a Material TopAppBar (its own inset + 64dp)
+                // left a large empty band above the buttons.
+                Row(
+                    modifier = Modifier.fillMaxWidth().height(48.dp).padding(horizontal = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    IconButton(onClick = { if (!vm.back()) onCancel() }) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
-                )
+                    IconButton(onClick = onCancel) {
+                        Icon(Icons.Default.Close, contentDescription = "Cancel")
+                    }
+                }
             }
         }
     ) { padding ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-        ) {
-            when (currentStep) {
-                VoiceCloningStep.INTRO -> IntroStep(
-                    onContinue = { currentStep = VoiceCloningStep.PROFILE }
-                )
-                VoiceCloningStep.PROFILE -> ProfileStep(
-                    voiceName = voiceName,
-                    onVoiceNameChange = { voiceName = it },
-                    onContinue = { currentStep = VoiceCloningStep.RECORDING }
-                )
-                VoiceCloningStep.RECORDING -> RecordingStep(
-                    isRecording = isRecording,
-                    isPaused = isPaused,
-                    recordingDuration = recordingDuration,
-                    hasRecording = recordedFileUri != null,
-                    onStartRecording = { startRecording() },
-                    onPauseRecording = { pauseRecording() },
-                    onResumeRecording = { resumeRecording() },
-                    onStopRecording = { stopRecording() },
-                    onSelectAudioFile = {
-                        audioFilePicker.launch(arrayOf("audio/*"))
+        Box(modifier = Modifier.fillMaxSize().padding(padding)) {
+            when (state.step) {
+                CloneStep.INTRO -> IntroStep(onNext = vm::agreeAndContinue)
+                CloneStep.SIGN_IN -> SignInStep(
+                    signingIn = state.signingIn,
+                    waitingForGoogle = state.waitingForGoogle,
+                    onContinueWithGoogle = {
+                        val activity = context.findActivity()
+                        if (auth != null && activity != null) vm.signInWithGoogle { auth.signInWithGoogleBrowser(activity) }
                     },
-                    onContinue = { createClone() }
+                    onCancelGoogle = vm::cancelGoogleSignIn,
+                    signInError = if (state.failureSource == FailureSource.SIGN_IN) state.failure?.message else null,
+                    notice = state.authNotice,
+                    onSignInWithPassword = { email, password ->
+                        if (auth != null) vm.signIn { auth.signInWithPassword(email, password) }
+                    },
+                    onCreateAccount = { email, password ->
+                        if (auth != null) vm.signUp { auth.signUp(email, password) }
+                    },
+                    onForgotPassword = { email ->
+                        if (auth != null) vm.sendPasswordReset(email) { auth.sendPasswordReset(email) }
+                    },
+                    onClearMessages = vm::clearAuthMessages
                 )
-                VoiceCloningStep.PROCESSING -> ProcessingStep()
-                VoiceCloningStep.SUCCESS -> SuccessStep(
-                    voiceName = voiceName.ifEmpty { "My Voice" },
+                CloneStep.PROFILE -> ProfileStep(
+                    name = state.name,
+                    language = state.language,
+                    canContinue = state.canContinueFromProfile,
+                    showAttestation = !state.consentRequired && !state.configLoading,
+                    attested = state.attested,
+                    onAttestedChange = vm::setAttested,
+                    onNameChange = vm::setName,
+                    onLanguageChange = vm::setLanguage,
+                    onContinue = vm::continueFromProfile
+                )
+                CloneStep.CONSENT -> ConsentStep(
+                    state = state,
+                    isRecording = recordingFor == "consent",
+                    seconds = seconds,
+                    onRecord = { startRecording("consent") },
+                    onStop = { stopRecording() },
+                    onRerecord = vm::clearConsentClip,
+                    onContinue = vm::continueFromConsent,
+                    onNewPhrase = vm::requestChallenge
+                )
+                CloneStep.REFERENCE -> ReferenceStep(
+                    state = state,
+                    isRecording = recordingFor == "reference",
+                    isPaused = paused,
+                    seconds = seconds,
+                    onRecord = { startRecording("reference") },
+                    onPause = { recorder.pause(); paused = true },
+                    onResume = { recorder.resume(); paused = false },
+                    onStop = { stopRecording() },
+                    onPick = { filePicker.launch(arrayOf("audio/*")) },
+                    onClear = vm::clearReferenceClip,
+                    onSubmit = vm::submit
+                )
+                CloneStep.UPLOADING -> ProcessingStep()
+                CloneStep.SUCCESS -> SuccessStep(
+                    voiceName = state.created?.name ?: state.name,
                     onDone = onComplete
                 )
-                VoiceCloningStep.ERROR -> ErrorStep(
-                    errorMessage = errorMessage,
-                    onRetry = { currentStep = VoiceCloningStep.RECORDING },
-                    onCancel = onCancel
+                CloneStep.ERROR -> ErrorStep(
+                    title = "Couldn't create your voice",
+                    message = state.failure?.message ?: "Something went wrong.",
+                    recovery = state.failure?.recovery ?: Recovery.RETRY,
+                    primaryLabel = when (state.failure?.recovery) {
+                        Recovery.SIGN_IN -> "Sign in"
+                        Recovery.RERECORD_CONSENT -> "Record the phrase again"
+                        Recovery.NEW_CHALLENGE -> "Get a new phrase"
+                        Recovery.FIX_REFERENCE -> "Choose another recording"
+                        else -> "Try again"
+                    },
+                    onPrimary = vm::recover,
+                    onClose = onCancel
                 )
             }
         }
@@ -342,451 +288,568 @@ fun VoiceCloningFlowScreen(
 }
 
 @Composable
-private fun IntroStep(onContinue: () -> Unit) {
-    Column(modifier = Modifier.fillMaxSize()) {
-        // Header illustration
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(200.dp)
-                .background(
-                    Brush.linearGradient(
-                        colors = listOf(
-                            Yellow.copy(alpha = 0.3f),
-                            Purple.copy(alpha = 0.3f)
-                        )
-                    )
-                ),
-            contentAlignment = Alignment.Center
-        ) {
-            // Waveform and face
-            Icon(
-                Icons.Default.Person,
-                contentDescription = null,
-                modifier = Modifier.size(80.dp),
-                tint = Color.White.copy(alpha = 0.8f)
-            )
-        }
-
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .verticalScroll(rememberScrollState())
-                .padding(24.dp)
-        ) {
-            // Title
+internal fun LegacyVoicesDialog(onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Re-create your voices") },
+        text = {
             Text(
-                text = "INTRODUCE",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                letterSpacing = 1.sp
+                "Voices you cloned before this update can't be used any more. Cloned voices now require " +
+                    "a quick consent check (you read a short phrase aloud), so please create them again."
             )
-            Spacer(modifier = Modifier.height(8.dp))
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("OK") } }
+    )
+}
+
+// ---------------------------------------------------------------------------------------
+// Steps
+// ---------------------------------------------------------------------------------------
+
+private val PrimaryShape = RoundedCornerShape(12.dp)
+
+@Composable
+private fun PrimaryButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true
+) {
+    Button(
+        onClick = onClick,
+        enabled = enabled,
+        modifier = modifier.fillMaxWidth().height(56.dp),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = Yellow,
+            contentColor = Color.Black,
+            disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+            disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant
+        ),
+        shape = PrimaryShape
+    ) {
+        Text(text, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+    }
+}
+
+@Composable
+private fun StepProgress(fraction: Float) {
+    LinearProgressIndicator(
+        progress = { fraction },
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 60.dp)
+            .height(4.dp)
+            .clip(RoundedCornerShape(2.dp)),
+        color = Yellow,
+        trackColor = MaterialTheme.colorScheme.surfaceVariant
+    )
+}
+
+@Composable
+private fun InfoCard(text: String, icon: ImageVector = Icons.Default.Info, tint: Color = Yellow) {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = tint.copy(alpha = 0.2f)),
+        shape = PrimaryShape
+    ) {
+        Row(modifier = Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(20.dp))
+            Text(text = text, style = MaterialTheme.typography.bodySmall)
+        }
+    }
+}
+
+@Composable
+private fun IntroStep(onNext: () -> Unit) {
+    Column(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 24.dp, vertical = 8.dp)
+        ) {
             Text(
                 text = "Voice Cloning",
-                style = MaterialTheme.typography.headlineLarge,
+                style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold
             )
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // Features
-            FeatureRow(
-                icon = Icons.Default.Mic,
-                text = "Clone your voice by recording audio"
-            )
-            Spacer(modifier = Modifier.height(20.dp))
-            FeatureRow(
-                icon = Icons.Default.GraphicEq,
-                text = "Listen to your content in any voice you've cloned."
-            )
-            Spacer(modifier = Modifier.height(20.dp))
-            FeatureRow(
-                icon = Icons.Default.Shield,
-                text = "Stored securely, never shared, and deletable whenever you want."
-            )
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // Consent text
+            Spacer(modifier = Modifier.height(16.dp))
+            FeatureRow(Icons.Default.Mic, "Create a voice from your own recording.")
+            Spacer(modifier = Modifier.height(12.dp))
+            FeatureRow(Icons.Default.VerifiedUser, "You confirm the voice is yours.")
+            Spacer(modifier = Modifier.height(12.dp))
+            FeatureRow(Icons.Default.Shield, "Recordings aren't kept on this device or shared. You can delete the voice any time.")
+            Spacer(modifier = Modifier.height(16.dp))
             Text(
-                text = "By continuing, you agree to the collection and use of your voice for the purpose of creating a digital voice clone. Your recordings may be stored and processed.",
+                text = "By continuing, you confirm the voice is yours and agree to the processing of your voice recordings to create a synthetic voice. Audio made with it carries an inaudible watermark.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
+        Box(modifier = Modifier.padding(start = 24.dp, end = 24.dp, bottom = 24.dp, top = 8.dp)) {
+            PrimaryButton("Next", onNext)
+        }
+    }
+}
 
-        // Continue button
-        Button(
-            onClick = onContinue,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(24.dp)
-                .height(56.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Yellow),
-            shape = RoundedCornerShape(12.dp)
+@Composable
+private fun SignInStep(
+    signingIn: Boolean,
+    waitingForGoogle: Boolean,
+    onContinueWithGoogle: () -> Unit,
+    onCancelGoogle: () -> Unit,
+    signInError: String?,
+    notice: String?,
+    onSignInWithPassword: (String, String) -> Unit,
+    onCreateAccount: (String, String) -> Unit,
+    onForgotPassword: (String) -> Unit,
+    onClearMessages: () -> Unit
+) {
+    var email by rememberSaveable { mutableStateOf("") }
+    // Never saved into instance state: kept in memory only.
+    var password by remember { mutableStateOf("") }
+    var showPassword by remember { mutableStateOf(false) }
+    var creating by rememberSaveable { mutableStateOf(false) }
+    var showEmailForm by rememberSaveable { mutableStateOf(false) }
+    val emailOk = email.trim().contains("@") && email.trim().length >= 5
+    val canSubmit = !signingIn && emailOk && password.isNotEmpty()
+    val submit = {
+        if (canSubmit) {
+            if (creating) onCreateAccount(email.trim(), password) else onSignInWithPassword(email.trim(), password)
+        }
+    }
+
+    Column(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 24.dp, vertical = 8.dp)
         ) {
             Text(
-                text = "Agree & Continue",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = Color.Black
+                text = if (creating) "Create account" else "Sign in",
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold
             )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "Your cloned voice is tied to your account, so only you can use it. Cloning needs a verified email.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.height(20.dp))
+            if (waitingForGoogle) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                    Text(
+                        "Waiting for Google...",
+                        style = MaterialTheme.typography.bodyLarge,
+                        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }
+                    )
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedButton(onClick = onCancelGoogle, modifier = Modifier.fillMaxWidth(), shape = PrimaryShape) { Text("Cancel") }
+            } else {
+                PrimaryButton("Continue with Google", onContinueWithGoogle, enabled = !signingIn)
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                HorizontalDivider(modifier = Modifier.weight(1f))
+                Text("or", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                HorizontalDivider(modifier = Modifier.weight(1f))
+            }
+            if (!showEmailForm) {
+                TextButton(
+                    onClick = { showEmailForm = true },
+                    enabled = !signingIn,
+                    modifier = Modifier.align(Alignment.CenterHorizontally)
+                ) { Text("Use email and password instead") }
+            } else {
+                Spacer(modifier = Modifier.height(12.dp))
+                OutlinedTextField(
+                    value = email,
+                    onValueChange = { email = it },
+                    label = { Text("Email") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    enabled = !signingIn,
+                    shape = PrimaryShape,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next, autoCorrect = false)
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                OutlinedTextField(
+                    value = password,
+                    onValueChange = { password = it },
+                    label = { Text("Password") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    enabled = !signingIn,
+                    shape = PrimaryShape,
+                    visualTransformation = if (showPassword) VisualTransformation.None else PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done, autoCorrect = false),
+                    keyboardActions = KeyboardActions(onDone = { submit() }),
+                    trailingIcon = {
+                        IconButton(onClick = { showPassword = !showPassword }) {
+                            Icon(
+                                if (showPassword) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                contentDescription = if (showPassword) "Hide password" else "Show password"
+                            )
+                        }
+                    }
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    TextButton(
+                        onClick = { creating = !creating; onClearMessages() },
+                        enabled = !signingIn
+                    ) { Text(if (creating) "Have an account? Sign in" else "Create account") }
+                    if (!creating) {
+                        TextButton(
+                            onClick = { onForgotPassword(email.trim()) },
+                            enabled = !signingIn && emailOk
+                        ) { Text("Forgot password?") }
+                    }
+                }
+                if (!creating) {
+                    Text(
+                        text = "Forgot it? Enter your email above, then tap Forgot password? for a reset link.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+
+        // Outside the scrolling area on purpose so it is always visible. liveRegion makes TalkBack announce changes.
+        if (signInError != null) {
+            Text(
+                text = signInError,
+                color = Red,
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp, vertical = 8.dp)
+                    .semantics { liveRegion = LiveRegionMode.Assertive; error(signInError) }
+            )
+        } else if (notice != null) {
+            Text(
+                text = notice,
+                color = Green,
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp, vertical = 8.dp)
+                    .semantics { liveRegion = LiveRegionMode.Polite }
+            )
+        }
+
+        if (showEmailForm) {
+        Box(modifier = Modifier.padding(start = 24.dp, end = 24.dp, bottom = 24.dp, top = 8.dp)) {
+                PrimaryButton(
+                    when {
+                        signingIn -> if (creating) "Creating account..." else "Signing in..."
+                        creating -> "Create account"
+                        else -> "Sign in"
+                    },
+                    { submit() },
+                    enabled = canSubmit
+                )
+            }
         }
     }
 }
 
 @Composable
 private fun FeatureRow(icon: ImageVector, text: String) {
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
-        verticalAlignment = Alignment.Top
-    ) {
-        Icon(
-            icon,
-            contentDescription = null,
-            modifier = Modifier.size(28.dp)
-        )
-        Text(
-            text = text,
-            style = MaterialTheme.typography.bodyLarge
-        )
+    Row(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.Top) {
+        Icon(icon, contentDescription = null, modifier = Modifier.size(24.dp))
+        Text(text = text, style = MaterialTheme.typography.bodyMedium)
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ProfileStep(
-    voiceName: String,
-    onVoiceNameChange: (String) -> Unit,
+    name: String,
+    language: String,
+    canContinue: Boolean,
+    showAttestation: Boolean,
+    attested: Boolean,
+    onAttestedChange: (Boolean) -> Unit,
+    onNameChange: (String) -> Unit,
+    onLanguageChange: (String) -> Unit,
     onContinue: () -> Unit
 ) {
-    val canContinue = voiceName.trim().isNotEmpty()
-
+    var expanded by remember { mutableStateOf(false) }
     Column(modifier = Modifier.fillMaxSize()) {
-        // Progress bar
-        LinearProgressIndicator(
-            progress = { 0.33f },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 60.dp)
-                .height(4.dp)
-                .clip(RoundedCornerShape(2.dp)),
-            color = Yellow,
-            trackColor = MaterialTheme.colorScheme.surfaceVariant
-        )
-
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .verticalScroll(rememberScrollState())
-                .padding(24.dp)
-        ) {
+        StepProgress(0.25f)
+        Column(modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(24.dp)) {
             Spacer(modifier = Modifier.height(24.dp))
-
-            Text(
-                text = "Create voice profile",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold
-            )
+            Text("Name your voice", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "We need this data to create better results.",
+                "Pick the language you'll speak in your recordings.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-
             Spacer(modifier = Modifier.height(32.dp))
-
-            // Profile image placeholder (simplified - no image picker for now)
-            Box(
-                modifier = Modifier.fillMaxWidth(),
-                contentAlignment = Alignment.Center
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(140.dp)
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(MaterialTheme.colorScheme.surfaceVariant),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        Icons.Default.Person,
-                        contentDescription = null,
-                        modifier = Modifier.size(64.dp),
-                        tint = MaterialTheme.colorScheme.outlineVariant
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(32.dp))
-
-            // Voice name input
             OutlinedTextField(
-                value = voiceName,
-                onValueChange = onVoiceNameChange,
+                value = name,
+                onValueChange = onNameChange,
                 label = { Text("Voice Name") },
                 placeholder = { Text("Enter a name for your voice") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
-                shape = RoundedCornerShape(12.dp)
+                shape = PrimaryShape
             )
+            Spacer(modifier = Modifier.height(16.dp))
+            ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }) {
+                OutlinedTextField(
+                    value = languageName(language),
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Language") },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                    modifier = Modifier.fillMaxWidth().menuAnchor(),
+                    shape = PrimaryShape
+                )
+                ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                    SUPPORTED_LANGUAGES.sortedBy { languageName(it) }.forEach { code ->
+                        DropdownMenuItem(
+                            text = { Text(languageName(code)) },
+                            onClick = { onLanguageChange(code); expanded = false }
+                        )
+                    }
+                }
+            }
+            if (showAttestation) {
+                Spacer(modifier = Modifier.height(24.dp))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .toggleable(value = attested, role = Role.Checkbox, onValueChange = onAttestedChange),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Checkbox(checked = attested, onCheckedChange = null)
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        ATTESTATION_TEXT,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            }
+        }
+        Box(modifier = Modifier.padding(24.dp)) { PrimaryButton("Continue", onContinue, enabled = canContinue) }
+    }
+}
+
+internal const val ATTESTATION_TEXT = "This is my own voice, and I agree ReadAloud may create a synthetic copy of it."
+
+private fun languageName(code: String): String =
+    Locale(code).getDisplayLanguage(Locale.getDefault()).replaceFirstChar { it.titlecase() }.ifEmpty { code }
+
+@Composable
+private fun RecordButton(isRecording: Boolean, onRecord: () -> Unit, onStop: () -> Unit) {
+    if (isRecording) {
+        Button(
+            onClick = onStop,
+            modifier = Modifier.size(72.dp),
+            shape = CircleShape,
+            colors = ButtonDefaults.buttonColors(containerColor = Red),
+            contentPadding = PaddingValues(0.dp)
+        ) { Icon(Icons.Default.Stop, contentDescription = "Stop recording", tint = Color.White, modifier = Modifier.size(32.dp)) }
+    } else {
+        Button(
+            onClick = onRecord,
+            modifier = Modifier.size(72.dp),
+            shape = CircleShape,
+            colors = ButtonDefaults.buttonColors(containerColor = Yellow),
+            contentPadding = PaddingValues(0.dp)
+        ) { Icon(Icons.Default.Mic, contentDescription = "Start recording", tint = Color.Black, modifier = Modifier.size(32.dp)) }
+    }
+}
+
+@Composable
+private fun ConsentStep(
+    state: CloneFlowState,
+    isRecording: Boolean,
+    seconds: Int,
+    onRecord: () -> Unit,
+    onStop: () -> Unit,
+    onRerecord: () -> Unit,
+    onContinue: () -> Unit,
+    onNewPhrase: () -> Unit
+) {
+    // Live countdown to the phrase expiry.
+    var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(state.challenge) {
+        while (true) {
+            now = System.currentTimeMillis()
+            delay(1000)
+        }
+    }
+    val challenge = state.challenge
+    val expired = challenge?.isExpired(now) == true
+    val remainingSec = challenge?.expiresAtMillis?.let { ((it - now) / 1000).toInt().coerceAtLeast(0) }
+
+    Column(modifier = Modifier.fillMaxSize()) {
+        StepProgress(0.5f)
+        Column(modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(24.dp)) {
+            Spacer(modifier = Modifier.height(24.dp))
+            Text("Say the phrase", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                "Read this phrase aloud, exactly as written, in your own voice. This confirms the voice is yours.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.height(24.dp))
+
+            when {
+                state.loadingChallenge || challenge == null -> Box(
+                    modifier = Modifier.fillMaxWidth().height(120.dp),
+                    contentAlignment = Alignment.Center
+                ) { CircularProgressIndicator() }
+
+                else -> Card(
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                    shape = PrimaryShape
+                ) {
+                    Column(modifier = Modifier.padding(20.dp)) {
+                        Text(
+                            text = challenge.phrase,
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Medium,
+                            lineHeight = 32.sp
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text(
+                            text = if (expired) "This phrase has expired." else remainingSec?.let { "Expires in ${formatDuration(it)}" } ?: "",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (expired || (remainingSec ?: 999) < 60) Red else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+
+            state.attemptsLeft?.let {
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    if (it == 1) "1 attempt left for this phrase." else "$it attempts left for this phrase.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            state.clipHint?.let {
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(it, color = Red, style = MaterialTheme.typography.bodySmall)
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+            InfoCard("Record it live and in a quiet room. Uploading a file isn't allowed for this step. If you use a screen reader, listen to the phrase first, then pause the screen reader before you start recording.")
         }
 
-        // Continue button
-        Button(
-            onClick = onContinue,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(24.dp)
-                .height(56.dp),
-            enabled = canContinue,
-            colors = ButtonDefaults.buttonColors(
-                containerColor = if (canContinue) Yellow else MaterialTheme.colorScheme.surfaceVariant,
-                contentColor = if (canContinue) Color.Black else MaterialTheme.colorScheme.onSurfaceVariant
-            ),
-            shape = RoundedCornerShape(12.dp)
-        ) {
-            Text(
-                text = "Continue",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold
-            )
+        Column(modifier = Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            if (state.consentClip != null && !isRecording) {
+                Text("Recorded ${state.consentClip.durationSec}s", style = MaterialTheme.typography.bodyMedium, color = Green)
+                Spacer(modifier = Modifier.height(12.dp))
+                PrimaryButton("Continue", onContinue, enabled = !expired)
+                TextButton(onClick = onRerecord) { Text("Record again") }
+            } else {
+                Text(
+                    formatDuration(seconds),
+                    style = MaterialTheme.typography.titleLarge,
+                    color = if (isRecording) Red else MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    if (isRecording) "Recording... tap stop when you've finished the phrase" else "Tap to start recording",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                if (challenge != null && !expired) RecordButton(isRecording, onRecord, onStop)
+            }
+            if (expired) {
+                Spacer(modifier = Modifier.height(8.dp))
+                PrimaryButton("Get a new phrase", onNewPhrase)
+            }
         }
     }
 }
 
 @Composable
-private fun RecordingStep(
+private fun ReferenceStep(
+    state: CloneFlowState,
     isRecording: Boolean,
     isPaused: Boolean,
-    recordingDuration: Int,
-    hasRecording: Boolean,
-    onStartRecording: () -> Unit,
-    onPauseRecording: () -> Unit,
-    onResumeRecording: () -> Unit,
-    onStopRecording: () -> Unit,
-    onSelectAudioFile: () -> Unit,
-    onContinue: () -> Unit
+    seconds: Int,
+    onRecord: () -> Unit,
+    onPause: () -> Unit,
+    onResume: () -> Unit,
+    onStop: () -> Unit,
+    onPick: () -> Unit,
+    onClear: () -> Unit,
+    onSubmit: () -> Unit
 ) {
-    // Get sample paragraphs for reading
-    val sampleParagraphs = remember { VoiceCloningService.SAMPLE_PARAGRAPHS }
-
-    // Calculate words for highlighting (reading speed: ~90 words per minute = 1.5 words per second)
-    val wordsPerSecond = 1.5f
-    val currentWordIndex = if (isRecording && !isPaused) {
-        (recordingDuration * wordsPerSecond).toInt()
-    } else if (hasRecording) {
-        (recordingDuration * wordsPerSecond).toInt()
-    } else {
-        -1
-    }
-
-    val minimumDuration = 30
-    val recommendedDuration = 60
-    val canContinue = hasRecording && recordingDuration >= minimumDuration && !isRecording
-    val isRecommendedDuration = recordingDuration >= recommendedDuration
+    val clip = state.referenceClip
+    val currentWordIndex = if (isRecording && !isPaused) (seconds * 1.5f).toInt() else if (clip != null) (clip.durationSec * 1.5f).toInt() else -1
 
     Column(modifier = Modifier.fillMaxSize()) {
-        // Progress bar
-        LinearProgressIndicator(
-            progress = { 0.66f },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 60.dp)
-                .height(4.dp)
-                .clip(RoundedCornerShape(2.dp)),
-            color = Yellow,
-            trackColor = MaterialTheme.colorScheme.surfaceVariant
-        )
-
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .verticalScroll(rememberScrollState())
-                .padding(24.dp)
-        ) {
+        StepProgress(0.75f)
+        Column(modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(24.dp)) {
             Spacer(modifier = Modifier.height(24.dp))
-
-            Text(
-                text = "Record your voice",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold
-            )
-
+            Text("Record your voice", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
             Spacer(modifier = Modifier.height(16.dp))
-
-            // Instructions banner
-            Card(
-                colors = CardDefaults.cardColors(containerColor = Yellow.copy(alpha = 0.2f)),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Row(
-                    modifier = Modifier.padding(16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Icon(
-                        Icons.Default.Info,
-                        contentDescription = null,
-                        tint = Yellow,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Text(
-                        text = "Record at least 30 seconds (60+ recommended for best quality). Read naturally in any language you're comfortable with.",
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                }
+            InfoCard("Record 30 to 60 seconds of natural speech (8 seconds minimum, 2 minutes maximum) in a quiet room, alone, with no music. Read the text below or speak freely in the language you chose. Or upload a clean recording of your voice.")
+            state.clipHint?.let {
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(it, color = Red, style = MaterialTheme.typography.bodySmall)
             }
-
             Spacer(modifier = Modifier.height(24.dp))
-
-            // Sample text with word highlighting
-            HighlightedReadingText(
-                paragraphs = sampleParagraphs,
-                currentWordIndex = currentWordIndex
-            )
+            HighlightedReadingText(paragraphs = VoiceCloningService.SAMPLE_PARAGRAPHS, currentWordIndex = currentWordIndex)
         }
 
-        // Recording controls
-        Column(
-            modifier = Modifier.padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            // Timer
-            Text(
-                text = formatDuration(recordingDuration),
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Medium,
-                color = if (isRecording && !isPaused) Red else MaterialTheme.colorScheme.onSurfaceVariant
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Status text
-            Text(
-                text = when {
-                    isRecording && !isPaused -> "Recording..."
-                    isPaused -> "Recording paused"
-                    else -> "Tap to start recording"
-                },
-                style = MaterialTheme.typography.bodySmall,
-                color = when {
-                    isPaused -> Yellow
-                    else -> MaterialTheme.colorScheme.onSurfaceVariant
-                }
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Recording buttons
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(24.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                if (isRecording) {
-                    // Pause/Resume button
-                    Button(
-                        onClick = { if (isPaused) onResumeRecording() else onPauseRecording() },
-                        modifier = Modifier.size(56.dp),
-                        shape = CircleShape,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (isPaused) Yellow else MaterialTheme.colorScheme.surfaceVariant
-                        ),
-                        contentPadding = PaddingValues(0.dp)
-                    ) {
-                        Icon(
-                            if (isPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
-                            contentDescription = if (isPaused) "Resume" else "Pause",
-                            tint = if (isPaused) Color.Black else MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-
-                    // Stop button
-                    Button(
-                        onClick = onStopRecording,
-                        modifier = Modifier.size(56.dp),
-                        shape = CircleShape,
-                        colors = ButtonDefaults.buttonColors(containerColor = Red),
-                        contentPadding = PaddingValues(0.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.Stop,
-                            contentDescription = "Stop",
-                            tint = Color.White
-                        )
-                    }
-                } else {
-                    // Record button
-                    Button(
-                        onClick = onStartRecording,
-                        modifier = Modifier.size(72.dp),
-                        shape = CircleShape,
-                        colors = ButtonDefaults.buttonColors(containerColor = Yellow),
-                        contentPadding = PaddingValues(0.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.Mic,
-                            contentDescription = "Record",
-                            tint = Color.Black,
-                            modifier = Modifier.size(32.dp)
-                        )
-                    }
-                }
-            }
-
-            // Upload-an-existing-clip alternative path. Surfaced only when
-            // we're not actively recording so the two options aren't
-            // competing for attention mid-take. Screen-reader users
-            // specifically can't use the live-recording path (a screen
-            // reader speaks the prompt and the mic captures both voices),
-            // so this is the supported way for them to clone.
-            if (!isRecording) {
-                Spacer(modifier = Modifier.height(20.dp))
-                TextButton(
-                    onClick = onSelectAudioFile,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Icon(
-                        Icons.Default.UploadFile,
-                        contentDescription = null,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = if (hasRecording) "Replace with an audio file" else "Or upload an existing audio file",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                }
-            }
-
-            // Continue button (when recording is done)
-            if (canContinue) {
+        Column(modifier = Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            if (clip != null && !isRecording) {
+                Text("${clip.filename.take(32)} (${formatDuration(clip.durationSec)})", style = MaterialTheme.typography.bodyMedium, color = Green)
+                Spacer(modifier = Modifier.height(12.dp))
+                PrimaryButton(
+                    if (state.step == CloneStep.UPLOADING) "Uploading..." else "Create voice",
+                    onSubmit,
+                    enabled = state.canSubmit
+                )
+                TextButton(onClick = onClear) { Text("Choose a different recording") }
+            } else {
+                Text(formatDuration(seconds), style = MaterialTheme.typography.titleLarge, color = if (isRecording && !isPaused) Red else MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    when {
+                        isRecording && !isPaused -> "Recording..."
+                        isPaused -> "Recording paused"
+                        else -> "Tap to start recording"
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
                 Spacer(modifier = Modifier.height(16.dp))
-
-                if (!isRecommendedDuration) {
-                    Text(
-                        text = "Longer recordings produce better voice clones",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(24.dp), verticalAlignment = Alignment.CenterVertically) {
+                    if (isRecording) {
+                        Button(
+                            onClick = { if (isPaused) onResume() else onPause() },
+                            modifier = Modifier.size(56.dp),
+                            shape = CircleShape,
+                            colors = ButtonDefaults.buttonColors(containerColor = if (isPaused) Yellow else MaterialTheme.colorScheme.surfaceVariant),
+                            contentPadding = PaddingValues(0.dp)
+                        ) {
+                            Icon(
+                                if (isPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
+                                contentDescription = if (isPaused) "Resume" else "Pause",
+                                tint = if (isPaused) Color.Black else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                    RecordButton(isRecording, onRecord, onStop)
                 }
-
-                Button(
-                    onClick = onContinue,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = if (isRecommendedDuration) Yellow else MaterialTheme.colorScheme.outline
-                    ),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Text(
-                        text = if (isRecommendedDuration) "Continue" else "Continue Anyway",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = if (isRecommendedDuration) Color.Black else Color.White
-                    )
+                if (!isRecording) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    TextButton(onClick = onPick, modifier = Modifier.fillMaxWidth()) {
+                        Icon(Icons.Default.UploadFile, contentDescription = null, modifier = Modifier.size(20.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Or upload an existing audio file")
+                    }
                 }
             }
         }
@@ -795,194 +858,90 @@ private fun RecordingStep(
 
 @Composable
 private fun ProcessingStep() {
-    val infiniteTransition = rememberInfiniteTransition(label = "processing")
-    val rotation by infiniteTransition.animateFloat(
+    val transition = rememberInfiniteTransition(label = "processing")
+    val rotation by transition.animateFloat(
         initialValue = 0f,
         targetValue = 360f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(3000, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
+        animationSpec = infiniteRepeatable(tween(3000, easing = LinearEasing), RepeatMode.Restart),
         label = "rotation"
     )
-
     Column(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier.fillMaxSize().padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        // Animated infinity symbol (using refresh icon as substitute)
-        Text(
-            text = "∞",
-            fontSize = 80.sp,
-            color = Yellow,
-            modifier = Modifier.rotate(rotation)
-        )
-
+        Text("∞", fontSize = 80.sp, color = Yellow, modifier = Modifier.rotate(rotation))
         Spacer(modifier = Modifier.height(24.dp))
-
-        Text(
-            text = "Cloning your voice...",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Medium
-        )
-
+        Text("Verifying and creating your voice...", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Medium, textAlign = TextAlign.Center)
         Spacer(modifier = Modifier.height(8.dp))
-
         Text(
-            text = "This may take a moment",
+            "We're checking your phrase and recording. This can take a minute, so please keep this screen open.",
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center
         )
     }
 }
 
 @Composable
-private fun SuccessStep(
-    voiceName: String,
-    onDone: () -> Unit
-) {
+private fun SuccessStep(voiceName: String, onDone: () -> Unit) {
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp),
+        modifier = Modifier.fillMaxSize().padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        // Success icon
         Box(
-            modifier = Modifier
-                .size(100.dp)
-                .clip(CircleShape)
-                .background(Green.copy(alpha = 0.15f)),
+            modifier = Modifier.size(100.dp).clip(CircleShape).background(Green.copy(alpha = 0.15f)),
             contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                Icons.Default.CheckCircle,
-                contentDescription = null,
-                modifier = Modifier.size(60.dp),
-                tint = Green
-            )
-        }
-
+        ) { Icon(Icons.Default.CheckCircle, contentDescription = null, modifier = Modifier.size(60.dp), tint = Green) }
         Spacer(modifier = Modifier.height(24.dp))
-
-        Text(
-            text = "Voice Clone Created!",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold
-        )
-
+        Text("Voice Created!", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
         Spacer(modifier = Modifier.height(8.dp))
-
         Text(
-            text = "'$voiceName' is now ready to use.",
+            "'$voiceName' is ready. The first time you use it, it can take a couple of minutes to start up.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center
         )
-
         Spacer(modifier = Modifier.height(48.dp))
-
-        Button(
-            onClick = onDone,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Yellow),
-            shape = RoundedCornerShape(12.dp)
-        ) {
-            Text(
-                text = "Done",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = Color.Black
-            )
-        }
+        PrimaryButton("Done", onDone)
     }
 }
 
 @Composable
 private fun ErrorStep(
-    errorMessage: String,
-    onRetry: () -> Unit,
-    onCancel: () -> Unit
+    title: String,
+    message: String,
+    recovery: Recovery,
+    primaryLabel: String,
+    onPrimary: () -> Unit,
+    onClose: () -> Unit
 ) {
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp),
+        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        // Error icon
         Box(
-            modifier = Modifier
-                .size(100.dp)
-                .clip(CircleShape)
-                .background(Red.copy(alpha = 0.15f)),
+            modifier = Modifier.size(100.dp).clip(CircleShape).background(Red.copy(alpha = 0.15f)),
             contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                Icons.Default.Warning,
-                contentDescription = null,
-                modifier = Modifier.size(50.dp),
-                tint = Red
-            )
-        }
-
+        ) { Icon(Icons.Default.Warning, contentDescription = null, modifier = Modifier.size(50.dp), tint = Red) }
         Spacer(modifier = Modifier.height(24.dp))
-
-        Text(
-            text = "Cloning Failed",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold
-        )
-
+        Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
         Spacer(modifier = Modifier.height(8.dp))
-
-        Text(
-            text = errorMessage,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center
-        )
-
+        Text(message, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
         Spacer(modifier = Modifier.height(48.dp))
-
-        Button(
-            onClick = onRetry,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Yellow),
-            shape = RoundedCornerShape(12.dp)
-        ) {
-            Text(
-                text = "Try Again",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = Color.Black
-            )
-        }
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        TextButton(onClick = onCancel) {
-            Text(
-                text = "Cancel",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold
-            )
+        if (recovery != Recovery.STOP) {
+            PrimaryButton(primaryLabel, onPrimary)
+            Spacer(modifier = Modifier.height(12.dp))
+            TextButton(onClick = onClose) { Text("Cancel", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold) }
+        } else {
+            PrimaryButton("Close", onClose)
         }
     }
 }
 
-private fun formatDuration(seconds: Int): String {
-    val mins = seconds / 60
-    val secs = seconds % 60
-    return String.format("%d:%02d", mins, secs)
-}
+private fun formatDuration(seconds: Int): String = String.format(Locale.US, "%d:%02d", seconds / 60, seconds % 60)
 
 /**
  * Text display with word-by-word highlighting for reading guidance.
