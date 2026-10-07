@@ -64,7 +64,7 @@ CREATE OR REPLACE FUNCTION apply_revenuecat_event(
     p_event_id TEXT, p_event_type TEXT, p_user_id UUID, p_event_ts_ms BIGINT,
     p_status TEXT, p_plan_id TEXT, p_product_id TEXT, p_store TEXT,
     p_expires_at TIMESTAMPTZ, p_canceled_at TIMESTAMPTZ, p_cancel_reason TEXT
-) RETURNS TEXT LANGUAGE plpgsql SECURITY INVOKER AS $$
+) RETURNS TEXT LANGUAGE plpgsql SECURITY INVOKER SET search_path = public AS $$
 DECLARE n INTEGER;
 BEGIN
     INSERT INTO revenuecat_webhook_events (event_id, event_type, user_id, event_ts_ms)
@@ -92,5 +92,8 @@ END;
 $$;
 REVOKE ALL ON FUNCTION apply_revenuecat_event(TEXT, TEXT, UUID, BIGINT, TEXT, TEXT, TEXT, TEXT, TIMESTAMPTZ, TIMESTAMPTZ, TEXT) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION apply_revenuecat_event(TEXT, TEXT, UUID, BIGINT, TEXT, TEXT, TEXT, TEXT, TIMESTAMPTZ, TIMESTAMPTZ, TEXT) TO service_role;
+
+-- Advisor fix for migration 033's function (function_search_path_mutable); same behaviour, pinned search_path.
+ALTER FUNCTION increment_voice_challenge_attempts(UUID) SET search_path = public;
 
 COMMIT;
