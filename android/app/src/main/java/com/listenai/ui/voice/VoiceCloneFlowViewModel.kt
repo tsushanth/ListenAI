@@ -3,6 +3,8 @@ package com.listenai.ui.voice
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.listenai.service.auth.GoTrueException
+import com.listenai.service.auth.GoogleSignInException
+import kotlinx.coroutines.Job
 import com.listenai.service.auth.SignUpResult
 import com.listenai.service.voice.AudioClip
 import com.listenai.service.voice.ClonedVoice
@@ -48,6 +50,8 @@ data class CloneFlowState(
     val step: CloneStep = CloneStep.INTRO,
     val signedIn: Boolean = false,
     val signingIn: Boolean = false,
+    /** True while the browser Google sign-in is open and we are waiting for its deep-link callback. */
+    val waitingForGoogle: Boolean = false,
     val name: String = "",
     val language: String = "en",
     val challenge: ConsentChallenge? = null,
@@ -143,13 +147,29 @@ class VoiceCloneFlowViewModel(
         }
     }
 
+    private var authJob: Job? = null
+
+    /** Google via the browser (Supabase PKCE). Shows the waiting state until it finishes or [cancelGoogleSignIn]. */
+    fun signInWithGoogle(block: suspend () -> Result<Unit>) {
+        if (_state.value.signingIn) return
+        runAuth(block, google = true) { true }
+    }
+
+    /** Abandons the browser sign-in (the pending verifier is dropped by the auth layer on cancellation). No error is shown. */
+    fun cancelGoogleSignIn() {
+        if (!_state.value.waitingForGoogle) return
+        authJob?.cancel()
+        authJob = null
+        _state.update { it.copy(signingIn = false, waitingForGoogle = false, failure = null, failureSource = null) }
+    }
+
     fun clearAuthMessages() = _state.update { it.copy(failure = null, failureSource = null, authNotice = null) }
 
     /** Runs [block]; [onSuccess] returns whether the user is now signed in. */
-    private fun <T> runAuth(block: suspend () -> Result<T>, onSuccess: (T) -> Boolean) {
+    private fun <T> runAuth(block: suspend () -> Result<T>, google: Boolean = false, onSuccess: (T) -> Boolean) {
         if (_state.value.signingIn) return
-        _state.update { it.copy(signingIn = true, failure = null, failureSource = null, authNotice = null) }
-        scope.launch {
+        _state.update { it.copy(signingIn = true, waitingForGoogle = google, failure = null, failureSource = null, authNotice = null) }
+        authJob = scope.launch {
             val result = try {
                 block()
             } catch (e: CancellationException) {
@@ -161,14 +181,16 @@ class VoiceCloneFlowViewModel(
             _state.update {
                 if (result.isSuccess) {
                     if (signedIn) {
-                        it.copy(signingIn = false, signedIn = true, failure = null, failureSource = null, authNotice = null, step = afterSignIn(it.step))
-                    } else it.copy(signingIn = false)
+                        it.copy(signingIn = false, waitingForGoogle = false, signedIn = true, failure = null, failureSource = null, authNotice = null, step = afterSignIn(it.step))
+                    } else it.copy(signingIn = false, waitingForGoogle = false)
                 } else {
                     it.copy(
                         signingIn = false,
+                        waitingForGoogle = false,
                         failure = VoiceCloneFailure(
                             "sign_in_failed",
-                            (result.exceptionOrNull() as? GoTrueException)?.message ?: "Sign-in didn't complete. Try again.",
+                            result.exceptionOrNull().let { (it as? GoTrueException)?.message ?: (it as? GoogleSignInException)?.message }
+                                ?: "Sign-in didn't complete. Try again.",
                             Recovery.SIGN_IN
                         ),
                         failureSource = FailureSource.SIGN_IN

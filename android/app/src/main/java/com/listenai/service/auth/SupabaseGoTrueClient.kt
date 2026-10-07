@@ -80,6 +80,12 @@ class SupabaseGoTrueClient(
         }
     }
 
+    /** Exchanges the PKCE `code` from the OAuth redirect (plus the original verifier) for a session. */
+    suspend fun exchangePkceCode(authCode: String, codeVerifier: String): Result<GoTrueSession> =
+        call("/auth/v1/token?grant_type=pkce", JSONObject().put("auth_code", authCode).put("code_verifier", codeVerifier)) { body ->
+            parseSession(JSONObject(body)) ?: throw GoTrueException(GoTrueErrorKind.SERVER, SERVER_MESSAGE)
+        }
+
     /** Sends the password reset email (GoTrue answers 200 whether or not the address exists). */
     suspend fun recover(email: String): Result<Unit> =
         call("/auth/v1/recover", JSONObject().put("email", email.trim())) { }

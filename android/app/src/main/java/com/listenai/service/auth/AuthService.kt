@@ -34,6 +34,7 @@ class AuthService(private val context: Context) : SupabaseSessionStore {
         private const val KEY_EXPIRES_AT = "expires_at"
         private const val KEY_USER_JSON = "user_json"
         private const val KEY_DEVICE_ID = "device_id"
+        private const val KEY_PKCE_VERIFIER = "pkce_verifier"
     }
 
     // State
@@ -213,6 +214,19 @@ class AuthService(private val context: Context) : SupabaseSessionStore {
         authUser
     }
 
+    @Synchronized
+    override fun savePkceVerifier(verifier: String) {
+        // commit(): must be on disk before the browser opens, the app may be killed while it is in front.
+        encryptedPrefs.edit().putString(KEY_PKCE_VERIFIER, verifier).commit()
+    }
+
+    @Synchronized
+    override fun takePkceVerifier(): String? {
+        val v = encryptedPrefs.getString(KEY_PKCE_VERIFIER, null)
+        if (v != null) encryptedPrefs.edit().remove(KEY_PKCE_VERIFIER).commit()
+        return v
+    }
+
     /**
      * Link the current device to the authenticated user
      */
@@ -387,6 +401,12 @@ interface SupabaseSessionStore {
     val user: StateFlow<AuthUser?>
     suspend fun getAccessToken(): String?
     suspend fun adoptSession(session: GoTrueSession): AuthUser
+
+    /** Persists the PKCE code_verifier of the browser sign-in that is in flight (survives process death). */
+    fun savePkceVerifier(verifier: String)
+
+    /** Atomically returns and deletes the pending verifier; null when no flow is pending (or already consumed). */
+    fun takePkceVerifier(): String?
     suspend fun signInWithGoogle(idToken: String, accessToken: String? = null): Result<AuthUser>
     suspend fun signOut()
 }

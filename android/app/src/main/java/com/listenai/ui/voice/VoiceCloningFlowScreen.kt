@@ -208,6 +208,12 @@ fun VoiceCloningFlowScreen(
                 CloneStep.INTRO -> IntroStep(onNext = vm::agreeAndContinue)
                 CloneStep.SIGN_IN -> SignInStep(
                     signingIn = state.signingIn,
+                    waitingForGoogle = state.waitingForGoogle,
+                    onContinueWithGoogle = {
+                        val activity = context.findActivity()
+                        if (auth != null && activity != null) vm.signInWithGoogle { auth.signInWithGoogleBrowser(activity) }
+                    },
+                    onCancelGoogle = vm::cancelGoogleSignIn,
                     signInError = if (state.failureSource == FailureSource.SIGN_IN) state.failure?.message else null,
                     notice = state.authNotice,
                     onSignInWithPassword = { email, password ->
@@ -380,6 +386,9 @@ private fun IntroStep(onNext: () -> Unit) {
 @Composable
 private fun SignInStep(
     signingIn: Boolean,
+    waitingForGoogle: Boolean,
+    onContinueWithGoogle: () -> Unit,
+    onCancelGoogle: () -> Unit,
     signInError: String?,
     notice: String?,
     onSignInWithPassword: (String, String) -> Unit,
@@ -392,6 +401,7 @@ private fun SignInStep(
     var password by remember { mutableStateOf("") }
     var showPassword by remember { mutableStateOf(false) }
     var creating by rememberSaveable { mutableStateOf(false) }
+    var showEmailForm by rememberSaveable { mutableStateOf(false) }
     val emailOk = email.trim().contains("@") && email.trim().length >= 5
     val canSubmit = !signingIn && emailOk && password.isNotEmpty()
     val submit = {
@@ -416,56 +426,85 @@ private fun SignInStep(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Spacer(modifier = Modifier.height(20.dp))
-            OutlinedTextField(
-                value = email,
-                onValueChange = { email = it },
-                label = { Text("Email") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                enabled = !signingIn,
-                shape = PrimaryShape,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next, autoCorrect = false)
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-            OutlinedTextField(
-                value = password,
-                onValueChange = { password = it },
-                label = { Text("Password") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                enabled = !signingIn,
-                shape = PrimaryShape,
-                visualTransformation = if (showPassword) VisualTransformation.None else PasswordVisualTransformation(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done, autoCorrect = false),
-                keyboardActions = KeyboardActions(onDone = { submit() }),
-                trailingIcon = {
-                    IconButton(onClick = { showPassword = !showPassword }) {
-                        Icon(
-                            if (showPassword) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                            contentDescription = if (showPassword) "Hide password" else "Show password"
-                        )
+            if (waitingForGoogle) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                    Text(
+                        "Waiting for Google...",
+                        style = MaterialTheme.typography.bodyLarge,
+                        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }
+                    )
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedButton(onClick = onCancelGoogle, modifier = Modifier.fillMaxWidth(), shape = PrimaryShape) { Text("Cancel") }
+            } else {
+                PrimaryButton("Continue with Google", onContinueWithGoogle, enabled = !signingIn)
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                HorizontalDivider(modifier = Modifier.weight(1f))
+                Text("or", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                HorizontalDivider(modifier = Modifier.weight(1f))
+            }
+            if (!showEmailForm) {
+                TextButton(
+                    onClick = { showEmailForm = true },
+                    enabled = !signingIn,
+                    modifier = Modifier.align(Alignment.CenterHorizontally)
+                ) { Text("Use email and password instead") }
+            } else {
+                Spacer(modifier = Modifier.height(12.dp))
+                OutlinedTextField(
+                    value = email,
+                    onValueChange = { email = it },
+                    label = { Text("Email") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    enabled = !signingIn,
+                    shape = PrimaryShape,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next, autoCorrect = false)
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                OutlinedTextField(
+                    value = password,
+                    onValueChange = { password = it },
+                    label = { Text("Password") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    enabled = !signingIn,
+                    shape = PrimaryShape,
+                    visualTransformation = if (showPassword) VisualTransformation.None else PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done, autoCorrect = false),
+                    keyboardActions = KeyboardActions(onDone = { submit() }),
+                    trailingIcon = {
+                        IconButton(onClick = { showPassword = !showPassword }) {
+                            Icon(
+                                if (showPassword) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                contentDescription = if (showPassword) "Hide password" else "Show password"
+                            )
+                        }
+                    }
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    TextButton(
+                        onClick = { creating = !creating; onClearMessages() },
+                        enabled = !signingIn
+                    ) { Text(if (creating) "Have an account? Sign in" else "Create account") }
+                    if (!creating) {
+                        TextButton(
+                            onClick = { onForgotPassword(email.trim()) },
+                            enabled = !signingIn && emailOk
+                        ) { Text("Forgot password?") }
                     }
                 }
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                TextButton(
-                    onClick = { creating = !creating; onClearMessages() },
-                    enabled = !signingIn
-                ) { Text(if (creating) "Have an account? Sign in" else "Create account") }
                 if (!creating) {
-                    TextButton(
-                        onClick = { onForgotPassword(email.trim()) },
-                        enabled = !signingIn && emailOk
-                    ) { Text("Forgot password?") }
+                    Text(
+                        text = "Forgot it? Enter your email above, then tap Forgot password? for a reset link.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
-            }
-            if (!creating) {
-                Text(
-                    text = "Forgot it? Enter your email above, then tap Forgot password? for a reset link.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
             }
         }
 
@@ -492,16 +531,18 @@ private fun SignInStep(
             )
         }
 
+        if (showEmailForm) {
         Box(modifier = Modifier.padding(start = 24.dp, end = 24.dp, bottom = 24.dp, top = 8.dp)) {
-            PrimaryButton(
-                when {
-                    signingIn -> if (creating) "Creating account..." else "Signing in..."
-                    creating -> "Create account"
-                    else -> "Sign in"
-                },
-                { submit() },
-                enabled = canSubmit
-            )
+                PrimaryButton(
+                    when {
+                        signingIn -> if (creating) "Creating account..." else "Signing in..."
+                        creating -> "Create account"
+                        else -> "Sign in"
+                    },
+                    { submit() },
+                    enabled = canSubmit
+                )
+            }
         }
     }
 }

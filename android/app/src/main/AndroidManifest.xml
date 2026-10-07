@@ -49,6 +49,13 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="com.googleusercontent.apps.517355381306-iiuf6umqhie29ii0rnrd0shtb4e1ou5i" />
             </intent-filter>
+            <!-- Supabase browser OAuth (PKCE) callback: GoogleBrowserAuth.REDIRECT_URL -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="com.listenai.auth" android:host="callback" />
+            </intent-filter>
         </activity>
 
         <!-- Playback Media Service -->

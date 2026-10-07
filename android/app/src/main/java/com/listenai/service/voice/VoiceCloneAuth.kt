@@ -1,12 +1,24 @@
 package com.listenai.service.voice
 
 import android.content.Context
+import com.listenai.service.auth.GoTrueErrorKind
+import com.listenai.service.auth.GoTrueException
 import com.listenai.service.auth.GoogleAuthService
+import com.listenai.service.auth.GoogleAuthCallbacks
+import com.listenai.service.auth.GoogleBrowserAuth
+import com.listenai.service.auth.GoogleSignInErrorKind
+import com.listenai.service.auth.GoogleSignInException
+import com.listenai.service.auth.OAuthCallback
+import com.listenai.service.auth.Pkce
+import com.listenai.service.auth.SupabaseConfig
 import com.listenai.service.auth.SignUpResult
 import com.listenai.service.auth.SupabaseGoTrueClient
 import com.listenai.service.auth.SupabaseSessionStore
 import com.listenai.service.billing.RevenueCatManager
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * Source of the Supabase access token the voice cloning API requires.
@@ -24,6 +36,13 @@ interface VoiceCloneAuth {
 
     /** Interactive sign-in. [activityContext] must be an Activity (Credential Manager UI). */
     suspend fun signIn(activityContext: Context): Result<Unit>
+
+    /**
+     * Google sign-in through Supabase's browser OAuth (PKCE): opens the browser, suspends until the deep-link
+     * callback arrives (or times out), exchanges the code for a session. Failures are [com.listenai.service.auth.GoogleSignInException]
+     * (cancelled / timeout / failed) or [GoTrueException] (network); cancelling the coroutine abandons the flow.
+     */
+    suspend fun signInWithGoogleBrowser(activity: Context): Result<Unit>
 
     /** Supabase email+password sign-in (the primary method). Failures carry user-facing text in `GoTrueException.message`. */
     suspend fun signInWithPassword(email: String, password: String): Result<Unit>
@@ -92,7 +111,12 @@ class SupabaseVoiceCloneAuth(
     googleAuth: Lazy<GoogleAuthService>,
     supabaseAuth: Lazy<SupabaseSessionStore>,
     billingIdentity: BillingIdentity = RevenueCatBillingIdentity(),
-    private val goTrue: SupabaseGoTrueClient = SupabaseGoTrueClient()
+    private val goTrue: SupabaseGoTrueClient = SupabaseGoTrueClient(),
+    private val supabaseUrl: String = SupabaseConfig.SUPABASE_URL,
+    private val callbacks: SharedFlow<String> = GoogleAuthCallbacks.callbacks,
+    private val resetCallbacks: () -> Unit = GoogleAuthCallbacks::reset,
+    private val browserTimeoutMs: Long = GoogleBrowserAuth.TIMEOUT_MS,
+    private val openBrowser: (Context, String) -> Unit = ::launchCustomTab
 ) : VoiceCloneAuth {
     private val identitySync = BillingIdentitySync(billingIdentity)
 
@@ -123,6 +147,57 @@ class SupabaseVoiceCloneAuth(
         identitySync.onUser(session.userId)
     }
 
+    override suspend fun signInWithGoogleBrowser(activity: Context): Result<Unit> {
+        val verifier = Pkce.generateVerifier()
+        supabase.savePkceVerifier(verifier)
+        resetCallbacks()
+        try {
+            val url = GoogleBrowserAuth.authorizeUrl(supabaseUrl, Pkce.challengeFor(verifier))
+            try {
+                openBrowser(activity, url)
+            } catch (e: Exception) {
+                return Result.failure(GoogleSignInException(GoogleSignInErrorKind.FAILED, GoogleBrowserAuth.MSG_FAILED))
+            }
+            val callbackUrl = withTimeoutOrNull(browserTimeoutMs) { callbacks.first { GoogleBrowserAuth.isCallback(it) } }
+                ?: return Result.failure(GoogleSignInException(GoogleSignInErrorKind.TIMEOUT, GoogleBrowserAuth.MSG_TIMEOUT))
+            return completeBrowserSignIn(callbackUrl)
+        } finally {
+            // Success, failure, timeout and cancellation all end here; a verifier already consumed is a no-op.
+            // NonCancellable is not needed: takePkceVerifier is a plain synchronous call.
+            supabase.takePkceVerifier()
+        }
+    }
+
+    private suspend fun completeBrowserSignIn(callbackUrl: String): Result<Unit> {
+        // A callback is only honoured while a flow is pending, and the verifier is consumed here so a replayed
+        // callback (or a second delivery) can never trigger a second exchange.
+        val verifier = supabase.takePkceVerifier()
+            ?: return Result.failure(GoogleSignInException(GoogleSignInErrorKind.FAILED, GoogleBrowserAuth.MSG_FAILED))
+        return when (val cb = OAuthCallback.parse(callbackUrl)) {
+            is OAuthCallback.Error -> Result.failure(
+                if (cb.denied) GoogleSignInException(GoogleSignInErrorKind.CANCELLED, GoogleBrowserAuth.MSG_CANCELLED)
+                else GoogleSignInException(GoogleSignInErrorKind.FAILED, GoogleBrowserAuth.MSG_FAILED)
+            )
+            is OAuthCallback.Code -> {
+                val result = goTrue.exchangePkceCode(cb.code, verifier)
+                val session = result.getOrNull()
+                if (session != null) {
+                    adopt(session)
+                    Result.success(Unit)
+                } else {
+                    val e = result.exceptionOrNull()
+                    Result.failure(
+                        if (e is GoTrueException && e.kind == GoTrueErrorKind.NETWORK) e
+                        else GoogleSignInException(GoogleSignInErrorKind.FAILED, GoogleBrowserAuth.MSG_FAILED)
+                    )
+                }
+            }
+            // Implicit-flow tokens are not requested (we send a code_challenge), so treat them as a failed attempt.
+            is OAuthCallback.Tokens, OAuthCallback.Missing ->
+                Result.failure(GoogleSignInException(GoogleSignInErrorKind.FAILED, GoogleBrowserAuth.MSG_FAILED))
+        }
+    }
+
     override suspend fun signInWithPassword(email: String, password: String): Result<Unit> =
         goTrue.signInWithPassword(email, password).map { adopt(it) }
 
@@ -135,4 +210,9 @@ class SupabaseVoiceCloneAuth(
         supabase.signOut()
         identitySync.onSignedOut()
     }
+}
+
+/** Chrome Custom Tab when a Custom Tabs provider exists, otherwise the default browser (androidx.browser handles the fallback). */
+private fun launchCustomTab(context: Context, url: String) {
+    androidx.browser.customtabs.CustomTabsIntent.Builder().build().launchUrl(context, android.net.Uri.parse(url))
 }

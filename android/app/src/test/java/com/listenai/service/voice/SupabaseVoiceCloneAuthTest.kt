@@ -17,6 +17,20 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
+import com.listenai.service.auth.GoTrueErrorKind
+import com.listenai.service.auth.GoTrueException
+import com.listenai.service.auth.GoogleSignInErrorKind
+import com.listenai.service.auth.GoogleSignInException
+import com.listenai.service.auth.Pkce
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeout
+import org.json.JSONObject
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Before
 import org.junit.Test
 
@@ -28,6 +42,9 @@ class SupabaseVoiceCloneAuthTest {
         val userFlow = MutableStateFlow<AuthUser?>(null)
         var token: String? = null
         var signOuts = 0
+        var verifier: String? = null
+        override fun savePkceVerifier(verifier: String) { this.verifier = verifier }
+        override fun takePkceVerifier(): String? = verifier.also { verifier = null }
         override val isAuthenticated: StateFlow<Boolean> get() = authed
         override val user: StateFlow<AuthUser?> get() = userFlow
         override suspend fun getAccessToken() = token
@@ -58,6 +75,23 @@ class SupabaseVoiceCloneAuthTest {
         billingIdentity = identity,
         goTrue = SupabaseGoTrueClient(server.url("/").toString().trimEnd('/'), "anon", OkHttpClient())
     )
+
+    private val callbacks = MutableSharedFlow<String>(replay = 1, extraBufferCapacity = 1)
+    private val opened = mutableListOf<String>()
+
+    private fun browserAuth(timeoutMs: Long = 5_000, open: (String) -> Unit = {}) = SupabaseVoiceCloneAuth(
+        googleAuth = lazy<GoogleAuthService> { error("Credential Manager must not be used") },
+        supabaseAuth = lazy { store },
+        billingIdentity = identity,
+        goTrue = SupabaseGoTrueClient(server.url("/").toString().trimEnd('/'), "anon", OkHttpClient()),
+        supabaseUrl = "https://proj.supabase.co",
+        callbacks = callbacks,
+        resetCallbacks = { callbacks.resetReplayCache() },
+        browserTimeoutMs = timeoutMs,
+        openBrowser = { _, url -> opened += url; open(url) }
+    )
+
+    private fun challengeOf(url: String) = Regex("code_challenge=([^&]+)").find(url)!!.groupValues[1]
 
     private fun session(email: String = "a@b.co") =
         """{"access_token":"acc","expires_in":3600,"refresh_token":"ref","user":{"id":"$uid","email":"$email","email_confirmed_at":"2026-10-01T00:00:00Z"}}"""
@@ -130,5 +164,118 @@ class SupabaseVoiceCloneAuthTest {
         assertFalse(a.isSignedIn.value)
         assertNull(a.accessToken())
         assertEquals(listOf("in:$uid", "out"), identity.calls)
+    }
+
+    // ---- browser (PKCE) Google sign-in ----------------------------------------------------
+
+    @Test
+    fun `browser sign-in opens the authorize url, exchanges the code with the stored verifier and adopts the session`() = runBlocking {
+        server.enqueue(MockResponse().setBody(session("g@b.co")))
+        var verifierWhileOpen: String? = null
+        val a = browserAuth(open = { verifierWhileOpen = store.verifier; callbacks.tryEmit("com.listenai.auth://callback?code=abc123") })
+        a.signInWithGoogleBrowser(FakeContext.get()).getOrThrow()
+
+        // Authorize URL: provider, encoded redirect, S256 challenge of the persisted verifier.
+        val url = opened.single()
+        assertTrue(url.startsWith("https://proj.supabase.co/auth/v1/authorize?provider=google&redirect_to=com.listenai.auth%3A%2F%2Fcallback&code_challenge="))
+        assertTrue(url.endsWith("&code_challenge_method=S256"))
+        assertNotNull(verifierWhileOpen)
+        assertEquals(Pkce.challengeFor(verifierWhileOpen!!), challengeOf(url))
+
+        // Exchange request shape.
+        val req = server.takeRequest()
+        assertEquals("POST", req.method)
+        assertEquals("/auth/v1/token?grant_type=pkce", req.path)
+        assertEquals("anon", req.getHeader("apikey"))
+        val body = JSONObject(req.body.readUtf8())
+        assertEquals("abc123", body.getString("auth_code"))
+        assertEquals(verifierWhileOpen, body.getString("code_verifier"))
+
+        // Same adoption path as password sign-in, verifier deleted, RevenueCat identity set.
+        assertTrue(a.isSignedIn.value)
+        assertEquals("acc", store.token)
+        assertEquals(listOf("in:$uid"), identity.calls)
+        assertNull(store.verifier)
+    }
+
+    @Test
+    fun `access_denied maps to cancelled, makes no exchange and clears the verifier`() = runBlocking {
+        val a = browserAuth(open = { callbacks.tryEmit("com.listenai.auth://callback?error=access_denied&error_description=User+denied") })
+        val e = a.signInWithGoogleBrowser(FakeContext.get()).exceptionOrNull() as GoogleSignInException
+        assertEquals(GoogleSignInErrorKind.CANCELLED, e.kind)
+        assertEquals(0, server.requestCount)
+        assertNull(store.verifier)
+        assertFalse(a.isSignedIn.value)
+    }
+
+    @Test
+    fun `other provider errors and a callback without a code map to the generic failure`() = runBlocking {
+        for (cb in listOf("com.listenai.auth://callback?error=server_error", "com.listenai.auth://callback")) {
+            val a = browserAuth(open = { callbacks.tryEmit(cb) })
+            val e = a.signInWithGoogleBrowser(FakeContext.get()).exceptionOrNull() as GoogleSignInException
+            assertEquals(GoogleSignInErrorKind.FAILED, e.kind)
+            assertEquals("Google sign-in didn't complete. Try again.", e.message)
+        }
+        assertEquals(0, server.requestCount)
+    }
+
+    @Test
+    fun `no callback within the timeout fails with timeout and clears the verifier`() = runBlocking {
+        val a = browserAuth(timeoutMs = 50)
+        val e = a.signInWithGoogleBrowser(FakeContext.get()).exceptionOrNull() as GoogleSignInException
+        assertEquals(GoogleSignInErrorKind.TIMEOUT, e.kind)
+        assertNull(store.verifier)
+        assertEquals(0, server.requestCount)
+    }
+
+    @Test
+    fun `exchange rejected by Supabase maps to the generic failure, a network error stays a network error`() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(400).setBody("""{"error_code":"flow_state_not_found","msg":"x"}"""))
+        val a = browserAuth(open = { callbacks.tryEmit("com.listenai.auth://callback?code=c1") })
+        val e = a.signInWithGoogleBrowser(FakeContext.get()).exceptionOrNull() as GoogleSignInException
+        assertEquals(GoogleSignInErrorKind.FAILED, e.kind)
+        assertNull(store.verifier)
+        assertFalse(a.isSignedIn.value)
+
+        server.shutdown() // connection refused
+        val b = browserAuth(open = { callbacks.tryEmit("com.listenai.auth://callback?code=c2") })
+        val n = b.signInWithGoogleBrowser(FakeContext.get()).exceptionOrNull() as GoTrueException
+        assertEquals(GoTrueErrorKind.NETWORK, n.kind)
+        server = MockWebServer().apply { start() } // so tearDown has something to stop
+    }
+
+    @Test
+    fun `cancelling the waiting coroutine drops the pending verifier`() = runBlocking {
+        val a = browserAuth(timeoutMs = 60_000)
+        val job = launch(Dispatchers.Default) { a.signInWithGoogleBrowser(FakeContext.get()) }
+        withTimeout(5_000) { while (opened.isEmpty()) delay(10) }
+        assertNotNull(store.verifier)
+        job.cancelAndJoin()
+        assertNull(store.verifier)
+        assertEquals(0, server.requestCount)
+    }
+
+    @Test
+    fun `a replayed callback is exchanged at most once`() = runBlocking {
+        server.enqueue(MockResponse().setBody(session()))
+        val a = browserAuth(open = { callbacks.tryEmit("com.listenai.auth://callback?code=once") })
+        a.signInWithGoogleBrowser(FakeContext.get()).getOrThrow()
+        assertEquals(1, server.requestCount)
+        // Same deep link again with no flow pending: a new waiter must not complete from the stale replay,
+        // and even if it did the verifier is gone. Starting a flow resets the replay cache.
+        val b = browserAuth(timeoutMs = 50)
+        val e = b.signInWithGoogleBrowser(FakeContext.get()).exceptionOrNull() as GoogleSignInException
+        assertEquals(GoogleSignInErrorKind.TIMEOUT, e.kind)
+        assertEquals(1, server.requestCount)
+    }
+}
+
+/** The browser launcher is faked, so the Context is never used; an uninitialised ContextWrapper avoids needing Mockito/Robolectric. */
+private object FakeContext {
+    fun get(): android.content.Context {
+        val unsafeClass = Class.forName("sun.misc.Unsafe")
+        val unsafe = unsafeClass.getDeclaredField("theUnsafe").apply { isAccessible = true }.get(null)
+        return unsafeClass.getMethod("allocateInstance", Class::class.java)
+            .invoke(unsafe, android.content.ContextWrapper::class.java) as android.content.Context
     }
 }

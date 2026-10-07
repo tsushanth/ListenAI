@@ -2,6 +2,10 @@ package com.listenai.ui.voice
 
 import com.listenai.service.auth.GoTrueErrorKind
 import com.listenai.service.auth.GoTrueException
+import com.listenai.service.auth.GoogleBrowserAuth
+import com.listenai.service.auth.GoogleSignInErrorKind
+import com.listenai.service.auth.GoogleSignInException
+import com.listenai.service.auth.SupabaseGoTrueClient
 import com.listenai.service.auth.SignUpResult
 import com.listenai.service.voice.AudioClip
 import com.listenai.service.voice.ClonedVoice
@@ -106,6 +110,56 @@ class VoiceCloneFlowViewModelTest {
         vm.signIn { Result.success(Unit) }
         assertTrue(vm.state.value.signedIn)
         assertEquals(CloneStep.PROFILE, vm.state.value.step)    // no second tap needed
+    }
+
+    @Test
+    fun `google sign-in shows waiting, then success moves to the profile step`() {
+        val scope = TestScope(scopeDispatcher)
+        val vm = scope.vm(signedIn = false)
+        vm.agreeAndContinue()
+        val gate = kotlinx.coroutines.CompletableDeferred<Result<Unit>>()
+        vm.signInWithGoogle { gate.await() }
+        assertTrue(vm.state.value.waitingForGoogle)
+        assertTrue(vm.state.value.signingIn)
+        assertEquals(CloneStep.SIGN_IN, vm.state.value.step)
+        gate.complete(Result.success(Unit))
+        assertFalse(vm.state.value.waitingForGoogle)
+        assertTrue(vm.state.value.signedIn)
+        assertEquals(CloneStep.PROFILE, vm.state.value.step)
+    }
+
+    @Test
+    fun `cancel stops waiting without an error and the flow can be started again`() {
+        val scope = TestScope(scopeDispatcher)
+        val vm = scope.vm(signedIn = false)
+        vm.agreeAndContinue()
+        val gate = kotlinx.coroutines.CompletableDeferred<Result<Unit>>()
+        vm.signInWithGoogle { gate.await() }
+        vm.cancelGoogleSignIn()
+        assertFalse(vm.state.value.waitingForGoogle)
+        assertFalse(vm.state.value.signingIn)
+        assertNull(vm.state.value.failure)
+        assertTrue(gate.isCancelled || !gate.isCompleted)
+        vm.signInWithGoogle { Result.success(Unit) }
+        assertEquals(CloneStep.PROFILE, vm.state.value.step)
+    }
+
+    @Test
+    fun `google failures show their message on the sign-in page`() {
+        val scope = TestScope(scopeDispatcher)
+        val vm = scope.vm(signedIn = false)
+        vm.agreeAndContinue()
+        vm.signInWithGoogle { Result.failure(GoogleSignInException(GoogleSignInErrorKind.FAILED, GoogleBrowserAuth.MSG_FAILED)) }
+        assertEquals("Google sign-in didn't complete. Try again.", vm.state.value.failure?.message)
+        assertEquals(FailureSource.SIGN_IN, vm.state.value.failureSource)
+        assertEquals(CloneStep.SIGN_IN, vm.state.value.step)
+        assertFalse(vm.state.value.waitingForGoogle)
+
+        vm.signInWithGoogle { Result.failure(GoogleSignInException(GoogleSignInErrorKind.TIMEOUT, GoogleBrowserAuth.MSG_TIMEOUT)) }
+        assertEquals(GoogleBrowserAuth.MSG_TIMEOUT, vm.state.value.failure?.message)
+
+        vm.signInWithGoogle { Result.failure(GoTrueException(GoTrueErrorKind.NETWORK, SupabaseGoTrueClient.MSG_NETWORK)) }
+        assertEquals(SupabaseGoTrueClient.MSG_NETWORK, vm.state.value.failure?.message)
     }
 
     @Test
