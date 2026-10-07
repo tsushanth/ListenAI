@@ -1,6 +1,7 @@
 # Consent-gated voice cloning (Chatterbox Multilingual V3)
 
 Status: implemented on branch `feature/cloning-consent-chatterbox`, **not deployed, migration not applied, feature dark**.
+Update 2026-10-07: an operator flag (`VOICE_CLONE_REQUIRE_CONSENT_PHRASE`) can replace the live consent phrase with a simple attestation (see "Attestation mode" below).
 Background and evidence: `internal-docs/cost-lab/gtm/voice-cloning/REPORT.md`.
 
 ## What this replaces
@@ -42,6 +43,7 @@ fallback, unlike `requireAuth`). Everything is `503 {code:"unavailable"}` until 
 |---|---|---|
 | `POST /api/voice-clones/consent-challenges` | issue phrase | 401 `unauthenticated`, 403 `email_unverified`, 402 `payment_required` |
 | `POST /api/voice-clones` multipart: `challenge_id`, `name`, `language`, `consent` (audio), `reference` (audio) | create voice | 422 `reference_rejected` (`details.failures[]`: `too_short`, `too_long`, `not_enough_speech`, `too_noisy`, `clipped`, `multiple_speakers`, `music_detected`), 422 `consent_clip_rejected`, 422 `phrase_mismatch`, 422 `speaker_mismatch` (`details.attemptsLeft`), 429 `daily_limit`, 429 `creation_in_progress`, 410 `challenge_expired`, 409 `challenge_used`, 429 `challenge_attempts_exhausted`, 503 `asr_unavailable` / `service_unavailable` |
+| `GET /api/voice-clones/config` | `{consent_required}` | |
 | `GET /api/voice-clones` | list own voices (never returns audio) | |
 | `DELETE /api/voice-clones/:id` | delete reference audio, embeddings, cached prompts | 502 `deletion_pending` (voice is already unusable; retry) |
 | `POST /api/voice-clones/abuse-reports` | public takedown intake (no sign-in; 5/h/IP) | |
@@ -58,6 +60,42 @@ Responses carry `X-Watermark: perth`.
 Not built. The browser flow is: request a challenge, show `phrase`, record with `MediaRecorder` (`audio/webm` is accepted,
 decoded server-side by ffmpeg), record or upload the reference, POST both. Left as a contract because the recording UX
 (permission handling, retry after `speaker_mismatch`, showing `attemptsLeft`) deserves its own design pass.
+
+## Attestation mode (owner decision 2026-10-07)
+
+On a real phone the first attempt failed the phrase match although the user read the phrase correctly, and the owner
+decided the live consent step is unnecessary for v1. It is therefore switchable.
+
+Flag: `VOICE_CLONE_REQUIRE_CONSENT_PHRASE`. Unset or any value other than the literal string `false` = strict flow
+(everything in "Flow" above, unchanged). Exactly `false` = attestation mode. Set it with `flyctl secrets set` (owner action);
+re-enabling the strict step is just removing or changing the value.
+
+Attestation-mode contract:
+
+* `GET /api/voice-clones/config` (sign-in required) -> `200 {"consent_required": boolean}` so clients can adapt (also works in strict mode).
+* `POST /api/voice-clones/consent-challenges` -> `200 {"consent_required": false}`; no challenge row is created.
+* `POST /api/voice-clones` multipart fields: `name`, `language`, `reference` (audio file), `attested` (must be the string `true`).
+  No `challenge_id`, no `consent` file (if sent they are ignored: not analysed, not stored). `attested` missing or not exactly
+  `true` -> `422 {"code":"attestation_required"}`.
+* Unchanged: strict sign-in, verified email, plan eligibility (`VOICE_CLONE_REQUIRE_PAYMENT` logic untouched), daily limit,
+  reference-quality gate, creation on the serving app, watermark, deletion, takedown, rate limits.
+* Not done in this mode: no ASR call, no speaker-similarity call, no consent clip uploaded to storage.
+* In strict mode `attested=true` bypasses nothing: a request without a consent file still fails `400 audio_required`.
+
+Evidence: `voice_clones.consent_id` is NOT NULL, so each creation still writes an audit trail (no migration needed): a
+`voice_consent_challenges` row (phrase `ATTESTED`, empty `code_words`, consumed immediately) and a `voice_consents` row
+(phrase and transcript `ATTESTED`, `phrase_wer` 0, `speaker_similarity` 0, `similarity_threshold` 0, `similarity_model` `none`,
+`borderline` false, `clip_path` and `clip_sha256` empty strings, `retain_until` per the normal policy: NULL while the voice
+exists, deletion + 12 months after). The retention sweep skips the storage call for an empty `clip_path`. Filter
+`similarity_model = 'none'` to separate attested voices from verified ones.
+
+**What attestation does NOT protect against.** It is a checkbox, not verification. Anyone with a verified account and a clip
+of someone else's voice can clone that person: nothing checks that the speaker is the account holder, that the speaker knows,
+or that they agreed. The phrase and speaker-match steps (which only raised the bar, see below) are not run at all. Mitigations
+that remain: verified email, plan eligibility, the daily limit (3 paid / 10 comped, deleted voices count), the reference-quality
+gate, the Perth watermark on all output plus retained output hashes, the abuse takedown path (`abuse-reports` + admin
+`disable`), and per-user records (the attestation row ties each voice to an account and a timestamp). Treat these as deterrence
+and after-the-fact accountability, not prevention. Revisit before widening access.
 
 ## Safeguards: what each one does and does not do
 
@@ -80,6 +118,7 @@ decoded server-side by ffmpeg), record or upload the reference, POST both. Left 
 |---|---|---|
 | `VOICE_CLONE_SERVICE_URL`, `VOICE_CLONE_SERVICE_SECRET` | unset (dark) | Modal app base URL and bearer secret |
 | `STT_API_KEY`, `STT_GATEWAY_URL` | existing | ASR for the consent phrase (existing gateway path) |
+| `VOICE_CLONE_REQUIRE_CONSENT_PHRASE` | unset (strict) | exactly `false` = attestation mode (see above) |
 | `VOICE_CLONE_SIMILARITY_THRESHOLD` | 0.40 | speaker-match threshold |
 | `VOICE_CLONE_BORDERLINE_MARGIN` | 0.10 | accepted-but-flagged band above the threshold |
 | `VOICE_CLONE_MAX_PHRASE_WER` | 0.20 | ASR tolerance |

@@ -89,3 +89,12 @@ export function loadClonePolicy(env: Record<string, string | undefined> = proces
   }
   return out;
 }
+
+/**
+ * Live consent-phrase step (random phrase + ASR + speaker similarity) is required unless the operator sets
+ * VOICE_CLONE_REQUIRE_CONSENT_PHRASE to the literal string "false" (attestation mode). Anything else, including
+ * unset, "False", "0" or "", keeps the strict behaviour.
+ */
+export function consentPhraseRequired(env: Record<string, string | undefined> = process.env): boolean {
+  return env.VOICE_CLONE_REQUIRE_CONSENT_PHRASE !== 'false';
+}

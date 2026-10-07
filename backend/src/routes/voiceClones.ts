@@ -4,6 +4,9 @@
 //
 //   POST   /api/voice-clones/consent-challenges   -> { challenge_id, phrase, expires_at }
 //   POST   /api/voice-clones        multipart: challenge_id, name, language, consent (audio), reference (audio)
+//                                   attestation mode (VOICE_CLONE_REQUIRE_CONSENT_PHRASE=false): name, language, reference (audio),
+//                                   attested="true"; no challenge_id, no consent file
+//   GET    /api/voice-clones/config -> { consent_required }
 //   GET    /api/voice-clones        list own voices (no audio is ever returned)
 //   DELETE /api/voice-clones/:id    delete reference audio, embeddings, cached prompts
 //   POST   /api/voice-clones/abuse-reports   public takedown intake (IP rate limited)
@@ -20,7 +23,7 @@ import { z } from 'zod';
 import { supabase } from '../lib/supabaseClient.js';
 import { logger } from '../lib/logger.js';
 import {
-  CloneError, createVoiceClone, deleteVoiceClone, disableVoiceClone, issueConsentChallenge, purgeExpired, type CloneDeps,
+  CloneError, createVoiceClone, deleteVoiceClone, disableVoiceClone, isConsentRequired, issueConsentChallenge, purgeExpired, type CloneDeps,
 } from '../lib/voiceCloning/service.js';
 import { ServiceUnavailableError } from '../lib/voiceCloning/serviceClient.js';
 import { getCloneDeps, planForUser } from '../lib/voiceCloning/runtime.js';
@@ -71,6 +74,11 @@ const h = (fn: (req: Authed, res: Response) => Promise<void>): RequestHandler =>
 
 const createSchema = z.object({
   challenge_id: z.string().uuid(),
+  name: z.string().trim().min(1).max(100).default('My cloned voice'),
+  language: z.string().trim().min(2).max(5).default('en'),
+});
+
+const attestSchema = z.object({
   name: z.string().trim().min(1).max(100).default('My cloned voice'),
   language: z.string().trim().min(2).max(5).default('en'),
 });
@@ -126,7 +134,12 @@ export function createVoiceClonesRouter(rd: VoiceClonesRouterDeps): Router {
     }).catch((err) => sendError(res, err));
   });
 
+  r.get('/config', h(async (_req, res) => {
+    res.json({ consent_required: isConsentRequired(rd.getDeps()!) });
+  }));
+
   r.post('/consent-challenges', burst, h(async (req, res) => {
+    if (!isConsentRequired(rd.getDeps()!)) { res.status(200).json({ consent_required: false }); return; }
     const c = await issueConsentChallenge(rd.getDeps()!, req.eligibility!);
     res.status(201).json({ challenge_id: c.challengeId, phrase: c.phrase, expires_at: c.expiresAt });
   }));
@@ -135,13 +148,33 @@ export function createVoiceClonesRouter(rd: VoiceClonesRouterDeps): Router {
     const files = req.files as Record<string, Express.Multer.File[]> | undefined;
     const consent = files?.consent?.[0];
     const reference = files?.reference?.[0];
+    const deps = rd.getDeps()!;
+    if (!isConsentRequired(deps)) {
+      // Attestation mode: any consent file / challenge_id the client sends is ignored (not analysed, not stored).
+      if (req.body?.attested !== 'true') {
+        res.status(422).json({ error: 'You must confirm that this is your own voice or that you have the speaker\'s permission.', code: 'attestation_required' });
+        return;
+      }
+      if (!reference || reference.size < 1024) {
+        res.status(400).json({ error: 'A reference recording is required (WAV, FLAC, OGG, MP3, M4A or WebM).', code: 'audio_required' });
+        return;
+      }
+      const a = attestSchema.safeParse(req.body);
+      if (!a.success) { res.status(400).json({ error: 'Invalid request.', code: 'validation', details: a.error.flatten().fieldErrors }); return; }
+      const { voice } = await createVoiceClone(deps, {
+        eligibility: req.eligibility!, name: a.data.name, language: a.data.language.toLowerCase(), attested: true,
+        reference: { audio: reference.buffer, mime: reference.mimetype, filename: reference.originalname || 'reference' },
+      });
+      res.status(201).json({ id: voice.id, name: voice.name, language: voice.language, status: voice.status, reference_seconds: voice.referenceSec, model: voice.modelId, created_at: voice.createdAt });
+      return;
+    }
     if (!consent || !reference || consent.size < 1024 || reference.size < 1024) {
       res.status(400).json({ error: 'Both a consent recording and a reference recording are required (WAV, FLAC, OGG, MP3, M4A or WebM).', code: 'audio_required' });
       return;
     }
     const parsed = createSchema.safeParse(req.body);
     if (!parsed.success) { res.status(400).json({ error: 'Invalid request.', code: 'validation', details: parsed.error.flatten().fieldErrors }); return; }
-    const { voice, borderline } = await createVoiceClone(rd.getDeps()!, {
+    const { voice, borderline } = await createVoiceClone(deps, {
       eligibility: req.eligibility!,
       name: parsed.data.name,
       language: parsed.data.language.toLowerCase(),

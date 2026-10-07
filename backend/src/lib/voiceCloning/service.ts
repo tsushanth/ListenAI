@@ -37,7 +37,14 @@ export interface CloneDeps {
   policy: ClonePolicy;
   now?: () => Date;
   newId?: () => string;
+  /** Evaluated per request. Omitted = true (strict). false = attestation mode (VOICE_CLONE_REQUIRE_CONSENT_PHRASE="false"). */
+  consentRequired?: () => boolean;
 }
+
+export const isConsentRequired = (deps: Pick<CloneDeps, 'consentRequired'>): boolean => (deps.consentRequired ? deps.consentRequired() : true);
+
+/** Marker stored in the evidence rows written in attestation mode (no recording exists). */
+export const ATTESTED = 'ATTESTED';
 
 const sha256 = (b: Buffer) => createHash('sha256').update(b).digest('hex');
 const addMonths = (d: Date, m: number) => { const x = new Date(d); x.setUTCMonth(x.getUTCMonth() + m); return x; };
@@ -57,6 +64,7 @@ export function dailyLimitFor(e: Eligibility, p: ClonePolicy): number {
 
 export async function issueConsentChallenge(deps: CloneDeps, e: Eligibility) {
   assertEligible(e);
+  if (!isConsentRequired(deps)) throw new CloneError(409, 'consent_not_required', 'Consent phrase is not required; send attested=true instead.');
   const now = (deps.now ?? (() => new Date()))();
   const { phrase, codeWords } = issuePhrase();
   const expiresAt = new Date(now.getTime() + deps.policy.challengeTtlSec * 1000).toISOString();
@@ -68,8 +76,12 @@ export interface CreateVoiceInput {
   eligibility: Eligibility;
   name: string;
   language: string;
-  challengeId: string;
-  consent: { audio: Buffer; mime: string };
+  /** Strict mode only. */
+  challengeId?: string;
+  /** Strict mode only. */
+  consent?: { audio: Buffer; mime: string };
+  /** Attestation mode only: the user ticked the attestation. Ignored (never a bypass) in strict mode. */
+  attested?: boolean;
   reference: { audio: Buffer; mime: string; filename: string };
 }
 
@@ -80,6 +92,13 @@ export async function createVoiceClone(deps: CloneDeps, input: CreateVoiceInput)
   const e = input.eligibility;
 
   assertEligible(e);
+  const strict = isConsentRequired(deps);
+  if (!strict && input.attested !== true) {
+    throw new CloneError(422, 'attestation_required', 'You must confirm that this is your own voice or that you have the speaker\'s permission.');
+  }
+  if (strict && (!input.challengeId || !input.consent)) {
+    throw new CloneError(400, 'audio_required', 'A consent challenge and a consent recording are required.');
+  }
   if (!SUPPORTED_LANGUAGES.has(input.language)) {
     throw new CloneError(400, 'unsupported_language', `Unsupported language: ${input.language}`);
   }
@@ -96,8 +115,10 @@ export async function createVoiceClone(deps: CloneDeps, input: CreateVoiceInput)
       throw new CloneError(429, 'daily_limit', `You can create ${limit} cloned voices per 24 hours.`, { limit, used });
     }
 
+    if (!strict) return await createAttested(deps, input, now, newId);
+
     // 2. Challenge must be ours, unexpired, unused, and not out of attempts.
-    const ch = await store.getChallenge(input.challengeId, e.userId);
+    const ch = await store.getChallenge(input.challengeId!, e.userId);
     if (!ch) throw new CloneError(404, 'challenge_not_found', 'Consent challenge not found. Request a new one.');
     if (ch.consumedAt) throw new CloneError(409, 'challenge_used', 'This consent challenge was already used. Request a new one.');
     if (new Date(ch.expiresAt).getTime() <= now.getTime()) throw new CloneError(410, 'challenge_expired', 'The consent challenge expired. Request a new one.');
@@ -107,14 +128,14 @@ export async function createVoiceClone(deps: CloneDeps, input: CreateVoiceInput)
     const refMetrics = await service.analyze(input.reference.audio, input.reference.filename);
     const refGate = evaluateReference(refMetrics, policy);
     if (!refGate.ok) throw new CloneError(422, 'reference_rejected', 'The reference audio cannot be used.', { failures: refGate.failures });
-    const consentMetrics = await service.analyze(input.consent.audio, 'consent');
+    const consentMetrics = await service.analyze(input.consent!.audio, 'consent');
     const consentGate = evaluateConsentClip(consentMetrics, policy);
     if (!consentGate.ok) throw new CloneError(422, 'consent_clip_rejected', 'The consent recording cannot be used.', { failures: consentGate.failures });
 
     // 4. Consent: counts as an attempt whether or not it passes.
     const attempts = await store.incrementChallengeAttempts(ch.id);
     const ev = await evaluateConsent(
-      { phrase: ch.phrase, codeWords: ch.codeWords, consentAudio: input.consent.audio, consentMime: input.consent.mime, referenceAudio: input.reference.audio },
+      { phrase: ch.phrase, codeWords: ch.codeWords, consentAudio: input.consent!.audio, consentMime: input.consent!.mime, referenceAudio: input.reference.audio },
       { asr, service, policy }
     );
     if (!ev.ok) {
@@ -134,12 +155,12 @@ export async function createVoiceClone(deps: CloneDeps, input: CreateVoiceInput)
     const clipPath = `${e.userId}/${consentId}.wav`;
     const created = await service.createVoice({ voiceId, audio: input.reference.audio, filename: input.reference.filename, language: input.language });
     try {
-      await blobs.put(clipPath, input.consent.audio, input.consent.mime || 'audio/wav');
+      await blobs.put(clipPath, input.consent!.audio, input.consent!.mime || 'audio/wav');
       const createdAt = now.toISOString();
       await store.insertConsent({
         id: consentId, userId: e.userId, challengeId: ch.id, phrase: ch.phrase, transcript: ev.transcript,
         phraseWer: ev.phraseWer, speakerSimilarity: ev.speakerSimilarity!, similarityThreshold: policy.similarityThreshold,
-        similarityModel: SIMILARITY_MODEL, borderline: ev.borderline, clipPath, clipSha256: sha256(input.consent.audio),
+        similarityModel: SIMILARITY_MODEL, borderline: ev.borderline, clipPath, clipSha256: sha256(input.consent!.audio),
         clipSec: consentMetrics.durationSec, createdAt,
       });
       const voice: VoiceCloneRow = {
@@ -156,6 +177,44 @@ export async function createVoiceClone(deps: CloneDeps, input: CreateVoiceInput)
     }
   } finally {
     inFlight.delete(e.userId);
+  }
+}
+
+/**
+ * Attestation mode: no consent recording, no ASR, no similarity call, nothing uploaded to the consent bucket.
+ * voice_clones.consent_id is NOT NULL, so an audit trail is still written (challenge consumed at once + consent row,
+ * both marked ATTESTED; NOT NULL text columns hold ''; code_words is the empty array). No schema change needed.
+ */
+async function createAttested(deps: CloneDeps, input: CreateVoiceInput, now: Date, newId: () => string) {
+  const { store, service, policy } = deps;
+  const e = input.eligibility;
+  // Daily limit was already enforced by the caller (createVoiceClone), before this point.
+  const refMetrics = await service.analyze(input.reference.audio, input.reference.filename);
+  const refGate = evaluateReference(refMetrics, policy);
+  if (!refGate.ok) throw new CloneError(422, 'reference_rejected', 'The reference audio cannot be used.', { failures: refGate.failures });
+
+  const voiceId = newId();
+  const consentId = newId();
+  const created = await service.createVoice({ voiceId, audio: input.reference.audio, filename: input.reference.filename, language: input.language });
+  try {
+    const createdAt = now.toISOString();
+    const ch = await store.createChallenge({ userId: e.userId, phrase: ATTESTED, codeWords: [], expiresAt: createdAt });
+    await store.consumeChallenge(ch.id, createdAt);
+    await store.insertConsent({
+      id: consentId, userId: e.userId, challengeId: ch.id, phrase: ATTESTED, transcript: ATTESTED, phraseWer: 0,
+      speakerSimilarity: 0, similarityThreshold: 0, similarityModel: 'none', borderline: false, clipPath: '', clipSha256: '',
+      clipSec: null, createdAt,
+    });
+    const voice: VoiceCloneRow = {
+      id: voiceId, userId: e.userId, name: input.name, language: input.language, status: 'active', consentId,
+      referenceSha256: sha256(input.reference.audio), referenceSec: created.referenceSec, modelId: CLONE_MODEL_ID,
+      disabledReason: null, disabledAt: null, deletedAt: null, createdAt,
+    };
+    await store.insertVoice(voice);
+    return { voice, similarity: 0, borderline: false };
+  } catch (err) {
+    await service.deleteVoice(voiceId).catch(() => undefined);
+    throw err;
   }
 }
 
@@ -222,7 +281,7 @@ export async function purgeExpired(deps: Pick<CloneDeps, 'store' | 'now'> & { bl
   let consents = 0;
   if (deps.blobs) {
     for (const c of await deps.store.listExpiredConsents(now)) {
-      await deps.blobs.remove([c.clipPath]);
+      if (c.clipPath) await deps.blobs.remove([c.clipPath]); // '' = attestation-mode evidence, no clip exists
       await deps.store.deleteConsent(c.id);
       consents += 1;
     }

@@ -1,6 +1,6 @@
 // Production wiring for the voice-cloning feature: builds CloneDeps from env, or null when the serving app
 // / ASR is not configured (feature stays dark: nothing here is enabled by merging code).
-import { loadClonePolicy } from './policy.js';
+import { consentPhraseRequired, loadClonePolicy } from './policy.js';
 import { serviceClientFromEnv } from './serviceClient.js';
 import { asrFromEnv } from './asrClient.js';
 import { supabaseCloneStore, supabaseConsentBlobs } from './supabaseStore.js';
@@ -15,7 +15,7 @@ export function getCloneDeps(env: Record<string, string | undefined> = process.e
   const service = serviceClientFromEnv(env);
   const asr = asrFromEnv(env);
   const deps: CloneDeps | null = service && asr
-    ? { store: supabaseCloneStore, blobs: supabaseConsentBlobs, service, asr, policy: loadClonePolicy(env) }
+    ? { store: supabaseCloneStore, blobs: supabaseConsentBlobs, service, asr, policy: loadClonePolicy(env), consentRequired: () => consentPhraseRequired(env) }
     : null;
   if (env === process.env) cached = deps;
   return deps;
