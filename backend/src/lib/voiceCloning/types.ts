@@ -138,11 +138,12 @@ export interface BlobStore {
   remove(paths: string[]): Promise<void>;
 }
 
-export type BillingPlan = 'paid' | 'comped';
+/** 'free' only exists while VOICE_CLONE_REQUIRE_PAYMENT=false (payments switched off). */
+export type BillingPlan = 'paid' | 'comped' | 'free';
 
 export interface Eligibility {
   userId: string;
   emailVerified: boolean;
-  /** null = no active billing (payment required). */
+  /** null = no active billing (payment required). 'free' = payment switched off by operator flag. */
   plan: BillingPlan | null;
 }

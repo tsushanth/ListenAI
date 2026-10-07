@@ -26,6 +26,15 @@ function asyncHandler(
 
 export const subscriptionRouter = Router();
 
+/**
+ * POST /sync used to write a `subscriptions` row (and raise the user's quotas) from a client-supplied product_id /
+ * expires_date with no store verification: any signed-in user could self-grant a paid or unlimited tier. It is now
+ * a no-op acknowledgement unless the operator sets SUBSCRIPTION_SYNC_TRUSTS_CLIENT=true (not recommended).
+ */
+export function subscriptionSyncEnabled(env: Record<string, string | undefined> = process.env): boolean {
+  return env.SUBSCRIPTION_SYNC_TRUSTS_CLIENT === 'true';
+}
+
 // ============================================================================
 // Types
 // ============================================================================
@@ -93,6 +102,12 @@ subscriptionRouter.post(
   asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
     const userId = req.user.id;
     const body = req.body as SyncSubscriptionBody;
+
+    if (!subscriptionSyncEnabled()) {
+      logger.warn({ userId, productId: body?.product_id }, 'subscription sync ignored: client-supplied tier data is not trusted');
+      res.json({ success: false, synced: false, reason: 'subscription sync is disabled; plans are not granted from client-supplied data' });
+      return;
+    }
 
     const {
       product_id,

@@ -21,10 +21,21 @@ export function getCloneDeps(env: Record<string, string | undefined> = process.e
   return deps;
 }
 
+/** Payment is required unless the operator sets VOICE_CLONE_REQUIRE_PAYMENT to the literal string "false". */
+export function paymentRequired(env: Record<string, string | undefined> = process.env): boolean {
+  return env.VOICE_CLONE_REQUIRE_PAYMENT !== 'false';
+}
+
+export function resolvePlan(
+  billing: { active?: boolean; comped?: boolean } | null | undefined,
+  env: Record<string, string | undefined> = process.env,
+): BillingPlan | null {
+  if (billing?.active) return billing.comped ? 'comped' : 'paid';
+  return paymentRequired(env) ? null : 'free';
+}
+
 export async function planForUser(userId: string): Promise<BillingPlan | null> {
-  const billing = await getBillingForUser(userId);
-  if (!billing?.active) return null;
-  return billing.comped ? 'comped' : 'paid';
+  return resolvePlan(await getBillingForUser(userId));
 }
 
 /**
