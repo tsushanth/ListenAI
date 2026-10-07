@@ -46,6 +46,15 @@ async function getGlobalFallback(): Promise<{ modal_url: string; modal_secret: s
   return null;
 }
 
+/**
+ * Per-user scale-to-zero deployments are the design (no idle GPU cost). A shared endpoint is used for the deploy
+ * short-circuit ONLY when the operator opts in with VOICE_SHARED_ENDPOINT=1 AND its URL/secret are configured, so a
+ * stale VOICE_*_URL secret can never turn "deploy" into a fake "ready".
+ */
+async function sharedEndpointOn(): Promise<boolean> {
+  return process.env.VOICE_SHARED_ENDPOINT === '1' && !!(await getGlobalFallback());
+}
+
 async function getUserModalConfig(userId: string): Promise<{ modal_url: string; modal_secret: string } | null> {
   const dep = await getUserDeployment(userId);
   if (dep && dep.status === 'ready') {
@@ -208,7 +217,7 @@ export const voiceConvertRouter: Router = (() => {
       const dep = await getUserDeployment(userId);
       if (!dep) {
         // A shared endpoint serves everyone: report it as ready instead of a 404 that sends clients into POST /deploy.
-        if (await getGlobalFallback()) { res.json({ status: 'ready', shared: true }); return; }
+        if (await sharedEndpointOn()) { res.json({ status: 'ready', shared: true }); return; }
         res.status(404).json({ error: 'No deployment found.' });
         return;
       }
@@ -223,8 +232,7 @@ export const voiceConvertRouter: Router = (() => {
       const existing = await getUserDeployment(userId);
       const decision = decideDeploy({
         existing,
-        sharedConfigured: !!(await getGlobalFallback()),
-        perUserDeployForced: process.env.VOICE_PER_USER_DEPLOY === '1',
+        sharedConfigured: await sharedEndpointOn(),
       });
       if (decision.action === 'shared') {
         // The backend already has a shared, always-available endpoint: no per-user `modal deploy` (209 s uncached,

@@ -67,8 +67,8 @@ const settle = () => new Promise((r) => setTimeout(r, 50));
 for (const feature of ['convert', 'isolate'] as const) {
   const table = `user_voice_${feature}_deployments`;
   const SHARED = feature === 'convert' ? ['VOICE_CONVERT_URL', 'VOICE_CONVERT_SECRET'] : ['VOICE_ISOLATE_URL', 'VOICE_ISOLATE_SECRET'];
-  const setShared = (on: boolean) => { cfg[SHARED[0]] = on ? 'https://shared.example.modal.run' : undefined; cfg[SHARED[1]] = on ? 'shared-secret' : undefined; };
-  const prep = async () => { await loadCfg(); installFetch(table); row = null; insertConflict = false; patches.length = 0; cfg.MODAL_TOKEN_ID = 'id'; cfg.MODAL_TOKEN_SECRET = 'sec'; delete process.env.VOICE_PER_USER_DEPLOY; };
+  const setShared = (on: boolean) => { cfg[SHARED[0]] = on ? 'https://shared.example.modal.run' : undefined; cfg[SHARED[1]] = on ? 'shared-secret' : undefined; if (on) process.env.VOICE_SHARED_ENDPOINT = '1'; };
+  const prep = async () => { await loadCfg(); installFetch(table); row = null; insertConflict = false; patches.length = 0; cfg.MODAL_TOKEN_ID = 'id'; cfg.MODAL_TOKEN_SECRET = 'sec'; delete process.env.VOICE_SHARED_ENDPOINT; };
   const done = () => { globalThis.fetch = realFetch; setShared(false); };
   const calls: string[] = [];
   const stub = (ops: Record<string, unknown>, fail = false) => {
@@ -173,8 +173,19 @@ for (const feature of ['convert', 'isolate'] as const) {
     s.close(); done();
   });
 
-  test(`${feature}: VOICE_PER_USER_DEPLOY=1 restores the legacy per-user deploy even with a shared endpoint`, async () => {
-    await prep(); setShared(true); process.env.VOICE_PER_USER_DEPLOY = '1';
+  test(`${feature}: shared URL/secret configured but VOICE_SHARED_ENDPOINT unset -> still a per-user deploy (design), GET is 404 not a fake ready`, async () => {
+    await prep(); setShared(true); delete process.env.VOICE_SHARED_ENDPOINT; // e.g. a stale VOICE_*_URL secret
+    const s = await boot(feature); stub(s.modalOps);
+    const g = await s.call('GET', '/deploy');
+    assert.equal(g.status, 404);
+    assert.equal((await s.call('POST', '/deploy')).status, 202);
+    await settle();
+    assert.ok(calls.some((c) => c.startsWith('deploy:')), 'per-user modal deploy runs');
+    s.close(); done();
+  });
+
+  test(`${feature}: VOICE_SHARED_ENDPOINT=1 without the URL/secret configured -> per-user deploy, never a fake ready`, async () => {
+    await prep(); setShared(false); process.env.VOICE_SHARED_ENDPOINT = '1';
     const s = await boot(feature); stub(s.modalOps);
     assert.equal((await s.call('POST', '/deploy')).status, 202);
     await settle();
