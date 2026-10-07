@@ -86,6 +86,9 @@ fun MainScreen() {
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
+                // The Scaffold already reserved the system-bar insets above. Without consuming them, every screen's
+                // Material TopAppBar adds the status-bar inset a second time (a big empty band above each header).
+                .consumeWindowInsets(paddingValues)
         ) {
             NavGraph(navController = navController)
         }

@@ -22,7 +22,7 @@ import java.util.concurrent.TimeUnit
  * Authentication service for Supabase Auth via backend.
  * Handles Google Sign-In token exchange and session management.
  */
-class AuthService(private val context: Context) {
+class AuthService(private val context: Context) : SupabaseSessionStore {
 
     companion object {
         private const val TAG = "AuthService"
@@ -38,10 +38,10 @@ class AuthService(private val context: Context) {
 
     // State
     private val _isAuthenticated = MutableStateFlow(false)
-    val isAuthenticated: StateFlow<Boolean> = _isAuthenticated.asStateFlow()
+    override val isAuthenticated: StateFlow<Boolean> = _isAuthenticated.asStateFlow()
 
     private val _user = MutableStateFlow<AuthUser?>(null)
-    val user: StateFlow<AuthUser?> = _user.asStateFlow()
+    override val user: StateFlow<AuthUser?> = _user.asStateFlow()
 
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
@@ -109,7 +109,7 @@ class AuthService(private val context: Context) {
     /**
      * Exchange Google ID token with backend for Supabase session
      */
-    suspend fun signInWithGoogle(idToken: String, accessToken: String? = null): Result<AuthUser> =
+    override suspend fun signInWithGoogle(idToken: String, accessToken: String?): Result<AuthUser> =
         withContext(Dispatchers.IO) {
             _isLoading.value = true
             _error.value = null
@@ -183,6 +183,37 @@ class AuthService(private val context: Context) {
         }
 
     /**
+     * Persist a session obtained directly from Supabase GoTrue (email+password) exactly like a
+     * backend-issued one: same encrypted prefs, so [getAccessToken] refreshes it via /api/auth/refresh
+     * (which calls supabase.auth.refreshSession and works for any Supabase refresh token).
+     */
+    override suspend fun adoptSession(session: GoTrueSession): AuthUser = withContext(Dispatchers.IO) {
+        val userJson = JSONObject().apply {
+            put("id", session.userId)
+            put("email", session.email ?: JSONObject.NULL)
+            session.createdAt?.let { put("created_at", it) }
+        }
+        encryptedPrefs.edit().apply {
+            putString(KEY_ACCESS_TOKEN, session.accessToken)
+            putString(KEY_REFRESH_TOKEN, session.refreshToken)
+            putLong(KEY_EXPIRES_AT, session.expiresAt)
+            putString(KEY_USER_JSON, userJson.toString())
+            apply()
+        }
+        val authUser = AuthUser(
+            id = session.userId,
+            email = session.email,
+            displayName = null,
+            avatarUrl = null,
+            createdAt = session.createdAt
+        )
+        _user.value = authUser
+        _isAuthenticated.value = true
+        _error.value = null
+        authUser
+    }
+
+    /**
      * Link the current device to the authenticated user
      */
     suspend fun linkDevice(): Result<Unit> = withContext(Dispatchers.IO) {
@@ -223,7 +254,7 @@ class AuthService(private val context: Context) {
     /**
      * Get a valid access token, refreshing if needed
      */
-    suspend fun getAccessToken(): String? = withContext(Dispatchers.IO) {
+    override suspend fun getAccessToken(): String? = withContext(Dispatchers.IO) {
         if (!_isAuthenticated.value) return@withContext null
 
         val expiresAt = encryptedPrefs.getLong(KEY_EXPIRES_AT, 0)
@@ -285,7 +316,7 @@ class AuthService(private val context: Context) {
     /**
      * Sign out and clear the session
      */
-    suspend fun signOut() = withContext(Dispatchers.IO) {
+    override suspend fun signOut(): Unit = withContext(Dispatchers.IO) {
         val accessToken = encryptedPrefs.getString(KEY_ACCESS_TOKEN, null)
         if (accessToken != null) {
             try {
@@ -348,6 +379,16 @@ class AuthService(private val context: Context) {
             }
         }
     }
+}
+
+/** The slice of [AuthService] the voice cloning auth needs; a seam so it can be faked in JVM tests. */
+interface SupabaseSessionStore {
+    val isAuthenticated: StateFlow<Boolean>
+    val user: StateFlow<AuthUser?>
+    suspend fun getAccessToken(): String?
+    suspend fun adoptSession(session: GoTrueSession): AuthUser
+    suspend fun signInWithGoogle(idToken: String, accessToken: String? = null): Result<AuthUser>
+    suspend fun signOut()
 }
 
 /**

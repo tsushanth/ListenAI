@@ -2,6 +2,8 @@ package com.listenai.ui.voice
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.listenai.service.auth.GoTrueException
+import com.listenai.service.auth.SignUpResult
 import com.listenai.service.voice.AudioClip
 import com.listenai.service.voice.ClonedVoice
 import com.listenai.service.voice.ConsentChallenge
@@ -52,6 +54,8 @@ data class CloneFlowState(
     /** Remaining consent attempts, as last reported by the server (null before the first attempt). */
     val attemptsLeft: Int? = null,
     val failure: VoiceCloneFailure? = null,
+    /** Non-error feedback on the sign-in form (verification or reset email sent). */
+    val authNotice: String? = null,
     val failureSource: FailureSource? = null,
     /** Local, pre-upload hint about the clip the user just made or picked. */
     val clipHint: String? = null,
@@ -110,10 +114,38 @@ class VoiceCloneFlowViewModel(
         _state.update { it.copy(signedIn = signedIn) }
     }
 
-    /** [block] performs the interactive sign-in (needs an Activity, so the UI supplies it). */
+    /** [block] performs the sign-in (email+password, or interactive Google which needs an Activity). */
     fun signIn(block: suspend () -> Result<Unit>) {
+        runAuth(block) { true }
+    }
+
+    /** Create account: either signs in, or tells the user to confirm their email first. */
+    fun signUp(block: suspend () -> Result<SignUpResult>) {
+        runAuth(block) { result ->
+            if (result is SignUpResult.ConfirmationRequired) {
+                _state.update {
+                    it.copy(authNotice = "Account created. We sent a verification link to ${result.email}. Verify your email, then sign in.")
+                }
+                false
+            } else true
+        }
+    }
+
+    fun sendPasswordReset(email: String, block: suspend () -> Result<Unit>) {
+        runAuth(block) {
+            _state.update {
+                it.copy(authNotice = "If an account exists for ${email.trim()}, we sent a link to reset the password. Check your email.")
+            }
+            false
+        }
+    }
+
+    fun clearAuthMessages() = _state.update { it.copy(failure = null, failureSource = null, authNotice = null) }
+
+    /** Runs [block]; [onSuccess] returns whether the user is now signed in. */
+    private fun <T> runAuth(block: suspend () -> Result<T>, onSuccess: (T) -> Boolean) {
         if (_state.value.signingIn) return
-        _state.update { it.copy(signingIn = true, failure = null) }
+        _state.update { it.copy(signingIn = true, failure = null, failureSource = null, authNotice = null) }
         scope.launch {
             val result = try {
                 block()
@@ -122,15 +154,18 @@ class VoiceCloneFlowViewModel(
             } catch (e: Exception) {
                 Result.failure(e)
             }
+            val signedIn = result.getOrNull()?.let(onSuccess) ?: false
             _state.update {
                 if (result.isSuccess) {
-                    it.copy(signingIn = false, signedIn = true, failure = null, failureSource = null, step = if (it.step == CloneStep.ERROR) CloneStep.INTRO else it.step)
+                    if (signedIn) {
+                        it.copy(signingIn = false, signedIn = true, failure = null, failureSource = null, authNotice = null, step = if (it.step == CloneStep.ERROR) CloneStep.INTRO else it.step)
+                    } else it.copy(signingIn = false)
                 } else {
                     it.copy(
                         signingIn = false,
                         failure = VoiceCloneFailure(
                             "sign_in_failed",
-                            "Sign-in didn't complete. Try again.",
+                            (result.exceptionOrNull() as? GoTrueException)?.message ?: "Sign-in didn't complete. Try again.",
                             Recovery.SIGN_IN
                         ),
                         failureSource = FailureSource.SIGN_IN

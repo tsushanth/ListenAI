@@ -18,7 +18,18 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.error
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -175,19 +186,20 @@ fun VoiceCloningFlowScreen(
     Scaffold(
         topBar = {
             if (state.step != CloneStep.UPLOADING && state.step != CloneStep.SUCCESS) {
-                TopAppBar(
-                    title = { },
-                    navigationIcon = {
-                        IconButton(onClick = { if (!vm.back()) onCancel() }) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                        }
-                    },
-                    actions = {
-                        IconButton(onClick = onCancel) {
-                            Icon(Icons.Default.Close, contentDescription = "Cancel")
-                        }
+                // Compact header: the host already applies the status-bar inset, so a Material TopAppBar (its own inset + 64dp)
+                // left a large empty band above the buttons.
+                Row(
+                    modifier = Modifier.fillMaxWidth().height(48.dp).padding(horizontal = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    IconButton(onClick = { if (!vm.back()) onCancel() }) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
-                )
+                    IconButton(onClick = onCancel) {
+                        Icon(Icons.Default.Close, contentDescription = "Cancel")
+                    }
+                }
             }
         }
     ) { padding ->
@@ -196,11 +208,18 @@ fun VoiceCloningFlowScreen(
                 CloneStep.INTRO -> IntroStep(
                     signedIn = state.signedIn,
                     signingIn = state.signingIn,
-                    signInError = state.failure?.message,
-                    onSignIn = {
-                        val activity = context.findActivity()
-                        if (activity != null && auth != null) vm.signIn { auth.signIn(activity) }
+                    signInError = if (state.failureSource == FailureSource.SIGN_IN) state.failure?.message else null,
+                    notice = state.authNotice,
+                    onSignInWithPassword = { email, password ->
+                        if (auth != null) vm.signIn { auth.signInWithPassword(email, password) }
                     },
+                    onCreateAccount = { email, password ->
+                        if (auth != null) vm.signUp { auth.signUp(email, password) }
+                    },
+                    onForgotPassword = { email ->
+                        if (auth != null) vm.sendPasswordReset(email) { auth.sendPasswordReset(email) }
+                    },
+                    onClearMessages = vm::clearAuthMessages,
                     onContinue = vm::agreeAndContinue
                 )
                 CloneStep.PROFILE -> ProfileStep(
@@ -334,20 +353,27 @@ private fun IntroStep(
     signedIn: Boolean,
     signingIn: Boolean,
     signInError: String?,
-    onSignIn: () -> Unit,
+    notice: String?,
+    onSignInWithPassword: (String, String) -> Unit,
+    onCreateAccount: (String, String) -> Unit,
+    onForgotPassword: (String) -> Unit,
+    onClearMessages: () -> Unit,
     onContinue: () -> Unit
 ) {
-    Column(modifier = Modifier.fillMaxSize()) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(160.dp)
-                .background(Brush.linearGradient(listOf(Yellow.copy(alpha = 0.3f), Purple.copy(alpha = 0.3f)))),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(Icons.Default.Person, contentDescription = null, modifier = Modifier.size(80.dp), tint = Color.White.copy(alpha = 0.8f))
+    var email by rememberSaveable { mutableStateOf("") }
+    // Never saved into instance state: kept in memory only.
+    var password by remember { mutableStateOf("") }
+    var showPassword by remember { mutableStateOf(false) }
+    var creating by rememberSaveable { mutableStateOf(false) }
+    val emailOk = email.trim().contains("@") && email.trim().length >= 5
+    val canSubmit = !signingIn && emailOk && password.isNotEmpty()
+    val submit = {
+        if (canSubmit) {
+            if (creating) onCreateAccount(email.trim(), password) else onSignInWithPassword(email.trim(), password)
         }
+    }
 
+    Column(modifier = Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(24.dp)
         ) {
@@ -376,19 +402,103 @@ private fun IntroStep(
             )
             if (!signedIn) {
                 Spacer(modifier = Modifier.height(16.dp))
-                InfoCard("Sign in to create a cloned voice. It's tied to your account so only you can use it.", Icons.Default.Lock)
-            }
-            if (signInError != null) {
+                InfoCard(
+                    if (creating) "Create an account to make a cloned voice. It's tied to your account so only you can use it."
+                    else "Sign in to create a cloned voice. It's tied to your account so only you can use it.",
+                    Icons.Default.Lock
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                OutlinedTextField(
+                    value = email,
+                    onValueChange = { email = it },
+                    label = { Text("Email") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    enabled = !signingIn,
+                    shape = PrimaryShape,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next, autoCorrect = false)
+                )
                 Spacer(modifier = Modifier.height(12.dp))
-                Text(signInError, color = Red, style = MaterialTheme.typography.bodySmall)
+                OutlinedTextField(
+                    value = password,
+                    onValueChange = { password = it },
+                    label = { Text("Password") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    enabled = !signingIn,
+                    shape = PrimaryShape,
+                    visualTransformation = if (showPassword) VisualTransformation.None else PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done, autoCorrect = false),
+                    keyboardActions = KeyboardActions(onDone = { submit() }),
+                    trailingIcon = {
+                        IconButton(onClick = { showPassword = !showPassword }) {
+                            Icon(
+                                if (showPassword) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                contentDescription = if (showPassword) "Hide password" else "Show password"
+                            )
+                        }
+                    }
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    TextButton(
+                        onClick = { creating = !creating; onClearMessages() },
+                        enabled = !signingIn
+                    ) { Text(if (creating) "Have an account? Sign in" else "Create account") }
+                    if (!creating) {
+                        TextButton(
+                            onClick = { onForgotPassword(email.trim()) },
+                            enabled = !signingIn && emailOk
+                        ) { Text("Forgot password?") }
+                    }
+                }
+                if (!creating) {
+                    Text(
+                        text = "Enter your email above, then tap Forgot password? to get a reset link.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         }
 
-        Box(modifier = Modifier.padding(24.dp)) {
+        // Outside the scrolling area on purpose: placed at the end of the scroll content this text sat
+        // below the fold on phones and was never seen. liveRegion makes TalkBack announce changes.
+        if (signInError != null) {
+            Text(
+                text = signInError,
+                color = Red,
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp, vertical = 8.dp)
+                    .semantics { liveRegion = LiveRegionMode.Assertive; error(signInError) }
+            )
+        } else if (notice != null) {
+            Text(
+                text = notice,
+                color = Green,
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp, vertical = 8.dp)
+                    .semantics { liveRegion = LiveRegionMode.Polite }
+            )
+        }
+
+        Box(modifier = Modifier.padding(start = 24.dp, end = 24.dp, bottom = 24.dp, top = 8.dp)) {
             if (signedIn) {
                 PrimaryButton("Agree & Continue", onContinue)
             } else {
-                PrimaryButton(if (signingIn) "Signing in..." else "Sign in with Google", onSignIn, enabled = !signingIn)
+                PrimaryButton(
+                    when {
+                        signingIn -> if (creating) "Creating account..." else "Signing in..."
+                        creating -> "Create account"
+                        else -> "Sign in"
+                    },
+                    { submit() },
+                    enabled = canSubmit
+                )
             }
         }
     }

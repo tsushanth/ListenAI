@@ -1,5 +1,8 @@
 package com.listenai.ui.voice
 
+import com.listenai.service.auth.GoTrueErrorKind
+import com.listenai.service.auth.GoTrueException
+import com.listenai.service.auth.SignUpResult
 import com.listenai.service.voice.AudioClip
 import com.listenai.service.voice.ClonedVoice
 import com.listenai.service.voice.ConsentChallenge
@@ -112,6 +115,65 @@ class VoiceCloneFlowViewModelTest {
         assertFalse(vm.state.value.signedIn)
         assertFalse(vm.state.value.signingIn)
         assertEquals(Recovery.SIGN_IN, vm.state.value.failure?.recovery)
+    }
+
+    @Test
+    fun `sign-in error text from the server mapping is what the intro screen shows`() {
+        val scope = TestScope(scopeDispatcher)
+        val vm = scope.vm(signedIn = false)
+        vm.signIn { Result.failure(GoTrueException(GoTrueErrorKind.INVALID_CREDENTIALS, "That email or password is incorrect.")) }
+        val s = vm.state.value
+        assertEquals("That email or password is incorrect.", s.failure?.message)
+        assertEquals(FailureSource.SIGN_IN, s.failureSource)
+        assertEquals(CloneStep.INTRO, s.step)
+        assertFalse(s.signedIn)
+    }
+
+    @Test
+    fun `sign-in error is cleared when a new attempt starts or the form is switched`() {
+        val scope = TestScope(scopeDispatcher)
+        val vm = scope.vm(signedIn = false)
+        vm.signIn { Result.failure(IllegalStateException("x")) }
+        assertNotNull(vm.state.value.failure)
+        vm.clearAuthMessages()
+        assertNull(vm.state.value.failure)
+        vm.signIn { Result.success(Unit) }
+        assertNull(vm.state.value.failure)
+        assertTrue(vm.state.value.signedIn)
+    }
+
+    @Test
+    fun `signup needing confirmation shows a notice and stays signed out`() {
+        val scope = TestScope(scopeDispatcher)
+        val vm = scope.vm(signedIn = false)
+        vm.signUp { Result.success(SignUpResult.ConfirmationRequired("a@b.co")) }
+        val s = vm.state.value
+        assertFalse(s.signedIn)
+        assertFalse(s.signingIn)
+        assertNull(s.failure)
+        assertTrue(s.authNotice!!.contains("a@b.co"))
+    }
+
+    @Test
+    fun `signup with an immediate session signs in`() {
+        val scope = TestScope(scopeDispatcher)
+        val vm = scope.vm(signedIn = false)
+        vm.signUp { Result.success(SignUpResult.SignedIn(com.listenai.service.auth.GoTrueSession("a", "r", 1L, "u", "a@b.co", null))) }
+        assertTrue(vm.state.value.signedIn)
+        assertNull(vm.state.value.authNotice)
+    }
+
+    @Test
+    fun `password reset shows a confirmation notice and failures show the mapped error`() {
+        val scope = TestScope(scopeDispatcher)
+        val vm = scope.vm(signedIn = false)
+        vm.sendPasswordReset(" a@b.co ") { Result.success(Unit) }
+        assertTrue(vm.state.value.authNotice!!.contains("a@b.co"))
+        assertFalse(vm.state.value.signedIn)
+
+        vm.sendPasswordReset("a@b.co") { Result.failure(GoTrueException(GoTrueErrorKind.RATE_LIMITED, "Too many attempts.")) }
+        assertNull(vm.state.value.authNotice)
+        assertEquals("Too many attempts.", vm.state.value.failure?.message)
     }
 
     @Test
