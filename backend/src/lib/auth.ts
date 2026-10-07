@@ -39,18 +39,42 @@ function getJWTSecretKey(): Uint8Array {
  * @returns The decoded JWT payload
  * @throws AuthenticationError if token is invalid
  */
+/**
+ * Supabase projects that use asymmetric JWT signing keys (ES256/RS256) publish the public keys at
+ * /auth/v1/.well-known/jwks.json. Verifying only HS256 with the shared secret rejected EVERY real user token, and
+ * requireAuth then silently treated the caller as the shared default user. The header's alg now selects the verifier.
+ */
+type KeyResolver = Parameters<typeof jose.jwtVerify>[1];
+let jwksResolver: KeyResolver | null | undefined;
+
+function getJwks(): KeyResolver {
+  if (jwksResolver === undefined || jwksResolver === null) {
+    jwksResolver = jose.createRemoteJWKSet(new URL(`${config.SUPABASE_URL}/auth/v1/.well-known/jwks.json`)) as unknown as KeyResolver;
+  }
+  return jwksResolver;
+}
+
+/** Test seam: inject a local key set (or null to reset to the remote one). */
+export function __setJwksForTests(resolver: KeyResolver | null): void {
+  jwksResolver = resolver;
+}
+
 async function verifyTokenLocally(token: string): Promise<JWTPayload> {
   try {
-    const secretKey = getJWTSecretKey();
+    let alg: string | undefined;
+    try {
+      alg = jose.decodeProtectedHeader(token).alg;
+    } catch {
+      throw new AuthenticationError('Malformed token');
+    }
+    const claims = { issuer: `${config.SUPABASE_URL}/auth/v1`, audience: 'authenticated' };
 
-    const { payload } = await jose.jwtVerify(token, secretKey, {
-      algorithms: ['HS256'],
-      // Supabase sets these claims
-      issuer: `${config.SUPABASE_URL}/auth/v1`,
-      audience: 'authenticated',
-    });
+    const { payload } = alg === 'HS256'
+      ? await jose.jwtVerify(token, getJWTSecretKey(), { ...claims, algorithms: ['HS256'] })
+      : alg === 'ES256' || alg === 'RS256'
+        ? await jose.jwtVerify(token, getJwks() as never, { ...claims, algorithms: ['ES256', 'RS256'] })
+        : (() => { throw new AuthenticationError('Unsupported token algorithm'); })();
 
-    // Validate required claims
     if (!payload.sub) {
       throw new AuthenticationError('Token missing subject claim');
     }
