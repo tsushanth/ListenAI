@@ -27,6 +27,7 @@ CREATE OR REPLACE FUNCTION realtimetts_add_usage(
     p_day DATE, p_user UUID, p_chars BIGINT, p_piper BIGINT, p_audio DOUBLE PRECISION, p_free BIGINT
 ) RETURNS VOID
 LANGUAGE sql
+SET search_path = public
 AS $$
     INSERT INTO realtimetts_usage_daily (day, user_id, chars, piper_chars, audio_seconds, free_chars)
     VALUES (p_day, p_user, p_chars, p_piper, p_audio, p_free)

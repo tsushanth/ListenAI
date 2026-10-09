@@ -1,5 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+process.env.SUPABASE_URL ??= 'http://localhost:54321';
+process.env.SUPABASE_SERVICE_ROLE_KEY ??= 'test';
+process.env.SUPABASE_JWT_SECRET ??= 'test';
+process.env.NODE_ENV = 'test';
 const modP = import('./adminHealth.js');
 const NOW = new Date('2026-10-08T12:00:00Z');
 
@@ -13,6 +17,16 @@ test('parseProbeTargets reads ADMIN_HEALTH_TARGETS JSON and ignores junk', async
 test('parseProbeTargets falls back to the gateway health URL when only TTS_GATEWAY_URL is set', async () => {
   const { parseProbeTargets } = await modP;
   assert.deepEqual(parseProbeTargets({ TTS_GATEWAY_URL: 'https://g.example.test' } as any), [{ name: 'gateway', url: 'https://g.example.test/health' }]);
+});
+
+test('parseProbeTargets() with no env argument falls back to the config default gateway URL when TTS_GATEWAY_URL is unset', async () => {
+  const { parseProbeTargets } = await modP;
+  const { config } = await import('./config.js');
+  const saved = process.env.TTS_GATEWAY_URL; delete process.env.TTS_GATEWAY_URL; delete process.env.ADMIN_HEALTH_TARGETS;
+  try {
+    assert.deepEqual(parseProbeTargets(), [{ name: 'gateway', url: `${config.TTS_GATEWAY_URL.replace(/\/$/, '')}/health` }]);
+    assert.deepEqual(parseProbeTargets({} as any), []); // an explicit empty env stays empty
+  } finally { if (saved !== undefined) process.env.TTS_GATEWAY_URL = saved; }
 });
 
 const resp = (status: number) => async () => new Response('{}', { status });

@@ -1,4 +1,4 @@
-import { billableChars } from './realtimeTtsBilling.js';
+import { billableChars, FREE_CREDIT_UNITS } from './realtimeTtsBilling.js';
 import { supabase } from './supabaseClient.js';
 
 export type Range = '24h' | '7d' | '30d';
@@ -39,6 +39,10 @@ function accountIds(i: DashboardInputs): Set<string> {
 }
 const inRange = (day: string, i: DashboardInputs) => day >= daysBack(i.now, RANGE_DAYS[i.range]);
 
+function paidSet(i: DashboardInputs, acc: Set<string>): Set<string> {
+  return new Set(i.billing.filter((b) => b.active && !b.comped && acc.has(b.user_id)).map((b) => b.user_id));
+}
+
 export function buildTotals(i: DashboardInputs): Totals {
   const acc = accountIds(i);
   const keys = i.keys.filter((k) => acc.has(k.user_id));
@@ -47,7 +51,10 @@ export function buildTotals(i: DashboardInputs): Totals {
   const since = new Date(`${daysBack(i.now, RANGE_DAYS[i.range])}T00:00:00Z`).toISOString();
   const rows = i.usage.filter((u) => acc.has(u.user_id) && inRange(u.day, i));
   const sum = (f: (u: UsageRow) => number) => rows.reduce((s, u) => s + f(u), 0);
-  const credits = i.credits.filter((c) => acc.has(c.user_id));
+  const creditsBy = new Map(i.credits.map((c) => [c.user_id, c]));
+  const credit = (id: string) => creditsBy.get(id) ?? { user_id: id, granted: FREE_CREDIT_UNITS, used: 0 }; // billing treats a missing row as the full free grant
+  const credits = [...acc].map(credit);
+  const payers = paidSet(i, acc);
   return {
     accounts: acc.size,
     activeKeys: keys.filter((k) => k.revoked_at === null).length,
@@ -58,8 +65,8 @@ export function buildTotals(i: DashboardInputs): Totals {
     freeCharsUsed: sum((u) => u.free_chars),
     creditsGranted: credits.reduce((s, c) => s + c.granted, 0),
     creditsUsed: credits.reduce((s, c) => s + c.used, 0),
-    paidCustomers: new Set(i.billing.filter((b) => b.active && !b.comped && acc.has(b.user_id)).map((b) => b.user_id)).size,
-    billedUnits: sum((u) => billableChars({ chars: u.chars, piperChars: u.piper_chars, audioSeconds: u.audio_seconds })),
+    paidCustomers: payers.size,
+    billedUnits: rows.filter((u) => payers.has(u.user_id)).reduce((s, u) => s + billableChars({ chars: u.chars, piperChars: u.piper_chars, audioSeconds: u.audio_seconds }), 0),
   };
 }
 
@@ -67,13 +74,19 @@ const usedUp = (c: FreeCreditRow | undefined) => !!c && c.granted > 0 && c.used 
 
 export function buildFunnel(i: DashboardInputs): FunnelStage[] {
   const acc = accountIds(i);
-  const withUse = new Set(i.usage.filter((u) => acc.has(u.user_id) && (u.chars > 0 || u.audio_seconds > 0 || u.free_chars > 0)).map((u) => u.user_id));
   const credits = new Map(i.credits.map((c) => [c.user_id, c]));
+  const payers = paidSet(i, acc);
+  // The ledger starts empty at ship, so a first request is also evidenced by spent free credits or a paid card.
+  const withUse = new Set<string>([
+    ...i.usage.filter((u) => acc.has(u.user_id) && (u.chars > 0 || u.audio_seconds > 0 || u.free_chars > 0)).map((u) => u.user_id),
+    ...[...acc].filter((id) => (credits.get(id)?.used ?? 0) > 0),
+    ...payers,
+  ]);
   return [
     { stage: 'Created a key', count: acc.size },
     { stage: 'Made a first request', count: withUse.size },
     { stage: 'Used up free credits', count: [...acc].filter((id) => usedUp(credits.get(id))).length },
-    { stage: 'Added a card', count: new Set(i.billing.filter((b) => b.active && !b.comped && acc.has(b.user_id)).map((b) => b.user_id)).size },
+    { stage: 'Added a card', count: payers.size },
   ];
 }
 
@@ -97,9 +110,9 @@ export function buildCustomers(i: DashboardInputs): Customer[] {
       activeKeys: i.keys.filter((k) => k.user_id === id && k.revoked_at === null).length,
       firstRequest: days[0] ?? null,
       lastRequest: last,
-      chars7d: recent.reduce((s, u) => s + u.chars, 0),
+      chars7d: recent.reduce((s, u) => s + u.chars + u.free_chars, 0),
       sttMinutes7d: recent.reduce((s, u) => s + u.audio_seconds, 0) / 60,
-      creditsLeft: c ? Math.max(0, c.granted - c.used) : 0,
+      creditsLeft: c ? Math.max(0, c.granted - c.used) : FREE_CREDIT_UNITS,
       status: comped.has(id) ? 'comped' : paid.has(id) ? 'paid' : usedUp(c) ? 'at limit' : 'free',
     };
   }).sort((a, b) => (b.lastRequest ?? '').localeCompare(a.lastRequest ?? ''));
@@ -107,6 +120,7 @@ export function buildCustomers(i: DashboardInputs): Customer[] {
 
 export function buildAttention(i: DashboardInputs, customers: Customer[]): AttentionItem[] {
   const out: AttentionItem[] = [];
+  if (excludedUserIds(i.users, i.excluded).size === 0) out.push({ level: 'info', text: 'No accounts are excluded: ADMIN_EXCLUDE_EMAILS is unset or matches nobody' });
   for (const h of i.health) {
     if (h.status === 'down') out.push({ level: 'warn', text: `${h.name} is down` });
     if (h.status === 'slow') out.push({ level: 'warn', text: `${h.name} is slow (${h.latencyMs} ms)` });
@@ -115,8 +129,8 @@ export function buildAttention(i: DashboardInputs, customers: Customer[]): Atten
   const today = utc(i.now), prior = new Set(Array.from({ length: 7 }, (_, n) => utc(new Date(i.now.getTime() - (n + 1) * DAY_MS))));
   for (const c of customers) {
     const rows = i.usage.filter((u) => u.user_id === c.userId);
-    const todayChars = rows.filter((u) => u.day === today).reduce((s, u) => s + u.chars, 0);
-    const priorAvg = rows.filter((u) => prior.has(u.day)).reduce((s, u) => s + u.chars, 0) / 7;
+    const todayChars = rows.filter((u) => u.day === today).reduce((s, u) => s + u.chars + u.free_chars, 0);
+    const priorAvg = rows.filter((u) => prior.has(u.day)).reduce((s, u) => s + u.chars + u.free_chars, 0) / 7;
     if (todayChars >= 100_000 && todayChars >= 5 * priorAvg) out.push({ level: 'warn', text: `${c.email ?? c.userId}: usage spike` });
   }
   const hourAgo = new Date(i.now.getTime() - 3_600_000).toISOString();
@@ -168,7 +182,10 @@ export interface DashboardDeps {
   listFreeCredits(): Promise<FreeCreditRow[]>;
   listBilling(): Promise<BillingRow[]>;
   listRecentStt(sinceIso: string): Promise<SttRow[]>;
-  probes(usage: UsageRow[], stt: SttRow[]): Promise<HealthItem[]>;
+  /** Active probes (network). Started at t0 in parallel with the data fetch; optional so tests can omit it. */
+  startProbes?(): Promise<HealthItem[]>;
+  /** Final health list; receives the active probe results when startProbes is provided. */
+  probes(usage: UsageRow[], stt: SttRow[], active?: HealthItem[]): Promise<HealthItem[]>;
   firstUsageDay(): Promise<string | null>;
 }
 export interface DashboardResponse {
@@ -181,12 +198,17 @@ export async function buildDashboard(deps: DashboardDeps, opts: { range: Range; 
   const now = deps.now();
   const range = opts.range;
   const sinceDay = utc(new Date(now.getTime() - 30 * DAY_MS)); // one fetch covers 24h/7d/30d and the spike baseline
+  const activeP = deps.startProbes ? section(() => deps.startProbes!()) : null; // t0: probes overlap the data fetch
   const [users, keys, usage, credits, billing, stt] = await Promise.all([
     section(() => deps.listUsers()), section(() => deps.listKeys()), section(() => deps.listUsage(sinceDay)),
     section(() => deps.listFreeCredits()), section(() => deps.listBilling()), section(() => deps.listRecentStt(new Date(now.getTime() - 3_600_000).toISOString())),
   ]);
   const first = await section(() => deps.firstUsageDay());
-  const health = await section(() => deps.probes(usage.ok ? usage.data : [], stt.ok ? stt.data : []));
+  const activeRes = activeP ? await activeP : null;
+  const health = await section(async () => {
+    if (activeRes && !activeRes.ok) throw new Error(activeRes.error);
+    return deps.probes(usage.ok ? usage.data : [], stt.ok ? stt.data : [], activeRes?.ok ? activeRes.data : undefined);
+  });
   const need = <T extends { ok: boolean }>(...s: T[]) => s.find((x) => !x.ok) as ({ ok: false; error: string } | undefined);
   const build = <T>(deps_: Array<Section<any>>, f: (i: DashboardInputs) => T): Section<T> => {
     const bad = need(...deps_);
@@ -236,5 +258,12 @@ export const defaultDashboardDeps: DashboardDeps = {
     if (error) throw new Error(error.message);
     return (data as Array<{ day: string }> | null)?.[0]?.day ?? null;
   },
-  probes: async (usage, stt) => (await import('./adminHealth.js')).collectHealth({ usage, stt, now: new Date() }),
+  async startProbes() {
+    const h = await import('./adminHealth.js');
+    return Promise.all(h.parseProbeTargets().map((t) => h.probeTarget(t)));
+  },
+  async probes(usage, stt, active) {
+    const h = await import('./adminHealth.js');
+    return [...(active ?? []), ...h.passiveHealth({ usage, stt, now: new Date() })];
+  },
 };

@@ -1,16 +1,20 @@
+import { config } from './config.js';
 import type { HealthItem, UsageRow, SttRow } from './adminDashboard.js';
 
 export interface ProbeTarget { name: string; url: string }
 const SLOW_MS = 1500, TIMEOUT_MS = 4000, KOKORO_AWAKE_MS = 10 * 60_000, STT_AWAKE_MS = 60 * 60_000;
 
-export function parseProbeTargets(env: NodeJS.ProcessEnv = process.env): ProbeTarget[] {
+export function parseProbeTargets(envArg?: NodeJS.ProcessEnv): ProbeTarget[] {
+  const env = envArg ?? process.env;
   if (env.ADMIN_HEALTH_TARGETS) {
     try {
       const o = JSON.parse(env.ADMIN_HEALTH_TARGETS) as Record<string, unknown>;
       return Object.entries(o).filter(([, v]) => typeof v === 'string' && /^https?:\/\//.test(v)).map(([name, url]) => ({ name, url: url as string }));
     } catch { return []; }
   }
-  return env.TTS_GATEWAY_URL ? [{ name: 'gateway', url: `${env.TTS_GATEWAY_URL.replace(/\/$/, '')}/health` }] : [];
+  // Only the real process env falls back to config's default; an explicitly passed env is taken as-is (testable).
+  const gateway = env.TTS_GATEWAY_URL ?? (envArg ? undefined : config.TTS_GATEWAY_URL);
+  return gateway ? [{ name: 'gateway', url: `${gateway.replace(/\/$/, '')}/health` }] : [];
 }
 
 export async function probeTarget(t: ProbeTarget, fetchImpl: typeof fetch = fetch, clock: () => number = () => performance.now()): Promise<HealthItem> {

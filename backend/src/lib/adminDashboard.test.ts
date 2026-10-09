@@ -290,3 +290,89 @@ test('default deps page with stable tiebreaker ordering', async () => {
   assert.deepEqual(calls.realtimetts_usage_daily.slice(0, 3), ['order:day', 'order:user_id', 'range:0-999']);
   assert.deepEqual(calls.stt_transcriptions.slice(0, 3), ['order:created_at', 'order:id', 'range:0-999']);
 });
+
+// --- final-review fixes ---------------------------------------------------------------------------------------
+test('F2: an account with no credits row has the full free grant left (billing treats a missing row as granted FREE_CREDIT_UNITS, used 0), but is never "used up"', async () => {
+  const m = await modP; const { FREE_CREDIT_UNITS } = await import('./realtimeTtsBilling.js');
+  const i = await inputs({ credits: [] });
+  const cs = m.buildCustomers(i);
+  for (const id of ['a', 'b']) { const c = cs.find((x: any) => x.userId === id)!; assert.equal(c.creditsLeft, FREE_CREDIT_UNITS); }
+  assert.equal(cs.find((x: any) => x.userId === 'b')!.status, 'free');
+  const t = m.buildTotals(i);
+  assert.equal(t.creditsGranted, 2 * FREE_CREDIT_UNITS);
+  assert.equal(t.creditsUsed, 0);
+  assert.equal(m.buildFunnel(i)[2]!.count, 0);
+});
+
+test('F3: chars7d and the spike rule include free-tier characters', async () => {
+  const m = await modP;
+  const usage = [
+    ...Array.from({ length: 7 }, (_, d) => use('b', `2026-10-0${1 + d}`, { free_chars: 10000 })),
+    use('b', '2026-10-08', { free_chars: 600000 }), use('a', '2026-10-08', { chars: 10, free_chars: 5 }),
+  ];
+  const i = await inputs({ usage, credits: [] });
+  const b = m.buildCustomers(i).find((c: any) => c.userId === 'b')!;
+  assert.equal(b.chars7d, 600000 + 6 * 10000);
+  assert.equal(m.buildCustomers(i).find((c: any) => c.userId === 'a')!.chars7d, 15);
+  assert.ok(m.buildAttention(i, m.buildCustomers(i)).some((x: any) => x.text === 'b@example.test: usage spike'));
+});
+
+test('F4: billedUnits only counts users with an active non-comped billing row', async () => {
+  const m = await modP;
+  const usage = [use('a', '2026-10-08', { chars: 1000 }), use('b', '2026-10-08', { chars: 5000 })];
+  const base = { usage };
+  const paidOnlyA = m.buildTotals(await inputs({ ...base, billing: [{ user_id: 'a', active: true }] }));
+  const none = m.buildTotals(await inputs({ ...base, billing: [] }));
+  const comped = m.buildTotals(await inputs({ ...base, billing: [{ user_id: 'a', active: true, comped: true }, { user_id: 'b', active: false }] }));
+  assert.equal(none.billedUnits, 0);
+  assert.equal(comped.billedUnits, 0);
+  assert.ok(paidOnlyA.billedUnits > 0);
+  const both = m.buildTotals(await inputs({ ...base, billing: [{ user_id: 'a', active: true }, { user_id: 'b', active: true }] }));
+  assert.ok(both.billedUnits > paidOnlyA.billedUnits);
+});
+
+test('F5: "Made a first request" is the union of ledger usage, credits used and a paid card, so later stages never exceed it', async () => {
+  const m = await modP;
+  const i = await inputs({
+    usage: [], // empty ledger (just shipped)
+    credits: [{ user_id: 'b', granted: 1000, used: 1000 }],
+    billing: [{ user_id: 'a', active: true }],
+  });
+  const f = m.buildFunnel(i);
+  assert.equal(f[1]!.count, 2);
+  assert.ok(f[2]!.count <= f[1]!.count && f[3]!.count <= f[1]!.count);
+  const j = await inputs({ usage: [], credits: [{ user_id: 'a', granted: 1000, used: 0 }], billing: [] });
+  assert.equal(m.buildFunnel(j)[1]!.count, 0);
+});
+
+test('F9: attention says so when the exclusion set resolves to nobody (unset, or a typo)', async () => {
+  const m = await modP; const { parseExcludeEmails } = await modP;
+  const msg = 'No accounts are excluded: ADMIN_EXCLUDE_EMAILS is unset or matches nobody';
+  for (const ex of [parseExcludeEmails(undefined), parseExcludeEmails('typo@example.test')]) {
+    const i = await inputs({ excluded: ex });
+    assert.ok(m.buildAttention(i, m.buildCustomers(i)).some((x: any) => x.level === 'info' && x.text === msg));
+  }
+  const ok = await inputs();
+  assert.ok(!m.buildAttention(ok, m.buildCustomers(ok)).some((x: any) => x.text === msg));
+});
+
+test('F6: the active probes start before the data fetch resolves', async () => {
+  const m = await modP; const base = await inputs();
+  const order: string[] = [];
+  let release!: () => void;
+  const gate = new Promise<void>((r) => { release = r; });
+  const deps = {
+    now: () => NOW,
+    listUsers: async () => { order.push('users:start'); await gate; order.push('users:done'); return base.users; },
+    listKeys: async () => base.keys, listUsage: async () => base.usage, listFreeCredits: async () => base.credits,
+    listBilling: async () => base.billing, listRecentStt: async () => [], firstUsageDay: async () => '2026-10-07',
+    startProbes: async () => { order.push('probes:start'); return [{ name: 'gateway', status: 'up', checkedAt: NOW.toISOString() }]; },
+    probes: async (_u: any, _s: any, active: any[] = []) => [...active, { name: 'kokoro', status: 'unknown', checkedAt: NOW.toISOString() }],
+  };
+  const p = m.buildDashboard(deps as any, { range: '7d', excludeEmails: base.excluded });
+  await new Promise((r) => setImmediate(r));
+  assert.ok(order.includes('probes:start') && !order.includes('users:done'), order.join(','));
+  release();
+  const r = await p;
+  assert.deepEqual((r.health as any).data.map((h: any) => h.name), ['gateway', 'kokoro']);
+});
