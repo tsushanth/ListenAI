@@ -40,12 +40,19 @@ test('safeEvent never throws, with a throwing recorder or none', async () => {
   await safeEvent(undefined, { kind: 'webhook_failed' });
 });
 
-test('safeEvent does not wait forever on a hung recorder', async () => {
+test('safeEvent gives up on a hung recorder after the timeout without throwing', async () => {
   const { safeEvent } = await modP;
   const started = Date.now();
-  await Promise.race([
-    safeEvent(() => new Promise<void>(() => {}), { kind: 'webhook_failed' }),
-    new Promise((r) => setTimeout(r, 3500)),
-  ]);
-  assert.ok(Date.now() - started < 3600);
+  await safeEvent(() => new Promise<void>(() => {}), { kind: 'webhook_failed' }, 50);
+  const elapsed = Date.now() - started;
+  assert.ok(elapsed >= 40 && elapsed < 1000, `elapsed ${elapsed}ms`);
+});
+
+test('safeEvent resolves quickly for a fast recorder', async () => {
+  const { safeEvent } = await modP;
+  const started = Date.now();
+  let called = false;
+  await safeEvent(async () => { called = true; }, { kind: 'webhook_failed' });
+  assert.ok(called);
+  assert.ok(Date.now() - started < 500);
 });

@@ -22,15 +22,21 @@ export const recordEvent: EventRecorder = async (e) => {
 };
 
 /** Records an event without ever throwing or waiting longer than WRITE_TIMEOUT_MS. No recorder given = no-op. */
-export async function safeEvent(rec: EventRecorder | undefined, e: EventInput): Promise<void> {
+export async function safeEvent(rec: EventRecorder | undefined, e: EventInput, timeoutMs: number = WRITE_TIMEOUT_MS): Promise<void> {
   if (!rec) return;
+  let timer: ReturnType<typeof setTimeout> | undefined;
   try {
     await Promise.race([
       rec(e),
-      new Promise<never>((_, rej) => setTimeout(() => rej(new Error('event log write timed out')), WRITE_TIMEOUT_MS).unref()),
+      new Promise<never>((_, rej) => {
+        timer = setTimeout(() => rej(new Error('event log write timed out')), timeoutMs);
+        timer.unref();
+      }),
     ]);
   } catch (err) {
     eventLogger.warn({ err: err instanceof Error ? err.message : String(err), kind: e.kind }, 'Could not record event (billing unaffected)');
+  } finally {
+    if (timer) clearTimeout(timer);
   }
 }
 
