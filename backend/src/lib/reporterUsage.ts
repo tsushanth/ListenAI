@@ -7,7 +7,7 @@ import { logger } from './logger.js';
 const reporterLogger = logger.child({ module: 'reporter-usage' });
 
 export interface HeadlineMetric { metric: string; value: number }
-export interface PushDeps { totals(): Promise<Totals | null>; post(day: string, items: HeadlineMetric[]): Promise<void>; now(): Date }
+export interface PushDeps { totals(now?: Date): Promise<Totals | null>; post(day: string, items: HeadlineMetric[]): Promise<void>; now(): Date }
 
 export function headlineMetrics(t: Totals): HeadlineMetric[] {
   return [
@@ -23,10 +23,13 @@ export function headlineMetrics(t: Totals): HeadlineMetric[] {
 
 export async function pushHeadlineMetrics(deps: PushDeps): Promise<{ pushed: number }> {
   try {
-    const t = await deps.totals();
+    // Read the clock once: totals() pages all users (seconds), so a push started just before 00:00 UTC must not
+    // label yesterday's totals with today's date. Both the usage window and the day label use this instant.
+    const at = deps.now();
+    const t = await deps.totals(at);
     if (!t) return { pushed: 0 };
     const items = headlineMetrics(t);
-    await deps.post(deps.now().toISOString().slice(0, 10), items);
+    await deps.post(at.toISOString().slice(0, 10), items);
     return { pushed: items.length };
   } catch (err) {
     reporterLogger.warn({ err: err instanceof Error ? err.message : String(err) }, 'Could not push headline metrics (non-critical)');
@@ -56,12 +59,10 @@ export function makePushDashboardDeps(base: DashboardDeps = defaultDashboardDeps
     listUsage: () => base.listUsage(now().toISOString().slice(0, 10)),
   };
 }
-const pushDashboardDeps = makePushDashboardDeps();
-
 export const defaultPushDeps: PushDeps = {
   now: () => new Date(),
-  async totals() {
-    const d = await buildDashboard(pushDashboardDeps, { range: '24h', excludeEmails: parseExcludeEmails(process.env.ADMIN_EXCLUDE_EMAILS) });
+  async totals(at = new Date()) {
+    const d = await buildDashboard(makePushDashboardDeps(defaultDashboardDeps, () => at), { range: '24h', excludeEmails: parseExcludeEmails(process.env.ADMIN_EXCLUDE_EMAILS) });
     return d.totals.ok ? d.totals.data : null;
   },
   async post(day, items) {

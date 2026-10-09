@@ -390,7 +390,7 @@ test('attention: failed usage reports for a real customer are flagged with a cou
     { kind: 'usage_report_failed', user_id: 'a', detail: 'x', created_at: '2026-10-08T11:00:00Z' },
   ] });
   const out = buildAttention(i, buildCustomers(i));
-  assert.ok(out.some((a: any) => a.text === 'a@example.test: usage report to Stripe failed 2x in the last 24h (that usage was not billed)'));
+  assert.ok(out.some((a: any) => a.text === 'a@example.test: usage report failed 2x in the last 24h (that usage may not have been billed)'));
 });
 
 test('attention: failures older than 24h or for excluded owners are ignored', async () => {
@@ -406,7 +406,7 @@ test('attention: webhook handler failures in the last 24h are flagged, and detai
   const { buildAttention, buildCustomers } = await modP;
   const i = await inputs({ events: [{ kind: 'webhook_failed', user_id: null, detail: 'checkout.session.completed: boom', created_at: '2026-10-08T09:00:00Z' }] });
   const out = buildAttention(i, buildCustomers(i));
-  assert.ok(out.some((a: any) => a.text === 'Stripe webhook handler failed 1x in the last 24h'));
+  assert.ok(out.some((a: any) => a.text === 'Stripe webhook handler failed 1x in the last 24h (Stripe retries, so this may be one event)'));
   assert.ok(!JSON.stringify(out).includes('boom'));
 });
 

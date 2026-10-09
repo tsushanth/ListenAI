@@ -147,10 +147,10 @@ export function buildAttention(i: DashboardInputs, customers: Customer[]): Atten
   }
   for (const [uid, n] of byUser) {
     const email = i.users.find((u) => u.id === uid)?.email ?? uid;
-    out.push({ level: 'warn', text: `${email}: usage report to Stripe failed ${n}x in the last 24h (that usage was not billed)` });
+    out.push({ level: 'warn', text: `${email}: usage report failed ${n}x in the last 24h (that usage may not have been billed)` });
   }
   const hooks = recent.filter((e) => e.kind === 'webhook_failed').length;
-  if (hooks > 0) out.push({ level: 'warn', text: `Stripe webhook handler failed ${hooks}x in the last 24h` });
+  if (hooks > 0) out.push({ level: 'warn', text: `Stripe webhook handler failed ${hooks}x in the last 24h (Stripe retries, so this may be one event)` });
   return out;
 }
 

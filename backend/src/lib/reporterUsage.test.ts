@@ -93,3 +93,26 @@ test('usageUrlFrom derives /v1/usage and never returns the report endpoint', asy
   assert.equal(usageUrlFrom('https://w.example/other'), 'https://app-failure-reporter.t-sushanth.workers.dev/v1/usage');
   assert.equal(usageUrlFrom(undefined), 'https://app-failure-reporter.t-sushanth.workers.dev/v1/usage');
 });
+
+test('clock is pinned once: a push that crosses midnight posts the day it started and asks usage for that day', async () => {
+  const { pushHeadlineMetrics, makePushDashboardDeps } = await modP;
+  const { buildDashboard } = await import('./adminDashboard.js');
+  const D = new Date('2026-10-09T23:59:59.900Z'), D1 = new Date('2026-10-10T00:00:02.000Z');
+  let n = 0;
+  const now = () => (n++ === 0 ? D : D1);
+  const asked: string[] = [];
+  let posted = '';
+  await pushHeadlineMetrics({
+    now,
+    totals: async (at?: Date) => {
+      const pinned = at ?? now();
+      const deps = makePushDashboardDeps(fakeBase(asked, []), () => pinned);
+      await new Promise((r) => setTimeout(r, 20)); // slow user paging
+      const d = await buildDashboard(deps, { range: '24h', excludeEmails: new Set() });
+      return d.totals.ok ? (d.totals as any).data : null;
+    },
+    post: async (day: string) => { posted = day; },
+  });
+  assert.equal(posted, '2026-10-09');
+  assert.deepEqual(asked, ['2026-10-09']);
+});

@@ -35,7 +35,7 @@ export default function AdminCharts({ series, usageSince }: { series: SeriesRow[
   return (
     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
       <Chart title="New accounts per day" kind="accounts" unit="new accounts" usageSince={usageSince} points={series.map((s) => ({ day: s.day, value: s.newAccounts }))} />
-      <Chart title="Paid characters per day" kind="usage" unit="chars" usageSince={usageSince} points={series.map((s) => ({ day: s.day, value: s.chars }))} />
+      <Chart title="Paid-tier characters per day (incl. comped)" kind="usage" unit="chars" usageSince={usageSince} points={series.map((s) => ({ day: s.day, value: s.chars }))} />
       <Chart title="STT minutes per day" kind="usage" unit="min" usageSince={usageSince} points={series.map((s) => ({ day: s.day, value: s.sttMinutes }))} />
     </div>
   )
