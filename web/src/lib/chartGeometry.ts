@@ -20,3 +20,12 @@ export function chartCaption(kind: 'accounts' | 'usage', usageSince: string | nu
   if (kind === 'accounts') return `${n} ${unit}`
   return usageSince === null ? 'No usage recorded yet' : `${n} ${unit} since ${usageSince}`
 }
+
+// x-extent of the leading run of days that precede the usage ledger, using the same bar width/gap math as barGeometry.
+export function ledgerBand(points: Point[], width: number, gap: number, usageSince: string | null): { x: number; w: number } | null {
+  let k = 0
+  while (k < points.length && isBeforeLedger(points[k]!.day, usageSince)) k++
+  if (k === 0) return null
+  const bw = Math.max(1, (width - gap * (points.length - 1)) / points.length)
+  return { x: 0, w: k * bw + (k - 1) * gap }
+}

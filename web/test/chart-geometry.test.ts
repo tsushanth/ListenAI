@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 
-const { barGeometry, chartCaption, isBeforeLedger } = await import('../src/lib/chartGeometry.ts')
+const { barGeometry, chartCaption, isBeforeLedger, ledgerBand } = await import('../src/lib/chartGeometry.ts')
 
 test('barGeometry scales to the maximum and keeps every bar inside the box', () => {
   const { bars, max } = barGeometry([{ day: 'a', value: 5 }, { day: 'b', value: 10 }, { day: 'c', value: 0 }], 100, 40, 4)
@@ -35,4 +35,25 @@ test('chartCaption words the empty ledger and the since-date honestly', () => {
   assert.equal(chartCaption('usage', null, 0, 'chars'), 'No usage recorded yet')
   assert.equal(chartCaption('usage', '2026-10-08', 1500, 'chars'), '1,500 chars since 2026-10-08')
   assert.equal(chartCaption('accounts', null, 3, 'new accounts'), '3 new accounts')
+})
+
+const days = ['2026-10-06', '2026-10-07', '2026-10-08', '2026-10-09'].map((day) => ({ day, value: 1 }))
+
+test('ledgerBand covers exactly the leading pre-ledger bars and lines up with bar edges', () => {
+  const band = ledgerBand(days, 100, 4, '2026-10-08')!
+  const { bars } = barGeometry(days, 100, 40, 4)
+  assert.equal(band.x, 0)
+  assert.ok(Math.abs(band.w - (bars[1]!.x + bars[1]!.w)) < 1e-9)
+  assert.ok(band.w < bars[2]!.x)
+})
+
+test('ledgerBand spans the full width when there is no ledger', () => {
+  const band = ledgerBand(days, 100, 4, null)!
+  assert.equal(band.x, 0)
+  assert.ok(Math.abs(band.w - 100) < 1e-9)
+})
+
+test('ledgerBand is null with no pre-ledger days or an empty list', () => {
+  assert.equal(ledgerBand(days, 100, 4, '2026-10-06'), null)
+  assert.equal(ledgerBand([], 100, 4, null), null)
 })
