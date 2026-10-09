@@ -525,7 +525,7 @@ export async function reportUsageToStripe(deps: UsageReportDeps = defaultUsageDe
   for (const f of freeChars) {
     try {
       if (!f?.owner || !(f.chars > 0)) continue;
-      await safeRecord(deps.recordUsage, { userId: f.owner, freeChars: f.chars });
+      void safeRecord(deps.recordUsage, { userId: f.owner, freeChars: f.chars });
       const target = await resolveMeterTarget(f.owner, deps.getBilling);
       if (target.kind === 'comped') continue;
       await deductFreeCredits(f.owner, f.chars, 'gateway free-tier usage', undefined, deps.consumeFreeCredits);
@@ -545,7 +545,7 @@ export async function reportUsageToStripe(deps: UsageReportDeps = defaultUsageDe
         billingLogger.warn({ gatewayKeyId }, 'Usage reported for a gateway key with no owning user record');
         continue;
       }
-      await safeRecord(deps.recordUsage, {
+      void safeRecord(deps.recordUsage, {
         userId: keyRecord.user_id, chars: entry.chars, piperChars: entry.piperChars, audioSeconds: entry.audioSeconds,
       });
       const target = await resolveMeterTarget(keyRecord.user_id, deps.getBilling);
@@ -694,7 +694,7 @@ export function billableSttSeconds(audioSeconds: number, minSeconds: number = co
 export async function reportSttUsage(userId: string, rawAudioSeconds: number): Promise<void> {
   const audioSeconds = billableSttSeconds(rawAudioSeconds);
   if (audioSeconds <= 0) return;
-  await safeRecord(recordUsageDaily, { userId, audioSeconds: rawAudioSeconds });
+  void safeRecord(recordUsageDaily, { userId, audioSeconds: rawAudioSeconds });
   const target = await resolveMeterTarget(userId);
   if (target.kind === 'comped') {
     billingLogger.debug({ userId }, 'Comped user; STT usage not reported to Stripe');

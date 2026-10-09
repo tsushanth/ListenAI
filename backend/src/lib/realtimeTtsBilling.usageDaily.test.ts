@@ -29,6 +29,7 @@ async function run(opts: {
     consumeFreeCredits: async () => 0,
     recordUsage: opts.recorder === null ? undefined : (opts.recorder ?? (async (d) => { recorded.push(d); })),
   });
+  await new Promise((r) => setImmediate(r)); // recording is fire-and-forget: let it settle before asserting
   return { events, recorded };
 }
 
@@ -54,6 +55,23 @@ test('a throwing recorder never stops billing', async () => {
     usage: [{ id: 'k1', chars: 500 }, { id: 'k2', chars: 700 }], owners: { k1: 'u1', k2: 'u2' }, active: { u1: true, u2: true },
     recorder: async () => { throw new Error('db down'); },
   });
+  assert.equal(events.length, 2);
+});
+
+test('a recorder that never settles does not stall billing (recording is fire-and-forget)', async () => {
+  const { reportUsageToStripe } = await modP;
+  const events: any[] = [];
+  const never = () => new Promise<void>(() => {});
+  const done = reportUsageToStripe({
+    drain: async () => ({ usage: [{ id: 'k1', chars: 500 }, { id: 'k2', chars: 700 }], freeChars: [{ owner: 'u3', chars: 5 }] }),
+    getKeyOwner: async (id) => ({ user_id: id === 'k1' ? 'u1' : 'u2' }),
+    getBilling: async (uid) => ({ user_id: uid, stripe_customer_id: `cus_${uid}`, active: true } as any),
+    createMeterEvent: async (p) => { events.push(p); return {}; },
+    consumeFreeCredits: async () => 0,
+    recordUsage: never,
+  });
+  const winner = await Promise.race([done.then(() => 'done'), new Promise((r) => setTimeout(() => r('stalled'), 500))]);
+  assert.equal(winner, 'done');
   assert.equal(events.length, 2);
 });
 
