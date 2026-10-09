@@ -1,7 +1,7 @@
 // Pushes today's headline API metrics to the app-failure-reporter Worker (POST /v1/usage), so its existing
 // App/API Usage table fills. Idempotent per app/day/metric on the Worker side, so repeating it is harmless.
 // Never throws: it runs on a timer next to billing and must not disturb it.
-import { buildDashboard, defaultDashboardDeps, parseExcludeEmails, type Totals } from './adminDashboard.js';
+import { buildDashboard, defaultDashboardDeps, parseExcludeEmails, type DashboardDeps, type Totals } from './adminDashboard.js';
 import { logger } from './logger.js';
 
 const reporterLogger = logger.child({ module: 'reporter-usage' });
@@ -34,13 +34,34 @@ export async function pushHeadlineMetrics(deps: PushDeps): Promise<{ pushed: num
   }
 }
 
-const REPORT_URL = process.env.FAILURE_REPORTER_URL || 'https://app-failure-reporter.t-sushanth.workers.dev/v1/report';
-const USAGE_URL = REPORT_URL.replace(/\/v1\/report\/?$/, '/v1/usage');
+const DEFAULT_REPORT_URL = 'https://app-failure-reporter.t-sushanth.workers.dev/v1/report';
+
+/** Usage endpoint derived from the report URL. A URL that does not end in /v1/report falls back to the default, so usage is never POSTed to the report endpoint. */
+export function usageUrlFrom(reportUrl: string | undefined): string {
+  const base = reportUrl && /\/v1\/report\/?$/.test(reportUrl) ? reportUrl : DEFAULT_REPORT_URL;
+  return base.replace(/\/v1\/report\/?$/, '/v1/usage');
+}
+const USAGE_URL = usageUrlFrom(process.env.FAILURE_REPORTER_URL);
+
+/** Dashboard deps trimmed to what today's totals need: no network probes (they would wake scale-to-zero workers), no STT/events/first-day queries, and a usage window of today (UTC) only. */
+export function makePushDashboardDeps(base: DashboardDeps = defaultDashboardDeps, now: () => Date = () => new Date()): DashboardDeps {
+  return {
+    ...base,
+    now,
+    startProbes: undefined,
+    probes: async () => [],
+    listRecentStt: async () => [],
+    listEvents: async () => [],
+    firstUsageDay: async () => null,
+    listUsage: () => base.listUsage(now().toISOString().slice(0, 10)),
+  };
+}
+const pushDashboardDeps = makePushDashboardDeps();
 
 export const defaultPushDeps: PushDeps = {
   now: () => new Date(),
   async totals() {
-    const d = await buildDashboard(defaultDashboardDeps, { range: '24h', excludeEmails: parseExcludeEmails(process.env.ADMIN_EXCLUDE_EMAILS) });
+    const d = await buildDashboard(pushDashboardDeps, { range: '24h', excludeEmails: parseExcludeEmails(process.env.ADMIN_EXCLUDE_EMAILS) });
     return d.totals.ok ? d.totals.data : null;
   },
   async post(day, items) {

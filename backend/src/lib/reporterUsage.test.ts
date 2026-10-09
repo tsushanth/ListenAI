@@ -44,3 +44,52 @@ test('a throwing post or totals never propagates', async () => {
   await pushHeadlineMetrics({ totals: async () => totals, post: async () => { throw new Error('worker down'); }, now: () => new Date() });
   await pushHeadlineMetrics({ totals: async () => { throw new Error('db down'); }, post: async () => {}, now: () => new Date() });
 });
+
+const NOW = new Date('2026-10-09T10:00:00Z');
+const row = (day: string, chars: number) => ({ day, user_id: 'u1', chars, piper_chars: 0, audio_seconds: 0, free_chars: 0, updated_at: `${day}T00:00:00Z` });
+
+function fakeBase(asked: string[], networkCalls: string[]): any {
+  const all = [row('2026-10-09', 100), row('2026-10-08', 7000)];
+  return {
+    now: () => NOW,
+    listUsers: async () => [{ id: 'u1', email: 'a@example.test', created_at: '2026-10-01T00:00:00Z' }],
+    listKeys: async () => [{ user_id: 'u1', gateway_key_id: 'k1', created_at: '2026-10-01T00:00:00Z', revoked_at: null }], listFreeCredits: async () => [], listBilling: async () => [],
+    // Honors sinceDay like the real query, so the test proves what window the push asks for.
+    listUsage: async (since: string) => { asked.push(since); return all.filter((r) => r.day >= since); },
+    listRecentStt: async () => { networkCalls.push('stt'); return []; },
+    listEvents: async () => { networkCalls.push('events'); return []; },
+    firstUsageDay: async () => { networkCalls.push('first'); return null; },
+    startProbes: async () => { networkCalls.push('probe'); return []; },
+    probes: async () => { networkCalls.push('probes'); return []; },
+  };
+}
+
+test('push deps: no probes, no extra queries, usage window is today (UTC) only', async () => {
+  const { makePushDashboardDeps } = await modP;
+  const { buildDashboard } = await import('./adminDashboard.js');
+  const asked: string[] = [], calls: string[] = [];
+  const deps = makePushDashboardDeps(fakeBase(asked, calls), () => NOW);
+  assert.equal(deps.startProbes, undefined);
+  assert.deepEqual(await deps.probes([], []), []);
+  const d = await buildDashboard(deps, { range: '24h', excludeEmails: new Set() });
+  assert.deepEqual(calls, []);
+  assert.deepEqual(asked, ['2026-10-09']);
+  assert.ok(d.totals.ok);
+  assert.equal((d.totals as any).data.kokoroChars, 100); // yesterday's 7000 is not counted
+});
+
+test('totals window is pinned to the clock: only today counts for 24h even when yesterday rows are present', async () => {
+  const { buildDashboard } = await import('./adminDashboard.js');
+  const asked: string[] = [];
+  const d = await buildDashboard(fakeBase(asked, []), { range: '24h', excludeEmails: new Set() });
+  assert.ok(d.totals.ok);
+  assert.equal((d.totals as any).data.kokoroChars, 100);
+});
+
+test('usageUrlFrom derives /v1/usage and never returns the report endpoint', async () => {
+  const { usageUrlFrom } = await modP;
+  assert.equal(usageUrlFrom('https://w.example/v1/report'), 'https://w.example/v1/usage');
+  assert.equal(usageUrlFrom('https://w.example/v1/report/'), 'https://w.example/v1/usage');
+  assert.equal(usageUrlFrom('https://w.example/other'), 'https://app-failure-reporter.t-sushanth.workers.dev/v1/usage');
+  assert.equal(usageUrlFrom(undefined), 'https://app-failure-reporter.t-sushanth.workers.dev/v1/usage');
+});
