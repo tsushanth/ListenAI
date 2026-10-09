@@ -148,3 +148,41 @@ test('section captures a thrown error without throwing', async () => {
   const bad = await section(async () => { throw new Error('nope'); });
   assert.deepEqual(bad, { ok: false, error: 'nope' });
 });
+
+test('excluded user never appears in attention (stt failures, spike, depleted credits) nor newAccounts', async () => {
+  const m = await modP;
+  const usage = [
+    ...Array.from({ length: 7 }, (_, d) => use('me', `2026-10-0${1 + d}`, { chars: 1000 })),
+    use('me', '2026-10-08', { chars: 600000 }),
+  ];
+  const stt = Array.from({ length: 3 }, (_, n) => ({ user_id: 'me', status: 'failed', created_at: `2026-10-08T11:${10 + n}:00Z` }));
+  const i = await inputs({
+    usage, stt,
+    keys: [key('a', 'k1'), key('b', 'k3'), key('me', 'k4', null, '2026-10-07T00:00:00Z')],
+    credits: [{ user_id: 'me', granted: 1, used: 1 }],
+    billing: [],
+  });
+  assert.deepEqual(m.buildAttention(i, m.buildCustomers(i)).map((x: any) => x.text).filter((t: string) => /me@|ME@|STT/i.test(t)), []);
+  assert.equal(m.buildTotals(i).newAccounts, 0);
+  assert.equal(m.buildSeries(i).reduce((s: number, r: any) => s + r.newAccounts, 0), 0);
+});
+
+test('STT failures from non-excluded users without a key still count', async () => {
+  const m = await modP;
+  const stt = Array.from({ length: 3 }, (_, n) => ({ user_id: 'c', status: 'failed', created_at: `2026-10-08T11:${10 + n}:00Z` }));
+  const i = await inputs({ stt, credits: [] });
+  assert.ok(m.buildAttention(i, m.buildCustomers(i)).some((x: any) => x.text === 'Batch STT: 3 failed requests in the last hour'));
+});
+
+test('duplicate billing rows do not double count paid customers', async () => {
+  const m = await modP;
+  const i = await inputs({ billing: [{ user_id: 'a', active: true }, { user_id: 'a', active: true }] });
+  assert.equal(m.buildTotals(i).paidCustomers, 1);
+  assert.equal(m.buildFunnel(i)[3]!.count, 1);
+});
+
+test('section survives a thrown null', async () => {
+  const { section } = await modP;
+  const r = await section(async () => { throw null; });
+  assert.equal(r.ok, false);
+});

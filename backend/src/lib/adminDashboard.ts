@@ -57,7 +57,7 @@ export function buildTotals(i: DashboardInputs): Totals {
     freeCharsUsed: sum((u) => u.free_chars),
     creditsGranted: credits.reduce((s, c) => s + c.granted, 0),
     creditsUsed: credits.reduce((s, c) => s + c.used, 0),
-    paidCustomers: i.billing.filter((b) => b.active && !b.comped && acc.has(b.user_id)).length,
+    paidCustomers: new Set(i.billing.filter((b) => b.active && !b.comped && acc.has(b.user_id)).map((b) => b.user_id)).size,
     billedUnits: sum((u) => billableChars({ chars: u.chars, piperChars: u.piper_chars, audioSeconds: u.audio_seconds })),
   };
 }
@@ -72,7 +72,7 @@ export function buildFunnel(i: DashboardInputs): FunnelStage[] {
     { stage: 'Created a key', count: acc.size },
     { stage: 'Made a first request', count: withUse.size },
     { stage: 'Used up free credits', count: [...acc].filter((id) => usedUp(credits.get(id))).length },
-    { stage: 'Added a card', count: i.billing.filter((b) => b.active && !b.comped && acc.has(b.user_id)).length },
+    { stage: 'Added a card', count: new Set(i.billing.filter((b) => b.active && !b.comped && acc.has(b.user_id)).map((b) => b.user_id)).size },
   ];
 }
 
@@ -119,7 +119,8 @@ export function buildAttention(i: DashboardInputs, customers: Customer[]): Atten
     if (todayChars >= 100_000 && todayChars >= 5 * priorAvg) out.push({ level: 'warn', text: `${c.email ?? c.userId}: usage spike` });
   }
   const hourAgo = new Date(i.now.getTime() - 3_600_000).toISOString();
-  const failed = i.stt.filter((s) => s.status === 'failed' && s.created_at >= hourAgo).length;
+  const ex = excludedUserIds(i.users, i.excluded);
+  const failed = i.stt.filter((s) => s.status === 'failed' && s.created_at >= hourAgo && !ex.has(s.user_id)).length;
   if (failed >= 3) out.push({ level: 'warn', text: `Batch STT: ${failed} failed requests in the last hour` });
   return out;
 }
@@ -155,5 +156,5 @@ export async function fetchAll<T>(
 }
 
 export async function section<T>(fn: () => Promise<T> | T): Promise<Section<T>> {
-  try { return { ok: true, data: await fn() }; } catch (e) { return { ok: false, error: (e as Error).message || 'failed' }; }
+  try { return { ok: true, data: await fn() }; } catch (e) { return { ok: false, error: (e instanceof Error ? e.message : String(e)) || 'failed' }; }
 }
