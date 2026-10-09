@@ -48,7 +48,7 @@ export default function AdminDashboard({ token, scopes, renderTop }: { token?: s
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
         <h1 style={{ fontSize: 18, margin: 0 }}>Health, issues &amp; usage</h1>
         <div style={{ display: 'flex', gap: 8 }}>
-          <select value={hours} onChange={(e) => setHours(Number(e.target.value))} style={{ padding: 6 }}>
+          <select value={hours} onChange={(e) => setHours(Number(e.target.value))} style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid #8886', background: 'transparent', color: 'inherit', colorScheme: 'light dark' }}>
             <option value={1}>1 hour</option><option value={24}>24 hours</option><option value={168}>7 days</option><option value={720}>30 days</option>
           </select>
           <button onClick={load} style={{ padding: '6px 10px' }}>Refresh</button>
