@@ -829,7 +829,7 @@ git commit -m "feat: push daily headline API metrics to the reporter Worker; pru
 **Files:**
 - Create: `docs/superpowers/notes/2026-10-09-stripe-backfill-gate.md`
 
-**Why this is a gate, not a build:** a backfill only helps if customers were already metered before the usage ledger began. As of this plan there are two accounts with billing rows and zero paying customers, so there may be nothing to backfill. Build nothing speculative.
+**Why this is a gate, not a build:** a backfill only helps if customers were already metered before the usage ledger began. Check first whether any such history exists, and build nothing speculative.
 
 - [ ] **Step 1: Count the paying history that could exist** (read-only SQL, Supabase SQL editor or the MCP `execute_sql` on project ListenAI):
 
@@ -839,7 +839,7 @@ select count(*) filter (where active and not coalesce(comped, false)) as paying_
 from realtimetts_billing;
 ```
 
-- [ ] **Step 2: Decide.** If `paying_now` is 0 and no billing row was ever a paying customer, write the note: "No metered history exists, backfill not applicable; revisit when the first customer has paid usage before the ledger start date." Commit the note and stop; Task 6 is done.
+- [ ] **Step 2: Decide.** If `paying_now` is 0 and no billing row was ever a paying customer, write a short note that there is nothing to backfill and when to revisit (without publishing counts). Commit the note and stop; Task 6 is done.
 
 - [ ] **Step 3 (only if Step 2 found paying customers):** run one read-only check of the Stripe meter event summaries from the backend machine (it already holds the Stripe key), using the SDK: `stripe.billing.meters.list()` to find the character meter, then `stripe.billing.meters.listEventSummaries(meterId, { customer, start_time, end_time, value_grouping_window: 'day' })` for one real customer id. Record in the note whether each summary row carries `start_time`, `end_time` and `aggregated_value`. Do not write anything to Stripe or the database.
 
