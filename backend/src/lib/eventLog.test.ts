@@ -56,3 +56,37 @@ test('safeEvent resolves quickly for a fast recorder', async () => {
   assert.ok(called);
   assert.ok(Date.now() - started < 500);
 });
+
+async function withDeleteSpy(result: () => { error: { message: string } | null }) {
+  const { supabase } = await import('./supabaseClient.js');
+  const sb = supabase as any;
+  const wrapped = sb.from;
+  const calls: any[] = [];
+  sb.from = (t: string) => {
+    if (t !== 'realtimetts_event_log') return wrapped(t);
+    return { delete: () => ({ lt: (col: string, val: string) => { calls.push({ col, val }); return Promise.resolve(result()); } }) };
+  };
+  return { calls, restore: () => { sb.from = wrapped; } };
+}
+
+test('pruneOldEvents deletes rows older than exactly 30 days before now', async () => {
+  const spy = await withDeleteSpy(() => ({ error: null }));
+  try {
+    const { pruneOldEvents } = await modP;
+    await pruneOldEvents(new Date('2026-10-09T12:00:00.000Z'));
+    assert.deepEqual(spy.calls, [{ col: 'created_at', val: '2026-09-09T12:00:00.000Z' }]);
+  } finally { spy.restore(); }
+});
+
+test('pruneOldEvents never throws when the delete errors or throws', async () => {
+  const errSpy = await withDeleteSpy(() => ({ error: { message: 'db down' } }));
+  try {
+    const { pruneOldEvents } = await modP;
+    await pruneOldEvents(new Date('2026-10-09T12:00:00.000Z'));
+  } finally { errSpy.restore(); }
+  const throwSpy = await withDeleteSpy(() => { throw new Error('boom'); });
+  try {
+    const { pruneOldEvents } = await modP;
+    await pruneOldEvents(new Date('2026-10-09T12:00:00.000Z'));
+  } finally { throwSpy.restore(); }
+});

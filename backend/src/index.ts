@@ -54,6 +54,8 @@ import { startMusicJobWorker, stopMusicJobWorker } from './workers/musicJobWorke
 import { checkPubSubHealth } from './lib/pubsub.js';
 import { initRolloutFromEnv } from './lib/rollout.js';
 import { reportUsageToStripe } from './lib/realtimeTtsBilling.js';
+import { pushHeadlineMetrics, defaultPushDeps } from './lib/reporterUsage.js';
+import { pruneOldEvents } from './lib/eventLog.js';
 
 // Initialize rollout configuration from environment
 initRolloutFromEnv();
@@ -389,6 +391,18 @@ const server = app.listen(PORT, () => {
       logger.warn({ err }, 'Periodic realtime-tts usage report failed (non-critical)');
     });
   }, FIVE_MINUTES_MS);
+
+  // Daily headline metrics to the reporter Worker + log retention. Idempotent, non-critical, never in tests.
+  // Both calls swallow their own errors; the catch below is a belt-and-braces guard so a timer can never crash the process.
+  const THIRTY_MINUTES_MS = 30 * 60 * 1000;
+  if (process.env.NODE_ENV !== 'test' && process.env.FAILURE_REPORTER_KEY) {
+    const job = () => {
+      void pushHeadlineMetrics(defaultPushDeps).catch(() => {});
+      void pruneOldEvents().catch(() => {});
+    };
+    setTimeout(job, 60_000).unref();
+    setInterval(job, THIRTY_MINUTES_MS).unref();
+  }
 
   // Pull-based worker disabled — jobs are now delivered via Pub/Sub push
   // to /api/tts/worker/push. Set TTS_WORKER_ENABLED=true only for local dev.
