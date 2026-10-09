@@ -18,7 +18,7 @@ const h2: React.CSSProperties = { fontSize: 13, textTransform: 'uppercase', lett
 
 // token: for sites whose session is a bearer token held in the browser (sent as Authorization). Cookie-session sites omit it.
 // scopes: optional tabs that split one app's view (e.g. ReadAloud app vs API); value is sent as ?scope=.
-export default function AdminDashboard({ token, scopes }: { token?: string | null; scopes?: { label: string; value: string }[] } = {}) {
+export default function AdminDashboard({ token, scopes, renderTop }: { token?: string | null; scopes?: { label: string; value: string }[]; renderTop?: (scope: string, hours: number) => React.ReactNode } = {}) {
   const [hours, setHours] = useState(24);
   const [scope, setScope] = useState(scopes?.[0]?.value ?? '');
   const [d, setD] = useState<Overview | null>(null);
@@ -61,6 +61,7 @@ export default function AdminDashboard({ token, scopes }: { token?: string | nul
           ))}
         </div>
       )}
+      {renderTop?.(scope, hours)}
       {err && <p style={{ color: '#cf222e' }}>Could not load: {err}</p>}
       {!d && !err && <p style={{ opacity: 0.6 }}>Loading...</p>}
       {d && (<>

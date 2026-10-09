@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabaseClient'
 import AdminDashboard from '@/components/AdminDashboard'
+import AdminBusiness from '@/components/AdminBusiness'
 
 // The gate is /api/admin/overview (404 unless the token is the allowlisted Google account).
 // Sign-in happens on /developers, which is already on the Supabase redirect allow list;
@@ -29,6 +30,7 @@ export default function AdminPage() {
     <AdminDashboard
       token={token}
       scopes={[{ label: 'App', value: 'app' }, { label: 'API', value: 'api' }]}
+      renderTop={(scope, hours) => (scope === 'api' ? <AdminBusiness token={token} hours={hours} /> : null)}
     />
   )
 }
