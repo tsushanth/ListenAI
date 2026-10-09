@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server'
 import { forwardAdminDashboard } from '@/lib/adminProxy'
 
 export const dynamic = 'force-dynamic'
-const BACKEND = process.env.NEXT_PUBLIC_API_URL || 'https://listenai-backend.fly.dev'
+// Deliberately not NEXT_PUBLIC_API_URL: that secret still points at the retired Cloud Run backend (404 on everything).
+const BACKEND = process.env.ADMIN_BACKEND_URL || 'https://listenai-backend.fly.dev'
 
 export async function GET(request: Request) {
   const r = await forwardAdminDashboard({
