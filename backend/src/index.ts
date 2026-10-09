@@ -23,6 +23,7 @@ import { subscriptionRouter } from './routes/subscription.js';
 import { latencyRouter } from './routes/latency.js';
 import { aiRouter } from './routes/ai.js';
 import { adminRouter } from './routes/admin.js';
+import { adminDashboardRouter } from './routes/adminDashboard.js';
 import { workerPushRouter } from './routes/workerPush.js';
 import { clonedVoicesRouter } from './routes/clonedVoices.js';
 import { storiesRouter } from './routes/stories.js';
@@ -236,6 +237,9 @@ app.use('/api/ai', requireAuth, aiRouter);
 
 // Voice-clone abuse takedown (x-admin-key, no built-in default key). Mounted before the generic admin router.
 app.use('/api/admin/voice-clones', voiceCloneAdminRouter);
+
+// Admin dashboard: verifies the Supabase bearer itself (404 for everyone but the allowlisted admin). Must come before adminRouter.
+app.use('/api/admin/dashboard', adminDashboardRouter);
 
 // Admin routes (requires admin API key) - for rollout control and metrics
 app.use('/api/admin', adminRouter);
