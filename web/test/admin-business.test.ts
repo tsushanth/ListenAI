@@ -66,3 +66,20 @@ test('sortCustomers sorts by key and direction, nulls last, without mutating', (
   assert.deepEqual(m.sortCustomers(rows, 'lastRequest', 'desc').map((r: any) => r.email), ['a', 'b'])
   assert.equal(JSON.stringify(rows), copy)
 })
+
+test('funnelPercent clamps pct to 100', () => {
+  const r = m.funnelPercent([{ stage: 'a', count: 10 }, { stage: 'b', count: 25 }])
+  assert.equal(r[1].pct, 100)
+})
+
+test('isDashboardData validates shape', () => {
+  const sec = { ok: true, data: [] }
+  const valid = { generatedAt: '2026-10-08T00:00:00Z', range: '7d', usageSince: null, attention: sec, health: sec, totals: { ok: false, error: 'x' }, funnel: sec, customers: sec, series: sec }
+  assert.equal(m.isDashboardData(valid), true)
+  assert.equal(m.isDashboardData({ error: 'x' }), false)
+  assert.equal(m.isDashboardData(null), false)
+  const { series, ...missing } = valid
+  assert.equal(m.isDashboardData(missing), false)
+  assert.equal(m.isDashboardData({ ...valid, range: '1y' }), false)
+  assert.equal(m.isDashboardData({ ...valid, generatedAt: 5 }), false)
+})

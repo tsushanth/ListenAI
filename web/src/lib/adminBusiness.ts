@@ -46,7 +46,7 @@ export function statusTone(s: CustomerStatus | HealthStatus): 'good' | 'warn' | 
 }
 export function funnelPercent(stages: FunnelStage[]): Array<FunnelStage & { pct: number }> {
   const first = stages[0]?.count ?? 0
-  return stages.map((s) => ({ ...s, pct: first > 0 ? Math.round((s.count / first) * 100) : 0 }))
+  return stages.map((s) => ({ ...s, pct: first > 0 ? Math.min(100, Math.round((s.count / first) * 100)) : 0 }))
 }
 export function sortCustomers(rows: Customer[], key: keyof Customer, dir: 'asc' | 'desc'): Customer[] {
   const sign = dir === 'asc' ? 1 : -1
@@ -56,5 +56,15 @@ export function sortCustomers(rows: Customer[], key: keyof Customer, dir: 'asc' 
     if (x == null) return 1
     if (y == null) return -1
     return (x < y ? -1 : x > y ? 1 : 0) * sign
+  })
+}
+export function isDashboardData(x: unknown): x is DashboardData {
+  if (typeof x !== 'object' || x === null) return false
+  const o = x as Record<string, unknown>
+  if (o.range !== '24h' && o.range !== '7d' && o.range !== '30d') return false
+  if (typeof o.generatedAt !== 'string') return false
+  return ['attention', 'health', 'totals', 'funnel', 'customers', 'series'].every((k) => {
+    const v = o[k]
+    return typeof v === 'object' && v !== null && typeof (v as Record<string, unknown>).ok === 'boolean'
   })
 }

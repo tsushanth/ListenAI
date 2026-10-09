@@ -1,8 +1,8 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
-  fmtAgo, fmtChars, fmtMinutes, fmtNumber, funnelPercent, sortCustomers, statusTone,
+  fmtAgo, fmtChars, fmtMinutes, fmtNumber, funnelPercent, isDashboardData, sortCustomers, statusTone,
   type Customer, type DashboardData, type Section,
 } from '@/lib/adminBusiness'
 
@@ -28,20 +28,25 @@ function Card({ label, value, hint }: { label: string; value: string; hint?: str
 
 export default function AdminBusiness({ token, hours }: { token: string; hours: number }) {
   const range = hours <= 24 ? '24h' : hours <= 168 ? '7d' : '30d'
-  const rangeLabel = range === '24h' ? 'today (UTC)' : range
   const [d, setD] = useState<DashboardData | null>(null)
   const [err, setErr] = useState('')
   const [sort, setSort] = useState<{ key: keyof Customer; dir: 'asc' | 'desc' }>({ key: 'lastRequest', dir: 'desc' })
 
-  const load = useCallback(async () => {
+  useEffect(() => {
+    let cancelled = false
+    setD(null)
     setErr('')
-    try {
-      const r = await fetch(`/api/admin/dashboard?range=${range}`, { cache: 'no-store', headers: { Authorization: `Bearer ${token}` } })
-      if (!r.ok) throw new Error(r.status === 404 ? 'Not found (this account is not an admin)' : `HTTP ${r.status}`) // never read or render the body of a non-200
-      setD(await r.json())
-    } catch (e: any) { setErr(e.message || 'failed to load') }
+    ;(async () => {
+      try {
+        const r = await fetch(`/api/admin/dashboard?range=${range}`, { cache: 'no-store', headers: { Authorization: `Bearer ${token}` } })
+        if (!r.ok) throw new Error(r.status === 404 ? 'Not found (this account is not an admin)' : `HTTP ${r.status}`) // never read or render the body of a non-200
+        const j: unknown = await r.json()
+        if (!isDashboardData(j)) throw new Error('Unexpected response')
+        if (!cancelled) setD(j)
+      } catch (e: any) { if (!cancelled) setErr(e.message || 'failed to load') }
+    })()
+    return () => { cancelled = true }
   }, [range, token])
-  useEffect(() => { load() }, [load])
 
   const customers = useMemo(() => (d?.customers.ok ? sortCustomers(d.customers.data, sort.key, sort.dir) : []), [d, sort])
   const th_ = (key: keyof Customer, label: string) => (
@@ -50,6 +55,7 @@ export default function AdminBusiness({ token, hours }: { token: string; hours: 
 
   if (err) return <p style={{ ...box, marginTop: 16 }}>Business view: {err}</p>
   if (!d) return <p style={{ marginTop: 16, opacity: 0.6 }}>Loading business view…</p>
+  const rangeLabel = d.range === '24h' ? 'today (UTC)' : d.range
   const t = d.totals.ok ? d.totals.data : null
 
   return (
