@@ -13,6 +13,7 @@ export interface Kit {
   stripeCalls: Array<{ name: string; args: unknown[] }>;
   gatewayCalls: Array<{ id: string; enabled: boolean }>;
   stripeReturns: Record<string, any>;
+  stripeThrows: Record<string, Error>;
   freeCredits: Record<string, { granted: number; used: number }>;
   rpcError: boolean;
   usageRows: Array<Row>;
@@ -30,6 +31,7 @@ export async function installKit(): Promise<Kit> {
     stripeCalls: [],
     gatewayCalls: [],
     stripeReturns: {},
+    stripeThrows: {},
     freeCredits: {},
     rpcError: false,
     usageRows: [],
@@ -109,6 +111,7 @@ export async function installKit(): Promise<Kit> {
     const original = proto[method];
     proto[method] = async (...args: unknown[]) => {
       kit.stripeCalls.push({ name, args });
+      if (kit.stripeThrows[name]) throw kit.stripeThrows[name];
       const r = kit.stripeReturns[name] ?? dflt;
       return typeof r === 'function' ? r(...args) : r;
     };
@@ -139,6 +142,7 @@ export async function installKit(): Promise<Kit> {
   }) as typeof fetch;
 
   kit.restore = () => {
+    kit.stripeThrows = {};
     sb.from = originalFrom;
     sb.rpc = originalRpc;
     restores.forEach((r) => r());

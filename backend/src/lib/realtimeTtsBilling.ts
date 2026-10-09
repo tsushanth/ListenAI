@@ -17,6 +17,7 @@ import { logger } from './logger.js';
 import { config } from './config.js';
 import { drainGatewayUsage, normalizeGatewayDrain } from './ttsGatewayClient.js';
 import { recordUsageDaily, safeRecord, type UsageRecorder } from './usageDaily.js';
+import { safeEvent, recordEvent, type EventRecorder } from './eventLog.js';
 
 const billingLogger = logger.child({ module: 'realtimeTtsBilling' });
 
@@ -484,6 +485,7 @@ export interface UsageReportDeps {
   createMeterEvent: (params: Stripe.Billing.MeterEventCreateParams) => Promise<unknown>;
   consumeFreeCredits: ConsumeFree;
   recordUsage?: UsageRecorder;
+  recordEvent?: EventRecorder;
 }
 
 const defaultUsageDeps: UsageReportDeps = {
@@ -500,6 +502,7 @@ const defaultUsageDeps: UsageReportDeps = {
   createMeterEvent: (params) => stripe.billing.meterEvents.create(params),
   consumeFreeCredits,
   recordUsage: recordUsageDaily,
+  recordEvent,
 };
 
 // Billed value for one drained gateway entry, in Kokoro-equivalent characters:
@@ -539,12 +542,14 @@ export async function reportUsageToStripe(deps: UsageReportDeps = defaultUsageDe
   for (const entry of usage) {
     const gatewayKeyId = entry.id;
     const chars = billableChars(entry);
+    let ownerId: string | undefined;
     try {
       const keyRecord = await deps.getKeyOwner(gatewayKeyId);
       if (!keyRecord) {
         billingLogger.warn({ gatewayKeyId }, 'Usage reported for a gateway key with no owning user record');
         continue;
       }
+      ownerId = keyRecord.user_id;
       void safeRecord(deps.recordUsage, {
         userId: keyRecord.user_id, chars: entry.chars, piperChars: entry.piperChars, audioSeconds: entry.audioSeconds,
       });
@@ -570,6 +575,7 @@ export async function reportUsageToStripe(deps: UsageReportDeps = defaultUsageDe
       });
     } catch (err) {
       billingLogger.error({ err, gatewayKeyId, chars }, 'Failed to report usage to Stripe');
+      void safeEvent(deps.recordEvent, { kind: 'usage_report_failed', userId: ownerId, detail: err instanceof Error ? err.message : String(err) });
     }
   }
 }
@@ -719,6 +725,7 @@ export async function reportSttUsage(userId: string, rawAudioSeconds: number): P
     billingLogger.debug({ userId, rawAudioSeconds, audioSeconds, chars }, 'STT usage reported');
   } catch (err) {
     billingLogger.error({ err, userId, audioSeconds }, 'Failed to report STT usage');
+    void safeEvent(recordEvent, { kind: 'usage_report_failed', userId, detail: err instanceof Error ? err.message : String(err) });
   }
 }
 

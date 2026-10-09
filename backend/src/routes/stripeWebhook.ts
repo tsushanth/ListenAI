@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import Stripe from 'stripe';
 import { logger } from '../lib/logger.js';
 import { supabase } from '../lib/supabaseClient.js';
+import { safeEvent, recordEvent } from '../lib/eventLog.js';
 import { activateBillingFromCheckout, deactivateBillingForSubscription, syncBillingFromSubscription } from '../lib/realtimeTtsBilling.js';
 
 // realtime-tts checkouts/subscriptions are tagged with this metadata so they
@@ -102,6 +103,7 @@ router.post('/stripe', async (req: Request, res: Response): Promise<void> => {
     res.json({ received: true });
   } catch (error) {
     logger.error({ error, eventType: event.type }, 'Webhook handler error');
+    void safeEvent(recordEvent, { kind: 'webhook_failed', detail: `${event.type}: ${error instanceof Error ? error.message : String(error)}` });
     res.status(500).json({ error: 'Webhook handler failed' });
   }
 });
