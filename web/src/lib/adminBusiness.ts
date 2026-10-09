@@ -16,18 +16,24 @@ export interface DashboardData {
 export const fmtNumber = (n: number): string => (Number.isFinite(n) ? Math.round(n).toLocaleString('en-US') : '—')
 export function fmtChars(n: number): string {
   if (!Number.isFinite(n)) return '—'
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1).replace(/\.0$/, '')}M`
-  if (n >= 1_000) return `${Math.round(n / 1_000)}k`
-  return String(Math.round(n))
+  const abs = Math.abs(n)
+  const sign = n < 0 ? '-' : ''
+  const rounded1k = Math.round(abs / 1_000)
+  if (rounded1k >= 1_000) return `${sign}${(abs / 1_000_000).toFixed(1).replace(/\.0$/, '')}M`
+  if (abs >= 1_000) return `${sign}${rounded1k}k`
+  return `${sign}${String(Math.round(abs))}`
 }
 export function fmtMinutes(min: number): string {
   if (!Number.isFinite(min)) return '—'
-  if (min >= 120) return `${(min / 60).toFixed(1)} h`
-  return `${Math.round(min * 10) / 10} min`
+  const rounded = Math.round(min * 10) / 10
+  if (rounded >= 120) return `${(min / 60).toFixed(1).replace(/\.0$/, '')} h`
+  return `${rounded} min`
 }
 export function fmtAgo(iso: string | null, now: number = Date.now()): string {
   if (!iso) return 'never'
-  const s = Math.max(0, (now - Date.parse(iso)) / 1000)
+  const ms = Date.parse(iso)
+  if (!Number.isFinite(ms)) return '—'
+  const s = Math.max(0, (now - ms) / 1000)
   if (s < 90) return `${Math.round(s)}s ago`
   if (s < 5400) return `${Math.round(s / 60)}m ago`
   if (s < 172800) return `${Math.round(s / 3600)}h ago`

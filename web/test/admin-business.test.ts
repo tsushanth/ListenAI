@@ -14,6 +14,18 @@ test('fmtNumber / fmtChars / fmtMinutes', () => {
   assert.equal(m.fmtMinutes(0), '0 min')
 })
 
+test('fmtChars handles boundary and edge cases', () => {
+  assert.equal(m.fmtChars(999_500), '1M')
+  assert.equal(m.fmtChars(-340_000), '-340k')
+  assert.equal(m.fmtChars(-950), '-950')
+  assert.equal(m.fmtChars(NaN), '—')
+})
+
+test('fmtMinutes handles rounding boundary at 120', () => {
+  assert.equal(m.fmtMinutes(119.96), '2 h')
+  assert.equal(m.fmtMinutes(119.4), '119.4 min')
+})
+
 test('fmtAgo handles null and units', () => {
   const now = Date.parse('2026-10-08T12:00:00Z')
   assert.equal(m.fmtAgo(null, now), 'never')
@@ -21,6 +33,12 @@ test('fmtAgo handles null and units', () => {
   assert.equal(m.fmtAgo('2026-10-08T11:50:00Z', now), '10m ago')
   assert.equal(m.fmtAgo('2026-10-08T07:00:00Z', now), '5h ago')
   assert.equal(m.fmtAgo('2026-10-05T12:00:00Z', now), '3d ago')
+})
+
+test('fmtAgo handles invalid and future timestamps', () => {
+  const now = Date.parse('2026-10-08T12:00:00Z')
+  assert.equal(m.fmtAgo('not-a-date', now), '—')
+  assert.equal(m.fmtAgo('2026-10-09T12:00:00Z', now), '0s ago')
 })
 
 test('statusTone maps customer and health states', () => {
