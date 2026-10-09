@@ -186,3 +186,43 @@ test('section survives a thrown null', async () => {
   const r = await section(async () => { throw null; });
   assert.equal(r.ok, false);
 });
+
+test('buildDashboard returns every section and labels usage history start', async () => {
+  const m = await modP; const base = await inputs();
+  const deps = {
+    now: () => NOW, listUsers: async () => base.users, listKeys: async () => base.keys, listUsage: async () => base.usage,
+    listFreeCredits: async () => base.credits, listBilling: async () => base.billing, listRecentStt: async () => [],
+    probes: async () => [{ name: 'gateway', status: 'up', latencyMs: 40, checkedAt: NOW.toISOString() }],
+  };
+  const r = await m.buildDashboard(deps as any, { range: '7d', excludeEmails: base.excluded });
+  for (const k of ['attention', 'health', 'totals', 'funnel', 'customers', 'series']) assert.equal((r as any)[k].ok, true, k);
+  assert.equal(r.usageSince, '2026-10-07');
+  assert.equal((r.totals as any).data.accounts, 2);
+});
+
+test('one failing source blanks only the sections that need it', async () => {
+  const m = await modP; const base = await inputs();
+  const deps = {
+    now: () => NOW, listUsers: async () => base.users, listKeys: async () => base.keys,
+    listUsage: async () => { throw new Error('usage table missing'); },
+    listFreeCredits: async () => base.credits, listBilling: async () => base.billing, listRecentStt: async () => [],
+    probes: async () => [],
+  };
+  const r = await m.buildDashboard(deps as any, { range: '7d', excludeEmails: base.excluded });
+  assert.equal(r.totals.ok, false);
+  assert.match((r.totals as any).error, /usage table missing/);
+  assert.equal(r.health.ok, true);       // health does not depend on the usage table
+});
+
+test('a failing probe set does not take down the other sections', async () => {
+  const m = await modP; const base = await inputs();
+  const deps = {
+    now: () => NOW, listUsers: async () => base.users, listKeys: async () => base.keys, listUsage: async () => base.usage,
+    listFreeCredits: async () => base.credits, listBilling: async () => base.billing, listRecentStt: async () => [],
+    probes: async () => { throw new Error('probe boom'); },
+  };
+  const r = await m.buildDashboard(deps as any, { range: '24h', excludeEmails: base.excluded });
+  assert.equal(r.health.ok, false);
+  assert.equal(r.customers.ok, true);
+  assert.equal(r.totals.ok, true);
+});
