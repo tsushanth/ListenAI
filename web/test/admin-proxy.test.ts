@@ -35,3 +35,8 @@ test('a network error is a 502 with a generic message (no internals leaked)', as
   const r = await forwardAdminDashboard({ backendBase: 'https://b.example.test', authorization: 'Bearer abc', range: '7d', fetchImpl: (async () => { throw new Error('ECONNREFUSED 10.0.0.1') }) as any })
   assert.equal(r.status, 502); assert.doesNotMatch(r.body, /10\.0\.0\.1/)
 })
+
+test('the proxy timeout leaves room for the backend health probes plus a slow user listing (20 s)', async () => {
+  const { ADMIN_PROXY_TIMEOUT_MS } = await import('../src/lib/adminProxy.ts')
+  assert.equal(ADMIN_PROXY_TIMEOUT_MS, 20000)
+})

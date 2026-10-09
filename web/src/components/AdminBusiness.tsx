@@ -82,9 +82,10 @@ export default function AdminBusiness({ token, hours }: { token: string; hours: 
       {!d.totals.ok || !t ? (d.totals.ok ? null : <Failed what="totals" s={d.totals} />) : (
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <Card label="API accounts" value={fmtNumber(t.accounts)} hint={`${fmtNumber(t.newAccounts)} new · ${fmtNumber(t.activeKeys)} active keys`} />
-          <Card label="Kokoro characters" value={fmtChars(t.kokoroChars)} />
-          <Card label="Piper characters" value={fmtChars(t.piperChars)} />
-          <Card label="Batch STT" value={fmtMinutes(t.sttMinutes)} />
+          <Card label="Paid Kokoro characters" value={fmtChars(t.kokoroChars)} />
+          <Card label="Paid Piper characters" value={fmtChars(t.piperChars)} />
+          <Card label="Free-tier characters" value={fmtChars(t.freeCharsUsed)} />
+          <Card label="STT audio (batch + API)" value={fmtMinutes(t.sttMinutes)} />
           <Card label="Free credits used" value={`${fmtNumber(t.creditsUsed)} / ${fmtNumber(t.creditsGranted)}`} hint={`${fmtChars(t.freeCharsUsed)} chars this range`} />
           <Card label="Paid customers" value={fmtNumber(t.paidCustomers)} hint={`${fmtChars(t.billedUnits)} billed units`} />
         </div>
@@ -104,10 +105,11 @@ export default function AdminBusiness({ token, hours }: { token: string; hours: 
       )}
 
       <h2 style={h2}>Customers</h2>
+      <p style={{ opacity: 0.6, fontSize: 12, margin: '0 0 8px' }}>Request dates come from the usage ledger, which starts at the date shown above; earlier activity shows as —</p>
       {!d.customers.ok ? <Failed what="customers" s={d.customers} /> : (
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-            <thead><tr>{th_('email', 'Email')}{th_('signedUp', 'Signed up')}{th_('activeKeys', 'Keys')}{th_('firstRequest', 'First request')}{th_('lastRequest', 'Last request')}{th_('chars7d', 'Chars 7d')}{th_('sttMinutes7d', 'STT 7d')}{th_('creditsLeft', 'Credits left')}{th_('status', 'Status')}</tr></thead>
+            <thead><tr>{th_('email', 'Email')}{th_('signedUp', 'Signed up')}{th_('activeKeys', 'Keys')}{th_('firstRequest', 'First request (ledger)')}{th_('lastRequest', 'Last request (ledger)')}{th_('chars7d', 'Chars 7d')}{th_('sttMinutes7d', 'STT 7d')}{th_('creditsLeft', 'Credits left')}{th_('status', 'Status')}</tr></thead>
             <tbody>
               {customers.length === 0 && <tr><td style={td} colSpan={9}>No API customers yet.</td></tr>}
               {customers.map((c) => (
@@ -116,7 +118,7 @@ export default function AdminBusiness({ token, hours }: { token: string; hours: 
                   <td style={td}>{c.signedUp.slice(0, 10)}</td>
                   <td style={td}>{c.activeKeys}</td>
                   <td style={td}>{c.firstRequest ?? '—'}</td>
-                  <td style={td}>{fmtAgo(c.lastRequest)}</td>
+                  <td style={td}>{c.lastRequest ? fmtAgo(c.lastRequest) : '—'}</td>
                   <td style={td}>{fmtChars(c.chars7d)}</td>
                   <td style={td}>{fmtMinutes(c.sttMinutes7d)}</td>
                   <td style={td}>{fmtNumber(c.creditsLeft)}</td>
