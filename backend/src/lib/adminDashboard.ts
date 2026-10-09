@@ -169,6 +169,7 @@ export interface DashboardDeps {
   listBilling(): Promise<BillingRow[]>;
   listRecentStt(sinceIso: string): Promise<SttRow[]>;
   probes(usage: UsageRow[], stt: SttRow[]): Promise<HealthItem[]>;
+  firstUsageDay(): Promise<string | null>;
 }
 export interface DashboardResponse {
   generatedAt: string; range: Range; usageSince: string | null;
@@ -184,13 +185,14 @@ export async function buildDashboard(deps: DashboardDeps, opts: { range: Range; 
     section(() => deps.listUsers()), section(() => deps.listKeys()), section(() => deps.listUsage(sinceDay)),
     section(() => deps.listFreeCredits()), section(() => deps.listBilling()), section(() => deps.listRecentStt(new Date(now.getTime() - 3_600_000).toISOString())),
   ]);
+  const first = await section(() => deps.firstUsageDay());
   const health = await section(() => deps.probes(usage.ok ? usage.data : [], stt.ok ? stt.data : []));
   const need = <T extends { ok: boolean }>(...s: T[]) => s.find((x) => !x.ok) as ({ ok: false; error: string } | undefined);
   const build = <T>(deps_: Array<Section<any>>, f: (i: DashboardInputs) => T): Section<T> => {
     const bad = need(...deps_);
     if (bad) return { ok: false, error: bad.error };
     const i: DashboardInputs = {
-      users: (users as any).data, keys: (keys as any).data, usage: usage.ok ? usage.data : [], credits: credits.ok ? credits.data : [],
+      users: users.ok ? users.data : [], keys: keys.ok ? keys.data : [], usage: usage.ok ? usage.data : [], credits: credits.ok ? credits.data : [],
       billing: billing.ok ? billing.data : [], stt: stt.ok ? stt.data : [], health: health.ok ? health.data : [], now, range, excluded: opts.excludeEmails,
     };
     try { return { ok: true, data: f(i) }; } catch (e) { return { ok: false, error: (e as Error).message }; }
@@ -198,13 +200,18 @@ export async function buildDashboard(deps: DashboardDeps, opts: { range: Range; 
   const customers = build([users, keys, usage, credits, billing], (i) => buildCustomers(i));
   return {
     generatedAt: now.toISOString(), range,
-    usageSince: usage.ok ? ([...usage.data.map((u) => u.day)].sort()[0] ?? null) : null,
+    usageSince: first.ok ? first.data : null,
     health,
     totals: build([users, keys, usage, credits, billing], (i) => buildTotals(i)),
     funnel: build([users, keys, usage, credits, billing], (i) => buildFunnel(i)),
     customers,
     series: build([users, keys, usage], (i) => buildSeries(i)),
-    attention: build([users, keys, usage, credits, billing], (i) => buildAttention(i, customers.ok ? customers.data : [])),
+    attention: build([users, keys, usage, credits, billing], (i) => {
+      const items = buildAttention(i, customers.ok ? customers.data : []);
+      if (!health.ok) items.push({ level: 'warn', text: `Could not check worker health: ${health.error}` });
+      if (!stt.ok) items.push({ level: 'warn', text: `Could not check batch STT failures: ${stt.error}` });
+      return items;
+    }),
   };
 }
 
@@ -219,10 +226,15 @@ export const defaultDashboardDeps: DashboardDeps = {
       if (data.users.length < 1000) return out;
     }
   },
-  listKeys: () => fetchAll<KeyRow>((f, t) => supabase.from('realtimetts_api_keys').select('user_id, gateway_key_id, created_at, revoked_at').order('created_at').range(f, t)),
-  listUsage: (sinceDay) => fetchAll<UsageRow>((f, t) => supabase.from('realtimetts_usage_daily').select('day, user_id, chars, piper_chars, audio_seconds, free_chars, updated_at').gte('day', sinceDay).order('day').range(f, t)),
+  listKeys: () => fetchAll<KeyRow>((f, t) => supabase.from('realtimetts_api_keys').select('user_id, gateway_key_id, created_at, revoked_at').order('created_at').order('gateway_key_id').range(f, t)),
+  listUsage: (sinceDay) => fetchAll<UsageRow>((f, t) => supabase.from('realtimetts_usage_daily').select('day, user_id, chars, piper_chars, audio_seconds, free_chars, updated_at').gte('day', sinceDay).order('day').order('user_id').range(f, t)),
   listFreeCredits: () => fetchAll<FreeCreditRow>((f, t) => supabase.from('realtimetts_free_credits').select('user_id, granted, used').order('user_id').range(f, t)),
   listBilling: () => fetchAll<BillingRow>((f, t) => supabase.from('realtimetts_billing').select('user_id, active, comped').order('user_id').range(f, t)),
-  listRecentStt: (sinceIso) => fetchAll<SttRow>((f, t) => supabase.from('stt_transcriptions').select('user_id, status, created_at').gte('created_at', sinceIso).order('created_at').range(f, t)),
+  listRecentStt: (sinceIso) => fetchAll<SttRow>((f, t) => supabase.from('stt_transcriptions').select('user_id, status, created_at').gte('created_at', sinceIso).order('created_at').order('id').range(f, t)),
+  async firstUsageDay() {
+    const { data, error } = await supabase.from('realtimetts_usage_daily').select('day').order('day', { ascending: true }).limit(1);
+    if (error) throw new Error(error.message);
+    return (data as Array<{ day: string }> | null)?.[0]?.day ?? null;
+  },
   probes: async (usage, stt) => (await import('./adminHealth.js')).collectHealth({ usage, stt, now: new Date() }),
 };

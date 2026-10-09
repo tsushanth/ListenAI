@@ -192,6 +192,7 @@ test('buildDashboard returns every section and labels usage history start', asyn
   const deps = {
     now: () => NOW, listUsers: async () => base.users, listKeys: async () => base.keys, listUsage: async () => base.usage,
     listFreeCredits: async () => base.credits, listBilling: async () => base.billing, listRecentStt: async () => [],
+    firstUsageDay: async () => '2026-10-07',
     probes: async () => [{ name: 'gateway', status: 'up', latencyMs: 40, checkedAt: NOW.toISOString() }],
   };
   const r = await m.buildDashboard(deps as any, { range: '7d', excludeEmails: base.excluded });
@@ -206,6 +207,7 @@ test('one failing source blanks only the sections that need it', async () => {
     now: () => NOW, listUsers: async () => base.users, listKeys: async () => base.keys,
     listUsage: async () => { throw new Error('usage table missing'); },
     listFreeCredits: async () => base.credits, listBilling: async () => base.billing, listRecentStt: async () => [],
+    firstUsageDay: async () => '2026-10-07',
     probes: async () => [],
   };
   const r = await m.buildDashboard(deps as any, { range: '7d', excludeEmails: base.excluded });
@@ -219,10 +221,72 @@ test('a failing probe set does not take down the other sections', async () => {
   const deps = {
     now: () => NOW, listUsers: async () => base.users, listKeys: async () => base.keys, listUsage: async () => base.usage,
     listFreeCredits: async () => base.credits, listBilling: async () => base.billing, listRecentStt: async () => [],
+    firstUsageDay: async () => '2026-10-07',
     probes: async () => { throw new Error('probe boom'); },
   };
   const r = await m.buildDashboard(deps as any, { range: '24h', excludeEmails: base.excluded });
   assert.equal(r.health.ok, false);
   assert.equal(r.customers.ok, true);
   assert.equal(r.totals.ok, true);
+});
+
+test('attention flags failed STT and health sources instead of looking clean', async () => {
+  const m = await modP; const base = await inputs();
+  const mk = (over: any) => ({
+    now: () => NOW, listUsers: async () => base.users, listKeys: async () => base.keys, listUsage: async () => base.usage,
+    listFreeCredits: async () => base.credits, listBilling: async () => base.billing, listRecentStt: async () => [],
+    firstUsageDay: async () => '2026-10-07', probes: async () => [], ...over,
+  });
+  const a = await m.buildDashboard(mk({ listRecentStt: async () => { throw new Error('stt down'); } }) as any, { range: '7d', excludeEmails: base.excluded });
+  assert.equal(a.attention.ok, true);
+  assert.ok((a.attention as any).data.some((x: any) => x.level === 'warn' && x.text === 'Could not check batch STT failures: stt down'));
+  assert.equal(a.totals.ok, true); assert.equal(a.customers.ok, true);
+  const b = await m.buildDashboard(mk({ probes: async () => { throw new Error('probe boom'); } }) as any, { range: '7d', excludeEmails: base.excluded });
+  assert.ok((b.attention as any).data.some((x: any) => x.text === 'Could not check worker health: probe boom'));
+});
+
+test('usageSince comes from firstUsageDay, and its failure only nulls usageSince', async () => {
+  const m = await modP; const base = await inputs();
+  const mk = (first: () => Promise<string | null>) => ({
+    now: () => NOW, listUsers: async () => base.users, listKeys: async () => base.keys, listUsage: async () => base.usage,
+    listFreeCredits: async () => base.credits, listBilling: async () => base.billing, listRecentStt: async () => [],
+    firstUsageDay: first, probes: async () => [],
+  });
+  const a = await m.buildDashboard(mk(async () => '2026-08-01') as any, { range: '7d', excludeEmails: base.excluded });
+  assert.equal(a.usageSince, '2026-08-01');
+  const b = await m.buildDashboard(mk(async () => { throw new Error('nope'); }) as any, { range: '7d', excludeEmails: base.excluded });
+  assert.equal(b.usageSince, null);
+  for (const k of ['attention', 'health', 'totals', 'funnel', 'customers', 'series']) assert.equal((b as any)[k].ok, true, k);
+});
+
+test('default deps page with stable tiebreaker ordering', async () => {
+  const m = await modP;
+  const { supabase } = await import('./supabaseClient.js');
+  const sb = supabase as any;
+  const orig = sb.from;
+  const calls: Record<string, string[]> = {};
+  sb.from = (table: string) => {
+    const log = (calls[table] ??= []);
+    const q: any = {
+      select: () => q, gte: () => q,
+      order: (c: string) => { log.push(`order:${c}`); return q; },
+      range: (f: number, t: number) => {
+        log.push(`range:${f}-${t}`);
+        const n = f === 0 ? 1000 : 5;
+        return Promise.resolve({ data: Array.from({ length: n }, (_, i) => ({ user_id: `u${f + i}` })), error: null });
+      },
+    };
+    return q;
+  };
+  try {
+    const d = m.defaultDashboardDeps;
+    assert.equal((await d.listKeys()).length, 1005);
+    assert.equal((await d.listUsage('2026-09-01')).length, 1005);
+    assert.equal((await d.listRecentStt('2026-10-08T00:00:00Z')).length, 1005);
+    assert.equal((await d.listFreeCredits()).length, 1005);
+    assert.equal((await d.listBilling()).length, 1005);
+  } finally { sb.from = orig; }
+  assert.deepEqual(calls.realtimetts_api_keys, ['order:created_at', 'order:gateway_key_id', 'range:0-999', 'order:created_at', 'order:gateway_key_id', 'range:1000-1999']);
+  assert.deepEqual(calls.realtimetts_usage_daily.slice(0, 3), ['order:day', 'order:user_id', 'range:0-999']);
+  assert.deepEqual(calls.stt_transcriptions.slice(0, 3), ['order:created_at', 'order:id', 'range:0-999']);
 });
