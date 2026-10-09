@@ -34,7 +34,7 @@ export default function DevelopersPage() {
             <p className="ra-lede" style={{ marginBottom: 24 }}>Sign in, create a key, and it works straight away.</p>
             <div className="ra-dark-panel"><DeveloperApiSection /></div>
             <p className="ra-small" id="free-credits" style={{ marginTop: 16 }}>
-              <b>Free credits.</b> Every account gets a one-time grant of free credits (worth $0.10, about 10,000 characters of speech), shared across speech, transcription, dubbing, voice isolation, voice conversion and voice design. Long jobs use more credits than short ones. When they run out those tools return <code>402</code> until you add a payment method; after that you pay as you go. Accounts without a payment method can hold one active API key, and text to speech through a key draws on a 10,000 character free allowance. Voice cloning and music generation always need a payment method.
+              <b>Free credits.</b> Every account gets a one-time grant of free credits (worth $0.10, about 10,000 characters of speech), shared across speech, transcription, dubbing, voice isolation, voice conversion and voice design. Long jobs use more credits than short ones. When they run out those tools return <code>402</code> until you add a payment method; after that you pay as you go. Accounts without a payment method can hold one active API key. The free credits are one capped pool per account, shared across all of your keys (creating or revoking a key does not reset it), and they are used up first. Voice cloning and music generation always need a payment method.
             </p>
           </div>
         </section>
@@ -123,7 +123,7 @@ fs.writeFileSync('hello.mp3', Buffer.from(await res.arrayBuffer()))`}</code></pr
               <li><code>404</code> unknown voice.</li>
               <li><code>429</code> the service is at capacity. Retry with a short backoff.</li>
             </ul>
-            <p>Billing, the free allowance and concurrency limits are the same as for every other text-to-speech route on this page.</p>
+            <p style={{ marginTop: 12 }}>Billing, the free allowance and concurrency limits are the same as for every other text-to-speech route on this page.</p>
           </div>
         </section>
 
