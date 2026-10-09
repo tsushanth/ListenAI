@@ -16,6 +16,7 @@ import { supabase } from './supabaseClient.js';
 import { logger } from './logger.js';
 import { config } from './config.js';
 import { drainGatewayUsage, normalizeGatewayDrain } from './ttsGatewayClient.js';
+import { recordUsageDaily, safeRecord, type UsageRecorder } from './usageDaily.js';
 
 const billingLogger = logger.child({ module: 'realtimeTtsBilling' });
 
@@ -482,6 +483,7 @@ export interface UsageReportDeps {
   getBilling: (userId: string) => Promise<RealtimeTtsBillingRow | null>;
   createMeterEvent: (params: Stripe.Billing.MeterEventCreateParams) => Promise<unknown>;
   consumeFreeCredits: ConsumeFree;
+  recordUsage?: UsageRecorder;
 }
 
 const defaultUsageDeps: UsageReportDeps = {
@@ -497,6 +499,7 @@ const defaultUsageDeps: UsageReportDeps = {
   getBilling: getBillingForUser,
   createMeterEvent: (params) => stripe.billing.meterEvents.create(params),
   consumeFreeCredits,
+  recordUsage: recordUsageDaily,
 };
 
 // Billed value for one drained gateway entry, in Kokoro-equivalent characters:
@@ -522,6 +525,7 @@ export async function reportUsageToStripe(deps: UsageReportDeps = defaultUsageDe
   for (const f of freeChars) {
     try {
       if (!f?.owner || !(f.chars > 0)) continue;
+      await safeRecord(deps.recordUsage, { userId: f.owner, freeChars: f.chars });
       const target = await resolveMeterTarget(f.owner, deps.getBilling);
       if (target.kind === 'comped') continue;
       await deductFreeCredits(f.owner, f.chars, 'gateway free-tier usage', undefined, deps.consumeFreeCredits);
@@ -541,6 +545,9 @@ export async function reportUsageToStripe(deps: UsageReportDeps = defaultUsageDe
         billingLogger.warn({ gatewayKeyId }, 'Usage reported for a gateway key with no owning user record');
         continue;
       }
+      await safeRecord(deps.recordUsage, {
+        userId: keyRecord.user_id, chars: entry.chars, piperChars: entry.piperChars, audioSeconds: entry.audioSeconds,
+      });
       const target = await resolveMeterTarget(keyRecord.user_id, deps.getBilling);
       if (target.kind === 'comped') {
         billingLogger.debug({ userId: keyRecord.user_id, gatewayKeyId, chars }, 'Comped user; gateway usage not reported to Stripe');
@@ -687,6 +694,7 @@ export function billableSttSeconds(audioSeconds: number, minSeconds: number = co
 export async function reportSttUsage(userId: string, rawAudioSeconds: number): Promise<void> {
   const audioSeconds = billableSttSeconds(rawAudioSeconds);
   if (audioSeconds <= 0) return;
+  await safeRecord(recordUsageDaily, { userId, audioSeconds: rawAudioSeconds });
   const target = await resolveMeterTarget(userId);
   if (target.kind === 'comped') {
     billingLogger.debug({ userId }, 'Comped user; STT usage not reported to Stripe');

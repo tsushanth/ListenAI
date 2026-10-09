@@ -15,6 +15,8 @@ export interface Kit {
   stripeReturns: Record<string, any>;
   freeCredits: Record<string, { granted: number; used: number }>;
   rpcError: boolean;
+  usageRows: Array<Row>;
+  usageRpcError: boolean;
   restore(): void;
 }
 
@@ -30,6 +32,8 @@ export async function installKit(): Promise<Kit> {
     stripeReturns: {},
     freeCredits: {},
     rpcError: false,
+    usageRows: [],
+    usageRpcError: false,
     restore() {},
   };
 
@@ -85,6 +89,12 @@ export async function installKit(): Promise<Kit> {
 
   // Mirrors consume_free_credits' contract (LEAST(units, remaining), row created on first use).
   sb.rpc = async (fn: string, args: Row) => {
+    // The usage ledger rpc is tracked separately so rpcCalls keeps meaning "free-credit rpcs" for the existing tests.
+    if (fn === 'realtimetts_add_usage') {
+      if (kit.usageRpcError) return { data: null, error: { message: 'boom' } };
+      kit.usageRows.push(args);
+      return { data: null, error: null };
+    }
     kit.rpcCalls.push({ fn, args });
     if (kit.rpcError) return { data: null, error: { message: 'boom' } };
     const c = (kit.freeCredits[args.p_user] ??= { granted: args.p_grant, used: 0 });

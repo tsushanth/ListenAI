@@ -59,3 +59,14 @@ test('safeRecord never throws, and is a no-op without a recorder', async () => {
   await safeRecord(async (d) => { seen = d; }, { userId: 'u2', freeChars: 9 });
   assert.deepEqual(seen, { userId: 'u2', freeChars: 9 });
 });
+
+test('safeRecord resolves when the recorder throws synchronously', async () => {
+  const { safeRecord } = await modP;
+  await safeRecord((() => { throw new Error('x'); }) as any, { userId: 'u1', chars: 5 });
+});
+
+test('safeRecord resolves when the recorder rejects with a non-Error', async () => {
+  const { safeRecord } = await modP;
+  await safeRecord((() => Promise.reject(null)) as any, { userId: 'u1', chars: 5 });
+  await safeRecord((() => Promise.reject('plain string')) as any, { userId: 'u1', chars: 5 });
+});

@@ -36,6 +36,6 @@ export async function safeRecord(rec: UsageRecorder | undefined, d: UsageDelta):
   try {
     await rec(d);
   } catch (err) {
-    usageLogger.warn({ err: (err as Error).message, userId: d.userId }, 'Could not record daily usage (billing unaffected)');
+    usageLogger.warn({ err: err instanceof Error ? err.message : String(err), userId: d.userId }, 'Could not record daily usage (billing unaffected)');
   }
 }
