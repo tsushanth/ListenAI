@@ -28,7 +28,7 @@ async function inputs(over: Record<string, unknown> = {}) {
     ],
     credits: [{ user_id: 'a', granted: 1000, used: 400 }, { user_id: 'b', granted: 1000, used: 1000 }, { user_id: 'me', granted: 1, used: 1 }],
     billing: [{ user_id: 'a', active: true }, { user_id: 'me', active: true }],
-    stt: [], health: [], now: NOW, range: '7d' as const,
+    stt: [], events: [], health: [], now: NOW, range: '7d' as const,
     excluded: parseExcludeEmails(' me@example.test , '),
     ...over,
   } as any;
@@ -375,4 +375,51 @@ test('F6: the active probes start before the data fetch resolves', async () => {
   release();
   const r = await p;
   assert.deepEqual((r.health as any).data.map((h: any) => h.name), ['gateway', 'kokoro']);
+});
+
+const evDeps = (base: any, over: any = {}) => ({
+  now: () => NOW, listUsers: async () => base.users, listKeys: async () => base.keys, listUsage: async () => base.usage,
+  listFreeCredits: async () => base.credits, listBilling: async () => base.billing, listRecentStt: async () => [],
+  firstUsageDay: async () => '2026-10-07', probes: async () => [], ...over,
+});
+
+test('attention: failed usage reports for a real customer are flagged with a count', async () => {
+  const { buildAttention, buildCustomers } = await modP;
+  const i = await inputs({ events: [
+    { kind: 'usage_report_failed', user_id: 'a', detail: 'x', created_at: '2026-10-08T10:00:00Z' },
+    { kind: 'usage_report_failed', user_id: 'a', detail: 'x', created_at: '2026-10-08T11:00:00Z' },
+  ] });
+  const out = buildAttention(i, buildCustomers(i));
+  assert.ok(out.some((a: any) => a.text === 'a@example.test: usage report to Stripe failed 2x in the last 24h (that usage was not billed)'));
+});
+
+test('attention: failures older than 24h or for excluded owners are ignored', async () => {
+  const { buildAttention, buildCustomers } = await modP;
+  const i = await inputs({ events: [
+    { kind: 'usage_report_failed', user_id: 'a', detail: 'x', created_at: '2026-10-07T11:00:00Z' }, // 25h old
+    { kind: 'usage_report_failed', user_id: 'me', detail: 'x', created_at: '2026-10-08T11:00:00Z' }, // excluded owner
+  ] });
+  assert.ok(!buildAttention(i, buildCustomers(i)).some((a: any) => /usage report/.test(a.text)));
+});
+
+test('attention: webhook handler failures in the last 24h are flagged, and detail never leaks', async () => {
+  const { buildAttention, buildCustomers } = await modP;
+  const i = await inputs({ events: [{ kind: 'webhook_failed', user_id: null, detail: 'checkout.session.completed: boom', created_at: '2026-10-08T09:00:00Z' }] });
+  const out = buildAttention(i, buildCustomers(i));
+  assert.ok(out.some((a: any) => a.text === 'Stripe webhook handler failed 1x in the last 24h'));
+  assert.ok(!JSON.stringify(out).includes('boom'));
+});
+
+test('buildDashboard: a failing event source degrades attention with a warning, other sections stay ok', async () => {
+  const m = await modP; const base = await inputs();
+  const d = await m.buildDashboard(evDeps(base, { listEvents: async () => { throw new Error('events down'); } }) as any, { range: '7d', excludeEmails: base.excluded });
+  assert.equal(d.totals.ok, true);
+  assert.ok(d.attention.ok && (d.attention as any).data.some((a: any) => /failure log/.test(a.text)));
+});
+
+test('buildDashboard without listEvents has no failure-log warning', async () => {
+  const m = await modP; const base = await inputs();
+  const d = await m.buildDashboard(evDeps(base) as any, { range: '7d', excludeEmails: base.excluded });
+  assert.equal(d.attention.ok, true);
+  assert.ok(!(d.attention as any).data.some((a: any) => /failure log/.test(a.text)));
 });

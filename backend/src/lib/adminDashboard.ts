@@ -16,6 +16,7 @@ export interface UsageRow { day: string; user_id: string; chars: number; piper_c
 export interface FreeCreditRow { user_id: string; granted: number; used: number }
 export interface BillingRow { user_id: string; active: boolean; comped?: boolean | null }
 export interface SttRow { user_id: string; status: string; created_at: string }
+export interface EventRow { kind: 'usage_report_failed' | 'webhook_failed'; user_id: string | null; detail: string; created_at: string }
 export interface HealthItem { name: string; status: 'up' | 'down' | 'slow' | 'asleep' | 'unknown'; latencyMs?: number; detail?: string; checkedAt: string }
 export interface Totals { accounts: number; activeKeys: number; newAccounts: number; kokoroChars: number; piperChars: number; sttMinutes: number; freeCharsUsed: number; creditsGranted: number; creditsUsed: number; paidCustomers: number; billedUnits: number }
 export interface FunnelStage { stage: string; count: number }
@@ -23,7 +24,7 @@ export type CustomerStatus = 'paid' | 'comped' | 'at limit' | 'free';
 export interface Customer { userId: string; email: string | null; signedUp: string; activeKeys: number; firstRequest: string | null; lastRequest: string | null; chars7d: number; sttMinutes7d: number; creditsLeft: number; status: CustomerStatus }
 export interface AttentionItem { level: 'warn' | 'info'; text: string }
 export type Section<T> = { ok: true; data: T } | { ok: false; error: string };
-export interface DashboardInputs { users: AdminUser[]; keys: KeyRow[]; usage: UsageRow[]; credits: FreeCreditRow[]; billing: BillingRow[]; stt: SttRow[]; health: HealthItem[]; now: Date; range: Range; excluded: Set<string> }
+export interface DashboardInputs { users: AdminUser[]; keys: KeyRow[]; usage: UsageRow[]; credits: FreeCreditRow[]; billing: BillingRow[]; stt: SttRow[]; events: EventRow[]; health: HealthItem[]; now: Date; range: Range; excluded: Set<string> }
 
 const DAY_MS = 86_400_000;
 const utc = (d: Date) => d.toISOString().slice(0, 10);
@@ -137,6 +138,19 @@ export function buildAttention(i: DashboardInputs, customers: Customer[]): Atten
   const ex = excludedUserIds(i.users, i.excluded);
   const failed = i.stt.filter((s) => s.status === 'failed' && s.created_at >= hourAgo && !ex.has(s.user_id)).length;
   if (failed >= 3) out.push({ level: 'warn', text: `Batch STT: ${failed} failed requests in the last hour` });
+  const dayAgo = new Date(i.now.getTime() - DAY_MS).toISOString();
+  const recent = i.events.filter((e) => e.created_at >= dayAgo);
+  const byUser = new Map<string, number>();
+  for (const e of recent) {
+    if (e.kind !== 'usage_report_failed' || !e.user_id || ex.has(e.user_id)) continue;
+    byUser.set(e.user_id, (byUser.get(e.user_id) ?? 0) + 1);
+  }
+  for (const [uid, n] of byUser) {
+    const email = i.users.find((u) => u.id === uid)?.email ?? uid;
+    out.push({ level: 'warn', text: `${email}: usage report to Stripe failed ${n}x in the last 24h (that usage was not billed)` });
+  }
+  const hooks = recent.filter((e) => e.kind === 'webhook_failed').length;
+  if (hooks > 0) out.push({ level: 'warn', text: `Stripe webhook handler failed ${hooks}x in the last 24h` });
   return out;
 }
 
@@ -182,6 +196,8 @@ export interface DashboardDeps {
   listFreeCredits(): Promise<FreeCreditRow[]>;
   listBilling(): Promise<BillingRow[]>;
   listRecentStt(sinceIso: string): Promise<SttRow[]>;
+  /** Failure log (usage_report_failed / webhook_failed) since the given time. Optional: absent means no events. */
+  listEvents?(sinceIso: string): Promise<EventRow[]>;
   /** Active probes (network). Started at t0 in parallel with the data fetch; optional so tests can omit it. */
   startProbes?(): Promise<HealthItem[]>;
   /** Final health list; receives the active probe results when startProbes is provided. */
@@ -203,6 +219,7 @@ export async function buildDashboard(deps: DashboardDeps, opts: { range: Range; 
     section(() => deps.listUsers()), section(() => deps.listKeys()), section(() => deps.listUsage(sinceDay)),
     section(() => deps.listFreeCredits()), section(() => deps.listBilling()), section(() => deps.listRecentStt(new Date(now.getTime() - 3_600_000).toISOString())),
   ]);
+  const events = await section(() => (deps.listEvents ? deps.listEvents(new Date(now.getTime() - DAY_MS).toISOString()) : Promise.resolve([] as EventRow[])));
   const first = await section(() => deps.firstUsageDay());
   const activeRes = activeP ? await activeP : null;
   const health = await section(async () => {
@@ -215,7 +232,7 @@ export async function buildDashboard(deps: DashboardDeps, opts: { range: Range; 
     if (bad) return { ok: false, error: bad.error };
     const i: DashboardInputs = {
       users: users.ok ? users.data : [], keys: keys.ok ? keys.data : [], usage: usage.ok ? usage.data : [], credits: credits.ok ? credits.data : [],
-      billing: billing.ok ? billing.data : [], stt: stt.ok ? stt.data : [], health: health.ok ? health.data : [], now, range, excluded: opts.excludeEmails,
+      billing: billing.ok ? billing.data : [], stt: stt.ok ? stt.data : [], events: events.ok ? events.data : [], health: health.ok ? health.data : [], now, range, excluded: opts.excludeEmails,
     };
     try { return { ok: true, data: f(i) }; } catch (e) { return { ok: false, error: (e as Error).message }; }
   };
@@ -232,6 +249,7 @@ export async function buildDashboard(deps: DashboardDeps, opts: { range: Range; 
       const items = buildAttention(i, customers.ok ? customers.data : []);
       if (!health.ok) items.push({ level: 'warn', text: `Could not check worker health: ${health.error}` });
       if (!stt.ok) items.push({ level: 'warn', text: `Could not check batch STT failures: ${stt.error}` });
+      if (!events.ok) items.push({ level: 'warn', text: `Could not read the failure log: ${events.error}` });
       return items;
     }),
   };
@@ -253,6 +271,7 @@ export const defaultDashboardDeps: DashboardDeps = {
   listFreeCredits: () => fetchAll<FreeCreditRow>((f, t) => supabase.from('realtimetts_free_credits').select('user_id, granted, used').order('user_id').range(f, t)),
   listBilling: () => fetchAll<BillingRow>((f, t) => supabase.from('realtimetts_billing').select('user_id, active, comped').order('user_id').range(f, t)),
   listRecentStt: (sinceIso) => fetchAll<SttRow>((f, t) => supabase.from('stt_transcriptions').select('user_id, status, created_at').gte('created_at', sinceIso).order('created_at').order('id').range(f, t)),
+  listEvents: (sinceIso) => fetchAll<EventRow>((f, t) => supabase.from('realtimetts_event_log').select('kind, user_id, detail, created_at').gte('created_at', sinceIso).order('created_at').order('id').range(f, t)),
   async firstUsageDay() {
     const { data, error } = await supabase.from('realtimetts_usage_daily').select('day').order('day', { ascending: true }).limit(1);
     if (error) throw new Error(error.message);
