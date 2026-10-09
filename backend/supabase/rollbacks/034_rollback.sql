@@ -1,0 +1,2 @@
+DROP FUNCTION IF EXISTS realtimetts_add_usage(DATE, UUID, BIGINT, BIGINT, DOUBLE PRECISION, BIGINT);
+DROP TABLE IF EXISTS realtimetts_usage_daily;
