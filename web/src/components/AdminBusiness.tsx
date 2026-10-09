@@ -5,6 +5,7 @@ import {
   fmtAgo, fmtChars, fmtMinutes, fmtNumber, funnelPercent, isDashboardData, sortCustomers, statusTone,
   type Customer, type DashboardData, type Section,
 } from '@/lib/adminBusiness'
+import AdminCharts from './AdminCharts'
 
 const box: React.CSSProperties = { border: '1px solid #8884', borderRadius: 8, padding: 10 }
 const th: React.CSSProperties = { textAlign: 'left', padding: '6px 8px', opacity: 0.6, fontWeight: 500, cursor: 'pointer', whiteSpace: 'nowrap' }
@@ -103,6 +104,9 @@ export default function AdminBusiness({ token, hours }: { token: string; hours: 
           ))}
         </div>
       )}
+
+      <h2 style={h2}>Daily trend</h2>
+      {!d.series.ok ? <Failed what="series" s={d.series} /> : <AdminCharts series={d.series.data} usageSince={d.usageSince} />}
 
       <h2 style={h2}>Customers</h2>
       <p style={{ opacity: 0.6, fontSize: 12, margin: '0 0 8px' }}>Request dates come from the usage ledger, which starts at the date shown above; earlier activity shows as —</p>
