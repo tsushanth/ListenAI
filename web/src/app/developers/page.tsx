@@ -9,7 +9,7 @@ import OrpheusCloningDocs from '@/components/ra/OrpheusCloningDocs'
 
 export const metadata = {
   title: 'Voice API - ReadAloud AI',
-  description: 'Streaming text-to-speech over WebSocket. Get a key, connect, and stream 24 kHz PCM as each sentence is ready.',
+  description: 'Text-to-speech API with an OpenAI-compatible endpoint, WebSocket streaming, and Pipecat and LiveKit plugins. Get a key and start in minutes.',
 }
 
 export default function DevelopersPage() {
@@ -21,7 +21,7 @@ export default function DevelopersPage() {
           <div className="ra-wrap">
             <h1 style={{ maxWidth: '16ch' }}>Voice API</h1>
             <p className="ra-lede">
-              Stream speech over a WebSocket, or transcribe recordings with batch <a href="#speech-to-text" style={{ textDecoration: 'underline' }}>speech to text</a>. Get a key below, then follow the three calls. Every account starts with free credits.
+              Use the <a href="#openai-compatible" style={{ textDecoration: 'underline' }}>OpenAI-compatible endpoint</a> with any OpenAI SDK, add speech to a <a href="#integrations" style={{ textDecoration: 'underline' }}>Pipecat or LiveKit</a> voice agent, stream over a WebSocket, or transcribe recordings with batch <a href="#speech-to-text" style={{ textDecoration: 'underline' }}>speech to text</a>. Get a key below, then follow the calls. Every account starts with free credits.
             </p>
             <p style={{ marginTop: 12 }}>Using Claude, Cursor or VS Code? <Link href="/developers/mcp" style={{ textDecoration: 'underline' }}>Connect our MCP server</Link> with one URL instead.</p>
             <VoiceStudioLink />
@@ -34,8 +34,138 @@ export default function DevelopersPage() {
             <p className="ra-lede" style={{ marginBottom: 24 }}>Sign in, create a key, and it works straight away.</p>
             <div className="ra-dark-panel"><DeveloperApiSection /></div>
             <p className="ra-small" id="free-credits" style={{ marginTop: 16 }}>
-              <b>Free credits.</b> Every account gets a one-time grant of free credits (worth $0.10, about 10,000 characters of speech), shared across speech, transcription, dubbing, voice isolation, voice conversion and voice design. Long jobs use more credits than short ones. When they run out those tools return <code>402</code> until you add a payment method; after that you pay as you go. Accounts without a payment method can hold one active API key, and text to speech through a key has its own 10,000 character allowance per key. Voice cloning and music generation always need a payment method.
+              <b>Free credits.</b> Every account gets a one-time grant of free credits (worth $0.10, about 10,000 characters of speech), shared across speech, transcription, dubbing, voice isolation, voice conversion and voice design. Long jobs use more credits than short ones. When they run out those tools return <code>402</code> until you add a payment method; after that you pay as you go. Accounts without a payment method can hold one active API key, and text to speech through a key draws on a 10,000 character free allowance. Voice cloning and music generation always need a payment method.
             </p>
+          </div>
+        </section>
+
+        <section className="ra-section" id="openai-compatible">
+          <div className="ra-wrap ra-narrow ra-ref" style={{ maxWidth: 820 }}>
+            <h2>OpenAI-compatible API</h2>
+            <p className="ra-lede" style={{ marginBottom: 16 }}>
+              <code>POST https://api.readaloudai.org/v1/audio/speech</code> accepts the OpenAI <code>audio.speech.create</code> request. OpenAI SDKs, Open WebUI, LiteLLM and other tools that take an OpenAI base URL work by changing only the base URL and the key. Auth is <code>Authorization: Bearer &lt;your key&gt;</code>, the same <code>rtts_</code> key as the rest of this page.
+            </p>
+
+            <h3>Python (openai)</h3>
+            <pre style={{ overflowX: 'auto' }}><code>{`# pip install openai
+import os
+from openai import OpenAI
+
+client = OpenAI(
+    base_url="https://api.readaloudai.org/v1",
+    api_key=os.environ["READALOUD_API_KEY"],
+)
+
+with client.audio.speech.with_streaming_response.create(
+    model="tts-1",             # accepted and ignored; the voice decides
+    voice="piper-default",     # OpenAI names such as "alloy" map to this
+    input="Hello from ReadAloud.",
+    response_format="mp3",
+) as response:
+    response.stream_to_file("hello.mp3")`}</code></pre>
+
+            <h3>JavaScript / TypeScript (openai)</h3>
+            <pre style={{ overflowX: 'auto' }}><code>{`// npm install openai
+import fs from 'node:fs'
+import OpenAI from 'openai'
+
+const client = new OpenAI({
+  baseURL: 'https://api.readaloudai.org/v1',
+  apiKey: process.env.READALOUD_API_KEY,
+})
+
+const res = await client.audio.speech.create({
+  model: 'tts-1',              // accepted and ignored; the voice decides
+  voice: 'piper-default',      // OpenAI names such as 'alloy' map to this
+  input: 'Hello from ReadAloud.',
+  response_format: 'mp3',
+})
+fs.writeFileSync('hello.mp3', Buffer.from(await res.arrayBuffer()))`}</code></pre>
+
+            <h3>curl</h3>
+            <pre style={{ overflowX: 'auto' }}><code>{`curl https://api.readaloudai.org/v1/audio/speech \\
+  -H "Authorization: Bearer $READALOUD_API_KEY" \\
+  -H "Content-Type: application/json" \\
+  -d '{"model":"tts-1","voice":"piper-default","input":"Hello from ReadAloud.","response_format":"mp3"}' \\
+  --output hello.mp3`}</code></pre>
+
+            <h3>Supported fields</h3>
+            <div className="ra-table-wrap" style={{ marginTop: 8 }}>
+              <table className="ra-table">
+                <thead><tr><th>Field</th><th>Behaviour</th></tr></thead>
+                <tbody>
+                  <tr><td><code>input</code></td><td>Required, up to 5,000 characters.</td></tr>
+                  <tr><td><code>voice</code></td><td>Use <code>piper-default</code>. The OpenAI stock names (<code>alloy</code>, <code>ash</code>, <code>ballad</code>, <code>coral</code>, <code>echo</code>, <code>fable</code>, <code>nova</code>, <code>onyx</code>, <code>sage</code>, <code>shimmer</code>, <code>verse</code>, <code>marin</code>, <code>cedar</code>) all map to <code>piper-default</code>, so they sound the same. Any other value is a ReadAloud voice id from <code>GET /v1/voices</code>, or <code>custom:&lt;id&gt;</code> for a voice you cloned. An unknown voice returns <code>404</code>.</td></tr>
+                  <tr><td><code>model</code></td><td>Accepted and ignored. The voice decides how the audio is made.</td></tr>
+                  <tr><td><code>response_format</code></td><td><code>mp3</code> (default, 24 kHz), <code>opus</code> (48 kHz, Ogg), <code>wav</code> (24 kHz) or <code>pcm</code> (24 kHz, 16-bit, mono). <code>aac</code> and <code>flac</code> return <code>400</code>.</td></tr>
+                  <tr><td><code>speed</code></td><td>0.25 to 4.0.</td></tr>
+                  <tr><td><code>instructions</code>, <code>stream_format</code></td><td>Accepted and ignored.</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p style={{ marginTop: 12 }}>Audio is streamed as it is produced, except <code>wav</code>, which is returned whole.</p>
+
+            <h3>Not supported</h3>
+            <ul>
+              <li><code>aac</code> and <code>flac</code> output (<code>400</code>).</li>
+              <li><code>instructions</code> (voice style prompts) is ignored.</li>
+              <li>The OpenAI Realtime API.</li>
+              <li><code>GET /v1/models</code> in OpenAI&rsquo;s shape. It returns a different list, so do not rely on it to discover models.</li>
+            </ul>
+
+            <h3>Errors, billing and limits</h3>
+            <p>Errors use the OpenAI shape, so SDK error handling works unchanged:</p>
+            <pre style={{ overflowX: 'auto' }}><code>{`{"error":{"message":"response_format must be one of: mp3, opus, wav, pcm (aac and flac are not supported)","type":"invalid_request_error","param":"response_format","code":"invalid_value"}}`}</code></pre>
+            <ul style={{ marginTop: 12 }}>
+              <li><code>400</code> a missing or invalid field, an unsupported <code>response_format</code>, a <code>speed</code> outside 0.25 to 4.0, or input over 5,000 characters.</li>
+              <li><code>401</code> the key is missing, invalid or revoked.</li>
+              <li><code>402</code> the free allowance is used up. Add a payment method.</li>
+              <li><code>404</code> unknown voice.</li>
+              <li><code>429</code> the service is at capacity. Retry with a short backoff.</li>
+            </ul>
+            <p>Billing, the free allowance and concurrency limits are the same as for every other text-to-speech route on this page.</p>
+          </div>
+        </section>
+
+        <section className="ra-section" id="integrations">
+          <div className="ra-wrap ra-narrow ra-ref" style={{ maxWidth: 820 }}>
+            <h2>Integrations</h2>
+            <p className="ra-lede" style={{ marginBottom: 16 }}>
+              Plugins for voice-agent frameworks. Both are written and maintained by ReadAloud, are MIT licensed, and read your key from <code>READALOUD_API_KEY</code>. They can output 8&nbsp;kHz audio for phone calls, and interrupting the agent stops generation.
+            </p>
+
+            <h3 id="pipecat">Pipecat</h3>
+            <p>Package <a href="https://pypi.org/project/pipecat-readaloud/" style={{ textDecoration: 'underline' }}><code>pipecat-readaloud</code></a> (<a href="https://github.com/tsushanth/pipecat-readaloud" style={{ textDecoration: 'underline' }}>source</a>). Requires <code>pipecat-ai</code> 1.12 or newer and Python 3.10+.</p>
+            <pre style={{ overflowX: 'auto' }}><code>{`pip install pipecat-readaloud
+export READALOUD_API_KEY=rtts_...`}</code></pre>
+            <pre style={{ overflowX: 'auto' }}><code>{`import os
+from pipecat_readaloud import ReadAloudHttpTTSService
+
+tts = ReadAloudHttpTTSService(
+    api_key=os.environ["READALOUD_API_KEY"],
+    sample_rate=8000,   # 8000 for Twilio / Telnyx, 24000 native, 16000 also works
+    settings=ReadAloudHttpTTSService.Settings(voice="piper-default", speed=1.0),
+)
+# then use it in your Pipeline: [..., llm, tts, transport.output(), ...]`}</code></pre>
+
+            <h3 id="livekit">LiveKit Agents</h3>
+            <p>Package <a href="https://pypi.org/project/livekit-plugins-readaloud/" style={{ textDecoration: 'underline' }}><code>livekit-plugins-readaloud</code></a> (<a href="https://github.com/tsushanth/livekit-plugins-readaloud" style={{ textDecoration: 'underline' }}>source</a>). Requires <code>livekit-agents</code> 1.8 or newer and Python 3.10+.</p>
+            <pre style={{ overflowX: 'auto' }}><code>{`pip install livekit-plugins-readaloud
+export READALOUD_API_KEY=rtts_...`}</code></pre>
+            <pre style={{ overflowX: 'auto' }}><code>{`from livekit.agents import AgentSession
+from livekit.plugins import readaloud
+
+session = AgentSession(
+    # stt=..., llm=...,
+    tts=readaloud.TTS(voice="piper-default", sample_rate=24000),   # 24000 | 16000 | 8000
+)`}</code></pre>
+
+            <h3 id="vapi">Vapi</h3>
+            <p>Vapi can call ReadAloud as a custom voice at <code>POST https://api.readaloudai.org/v1/vapi/custom-voice</code>. We have verified the endpoint directly: it returns raw 16-bit mono PCM (<code>application/octet-stream</code>) at 8000, 16000 and 24000 Hz and accepts your key as the <code>x-vapi-secret</code> header. We have <b>not</b> yet tested it from a real Vapi assistant, so treat the Vapi setup as unverified.</p>
+            <pre style={{ overflowX: 'auto' }}><code>{`curl -X POST 'https://api.readaloudai.org/v1/vapi/custom-voice?voice=piper-default' \\
+  -H "x-vapi-secret: $READALOUD_API_KEY" -H 'Content-Type: application/json' \\
+  -d '{"message":{"type":"voice-request","text":"Hello from ReadAloud.","sampleRate":16000,"timestamp":1}}' \\
+  -o out.pcm`}</code></pre>
           </div>
         </section>
 
