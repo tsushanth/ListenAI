@@ -15,10 +15,10 @@ export const metadata = {
 type Row = { name: string; use: string; licence: string; href: string }
 
 const software: Row[] = [
-  { name: 'Kokoro-82M', use: 'Speech model behind ReadAloud Studio', licence: 'Apache License 2.0', href: 'https://huggingface.co/hexgrad/Kokoro-82M' },
-  { name: 'misaki', use: 'Text-to-phoneme front end used with Kokoro', licence: 'Apache License 2.0', href: 'https://github.com/hexgrad/misaki' },
-  { name: 'Piper', use: 'Speech engine behind ReadAloud Live', licence: 'GNU GPL v3.0', href: 'https://github.com/OHF-Voice/piper1-gpl' },
-  { name: 'eSpeak NG', use: 'Pronunciation (phonemisation) for Piper and other languages', licence: 'GNU GPL v3.0', href: 'https://github.com/espeak-ng/espeak-ng' },
+  { name: 'Kokoro-82M', use: 'Text-to-speech model', licence: 'Apache License 2.0', href: 'https://huggingface.co/hexgrad/Kokoro-82M' },
+  { name: 'misaki', use: 'Text-to-phoneme front end for speech synthesis', licence: 'Apache License 2.0', href: 'https://github.com/hexgrad/misaki' },
+  { name: 'Piper', use: 'Text-to-speech engine', licence: 'GNU GPL v3.0', href: 'https://github.com/OHF-Voice/piper1-gpl' },
+  { name: 'eSpeak NG', use: 'Pronunciation (phonemisation) for speech synthesis', licence: 'GNU GPL v3.0', href: 'https://github.com/espeak-ng/espeak-ng' },
   { name: 'Chatterbox', use: 'Voice cloning from a reference recording', licence: 'MIT', href: 'https://github.com/resemble-ai/chatterbox' },
   { name: 'Orpheus TTS', use: 'The second, streaming voice-cloning path', licence: 'Apache License 2.0', href: 'https://github.com/canopyai/Orpheus-TTS' },
   { name: 'Whisper large-v3-turbo', use: 'Speech to text and the transcription step of dubbing', licence: 'MIT', href: 'https://huggingface.co/openai/whisper-large-v3-turbo' },

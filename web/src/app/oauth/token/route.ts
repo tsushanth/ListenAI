@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
     if (p.client_id && hashId(p.client_id) !== t.cidHash) return oauthError('invalid_grant', 'client_id does not match the refresh token')
     // Tokens are stateless, so revocation lives in the embedded API key. Check it is still live so a
     // revoked connector gets invalid_grant here and the client restarts the login instead of looping.
-    try { await authorize(t.apiKey, 'piper') } catch (e) {
+    try { await authorize(t.apiKey, 'live') } catch (e) {
       if (e instanceof UpstreamError && e.code === 'unauthorized') return oauthError('invalid_grant', 'This connector was revoked. Reconnect it to sign in again.')
       // Other upstream failures (capacity, 402, network) do not mean the key is dead: still refresh.
     }

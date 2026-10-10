@@ -99,7 +99,7 @@ export async function POST(req: NextRequest) {
   const messages = Array.isArray(body) ? body : [body]
   if (messages.some((x) => x && typeof x === 'object' && (x as { method?: string }).method === 'initialize')) {
     try {
-      await authorize(apiKey, 'piper')
+      await authorize(apiKey, 'live')
     } catch (e) {
       if (e instanceof UpstreamError && e.code === 'unauthorized') return unauthorized(revokedMsg)
       // 402 (free characters used up) still means the key is valid; connect and report it on the tool call.

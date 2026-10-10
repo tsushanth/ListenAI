@@ -181,7 +181,7 @@ function decodeGatewayClaims(token: string): Record<string, unknown> {
 export async function resolveGatewayIdentity(apiKey: string, keyId: string): Promise<{ uid?: string; keyId: string }> {
   // Piggyback on the same /tts/authorize check every other tool already makes; also surfaces
   // unauthorized/payment_required the same way so every bridged tool's errors stay consistent.
-  const { token } = await authorize(apiKey, 'piper')
+  const { token } = await authorize(apiKey, 'live')
   const claims = decodeGatewayClaims(token)
   const uid = typeof claims.uid === 'string' && claims.uid ? claims.uid : undefined
   return { uid, keyId }

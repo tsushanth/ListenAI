@@ -40,8 +40,8 @@ test('text_to_speech schema: defaults, limits, engine enum', () => {
   // Earlier engine names are still accepted and normalised; upstream still receives the old values for now.
   assert.equal(textToSpeechSchema.parse({ text: 'hi', engine: 'piper' }).engine, 'live')
   assert.equal(textToSpeechSchema.parse({ text: 'hi', engine: 'kokoro' }).engine, 'studio')
-  assert.equal(upstreamEngine('live'), 'piper')
-  assert.equal(upstreamEngine('studio'), 'kokoro')
+  assert.equal(upstreamEngine('live'), 'live')
+  assert.equal(upstreamEngine('studio'), 'studio')
   assert.equal(textToSpeechSchema.parse({ text: 'x'.repeat(MAX_TEXT_CHARS) }).text.length, MAX_TEXT_CHARS)
 })
 

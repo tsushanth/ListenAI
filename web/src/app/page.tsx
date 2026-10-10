@@ -13,7 +13,7 @@ export default function Home() {
           <div className="ra-wrap">
             <h1>Text to speech that keeps up with a phone call</h1>
             <p className="ra-lede">
-              A streaming voice API for agents and apps. Audio starts in about 200 ms and costs from $4 per million characters.
+              A streaming voice API for agents and apps. Audio starts in about 250 ms and costs from $4 per million characters.
             </p>
             <div className="ra-cta">
               <Link href="/developers#get-started" className="ra-btn solid">Get an API key</Link>
@@ -26,8 +26,8 @@ export default function Home() {
         <section className="ra-wrap" aria-label="Key numbers">
           <div className="ra-facts">
             <div className="ra-fact">
-              <b>About 200 ms</b>
-              <span>To first audio, measured from a machine in San Jose. ElevenLabs Flash measured about 165 ms the same way, at ten times the price.</span>
+              <b>About 250 ms</b>
+              <span>To first audio, measured from a machine in San Jose. ElevenLabs Flash measured about 170 ms the same way, at ten times the price.</span>
             </div>
             <div className="ra-fact">
               <b>$4 per million characters</b>
@@ -63,15 +63,15 @@ export default function Home() {
               <table className="ra-table">
                 <thead><tr><th>Service</th><th>Time to first audio (warm)</th><th>Price per 1M characters</th></tr></thead>
                 <tbody>
-                  <tr><td className="hl">ReadAloud Live</td><td className="hl">about 205 ms</td><td className="hl">$4</td></tr>
-                  <tr><td>ElevenLabs Flash v2.5</td><td>about 165 ms</td><td>$40</td></tr>
-                  <tr><td>ElevenLabs Multilingual v2</td><td>about 1.05 s</td><td>$80</td></tr>
+                  <tr><td className="hl">ReadAloud Live</td><td className="hl">about 250 ms</td><td className="hl">$4</td></tr>
+                  <tr><td>ElevenLabs Flash v2.5</td><td>about 170 ms</td><td>$40</td></tr>
+                  <tr><td>ElevenLabs Multilingual v2</td><td>about 1.04 s</td><td>$80</td></tr>
                 </tbody>
               </table>
             </div>
             <p className="ra-small" style={{ marginTop: 14 }}>
               Measured October 2026 from one machine in San Jose, interleaved over several minutes, in the same hour, on short call-center sentences, as time to the
-              first audio byte on a warm streaming connection. ElevenLabs advertises 75 ms for Flash; that is model latency, while these figures are end to end, including the network. ElevenLabs Flash is about 40 ms faster than ReadAloud Live at the median (24 requests each); ReadAloud Live costs a tenth as much. Results vary by location and time of day. ElevenLabs prices are its published API list prices as of 2026-09; the latency and quality figures are from our own runs. Voice quality is subjective, and
+              first audio byte on a warm streaming connection. ElevenLabs advertises 75 ms for Flash; that is model latency, while these figures are end to end, including the network. ElevenLabs Flash is about 80 ms faster than ReadAloud Live at the median (two runs of 40 requests each, 2026-10-10); ReadAloud Live costs a tenth as much. Results vary by location and time of day. ElevenLabs prices are its published API list prices as of 2026-09; the latency and quality figures are from our own runs. Voice quality is subjective, and
               ElevenLabs offers far more voices and languages. We can share the benchmark scripts and raw results on request.
             </p>
 
@@ -150,7 +150,7 @@ export default function Home() {
               <div className="rec">
                 <h3 style={{ fontSize: '1.2rem' }}>ReadAloud Live</h3>
                 <div className="big">$0.004 <small>per 1,000 characters</small></div>
-                <ul><li>About 200 ms to first audio</li><li>Built for live calls</li><li>No minimums, no plan to manage</li></ul>
+                <ul><li>About 250 ms to first audio</li><li>Built for live calls</li><li>No minimums, no plan to manage</li></ul>
               </div>
               <div>
                 <h3 style={{ fontSize: '1.2rem' }}>ReadAloud Studio</h3>

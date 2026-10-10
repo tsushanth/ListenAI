@@ -12,9 +12,9 @@ export const CUSTOM_VOICE_RE = /^custom:[A-Za-z0-9_-]{1,64}$/
 
 export type Engine = 'live' | 'studio'
 
-/** The engine value the live gateway accepts today. Switch to the new names once the gateway change is deployed. */
-export function upstreamEngine(engine: Engine): 'piper' | 'kokoro' {
-  return engine === 'live' ? 'piper' : 'kokoro'
+/** The engine value sent to the gateway (the gateway still accepts the older names as aliases). */
+export function upstreamEngine(engine: Engine): 'live' | 'studio' {
+  return engine
 }
 
 /** Returns the voice to send upstream, or an error string for the model. */

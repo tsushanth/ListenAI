@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
     const r = await fetch(`${GATEWAY}/tts/authorize`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ key, engine: 'piper' }),
+      body: JSON.stringify({ key, engine: 'live' }),
       cache: 'no-store',
     })
     if (!r.ok) return NextResponse.json({ error: 'unavailable' }, { status: 503 })
