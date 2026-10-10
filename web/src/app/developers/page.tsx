@@ -406,6 +406,29 @@ curl -L -X POST "<url>/v1/stt?language=auto" \\
 
                 <h3>Pricing and benchmarks</h3>
                 <p>Piper $0.004 and Kokoro $0.01 per 1,000 characters; speech to text $0.11 per hour of audio; dubbing $0.15 per audio minute, voice conversion $0.10 per audio minute, and voice isolation $0.05 per audio minute, each billed by the second rounded up (with the minimums above); audiobooks bill per character like regular text-to-speech. Cloning a voice through the API costs $2.50 per voice when you commit the dataset. Audio-based usage appears on your invoice as character equivalents on the text-to-speech meter ($0.01 per 1,000). See <Link href="/#engines" style={{ textDecoration: 'underline' }}>engines and benchmarks</Link> for how we measured latency against ElevenLabs.</p>
+                <h4 id="vs-elevenlabs">ReadAloud and ElevenLabs, as of 2026-10-10</h4>
+                <p>Prices are ElevenLabs&rsquo; published pay-as-you-go API list prices for text to speech, read from its pricing page on 2026-10-10. Time to first audio is the median (p50) and 95th percentile (p95) in milliseconds, measured in San Jose with short call-centre sentences.</p>
+                <div className="ra-table-wrap" style={{ marginTop: 8 }}>
+                  <table className="ra-table">
+                    <thead><tr><th>Service</th><th>Per 1,000 characters</th><th>Per 1M characters</th><th>Warm connection, p50 / p95</th><th>New connection, p50 / p95</th></tr></thead>
+                    <tbody>
+                      <tr><td>ReadAloud, default voice (<code>piper-default</code>)</td><td>$0.004</td><td>$4</td><td>about 250 / 340-360 ms</td><td>about 290 / 370-440 ms</td></tr>
+                      <tr><td>ElevenLabs Flash v2.5</td><td>$0.04</td><td>$40</td><td>166-174 / 190-220 ms</td><td>200-280 / 410-490 ms</td></tr>
+                      <tr><td>ElevenLabs v4 Turbo</td><td>$0.04 list ($0.011 promotional until 2026-10-12)</td><td>$40 list ($11 promotional)</td><td>187-196 / 290-460 ms</td><td>about 222 / 250-370 ms</td></tr>
+                      <tr><td>ElevenLabs v2 Multilingual</td><td>$0.08</td><td>$80</td><td>about 1,040 / 1,140 ms</td><td>about 1,090 / 1,220 ms</td></tr>
+                      <tr><td>ElevenLabs v3</td><td>$0.08</td><td>$80</td><td colSpan={2}>not measured</td></tr>
+                      <tr><td>ElevenLabs v3 Conversational</td><td>$0.04</td><td>$40</td><td colSpan={2}>not measured</td></tr>
+                      <tr><td>ElevenLabs v4</td><td>$0.08 list ($0.022 promotional until 2026-10-12)</td><td>$80 list ($22 promotional)</td><td colSpan={2}>not measured</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+                <ul>
+                  <li><b>Price:</b> at list prices ReadAloud is one tenth of ElevenLabs Flash and v4 Turbo ($4 against $40 per million characters) and one twentieth of v2 Multilingual, v3 and v4 ($4 against $80). During ElevenLabs&rsquo; promotion, which ends 2026-10-12, v4 Turbo is $11 and v4 is $22 per million characters, so the gap is smaller until then. ElevenLabs conversational agents list at $0.08 per call minute with the language model billed separately; ReadAloud bills text to speech by character only.</li>
+                  <li><b>Speed:</b> ElevenLabs Flash was faster than ReadAloud in our runs, by roughly 80 ms at the median on a warm connection. We do not claim ReadAloud is faster than Flash. It was about four times faster than v2 Multilingual, the model most often chosen for quality.</li>
+                  <li><b>Quality:</b> we do not claim the same voice quality as ElevenLabs, which has far more voices and languages. ReadAloud offers one voice. We do not publish side-by-side audio; try the default voice on your own text.</li>
+                  <li><b>Capacity:</b> each server accepts a limited number of simultaneous streams and more servers start under load. Past capacity you get the <code>at capacity</code> error described above; retry with backoff.</li>
+                </ul>
+                <p className="ra-small">Method: two runs on 2026-10-10, 08:11 to 08:16 UTC (about 1 a.m. in San Jose, a quiet hour), from a throwaway machine in the Fly.io San Jose region, requests interleaved between services. Each run had 40 requests per service on a reused connection and 20 on a new connection, rotating through six sentences of 35 to 60 characters. Time is from sending the request to the first audio byte. ReadAloud was reached the way a customer reaches it: authorize (about 15 ms), then a direct WebSocket; the new-connection figure includes the connection handshake but not the authorize call. ElevenLabs was reached over its streaming HTTP API, <code>pcm_24000</code> output, default settings, with our own account; its new-connection figure includes TCP and TLS setup. v2 Multilingual was measured in one run only. With 20 to 40 samples the 95th percentile is rough, and results change with the hour, the sentence and the connection. Prices exclude taxes and ElevenLabs plan allowances. Re-check ElevenLabs&rsquo; pricing page before you rely on these figures; ElevenLabs advertises lower model latency than the end-to-end figures here, which include the network.</p>
               </div>
               <div><CodeTabs /></div>
             </div>
