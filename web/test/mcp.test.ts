@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { parseWav, pcm16ToWav, pcmDurationSeconds } from '../src/lib/mcp/wav.ts'
 import { SlidingWindowLimiter } from '../src/lib/mcp/ratelimit.ts'
 import { textToSpeechSchema, MAX_TEXT_CHARS } from '../src/lib/mcp/schemas.ts'
-import { resolveVoice } from '../src/lib/mcp/voices.ts'
+import { resolveVoice, upstreamEngine } from '../src/lib/mcp/voices.ts'
 
 test('WAV header wraps PCM at 24 kHz mono 16-bit', () => {
   const pcm = Buffer.alloc(48000) // 1 s
