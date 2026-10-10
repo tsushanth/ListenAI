@@ -490,12 +490,12 @@ function Live({ voice }: { voice: StudioVoice }) {
   const [copied, setCopied] = useState(false)
   const id = voice.voice ?? `custom:${voice.id}`
   const snippet = `{ "type": "synthesize", "text": "Thanks for calling.", "voice": "${id}" }`
-  const authSnippet = `curl -X POST https://api.readaloudai.org/tts/authorize \\\n  -H "Content-Type: application/json" \\\n  -d '{"key": "YOUR_API_KEY", "engine": "piper"}'`
+  const authSnippet = `curl -X POST https://api.readaloudai.org/tts/authorize \\\n  -H "Content-Type: application/json" \\\n  -d '{"key": "YOUR_API_KEY", "engine": "live"}'`
   return (
     <div className="ra-vs-live">
       <h3>Use it</h3>
-      <p>Send this voice name with any request made with one of your API keys, on the <b>Piper</b> engine. Keys created before today work too.</p>
-      <div className="ra-code"><pre>{`# 1. get a token for the Piper engine\n${authSnippet}\n\n# 2. connect to the URL it returns, then send\n${snippet}`}</pre></div>
+      <p>Send this voice name with any request made with one of your API keys, on the <b>ReadAloud Live</b> engine. Keys created before today work too.</p>
+      <div className="ra-code"><pre>{`# 1. get a token for the ReadAloud Live engine\n${authSnippet}\n\n# 2. connect to the URL it returns, then send\n${snippet}`}</pre></div>
       <div className="ra-cta" style={{ marginTop: 12 }}>
         <button className="ra-btn ghost" onClick={() => { navigator.clipboard?.writeText(id); setCopied(true); setTimeout(() => setCopied(false), 1800) }}>{copied ? 'Copied' : `Copy “${id}”`}</button>
         <a className="ra-btn ghost" href="/developers#reference">API reference</a>

@@ -3,7 +3,7 @@
 // streaming voice cloning. Mirrors voiceStudioApi.ts's shape (Supabase bearer token, fetch wrapper) but
 // hits the Orpheus router instead, whose 6 operations (create/upload/commit/status/delete/synthesize)
 // mirror the API-key gateway route (routes/orpheusVoiceStudioApiKey.ts) one-for-one — there is no chunked
-// part upload, deploy or fixed sample-sentence step like the Piper flow has, since Orpheus's Modal service
+// part upload, deploy or fixed sample-sentence step like the ReadAloud Live flow has, since Orpheus's Modal service
 // doesn't expose those.
 import { supabase } from './supabaseClient'
 

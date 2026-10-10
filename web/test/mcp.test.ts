@@ -32,22 +32,27 @@ test('sliding window limiter blocks then recovers', () => {
 
 test('text_to_speech schema: defaults, limits, engine enum', () => {
   const ok = textToSpeechSchema.parse({ text: '  hello  ' })
-  assert.deepEqual(ok, { text: 'hello', engine: 'piper', speed: 1 })
+  assert.deepEqual(ok, { text: 'hello', engine: 'live', speed: 1 })
   assert.throws(() => textToSpeechSchema.parse({ text: 'x'.repeat(MAX_TEXT_CHARS + 1) }))
   assert.throws(() => textToSpeechSchema.parse({ text: '   ' }))
   assert.throws(() => textToSpeechSchema.parse({ text: 'hi', engine: 'other' }))
   assert.throws(() => textToSpeechSchema.parse({ text: 'hi', speed: 5 }))
+  // Earlier engine names are still accepted and normalised; upstream still receives the old values for now.
+  assert.equal(textToSpeechSchema.parse({ text: 'hi', engine: 'piper' }).engine, 'live')
+  assert.equal(textToSpeechSchema.parse({ text: 'hi', engine: 'kokoro' }).engine, 'studio')
+  assert.equal(upstreamEngine('live'), 'piper')
+  assert.equal(upstreamEngine('studio'), 'kokoro')
   assert.equal(textToSpeechSchema.parse({ text: 'x'.repeat(MAX_TEXT_CHARS) }).text.length, MAX_TEXT_CHARS)
 })
 
 test('voice resolution', () => {
-  assert.deepEqual(resolveVoice('piper', undefined), { voice: 'default' })
-  assert.deepEqual(resolveVoice('kokoro', undefined), { voice: 'af_heart' })
-  assert.deepEqual(resolveVoice('kokoro', 'bf_emma'), { voice: 'bf_emma' })
-  assert.deepEqual(resolveVoice('piper', 'custom:abc_123'), { voice: 'custom:abc_123' })
-  assert.ok('error' in resolveVoice('piper', 'af_heart'))
-  assert.ok('error' in resolveVoice('kokoro', 'nope'))
-  assert.ok('error' in resolveVoice('kokoro', 'custom:bad id!'))
+  assert.deepEqual(resolveVoice('live', undefined), { voice: 'default' })
+  assert.deepEqual(resolveVoice('studio', undefined), { voice: 'af_heart' })
+  assert.deepEqual(resolveVoice('studio', 'bf_emma'), { voice: 'bf_emma' })
+  assert.deepEqual(resolveVoice('live', 'custom:abc_123'), { voice: 'custom:abc_123' })
+  assert.ok('error' in resolveVoice('live', 'af_heart'))
+  assert.ok('error' in resolveVoice('studio', 'nope'))
+  assert.ok('error' in resolveVoice('studio', 'custom:bad id!'))
 })
 
 test('warmStt: fire-and-forget POST to /stt/warm, deduped per key for 60 s, all errors swallowed', async () => {

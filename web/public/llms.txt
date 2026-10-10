@@ -22,7 +22,7 @@
 - Pro Yearly: $27.99/year — everything in Pro Weekly plus unlimited voice clones
 
 ## Developer API — realtime streaming text-to-speech
-Powered by Kokoro-82M, streams natural-sounding speech over WebSocket as it's generated.
+Two engines, ReadAloud Live and ReadAloud Studio, stream natural-sounding speech over WebSocket as it's generated.
 - Docs and signup: https://readaloudai.org/developers
 - Free tier: 10,000 characters, no credit card required
 - Pay-as-you-go: $0.01 per 1,000 characters (no plan to manage, scales with usage)

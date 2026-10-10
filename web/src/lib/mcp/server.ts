@@ -11,7 +11,7 @@ import {
   soundEffectInput, soundEffectSchema, SOUND_EFFECT_MAX_DURATION_SEC,
   SOUND_EFFECT_POLL_TIMEOUT_MS, SOUND_EFFECT_POLL_INTERVAL_MS,
 } from './schemas.ts'
-import { KOKORO_VOICES, PIPER_VOICES, resolveVoice } from './voices.ts'
+import { KOKORO_VOICES, PIPER_VOICES, resolveVoice, upstreamEngine } from './voices.ts'
 import {
   UpstreamError, authorize, authorizeStt, fetchPiperHealth, synthesize, transcribe, type ErrorCode,
   isolateVoice, getVoiceIsolationStatus, getVoiceIsolationAudio,
@@ -70,7 +70,7 @@ export function createMcpServer(ctx: RequestContext): McpServer {
     description:
       `Convert text to spoken audio and return it as an inline WAV clip (24 kHz, mono, 16-bit). ` +
       `Limits: ${MAX_TEXT_CHARS} characters per call and about ${MAX_AUDIO_SECONDS} seconds of audio; longer audio is cut off, so split long text into several calls. ` +
-      `Engines: "piper" is fast and cheap (one voice); "kokoro" sounds more natural and has many voices. ` +
+      `Engines: "live" (ReadAloud Live) is fast and cheap (one voice); "studio" (ReadAloud Studio) sounds more natural and has many voices. ` +
       `The result also has a text block with duration and time to first audio. Uses the caller's free characters or billing, so avoid calling it repeatedly for the same text. ` +
       `Errors are returned with a code: capacity (temporary, retry), payment_required (free characters used up), invalid_voice (call list_voices), rate_limited (wait).`,
     inputSchema: textToSpeechInput,
@@ -82,7 +82,7 @@ export function createMcpServer(ctx: RequestContext): McpServer {
     const v = resolveVoice(parsed.engine, parsed.voice)
     if ('error' in v) return toolError('invalid_voice', v.error, false)
     try {
-      const { token, url } = await authorize(ctx.apiKey, parsed.engine)
+      const { token, url } = await authorize(ctx.apiKey, upstreamEngine(parsed.engine))
       const r = await synthesize({ url, token, text: parsed.text, voice: v.voice, speed: parsed.speed })
       const seconds = pcmDurationSeconds(r.pcm.length)
       return {
@@ -247,27 +247,27 @@ export function createMcpServer(ctx: RequestContext): McpServer {
 
   server.registerTool('list_voices', {
     title: 'List voices',
-    description: 'List the voices you can pass to text_to_speech, per engine. Custom trained voices are not listed; use "custom:<id>" if you have one. Kokoro voice names: af_/am_ = American female/male, bf_/bm_ = British female/male.',
+    description: 'List the voices you can pass to text_to_speech, per engine. Custom trained voices are not listed; use "custom:<id>" if you have one. Studio voice names: af_/am_ = American female/male, bf_/bm_ = British female/male.',
     inputSchema: listVoicesInput,
     annotations: { title: 'List voices', readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
   }, async ({ engine }): Promise<CallToolResult> => {
     const out: Record<string, unknown> = {}
-    if (!engine || engine === 'piper') out.piper = { voices: PIPER_VOICES, default: 'default' }
-    if (!engine || engine === 'kokoro') out.kokoro = { voices: KOKORO_VOICES, default: 'af_heart' }
+    if (!engine || engine === 'live') out.live = { voices: PIPER_VOICES, default: 'default' }
+    if (!engine || engine === 'studio') out.studio = { voices: KOKORO_VOICES, default: 'af_heart' }
     out.custom = 'custom:<id>'
     return { content: [{ type: 'text', text: JSON.stringify(out, null, 2) }], structuredContent: out }
   })
 
   server.registerTool('get_api_status', {
     title: 'API status',
-    description: 'Check whether the Piper engine is up and how busy it is (active vs maximum simultaneous streams). Call this when text_to_speech reports capacity errors. Kokoro load is not reported.',
+    description: 'Check whether ReadAloud Live is up and how busy it is (active vs maximum simultaneous streams). Call this when text_to_speech reports capacity errors. ReadAloud Studio load is not reported.',
     inputSchema: {},
     annotations: { title: 'API status', readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
   }, async (): Promise<CallToolResult> => {
     const h = await fetchPiperHealth()
     const out = {
-      piper: h ? { status: h.status ?? 'healthy', active_streams: h.active, max_streams: h.max, busy: h.active >= h.max } : { status: 'unreachable' },
-      kokoro: { status: 'not reported', note: 'Runs on a GPU worker that can need a few extra seconds to wake after idle.' },
+      live: h ? { status: h.status ?? 'healthy', active_streams: h.active, max_streams: h.max, busy: h.active >= h.max } : { status: 'unreachable' },
+      studio: { status: 'not reported', note: 'Runs on a GPU worker that can need a few extra seconds to wake after idle.' },
     }
     return { content: [{ type: 'text', text: JSON.stringify(out, null, 2) }], structuredContent: out }
   })
@@ -604,7 +604,7 @@ export function createMcpServer(ctx: RequestContext): McpServer {
   server.registerTool('create_voice_clone', {
     title: 'Create a voice clone',
     description:
-      `Start a custom cloned voice (Piper fine-tune) for a speaker who has agreed to it. Records the speaker's consent and returns a voice_id; ` +
+      `Start a custom cloned voice (fine-tuned voice) for a speaker who has agreed to it. Records the speaker's consent and returns a voice_id; ` +
       `next call upload_voice_clone_dataset, then commit_voice_clone_dataset (that step starts training and bills $2.50 per voice). ` +
       `Needs a billing-enabled API key and at most 3 active voices per key. You must pass consent: true and the consent_statement verbatim; ` +
       `only clone a voice you are authorized to. Errors are returned with a code: payment_required (billing not enabled on this key), invalid_input (names too short or consent wording wrong), rate_limited (wait).`,

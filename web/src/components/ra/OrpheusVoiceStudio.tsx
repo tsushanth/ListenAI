@@ -1,7 +1,7 @@
 'use client'
 
 // Web UI for Orpheus streaming voice cloning (backend/src/routes/orpheusVoiceStudio.ts), reusing the
-// stage-machine shape and ra-vs-* / ra-btn / ra-card CSS classes from VoiceStudio.tsx (the Piper cloning
+// stage-machine shape and ra-vs-* / ra-btn / ra-card CSS classes from VoiceStudio.tsx (the ReadAloud Live cloning
 // UI). The two backends differ, though: Orpheus's Modal service only exposes create / upload dataset zip /
 // commit / status / synthesize / delete — no chunked part upload, no fixed sample sentences, no separate
 // deploy step (a voice is usable for synthesis as soon as it is "ready"). So this component is a smaller,

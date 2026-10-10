@@ -9,9 +9,9 @@ export const metadata = {
 }
 
 const tools = [
-  ['text_to_speech', 'Speaks up to 1,000 characters and returns a WAV clip (24 kHz, mono) plus the duration and time to first audio. Inputs: text, engine (piper or kokoro), voice, speed (0.5 to 2).'],
+  ['text_to_speech', 'Speaks up to 1,000 characters and returns a WAV clip (24 kHz, mono) plus the duration and time to first audio. Inputs: text, engine (live or studio), voice, speed (0.5 to 2).'],
   ['list_voices', 'Lists the voices you can use for each engine. Input: engine (optional).'],
-  ['get_api_status', 'Shows whether the Piper engine is up and how many of its simultaneous streams are in use. Useful after a capacity error.'],
+  ['get_api_status', 'Shows whether ReadAloud Live is up and how many of its simultaneous streams are in use. Useful after a capacity error.'],
   ['speech_to_text', 'Transcribes spoken audio with Whisper large-v3-turbo. Inputs: audio_base64 (up to 25 MB decoded; WAV, FLAC, OGG, MP3, M4A or WEBM), language (optional), word_timestamps (optional). Returns the transcript, detected language and duration. Batch only.'],
   ['dub_audio', 'Re-voices a spoken audio clip into another language: transcribe, translate, then resynthesize each segment with approximate timing. Audio in, audio out only (no video, no subtitles), and the timing is an approximation, not true alignment. Returns a job_id. Inputs: audio_base64 (up to 25 MB), target_language, source_language (optional). Uses your free credits, then needs a payment method.'],
   ['get_dub_status', 'Polls a dub_audio job. Returns processing, ready (with an audio_url) or failed. Input: job_id.'],
@@ -24,7 +24,7 @@ const tools = [
   ['get_voice_design', 'Polls a design_voice job. Returns the status, and the WAV sample once it is ready. Input: job_id.'],
   ['convert_voice', 'Speech-to-speech conversion: re-speaks a source clip in the voice of a target reference clip. Returns a job_id. Inputs: source_audio_base64, target_audio_base64 (up to 4 MB each), MIME types, confirms_rights (must be true). The first call on an account sets up a private converter (about 3 minutes) and returns a temporary capacity error; call again afterwards.'],
   ['get_voice_conversion', 'Polls a convert_voice job. Returns the status, and the converted WAV once it is done. Input: job_id.'],
-  ['create_voice_clone', 'Starts a custom cloned voice (Piper fine-tune) and records the speaker’s consent. Returns a voice_id. Inputs: speaker_name, attested_by, consent (true), consent_statement (the exact wording). Needs a billing-enabled key.'],
+  ['create_voice_clone', 'Starts a custom cloned voice (fine-tuned voice) and records the speaker’s consent. Returns a voice_id. Inputs: speaker_name, attested_by, consent (true), consent_statement (the exact wording). Needs a billing-enabled key.'],
   ['upload_voice_clone_dataset', 'Uploads the recordings for a voice as a ZIP. Inputs: voice_id, and either zip_base64 (up to 8 MB) or zip_url (public https, up to 48 MB). Does not start training or bill.'],
   ['commit_voice_clone_dataset', 'Starts training (30 to 60 minutes) and bills $2.50 per voice. Inputs: voice_id, confirms_charge (must be true).'],
   ['get_voice_clone_status', 'Shows a cloned voice’s status: created, training, ready or rejected. Input: voice_id.'],
@@ -75,7 +75,7 @@ export default function McpDocsPage() {
             <h2>Try it</h2>
             <p>Ask your assistant something like:</p>
             <ul>
-              <li>&ldquo;Say &lsquo;Your order has shipped&rsquo; using the Kokoro voice af_heart.&rdquo;</li>
+              <li>&ldquo;Say &lsquo;Your order has shipped&rsquo; using the ReadAloud Studio voice af_heart.&rdquo;</li>
               <li>&ldquo;What voices are available? Read each one a short greeting so I can compare.&rdquo;</li>
               <li>&ldquo;Turn this paragraph into audio at 1.2x speed.&rdquo;</li>
             </ul>
@@ -88,7 +88,7 @@ export default function McpDocsPage() {
                 <tbody>{tools.map(([n, d]) => <tr key={n}><td><code>{n}</code></td><td>{d}</td></tr>)}</tbody>
               </table>
             </div>
-            <p style={{ marginTop: 16 }}>Voices: Piper has one voice, <code>default</code>. Kokoro has 28 English voices such as <code>af_heart</code>, <code>am_adam</code> and <code>bf_emma</code>; ask for <code>list_voices</code> for all of them. Custom trained voices use <code>custom:&lt;id&gt;</code>. </p>
+            <p style={{ marginTop: 16 }}>Voices: ReadAloud Live has one voice, <code>default</code>. ReadAloud Studio has 28 English voices such as <code>af_heart</code>, <code>am_adam</code> and <code>bf_emma</code>; ask for <code>list_voices</code> for all of them. Custom trained voices use <code>custom:&lt;id&gt;</code>. </p>
             <p style={{ marginTop: 12 }}>Most tools return a job id or a URL rather than inline audio, and the longer ones (dubbing, isolation, conversion, audiobooks, cloning) are polled with a matching <code>get_…</code> tool. The tools that need an account (dubbing, sound effects, isolation, conversion, voice design, audiobooks) bill the account your key belongs to; a key that is not tied to an account gets a payment-required error. The REST endpoints behind them do not take your key directly. This server is the only place an API key works for them. Web versions: <Link href="/transcribe" style={{ textDecoration: 'underline' }}>transcribe</Link>, <Link href="/dub" style={{ textDecoration: 'underline' }}>dub</Link>, <Link href="/sound-effects" style={{ textDecoration: 'underline' }}>sound effects</Link>, <Link href="/isolate-voice" style={{ textDecoration: 'underline' }}>isolate voice</Link>, <Link href="/audiobooks" style={{ textDecoration: 'underline' }}>audiobooks</Link>, <Link href="/design-voice" style={{ textDecoration: 'underline' }}>design voice</Link> and <Link href="/convert-voice" style={{ textDecoration: 'underline' }}>convert voice</Link>. Prices are on the <Link href="/developers#reference" style={{ textDecoration: 'underline' }}>Voice API page</Link>; audio-based usage shows on your invoice as character equivalents.</p>
 
             <h2 style={{ marginTop: 48 }}>Limits</h2>

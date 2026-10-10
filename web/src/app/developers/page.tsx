@@ -46,6 +46,8 @@ export default function DevelopersPage() {
               <code>POST https://api.readaloudai.org/v1/audio/speech</code> accepts the OpenAI <code>audio.speech.create</code> request. OpenAI SDKs, Open WebUI, LiteLLM and other tools that take an OpenAI base URL work by changing only the base URL and the key. Auth is <code>Authorization: Bearer &lt;your key&gt;</code>, the same <code>rtts_</code> key as the rest of this page.
             </p>
 
+            <p className="ra-small" style={{ marginBottom: 16 }}>The earlier names piper-default, piper and kokoro keep working as aliases.</p>
+
             <h3>Python (openai)</h3>
             <pre style={{ overflowX: 'auto' }}><code>{`# pip install openai
 import os
@@ -58,7 +60,7 @@ client = OpenAI(
 
 with client.audio.speech.with_streaming_response.create(
     model="tts-1",             # accepted and ignored; the voice decides
-    voice="piper-default",     # OpenAI names such as "alloy" map to this
+    voice="readaloud-default",     # OpenAI names such as "alloy" map to this
     input="Hello from ReadAloud.",
     response_format="mp3",
 ) as response:
@@ -76,7 +78,7 @@ const client = new OpenAI({
 
 const res = await client.audio.speech.create({
   model: 'tts-1',              // accepted and ignored; the voice decides
-  voice: 'piper-default',      // OpenAI names such as 'alloy' map to this
+  voice: 'readaloud-default',      // OpenAI names such as 'alloy' map to this
   input: 'Hello from ReadAloud.',
   response_format: 'mp3',
 })
@@ -86,7 +88,7 @@ fs.writeFileSync('hello.mp3', Buffer.from(await res.arrayBuffer()))`}</code></pr
             <pre style={{ overflowX: 'auto' }}><code>{`curl https://api.readaloudai.org/v1/audio/speech \\
   -H "Authorization: Bearer $READALOUD_API_KEY" \\
   -H "Content-Type: application/json" \\
-  -d '{"model":"tts-1","voice":"piper-default","input":"Hello from ReadAloud.","response_format":"mp3"}' \\
+  -d '{"model":"tts-1","voice":"readaloud-default","input":"Hello from ReadAloud.","response_format":"mp3"}' \\
   --output hello.mp3`}</code></pre>
 
             <h3>Supported fields</h3>
@@ -95,7 +97,7 @@ fs.writeFileSync('hello.mp3', Buffer.from(await res.arrayBuffer()))`}</code></pr
                 <thead><tr><th>Field</th><th>Behaviour</th></tr></thead>
                 <tbody>
                   <tr><td><code>input</code></td><td>Required, up to 5,000 characters.</td></tr>
-                  <tr><td><code>voice</code></td><td>Use <code>piper-default</code>. The OpenAI stock names (<code>alloy</code>, <code>ash</code>, <code>ballad</code>, <code>coral</code>, <code>echo</code>, <code>fable</code>, <code>nova</code>, <code>onyx</code>, <code>sage</code>, <code>shimmer</code>, <code>verse</code>, <code>marin</code>, <code>cedar</code>) all map to <code>piper-default</code>, so they sound the same. Any other value is a ReadAloud voice id from <code>GET /v1/voices</code>, or <code>custom:&lt;id&gt;</code> for a voice you cloned. An unknown voice returns <code>404</code>.</td></tr>
+                  <tr><td><code>voice</code></td><td>Use <code>readaloud-default</code>. The OpenAI stock names (<code>alloy</code>, <code>ash</code>, <code>ballad</code>, <code>coral</code>, <code>echo</code>, <code>fable</code>, <code>nova</code>, <code>onyx</code>, <code>sage</code>, <code>shimmer</code>, <code>verse</code>, <code>marin</code>, <code>cedar</code>) all map to <code>readaloud-default</code>, so they sound the same. Any other value is a ReadAloud voice id from <code>GET /v1/voices</code>, or <code>custom:&lt;id&gt;</code> for a voice you cloned. An unknown voice returns <code>404</code>.</td></tr>
                   <tr><td><code>model</code></td><td>Accepted and ignored. The voice decides how the audio is made.</td></tr>
                   <tr><td><code>response_format</code></td><td><code>mp3</code> (default, 24 kHz), <code>opus</code> (48 kHz, Ogg), <code>wav</code> (24 kHz) or <code>pcm</code> (24 kHz, 16-bit, mono). <code>aac</code> and <code>flac</code> return <code>400</code>.</td></tr>
                   <tr><td><code>speed</code></td><td>0.25 to 4.0.</td></tr>
@@ -144,7 +146,7 @@ from pipecat_readaloud import ReadAloudHttpTTSService
 tts = ReadAloudHttpTTSService(
     api_key=os.environ["READALOUD_API_KEY"],
     sample_rate=8000,   # 8000 for Twilio / Telnyx, 24000 native, 16000 also works
-    settings=ReadAloudHttpTTSService.Settings(voice="piper-default", speed=1.0),
+    settings=ReadAloudHttpTTSService.Settings(voice="readaloud-default", speed=1.0),
 )
 # then use it in your Pipeline: [..., llm, tts, transport.output(), ...]`}</code></pre>
 
@@ -157,12 +159,12 @@ from livekit.plugins import readaloud
 
 session = AgentSession(
     # stt=..., llm=...,
-    tts=readaloud.TTS(voice="piper-default", sample_rate=24000),   # 24000 | 16000 | 8000
+    tts=readaloud.TTS(voice="readaloud-default", sample_rate=24000),   # 24000 | 16000 | 8000
 )`}</code></pre>
 
             <h3 id="vapi">Vapi</h3>
             <p>Vapi can call ReadAloud as a custom voice at <code>POST https://api.readaloudai.org/v1/vapi/custom-voice</code>. We have verified the endpoint directly: it returns raw 16-bit mono PCM (<code>application/octet-stream</code>) at 8000, 16000 and 24000 Hz and accepts your key as the <code>x-vapi-secret</code> header. We have <b>not</b> yet tested it from a real Vapi assistant, so treat the Vapi setup as unverified.</p>
-            <pre style={{ overflowX: 'auto' }}><code>{`curl -X POST 'https://api.readaloudai.org/v1/vapi/custom-voice?voice=piper-default' \\
+            <pre style={{ overflowX: 'auto' }}><code>{`curl -X POST 'https://api.readaloudai.org/v1/vapi/custom-voice?voice=readaloud-default' \\
   -H "x-vapi-secret: $READALOUD_API_KEY" -H 'Content-Type: application/json' \\
   -d '{"message":{"type":"voice-request","text":"Hello from ReadAloud.","sampleRate":16000,"timestamp":1}}' \\
   -o out.pcm`}</code></pre>
@@ -175,7 +177,7 @@ session = AgentSession(
             <div className="ra-two" style={{ marginTop: 24 }}>
               <div className="ra-ref">
                 <h3 style={{ marginTop: 0 }}>Authorize</h3>
-                <p><code>POST https://api.readaloudai.org/tts/authorize</code> with JSON <code>{'{ "key", "engine" }'}</code>. <code>engine</code> is <code>&quot;piper&quot;</code> or <code>&quot;kokoro&quot;</code> and defaults to Kokoro. Returns <code>{'{ token, url }'}</code>. The token lasts 60 seconds, so authorize again for each new connection.</p>
+                <p><code>POST https://api.readaloudai.org/tts/authorize</code> with JSON <code>{'{ "key", "engine" }'}</code>. <code>engine</code> is <code>&quot;live&quot;</code> (ReadAloud Live) or <code>&quot;studio&quot;</code> (ReadAloud Studio) and defaults to ReadAloud Studio. Returns <code>{'{ token, url }'}</code>. The token lasts 60 seconds, so authorize again for each new connection.</p>
                 <ul>
                   <li><code>401</code> the key is invalid or revoked.</li>
                   <li><code>402</code> the free characters are used up. Add a payment method in your dashboard.</li>
@@ -187,31 +189,31 @@ session = AgentSession(
 
                 <h3>Messages you send</h3>
                 <ul>
-                  <li><code>{'{ "type": "synthesize", "text": "…", "voice": "default", "speed": 1.0 }'}</code> speaks the text. Piper accepts up to 5,000 characters per request.</li>
+                  <li><code>{'{ "type": "synthesize", "text": "…", "voice": "default", "speed": 1.0 }'}</code> speaks the text. ReadAloud Live accepts up to 5,000 characters per request.</li>
                   <li><code>{'{ "type": "stop" }'}</code> ends the current speech at once. Use it when the caller interrupts.</li>
                 </ul>
 
                 <h3>Messages you receive</h3>
                 <ul>
-                  <li><code>chunk_meta</code> a JSON frame, immediately followed by one binary audio frame, once per sentence. With the default Piper setting below, the first sentence of a request may arrive as two chunks.</li>
+                  <li><code>chunk_meta</code> a JSON frame, immediately followed by one binary audio frame, once per sentence. With the default ReadAloud Live setting below, the first sentence of a request may arrive as two chunks.</li>
                   <li><code>done</code> the request finished. <code>cancelled</code> you stopped it. Only finished requests are billed.</li>
                   <li><code>error</code> with a <code>message</code>. The connection stays usable unless it is closed.</li>
                 </ul>
 
                 <h3>Audio formats</h3>
-                <p>Add <code>{'"format": "…"'}</code> to a synthesize message (Piper engine). <code>pcm_24000</code> is the default. For phone lines use <code>mulaw_8000</code> or <code>alaw_8000</code> (G.711, 8 kHz); <code>pcm_8000</code> is also available. Each <code>chunk_meta</code> reports the <code>format</code> and <code>sample_rate</code> of the audio that follows. An unknown format returns an error and the connection stays open.</p>
+                <p>Add <code>{'"format": "…"'}</code> to a synthesize message (ReadAloud Live engine). <code>pcm_24000</code> is the default. For phone lines use <code>mulaw_8000</code> or <code>alaw_8000</code> (G.711, 8 kHz); <code>pcm_8000</code> is also available. Each <code>chunk_meta</code> reports the <code>format</code> and <code>sample_rate</code> of the audio that follows. An unknown format returns an error and the connection stays open.</p>
 
-                <h3>Faster first audio (Piper)</h3>
-                <p>Piper cuts the first sentence at its first clause (comma, semicolon, colon or dash) and streams the first half sooner, so audio starts roughly 40&ndash;55% faster on longer first sentences. It is on by default. Add <code>{'"first_chunk_split": false'}</code> to a synthesize message or HTTP body to turn it off for that request. Only <code>true</code> and <code>false</code> are accepted, anything else is ignored. The SDKs expose this as <code>firstChunkSplit</code> (JavaScript) and <code>first_chunk_split</code> (Python).</p>
+                <h3>Faster first audio (ReadAloud Live)</h3>
+                <p>ReadAloud Live cuts the first sentence at its first clause (comma, semicolon, colon or dash) and streams the first half sooner, so audio starts roughly 40&ndash;55% faster on longer first sentences. It is on by default. Add <code>{'"first_chunk_split": false'}</code> to a synthesize message or HTTP body to turn it off for that request. Only <code>true</code> and <code>false</code> are accepted, anything else is ignored. The SDKs expose this as <code>firstChunkSplit</code> (JavaScript) and <code>first_chunk_split</code> (Python).</p>
 
-                <h3>HTTP streaming (Piper)</h3>
+                <h3>HTTP streaming (ReadAloud Live)</h3>
                 <p><code>POST</code> to the <code>http_url</code> returned by authorize with <code>Authorization: Bearer &lt;token&gt;</code> and JSON <code>{'{ "text", "voice", "speed", "format" }'}</code>. The response streams raw audio as each sentence is ready, with <code>X-Sample-Rate</code> and <code>X-Audio-Format</code> headers. At capacity you get <code>503</code> with <code>Retry-After</code>.</p>
 
                 <h3>SDKs and MCP</h3>
                 <p>The API is plain WebSocket and HTTP, so any client works; official client libraries are on PyPI and npm: <code>pip install readaloud</code> and <code>npm install readaloud</code>. Because a client takes your API key, use it from a server, not a browser. To use the voices from an AI assistant, see the <Link href="/developers/mcp" style={{ textDecoration: 'underline' }}>MCP server</Link>.</p>
 
                 <h3>Capacity and errors</h3>
-                <p>Each Piper server handles up to 12 simultaneous streams, and a second server starts automatically under load. Beyond that you get <code>{'{ "type": "error", "message": "at capacity, retry shortly" }'}</code> and the socket closes with code <code>1013</code>. Retry with a short backoff.</p>
+                <p>Each ReadAloud Live server handles up to 12 simultaneous streams, and a second server starts automatically under load. Beyond that you get <code>{'{ "type": "error", "message": "at capacity, retry shortly" }'}</code> and the socket closes with code <code>1013</code>. Retry with a short backoff.</p>
 
                 <h3 id="voice-cloning">Voice cloning</h3>
                 <p>Create a custom voice from your own recordings and use it with <code className="inl">custom:&lt;id&gt;</code>. Training runs automatically on GPU and takes about 30–60 minutes.</p>
@@ -405,14 +407,14 @@ curl -L -X POST "<url>/v1/stt?language=auto" \\
                   &mdash; if a chapter-marker or concatenation edge case turns up, <Link href="mailto:support@readaloudai.org" style={{ textDecoration: 'underline' }}>let us know</Link>.</p>
 
                 <h3>Pricing and benchmarks</h3>
-                <p>Piper $0.004 and Kokoro $0.01 per 1,000 characters; speech to text $0.11 per hour of audio; dubbing $0.15 per audio minute, voice conversion $0.10 per audio minute, and voice isolation $0.05 per audio minute, each billed by the second rounded up (with the minimums above); audiobooks bill per character like regular text-to-speech. Cloning a voice through the API costs $2.50 per voice when you commit the dataset. Audio-based usage appears on your invoice as character equivalents on the text-to-speech meter ($0.01 per 1,000). See <Link href="/#engines" style={{ textDecoration: 'underline' }}>engines and benchmarks</Link> for how we measured latency against ElevenLabs.</p>
+                <p>ReadAloud Live $0.004 and ReadAloud Studio $0.01 per 1,000 characters; speech to text $0.11 per hour of audio; dubbing $0.15 per audio minute, voice conversion $0.10 per audio minute, and voice isolation $0.05 per audio minute, each billed by the second rounded up (with the minimums above); audiobooks bill per character like regular text-to-speech. Cloning a voice through the API costs $2.50 per voice when you commit the dataset. Audio-based usage appears on your invoice as character equivalents on the text-to-speech meter ($0.01 per 1,000). See <Link href="/#engines" style={{ textDecoration: 'underline' }}>engines and benchmarks</Link> for how we measured latency against ElevenLabs.</p>
                 <h4 id="vs-elevenlabs">ReadAloud and ElevenLabs, as of 2026-10-10</h4>
                 <p>Prices are ElevenLabs&rsquo; published pay-as-you-go API list prices for text to speech, read from its pricing page on 2026-10-10. Time to first audio is the median (p50) and 95th percentile (p95) in milliseconds, measured in San Jose with short call-centre sentences.</p>
                 <div className="ra-table-wrap" style={{ marginTop: 8 }}>
                   <table className="ra-table">
                     <thead><tr><th>Service</th><th>Per 1,000 characters</th><th>Per 1M characters</th><th>Warm connection, p50 / p95</th><th>New connection, p50 / p95</th></tr></thead>
                     <tbody>
-                      <tr><td>ReadAloud, default voice (<code>piper-default</code>)</td><td>$0.004</td><td>$4</td><td>about 250 / 340-360 ms</td><td>about 290 / 370-440 ms</td></tr>
+                      <tr><td>ReadAloud, default voice (<code>readaloud-default</code>)</td><td>$0.004</td><td>$4</td><td>about 250 / 340-360 ms</td><td>about 290 / 370-440 ms</td></tr>
                       <tr><td>ElevenLabs Flash v2.5</td><td>$0.04</td><td>$40</td><td>166-174 / 190-220 ms</td><td>200-280 / 410-490 ms</td></tr>
                       <tr><td>ElevenLabs v4 Turbo</td><td>$0.04 list ($0.011 promotional until 2026-10-12)</td><td>$40 list ($11 promotional)</td><td>187-196 / 290-460 ms</td><td>about 222 / 250-370 ms</td></tr>
                       <tr><td>ElevenLabs v2 Multilingual</td><td>$0.08</td><td>$80</td><td>about 1,040 / 1,140 ms</td><td>about 1,090 / 1,220 ms</td></tr>

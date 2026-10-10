@@ -38,8 +38,8 @@ export const PRICING = {
   soundEffects: { usd: 0.0015, unit: 'second of generated audio', note: '4 second minimum; cache hits are free.' },
   // Documented: "$0.05 per minute of input audio", by the second, 45 s minimum.
   voiceIsolate: { usd: 0.05, unit: 'minute of audio', note: 'Billed by the second (45 second minimum); failed jobs are not billed.' },
-  // Documented: Kokoro voices are "$0.01 per 1,000 characters" (audiobook chapters use Kokoro).
-  audiobooks: { usd: 0.01, unit: '1,000 characters', note: 'Same rate as text to speech with Kokoro voices.' },
+  // Documented: ReadAloud Studio voices are "$0.01 per 1,000 characters" (audiobook chapters use ReadAloud Studio).
+  audiobooks: { usd: 0.01, unit: '1,000 characters', note: 'Same rate as text to speech with ReadAloud Studio voices.' },
 } as const satisfies Record<string, ToolPrice>
 
 export type PricedTool = keyof typeof PRICING

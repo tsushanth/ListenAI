@@ -4,15 +4,21 @@ export const MAX_TEXT_CHARS = 1000
 export const MAX_AUDIO_SECONDS = 20
 export const REQUEST_TIMEOUT_MS = 30_000
 
-export const engineSchema = z.enum(['piper', 'kokoro'])
+// Public engine names are "live" and "studio". The earlier names are still accepted from existing clients
+// and mapped here, so they never appear in the advertised schema.
+const ENGINE_ALIASES: Record<string, string> = { piper: 'live', kokoro: 'studio' }
+export const engineSchema = z.preprocess(
+  (v) => (typeof v === 'string' && v in ENGINE_ALIASES ? ENGINE_ALIASES[v] : v),
+  z.enum(['live', 'studio']),
+)
 
 export const textToSpeechInput = {
   text: z.string().trim().min(1, 'text must not be empty').max(MAX_TEXT_CHARS, `text must be at most ${MAX_TEXT_CHARS} characters`)
     .describe(`The exact words to speak, plain text, 1-${MAX_TEXT_CHARS} characters (about 20 s of audio at most; longer audio is cut off). Split longer content into several calls. Do not include markup.`),
-  engine: engineSchema.default('piper')
-    .describe('"piper" (default): fast CPU engine, one voice ("default"), lowest latency, cheapest. "kokoro": more natural, many voices, may be slower to start.'),
+  engine: engineSchema.default('live')
+    .describe('"live" (default): ReadAloud Live, the low-latency engine, one voice ("default"), cheapest. "studio": ReadAloud Studio, more natural, many voices, may be slower to start.'),
   voice: z.string().max(80).optional()
-    .describe('Voice name. Piper: "default". Kokoro: e.g. "af_heart" (default), "am_adam", "bf_emma". Custom trained voices: "custom:<id>". Call list_voices for the full list.'),
+    .describe('Voice name. Live: "default". Studio: e.g. "af_heart" (default), "am_adam", "bf_emma". Custom trained voices: "custom:<id>". Call list_voices for the full list.'),
   speed: z.number().min(0.5).max(2).default(1)
     .describe('Speaking rate multiplier, 0.5 (slow) to 2.0 (fast). Default 1.0.'),
 }
@@ -36,7 +42,7 @@ export const createAudiobookInput = {
   text: z.string().trim().min(1).max(MAX_AUDIOBOOK_TEXT_CHARS)
     .describe('The full text to turn into an audiobook. It will be split into chapters automatically (by an LLM boundary call), then synthesized chapter by chapter with one fixed voice.'),
   voice_id: z.string().min(1).max(100).default('af_heart')
-    .describe('Kokoro voice id used for every chapter (e.g. "af_heart", "am_adam"). Call list_voices for options.'),
+    .describe('ReadAloud Studio voice id used for every chapter (e.g. "af_heart", "am_adam"). Call list_voices for options.'),
   speed: z.number().min(0.5).max(3.0).default(1.0).describe('Speaking rate multiplier, applied to every chapter.'),
 }
 export const createAudiobookSchema = z.object(createAudiobookInput)
@@ -111,7 +117,7 @@ export const dubAudioInput = {
   source_language: z.string().min(2).max(10).optional()
     .describe('Language the source audio is in, e.g. "en". Omit to let the transcriber auto-detect.'),
   voice_id: z.string().min(1).max(100).optional()
-    .describe('Kokoro voice id to speak the dub in. Omit for the default voice — this is not voice cloning; the dub will not sound like the original speaker.'),
+    .describe('ReadAloud Studio voice id to speak the dub in. Omit for the default voice — this is not voice cloning; the dub will not sound like the original speaker.'),
 }
 export const dubAudioSchema = z.object(dubAudioInput)
 

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-// Mints a short-lived Piper session token for the homepage demo. The demo API key lives only in
-// this server's env (TTS_DEMO_API_KEY); the browser never sees it. Piper only: it is the
+// Mints a short-lived ReadAloud Live session token for the homepage demo. The demo API key lives only in
+// this server's env (TTS_DEMO_API_KEY); the browser never sees it. ReadAloud Live only: it is the
 // always-on CPU engine, so a visitor can't wake a GPU worker.
 const GATEWAY = process.env.TTS_GATEWAY_URL || 'https://api.readaloudai.org'
 const hits = new Map<string, number[]>()

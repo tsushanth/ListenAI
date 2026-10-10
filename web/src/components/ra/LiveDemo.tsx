@@ -136,7 +136,7 @@ export default function LiveDemo() {
       return
     }
 
-    // House voice (Kokoro-distilled Piper). If the worker doesn't know it, retry once with the baked-in default.
+    // House voice (ReadAloud Live house voice). If the worker doesn't know it, retry once with the baked-in default.
     let voice = DEMO_VOICE
     const ws = new WebSocket(`${auth.url}?token=${auth.token}`)
     ws.binaryType = 'arraybuffer'

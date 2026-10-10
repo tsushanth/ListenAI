@@ -2,11 +2,11 @@
 
 import { useState } from 'react'
 
-const JS = `// 1. Get a short-lived token (valid 60 s). engine: "piper" or "kokoro".
+const JS = `// 1. Get a short-lived token (valid 60 s). engine: "live" or "studio".
 const { token, url } = await fetch("https://api.readaloudai.org/tts/authorize", {
   method: "POST",
   headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({ key: "YOUR_API_KEY", engine: "piper" }),
+  body: JSON.stringify({ key: "YOUR_API_KEY", engine: "live" }),
 }).then((r) => r.json())
 
 // 2. Connect straight to the voice server.
@@ -35,7 +35,7 @@ import json, requests, websocket
 
 auth = requests.post(
     "https://api.readaloudai.org/tts/authorize",
-    json={"key": "YOUR_API_KEY", "engine": "piper"},
+    json={"key": "YOUR_API_KEY", "engine": "live"},
 ).json()
 
 ws = websocket.create_connection(f"{auth['url']}?token={auth['token']}")

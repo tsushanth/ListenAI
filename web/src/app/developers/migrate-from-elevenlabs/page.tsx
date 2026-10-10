@@ -30,7 +30,7 @@ curl -X POST "https://api.elevenlabs.io/v1/text-to-speech/21m00Tcm4TlvDq8ikWAM?o
   -d '{"text":"Thanks for calling.","model_id":"eleven_flash_v2_5"}' -o out.mp3
 
 # after: new host, new key, new voice id
-curl -X POST "https://api.readaloudai.org/v1/text-to-speech/piper-default?output_format=mp3_44100_128" \\
+curl -X POST "https://api.readaloudai.org/v1/text-to-speech/readaloud-default?output_format=mp3_44100_128" \\
   -H "xi-api-key: $READALOUD_API_KEY" -H "Content-Type: application/json" \\
   -d '{"text":"Thanks for calling.","model_id":"eleven_flash_v2_5"}' -o out.mp3`
 
@@ -48,7 +48,7 @@ client = ElevenLabs(
 )
 
 audio = client.text_to_speech.convert(
-    voice_id="piper-default",          # was an ElevenLabs voice id
+    voice_id="readaloud-default",          # was an ElevenLabs voice id
     text="Thanks for calling.",
     model_id="eleven_multilingual_v2",  # accepted; the voice decides how audio is made
     output_format="mp3_44100_128",
@@ -70,7 +70,7 @@ const client = new ElevenLabsClient({
   baseUrl: "https://api.readaloudai.org",
 });
 
-const audio = await client.textToSpeech.convert("piper-default", {
+const audio = await client.textToSpeech.convert("readaloud-default", {
   text: "Thanks for calling.",
   modelId: "eleven_flash_v2_5",
   outputFormat: "pcm_16000",
@@ -86,14 +86,14 @@ def text_chunks():
 
 with open("out.mp3", "wb") as f:
     for chunk in client.text_to_speech.convert_realtime(
-        voice_id="piper-default",
+        voice_id="readaloud-default",
         text=text_chunks(),
         model_id="eleven_flash_v2_5",
         output_format="mp3_44100_128",
     ):
         f.write(chunk)`
 
-const WSRAW = `wss://api.readaloudai.org/v1/text-to-speech/piper-default/stream-input?output_format=mp3_44100_128
+const WSRAW = `wss://api.readaloudai.org/v1/text-to-speech/readaloud-default/stream-input?output_format=mp3_44100_128
 
 header:   xi-api-key: <your ReadAloud key>      (or send "xi_api_key" in the first message)
 send:     {"text": " "}                          first message
@@ -144,13 +144,14 @@ export default function MigrateFromElevenLabsPage() {
         <section className="ra-section" id="three-changes" style={{ paddingTop: 40 }}>
           <div className="ra-wrap ra-narrow ra-ref" style={{ maxWidth: 820 }}>
             <h2>Three things to change</h2>
+            <p className="ra-small" style={{ marginTop: 0 }}>The earlier names piper-default, piper and kokoro keep working as aliases.</p>
             <ol style={{ paddingLeft: 24, listStyle: 'decimal', display: 'grid', gap: 10, color: 'var(--ink2)' }}>
               <li><b>Base URL:</b> <code>https://api.readaloudai.org</code> instead of <code>https://api.elevenlabs.io</code>.</li>
               <li><b>API key:</b> your ReadAloud key (it starts with <code>rtts_</code>). Send it as <code>xi-api-key</code> or as <code>Authorization: Bearer</code>; both work.</li>
-              <li><b>Voice id:</b> use <code>piper-default</code>. ElevenLabs voice ids, for example <code>21m00Tcm4TlvDq8ikWAM</code>, do not exist here and return <code>404 voice_not_found</code>. We do not substitute a voice for you, and there is deliberately no table mapping ElevenLabs voices to ours.</li>
+              <li><b>Voice id:</b> use <code>readaloud-default</code>. ElevenLabs voice ids, for example <code>21m00Tcm4TlvDq8ikWAM</code>, do not exist here and return <code>404 voice_not_found</code>. We do not substitute a voice for you, and there is deliberately no table mapping ElevenLabs voices to ours.</li>
             </ol>
             <p style={{ marginTop: 16 }}>
-              Everything else in a typical text-to-speech call, such as <code>model_id</code>, <code>output_format</code> and <code>voice_settings.speed</code>, can stay as it is. <code>piper-default</code> is the only voice this guide covers. It does not sound like any ElevenLabs voice, and we make no claim that it matches ElevenLabs quality. Listen to it on your own text before you switch.
+              Everything else in a typical text-to-speech call, such as <code>model_id</code>, <code>output_format</code> and <code>voice_settings.speed</code>, can stay as it is. <code>readaloud-default</code> is the only voice this guide covers. It does not sound like any ElevenLabs voice, and we make no claim that it matches ElevenLabs quality. Listen to it on your own text before you switch.
             </p>
           </div>
         </section>
@@ -215,11 +216,11 @@ export default function MigrateFromElevenLabsPage() {
             <h2>What is different or not supported</h2>
             <h3>Different</h3>
             <ul>
-              <li><b>Voices.</b> ElevenLabs voice ids return <code>404</code>. Use <code>piper-default</code>. Your own ElevenLabs voice clones and Voice Library voices cannot be used here.</li>
+              <li><b>Voices.</b> ElevenLabs voice ids return <code>404</code>. Use <code>readaloud-default</code>. Your own ElevenLabs voice clones and Voice Library voices cannot be used here.</li>
               <li><b>Sound.</b> The voice is not the same as any ElevenLabs voice and we do not claim equal quality. We publish no side-by-side audio on this page.</li>
               <li><b><code>model_id</code> does not choose the voice.</b> Any string is accepted, including ids we do not list such as <code>eleven_v3</code>; the voice you pass decides how the audio is made. The response header <code>X-Model-Mapped</code> reports how the id was treated.</li>
               <li><b>Voice settings.</b> Only <code>speed</code> has an effect. <code>stability</code>, <code>similarity_boost</code>, <code>style</code> and <code>use_speaker_boost</code> are accepted and ignored, as are <code>seed</code>, <code>language_code</code>, <code>previous_text</code>, <code>next_text</code> and a few other request fields. The ones you sent are echoed in the <code>x-compat-ignored</code> response header, so nothing is dropped silently.</li>
-              <li><b>Language.</b> <code>language_code</code> does not select a language. <code>piper-default</code> is an American English voice. We did not test other languages through this route.</li>
+              <li><b>Language.</b> <code>language_code</code> does not select a language. <code>readaloud-default</code> is an American English voice. We did not test other languages through this route.</li>
               <li><b>Sample rates above 24 kHz are upsampled.</b> The audio is made at 24 kHz. Formats such as <code>mp3_44100_128</code> have the sample rate you asked for but no content above 12 kHz. Response headers <code>X-Sample-Rate</code>, <code>X-Audio-Format</code> and <code>X-Source-Sample-Rate</code> say so.</li>
               <li><b><code>wav_*</code> formats</b> work only on the non-streaming endpoint (the streaming endpoint returns <code>422</code>), as in ElevenLabs.</li>
               <li><b>Timestamps.</b> <code>/with-timestamps</code> works but returns <code>null</code> alignment. We do not compute character timings.</li>

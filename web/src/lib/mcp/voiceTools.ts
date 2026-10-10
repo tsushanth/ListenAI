@@ -1,4 +1,4 @@
-// MCP tools for voice design, voice conversion and Piper voice cloning.
+// MCP tools for voice design, voice conversion and voice cloning.
 //
 // Kept in its own module (schemas + upstream clients together) so server.ts only needs the tool
 // registrations. Three different upstreams, deliberately not unified:
@@ -251,7 +251,7 @@ export async function getVoiceConversionAudio(opts: { apiKey: string; keyId: str
 }
 
 // ============================================================================
-// Voice cloning (realtime-tts gateway /v1/voices, Piper fine-tune, $2.50 per voice)
+// Voice cloning (realtime-tts gateway /v1/voices, fine-tune, $2.50 per voice)
 // ============================================================================
 
 export interface VoiceCloneRecord { id: string; status?: string; [key: string]: unknown }

@@ -83,8 +83,8 @@ export default function AdminBusiness({ token, hours }: { token: string; hours: 
       {!d.totals.ok || !t ? (d.totals.ok ? null : <Failed what="totals" s={d.totals} />) : (
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <Card label="API accounts" value={fmtNumber(t.accounts)} hint={`${fmtNumber(t.newAccounts)} new · ${fmtNumber(t.activeKeys)} active keys`} />
-          <Card label="Paid Kokoro characters" value={fmtChars(t.kokoroChars)} />
-          <Card label="Paid Piper characters" value={fmtChars(t.piperChars)} />
+          <Card label="Paid ReadAloud Studio characters" value={fmtChars(t.kokoroChars)} />
+          <Card label="Paid ReadAloud Live characters" value={fmtChars(t.piperChars)} />
           <Card label="Free-tier characters" value={fmtChars(t.freeCharsUsed)} />
           <Card label="STT audio (batch + API)" value={fmtMinutes(t.sttMinutes)} />
           <Card label="Free credits used" value={`${fmtNumber(t.creditsUsed)} / ${fmtNumber(t.creditsGranted)}`} hint={`${fmtChars(t.freeCharsUsed)} chars this range`} />

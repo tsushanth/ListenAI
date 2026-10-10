@@ -30,10 +30,10 @@ await client.connect(new StreamableHTTPClientTransport(new URL(URL_), { requestI
 ok(`initialize (server ${client.getServerVersion().name})`)
 const { tools } = await client.listTools()
 assert.deepEqual(tools.map((t) => t.name).sort(), ['get_api_status', 'list_voices', 'text_to_speech']); ok('tools/list: ' + tools.map((t) => t.name).join(', '))
-const lv = await client.callTool({ name: 'list_voices', arguments: { engine: 'kokoro' } })
-assert(lv.structuredContent.kokoro.voices.includes('af_heart')); ok('list_voices')
+const lv = await client.callTool({ name: 'list_voices', arguments: { engine: 'studio' } })
+assert(lv.structuredContent.studio.voices.includes('af_heart')); ok('list_voices')
 const st = await client.callTool({ name: 'get_api_status', arguments: {} })
-console.log('     status:', JSON.stringify(st.structuredContent.piper)); ok('get_api_status')
+console.log('     status:', JSON.stringify(st.structuredContent.live)); ok('get_api_status')
 
 async function speak(args) {
   const res = await client.callTool({ name: 'text_to_speech', arguments: args })
@@ -45,8 +45,8 @@ async function speak(args) {
   console.log('    ', res.content.find((c) => c.type === 'text').text)
   return w
 }
-await speak({ text: 'Hello from the ReadAloud MCP server.' }); ok('text_to_speech piper -> valid WAV')
-await speak({ text: 'This is Kokoro.', engine: 'kokoro', voice: 'af_heart' }); ok('text_to_speech kokoro -> valid WAV')
+await speak({ text: 'Hello from the ReadAloud MCP server.' }); ok('text_to_speech live -> valid WAV')
+await speak({ text: 'This is ReadAloud Studio.', engine: 'studio', voice: 'af_heart' }); ok('text_to_speech studio -> valid WAV')
 
 const errText = async (args) => { try { const x = await client.callTool({ name: 'text_to_speech', arguments: args }); return x.isError ? x.content[0].text : 'NOERROR' } catch (e) { return 'THROWN ' + e.message } }
 let e = await errText({ text: 'x'.repeat(1001) })
