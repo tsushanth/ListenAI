@@ -20,9 +20,7 @@ const software: Row[] = [
   { name: 'Piper', use: 'Text-to-speech engine', licence: 'GNU GPL v3.0', href: 'https://github.com/OHF-Voice/piper1-gpl' },
   { name: 'eSpeak NG', use: 'Pronunciation (phonemisation) for speech synthesis', licence: 'GNU GPL v3.0', href: 'https://github.com/espeak-ng/espeak-ng' },
   { name: 'Chatterbox', use: 'Voice cloning from a reference recording', licence: 'MIT', href: 'https://github.com/resemble-ai/chatterbox' },
-  { name: 'Orpheus TTS', use: 'The second, streaming voice-cloning path', licence: 'Apache License 2.0', href: 'https://github.com/canopyai/Orpheus-TTS' },
   { name: 'Whisper large-v3-turbo', use: 'Speech to text and the transcription step of dubbing', licence: 'MIT', href: 'https://huggingface.co/openai/whisper-large-v3-turbo' },
-  { name: 'Demucs', use: 'Voice isolation', licence: 'MIT', href: 'https://github.com/facebookresearch/demucs' },
 ]
 
 const data: Row[] = [

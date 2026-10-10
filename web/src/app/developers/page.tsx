@@ -5,7 +5,6 @@ import CodeTabs from '@/components/ra/CodeTabs'
 import DeveloperApiSection from '@/components/DeveloperApiSection'
 import VoiceStudioLink from '@/components/ra/VoiceStudioLink'
 import VoiceCloningDocs from '@/components/ra/VoiceCloningDocs'
-import OrpheusCloningDocs from '@/components/ra/OrpheusCloningDocs'
 
 export const metadata = {
   title: 'Voice API - ReadAloud AI',
@@ -34,7 +33,7 @@ export default function DevelopersPage() {
             <p className="ra-lede" style={{ marginBottom: 24 }}>Sign in, create a key, and it works straight away.</p>
             <div className="ra-dark-panel"><DeveloperApiSection /></div>
             <p className="ra-small" id="free-credits" style={{ marginTop: 16 }}>
-              <b>Free credits.</b> Every account gets a one-time grant of free credits (worth $0.10, about 10,000 characters of speech), shared across speech, transcription, dubbing, voice isolation, voice conversion and voice design. Long jobs use more credits than short ones. When they run out those tools return <code>402</code> until you add a payment method; after that you pay as you go. Accounts without a payment method can hold one active API key. The free credits are one capped pool per account, shared across all of your keys (creating or revoking a key does not reset it), and they are used up first. Voice cloning and music generation always need a payment method.
+              <b>Free credits.</b> Every account gets a one-time grant of free credits (worth $0.10, about 10,000 characters of speech), shared across speech, transcription, dubbing, voice conversion and voice design. Long jobs use more credits than short ones. When they run out those tools return <code>402</code> until you add a payment method; after that you pay as you go. Accounts without a payment method can hold one active API key. The free credits are one capped pool per account, shared across all of your keys (creating or revoking a key does not reset it), and they are used up first. Voice cloning and music generation always need a payment method.
             </p>
           </div>
         </section>
@@ -219,40 +218,13 @@ session = AgentSession(
                 <p>Create a custom voice from your own recordings and use it with <code className="inl">custom:&lt;id&gt;</code>. Training runs automatically on GPU and takes about 30–60 minutes.</p>
                 <VoiceCloningDocs />
 
-                <h3 id="streaming-cloning">Low-latency streaming clone</h3>
-                <p>
-                  A second, faster cloning path on a different model (Orpheus, a neural codec language
-                  model), aimed at conversational agents that need speech to start well under a second
-                  after the request. Self-serve, the same shape as regular voice cloning:{' '}
-                  <code className="inl">custom-fast:&lt;id&gt;</code> voices, 8&ndash;20 minutes of your
-                  own recordings, synthesized as PCM16, 24&nbsp;kHz, mono (matching the rest of this
-                  API), gated behind a billing-enabled API key (the gateway returns <code>402</code>{' '}
-                  otherwise). Training takes roughly 10&ndash;90 minutes; we use that wait to warm the
-                  serving container too, so a voice is only reported <code>ready</code> once it can
-                  actually serve a fast request &mdash; you should not see a cold-start delay on your
-                  first synthesis call for a newly trained voice.
-                </p>
-                <p><b>What we measured, warm.</b> A pilot voice reached a median time-to-first-audio-chunk
-                  of about 550&ndash;580&nbsp;ms once warm, against a 500&nbsp;ms target &mdash; close,
-                  not there yet. Two open issues we're still tuning: generation currently runs at
-                  roughly 1.6&ndash;2.7&times; real time, and utterance length is not yet reliably
-                  controlled &mdash; the same prompt can produce anywhere from a third of a second to
-                  several seconds of audio. Both point to needing a larger training run per voice, not
-                  a serving-side fix, but we haven't verified that yet. Responses are also buffered
-                  end-to-end through this proxy chain rather than truly streamed &mdash; a known,
-                  separately tracked limitation, so what you actually wait for today is closer to full
-                  generation time (utterance length &times; the real-time factor above) than the
-                  time-to-first-chunk number by itself.
-                </p>
-                <OrpheusCloningDocs />
-
                 <h3 id="speech-to-text">Speech to text (batch)</h3>
-                <p>Transcribe a finished recording with Whisper large-v3-turbo. Try it in the browser at <Link href="/transcribe" style={{ textDecoration: 'underline' }}>/transcribe</Link>, or with an API key through the MCP tool <code>speech_to_text</code> (up to 25&nbsp;MB per call). This is batch only: you upload a file and get the whole transcript back. There is no live streaming transcription yet, no speaker labels (diarization) and no entity detection.</p>
+                <p>Transcribe a finished recording with ReadAloud speech to text. Try it in the browser at <Link href="/transcribe" style={{ textDecoration: 'underline' }}>/transcribe</Link>, or with an API key through the MCP tool <code>speech_to_text</code> (up to 25&nbsp;MB per call). This is batch only: you upload a file and get the whole transcript back. There is no live streaming transcription yet, no speaker labels (diarization) and no entity detection.</p>
                 <p><b>1. Authorize.</b> <code>POST https://api.readaloudai.org/stt/authorize</code> with JSON <code>{'{ "key" }'}</code>. Returns <code>{'{ token, url }'}</code>. It uses the same key, the same <code>401</code> and <code>402</code> errors, and the same 60 second token as the voice API. Authorize again if the token has expired before you upload. It returns <code>501</code> if speech to text is not enabled.</p>
                 <p><b>2. Upload.</b> <code>POST &lt;url&gt;/v1/stt</code> with <code>Authorization: Bearer &lt;token&gt;</code> and the audio as the raw request body, or as a <code>multipart/form-data</code> upload in a <code>file</code> field. Parameters go in the query string (or as form fields):</p>
                 <ul>
                   <li><code>format</code> <code>auto</code> (default, detected from the file), <code>wav</code>, <code>flac</code>, <code>mp3</code>, <code>ogg</code> or <code>m4a</code>. For headerless phone audio use <code>mulaw_8000</code> or <code>alaw_8000</code> (G.711, 8 kHz mono) or <code>pcm_16000</code> (16-bit little-endian, 16 kHz mono).</li>
-                  <li><code>language</code> <code>auto</code> (default) lets Whisper detect the language. Or pass a two-letter code such as <code>en</code>. Whisper supports many languages, but we have only measured accuracy on English.</li>
+                  <li><code>language</code> <code>auto</code> (default) lets speech to text detect the language. Or pass a two-letter code such as <code>en</code>. Many languages are supported, but we have only measured accuracy on English.</li>
                   <li><code>word_timestamps</code> <code>true</code> (default) or <code>false</code>.</li>
                 </ul>
                 <p>The response is JSON: <code>{'{ text, language, language_probability, duration, words: [{ word, start, end }], segments: [{ id, start, end, text }] }'}</code>, with times in seconds. Long uploads may be answered with a <code>303</code> redirect while we work; your HTTP client has to follow it (<code>curl -L</code>; most libraries do).</p>
@@ -268,27 +240,26 @@ curl -L -X POST "<url>/v1/stt?language=auto" \\
                   <li><code>504</code> the request took longer than 15 minutes in total. Split the file and retry.</li>
                 </ul>
                 <p><b>Price:</b> $0.11 per hour of audio, billed by the second on the audio&rsquo;s full length (silence included) once the transcript is returned, with a 10 second minimum per request (so a 3 second clip is billed as 10 seconds, $0.0003). The minimum is billing only: the transcript and the returned duration are unchanged. Failed requests, and requests with no audio, are not billed. That is half of ElevenLabs Scribe&rsquo;s batch list price of $0.22 per hour (as of 2026-09; its realtime price is $0.39 per hour). It uses the same free allowance as the voice API: 10,000 free characters is about 54 minutes of audio. On your invoice it appears as character equivalents on the same meter (about 3 per second of audio).</p>
-                <p><b>What we measured.</b> On 100 short clips of read English speech (LibriTTS-R, about 9 minutes, roughly 1,500 words) word error rate was 2.6% on clean audio and 2.8% on the same clips simulated as 8 kHz telephone audio. That is studio-quality read speech with no background noise or real codec damage, so expect worse on real calls, accents, crosstalk and noisy rooms, and expect the usual Whisper habit of occasionally inventing text over silence or noise. We have not yet measured other languages. Scribe&rsquo;s accuracy was not part of this comparison, only its price. The first request after a quiet period can take about ten extra seconds while a GPU starts.</p>
+                <p><b>What we measured.</b> On 100 short clips of read English speech (LibriTTS-R, about 9 minutes, roughly 1,500 words) word error rate was 2.6% on clean audio and 2.8% on the same clips simulated as 8 kHz telephone audio. That is studio-quality read speech with no background noise or real codec damage, so expect worse on real calls, accents, crosstalk and noisy rooms, and expect the usual speech-recognition habit of occasionally inventing text over silence or noise. We have not yet measured other languages. Scribe&rsquo;s accuracy was not part of this comparison, only its price. The first request after a quiet period can take about ten extra seconds while a GPU starts.</p>
                 <p><b>Cold starts and timeouts.</b> The first request after a quiet period can take 10 to 18 seconds while the GPU starts. Use a request timeout of at least 60 seconds, and retry once on a timeout or a 5xx response. After that, a short clip takes about a second. The web transcribe page pre-warms the worker when you open it; pre-warming for MCP sessions is planned but not live yet, so MCP clients should apply the same timeout and one retry.</p>
 
                 <h3 id="dubbing">Dubbing</h3>
                 <p>
                   Upload a recording in one language and get back a version spoken in another,
                   with each translated segment timed to roughly match the original. Pipeline:
-                  transcribe (Whisper) &rarr; translate segment-by-segment (Claude) &rarr;
+                  transcribe &rarr; translate segment-by-segment (Claude) &rarr;
                   resynthesize each segment, speeding up or slowing down (0.5&times;&ndash;2&times;)
                   so it fits the original segment&rsquo;s timing. Try it in the browser at{' '}
                   <Link href="/dub" style={{ textDecoration: 'underline' }}>/dub</Link>.
                 </p>
                 <p><b>Credentials.</b> The REST endpoints below (dubbing, voice
-                  isolation, voice conversion, voice design and audiobooks) accept either a signed-in{' '}
+                  conversion, voice design and audiobooks) accept either a signed-in{' '}
                   <b>session token</b> (<code>Authorization: Bearer &lt;session token&gt;</code>) or an
                   API key that our own <Link href="/developers/mcp" style={{ textDecoration: 'underline' }}>MCP server</Link>{' '}
                   passes on for you. They do <b>not</b> accept your <code>rtts_</code> key
                   directly: the <code>key</code>/<code>authorize</code> flow used elsewhere on this page
                   does not apply here, and there is no way to send the key straight to these paths. To
                   use an API key, call the matching MCP tool (<code>dub_audio</code>,{' '}
-                  <code>isolate_voice</code>,{' '}
                   <code>convert_voice</code>, <code>design_voice</code>, the audiobook tools).
                   Through MCP, the work is billed to the account the key belongs to. Keys you create
                   in the console above belong to your account; a key that is not tied to an account
@@ -320,59 +291,41 @@ curl -L -X POST "<url>/v1/stt?language=auto" \\
                 <h3 id="sound-effects">Sound effects</h3>
                 <p>Sound effect generation is temporarily unavailable while we rework its cost. It will return here when it is ready.</p>
 
-                <h3 id="voice-isolate-convert">Voice isolation &amp; voice conversion</h3>
+                <h3 id="voice-convert">Voice conversion &amp; voice design</h3>
                 <p>
-                  Two related tools, each spinning up your own on-demand GPU container so your
-                  audio never sits on a shared server: <b>voice isolation</b> strips background
-                  noise/music from a recording (optionally also returning the isolated
-                  instrumental), and <b>voice conversion</b> re-sings/re-speaks a source
-                  recording in a target voice. Try isolation in the browser at{' '}
-                  <Link href="/isolate-voice" style={{ textDecoration: 'underline' }}>/isolate-voice</Link>. Both accept a session
-                  token, or an API key through the MCP tools <code>isolate_voice</code> and{' '}
-                  <code>convert_voice</code> (see Credentials under dubbing above). Not every
-                  container step is automatic for API-key callers: <code>convert_voice</code> sets up
-                  your private converter on the first call (about 3 minutes, and it returns a
-                  temporary error until it is ready, so call it again), but <code>isolate_voice</code> does
-                  not deploy for you. Deploy isolation first, from{' '}
-                  <Link href="/isolate-voice" style={{ textDecoration: 'underline' }}>/isolate-voice</Link> while signed in
-                  to the same account; until then isolation requests fail with <code>400</code>.
-                </p>
-                <p><b>Known limitation.</b> Isolation is Demucs, which was built for music. On real speech
-                  recordings (room noise, crosstalk, reverb) it removes less noise than dedicated speech
-                  enhancement models, so treat it as vocal/instrumental separation rather than a
-                  studio-grade noise remover, and listen to the result before relying on it.
+                  <b>Voice conversion</b> spins up your own on-demand GPU container so your
+                  audio never sits on a shared server, and re-sings/re-speaks a source
+                  recording in a target voice. Try it in the browser at{' '}
+                  <Link href="/convert-voice" style={{ textDecoration: 'underline' }}>/convert-voice</Link>. It accepts a session
+                  token, or an API key through the MCP tool <code>convert_voice</code> (see Credentials
+                  under dubbing above), which sets up your private converter on the first call (about 3
+                  minutes, and it returns a temporary error until it is ready, so call it again).
                 </p>
                 <p><b>Voice design.</b> <code>POST /api/voice-design</code> generates a synthetic voice from a
                   text description and a sample sentence (session token, or the MCP tools{' '}
                   <code>design_voice</code> and <code>get_voice_design</code>). Try it at{' '}
                   <Link href="/design-voice" style={{ textDecoration: 'underline' }}>/design-voice</Link>. It uses your free
-                  credits, then needs a payment method. Voice conversion also has a browser page at{' '}
-                  <Link href="/convert-voice" style={{ textDecoration: 'underline' }}>/convert-voice</Link>.
+                  credits, then needs a payment method.
                 </p>
-                <p><b>1. Deploy your container.</b> <code>POST /api/voice-isolate/deploy</code> or{' '}
-                  <code>POST /api/voice-convert/deploy</code> (same session-token auth). Check status with{' '}
-                  <code>GET .../deploy</code>, tear down with <code>DELETE .../deploy</code> when you&rsquo;re done
+                <p><b>1. Deploy your container.</b> <code>POST /api/voice-convert/deploy</code> (same session-token auth).
+                  Check status with <code>GET .../deploy</code>, tear down with <code>DELETE .../deploy</code> when you&rsquo;re done
                   &mdash; you aren&rsquo;t billed for idle deploy time, only completed jobs (see pricing below).
                 </p>
-                <p><b>2. Submit a job.</b> <code>POST /api/voice-isolate/isolations</code> (multipart{' '}
-                  <code>input</code> file) or <code>POST /api/voice-convert/conversions</code> (multipart{' '}
+                <p><b>2. Submit a job.</b> <code>POST /api/voice-convert/conversions</code> (multipart{' '}
                   <code>source</code> + <code>target</code> files) &mdash; wav, flac, ogg, mp3, mp4 or m4a, up to
-                  50&nbsp;MB (isolate) or 25&nbsp;MB (convert). Both require an exact{' '}
-                  <code>consent_statement</code> field confirming you have rights to the audio. Isolation also
-                  takes an optional <code>want_instrumental</code> boolean.
+                  25&nbsp;MB. It requires an exact <code>consent_statement</code> field confirming you have rights to the audio.
                 </p>
-                <p><b>3. Poll and fetch.</b> <code>GET .../isolations/:id</code> or{' '}
-                  <code>.../conversions/:id</code> for status, then <code>GET .../:id/audio</code> for the
-                  result (raw WAV bytes).
+                <p><b>3. Poll and fetch.</b> <code>GET .../conversions/:id</code> for status, then{' '}
+                  <code>GET .../:id/audio</code> for the result (raw WAV bytes).
                 </p>
                 <ul>
                   <li><code>400</code> no deployment, missing/bad file, or missing/wrong <code>consent_statement</code>.</li>
-                  <li><code>400</code> with <code>code: "deployment_required"</code> (conversion): no converter yet. <code>POST /api/voice-convert/deploy</code>, poll <code>GET</code> until <code>status: "ready"</code> (about 3 minutes), then retry.</li>
+                  <li><code>400</code> with <code>code: "deployment_required"</code>: no converter yet. <code>POST /api/voice-convert/deploy</code>, poll <code>GET</code> until <code>status: "ready"</code> (about 3 minutes), then retry.</li>
                   <li><code>401</code> not signed in. <code>402</code> your free credits are used up. Add a payment method.</li>
                   <li><code>409</code> a deployment already exists. <code>429</code> over 10 requests/hour.</li>
                   <li><code>503</code> the GPU backend isn&rsquo;t configured in this environment.</li>
                 </ul>
-                <p><b>Price:</b> voice isolation is $0.05 per minute of input audio, with a 45 second minimum ($0.0375). Voice conversion is $0.10 per minute of source audio, with a 45 second minimum ($0.075). Both are billed by the second rounded up, only for completed jobs. On your invoice they appear as character equivalents on the same meter as text-to-speech (isolation 5,000 per minute, conversion 10,000 per minute). Voice design is billed per generated voice on its own meter.</p>
+                <p><b>Price:</b> voice conversion is $0.10 per minute of source audio, with a 45 second minimum ($0.075). It is billed by the second rounded up, only for completed jobs. On your invoice it appears as character equivalents on the same meter as text-to-speech (10,000 per minute). Voice design is billed per generated voice on its own meter.</p>
 
                 <h3 id="audiobooks">Audiobooks</h3>
                 <p>
@@ -407,7 +360,7 @@ curl -L -X POST "<url>/v1/stt?language=auto" \\
                   &mdash; if a chapter-marker or concatenation edge case turns up, <Link href="mailto:support@readaloudai.org" style={{ textDecoration: 'underline' }}>let us know</Link>.</p>
 
                 <h3>Pricing and benchmarks</h3>
-                <p>ReadAloud Live $0.004 and ReadAloud Studio $0.01 per 1,000 characters; speech to text $0.11 per hour of audio; dubbing $0.15 per audio minute, voice conversion $0.10 per audio minute, and voice isolation $0.05 per audio minute, each billed by the second rounded up (with the minimums above); audiobooks bill per character like regular text-to-speech. Cloning a voice through the API costs $2.50 per voice when you commit the dataset. Audio-based usage appears on your invoice as character equivalents on the text-to-speech meter ($0.01 per 1,000). See <Link href="/#engines" style={{ textDecoration: 'underline' }}>engines and benchmarks</Link> for how we measured latency against ElevenLabs.</p>
+                <p>ReadAloud Live $0.004 and ReadAloud Studio $0.01 per 1,000 characters; speech to text $0.11 per hour of audio; dubbing $0.15 per audio minute and voice conversion $0.10 per audio minute, each billed by the second rounded up (with the minimums above); audiobooks bill per character like regular text-to-speech. Cloning a voice through the API costs $2.50 per voice when you commit the dataset. Audio-based usage appears on your invoice as character equivalents on the text-to-speech meter ($0.01 per 1,000). See <Link href="/#engines" style={{ textDecoration: 'underline' }}>engines and benchmarks</Link> for how we measured latency against ElevenLabs.</p>
                 <h4 id="vs-elevenlabs">ReadAloud and ElevenLabs, as of 2026-10-10</h4>
                 <p>Prices are ElevenLabs&rsquo; published pay-as-you-go API list prices for text to speech, read from its pricing page on 2026-10-10. Time to first audio is the median (p50) and 95th percentile (p95) in milliseconds, measured in San Jose with short call-centre sentences.</p>
                 <div className="ra-table-wrap" style={{ marginTop: 8 }}>

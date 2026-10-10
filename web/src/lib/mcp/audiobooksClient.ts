@@ -46,7 +46,7 @@ export class AudiobooksApiError extends Error {
 // overrides the real tool response with that message). Now consolidated into upstream.ts's
 // resolveGatewayIdentityHeaders, which tries every dot-separated token segment and falls back
 // to the caller-supplied keyId (ctx.keyId) rather than a locally re-derived hash — the same
-// fallback identity every other bridged tool (isolate_voice, dub_audio, sound effects) now uses,
+// fallback identity every other bridged tool (dub_audio, sound effects) now uses,
 // so the same raw key resolves to the same backend identity regardless of which tool touched it
 // first. It also reads MCP_GATEWAY_FORWARD_SECRET (not the unprefixed GATEWAY_FORWARD_SECRET
 // this file used to read, which was never provisioned anywhere and always 401'd).

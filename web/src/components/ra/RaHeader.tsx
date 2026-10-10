@@ -9,7 +9,6 @@ const TOOLS = [
   { href: '/convert-voice', label: 'Convert voice' },
   { href: '/transcribe', label: 'Transcribe audio' },
   { href: '/dub', label: 'Dub audio' },
-  { href: '/isolate-voice', label: 'Isolate voice' },
   { href: '/audiobooks', label: 'Audiobooks' },
 ]
 

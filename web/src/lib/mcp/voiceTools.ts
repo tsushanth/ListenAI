@@ -4,7 +4,7 @@
 // registrations. Three different upstreams, deliberately not unified:
 //   - voice design / voice conversion: this repo's backend (backend/src/routes/voiceDesign.ts,
 //     voiceConvert.ts) behind requireAuthOrApiKey, authenticated with the same gateway-forwarded identity
-//     headers as isolate_voice (see upstream.ts's resolveGatewayIdentity / gatewayIdentityHeaders).
+//     headers as dub_audio (see upstream.ts's resolveGatewayIdentity / gatewayIdentityHeaders).
 //   - voice cloning: the realtime-tts gateway's /v1/voices/* API, which takes the caller's raw API key as a
 //     bearer token directly (it validates the key against its own store and forwards to the backend itself).
 import { lookup } from 'node:dns/promises'

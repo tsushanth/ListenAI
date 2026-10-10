@@ -4,8 +4,6 @@ import { SlidingWindowLimiter } from './ratelimit.ts'
 import {
   MAX_AUDIO_SECONDS, listVoicesInput, textToSpeechInput, textToSpeechSchema, MAX_TEXT_CHARS,
   createAudiobookInput, createAudiobookSchema, audiobookIdInput, audiobookIdSchema,
-  isolateVoiceInput, isolateVoiceSchema, getVoiceIsolationInput, getVoiceIsolationSchema,
-  MAX_ISOLATE_AUDIO_MB, ISOLATE_REQUEST_TIMEOUT_MS,
   speechToTextInput, speechToTextSchema, MAX_STT_AUDIO_MB, STT_REQUEST_TIMEOUT_MS,
   dubAudioInput, dubAudioSchema, dubStatusInput, dubStatusSchema, MAX_DUB_AUDIO_BYTES,
   soundEffectInput, soundEffectSchema, SOUND_EFFECT_MAX_DURATION_SEC,
@@ -14,7 +12,6 @@ import {
 import { KOKORO_VOICES, PIPER_VOICES, resolveVoice, upstreamEngine } from './voices.ts'
 import {
   UpstreamError, authorize, authorizeStt, fetchPiperHealth, synthesize, transcribe, type ErrorCode,
-  isolateVoice, getVoiceIsolationStatus, getVoiceIsolationAudio,
   submitDub, getDubStatus,
   submitSoundEffectJob, pollSoundEffectJob, fetchAudioBytes, resolveGatewayIdentityHeaders,
 } from './upstream.ts'
@@ -38,11 +35,6 @@ export const keyLimiter = new SlidingWindowLimiter(15, 60_000)
 // expensive than a TTS call, so a tighter limit than keyLimiter's.
 export const soundEffectLimiter = new SlidingWindowLimiter(5, 60_000)
 
-// Isolation jobs run a GPU container per job: keep this tighter than speech. Mirrors the backend's own
-// 10/hour limiter on POST /api/voice-isolate/isolations (voiceIsolate.ts), just scoped per-minute here
-// since this limiter is local to one MCP server instance, not shared with the web app's own calls.
-export const isolateKeyLimiter = new SlidingWindowLimiter(5, 60_000)
-
 // Transcription is heavier (GPU minutes, not milliseconds) than a TTS call: 10 per minute per key.
 export const sttKeyLimiter = new SlidingWindowLimiter(10, 60_000)
 
@@ -62,7 +54,7 @@ function toolError(code: ErrorCode, message: string, retryable: boolean): CallTo
 
 export function createMcpServer(ctx: RequestContext): McpServer {
   const server = new McpServer({ name: 'readaloud-ai', version: '1.0.0' }, {
-    instructions: 'ReadAloud AI text-to-speech, speech-to-text, voice isolation, dubbing, audiobooks, voice design, voice conversion and voice cloning. Use text_to_speech to turn short text into a WAV audio clip. Use list_voices before picking a non-default voice. Use isolate_voice to separate vocals from a song/clip, then poll get_voice_isolation for the result. Use speech_to_text to transcribe spoken audio. Use create_audiobook to turn long text or an ePub into a chaptered audiobook, then get_audiobook_status and export_audiobook. Use dub_audio to re-voice a spoken audio clip into another language (audio in, audio out — no video), then get_dub_status to poll for the result. Use generate_sound_effect to make a short sound effect from a text description. Use design_voice to generate a synthetic voice from a description (poll get_voice_design), and convert_voice to re-speak a clip in a target voice (poll get_voice_conversion). To clone a voice: create_voice_clone, upload_voice_clone_dataset, commit_voice_clone_dataset (billed, needs confirms_charge), get_voice_clone_status until ready, then deploy_voice_clone and use custom:<voice_id> in text_to_speech; delete_voice_clone removes it.',
+    instructions: 'ReadAloud AI text-to-speech, speech-to-text, dubbing, audiobooks, voice design, voice conversion and voice cloning. Use text_to_speech to turn short text into a WAV audio clip. Use list_voices before picking a non-default voice. Use speech_to_text to transcribe spoken audio. Use create_audiobook to turn long text or an ePub into a chaptered audiobook, then get_audiobook_status and export_audiobook. Use dub_audio to re-voice a spoken audio clip into another language (audio in, audio out — no video), then get_dub_status to poll for the result. Use generate_sound_effect to make a short sound effect from a text description. Use design_voice to generate a synthetic voice from a description (poll get_voice_design), and convert_voice to re-speak a clip in a target voice (poll get_voice_conversion). To clone a voice: create_voice_clone, upload_voice_clone_dataset, commit_voice_clone_dataset (billed, needs confirms_charge), get_voice_clone_status until ready, then deploy_voice_clone and use custom:<voice_id> in text_to_speech; delete_voice_clone removes it.',
   })
 
   server.registerTool('text_to_speech', {
@@ -100,100 +92,11 @@ export function createMcpServer(ctx: RequestContext): McpServer {
     }
   })
 
-  server.registerTool('isolate_voice', {
-    title: 'Isolate voice',
-    description:
-      `Separate a song or clip's vocals from the rest (Demucs htdemucs). Send base64-encoded audio ` +
-      `(WAV, FLAC, OGG, MP3, or M4A), up to ${MAX_ISOLATE_AUDIO_MB} MB decoded. Runs on a per-job GPU container, so it ` +
-      `can take up to a minute or more depending on length; this call returns a job_id right away — poll ` +
-      `get_voice_isolation with that job_id until status is "done", then call it again with fetch_audio ` +
-      `to get the separated audio. Requires confirms_rights: true (you must have the legal right to use ` +
-      `this audio). Set want_instrumental to also get the backing track, not just vocals. ` +
-      `Uses the caller's active subscription, so avoid resubmitting the same audio. ` +
-      `Errors are returned with a code: payment_required (no active subscription), invalid_input (bad audio ` +
-      `or missing rights confirmation), rate_limited (wait).`,
-    inputSchema: isolateVoiceInput,
-    annotations: { title: 'Isolate voice', readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
-  }, async (args): Promise<CallToolResult> => {
-    const parsed = isolateVoiceSchema.parse(args)
-    const rl = isolateKeyLimiter.check(ctx.keyId)
-    if (!rl.ok) return toolError('rate_limited', `Too many isolation requests for this key. Try again in ${rl.retryAfterSec} s.`, true)
-
-    let buffer: Buffer
-    try {
-      buffer = Buffer.from(parsed.audio_base64, 'base64')
-    } catch {
-      return toolError('invalid_input', 'audio_base64 is not valid base64.', false)
-    }
-    if (buffer.length === 0) return toolError('invalid_input', 'Decoded audio is empty.', false)
-    if (buffer.length > MAX_ISOLATE_AUDIO_MB * 1024 * 1024) {
-      return toolError('invalid_input', `Decoded audio exceeds ${MAX_ISOLATE_AUDIO_MB} MB.`, false)
-    }
-
-    try {
-      const result = await isolateVoice({
-        apiKey: ctx.apiKey, keyId: ctx.keyId, buffer, mimeType: parsed.mime_type,
-        wantInstrumental: parsed.want_instrumental, timeoutMs: ISOLATE_REQUEST_TIMEOUT_MS,
-      })
-      return {
-        content: [{ type: 'text', text: `Isolation job ${result.job_id} is ${result.status}. Poll get_voice_isolation with job_id "${result.job_id}" for status and, once done, the separated audio.` }],
-        structuredContent: { job_id: result.job_id, status: result.status },
-      }
-    } catch (e) {
-      if (e instanceof UpstreamError) {
-        if (e.code === 'unauthorized') ctx.authFailed = true
-        return toolError(e.code, e.message, e.retryable)
-      }
-      return toolError('upstream', 'Unexpected error while submitting the isolation job.', true)
-    }
-  })
-
-  server.registerTool('get_voice_isolation', {
-    title: 'Get voice isolation status/result',
-    description:
-      `Check an isolate_voice job's status by job_id. While status is "queued" or "processing", returns ` +
-      `just the status — poll again after a few seconds. Once status is "done", also returns the ` +
-      `separated audio (the "vocals" stem by default, or "instrumental" if you passed want_instrumental to ` +
-      `isolate_voice and set stem to "instrumental" here) as an inline WAV clip. If status is "failed" or ` +
-      `"rejected", the job did not produce audio.`,
-    inputSchema: getVoiceIsolationInput,
-    annotations: { title: 'Get voice isolation', readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
-  }, async (args): Promise<CallToolResult> => {
-    const parsed = getVoiceIsolationSchema.parse(args)
-    try {
-      const st = await getVoiceIsolationStatus({
-        apiKey: ctx.apiKey, keyId: ctx.keyId, jobId: parsed.job_id, timeoutMs: ISOLATE_REQUEST_TIMEOUT_MS,
-      })
-      if (st.status !== 'done') {
-        return {
-          content: [{ type: 'text', text: `Isolation job ${parsed.job_id} is ${st.status}.${st.status === 'failed' || st.status === 'rejected' ? ` No audio was produced.${typeof st.error === 'string' ? ` (${st.error})` : ''}` : ' Poll again shortly.'}` }],
-          structuredContent: { job_id: parsed.job_id, status: st.status },
-        }
-      }
-      const audio = await getVoiceIsolationAudio({
-        apiKey: ctx.apiKey, keyId: ctx.keyId, jobId: parsed.job_id, stem: parsed.stem, timeoutMs: ISOLATE_REQUEST_TIMEOUT_MS,
-      })
-      return {
-        content: [
-          { type: 'audio', data: audio.toString('base64'), mimeType: 'audio/wav' },
-          { type: 'text', text: `Isolation job ${parsed.job_id} is done. Returning the ${parsed.stem} stem.` },
-        ],
-        structuredContent: { job_id: parsed.job_id, status: st.status, stem: parsed.stem },
-      }
-    } catch (e) {
-      if (e instanceof UpstreamError) {
-        if (e.code === 'unauthorized') ctx.authFailed = true
-        return toolError(e.code, e.message, e.retryable)
-      }
-      return toolError('upstream', 'Unexpected error while checking the isolation job.', true)
-    }
-  })
-
   server.registerTool('speech_to_text', {
     title: 'Speech to text',
     description:
       `Transcribe spoken audio to text. Send base64-encoded audio (WAV, FLAC, OGG, MP3, M4A, or WEBM), up to ${MAX_STT_AUDIO_MB} MB decoded. ` +
-      `Runs on a batch Whisper worker (large-v3-turbo) — expect a few seconds to a couple of minutes depending on length; long calls will not stream. ` +
+      `Runs on a batch speech-to-text worker — expect a few seconds to a couple of minutes depending on length; long calls will not stream. ` +
       `Returns the transcript, detected language, and audio duration; set word_timestamps for per-word timing. ` +
       `Uses the caller's free minutes or billing, so avoid re-transcribing the same audio. ` +
       `Errors are returned with a code: capacity (temporary, retry), payment_required (free minutes used up), invalid_input (bad/oversized audio), rate_limited (wait).`,

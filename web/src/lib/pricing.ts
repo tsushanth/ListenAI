@@ -1,5 +1,5 @@
 // Single source of truth for prices shown on the web tool pages
-// (/transcribe, /dub, /sound-effects, /isolate-voice, /audiobooks).
+// (/transcribe, /dub, /sound-effects, /audiobooks).
 //
 // Values mirror what the site documents today (web/src/app/page.tsx and
 // web/src/app/developers/page.tsx). When backend prices change, update this
@@ -37,7 +37,6 @@ export const PRICING = {
   // Documented: "$0.0015 per second of generated audio". Cache hits are not billed (backend behavior).
   soundEffects: { usd: 0.0015, unit: 'second of generated audio', note: '4 second minimum; cache hits are free.' },
   // Documented: "$0.05 per minute of input audio", by the second, 45 s minimum.
-  voiceIsolate: { usd: 0.05, unit: 'minute of audio', note: 'Billed by the second (45 second minimum); failed jobs are not billed.' },
   // Documented: ReadAloud Studio voices are "$0.01 per 1,000 characters" (audiobook chapters use ReadAloud Studio).
   audiobooks: { usd: 0.01, unit: '1,000 characters', note: 'Same rate as text to speech with ReadAloud Studio voices.' },
 } as const satisfies Record<string, ToolPrice>

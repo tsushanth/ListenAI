@@ -23,9 +23,8 @@ export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
-// Was 64 KiB when only text_to_speech/list_voices existed; isolate_voice sends base64 audio (up to
-// MAX_ISOLATE_AUDIO_MB decoded, see mcp/schemas.ts) inline in the JSON-RPC body, so this has to hold at
-// least that much plus base64/JSON overhead (~33% + envelope).
+// Was 64 KiB when only text_to_speech/list_voices existed; tools such as dub_audio send base64 audio inline in the JSON-RPC body, so this has to hold
+// the audio plus base64/JSON overhead (~33% + envelope).
 const MAX_BODY_BYTES = 12 * 1024 * 1024
 const ipLimiter = new SlidingWindowLimiter(120, 60_000) // any request, per client IP
 

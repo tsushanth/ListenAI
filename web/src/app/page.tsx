@@ -169,7 +169,7 @@ export default function Home() {
             <div>
               <h2>Speech to text, too</h2>
               <p className="ra-lede">
-                Upload a recording, get a transcript with word timestamps. Whisper large-v3-turbo, the same key, $0.11 per hour of audio.
+                Upload a recording, get a transcript with word timestamps. ReadAloud speech to text, the same key, $0.11 per hour of audio.
               </p>
               <div className="ra-table-wrap" style={{ marginTop: 20 }}>
                 <table className="ra-table">

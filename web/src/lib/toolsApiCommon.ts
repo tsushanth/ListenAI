@@ -36,7 +36,7 @@ export async function authHeaders(json = false): Promise<Record<string, string>>
 
 /**
  * Turn a failed response into an ApiError. Backend routes answer either
- * `{ error: "text" }` (stt, voice-isolate) or `{ error: "CODE", message: "text" }`
+ * `{ error: "text" }` (stt) or `{ error: "CODE", message: "text" }`
  * (routes behind errorHandler: dub, sound-effects, audiobooks).
  */
 export async function fail(res: Response): Promise<never> {

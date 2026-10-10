@@ -1,7 +1,6 @@
 // Client-side audio file validation. Limits mirror the backend routes:
 //   stt.ts          200 MB, WAV FLAC OGG MP3 M4A WEBM, min 64 bytes
 //   dub.ts           50 MB, WAV FLAC OGG MP3 M4A WEBM, min 1 KB
-//   voiceIsolate.ts  50 MB, WAV FLAC OGG MP3 M4A (no WEBM)
 // The backends check the multipart part's Content-Type strictly, and browsers report
 // odd types for common files (audio/x-wav, audio/wave, '' for .flac), so files are
 // re-labelled from their extension before upload (see normalizeAudioFile).
@@ -27,7 +26,6 @@ export interface AudioRules {
 export const AUDIO_RULES = {
   stt: { maxMb: 200, minBytes: 64, exts: ['wav', 'flac', 'ogg', 'mp3', 'm4a', 'webm'], label: 'WAV, FLAC, OGG, MP3, M4A, WEBM' },
   dub: { maxMb: 50, minBytes: 1024, exts: ['wav', 'flac', 'ogg', 'mp3', 'm4a', 'webm'], label: 'WAV, FLAC, OGG, MP3, M4A, WEBM' },
-  isolate: { maxMb: 50, minBytes: 1, exts: ['wav', 'flac', 'ogg', 'mp3', 'm4a'], label: 'WAV, FLAC, OGG, MP3, M4A' },
 } as const satisfies Record<string, AudioRules>
 
 export function acceptAttr(rules: AudioRules): string {
