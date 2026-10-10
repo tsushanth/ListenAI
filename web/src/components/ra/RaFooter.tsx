@@ -31,6 +31,7 @@ export default function RaFooter() {
           <ul>
             <li><Link href="/privacy">Privacy</Link></li>
             <li><Link href="/terms">Terms</Link></li>
+            <li><Link href="/credits">Open-source credits</Link></li>
             <li><Link href="mailto:support@readaloudai.org">support@readaloudai.org</Link></li>
           </ul>
         </div>
