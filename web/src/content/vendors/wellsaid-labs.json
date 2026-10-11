@@ -1,0 +1,220 @@
+{
+  "slug": "wellsaid-labs",
+  "name": "WellSaid Labs",
+  "url": "https://wellsaid.io",
+  "status": "active",
+  "retrievedAt": "2026-10-10",
+  "category": "studio-tool",
+  "positioning": "WellSaid is a voiceover studio for teams producing finished narration, with a separate REST text-to-speech API whose pricing is quoted on request.",
+  "pricing": {
+    "model": "Studio: monthly or annual subscriptions metered by downloaded minutes of finished audio (generation is unlimited on paid plans). API: priced by monthly character quota with overages, rates not published.",
+    "headline": "No public per-character API price. Studio plans start at USD 10 per month billed annually (240 downloaded minutes per year) or USD 19 per month billed monthly (20 minutes per month).",
+    "pricePer1MCharsUsd": null,
+    "headlineTier": "Not published: WellSaid's FAQ says API usage is charged by monthly character quota plus overages, but rates are not on its public pages",
+    "tiers": [
+      {
+        "name": "Trial (Studio)",
+        "pricePer1MCharsUsd": null,
+        "unit": "USD 0; 3 download minutes per month",
+        "notes": "No commercial rights on the trial."
+      },
+      {
+        "name": "Starter (Studio)",
+        "pricePer1MCharsUsd": null,
+        "unit": "USD 10 per month billed annually (USD 120/year, 240 minutes/year) or USD 19 per month billed monthly (20 minutes/month)",
+        "notes": "All English voices, full commercial rights, 10 projects, 24 kHz, MP3."
+      },
+      {
+        "name": "Pro (Studio)",
+        "pricePer1MCharsUsd": null,
+        "unit": "USD 33 per month billed annually (USD 396/year, 2,160 minutes/year) or USD 49 per month billed monthly (180 minutes/month)",
+        "notes": "Unlimited projects, up to 48 kHz, Adobe Express integration; extra minutes can be bought in Studio."
+      },
+      {
+        "name": "Business (Studio)",
+        "pricePer1MCharsUsd": null,
+        "unit": "USD 160 per user per month billed annually (USD 1,920/year, 2,880 minutes/year/user)",
+        "notes": "Up to 5 seats, team workspace, invoicing."
+      },
+      {
+        "name": "Enterprise (Studio and API)",
+        "pricePer1MCharsUsd": null,
+        "unit": "custom",
+        "notes": "Custom minutes and seats, all languages, translation, SSO, SOC 2 reports, up to 96 kHz. Contact sales."
+      }
+    ],
+    "freeTier": "Free studio trial (3 download minutes per month, no commercial rights); a free 7-day API trial key is offered.",
+    "promotions": [
+      "Annual billing is shown as saving 47% (Starter) and 33% (Pro) versus monthly on the pricing page; no end date is stated. Pricing is stated to apply to new customers."
+    ],
+    "sourceUrls": [
+      "https://wellsaid.io/pricing",
+      "https://wellsaid.io/ai-voice-pricing",
+      "https://docs.wellsaidlabs.com/docs/frequently-asked-questions",
+      "https://wellsaid.io/api"
+    ]
+  },
+  "voices": {
+    "count": "Over 200 combinations of voices and styles (docs FAQ); the stream endpoint accepts about 145 speaker_id values",
+    "languages": "English voices on all plans; global voices (Arabic, Chinese, Czech, Danish, Dutch, French and more, many provided by partners) listed in the API docs; Studio lists all languages as an Enterprise feature",
+    "customVoiceOrCloning": null,
+    "sourceUrl": "https://docs.wellsaidlabs.com/reference/global-voices"
+  },
+  "streaming": {
+    "websocket": "unknown",
+    "http": "yes",
+    "vendorStatedLatency": "Vendor-stated: fastest render speed 'approximately 500ms per 30 characters' (API FAQ); streaming endpoint recommended for low latency.",
+    "sourceUrl": "https://docs.wellsaidlabs.com/docs/frequently-asked-questions"
+  },
+  "formats": [
+    "audio/mpeg (MP3) from the API",
+    "JSON response option",
+    "Studio exports: MP3, WAV, OGG, TXT, SRT/VTT captions (plan-dependent)"
+  ],
+  "ssml": "yes",
+  "compatibility": {
+    "openaiSpeechCompatible": "no",
+    "note": "WellSaid uses its own schema: POST https://api.wellsaidlabs.com/v1/tts/stream with an X-Api-Key header and numeric speaker_id. SSML support is limited (say-as) and enabled with an X-Enable-SSML header."
+  },
+  "licensing": {
+    "commercialUse": "Full commercial rights on paid Studio plans; the free trial has no commercial rights.",
+    "attributionOrConditions": "API-specific licence terms were not found on pages read; content moderation applies.",
+    "sourceUrl": "https://wellsaid.io/pricing"
+  },
+  "limits": {
+    "perRequestCharacters": "1,000 characters per request (API docs)",
+    "concurrency": "Default API key: 3 requests per second; higher limits by arrangement",
+    "sourceUrl": "https://docs.wellsaidlabs.com/docs/api-specifications"
+  },
+  "sdks": [
+    "REST API with a sample React app and an MCP server (no official language SDKs found in the docs index)"
+  ],
+  "compliance": {
+    "hipaa": "not-stated",
+    "soc2": "stated",
+    "gdpr": "stated",
+    "note": "Self-attested on wellsaid.io/security: GDPR, SOC 2 Type I and Type II; data hosted in the U.S. on Google Cloud; customer data not used to train models. wellsaid.io/api also states 'SOC2 and GDPR compliant'. HIPAA not mentioned on pages read.",
+    "sourceUrl": "https://wellsaid.io/security"
+  },
+  "strengths": [
+    {
+      "claim": "Closed-model voices from contracted voice actors, with commercial rights included on paid plans.",
+      "sourceUrl": "https://wellsaid.io/api"
+    },
+    {
+      "claim": "API offers async clip creation, word timing with subtitle output, replacement libraries for pronunciation, and an AI Director control for pitch, pace and tone.",
+      "sourceUrl": "https://docs.wellsaidlabs.com/llms.txt"
+    },
+    {
+      "claim": "Studio output up to 96 kHz on Enterprise and 48 kHz on Pro.",
+      "sourceUrl": "https://wellsaid.io/pricing"
+    },
+    {
+      "claim": "Security posture stated: GDPR, SOC 2 Type I and II, no training on customer data.",
+      "sourceUrl": "https://wellsaid.io/security"
+    },
+    {
+      "claim": "Global voice list spans many languages, including Arabic, Mandarin, Cantonese and several European languages (partner-provided voices).",
+      "sourceUrl": "https://docs.wellsaidlabs.com/reference/global-voices"
+    }
+  ],
+  "limitations": [
+    {
+      "claim": "Public pages state a 1,000-character request limit and a default of 3 requests per second per API key.",
+      "sourceUrl": "https://docs.wellsaidlabs.com/docs/api-specifications"
+    },
+    {
+      "claim": "Studio plans meter downloaded minutes and unused minutes do not roll over.",
+      "sourceUrl": "https://wellsaid.io/pricing"
+    },
+    {
+      "claim": "Limited SSML: the documented tag is say-as.",
+      "sourceUrl": "https://docs.wellsaidlabs.com/reference/ssml-capabilities"
+    }
+  ],
+  "migration": {
+    "stepsToMove": [
+      "Request an API key (a 7-day trial is available) and note that WellSaid authenticates with an X-Api-Key header.",
+      "Swap the endpoint: POST https://api.wellsaidlabs.com/v1/tts/stream with text (1 to 1,000 characters), numeric speaker_id and optional model ('legacy' or 'caruso').",
+      "Map each speaker_id to a voice on the target service using the avatars list (GET avatars endpoint).",
+      "Translate SSML (say-as only, via the X-Enable-SSML header) and replacement libraries (pronunciation respellings) to the target's pronunciation controls.",
+      "If you use async clips, word timing or clip combining with pauses, replace those workflows separately."
+    ],
+    "sourceUrls": [
+      "https://docs.wellsaidlabs.com/reference/getting-started-with-your-api",
+      "https://docs.wellsaidlabs.com/reference/ttsstream",
+      "https://docs.wellsaidlabs.com/reference/available-voice-avatars"
+    ]
+  },
+  "bestFor": "Corporate training, marketing and L&D teams who want polished studio voiceover and a managed API from the same vendor, and who are comfortable with sales-quoted API pricing.",
+  "sources": [
+    {
+      "url": "https://wellsaid.io/api",
+      "title": "WellSaid - Text to speech API",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://wellsaid.io/pricing",
+      "title": "WellSaid - Pricing",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://wellsaid.io/ai-voice-pricing",
+      "title": "WellSaid - AI voice pricing (same plans)",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://wellsaid.io/security",
+      "title": "WellSaid - Security",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://docs.wellsaidlabs.com/docs/frequently-asked-questions",
+      "title": "WellSaid API docs - FAQ",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://docs.wellsaidlabs.com/docs/api-specifications",
+      "title": "WellSaid API docs - API specifications",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://docs.wellsaidlabs.com/reference/getting-started-with-your-api",
+      "title": "WellSaid API docs - getting started",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://docs.wellsaidlabs.com/reference/ttsstream",
+      "title": "WellSaid API docs - render text to speech",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://docs.wellsaidlabs.com/reference/ssml-capabilities",
+      "title": "WellSaid API docs - SSML capabilities",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://docs.wellsaidlabs.com/reference/global-voices",
+      "title": "WellSaid API docs - global voices",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://docs.wellsaidlabs.com/reference/available-voice-avatars",
+      "title": "WellSaid API docs - available voice avatars",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://docs.wellsaidlabs.com/llms.txt",
+      "title": "WellSaid API docs - index",
+      "retrievedAt": "2026-10-10"
+    }
+  ],
+  "unknowns": [
+    "API price per character or per minute is not published (quoted by sales); the FAQ says usage is billed on monthly character quota plus overages.",
+    "WebSocket streaming: none found in the docs index, treated as unknown rather than absent.",
+    "Custom voice or cloning availability for the API was not found.",
+    "API-specific licensing and concurrency tiers beyond the default key were not published.",
+    "wellsaid.io/pricing and /ai-voice-pricing show identical content, so studio pricing is effectively single-source.",
+    "HIPAA status not stated on pages read."
+  ]
+}

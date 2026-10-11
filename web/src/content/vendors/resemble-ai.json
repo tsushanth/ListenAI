@@ -1,0 +1,217 @@
+{
+  "slug": "resemble-ai",
+  "name": "Resemble AI",
+  "url": "https://www.resemble.ai",
+  "status": "active",
+  "retrievedAt": "2026-10-10",
+  "category": "api-platform",
+  "positioning": "Resemble AI offers a voice API (text-to-speech, cloning, speech-to-speech, speech-to-text) alongside a now more prominent deepfake detection, watermarking and identity product line, and also maintains the open-source Chatterbox models.",
+  "pricing": {
+    "model": "Platform plans (Flex pay-as-you-go credits, Team, Business, Enterprise). The current public pricing page lists per-unit processing rates for detection, intelligence, identity and watermarking only; no text-to-speech rate appears on it.",
+    "headline": "No text-to-speech price is listed on Resemble's current pricing page. Flex has no subscription fee and credits never expire; Team is USD 350 per month (USD 280 billed annually); Business is USD 1,000 per month (USD 800 billed annually).",
+    "pricePer1MCharsUsd": null,
+    "headlineTier": "Not published for TTS (current pricing page covers detection products)",
+    "tiers": [
+      {
+        "name": "Flex",
+        "pricePer1MCharsUsd": null,
+        "unit": "USD 0 per month; buy credits as you go",
+        "notes": "Credits never expire; 1 team seat; platform and API access listed. Listed rates on the page are for Detect (audio USD 0.035 per second), Intelligence, Identity, Watermarker and Agent Detection, not TTS."
+      },
+      {
+        "name": "Team",
+        "pricePer1MCharsUsd": null,
+        "unit": "USD 350 per month, or USD 280 per month billed annually",
+        "notes": "5 seats; lower usage rates on select services."
+      },
+      {
+        "name": "Business",
+        "pricePer1MCharsUsd": null,
+        "unit": "USD 1,000 per month, or USD 800 per month billed annually",
+        "notes": "20 seats, SSO. The TTS docs say WebSocket streaming and the voice cloning API need a Business plan or above."
+      },
+      {
+        "name": "Enterprise",
+        "pricePer1MCharsUsd": null,
+        "unit": "custom",
+        "notes": "Volume pricing, SLAs, custom model training, on-premises deployment, dedicated support."
+      }
+    ],
+    "freeTier": "Flex plan has no subscription fee; the page does not state a free TTS allowance.",
+    "promotions": [
+      "Page banner: 'Save 20% with Team and Business plans' (annual billing); no end date stated."
+    ],
+    "sourceUrls": [
+      "https://www.resemble.ai/pricing/",
+      "https://docs.resemble.ai/voice-generation/text-to-speech/streaming-websocket",
+      "https://docs.resemble.ai/voice-creation/voices/clone-overview"
+    ]
+  },
+  "voices": {
+    "count": null,
+    "languages": null,
+    "customVoiceOrCloning": "Voice cloning API from 10 seconds to 3 minutes of audio with training under a minute; docs state it requires a Business plan or higher. Voices are selected by voice_uuid; the current model is Resemble Ultra.",
+    "sourceUrl": "https://docs.resemble.ai/voice-creation/voices/clone-overview"
+  },
+  "streaming": {
+    "websocket": "yes",
+    "http": "yes",
+    "vendorStatedLatency": "No numeric TTS latency in the API docs. The Chatterbox open-source page states '~200ms' latency (vendor-stated, applies to that model family).",
+    "sourceUrl": "https://www.resemble.ai/chatterbox/"
+  },
+  "formats": [
+    "WAV",
+    "MP3 (sync and WebSocket)",
+    "PCM precision options PCM_32, PCM_24, PCM_16, MULAW",
+    "Sample rates 8000 to 48000 Hz"
+  ],
+  "ssml": "yes",
+  "compatibility": {
+    "openaiSpeechCompatible": "no",
+    "note": "Resemble documents its own endpoints (POST f.cluster.resemble.ai/synthesize, /stream, and wss://websocket.cluster.resemble.ai/stream) keyed on voice_uuid; no OpenAI-compatible route is documented."
+  },
+  "licensing": {
+    "commercialUse": null,
+    "attributionOrConditions": "Chatterbox open-source models are described as MIT licensed with built-in PerTh watermarking; terms for the hosted API output were not found on pages read.",
+    "sourceUrl": "https://www.resemble.ai/chatterbox/"
+  },
+  "limits": {
+    "perRequestCharacters": "Sync and HTTP streaming: 2,000 characters; WebSocket: 3,000 characters excluding tags",
+    "concurrency": "REST generally 40 requests per second per token; WebSocket defaults 20 simultaneous sessions across the cluster and 20 connections per API key",
+    "sourceUrl": "https://docs.resemble.ai/voice-generation/text-to-speech/streaming-websocket"
+  },
+  "sdks": [
+    "Node.js",
+    "Python",
+    "REST",
+    "Docs MCP server"
+  ],
+  "compliance": {
+    "hipaa": "stated",
+    "soc2": "stated",
+    "gdpr": "stated",
+    "note": "Self-attested on the resemble.ai homepage security section: GDPR, ISO 27001, SOC 2 Type II, HIPAA-aligned data handling, air-gapped deployment and zero-retention mode. That section is written around the detection product; the pricing page lists SOC 2 documentation as an Enterprise feature.",
+    "sourceUrl": "https://www.resemble.ai/"
+  },
+  "strengths": [
+    {
+      "claim": "Three synthesis modes (synchronous, HTTP streaming, WebSocket streaming) with per-chunk metadata and grapheme/phoneme timestamps in the HTTP stream.",
+      "sourceUrl": "https://docs.resemble.ai/voice-generation/text-to-speech"
+    },
+    {
+      "claim": "Voice cloning API from as little as 10 seconds of audio.",
+      "sourceUrl": "https://docs.resemble.ai/voice-creation/voices/clone-overview"
+    },
+    {
+      "claim": "SSML reference with inline and wrapping tags for pauses, laughs, breaths and style.",
+      "sourceUrl": "https://docs.resemble.ai/getting-started/ssml"
+    },
+    {
+      "claim": "Maintains the open-source Chatterbox model family under the MIT licence, with 23-language multilingual and Turbo variants.",
+      "sourceUrl": "https://www.resemble.ai/chatterbox/"
+    },
+    {
+      "claim": "Enterprise on-premises deployment and custom model training are listed.",
+      "sourceUrl": "https://www.resemble.ai/pricing/"
+    }
+  ],
+  "limitations": [
+    {
+      "claim": "Docs state WebSocket streaming and the voice cloning API need a Business plan or above.",
+      "sourceUrl": "https://docs.resemble.ai/voice-generation/text-to-speech/streaming-websocket"
+    },
+    {
+      "claim": "Earlier TTS models, including the Chatterbox API versions, are end of life on the hosted API; voices must be upgraded to Resemble Ultra.",
+      "sourceUrl": "https://docs.resemble.ai/getting-started/model-versions"
+    },
+    {
+      "claim": "Request size is capped at 2,000 characters on synchronous and HTTP streaming calls.",
+      "sourceUrl": "https://docs.resemble.ai/voice-generation/text-to-speech/synchronous"
+    }
+  ],
+  "migration": {
+    "stepsToMove": [
+      "Resemble authenticates with an API token from the dashboard (Authorization header) and keys all synthesis on a voice_uuid plus, for streaming, a project_uuid.",
+      "Replace synchronous calls (POST https://f.cluster.resemble.ai/synthesize, base64 audio_content in the response) and HTTP streaming (POST https://f.cluster.resemble.ai/stream, chunked WAV).",
+      "Replace WebSocket usage (wss://websocket.cluster.resemble.ai/stream) which sends JSON with voice_uuid and data and ends on an audio_end message.",
+      "Map output_format (wav or mp3), sample_rate and precision settings, and any SSML or custom pronunciation settings.",
+      "Export or recreate cloned voices on the target service; Resemble voices are identified by voice_uuid."
+    ],
+    "sourceUrls": [
+      "https://docs.resemble.ai/voice-generation/text-to-speech/synchronous",
+      "https://docs.resemble.ai/voice-generation/text-to-speech/streaming-http",
+      "https://docs.resemble.ai/voice-generation/text-to-speech/streaming-websocket"
+    ]
+  },
+  "bestFor": "Teams that want a voice-cloning API alongside deepfake detection or watermarking from the same vendor, or that want to self-host the open-source Chatterbox models.",
+  "sources": [
+    {
+      "url": "https://www.resemble.ai/pricing/",
+      "title": "Resemble AI - Pricing",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://www.resemble.ai/",
+      "title": "Resemble AI - homepage",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://www.resemble.ai/chatterbox/",
+      "title": "Resemble AI - Chatterbox open-source TTS",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://docs.resemble.ai/",
+      "title": "Resemble docs - welcome",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://docs.resemble.ai/voice-generation/text-to-speech",
+      "title": "Resemble docs - text-to-speech overview",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://docs.resemble.ai/voice-generation/text-to-speech/synchronous",
+      "title": "Resemble docs - synchronous TTS",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://docs.resemble.ai/voice-generation/text-to-speech/streaming-http",
+      "title": "Resemble docs - HTTP streaming",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://docs.resemble.ai/voice-generation/text-to-speech/streaming-websocket",
+      "title": "Resemble docs - WebSocket streaming",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://docs.resemble.ai/getting-started/model-versions",
+      "title": "Resemble docs - model versions",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://docs.resemble.ai/getting-started/rate-limits",
+      "title": "Resemble docs - rate limits",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://docs.resemble.ai/getting-started/ssml",
+      "title": "Resemble docs - SSML reference",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://docs.resemble.ai/voice-creation/voices/clone-overview",
+      "title": "Resemble docs - voice cloning overview",
+      "retrievedAt": "2026-10-10"
+    }
+  ],
+  "unknowns": [
+    "Text-to-speech price per character, minute or second is not on the current pricing page; third-party figures were not used.",
+    "Whether the Flex plan includes TTS and whether the docs' 'Business plan' gating is current relative to the pricing page plan names.",
+    "Voice count and supported languages of the current Resemble Ultra model.",
+    "Commercial-use licence for hosted API output.",
+    "Whether the pricing page change reflects a shift in focus is not stated by the vendor.",
+    "Vendor-stated TTS latency for Resemble Ultra specifically."
+  ]
+}
