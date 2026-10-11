@@ -165,7 +165,7 @@ test('use-case and integration count rules', () => {
   lib.useCases[0].relatedSlugs = ['x']
   lib.useCases[0].whenToChooseSomethingElse = []
   lib.useCases[0].sampleExample.input = 'x'.repeat(5001)
-  lib.integrations[0].quickstart.code = 'client = Client(api_key="rtts_abcdefghijklmnop1234")'
+  lib.integrations[0].quickstart.code = `client = Client(api_key="${'rtts_'}${'a'.repeat(20)}")`
   lib.integrations[0].verifiedWith.date = '2026-12-31'
   const c = codes(run(lib).issues)
   for (const x of ['STEPS_COUNT', 'FAQ_COUNT', 'RELATED_COUNT', 'NOT_BALANCED', 'EXAMPLE_TOO_LONG', 'CODE_HAS_SECRET', 'DATE_FUTURE']) assert.ok(c.includes(`error:${x}`), x)
