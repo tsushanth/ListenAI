@@ -56,7 +56,52 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="com.listenai.auth" android:host="callback" />
             </intent-filter>
+            <!-- Share sheet: text, links, and documents from any app -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+                <data android:mimeType="application/pdf" />
+                <data android:mimeType="application/epub+zip" />
+            </intent-filter>
+            <!-- Open with: PDF / EPUB / TXT from file managers, browsers, mail -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="content" />
+                <data android:scheme="file" />
+                <data android:mimeType="application/pdf" />
+                <data android:mimeType="application/epub+zip" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
         </activity>
+
+        <!-- "Read aloud" entry in the text-selection toolbar of other apps. An alias
+             so the menu shows its own label rather than the app name. -->
+        <activity-alias
+            android:name=".ReadAloudSelectionAlias"
+            android:targetActivity=".MainActivity"
+            android:label="@string/process_text_label"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.PROCESS_TEXT" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+        </activity-alias>
+
+        <receiver
+            android:name=".widget.ReadAloudWidgetReceiver"
+            android:exported="true"
+            android:label="@string/app_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/readaloud_widget_info" />
+        </receiver>
 
         <!-- Playback Media Service -->
         <service
