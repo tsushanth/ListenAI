@@ -1,0 +1,70 @@
+{
+  "slug": "livekit-agents",
+  "name": "LiveKit Agents",
+  "h1": "ReadAloud text-to-speech plugin for LiveKit Agents",
+  "metaDescription": "Use ReadAloud as the TTS in a LiveKit Agents voice agent with livekit-plugins-readaloud. Tested synthesize and stream calls, 8 kHz output, limits.",
+  "intro": "LiveKit Agents is a Python framework for voice and video agents that run as participants in a LiveKit room. An AgentSession wires together speech-to-text, an LLM and a text-to-speech component, and each component is a plugin that implements LiveKit's TTS interface. livekit-plugins-readaloud is that plugin for ReadAloud: you construct readaloud.TTS and pass it as the tts argument of an AgentSession. The plugin offers both of LiveKit's calling styles. synthesize() sends one piece of text and returns a ChunkedStream, which suits a single prompt or a fixed greeting. stream() returns a SynthesizeStream that accepts text as the LLM produces it, splits it into sentences, and sends each sentence to the ReadAloud API as its own streaming request, so playback can begin before the full reply exists. Output can be 24 kHz, 16 kHz or 8 kHz for phone calls. Closing a stream, which LiveKit does on barge-in, closes the HTTP connection so generation stops. The plugin is written and maintained by the ReadAloud author and is MIT licensed. The checks on this page were run on 10 October 2026 from the published PyPI package in a clean virtual environment against the live API, without a LiveKit server, and the limitations section says what that leaves untested.",
+  "install": "pip install livekit-plugins-readaloud\nexport READALOUD_API_KEY=rtts_...   # placeholder: use your own key\n\nRequires Python 3.10+ and livekit-agents 1.8 or newer (below 2). Create a ReadAloud API key at https://readaloudai.org/developers and export it as READALOUD_API_KEY; new accounts start with free credits.",
+  "quickstart": {
+    "language": "python",
+    "code": "import asyncio\nimport os\nimport wave\n\nimport aiohttp\nfrom livekit.plugins import readaloud\n\n\nasync def main():\n    async with aiohttp.ClientSession() as session:\n        tts = readaloud.TTS(\n            api_key=os.environ[\"READALOUD_API_KEY\"],\n            http_session=session,\n            voice=\"readaloud-default\",\n            sample_rate=24000,  # 24000 | 16000 | 8000\n        )\n        async with tts.synthesize(\"Thanks for calling. How can I help you today?\") as stream:\n            frame = await stream.collect()\n\n    with wave.open(\"livekit_out.wav\", \"wb\") as f:\n        f.setnchannels(frame.num_channels)\n        f.setsampwidth(2)\n        f.setframerate(frame.sample_rate)\n        f.writeframes(bytes(frame.data))\n    print(f\"wrote livekit_out.wav ({frame.duration:.2f} s at {frame.sample_rate} Hz)\")\n\n\nasyncio.run(main())"
+  },
+  "verifiedWith": {
+    "packageOrSdk": "livekit-plugins-readaloud (PyPI), with livekit-agents 1.8.6, aiohttp 3.14.5, Python 3.14.6",
+    "version": "0.1.1",
+    "date": "2026-10-10"
+  },
+  "whatWorks": [
+    "Installed livekit-plugins-readaloud 0.1.1 from PyPI into a clean virtual environment; it resolved livekit-agents 1.8.6, one patch above the 1.8.5 its README names as tested.",
+    "readaloud.TTS(...).synthesize(...) followed by collect() returned one audio frame of 2.38 seconds at 24,000 Hz; the WAV we wrote from it was 114,212 bytes and ffprobe read it as 24 kHz mono 16-bit.",
+    "tts.stream() with text pushed in three fragments and end_input() yielded 17 audio events, 37,128 bytes in total, at 8,000 Hz when the plugin was created with sample_rate=8000.",
+    "The voice value readaloud-default was accepted by the plugin; no code change was needed beyond the key and the voice name."
+  ],
+  "limitations": [
+    "We did not run an AgentSession, a LiveKit server, speech-to-text or an LLM. The test called the TTS object directly.",
+    "Barge-in, LiveKit's APIConnectOptions retries and the plugin's own retry on 429 and 503 are described in the README but were not exercised.",
+    "ReadAloud Live offers one English voice, readaloud-default, and only that voice was tested. Each request is limited to 5,000 characters.",
+    "The API returns no word timestamps, so LiveKit's aligned transcripts are not available."
+  ],
+  "links": [
+    {
+      "label": "livekit-plugins-readaloud on PyPI",
+      "url": "https://pypi.org/project/livekit-plugins-readaloud/"
+    },
+    {
+      "label": "livekit-plugins-readaloud source",
+      "url": "https://github.com/tsushanth/livekit-plugins-readaloud"
+    },
+    {
+      "label": "LiveKit Agents",
+      "url": "https://github.com/livekit/agents"
+    },
+    {
+      "label": "ReadAloud developer docs",
+      "url": "https://readaloudai.org/developers"
+    }
+  ],
+  "faq": [
+    {
+      "q": "Where do I pass the plugin?",
+      "a": "As the tts argument of an AgentSession, for example AgentSession(tts=readaloud.TTS(voice=\"readaloud-default\", sample_rate=24000)). We tested the TTS object on its own, not inside a session."
+    },
+    {
+      "q": "What is the difference between synthesize() and stream()?",
+      "a": "synthesize() takes one piece of text and returns the audio for it. stream() accepts text in fragments, splits it into sentences and synthesizes each one, which is the path a streaming LLM reply uses. We ran both."
+    },
+    {
+      "q": "Which sample rates are supported?",
+      "a": "The plugin documents 24000, 16000 and 8000. We ran 24000 and 8000 and did not run 16000."
+    },
+    {
+      "q": "Do I need a LiveKit server to try it?",
+      "a": "Not to hear the voice. The quickstart creates the TTS object, synthesizes a sentence and writes a WAV file with only a ReadAloud key."
+    }
+  ],
+  "relatedSlugs": [
+    "pipecat",
+    "vapi",
+    "openai-sdk"
+  ]
+}
