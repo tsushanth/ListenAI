@@ -1,0 +1,207 @@
+{
+  "slug": "unreal-speech",
+  "name": "Unreal Speech",
+  "url": "https://unrealspeech.com",
+  "status": "active",
+  "retrievedAt": "2026-10-10",
+  "category": "api-platform",
+  "positioning": "Unreal Speech is a low-price text-to-speech API with monthly character-allowance plans, HTTP and WebSocket streaming, word-level timestamps and a Kokoro-powered voice set.",
+  "pricing": {
+    "model": "Monthly subscription plans with a character allowance; usage beyond the allowance is charged daily at the plan's per-million rate; unused characters on paid plans roll over.",
+    "headline": "Basic plan is $49 per month for 3M characters (about $16.33 per 1M; the FAQ states $16 per 1M for additional usage); rates fall to about $8 per 1M on the Enterprise plan.",
+    "pricePer1MCharsUsd": 16,
+    "headlineTier": "Basic plan overage rate stated in the FAQ ($16 per 1M characters); effective plan rate is $49 / 3M = $16.33. The first 6 months are discounted to $4.99 per month",
+    "tiers": [
+      {
+        "name": "Free",
+        "pricePer1MCharsUsd": 0,
+        "unit": "250K characters per month, $0",
+        "notes": "About 6 hours of audio; 2 requests per second; attribution link required for published audio."
+      },
+      {
+        "name": "Basic",
+        "pricePer1MCharsUsd": 16,
+        "unit": "USD per 1M characters (overage); plan $49/month for 3M characters",
+        "notes": "Effective $16.33 per 1M within the allowance. Promotional $4.99/month for the first 6 months (about $1.66 per 1M for those months, derived). 8 requests per second per docs."
+      },
+      {
+        "name": "Plus",
+        "pricePer1MCharsUsd": 12,
+        "unit": "USD per 1M characters (overage); plan $499/month for 42M characters",
+        "notes": "Effective $11.88 per 1M within the allowance (derived)."
+      },
+      {
+        "name": "Pro",
+        "pricePer1MCharsUsd": 10,
+        "unit": "USD per 1M characters (overage); plan $1,499/month for 150M characters",
+        "notes": "Effective $9.99 per 1M within the allowance (derived). 32 requests per second per docs."
+      },
+      {
+        "name": "Enterprise",
+        "pricePer1MCharsUsd": 8,
+        "unit": "USD per 1M characters (overage); plan $4,999/month for 625M characters",
+        "notes": "Effective $8.00 per 1M within the allowance (derived)."
+      },
+      {
+        "name": "Custom / high volume",
+        "pricePer1MCharsUsd": null,
+        "unit": "1B+ characters, volume discounts",
+        "notes": "Contact sales; no price published."
+      }
+    ],
+    "freeTier": "Free plan: 250K characters per month (about 6 hours of audio), reset on the 1st of each month; attribution to unrealspeech.com is required when publishing audio.",
+    "promotions": [
+      "Basic plan shown as $4.99 per month instead of $49 with the label 'Discount for first 6 months'; the page states no calendar end date, so it is treated as an ongoing new-subscriber offer."
+    ],
+    "sourceUrls": [
+      "https://unrealspeech.com/pricing",
+      "https://unrealspeech.com"
+    ]
+  },
+  "voices": {
+    "count": "48 voices (FAQ); the API parameter docs list 5 named voices (Dan, Will, Scarlett, Liv, Amy) and the homepage sample lists Kokoro-style IDs such as af_bella, am_adam, bf_emma",
+    "languages": "FAQ says 48 voices across '8 different languages' and then lists nine: US English, UK English, Mandarin Chinese, Hindi, Spanish, Portuguese, Japanese, French and Italian",
+    "customVoiceOrCloning": "Voice cloning is not available; the FAQ says 'Not right now, but we're working on it!'",
+    "sourceUrl": "https://unrealspeech.com"
+  },
+  "streaming": {
+    "websocket": "yes",
+    "http": "yes",
+    "vendorStatedLatency": "Vendor-stated: audio streams back in about 0.3 s on /stream (up to 1,000 characters); homepage also states 0.3 s latency. Not measured here.",
+    "sourceUrl": "https://unrealspeech.com"
+  },
+  "formats": [
+    "mp3 (libmp3lame)",
+    "pcm_mulaw",
+    "pcm_s16le (raw 22,050 Hz)"
+  ],
+  "ssml": "unknown",
+  "compatibility": {
+    "openaiSpeechCompatible": "no",
+    "note": "Uses its own endpoints (/stream, /speech, /synthesisTasks, /streamWithTimestamps) with PascalCase fields (Text, VoiceId, Bitrate, Speed, Pitch, Codec) and Bearer auth; no OpenAI-compatible route appears in the docs index. The homepage samples use api.v8.unrealspeech.com while the reference docs show api.v7.unrealspeech.com."
+  },
+  "licensing": {
+    "commercialUse": "FAQ: audio generated with Unreal Speech can be used commercially.",
+    "attributionOrConditions": "Free plan: attribute Unreal Speech by linking to unrealspeech.com in the description when publishing audio. Paid plans: no attribution needed.",
+    "sourceUrl": "https://unrealspeech.com"
+  },
+  "limits": {
+    "perRequestCharacters": "/stream up to 1,000 characters; /speech up to 3,000; /synthesisTasks up to 500,000 (about 10 hours of audio).",
+    "concurrency": "Requests per second per the Getting Started docs: Free 2, Basic 8, Pro 32 (that page was last updated over 2 years ago; Plus and Enterprise values not listed).",
+    "sourceUrl": "https://docs.unrealspeech.com"
+  },
+  "sdks": [
+    "Python",
+    "Node.js",
+    "React Native"
+  ],
+  "compliance": {
+    "hipaa": "not-stated",
+    "soc2": "not-stated",
+    "gdpr": "not-stated",
+    "note": "No SOC 2 or GDPR statement was found. The Terms of Service say the site is not tailored to HIPAA, FISMA and similar regulations and that users subject to such laws may not use it.",
+    "sourceUrl": "https://unrealspeech.com/terms"
+  },
+  "strengths": [
+    {
+      "claim": "Published per-million rates fall from about $16 on Basic to $8 on Enterprise, and unused characters roll over on paid plans.",
+      "sourceUrl": "https://unrealspeech.com"
+    },
+    {
+      "claim": "A free plan includes 250K characters per month, and the Basic plan is discounted to $4.99 per month for the first 6 months.",
+      "sourceUrl": "https://unrealspeech.com/pricing"
+    },
+    {
+      "claim": "Offers three request styles for short streaming, medium and long-form (up to 500,000 characters) synthesis, plus per-word timestamps and a WebSocket /streamWithTimestamps stream.",
+      "sourceUrl": "https://unrealspeech.com"
+    },
+    {
+      "claim": "Allows commercial use of generated audio on all plans, with attribution only on the free plan.",
+      "sourceUrl": "https://unrealspeech.com"
+    }
+  ],
+  "limitations": [
+    {
+      "claim": "Voice cloning is not currently available.",
+      "sourceUrl": "https://unrealspeech.com"
+    },
+    {
+      "claim": "Terms state the service is not tailored to HIPAA or similar regulation and that users subject to those laws may not use it.",
+      "sourceUrl": "https://unrealspeech.com/terms"
+    },
+    {
+      "claim": "The reference docs (API v7, last updated over two years ago) and homepage code samples (API v8) show different base URLs and voice sets.",
+      "sourceUrl": "https://docs.unrealspeech.com"
+    }
+  ],
+  "migration": {
+    "stepsToMove": [
+      "Get an API key from the Unreal Speech dashboard and send it as 'Authorization: Bearer <key>'.",
+      "Short, latency-sensitive text: POST /stream with JSON Text (up to 1,000 characters), VoiceId, Bitrate, Speed, Pitch and Codec; the response is raw audio.",
+      "Medium text: POST /speech (up to 3,000 characters) returns MP3 and timestamp JSON URLs; long text: POST /synthesisTasks (up to 500,000 characters) returns a TaskId to poll or a CallbackUrl.",
+      "For streaming audio with timestamps use the WebSocket wss://api.v8.unrealspeech.com/streamWithTimestamps shown on the homepage.",
+      "Map voices to Unreal voice IDs (Scarlett, Dan, Liv, Will, Amy or Kokoro-style IDs) and replace OpenAI/ElevenLabs request shapes with the PascalCase fields.",
+      "Respect plan rate limits (2, 8 or 32 requests per second on Free, Basic and Pro)."
+    ],
+    "sourceUrls": [
+      "https://docs.unrealspeech.com",
+      "https://unrealspeech.readme.io/reference/parameter-details",
+      "https://unrealspeech.readme.io/reference/stream",
+      "https://unrealspeech.readme.io/reference/synthesistasks",
+      "https://unrealspeech.com"
+    ]
+  },
+  "bestFor": "Cost-sensitive developers and content tools that want a simple streaming TTS API with a free allowance and a low published per-character price at higher volumes, and do not need voice cloning.",
+  "sources": [
+    {
+      "url": "https://unrealspeech.com/pricing",
+      "title": "Text-to-Speech API Pricing - Unreal Speech",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://unrealspeech.com",
+      "title": "Unreal Speech homepage",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://docs.unrealspeech.com",
+      "title": "Getting Started - Unreal Speech docs",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://unrealspeech.readme.io/llms.txt",
+      "title": "Unreal Speech docs index (llms.txt)",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://unrealspeech.readme.io/reference/parameter-details",
+      "title": "Parameter Details - Unreal Speech docs",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://unrealspeech.readme.io/reference/stream",
+      "title": "/stream - Unreal Speech API reference",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://unrealspeech.readme.io/reference/synthesistasks",
+      "title": "/synthesisTasks - Unreal Speech API reference",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://unrealspeech.com/terms",
+      "title": "Terms of Service - Unreal Speech",
+      "retrievedAt": "2026-10-10"
+    }
+  ],
+  "unknowns": [
+    "Plus and Enterprise request-per-second limits are not listed.",
+    "Whether SSML is supported is not stated.",
+    "Which API version (v7 or v8) is current is unclear; reference docs show v7 and homepage samples show v8.",
+    "The Starter plan ($10 for 500,000 characters, $20 per 1M) exists only in commented-out page markup and is treated as not offered.",
+    "The promotional Basic price has no stated end date or eligibility terms.",
+    "SOC 2 and GDPR statements were not found.",
+    "Latency (0.3 s) is vendor-stated only.",
+    "The FAQ says 8 languages but lists nine; the count of 48 voices was not verified against the API."
+  ]
+}
