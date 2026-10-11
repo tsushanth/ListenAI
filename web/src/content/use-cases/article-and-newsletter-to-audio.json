@@ -1,0 +1,89 @@
+{
+  "slug": "article-and-newsletter-to-audio",
+  "name": "Article and newsletter to audio",
+  "h1": "Turn articles and newsletters into listenable audio on publish",
+  "metaDescription": "Generate an audio edition of each article or newsletter issue with the ReadAloud API: clean the text, chunk it, render mp3, and attach it to your feed.",
+  "intro": "Readers commute, cook and walk; newsletters pile up unread. An audio edition lets the same issue travel with them. The editorial problem is rarely synthesis itself. It is turning HTML or markdown into something worth hearing. Link lists, footers, image captions, tracking text and the phrase 'view in browser' all become spoken noise if you pass them through. After cleanup comes length: a long essay exceeds a single request, so you split it at paragraph boundaries and join the parts. Then there is the choice of tier. Newsletters are not interactive, so latency does not matter and you can use ReadAloud Studio, which has a broader list of English voices than Live. Rendering happens once per issue, and the result is a file you can host and reference from an RSS enclosure or an email link. Set expectations: ReadAloud has no emotion or style control, so dialogue-heavy or emotional writing gets no performance, and you should listen to a sample issue before you promise subscribers anything.",
+  "steps": [
+    "On publish, take the final article text, not the rendered web page. Remove link lists, footers, boilerplate and image credits, and write out abbreviations you want read in full.",
+    "Add a one-line spoken header such as the title and the date, then the body, so the audio stands alone.",
+    "Split the text at paragraph breaks into parts below 5,000 characters, the per-request limit.",
+    "For each part, POST https://api.readaloudai.org/v1/audio/speech with a Studio voice id from GET /v1/voices, response_format mp3 and your key as a Bearer token.",
+    "Concatenate the parts in order, for example with ffmpeg, and write the file to object storage with a stable URL.",
+    "Link the file from the article page and from your RSS feed as an enclosure, with text noting that the narration is synthetic.",
+    "Log characters per issue so you can compare spend with listens, and re-render only when the source text changes."
+  ],
+  "sampleExample": {
+    "title": "Newsletter lead-in",
+    "input": "This week in the Harbor Report: the city council delays a vote on the ferry schedule, two local bakeries merge, and a short guide to winter parking rules. First, the ferry.",
+    "notes": "Use ReadAloud Studio and mp3. Newsletters are batch jobs, so render each part with a one-shot request and join them afterwards. The HTTP route is simpler than a socket here."
+  },
+  "whenToChooseReadAloud": [
+    "You publish regular English text and want an audio edition without scheduling recording time.",
+    "Cost scales with characters: a 6,000-character issue is about $0.06 on Studio at list price.",
+    "You prefer to run the pipeline yourself, with cleanup, chunking and hosting under your control.",
+    "You want a voice choice from several English voices rather than a single fixed voice."
+  ],
+  "whenToChooseSomethingElse": [
+    "You need a named, recognisable host voice with a performance; hire a narrator or look for a service with performance-focused voices.",
+    "Your audience reads multiple languages; look for a vendor that documents per-language voices and test samples in each.",
+    "You need chapter markers and ready-made podcast hosting; ReadAloud has an audiobook workflow, but it has not been tested end to end on a long book, so check it yourself before relying on it.",
+    "Your text includes a lot of tables, code or formulas that do not read well aloud."
+  ],
+  "featuresUsed": [
+    {
+      "feature": "ReadAloud Studio voices",
+      "howItHelps": "A broader list of English voices, available through the same API as Live."
+    },
+    {
+      "feature": "OpenAI-compatible speech route",
+      "howItHelps": "One POST per chunk with an existing client library, returning mp3."
+    },
+    {
+      "feature": "mp3 output at 24 kHz",
+      "howItHelps": "A standard format that podcast apps, RSS enclosures and email links accept."
+    },
+    {
+      "feature": "Per-character pricing",
+      "howItHelps": "About $0.01 per 1,000 characters on Studio, billed per request with no plan to manage."
+    },
+    {
+      "feature": "Audiobook endpoints",
+      "howItHelps": "POST /api/audiobooks chains chapters and exports one mp3 with chapter markers, through a session token or the MCP tools."
+    }
+  ],
+  "considerations": [
+    "Check that you hold the rights to the text you convert, including guest writers and quoted material, before publishing audio.",
+    "Tell listeners that the narration is synthetic. Some platforms and regions also require that.",
+    "Review a rendered issue by ear. Product names, acronyms and non-English words may be mispronounced and need respelling in the source.",
+    "Requests are limited to 5,000 characters, so splitting and joining is your code's job on the plain speech routes."
+  ],
+  "faq": [
+    {
+      "q": "Can I get an RSS feed with audio?",
+      "a": "You build the feed yourself. ReadAloud returns audio files; you host them and reference them in an enclosure tag."
+    },
+    {
+      "q": "Which tier should a newsletter use?",
+      "a": "Studio, in most cases, since latency is irrelevant and it offers more English voices. Live is cheaper if one voice is acceptable."
+    },
+    {
+      "q": "How do I stop the audio sounding choppy at chunk joins?",
+      "a": "Split on paragraph boundaries, not mid-sentence, and keep a short silence between parts when you join them."
+    },
+    {
+      "q": "Does it read links and images?",
+      "a": "It reads whatever text you send. Strip URLs and captions in your cleanup step or they will be spoken."
+    },
+    {
+      "q": "Is there a limit on issue length?",
+      "a": "Each request is capped at 5,000 characters, but you can send as many requests as you like, subject to your account and the server's capacity."
+    }
+  ],
+  "relatedSlugs": [
+    "accessibility-read-aloud-for-websites",
+    "e-learning-narration",
+    "n8n",
+    "openai-sdk"
+  ]
+}

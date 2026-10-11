@@ -1,0 +1,89 @@
+{
+  "slug": "video-voiceovers-and-explainers",
+  "name": "Video voiceovers and explainers",
+  "h1": "Script-to-voiceover for product videos, with timing you control",
+  "metaDescription": "Produce voiceover tracks for explainer and product videos from a script with ReadAloud: one clip per scene, speed adjustments, wav output for editors.",
+  "intro": "Voiceover is the part of a video that holds the schedule hostage. Footage can be re-cut in an afternoon, but a changed sentence means another recording session. When narration is generated from a script, the edit loop tightens: change the line, re-render the scene, drop it on the timeline. For product explainers, onboarding videos and screen recordings, a steady voice is often all that is needed. A scene-based workflow suits it. Break the script into one clip per scene, name each file after the scene, render them, and place them in your editor. If a clip runs long, you can shorten the text or raise the speed value slightly. Know the ceiling. ReadAloud has no emotion controls, no SSML and no alignment data, so there is no way to hit a precise word-level cue or to perform a punchline. It is well suited to calm instructional narration. It is a weaker fit for ads, trailers or storytelling that depends on performance, where a human narrator is still the right choice.",
+  "steps": [
+    "Write the script scene by scene, reading each line aloud yourself to check it fits the visuals. Keep each scene to a few sentences.",
+    "Choose a voice. Use readaloud-default for Live, or pick a Studio English voice from GET https://api.readaloudai.org/v1/voices for a longer video.",
+    "Render each scene with POST /v1/audio/speech, response_format wav, which editors import without fuss, and name the file after the scene.",
+    "Drop the clips on your timeline and compare lengths with the visuals. Shorten the text first; if you need a small change, adjust the speed field a little, since extreme values are tiring to hear.",
+    "Re-render only the scenes you edit, and keep a hash of each script line so a script revision shows which clips are stale.",
+    "Mix with your own licensed music and sound effects in your editor. ReadAloud returns speech only.",
+    "Add captions from the same script so the video works without sound."
+  ],
+  "sampleExample": {
+    "title": "Explainer scene",
+    "input": "Open the dashboard and select Reports. Choose a date range, then press Export. Your file will appear in the downloads panel within a few seconds.",
+    "notes": "Use ReadAloud Studio for a longer video or Live for a quick demo. Render wav through the OpenAI-compatible route as a one-shot request, one file per scene."
+  },
+  "whenToChooseReadAloud": [
+    "You make instructional or product videos in English with a calm narrative voice.",
+    "The script changes during production and you want quick, cheap re-renders: 500 characters is about $0.005 on Studio.",
+    "You want clips an editor imports directly, such as wav at 24 kHz.",
+    "You keep the script as the source of truth and generate captions from it."
+  ],
+  "whenToChooseSomethingElse": [
+    "You need a performance with timing, feeling or humour, such as an ad or a story; hire a narrator.",
+    "You need word-level alignment to match on-screen animation; look for a service that returns timestamps.",
+    "You want automatic video dubbing in many languages; ReadAloud's dubbing is audio only, with no video muxing, and timing is an approximation.",
+    "You need a branded voice that audiences will recognise; consider a recording or a cloned voice with clear consent."
+  ],
+  "featuresUsed": [
+    {
+      "feature": "wav and mp3 output",
+      "howItHelps": "Clean files that video editors import as scene clips."
+    },
+    {
+      "feature": "Studio voice list",
+      "howItHelps": "Several English voices let you choose one that fits the product."
+    },
+    {
+      "feature": "Speed field",
+      "howItHelps": "Small adjustments help a clip fit its scene."
+    },
+    {
+      "feature": "OpenAI-compatible speech route",
+      "howItHelps": "A short script can render a whole storyboard."
+    },
+    {
+      "feature": "Dubbing (audio only)",
+      "howItHelps": "The dubbing feature can translate an existing recording, but output is a single audio file and timing is approximate."
+    }
+  ],
+  "considerations": [
+    "Disclose synthetic narration where platforms or clients require it.",
+    "Do not imitate a real person's voice without documented consent from that person.",
+    "Music, footage and sound effects need their own licences; speech output does not grant them.",
+    "Check the terms for commercial use of generated audio before publishing paid work."
+  ],
+  "faq": [
+    {
+      "q": "Can I get exact timing for each word?",
+      "a": "No. The compatibility routes return no alignment data, so timing is by clip length."
+    },
+    {
+      "q": "What format should I request for editing?",
+      "a": "wav is easiest for editors. mp3 is fine for quick drafts and smaller files."
+    },
+    {
+      "q": "Can I dub my finished video?",
+      "a": "ReadAloud's dubbing returns an audio file only, with approximate segment timing. You would replace the audio track yourself."
+    },
+    {
+      "q": "How do I handle a line that runs too long?",
+      "a": "Shorten the sentence first. If you must, raise the speed slightly, then listen to confirm it is still comfortable."
+    },
+    {
+      "q": "Is there a watermark?",
+      "a": "The site does not document one. Check the terms for output usage before relying on that."
+    }
+  ],
+  "relatedSlugs": [
+    "e-learning-narration",
+    "podcast-intros-and-news-briefings",
+    "article-and-newsletter-to-audio",
+    "game-and-app-dialogue"
+  ]
+}

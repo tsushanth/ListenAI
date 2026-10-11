@@ -1,0 +1,89 @@
+{
+  "slug": "text-to-speech-for-documents-and-pdfs",
+  "name": "Text to speech for documents and PDFs",
+  "h1": "Read PDFs and long documents aloud: extraction, chunking and playback",
+  "metaDescription": "Convert PDFs and long documents to audio with the ReadAloud API: extract clean text, split under 5,000 characters, render mp3, and handle scanned files.",
+  "intro": "Documents are hard to read aloud because of what surrounds the words. A PDF stores glyph positions, not paragraphs. Headers and footers repeat on every page, columns interleave, footnotes land in the middle of sentences, and a scanned file has no text at all. Most disappointing results from document-to-speech come from skipping that preparation, not from the voice. A reliable pipeline has four stages. First extract text with a PDF library, or run optical character recognition for scans, and review the output. Second, clean it: remove running headers, page numbers and hyphenation, and decide what to do with tables and figures. Third, split at paragraph boundaries into pieces under the 5,000-character request limit. Fourth, render and join. ReadAloud handles the last stage, and its audiobook feature can chain chapters from text or EPUB through a session token or the MCP tools. It does not read PDF files directly, and it does not describe images or tables. Sensitive documents deserve a decision before upload about what may leave your systems.",
+  "steps": [
+    "Extract text from the PDF with a library on your side, such as a PDF text extractor. For scans, run OCR first and proofread the result.",
+    "Clean the text: remove page numbers, repeated headers and footers, and fix words broken by hyphens at line ends. Mark where tables and figures were, or summarise them in a sentence.",
+    "Split at paragraph or heading boundaries into parts shorter than 5,000 characters, which is the per-request limit.",
+    "Render each part with POST https://api.readaloudai.org/v1/audio/speech using your Bearer key, a voice id (readaloud-default or a Studio English voice from GET /v1/voices) and response_format mp3.",
+    "Join the parts in order with ffmpeg and add a short silence between sections. Keep a table of contents mapping section titles to timestamps.",
+    "For book-length material, consider the audiobook endpoints: POST /api/audiobooks accepts text or EPUB, detects chapters and exports one mp3 with chapter markers, through a session token or the MCP tools create_audiobook and export_audiobook.",
+    "Deliver the audio with the original document, and keep the text so users can search and copy."
+  ],
+  "sampleExample": {
+    "title": "Cleaned section of a report",
+    "input": "Section three. Findings. Between January and June, the average response time fell from nine days to six days. The team attributes the change to the new triage process described in section two.",
+    "notes": "Use ReadAloud Studio for long documents, mp3, one request per section. For a short memo, Live is enough. Streaming is unnecessary for pre-rendered files."
+  },
+  "whenToChooseReadAloud": [
+    "You have clean or cleanable English text and want a listenable version without recording it.",
+    "You are happy to run an extraction and cleanup step and review it.",
+    "Cost scales with text: a 50,000-character report is about $0.50 on Studio at list price.",
+    "You want chaptered output for book-length material and can use the audiobook workflow."
+  ],
+  "whenToChooseSomethingElse": [
+    "Your documents are mostly scans, tables, equations or figures; look for tooling that handles layout and describes visual content.",
+    "You need real-time reading of any document a user opens in a reader app, with highlighting; look for a reader product built for that.",
+    "The content is highly confidential and must stay on your infrastructure; use a local speech engine.",
+    "Your documents are in multiple languages; look for documented voices for each and test them."
+  ],
+  "featuresUsed": [
+    {
+      "feature": "OpenAI-compatible speech route",
+      "howItHelps": "One request per section with an existing client, returning mp3."
+    },
+    {
+      "feature": "Studio voice list",
+      "howItHelps": "English voices for long listening."
+    },
+    {
+      "feature": "5,000-character requests",
+      "howItHelps": "A defined chunk size makes the split logic simple."
+    },
+    {
+      "feature": "Audiobook endpoints",
+      "howItHelps": "Chapter detection from text or EPUB and an mp3 export with chapter markers; the export step has not yet been exercised on a real multi-chapter book end to end."
+    },
+    {
+      "feature": "Per-character billing",
+      "howItHelps": "Cost is proportional to the cleaned text, so removing headers and footers saves money."
+    }
+  ],
+  "considerations": [
+    "Check that you have the right to convert and distribute the document's text.",
+    "Decide whether a document may be sent to an external service. Sensitive reports, contracts and records may not be.",
+    "Accessibility obligations for documents, such as tagged PDFs, remain the publisher's responsibility.",
+    "Audio of a document is not a substitute for the document; keep the text available."
+  ],
+  "faq": [
+    {
+      "q": "Can I upload a PDF directly?",
+      "a": "Not to the speech routes. They accept text. Extract the text first, then send it."
+    },
+    {
+      "q": "How are tables and figures read?",
+      "a": "They are not interpreted. Remove them or replace them with a one-sentence description before sending."
+    },
+    {
+      "q": "What about very long documents?",
+      "a": "Split into sections under 5,000 characters, or use the audiobook endpoints, which chain chapters and export one mp3. They authenticate with a session token or the MCP tools, not a plain API key."
+    },
+    {
+      "q": "Can I avoid reading headers on every page?",
+      "a": "Yes, if you remove them in cleanup. The speech API reads whatever text you send."
+    },
+    {
+      "q": "Is there a ready-made reader app?",
+      "a": "This page covers the API only; use it when you need control over extraction and chunking."
+    }
+  ],
+  "relatedSlugs": [
+    "article-and-newsletter-to-audio",
+    "accessibility-read-aloud-for-websites",
+    "internal-training-and-onboarding-audio",
+    "e-learning-narration"
+  ]
+}

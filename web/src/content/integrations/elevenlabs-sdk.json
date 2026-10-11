@@ -1,0 +1,70 @@
+{
+  "slug": "elevenlabs-sdk",
+  "name": "ElevenLabs SDK",
+  "h1": "Run the ElevenLabs SDKs against the ReadAloud API",
+  "metaDescription": "Use the official ElevenLabs Python and JavaScript SDKs with ReadAloud by changing the base URL, key and voice id. Tested convert calls, 10 Oct 2026.",
+  "intro": "The ReadAloud API serves the ElevenLabs text-to-speech routes, so code written with the official ElevenLabs SDKs can run against https://api.readaloudai.org with three changes: the base URL, the API key and the voice id. This page is the short version for a developer who already has ElevenLabs SDK code and wants to see the smallest working call. The full account of what was tested, what behaves differently and what is not supported is on the ReadAloud migration page, which this page links to instead of copying. In short, the text-to-speech convert call returns audio in the ElevenLabs shape, voice ids from ElevenLabs do not exist here, and only text to speech is covered, not their speech-to-text, dubbing or agents products. The voice is not an ElevenLabs voice and we make no claim about how it compares, so listen to it on your own text before switching. On 10 October 2026 we installed the current Python and JavaScript SDKs in clean environments and ran one convert call in each against the live API, which is all this page claims; broader route coverage is described on the migration page.",
+  "install": "pip install elevenlabs                  # Python\nnpm install @elevenlabs/elevenlabs-js   # JavaScript\nexport READALOUD_API_KEY=rtts_...   # placeholder: use your own key\n\nChange three values: base URL https://api.readaloudai.org, your ReadAloud key, and voice id readaloud-default. Create a ReadAloud API key at https://readaloudai.org/developers and export it as READALOUD_API_KEY; new accounts start with free credits.",
+  "quickstart": {
+    "language": "python",
+    "code": "import os\nfrom elevenlabs.client import ElevenLabs\n\nclient = ElevenLabs(api_key=os.environ[\"READALOUD_API_KEY\"], base_url=\"https://api.readaloudai.org\")\n\naudio = client.text_to_speech.convert(\n    voice_id=\"readaloud-default\",\n    text=\"Thanks for calling. How can I help you today?\",\n    model_id=\"eleven_flash_v2_5\",\n    output_format=\"mp3_44100_128\",\n)\ndata = b\"\".join(audio)\nopen(\"elevenlabs_py.mp3\", \"wb\").write(data)\nprint(len(data), \"bytes\")"
+  },
+  "verifiedWith": {
+    "packageOrSdk": "elevenlabs (Python, PyPI) on Python 3.14.6, and @elevenlabs/elevenlabs-js (npm) on Node 26.8.2",
+    "version": "Python 2.71.0, JavaScript 2.71.0",
+    "date": "2026-10-10"
+  },
+  "whatWorks": [
+    "The Python SDK's text_to_speech.convert with base_url set to the ReadAloud host returned 38,497 bytes of MP3; ffprobe read it as 44.1 kHz mono of 2.40 seconds.",
+    "The JavaScript SDK's textToSpeech.convert with baseUrl set returned 38,079 bytes of MP3, read by ffprobe as 44.1 kHz mono of 2.38 seconds.",
+    "Both calls used the model id eleven_flash_v2_5 and output format mp3_44100_128 unchanged from typical ElevenLabs code, and only the key, the base URL and the voice id differed.",
+    "The ReadAloud migration page lists the further routes, formats and error codes that were run, with their results."
+  ],
+  "limitations": [
+    "This page's own runs are one convert call per SDK. For everything else, including streaming, WebSocket, voices and error classes, see the migration page, which records what was run.",
+    "ElevenLabs voice ids and your ElevenLabs voice clones do not exist on ReadAloud. The voice is readaloud-default, the single English voice on ReadAloud Live, and it is not an ElevenLabs voice.",
+    "The audio is made at 24 kHz, so the 44.1 kHz MP3 has the requested sample rate but no content above 12 kHz. Each request is limited to 5,000 characters.",
+    "Speech to text, dubbing, agents and the other ElevenLabs products are not served through this API."
+  ],
+  "links": [
+    {
+      "label": "Migrate from ElevenLabs (full test record)",
+      "url": "https://readaloudai.org/developers/migrate-from-elevenlabs"
+    },
+    {
+      "label": "elevenlabs on PyPI",
+      "url": "https://pypi.org/project/elevenlabs/"
+    },
+    {
+      "label": "@elevenlabs/elevenlabs-js on npm",
+      "url": "https://www.npmjs.com/package/@elevenlabs/elevenlabs-js"
+    },
+    {
+      "label": "ReadAloud developer docs",
+      "url": "https://readaloudai.org/developers"
+    }
+  ],
+  "faq": [
+    {
+      "q": "What is the JavaScript version of the quickstart?",
+      "a": "const client = new ElevenLabsClient({ apiKey: process.env.READALOUD_API_KEY, baseUrl: 'https://api.readaloudai.org' }); const audio = await client.textToSpeech.convert('readaloud-default', { text: 'Hello.', modelId: 'eleven_flash_v2_5', outputFormat: 'mp3_44100_128' }); iterate the result with for await to collect the chunks. We ran this form on @elevenlabs/elevenlabs-js 2.71.0."
+    },
+    {
+      "q": "Can I keep my ElevenLabs voice id?",
+      "a": "No. ElevenLabs voice ids return 404 here and are not mapped to ReadAloud voices. Pass readaloud-default."
+    },
+    {
+      "q": "Will it be the same voice?",
+      "a": "No. It is a different voice, and we make no claim about how it compares. Listen to it on your own text before switching."
+    },
+    {
+      "q": "Where do I find the full list of what works and what does not?",
+      "a": "On the migration page at readaloudai.org/developers/migrate-from-elevenlabs, which lists tested routes, differences, unsupported products and error codes."
+    }
+  ],
+  "relatedSlugs": [
+    "openai-sdk",
+    "vercel-ai-sdk",
+    "pipecat"
+  ]
+}

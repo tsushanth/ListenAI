@@ -1,0 +1,75 @@
+{
+  "_fixture": "TEST FIXTURE. Placeholder data for the library tests. Never publish.",
+  "slug": "openai-tts",
+  "name": "OpenAI TTS",
+  "url": "https://platform.openai.com/docs/guides/text-to-speech",
+  "status": "active",
+  "retrievedAt": "2026-10-09",
+  "category": "model-vendor",
+  "positioning": "A model vendor whose audio speech endpoint turns text into spoken audio with a fixed set of built-in voices, alongside its language models.",
+  "pricing": {
+    "model": "Usage-based: two older models are priced per character, and a newer model is priced by audio minutes",
+    "headline": "The standard model is listed per 1M characters; the newer model is listed per minute of audio",
+    "pricePer1MCharsUsd": 15,
+    "headlineTier": "tts-1",
+    "tiers": [
+      { "name": "tts-1", "pricePer1MCharsUsd": 15, "unit": "1M characters", "notes": "" },
+      { "name": "tts-1-hd", "pricePer1MCharsUsd": 30, "unit": "1M characters", "notes": "" },
+      { "name": "gpt-4o-mini-tts", "pricePer1MCharsUsd": null, "unit": "per minute of audio", "notes": "Listed as an estimated cost per minute; no per-character figure is given" }
+    ],
+    "freeTier": null,
+    "promotions": [],
+    "sourceUrls": ["https://platform.openai.com/docs/pricing"]
+  },
+  "voices": {
+    "count": "about a dozen built-in voices",
+    "languages": "Follows the input text; the documentation lists supported languages",
+    "customVoiceOrCloning": null,
+    "sourceUrl": "https://platform.openai.com/docs/guides/text-to-speech"
+  },
+  "streaming": {
+    "websocket": "no",
+    "http": "yes",
+    "vendorStatedLatency": null,
+    "sourceUrl": "https://platform.openai.com/docs/guides/text-to-speech"
+  },
+  "formats": ["mp3", "opus", "aac", "flac", "wav", "pcm"],
+  "ssml": "no",
+  "compatibility": { "openaiSpeechCompatible": "yes", "note": "It is the origin of the request shape that other services copy." },
+  "licensing": {
+    "commercialUse": "Output may be used commercially under the service terms",
+    "attributionOrConditions": "Users must tell end users that the voice is AI-generated",
+    "sourceUrl": "https://platform.openai.com/docs/guides/text-to-speech"
+  },
+  "limits": {
+    "perRequestCharacters": "4,096 characters per request",
+    "concurrency": null,
+    "sourceUrl": "https://platform.openai.com/docs/api-reference/audio/createSpeech"
+  },
+  "sdks": ["Python", "JavaScript", "Java", "C#"],
+  "compliance": { "hipaa": null, "soc2": "stated", "gdpr": "not-stated", "note": "", "sourceUrl": "https://platform.openai.com/docs/guides/your-data" },
+  "strengths": [
+    { "claim": "Uses one request shape across its models, which many tools already support", "sourceUrl": "https://platform.openai.com/docs/api-reference/audio/createSpeech" },
+    { "claim": "Lists several output formats including wav and flac", "sourceUrl": "https://platform.openai.com/docs/guides/text-to-speech" }
+  ],
+  "limitations": [
+    { "claim": "The documentation describes a fixed set of built-in voices and no custom voice option", "sourceUrl": "https://platform.openai.com/docs/guides/text-to-speech" },
+    { "claim": "Each request is limited to 4,096 characters", "sourceUrl": "https://platform.openai.com/docs/api-reference/audio/createSpeech" }
+  ],
+  "migration": {
+    "stepsToMove": [
+      "Find every place your code calls the audio speech endpoint and note the model, voice and response format used.",
+      "Change the base URL and key in your client, since the request shape is the same.",
+      "Replace the built-in voice name with the voice id of the new service."
+    ],
+    "sourceUrls": ["https://platform.openai.com/docs/api-reference/audio/createSpeech"]
+  },
+  "bestFor": "Teams already on the vendor's platform that want speech through the same account and client library.",
+  "sources": [
+    { "url": "https://platform.openai.com/docs/pricing", "title": "OpenAI pricing", "retrievedAt": "2026-10-09" },
+    { "url": "https://platform.openai.com/docs/guides/text-to-speech", "title": "OpenAI text-to-speech guide", "retrievedAt": "2026-10-09" },
+    { "url": "https://platform.openai.com/docs/api-reference/audio/createSpeech", "title": "OpenAI create speech reference", "retrievedAt": "2026-10-09" },
+    { "url": "https://platform.openai.com/docs/guides/your-data", "title": "OpenAI data controls", "retrievedAt": "2026-10-09" }
+  ],
+  "unknowns": ["No concurrency figure for speech requests was listed on the pages we reviewed."]
+}

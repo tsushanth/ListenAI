@@ -1,0 +1,89 @@
+{
+  "slug": "internal-training-and-onboarding-audio",
+  "name": "Internal training and onboarding audio",
+  "h1": "Spoken onboarding guides and policy updates for employees",
+  "metaDescription": "Create audio versions of onboarding steps, policy updates and safety briefings for staff using ReadAloud, with private text handling and easy updates.",
+  "intro": "Internal training has a different shape from public courses. The audience is your own staff, the material changes whenever a policy or tool changes, and the content is often private. Frontline staff, drivers and warehouse teams may not sit at a desk, so a spoken version of the handbook or a weekly safety note reaches them where reading does not. The audio does not need to be impressive. It needs to be accurate, current and easy to update, which is where generated speech is useful: when the leave policy changes on Tuesday, you edit a paragraph and re-render a file instead of scheduling a recording. The privacy question matters more here than elsewhere. Before sending internal text to any external service, decide what is allowed to leave your network, check the provider's data handling, and keep confidential figures out of scripts. ReadAloud's MCP text_to_speech tool is documented as not saving the text, but jobs such as dubbing and audiobooks store inputs and results. Choose the route with that in mind.",
+  "steps": [
+    "Decide which documents may be sent to an external speech service. Remove names, salaries, case details and anything covered by confidentiality rules.",
+    "Rewrite long policies into short spoken sections of a few sentences each, with the action first and the reason second.",
+    "For each section, call POST https://api.readaloudai.org/v1/audio/speech with your Bearer key, a single voice id and response_format mp3. Use Live for brief notices and Studio for longer guides.",
+    "Store files in your internal file share or intranet, not a public bucket, and label each with a version and an effective date.",
+    "Generate a change log. When a source section changes, re-render only that section and replace the old file.",
+    "Provide the written text next to each audio file, so staff can search, copy and verify it.",
+    "Ask a few employees to listen and report unclear sections before you roll out widely."
+  ],
+  "sampleExample": {
+    "title": "Weekly safety briefing",
+    "input": "Safety note for the loading dock. From Monday, forklift traffic uses the north lane only. Pedestrians must use the marked walkway. Report any blocked exit to your supervisor straight away.",
+    "notes": "Use ReadAloud Live for a short notice like this, mp3, one-shot request. For a longer onboarding guide, Studio gives you a broader English voice list."
+  },
+  "whenToChooseReadAloud": [
+    "You have short, frequently updated English notices that staff should be able to hear on a phone or a shared speaker.",
+    "Your team can strip confidential details before text leaves the network.",
+    "You want per-character pricing without per-seat licences: a 1,500-character note is about $0.006 on Live.",
+    "A developer or operations person owns the pipeline and can script it."
+  ],
+  "whenToChooseSomethingElse": [
+    "Your material is highly confidential and must stay inside your infrastructure; look at self-hosted or on-device speech options.",
+    "Staff speak many languages; look for a provider that documents each language and voice and review samples with native speakers.",
+    "You need an interactive, tracked learning product with quizzes and completion records; a learning platform provides that.",
+    "Compliance training requires a recorded human instructor by regulation or contract."
+  ],
+  "featuresUsed": [
+    {
+      "feature": "OpenAI-compatible speech route",
+      "howItHelps": "Simple scripts turn each section into an mp3 with a Bearer key."
+    },
+    {
+      "feature": "ReadAloud Live and ReadAloud Studio",
+      "howItHelps": "Choose the cheaper single-voice tier for short notices and the broader voice list for longer guides."
+    },
+    {
+      "feature": "MCP text_to_speech tool",
+      "howItHelps": "Documented as returning audio inline without saving the text, which suits quick checks from an assistant; limited to 1,000 characters per call."
+    },
+    {
+      "feature": "Per-character billing",
+      "howItHelps": "Costs track the amount of text changed, so frequent updates stay inexpensive."
+    },
+    {
+      "feature": "mp3 and wav output",
+      "howItHelps": "Open on phones, intranet pages and shared speakers without extra software."
+    }
+  ],
+  "considerations": [
+    "Review the privacy page and terms for how text sent to the API is handled before using any internal content.",
+    "Do not include personal data about employees in scripts or file names.",
+    "Mark audio as synthetic voice so staff do not assume a named person recorded it.",
+    "Legal or safety content stays the employer's responsibility; the audio only mirrors your text and may mispronounce names."
+  ],
+  "faq": [
+    {
+      "q": "Is it safe to send internal documents?",
+      "a": "That is your call. Strip confidential details, read the privacy page and terms, and use a self-hosted option if the text must not leave your infrastructure."
+    },
+    {
+      "q": "Can staff listen on their phones?",
+      "a": "Yes, if you host the mp3 files somewhere they can reach. ReadAloud returns audio; distribution is up to you."
+    },
+    {
+      "q": "Do I need Studio for onboarding guides?",
+      "a": "Not necessarily. Live has one voice and costs less. Studio helps when you want a different English voice for long listening."
+    },
+    {
+      "q": "How do I handle product names read wrongly?",
+      "a": "Respell them in the script and re-render. There is no pronunciation dictionary on the speech routes."
+    },
+    {
+      "q": "What is the longest note I can send at once?",
+      "a": "5,000 characters per request. Split anything longer into sections, which also suits spoken delivery."
+    }
+  ],
+  "relatedSlugs": [
+    "e-learning-narration",
+    "notifications-and-alerts",
+    "text-to-speech-for-documents-and-pdfs",
+    "podcast-intros-and-news-briefings"
+  ]
+}

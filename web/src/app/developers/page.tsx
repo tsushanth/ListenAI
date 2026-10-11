@@ -5,6 +5,15 @@ import CodeTabs from '@/components/ra/CodeTabs'
 import DeveloperApiSection from '@/components/DeveloperApiSection'
 import VoiceStudioLink from '@/components/ra/VoiceStudioLink'
 import VoiceCloningDocs from '@/components/ra/VoiceCloningDocs'
+import publish from '../../content/publish.json'
+import { isPublished } from '@/lib/seoLibrary/publish'
+
+// An /integrations page is linked from here only once it is listed in src/content/publish.json (the same list that decides what is indexed).
+const integrationHref = (slug: string): string | null => (isPublished(publish as { published: string[] }, 'integration', slug) ? `/integrations/${slug}` : null)
+const integrationLink = (slug: string, label: string) => {
+  const href = integrationHref(slug)
+  return href ? <> See the <Link href={href} style={{ textDecoration: 'underline' }}>{label}</Link> page for what was tested and what was not.</> : null
+}
 
 export const metadata = {
   title: 'Voice API - ReadAloud AI',
@@ -132,7 +141,7 @@ fs.writeFileSync('hello.mp3', Buffer.from(await res.arrayBuffer()))`}</code></pr
           <div className="ra-wrap ra-narrow ra-ref" style={{ maxWidth: 820 }}>
             <h2>Integrations</h2>
             <p className="ra-lede" style={{ marginBottom: 16 }}>
-              Plugins for voice-agent frameworks. Both are written and maintained by ReadAloud, are MIT licensed, and read your key from <code>READALOUD_API_KEY</code>. They can output 8&nbsp;kHz audio for phone calls, and interrupting the agent stops generation.
+              Plugins and packages for voice-agent frameworks and automation tools. The Pipecat and LiveKit plugins are written and maintained by ReadAloud, are MIT licensed, and read your key from <code>READALOUD_API_KEY</code>. They can output 8&nbsp;kHz audio for phone calls, and interrupting the agent stops generation.
             </p>
 
             <h3 id="pipecat">Pipecat</h3>
@@ -162,11 +171,20 @@ session = AgentSession(
 )`}</code></pre>
 
             <h3 id="vapi">Vapi</h3>
-            <p>Vapi can call ReadAloud as a custom voice at <code>POST https://api.readaloudai.org/v1/vapi/custom-voice</code>. We have verified the endpoint directly: it returns raw 16-bit mono PCM (<code>application/octet-stream</code>) at 8000, 16000 and 24000 Hz and accepts your key as the <code>x-vapi-secret</code> header. We have <b>not</b> yet tested it from a real Vapi assistant, so treat the Vapi setup as unverified.</p>
+            <p>Vapi can call ReadAloud as a custom voice at <code>POST https://api.readaloudai.org/v1/vapi/custom-voice</code>. We have verified the endpoint directly: it returns raw 16-bit mono PCM (<code>application/octet-stream</code>) at 8000, 16000 and 24000 Hz and accepts your key as the <code>x-vapi-secret</code> header. On 2026-10-10 we also ran one real Vapi assistant call that used it as a custom voice with the inline secret: the call lasted 24 seconds, the assistant spoke five lines in the ReadAloud voice, and Vapi reported custom-voice latency of 266&nbsp;ms and 493&nbsp;ms on the two turns it measured. We have <b>not</b> tested the Custom Credential flow, the sample rate Vapi requested, how Vapi handles <code>429</code> responses and timeouts, or the audio quality by ear, so treat the Vapi setup as lightly tested.{integrationLink('vapi', 'Vapi integration')}</p>
             <pre style={{ overflowX: 'auto' }}><code>{`curl -X POST 'https://api.readaloudai.org/v1/vapi/custom-voice?voice=readaloud-default' \\
   -H "x-vapi-secret: $READALOUD_API_KEY" -H 'Content-Type: application/json' \\
   -d '{"message":{"type":"voice-request","text":"Hello from ReadAloud.","sampleRate":16000,"timestamp":1}}' \\
   -o out.pcm`}</code></pre>
+
+            <h3 id="n8n">n8n</h3>
+            <p>Community node <a href="https://www.npmjs.com/package/n8n-nodes-readaloud" style={{ textDecoration: 'underline' }}><code>n8n-nodes-readaloud</code></a> (<a href="https://github.com/tsushanth/n8n-nodes-readaloud" style={{ textDecoration: 'underline' }}>source</a>). It is a community node, not an n8n-verified one: version 0.1.2 is in n8n&rsquo;s verification review. In a self-hosted n8n, open Settings, Community Nodes, Install and enter the package name below, then add a ReadAloud API credential with your key. We installed it into a local n8n 2.42.6 and ran one workflow against the live API; n8n Cloud was not tested.{integrationLink('n8n', 'n8n integration')}</p>
+            <pre style={{ overflowX: 'auto' }}><code>{`n8n-nodes-readaloud`}</code></pre>
+
+            <h3 id="vercel-ai-sdk">Vercel AI SDK</h3>
+            <p>Package <a href="https://www.npmjs.com/package/ai-sdk-provider-readaloud" style={{ textDecoration: 'underline' }}><code>ai-sdk-provider-readaloud</code></a> adds ReadAloud to <code>generateSpeech</code> in AI SDK 7. We ran it with <code>ai</code> 7.0.137 against the live API.{integrationLink('vercel-ai-sdk', 'Vercel AI SDK integration')}</p>
+            <pre style={{ overflowX: 'auto' }}><code>{`npm install ai ai-sdk-provider-readaloud
+export READALOUD_API_KEY=rtts_...`}</code></pre>
           </div>
         </section>
 
@@ -369,16 +387,16 @@ curl -L -X POST "<url>/v1/stt?language=auto" \\
                     <tbody>
                       <tr><td>ReadAloud, default voice (<code>readaloud-default</code>)</td><td>$0.004</td><td>$4</td><td>about 250 / 340-360 ms</td><td>about 290 / 370-440 ms</td></tr>
                       <tr><td>ElevenLabs Flash v2.5</td><td>$0.04</td><td>$40</td><td>166-174 / 190-220 ms</td><td>200-280 / 410-490 ms</td></tr>
-                      <tr><td>ElevenLabs v4 Turbo</td><td>$0.04 list ($0.011 promotional until 2026-10-12)</td><td>$40 list ($11 promotional)</td><td>187-196 / 290-460 ms</td><td>about 222 / 250-370 ms</td></tr>
+                      <tr><td>ElevenLabs v4 Turbo</td><td>$0.04 list</td><td>$40 list</td><td>187-196 / 290-460 ms</td><td>about 222 / 250-370 ms</td></tr>
                       <tr><td>ElevenLabs v2 Multilingual</td><td>$0.08</td><td>$80</td><td>about 1,040 / 1,140 ms</td><td>about 1,090 / 1,220 ms</td></tr>
                       <tr><td>ElevenLabs v3</td><td>$0.08</td><td>$80</td><td colSpan={2}>not measured</td></tr>
                       <tr><td>ElevenLabs v3 Conversational</td><td>$0.04</td><td>$40</td><td colSpan={2}>not measured</td></tr>
-                      <tr><td>ElevenLabs v4</td><td>$0.08 list ($0.022 promotional until 2026-10-12)</td><td>$80 list ($22 promotional)</td><td colSpan={2}>not measured</td></tr>
+                      <tr><td>ElevenLabs v4</td><td>$0.08 list</td><td>$80 list</td><td colSpan={2}>not measured</td></tr>
                     </tbody>
                   </table>
                 </div>
                 <ul>
-                  <li><b>Price:</b> at list prices ReadAloud is one tenth of ElevenLabs Flash and v4 Turbo ($4 against $40 per million characters) and one twentieth of v2 Multilingual, v3 and v4 ($4 against $80). During ElevenLabs&rsquo; promotion, which ends 2026-10-12, v4 Turbo is $11 and v4 is $22 per million characters, so the gap is smaller until then. ElevenLabs conversational agents list at $0.08 per call minute with the language model billed separately; ReadAloud bills text to speech by character only.</li>
+                  <li><b>Price:</b> at list prices ReadAloud is one tenth of ElevenLabs Flash and v4 Turbo ($4 against $40 per million characters) and one twentieth of v2 Multilingual, v3 and v4 ($4 against $80). ElevenLabs runs time-limited promotions that lower some of these prices; the figures here are list prices. ElevenLabs conversational agents list at $0.08 per call minute with the language model billed separately; ReadAloud bills text to speech by character only.</li>
                   <li><b>Speed:</b> ElevenLabs Flash was faster than ReadAloud in our runs, by roughly 80 ms at the median on a warm connection. We do not claim ReadAloud is faster than Flash. It was about four times faster than v2 Multilingual, the model most often chosen for quality.</li>
                   <li><b>Quality:</b> we do not claim the same voice quality as ElevenLabs, which has far more voices and languages. ReadAloud offers one voice. We do not publish side-by-side audio; try the default voice on your own text.</li>
                   <li><b>Capacity:</b> each server accepts a limited number of simultaneous streams and more servers start under load. Past capacity you get the <code>at capacity</code> error described above; retry with backoff.</li>

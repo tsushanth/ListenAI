@@ -1,0 +1,89 @@
+{
+  "slug": "game-and-app-dialogue",
+  "name": "Game and app dialogue",
+  "h1": "Spoken dialogue for games and apps, generated at build time or runtime",
+  "metaDescription": "Voice NPC lines, tutorial prompts and app dialogue with the ReadAloud API: pre-render at build time or stream at runtime, with honest limits on range.",
+  "intro": "Dialogue is expensive to record and annoying to change. A small studio writing branching text can have thousands of lines, many of which are rewritten late. Generated speech lets you voice placeholder lines during development, and in some products ship those lines. There are two patterns. Build-time rendering walks your script table, requests audio for each line, and packages the files with the game or app, so there is no network dependency during play. Runtime generation sends text when the player does something unscripted, such as an assistant reading a user's own message or a procedurally generated quest description. That needs a streaming connection and a plan for latency and failure. ReadAloud supports both through its WebSocket and HTTP routes, with mp3, opus, wav and pcm output. The limits are significant for character work. Live has one American English voice, Studio has a broader English list, and neither accepts emotion or style instructions, so a villain and a shopkeeper will differ by voice id only. That is fine for tutorials, narration and utility prompts and a poor fit for performances.",
+  "steps": [
+    "Export your dialogue table with a line id, speaker, and text. Mark each line as pre-render or runtime.",
+    "Map each speaker to a voice id. Use GET https://api.readaloudai.org/v1/voices to choose Studio English voices, or readaloud-default for a single Live voice.",
+    "For pre-render lines, call POST /v1/audio/speech per line with response_format opus or wav as your engine prefers, and name each file by line id.",
+    "Store a hash of each line's text; in your build, re-render only lines that changed.",
+    "For runtime lines, authorize with POST /tts/authorize (engine live), open the WebSocket, and send synthesize messages. Play each chunk as it arrives and send stop if the player skips the line.",
+    "Cache runtime clips on your server by text hash so repeated lines are not paid for twice.",
+    "Add a text subtitle for every line and a graceful fallback, such as silent subtitles, when audio cannot load."
+  ],
+  "sampleExample": {
+    "title": "Tutorial hint",
+    "input": "Hold the left button to charge your jump. Release when the arrow turns green. If you miss, try again from the last checkpoint.",
+    "notes": "Use ReadAloud Live for runtime hints with a WebSocket and pcm_24000, or render the same line at build time as opus. For long story narration, Studio offers more voices."
+  },
+  "whenToChooseReadAloud": [
+    "You need placeholder or utility dialogue quickly, such as tutorials, menus and system narration.",
+    "You want to re-render lines cheaply after script changes: a 100-character line is about $0.0004 on Live.",
+    "You need both build-time files and an optional runtime path from one provider.",
+    "Your game is in English and distinct voice ids are enough to separate speakers."
+  ],
+  "whenToChooseSomethingElse": [
+    "Your characters need emotion, shouting, whispering or comedic timing; hire actors or look for a tool with documented style control.",
+    "You ship in many languages; look for documented per-language voices and have native speakers review the lines.",
+    "You need lip-sync data; ReadAloud's compatibility routes do not return alignment.",
+    "Your platform forbids network calls at runtime and needs an on-device engine."
+  ],
+  "featuresUsed": [
+    {
+      "feature": "Speech endpoint",
+      "howItHelps": "One request per line over /v1/audio/speech, with opus, wav, mp3 or pcm output."
+    },
+    {
+      "feature": "WebSocket streaming",
+      "howItHelps": "Runtime lines arrive per sentence, and a stop message cancels a line the player skips."
+    },
+    {
+      "feature": "Studio voice list",
+      "howItHelps": "Multiple English voices give you a way to separate speakers."
+    },
+    {
+      "feature": "Per-character billing",
+      "howItHelps": "Costs follow the words you write, with no per-voice licence to manage."
+    },
+    {
+      "feature": "Free credits",
+      "howItHelps": "New accounts can voice a handful of lines before adding a payment method."
+    }
+  ],
+  "considerations": [
+    "Check the platform rules of your store about synthetic voices, and add any disclosure the platform or union agreements require.",
+    "Do not build characters that imitate real people. Voice cloning on ReadAloud requires documented consent from the speaker.",
+    "Never ship your API key inside a game client. Runtime calls should go through your own server.",
+    "A burst of concurrent players can exceed a server's stream capacity, so queue and cache."
+  ],
+  "faq": [
+    {
+      "q": "Can I ship generated audio inside my game?",
+      "a": "Check ReadAloud's terms for the rights that apply to output and confirm them before release. This page makes no licensing promise."
+    },
+    {
+      "q": "Can characters sound angry or sad?",
+      "a": "No. Delivery style is not controllable, so rely on writing and voice choice, not on tone."
+    },
+    {
+      "q": "Is runtime generation fast enough for conversation?",
+      "a": "ReadAloud Live starts streaming after the first sentence. Measure in your own region, using your own lines, before you rely on it."
+    },
+    {
+      "q": "How many voices do I get?",
+      "a": "Live has one. Studio has a broader English list; the MCP page mentions 28 English voices."
+    },
+    {
+      "q": "Do I need a server?",
+      "a": "Yes for runtime use, because the client libraries take your key. Pre-rendered audio needs no runtime server."
+    }
+  ],
+  "relatedSlugs": [
+    "language-learning-practice",
+    "voice-agents-and-ivr",
+    "video-voiceovers-and-explainers",
+    "in-car-and-smart-device-announcements"
+  ]
+}

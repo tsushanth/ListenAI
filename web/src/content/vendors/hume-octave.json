@@ -1,0 +1,268 @@
+{
+  "slug": "hume-octave",
+  "name": "Hume AI Octave",
+  "url": "https://www.hume.ai",
+  "status": "sunsetting",
+  "retrievedAt": "2026-10-10",
+  "category": "model-vendor",
+  "positioning": "Hume's Octave is a speech-language-model text-to-speech API with prompt-based voice design and acting instructions; Hume's documentation says its TTS and EVI APIs are being sunset, with access ending on 13 November 2026.",
+  "pricing": {
+    "model": "Monthly subscriptions with included characters and per-character overage rates on the higher plans; one subscription covered TTS, EVI and voice features. The live pricing page now redirects to the homepage, so no current price list is available to cite.",
+    "headline": "Hume's pricing page is no longer on its site (the address redirects to the homepage as of 2026-10-10). The only copy we found is an Internet Archive snapshot dated 2026-09-01, so this page shows no Hume prices.",
+    "pricePer1MCharsUsd": 150,
+    "headlineTier": "Creator",
+    "tiers": [
+      {
+        "name": "Free",
+        "pricePer1MCharsUsd": null,
+        "unit": "USD 0; 10,000 characters per month (~10 minutes)",
+        "notes": "Non-commercial use only (docs FAQ). 15 requests per minute. The billing docs also mention USD 20 in credits for new accounts."
+      },
+      {
+        "name": "Starter",
+        "pricePer1MCharsUsd": null,
+        "unit": "USD 3 per month; 30,000 characters (~30 minutes)",
+        "notes": "Non-commercial only; no overage purchase (upgrade required). Effective USD 100 per 1M of included allowance."
+      },
+      {
+        "name": "Creator",
+        "pricePer1MCharsUsd": 150,
+        "unit": "USD 14 per month (USD 7 first month); 140,000 characters; USD 0.15 per 1,000 after",
+        "notes": "75 requests per minute. Effective USD 100 per 1M of included allowance at USD 14. Overage rate on the first paid tier with a commercial license, from an archived snapshot of hume.ai/pricing (2026-09-01); single-source, live page removed."
+      },
+      {
+        "name": "Pro",
+        "pricePer1MCharsUsd": 120,
+        "unit": "USD 70 per month; 1,000,000 characters; USD 0.12 per 1,000 after",
+        "notes": "75 requests per minute. Effective USD 70 per 1M of included allowance."
+      },
+      {
+        "name": "Scale",
+        "pricePer1MCharsUsd": 100,
+        "unit": "USD 200 per month; 3,300,000 characters; USD 0.10 per 1,000 after",
+        "notes": "150 requests per minute. Effective about USD 60.6 per 1M of included allowance."
+      },
+      {
+        "name": "Business",
+        "pricePer1MCharsUsd": 50,
+        "unit": "USD 500 per month; 10,000,000 characters; USD 0.05 per 1,000 after",
+        "notes": "225 requests per minute. Effective USD 50 per 1M of included allowance."
+      },
+      {
+        "name": "Enterprise",
+        "pricePer1MCharsUsd": null,
+        "unit": "custom",
+        "notes": "Custom limits; API voice access listed."
+      }
+    ],
+    "freeTier": "Free plan: 10,000 characters per month (archived pricing page); non-commercial use only.",
+    "promotions": [],
+    "sourceUrls": [
+      "https://web.archive.org/web/20260901002902/https://www.hume.ai/pricing",
+      "https://dev.hume.ai/voice/docs/resources/billing",
+      "https://dev.hume.ai/voice/docs/text-to-speech-tts/faq"
+    ],
+    "priceBasis": "archive-only"
+  },
+  "voices": {
+    "count": null,
+    "languages": "Octave 1: English and Spanish. Octave 2 (preview): English, Japanese, Korean, Spanish, French, Portuguese, Italian, German, Russian, Hindi, Arabic.",
+    "customVoiceOrCloning": "Voice design from a text description; voice cloning from as little as 15 seconds of audio (availability depends on subscription tier).",
+    "sourceUrl": "https://dev.hume.ai/voice/docs/text-to-speech-tts/overview"
+  },
+  "streaming": {
+    "websocket": "yes",
+    "http": "yes",
+    "vendorStatedLatency": "Vendor-stated: Octave 2 (preview) ~100 ms and Octave 1 ~200 ms model latency, not including network transit; instant mode first audio typically within ~200 ms.",
+    "sourceUrl": "https://dev.hume.ai/voice/docs/text-to-speech-tts/overview"
+  },
+  "formats": [
+    "MP3",
+    "WAV",
+    "PCM"
+  ],
+  "ssml": "unknown",
+  "compatibility": {
+    "openaiSpeechCompatible": "no",
+    "note": "Hume exposes its own endpoints (/v0/tts, /v0/tts/file, /v0/tts/stream/json, /v0/tts/stream/file, and WebSocket /v0/tts/stream/input) with utterance objects containing text, voice, description and speed."
+  },
+  "licensing": {
+    "commercialUse": "Commercial use was allowed on Creator and above; Free and Starter were for non-commercial use.",
+    "attributionOrConditions": "Users retain rights to output; Hume receives a perpetual licence to use voice recordings and voice models to provide and improve services. Use must comply with Hume's prohibited-use policy.",
+    "sourceUrl": "https://dev.hume.ai/voice/docs/text-to-speech-tts/faq"
+  },
+  "limits": {
+    "perRequestCharacters": "5,000 characters per utterance; description up to 1,000 characters; up to 5 generations per request",
+    "concurrency": "HTTP rate limits are set by subscription tier; the per-tier figures were on the pricing page that has since been removed.",
+    "sourceUrl": "https://dev.hume.ai/voice/docs/text-to-speech-tts/overview"
+  },
+  "sdks": [
+    "TypeScript",
+    "Python",
+    ".NET",
+    "CLI",
+    "MCP server"
+  ],
+  "compliance": {
+    "hipaa": "stated",
+    "soc2": "stated",
+    "gdpr": "stated",
+    "note": "Self-attested in the Compliance row of the archived pricing page (Enterprise column): SOC 2 Type II, GDPR, HIPAA. Not re-checked on a live page because the pricing page was removed.",
+    "sourceUrl": "https://web.archive.org/web/20260901002902/https://www.hume.ai/pricing"
+  },
+  "strengths": [
+    {
+      "claim": "Octave is built on a language model, and the docs describe it adapting delivery to the emotional meaning of the text.",
+      "sourceUrl": "https://dev.hume.ai/voice/docs/text-to-speech-tts/overview"
+    },
+    {
+      "claim": "Voice design from a plain-language description, plus acting instructions to steer delivery after a voice exists.",
+      "sourceUrl": "https://dev.hume.ai/voice/docs/text-to-speech-tts/faq"
+    },
+    {
+      "claim": "Streaming over HTTP and WebSocket, with word and phoneme timestamps and a continuation feature to keep consistency across long-form text.",
+      "sourceUrl": "https://dev.hume.ai/voice/docs/text-to-speech-tts/overview"
+    },
+    {
+      "claim": "Octave 2 (preview) lists 11 languages including Japanese, Korean, Hindi and Arabic.",
+      "sourceUrl": "https://dev.hume.ai/voice/docs/text-to-speech-tts/faq"
+    },
+    {
+      "claim": "Users retain ownership of audio they generate.",
+      "sourceUrl": "https://dev.hume.ai/voice/docs/text-to-speech-tts/overview"
+    }
+  ],
+  "limitations": [
+    {
+      "claim": "Hume's documentation says it is sunsetting the TTS and EVI APIs: access ends 13 November 2026, and account data is permanently deleted afterwards.",
+      "sourceUrl": "https://dev.hume.ai/voice/intro"
+    },
+    {
+      "claim": "Free and Starter plans were limited to non-commercial use.",
+      "sourceUrl": "https://dev.hume.ai/voice/docs/text-to-speech-tts/faq"
+    },
+    {
+      "claim": "Octave 1 lists two languages, English and Spanish; the broader language list is on Octave 2, which is labelled preview.",
+      "sourceUrl": "https://dev.hume.ai/voice/docs/text-to-speech-tts/overview"
+    }
+  ],
+  "migration": {
+    "stepsToMove": [
+      "Plan the move before the 13 November 2026 shutdown date stated by Hume; account data is deleted afterwards, so export anything you need first.",
+      "If you also use Hume's EVI speech-to-speech API, it ends on the same date; this checklist covers the text-to-speech API, not EVI.",
+      "Hume authenticates with an API key (the SDK reads HUME_API_KEY); replace the SDK client with the target service's client.",
+      "Replace /v0/tts, /v0/tts/file or the streaming endpoints (/v0/tts/stream/json, /v0/tts/stream/file) with the target's equivalents; WebSocket users replace /v0/tts/stream/input.",
+      "Map each utterance (text, voice name or id, description, speed, trailing_silence) to the target's request fields; description-based voice design and acting instructions have no direct equivalent in most services.",
+      "Re-create cloned voices on the target from the original consented audio, and re-test output format needs (MP3, WAV or PCM)."
+    ],
+    "sourceUrls": [
+      "https://dev.hume.ai/voice/intro",
+      "https://dev.hume.ai/voice/docs/text-to-speech-tts/overview",
+      "https://dev.hume.ai/voice/docs/text-to-speech-tts/quickstart/python"
+    ],
+    "mapping": [
+      {
+        "kind": "endpoint-http",
+        "vendorItem": "POST /v0/tts and POST /v0/tts/file (generate audio in one response)",
+        "note": ""
+      },
+      {
+        "kind": "endpoint-stream",
+        "vendorItem": "POST /v0/tts/stream/json and POST /v0/tts/stream/file (streamed audio over HTTP)",
+        "note": ""
+      },
+      {
+        "kind": "endpoint-websocket",
+        "vendorItem": "WebSocket /v0/tts/stream/input (streaming text in, audio out)",
+        "note": ""
+      },
+      {
+        "kind": "text",
+        "vendorItem": "utterances[].text",
+        "note": ""
+      },
+      {
+        "kind": "voice",
+        "vendorItem": "utterances[].voice (a voice name or id)",
+        "note": "Re-create any cloned voice from its original consented audio where the target allows it; ReadAloud lists no Hume voices"
+      },
+      {
+        "kind": "style",
+        "vendorItem": "utterances[].description (acting instructions and voice design text)",
+        "note": ""
+      },
+      {
+        "kind": "speed",
+        "vendorItem": "utterances[].speed",
+        "note": ""
+      },
+      {
+        "kind": "other",
+        "vendorItem": "utterances[].trailing_silence",
+        "note": ""
+      },
+      {
+        "kind": "format",
+        "vendorItem": "Output format (MP3, WAV or PCM)",
+        "note": ""
+      }
+    ]
+  },
+  "bestFor": "Teams that were using Octave for expressive, prompt-designed voices; because Hume has announced the API's shutdown on 13 November 2026, new projects should plan around that date.",
+  "sources": [
+    {
+      "url": "https://dev.hume.ai/voice/intro",
+      "title": "Hume docs - welcome (sunset notice)",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://dev.hume.ai/voice/docs/text-to-speech-tts/overview",
+      "title": "Hume docs - Text-to-Speech overview",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://dev.hume.ai/voice/docs/text-to-speech-tts/faq",
+      "title": "Hume docs - TTS FAQ",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://dev.hume.ai/voice/docs/resources/billing",
+      "title": "Hume docs - billing",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://dev.hume.ai/voice/docs/text-to-speech-tts/quickstart/python",
+      "title": "Hume docs - TTS Python quickstart",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://web.archive.org/web/20260901002902/https://www.hume.ai/pricing",
+      "title": "Hume AI pricing page (Internet Archive snapshot, 2026-09-01)",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://www.hume.ai/pricing",
+      "title": "Hume AI pricing URL (redirects to homepage on 2026-10-10)",
+      "retrievedAt": "2026-10-10"
+    }
+  ],
+  "unknowns": [
+    "Whether Hume will change the 13 November 2026 date or offer an export route for voices and data; its documentation states that access ends and data is deleted afterwards, with no further detail.",
+    "The live pricing page no longer exists (it redirects to the homepage); plan figures come from an Internet Archive snapshot dated 2026-09-01, so no price is shown.",
+    "Total voice count is not stated.",
+    "SSML support: docs describe acting instructions and no SSML page was found.",
+    "Whether pricing changed between the 2026-09-01 snapshot and the sunset announcement.",
+    "The concurrent-connections row on the archived page sits under the speech-to-speech (EVI) section, so TTS concurrency is not stated.",
+    "Whether cloned voices can be exported before the shutdown."
+  ],
+  "statusNote": "Hume's own documentation (dev.hume.ai/voice/intro and the Text-to-Speech overview, read 2026-10-10) says it is sunsetting the TTS and EVI APIs, with access ending 2026-11-13 and account data deleted afterwards.",
+  "sunset": {
+    "date": "2026-11-13",
+    "notice": "Hume is sunsetting the TTS and EVI APIs. Access ends November 13, 2026 at 12:01 a.m. EST",
+    "dataDeletion": "Any data in your account is permanently deleted after November 13, 2026.",
+    "noticeSourceUrls": [
+      "https://dev.hume.ai/voice/intro",
+      "https://dev.hume.ai/voice/docs/text-to-speech-tts/overview"
+    ]
+  }
+}

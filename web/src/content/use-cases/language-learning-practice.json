@@ -1,0 +1,89 @@
+{
+  "slug": "language-learning-practice",
+  "name": "Language learning practice",
+  "h1": "Listening drills and slow-read sentences for English learners",
+  "metaDescription": "Build listening drills and slow-read sentences for English learners with ReadAloud: speed control, cached audio, and clear limits on language support.",
+  "intro": "Learners need to hear a sentence several times, at different speeds, before they can produce it. A text-to-speech API can supply those repetitions on demand: the same sentence at normal speed, then slower, then again with a pause after each clause. For an app teaching English this is a practical, low-cost feature. For other languages the answer depends entirely on what the provider can verify, and ReadAloud's documentation commits to English. Live has one American English voice and Studio has a broader set of English voices, so a course teaching English to speakers of other languages can use them. A course teaching Spanish or Japanese should not rely on this page. Even in English, be careful what you claim. A synthetic voice gives a consistent model, but it is not a verified pronunciation reference, and it cannot judge the learner's speech. ReadAloud's speech to text is batch only and the documented accuracy measurements cover English read speech, so using it to grade a learner's pronunciation is an experiment, not a feature to market.",
+  "steps": [
+    "Store your example sentences with ids, difficulty levels and any glosses. Keep each to one sentence so playback is predictable.",
+    "Choose a voice per learner level: readaloud-default (Live) for simple sentences, or a Studio English voice from GET https://api.readaloudai.org/v1/voices for variety.",
+    "Pre-render each sentence with POST /v1/audio/speech at speed 1.0 and again at a slower value such as 0.75, using response_format mp3. The speed field accepts 0.25 to 4.0.",
+    "Cache both files by sentence id and speed. Learners will replay them often, so every replay should cost nothing.",
+    "In the app, offer normal and slow playback buttons, and show the written sentence so learners connect sound and spelling.",
+    "For listening quizzes, render a short passage, then ask questions from the same text. Keep the passage under 5,000 characters.",
+    "If you test recording the learner, send the clip to /stt/authorize and /v1/stt with language set to en, treat the transcript as a hint only, and never present it as a score."
+  ],
+  "sampleExample": {
+    "title": "Slow and normal practice sentence",
+    "input": "Could you tell me where the nearest pharmacy is?",
+    "notes": "Use ReadAloud Live for simple sentences or Studio for variety. Render two mp3 files from the same text, one at speed 1.0 and one at 0.75, as one-shot requests. Cache both."
+  },
+  "whenToChooseReadAloud": [
+    "Your course teaches English and you need many short example sentences voiced and re-voiced as lessons change.",
+    "Slow playback matters and you want it from a single speed parameter.",
+    "Costs must stay low across large sentence banks: 100 sentences of 60 characters is about $0.024 on Live.",
+    "You can cache each sentence once and serve it to every learner."
+  ],
+  "whenToChooseSomethingElse": [
+    "You teach a language other than English; look for a provider that documents that language, offers a voice for that language, and lets you check samples with a fluent speaker.",
+    "You need regional accents, such as British, Australian or Indian English, for listening exposure; check whether Studio's voice list covers them before assuming.",
+    "You need automatic pronunciation scoring; look for a purpose-built assessment service.",
+    "You need phoneme-level tools, minimal pairs or highlighted syllables; ReadAloud offers no phoneme data."
+  ],
+  "featuresUsed": [
+    {
+      "feature": "Speed parameter",
+      "howItHelps": "0.25 to 4.0 on the OpenAI-compatible route, enough for slow and normal playback."
+    },
+    {
+      "feature": "Studio voice list",
+      "howItHelps": "A set of English voices for listening variety."
+    },
+    {
+      "feature": "mp3 output",
+      "howItHelps": "Plays on every phone and in every browser."
+    },
+    {
+      "feature": "Batch speech to text",
+      "howItHelps": "POST to /stt/authorize and /v1/stt returns a transcript with word timestamps; accuracy was measured on English read speech only."
+    },
+    {
+      "feature": "Per-character billing",
+      "howItHelps": "Large sentence banks are cheap to render, and re-renders are cheaper still."
+    }
+  ],
+  "considerations": [
+    "Do not describe the voice as a pronunciation authority. It is a consistent model, not a linguistic reference.",
+    "If you cater to children, check the data-protection rules for audio and text you send to any external service.",
+    "Language claims should match what you have tested. The documentation supports English; verify anything else yourself.",
+    "Free credits are one capped pool per account, so a classroom pilot should add a payment method."
+  ],
+  "faq": [
+    {
+      "q": "Does ReadAloud support Spanish, French or Japanese?",
+      "a": "This page cannot say so. The site documents English voices, and the voice, not a request parameter, decides the language. Check the voice list for your account."
+    },
+    {
+      "q": "Can it grade a learner's speech?",
+      "a": "Not reliably. The speech-to-text accuracy figures were measured on read English from a corpus, and the site warns that real speech is worse. Use it as a rough hint at most."
+    },
+    {
+      "q": "How do I slow a sentence down?",
+      "a": "Send the speed field in your request, for example 0.75. The OpenAI-compatible route accepts 0.25 to 4.0."
+    },
+    {
+      "q": "Can I add pauses between phrases?",
+      "a": "Use commas and separate sentences. SSML pauses are not supported."
+    },
+    {
+      "q": "Should I generate audio live or in advance?",
+      "a": "In advance, for a fixed sentence bank. Runtime generation only makes sense for content a learner types themselves."
+    }
+  ],
+  "relatedSlugs": [
+    "e-learning-narration",
+    "game-and-app-dialogue",
+    "accessibility-read-aloud-for-websites",
+    "text-to-speech-for-documents-and-pdfs"
+  ]
+}

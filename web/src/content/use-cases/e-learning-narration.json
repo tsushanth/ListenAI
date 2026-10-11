@@ -1,0 +1,89 @@
+{
+  "slug": "e-learning-narration",
+  "name": "E-learning narration",
+  "h1": "Narrate course modules from scripts and re-render when they change",
+  "metaDescription": "Build narration for online course modules with ReadAloud: script per slide, one audio file each, rendered by API and re-rendered when lessons change.",
+  "intro": "Course content changes. A regulation is updated, a product screen is redesigned, a wrong figure is spotted in lesson four, and every change to a recorded lesson means booking the narrator again or living with a mismatch between slides and audio. Narration generated from a script keeps the two in step: the script is the master, the audio is a build artifact, and an edit is a re-render. That suits a team that maintains many short modules, each with a slide or screen and a few sentences of speech. A workable structure is one script entry per slide, one audio file per entry, and a manifest your course player reads. Because every entry is short, a request stays well under the 5,000-character limit and you re-render only what changed. Studio, with its broader English voice list, is the sensible default for learners who will hear an hour of it. The honest limits are that there is no control over emphasis or delivery, and anything with heavy jargon needs respelling and a listen-through before release.",
+  "steps": [
+    "Write narration as a script file with one entry per slide or screen, each with an id and the exact words. Keep sentences short and spell out numbers and acronyms the way you want them spoken.",
+    "Call GET https://api.readaloudai.org/v1/voices with your key and choose one ReadAloud Studio voice for the whole course, so learners hear a consistent narrator.",
+    "For each entry, POST /v1/audio/speech with that voice, response_format mp3 and your Bearer key. Save the response as <slide-id>.mp3.",
+    "Write a manifest mapping each slide id to its audio file and the hash of its text. Your player reads the manifest to start audio when a slide appears.",
+    "In your build pipeline, compare hashes and re-render only entries whose text changed. Commit scripts and manifests, not the audio, if your storage policy prefers it.",
+    "Listen to every file once. Fix mispronunciations by respelling in the script, then re-render that entry.",
+    "Add a transcript or captions from the same script so the course does not depend on audio alone."
+  ],
+  "sampleExample": {
+    "title": "Single slide narration",
+    "input": "Slide four. When a customer reports a delayed shipment, first confirm the tracking number. Then check the carrier status. If the package is more than three days late, offer a replacement or a refund.",
+    "notes": "Use ReadAloud Studio with a single English voice for the course, mp3, one request per slide. This is batch work, so skip streaming."
+  },
+  "whenToChooseReadAloud": [
+    "Course text changes often enough that re-recording would be a recurring cost or delay.",
+    "Your modules are in English and one narrator voice is acceptable.",
+    "You want the narration pipeline in your build system, with scripts in version control.",
+    "Short per-slide requests keep each file small and each re-render cheap: a 400-character slide is about $0.004 on Studio."
+  ],
+  "whenToChooseSomethingElse": [
+    "You teach in several languages; look for a provider that documents languages and voices separately and let a native speaker review the output.",
+    "Learner engagement depends on a warm human instructor; use a real presenter.",
+    "You need controlled emphasis, dramatized scenarios or varied characters; ReadAloud does not offer style control.",
+    "Your authoring tool has built-in narration you are already satisfied with."
+  ],
+  "featuresUsed": [
+    {
+      "feature": "Studio voice list",
+      "howItHelps": "GET /v1/voices lists English voices, so a course can pick one and keep it."
+    },
+    {
+      "feature": "OpenAI-compatible speech route",
+      "howItHelps": "A short loop over script entries is enough; no special SDK is required."
+    },
+    {
+      "feature": "mp3 output",
+      "howItHelps": "Plays in every common course player and LMS without conversion."
+    },
+    {
+      "feature": "Per-character billing",
+      "howItHelps": "Cost follows script length, so a small edit costs a small re-render."
+    },
+    {
+      "feature": "Speed field",
+      "howItHelps": "speed between 0.25 and 4.0 lets you offer slower narration for dense slides."
+    }
+  ],
+  "considerations": [
+    "Rights and consent: if your course teaches a regulated topic, you remain responsible for accuracy; the voice only reads what you write.",
+    "Disclose synthetic narration where your institution, accreditor or local rules require it.",
+    "Accessibility standards, including captions and transcripts, remain the course owner's responsibility.",
+    "Keep voice choice stable across a course; switching mid-course, or after a service change, can be noticeable to learners."
+  ],
+  "faq": [
+    {
+      "q": "Can I use different voices for different characters?",
+      "a": "Studio has multiple English voices, so you can assign one per speaker. There is no emotion or style control, so you cannot direct how a line is delivered."
+    },
+    {
+      "q": "How do I fix a mispronounced term?",
+      "a": "Respell it in the script, for example by writing it phonetically, and re-render that slide. There is no pronunciation dictionary on the compatibility routes."
+    },
+    {
+      "q": "Can narration sync to animations?",
+      "a": "Not automatically. You get a file per slide, so time animations to the file length in your player."
+    },
+    {
+      "q": "Does it support SCORM or xAPI?",
+      "a": "No. ReadAloud produces audio files only. Your authoring tool or LMS handles packaging."
+    },
+    {
+      "q": "Is there a free way to try it?",
+      "a": "New accounts get free credits worth $0.10, about 10,000 characters, which is enough for a few slides before adding a payment method."
+    }
+  ],
+  "relatedSlugs": [
+    "accessibility-read-aloud-for-websites",
+    "article-and-newsletter-to-audio",
+    "openai-sdk",
+    "vercel-ai-sdk"
+  ]
+}

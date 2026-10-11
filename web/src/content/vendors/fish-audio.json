@@ -1,0 +1,226 @@
+{
+  "slug": "fish-audio",
+  "name": "Fish Audio",
+  "url": "https://fish.audio",
+  "status": "active",
+  "retrievedAt": "2026-10-10",
+  "category": "api-platform",
+  "positioning": "Fish Audio is a voice platform and developer API offering expressive text-to-speech (S2.1-Pro) with voice cloning, a community voice library, and OpenAI/ElevenLabs-compatible routes.",
+  "pricing": {
+    "model": "Pay-as-you-go API billed per million UTF-8 bytes of input text, with no subscription or monthly minimum for API access; concurrency limits rise with total prepaid amount.",
+    "headline": "$15.00 per 1M UTF-8 bytes for the s2.1-pro model (equal to about 1M characters of plain English/ASCII text); s2.1-pro-free is listed at $0 under a fair-use policy.",
+    "pricePer1MCharsUsd": 15,
+    "headlineTier": "s2.1-pro",
+    "tiers": [
+      {
+        "name": "s2.1-pro",
+        "pricePer1MCharsUsd": 15,
+        "unit": "USD per 1M UTF-8 bytes",
+        "notes": "Recommended production model; TTFA and DPA commitments apply to this model per the models page. Priced per million UTF-8 bytes; one byte is one character for ASCII text, so the figure is exact for plain English and higher per character for scripts that use multi-byte UTF-8 (a derived reading of the unit)."
+      },
+      {
+        "name": "s2-pro",
+        "pricePer1MCharsUsd": 15,
+        "unit": "USD per 1M UTF-8 bytes",
+        "notes": "Previous-generation S2 model, same listed price."
+      },
+      {
+        "name": "s1 (deprecated)",
+        "pricePer1MCharsUsd": 15,
+        "unit": "USD per 1M UTF-8 bytes",
+        "notes": "Retiring December 31, 2026; requests naming s1 are then served and billed as s2.1-pro at the same price."
+      },
+      {
+        "name": "s2.1-pro-free",
+        "pricePer1MCharsUsd": 0,
+        "unit": "USD per 1M UTF-8 bytes",
+        "notes": "Same model as s2.1-pro for development and testing; fair-use limits, no TTFA or DPA commitments, no hard character cap stated."
+      },
+      {
+        "name": "Speech-to-text (transcribe-1 / transcribe-1-pro)",
+        "pricePer1MCharsUsd": null,
+        "unit": "USD 0.36 per audio hour",
+        "notes": "Not a text-to-speech price; recorded for completeness."
+      },
+      {
+        "name": "Voice Design (voice-design-1)",
+        "pricePer1MCharsUsd": null,
+        "unit": "USD 0.01 per successful request",
+        "notes": "Covers one request even when it returns several candidate voices."
+      }
+    ],
+    "freeTier": "Model string s2.1-pro-free at $0 under a fair-use policy; per the vendor blog it has no SLA or latency commitment, requests may be used to improve model quality, and products above $1M ARR are asked to contact Fish Audio first.",
+    "promotions": [
+      "Free access to s2.1-pro-free: the vendor blog shows several superseded end dates and its latest statement reads 'Free access is available through November 30, 2026'. Treat the end date as subject to change; the blog says changes will be communicated with notice."
+    ],
+    "sourceUrls": [
+      "https://docs.fish.audio/developer-guide/models-pricing/pricing-and-rate-limits",
+      "https://docs.fish.audio/developer-guide/models-pricing/models-overview",
+      "https://docs.fish.audio/developer-guide/models-pricing/migrate-from-s1",
+      "https://fish.audio/blog/s2-1-pro-free-api/"
+    ]
+  },
+  "voices": {
+    "count": "2,000,000+ voices on the platform (vendor homepage; includes user-uploaded community voices)",
+    "languages": "83 languages for s2.1-pro (80+ for s2-pro), with automatic language detection",
+    "customVoiceOrCloning": "Voice cloning from reference audio via API and web app; homepage says as little as 10 seconds of audio is needed; voice cloning is also available on the free model per the vendor blog.",
+    "sourceUrl": "https://docs.fish.audio/developer-guide/models-pricing/models-overview"
+  },
+  "streaming": {
+    "websocket": "yes",
+    "http": "yes",
+    "vendorStatedLatency": "Vendor-stated: docs say latency=balanced (default) gives time-to-first-audio of about 300 ms; the models page lists 100 ms TTFA for s2-pro; the vendor blog cites about 90 ms (and elsewhere about 70 ms) TTFA for s2.1-pro. These are vendor figures from different pages and were not measured here.",
+    "sourceUrl": "https://docs.fish.audio/developer-guide/core-features/text-to-speech"
+  },
+  "formats": [
+    "mp3",
+    "wav",
+    "pcm",
+    "opus"
+  ],
+  "ssml": "unknown",
+  "compatibility": {
+    "openaiSpeechCompatible": "yes",
+    "note": "Vendor migration guide lists an OpenAI-SDK base URL https://api.fish.audio/compat/v1 (POST /audio/speech), plus OpenRouter-, ElevenLabs- (https://api.fish.audio/compat/elevenlabs) and Groq-style bases. Differences noted by the vendor: voice is a Fish voice ID, response_format defaults to pcm, instructions and stream_format=sse are refused with a 400. Names tts-1, tts-1-hd and gpt-4o-mini-tts are accepted as aliases of fish-audio/s2.1-pro."
+  },
+  "licensing": {
+    "commercialUse": "Terms of Service: users of Paid Services are licensed to use the Services for commercial uses; the free web plan is for personal use (homepage FAQ). s2.1-pro-free: the vendor blog says some commercial scenarios may have restrictions and asks products above $1M ARR to contact Fish Audio.",
+    "attributionOrConditions": "No attribution requirement for paid use found on the pages read; free-model fair-use and ARR condition as above.",
+    "sourceUrl": "https://fish.audio/terms/"
+  },
+  "limits": {
+    "perRequestCharacters": null,
+    "concurrency": "Concurrent requests by prepaid total: Starter (under $100 paid) 5; Elevated ($100 or more) 15; High Volume ($1,000 or more) 50; Enterprise custom. Over the limit the native API returns 429.",
+    "sourceUrl": "https://docs.fish.audio/developer-guide/models-pricing/pricing-and-rate-limits"
+  },
+  "sdks": [
+    "Python (official)",
+    "JavaScript/TypeScript (official)",
+    "REST (MessagePack or JSON), WebSocket"
+  ],
+  "compliance": {
+    "hipaa": "not-stated",
+    "soc2": "not-stated",
+    "gdpr": "not-stated",
+    "note": "No HIPAA, SOC 2 or GDPR compliance statement was found on the documentation, pricing or terms pages read; the privacy policy exists but was not treated as a compliance claim.",
+    "sourceUrl": null
+  },
+  "strengths": [
+    {
+      "claim": "Provides OpenAI-, OpenRouter-, ElevenLabs- and Groq-style compatibility bases so existing SDK code can be pointed at Fish Audio.",
+      "sourceUrl": "https://docs.fish.audio/developer-guide/resources/migration"
+    },
+    {
+      "claim": "s2.1-pro supports 83 languages with automatic language detection and natural-language bracket tags for emotion and delivery, such as [whispers sweetly].",
+      "sourceUrl": "https://docs.fish.audio/developer-guide/models-pricing/models-overview"
+    },
+    {
+      "claim": "Offers a free development model (s2.1-pro-free) with the same quality and language coverage as the paid model, plus a very large community voice library and cloning from short reference audio.",
+      "sourceUrl": "https://fish.audio/blog/s2-1-pro-free-api/"
+    },
+    {
+      "claim": "Publishes simple pay-as-you-go pricing with no subscription fee or monthly minimum for API access.",
+      "sourceUrl": "https://docs.fish.audio/developer-guide/models-pricing/pricing-and-rate-limits"
+    },
+    {
+      "claim": "Offers both HTTP streaming and WebSocket streaming for LLM-to-speech use, plus a voice-agent product and speech-to-text.",
+      "sourceUrl": "https://docs.fish.audio/features/realtime-streaming"
+    }
+  ],
+  "limitations": [
+    {
+      "claim": "The free model has no TTFA/DPA commitments or SLA, requests may be used to improve model quality, and its free window has had its end date extended several times.",
+      "sourceUrl": "https://fish.audio/blog/s2-1-pro-free-api/"
+    },
+    {
+      "claim": "Default concurrency is 5 requests until $100 has been prepaid; higher tiers unlock at $100 (15) and $1,000 (50).",
+      "sourceUrl": "https://docs.fish.audio/developer-guide/models-pricing/pricing-and-rate-limits"
+    },
+    {
+      "claim": "The deprecated s1 model retires on December 31, 2026, and its emotion tags use a different syntax from S2.",
+      "sourceUrl": "https://docs.fish.audio/developer-guide/models-pricing/models-overview"
+    }
+  ],
+  "migration": {
+    "stepsToMove": [
+      "Create an API key in the Fish Audio console and send it as 'Authorization: Bearer <key>'.",
+      "Native API: POST https://api.fish.audio/v1/tts with JSON including text, an optional reference_id (voice model id), format (mp3, wav, pcm or opus) and a 'model' header such as s2.1-pro.",
+      "To keep OpenAI SDK code, set base_url to https://api.fish.audio/compat/v1 and model to fish-audio/s2.1-pro; set response_format explicitly because the default is pcm.",
+      "To keep ElevenLabs SDK code, set the base URL to https://api.fish.audio/compat/elevenlabs and send the key via the xi-api-key header.",
+      "For streaming text input (LLM tokens) use the WebSocket TTS endpoint or the SDK stream_websocket helper; for text you already have use HTTP streaming.",
+      "Map voices: Fish uses its own voice IDs (reference_id), and cloned voices are created with the voice model API."
+    ],
+    "sourceUrls": [
+      "https://docs.fish.audio/developer-guide/resources/migration",
+      "https://docs.fish.audio/developer-guide/core-features/text-to-speech",
+      "https://docs.fish.audio/api-reference/endpoint/websocket/tts-live"
+    ]
+  },
+  "bestFor": "Developers who want a large, expressive and multilingual voice catalogue with cloning and a free development model, and who are comfortable with per-byte pricing at about $15 per million characters for English.",
+  "sources": [
+    {
+      "url": "https://docs.fish.audio/developer-guide/models-pricing/pricing-and-rate-limits",
+      "title": "Pricing & Rate Limits - Fish Audio docs",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://docs.fish.audio/developer-guide/models-pricing/models-overview",
+      "title": "Models Overview - Fish Audio docs",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://docs.fish.audio/developer-guide/core-features/text-to-speech",
+      "title": "Text to Speech guide - Fish Audio docs",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://docs.fish.audio/developer-guide/resources/migration",
+      "title": "Migrate to Fish Audio - Fish Audio docs",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://docs.fish.audio/developer-guide/models-pricing/migrate-from-s1",
+      "title": "Migrate from S1 - Fish Audio docs",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://docs.fish.audio/features/realtime-streaming",
+      "title": "Realtime Streaming - Fish Audio docs",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://docs.fish.audio/api-reference/endpoint/websocket/tts-live",
+      "title": "WebSocket TTS Streaming - Fish Audio API reference",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://fish.audio/blog/s2-1-pro-free-api/",
+      "title": "Fish Audio S2.1 Pro: Free Text-to-Speech API for Developers - blog",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://fish.audio",
+      "title": "Fish Audio homepage",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://fish.audio/terms/",
+      "title": "Fish Audio Terms of Service",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://docs.fish.audio/llms.txt",
+      "title": "Fish Audio docs index (llms.txt)",
+      "retrievedAt": "2026-10-10"
+    }
+  ],
+  "unknowns": [
+    "Per-request text length limit for POST /v1/tts and the WebSocket was not confirmed.",
+    "Whether SSML is supported is not stated in the pages read; the vendor documents bracket tags and phoneme controls instead.",
+    "HIPAA, SOC 2 and GDPR compliance statements were not found.",
+    "The current end date of the s2.1-pro-free window is ambiguous because the blog lists several superseded dates; the latest stated is November 30, 2026.",
+    "Exact fair-use thresholds for s2.1-pro-free are not published on the pages read.",
+    "Latency figures differ between pages (about 70, 90, 100 and 300 ms) and are vendor-stated figures.",
+    "Web-app (Studio) subscription plan prices were not recorded because the pricing page is rendered client-side and the question concerns the API."
+  ]
+}

@@ -1,0 +1,66 @@
+{
+  "slug": "vapi",
+  "name": "Vapi",
+  "h1": "Use ReadAloud as a custom voice in Vapi",
+  "metaDescription": "Connect ReadAloud to Vapi as a custom voice over HTTP. What we tested with Vapi-shaped requests and one real assistant call, and what remains untested.",
+  "intro": "Vapi is a platform for building voice assistants that answer phone calls and web calls. Besides its built-in voice providers, it can call a server you control for every spoken line: with the custom-voice provider, Vapi POSTs the text to a URL and plays back the raw audio the server returns. ReadAloud serves that contract at https://api.readaloudai.org/v1/vapi/custom-voice, so ReadAloud Live can be the voice of a Vapi assistant without any code on your side. The request is Vapi's documented voice-request JSON, and the reply is a headerless stream of 16-bit signed little-endian mono PCM at exactly the sample rate Vapi asks for. The endpoint accepts 8000, 16000, 22050, 24000 and 44100 Hz and authenticates with the same ReadAloud key you use everywhere else, sent as x-vapi-secret or as a Bearer token. This is a different kind of integration from the SDK pages here: there is no package to install, only an assistant configuration. We checked the endpoint ourselves on 10 October 2026 with Vapi-shaped curl requests, and the ReadAloud repository records one real Vapi assistant call. The sections below separate those two sources and list what has not been tested.",
+  "install": "No package. 1) Create a ReadAloud key (https://readaloudai.org/developers) and run the curl check below. 2) In Vapi, create a saved assistant whose voice block is:\n\n{\n  \"provider\": \"custom-voice\",\n  \"server\": {\n    \"url\": \"https://api.readaloudai.org/v1/vapi/custom-voice?voice=readaloud-default\",\n    \"secret\": \"<your ReadAloud key>\",\n    \"timeoutSeconds\": 30\n  }\n}\n\nVapi sends the secret as the X-VAPI-SECRET header. Vapi also supports Custom Credentials (Bearer Token) for the same purpose; the endpoint accepts Authorization: Bearer, but we have not run that flow in Vapi. Vapi's own page on custom TTS is the reference for the assistant fields.",
+  "quickstart": {
+    "language": "bash",
+    "code": "curl -s -D - -X POST 'https://api.readaloudai.org/v1/vapi/custom-voice' \\\n  -H \"x-vapi-secret: $READALOUD_API_KEY\" \\\n  -H 'Content-Type: application/json' \\\n  -d '{\"message\":{\"type\":\"voice-request\",\"text\":\"Hello from ReadAloud.\",\"sampleRate\":16000,\"timestamp\":1}}' \\\n  -o out.pcm\n# out.pcm is raw 16-bit signed little-endian mono PCM at 16000 Hz, no header\nffmpeg -f s16le -ar 16000 -ac 1 -i out.pcm out.wav"
+  },
+  "verifiedWith": {
+    "packageOrSdk": "ReadAloud /v1/vapi/custom-voice endpoint, called with curl using Vapi-shaped voice-request bodies; one real Vapi call recorded in the ReadAloud repository",
+    "version": "live API, gateway release v60",
+    "date": "2026-10-10"
+  },
+  "whatWorks": [
+    "Our own run on 10 October 2026: a Vapi-shaped voice-request POST with x-vapi-secret returned 200 with content type application/octet-stream at sampleRate 8000 (50,714 bytes), 16000 (103,284 bytes) and 24000 (151,582 bytes). Each body had an even byte count and decoded to about 3.2 seconds of mono audio at its rate.",
+    "Authorization: Bearer with the same key also returned 200. A wrong key returned 401, an unlisted sampleRate such as 12345 returned 422, and an unknown voice returned 404, each with a JSON body whose top-level error field is a string.",
+    "Blank text returned 200 with 20 ms of silence (640 bytes at 16000 Hz) and an x-vapi-blank-text: silence header, so a blank line does not read as a voice failure.",
+    "Recorded in the ReadAloud repository's Vapi docs, not re-run by us: one real assistant with the custom-voice provider, the inline secret and no fallback voice was called by an automated caller. The call lasted 24 seconds and ended normally, the assistant spoke five lines, and Vapi reported custom-voice latency of 266 ms and 493 ms on the two turns it measured."
+  ],
+  "limitations": [
+    "Only one real Vapi call has been run, with the inline secret. The Custom Credential (credentialId) flow, the sample rate Vapi actually requested, and Vapi's behavior on 429 responses and timeouts have not been tested.",
+    "Nobody has listened to the phone-line audio of that call, so we make no statement about how it sounds over a phone.",
+    "ReadAloud Live has one English voice, readaloud-default. Each request is limited to 5,000 characters and the request body to 1 MiB.",
+    "The curl runs checked the response format and status codes. We did not run a load test; the repository notes parallel requests were checked only up to 14."
+  ],
+  "links": [
+    {
+      "label": "Vapi custom TTS documentation",
+      "url": "https://docs.vapi.ai/customization/custom-voices/custom-tts"
+    },
+    {
+      "label": "ReadAloud developer docs",
+      "url": "https://readaloudai.org/developers"
+    },
+    {
+      "label": "Vapi",
+      "url": "https://vapi.ai"
+    }
+  ],
+  "faq": [
+    {
+      "q": "Is there anything to install?",
+      "a": "No. You paste the endpoint URL and your ReadAloud key into a Vapi assistant's custom-voice settings. The curl command on this page checks the endpoint first."
+    },
+    {
+      "q": "How is the voice chosen?",
+      "a": "Vapi's request does not name a voice, so the URL does. With no query string the endpoint uses readaloud-default; adding ?voice=readaloud-default makes it explicit. An unknown voice returns 404."
+    },
+    {
+      "q": "Why use a saved assistant?",
+      "a": "Vapi's authentication documentation says a Custom Credential is attached only when the server URL comes from your saved organization configuration, not from a URL inside an API request body. The inline secret was what the recorded real call used."
+    },
+    {
+      "q": "Should I set a fallback voice?",
+      "a": "Vapi's documentation says that without a fallback plan a failed voice request ends the call. The recorded real call used no fallback and had no failures, but one call does not show how often requests fail, so a fallback is a reasonable precaution."
+    }
+  ],
+  "relatedSlugs": [
+    "pipecat",
+    "livekit-agents",
+    "elevenlabs-sdk"
+  ]
+}

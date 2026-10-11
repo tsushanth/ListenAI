@@ -1,0 +1,235 @@
+{
+  "slug": "minimax-speech",
+  "name": "MiniMax Speech",
+  "url": "https://www.minimax.io/audio",
+  "status": "active",
+  "retrievedAt": "2026-10-10",
+  "category": "model-vendor",
+  "positioning": "MiniMax Speech is the text-to-speech API (speech-2.8 models) on MiniMax's international developer platform, alongside its language, video, image and music APIs, with voice cloning and voice design.",
+  "pricing": {
+    "model": "Pay-as-you-go per million characters by model (hd or turbo), identical for synchronous and asynchronous synthesis; separate per-voice fees for voice design and rapid cloning; an Audio Subscription sold in 'audio points' is also offered.",
+    "headline": "speech-2.8-turbo is $60 per 1M characters and speech-2.8-hd is $100 per 1M characters (pay-as-you-go, sync and async).",
+    "pricePer1MCharsUsd": 60,
+    "headlineTier": "speech-2.8-turbo (sync and async)",
+    "tiers": [
+      {
+        "name": "speech-2.8-turbo (sync and async)",
+        "pricePer1MCharsUsd": 60,
+        "unit": "USD per 1M characters",
+        "notes": "Optimised for speed and cost; same capabilities as hd. Lower-priced of the two current models."
+      },
+      {
+        "name": "speech-2.8-hd (sync and async)",
+        "pricePer1MCharsUsd": 100,
+        "unit": "USD per 1M characters",
+        "notes": "Higher-quality model; async supports up to 1M characters per request."
+      },
+      {
+        "name": "Legacy speech-2.6-turbo / speech-02-turbo",
+        "pricePer1MCharsUsd": 60,
+        "unit": "USD per 1M characters",
+        "notes": "Listed under Legacy Models."
+      },
+      {
+        "name": "Legacy speech-2.6-hd / speech-02-hd",
+        "pricePer1MCharsUsd": 100,
+        "unit": "USD per 1M characters",
+        "notes": "Listed under Legacy Models."
+      },
+      {
+        "name": "Voice Design",
+        "pricePer1MCharsUsd": null,
+        "unit": "USD 3 per voice",
+        "notes": "Charged on first use for synthesis; in-API preview synthesis billed at $60 per 1M characters."
+      },
+      {
+        "name": "Rapid Voice Cloning",
+        "pricePer1MCharsUsd": null,
+        "unit": "USD 1.5 per voice",
+        "notes": "Charged when the cloned voice is first used for synthesis; preview characters billed at the preview model's rate."
+      },
+      {
+        "name": "Audio Subscription",
+        "pricePer1MCharsUsd": null,
+        "unit": "USD 5 / 30 / 99 / 249 / 999 per month (Starter to Business) for 100,000 / 300,000 / 1,100,000 / 3,300,000 / 20,000,000 audio points",
+        "notes": "Monthly prices; 3-month (10% off) and yearly (20% off) options. The conversion from audio points to characters is not stated on the pages read, so no per-character figure is derived."
+      },
+      {
+        "name": "Speech-to-text (ASR)",
+        "pricePer1MCharsUsd": null,
+        "unit": "USD 0.38 per hour",
+        "notes": "Not a text-to-speech price."
+      }
+    ],
+    "freeTier": null,
+    "promotions": [
+      "Audio Subscription discounts: 10% off 3-month and 20% off yearly prices on the subscription page; no end date stated."
+    ],
+    "sourceUrls": [
+      "https://platform.minimax.io/docs/guides/pricing-paygo",
+      "https://platform.minimax.io/docs/pricing/overview",
+      "https://platform.minimax.io/docs/guides/pricing-speech"
+    ]
+  },
+  "voices": {
+    "count": "332 entries in the vendor's System Voice ID List page (may include language variants); plus voices created by cloning or voice design",
+    "languages": "40 languages including Chinese, Cantonese, English, Spanish, French, German, Japanese, Korean, Arabic, Hindi and others, with a language_boost option for minority languages and dialects",
+    "customVoiceOrCloning": "Rapid voice cloning from an uploaded sample and Voice Design from a text description, both via API; the clone endpoint doc says a cloned voice not used within 7 days is deleted.",
+    "sourceUrl": "https://platform.minimax.io/docs/guides/speech-t2a-websocket"
+  },
+  "streaming": {
+    "websocket": "yes",
+    "http": "yes",
+    "vendorStatedLatency": null,
+    "sourceUrl": "https://platform.minimax.io/docs/api-reference/speech-t2a-http"
+  },
+  "formats": [
+    "mp3",
+    "pcm",
+    "flac"
+  ],
+  "ssml": "unknown",
+  "compatibility": {
+    "openaiSpeechCompatible": "no",
+    "note": "Speech uses MiniMax's own endpoint POST https://api.minimax.io/v1/t2a_v2 (api-uw.minimax.io recommended for US West) with a nested JSON body (model, text, voice_setting, audio_setting) and audio returned hex-encoded by default; no OpenAI /v1/audio/speech route is documented. MiniMax's LLM API has OpenAI-compatible routes, which is separate from speech."
+  },
+  "licensing": {
+    "commercialUse": null,
+    "attributionOrConditions": null,
+    "sourceUrl": null
+  },
+  "limits": {
+    "perRequestCharacters": "Synchronous text-to-speech (HTTP and WebSocket): under 10,000 characters per request, streaming recommended above 3,000; asynchronous long TTS: up to 1,000,000 characters per request.",
+    "concurrency": "Rate-limits page lists 60 requests per minute for T2A (speech-2.8, 2.6 and 02 models), 60 RPM for voice cloning and 20 RPM for voice design; Audio Subscription plans list RPM of 10 (Starter), 50 (Standard), 200 (Pro), 500 (Scale) and 800 (Business).",
+    "sourceUrl": "https://platform.minimax.io/docs/guides/rate-limits"
+  },
+  "sdks": [],
+  "compliance": {
+    "hipaa": "not-stated",
+    "soc2": "not-stated",
+    "gdpr": "not-stated",
+    "note": "No HIPAA, SOC 2 or GDPR statement was found on the API documentation or pricing pages read.",
+    "sourceUrl": null
+  },
+  "strengths": [
+    {
+      "claim": "Supports 40 languages with a language_boost option for minority languages and dialects, plus a large system voice list.",
+      "sourceUrl": "https://platform.minimax.io/docs/guides/speech-t2a-websocket"
+    },
+    {
+      "claim": "Offers HTTP streaming, a synchronous WebSocket and a bidirectional streaming WebSocket that accepts text at any granularity, aimed at piping LLM output into speech.",
+      "sourceUrl": "https://platform.minimax.io/docs/api-reference/speech-t2a-websocket-bidi"
+    },
+    {
+      "claim": "Asynchronous long-form TTS accepts up to 1,000,000 characters per request at the same per-character price as sync.",
+      "sourceUrl": "https://platform.minimax.io/docs/guides/speech-t2a-async"
+    },
+    {
+      "claim": "Provides Voice Design and rapid cloning through the API with per-voice pricing of $3 and $1.5, charged on first use.",
+      "sourceUrl": "https://platform.minimax.io/docs/guides/pricing-paygo"
+    },
+    {
+      "claim": "Offers pause markers, interjection tags on speech-2.8 models, optional subtitles and a quality text-normalization mode.",
+      "sourceUrl": "https://platform.minimax.io/docs/api-reference/speech-t2a-http"
+    }
+  ],
+  "limitations": [
+    {
+      "claim": "Synchronous requests are limited to under 10,000 characters and the documented T2A rate limit is 60 requests per minute.",
+      "sourceUrl": "https://platform.minimax.io/docs/guides/rate-limits"
+    },
+    {
+      "claim": "A cloned voice that is not used within 7 days is deleted by the system.",
+      "sourceUrl": "https://platform.minimax.io/docs/api-reference/voice-cloning-clone"
+    },
+    {
+      "claim": "Speech uses a proprietary request and response shape (nested settings, hex-encoded audio) rather than an OpenAI-style route.",
+      "sourceUrl": "https://platform.minimax.io/docs/api-reference/speech-t2a-http"
+    }
+  ],
+  "migration": {
+    "stepsToMove": [
+      "Create an API key on the MiniMax platform and send it as 'Authorization: Bearer <key>'.",
+      "POST https://api.minimax.io/v1/t2a_v2 with JSON: model (speech-2.8-turbo or speech-2.8-hd), text (under 10,000 characters), stream (true or false), voice_setting {voice_id, speed, vol, pitch} and audio_setting {sample_rate, bitrate, format}.",
+      "Decode the response: audio is hex-encoded in data.audio by default (output_format selects hex or url); usage_characters reports billed characters.",
+      "For low-latency streaming use stream=true over HTTP, or the synchronous or bidirectional WebSocket endpoints.",
+      "Map voices to MiniMax voice_id values from the System Voice ID List or create custom ones through Voice Cloning and Voice Design.",
+      "Replace pauses with the <#x#> pause marker and note the 60 RPM default rate limit."
+    ],
+    "sourceUrls": [
+      "https://platform.minimax.io/docs/api-reference/speech-t2a-http",
+      "https://platform.minimax.io/docs/guides/speech-t2a-websocket",
+      "https://platform.minimax.io/docs/api-reference/speech-t2a-websocket-bidi",
+      "https://platform.minimax.io/docs/faq/system-voice-id"
+    ]
+  },
+  "bestFor": "Teams that need broad language coverage including Chinese and Cantonese, long-form async synthesis, and voice design or cloning, and who accept per-character pricing of $60 to $100 per million.",
+  "sources": [
+    {
+      "url": "https://platform.minimax.io/docs/guides/pricing-paygo",
+      "title": "Pay as You Go pricing - MiniMax API docs",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://platform.minimax.io/docs/pricing/overview",
+      "title": "Pricing overview - MiniMax API docs",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://platform.minimax.io/docs/guides/pricing-speech",
+      "title": "Audio Subscription - MiniMax API docs",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://platform.minimax.io/docs/api-reference/speech-t2a-http",
+      "title": "Synchronous Text to Speech (HTTP) - MiniMax API reference",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://platform.minimax.io/docs/guides/speech-t2a-websocket",
+      "title": "Synchronous Text-to-Speech Guide (WebSocket) - MiniMax docs",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://platform.minimax.io/docs/api-reference/speech-t2a-websocket-bidi",
+      "title": "Bidirectional Streaming Text to Speech - MiniMax API reference",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://platform.minimax.io/docs/guides/speech-t2a-async",
+      "title": "Async Long TTS Guide - MiniMax docs",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://platform.minimax.io/docs/faq/system-voice-id",
+      "title": "System Voice ID List - MiniMax docs",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://platform.minimax.io/docs/guides/rate-limits",
+      "title": "Rate Limits - MiniMax docs",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://platform.minimax.io/docs/api-reference/voice-cloning-clone",
+      "title": "Voice Clone - MiniMax API reference",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://platform.minimax.io/docs/llms.txt",
+      "title": "MiniMax docs index (llms.txt)",
+      "retrievedAt": "2026-10-10"
+    }
+  ],
+  "unknowns": [
+    "Commercial-use terms and any attribution conditions for generated audio were not found.",
+    "Free tier or trial credits for speech were not found.",
+    "Conversion between Audio Subscription 'audio points' and characters is not stated.",
+    "How characters are counted (for example for Chinese text) is not stated beyond usage_characters in responses.",
+    "No vendor-stated latency figure was found on the docs pages read.",
+    "Whether SSML is supported is not stated; the vendor documents its own <#x#> pause markers.",
+    "No official speech SDK was identified on the pages read.",
+    "HIPAA, SOC 2 and GDPR statements were not found.",
+    "The consumer pricing page at minimax.io/audio is rendered client-side and could not be read raw."
+  ]
+}

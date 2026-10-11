@@ -1,0 +1,217 @@
+{
+  "slug": "azure-ai-speech",
+  "name": "Microsoft Azure AI Speech",
+  "url": "https://azure.microsoft.com/en-us/products/ai-services/text-to-speech",
+  "status": "active",
+  "retrievedAt": "2026-10-10",
+  "category": "cloud-provider",
+  "positioning": "Microsoft's Speech service in Azure Foundry Tools, providing neural and HD text-to-speech voices in 100+ languages and locales with SSML, custom and personal voice options, and REST and WebSocket access.",
+  "pricing": {
+    "model": "Per character synthesized, billed per 1M characters, with a free F0 tier, a pay-as-you-go S0 tier and discounted commitment tiers. The pricing page renders prices client-side, so figures below come from the Azure Retail Prices API (eastus, USD).",
+    "headline": "Neural voices $15 per 1M characters; Neural HD $22 per 1M characters (eastus retail list).",
+    "pricePer1MCharsUsd": 15,
+    "headlineTier": "Neural",
+    "tiers": [
+      {
+        "name": "Neural",
+        "pricePer1MCharsUsd": 15,
+        "unit": "USD per 1M characters",
+        "notes": "Meter 'S1 Neural Text To Speech Characters'. Azure's page groups 'Neural/Neural HD Flash' on one price line; the mapping of this meter to that line is inferred. Pay-as-you-go rate, eastus region."
+      },
+      {
+        "name": "Neural HD",
+        "pricePer1MCharsUsd": 22,
+        "unit": "USD per 1M characters",
+        "notes": "Meter 'Neural HD Text to Speech Characters', effective 2026-03-01."
+      },
+      {
+        "name": "Personal Voice synthesis",
+        "pricePer1MCharsUsd": 24,
+        "unit": "USD per 1M characters",
+        "notes": "Voice creation listed as free on the pricing page; voice profile storage billed separately."
+      },
+      {
+        "name": "Custom (Professional) voice, real-time",
+        "pricePer1MCharsUsd": 24,
+        "unit": "USD per 1M characters",
+        "notes": "Meter 'S1 Custom Neural Realtime Characters'; training and endpoint hosting billed separately (hosting $4.032 per model-hour per retail meter). Custom voice is a limited-access feature."
+      },
+      {
+        "name": "Custom (Professional) voice, Neural HD",
+        "pricePer1MCharsUsd": 48,
+        "unit": "USD per 1M characters",
+        "notes": "Meter 'CNV Neural HD Synthesis Characters'."
+      },
+      {
+        "name": "Long audio (batch)",
+        "pricePer1MCharsUsd": 100,
+        "unit": "USD per 1M characters",
+        "notes": "Meters 'S1 Neural Long Audio Characters' and custom equivalent."
+      },
+      {
+        "name": "Commitment tiers (Neural)",
+        "pricePer1MCharsUsd": null,
+        "unit": "USD per month plus overage per 1M characters",
+        "notes": "For example 80M tier $960 per month with overage $12.00 per 1M; 400M tier $3,900 per month with overage $9.75; 2000M tier $15,000 with overage $7.50; 4000M tier $24,000 with overage $6.00 (retail API, Azure-connected)."
+      },
+      {
+        "name": "MAI-Voice",
+        "pricePer1MCharsUsd": null,
+        "unit": "USD per 1M characters (price not retrieved)",
+        "notes": "Listed on the pricing page; price not available in the retail API query."
+      }
+    ],
+    "freeTier": "Free (F0): Neural text to speech 0.5 million characters per month (pricing page); F0 rate limit 20 transactions per 60 seconds.",
+    "promotions": [],
+    "sourceUrls": [
+      "https://azure.microsoft.com/en-us/pricing/details/cognitive-services/speech-services/",
+      "https://prices.azure.com/api/retail/prices"
+    ]
+  },
+  "voices": {
+    "count": null,
+    "languages": "100+ languages and locales for standard (neural) voices",
+    "customVoiceOrCloning": "Professional voice fine-tuning requires a recorded consent statement from the voice talent; custom voice is a limited-access feature per the pricing page. Personal voice is also offered ($24 per 1M characters synthesis; voice creation free).",
+    "sourceUrl": "https://learn.microsoft.com/en-us/azure/ai-services/speech-service/text-to-speech"
+  },
+  "streaming": {
+    "websocket": "yes",
+    "http": "yes",
+    "vendorStatedLatency": null,
+    "sourceUrl": "https://learn.microsoft.com/en-us/azure/ai-services/speech-service/speech-services-quotas-and-limits"
+  },
+  "formats": [
+    "mp3 (16, 24, 48 kHz)",
+    "opus / ogg / webm (16, 24, 48 kHz)",
+    "riff PCM wav (8 to 48 kHz)",
+    "raw PCM (8 to 48 kHz)",
+    "mulaw and alaw (8 kHz)",
+    "amr-wb, g722, truesilk"
+  ],
+  "ssml": "yes",
+  "compatibility": {
+    "openaiSpeechCompatible": "no",
+    "note": "REST text-to-speech takes SSML (Content-Type application/ssml+xml) posted to the resource's cognitiveservices endpoint with an X-Microsoft-OutputFormat header and subscription key or bearer token. Azure OpenAI neural voices are also selectable within the Speech service per the overview page, but no OpenAI-style speech route on the Speech service was read."
+  },
+  "licensing": {
+    "commercialUse": null,
+    "attributionOrConditions": "Custom voices require voice-talent consent and are limited access.",
+    "sourceUrl": "https://learn.microsoft.com/en-us/azure/ai-services/speech-service/custom-neural-voice"
+  },
+  "limits": {
+    "perRequestCharacters": "Audio length per request up to 10 minutes (longer is truncated); up to 50 distinct voice and audio tags in SSML; SSML message up to 64 KB per WebSocket turn",
+    "concurrency": "Real-time TTS: F0 20 transactions per 60 seconds (not adjustable); S0 30 transactions per second default, adjustable up to 1,000 TPS.",
+    "sourceUrl": "https://learn.microsoft.com/en-us/azure/ai-services/speech-service/speech-services-quotas-and-limits"
+  },
+  "sdks": [
+    "Speech SDK",
+    "REST API",
+    "Speech CLI"
+  ],
+  "compliance": {
+    "hipaa": "not-stated",
+    "soc2": "not-stated",
+    "gdpr": "not-stated",
+    "note": "No compliance certification statements were found on the speech pages read; the text-to-speech data, privacy and security page defines GDPR terms but is not a compliance claim. Microsoft publishes compliance material at platform level that was not reviewed.",
+    "sourceUrl": null
+  },
+  "strengths": [
+    {
+      "claim": "Language coverage: standard neural voices in 100+ languages and locales.",
+      "sourceUrl": "https://learn.microsoft.com/en-us/azure/ai-services/speech-service/text-to-speech"
+    },
+    {
+      "claim": "Both REST and WebSocket synthesis, many output formats including 48 kHz and telephony mu-law and A-law.",
+      "sourceUrl": "https://learn.microsoft.com/en-us/azure/ai-services/speech-service/rest-text-to-speech"
+    },
+    {
+      "claim": "Custom professional voice and personal voice options with consent requirements, plus Neural HD voices.",
+      "sourceUrl": "https://learn.microsoft.com/en-us/azure/ai-services/speech-service/custom-neural-voice"
+    },
+    {
+      "claim": "Commitment tiers list lower overage rates at volume (for example $6.00 per 1M on the 4000M tier).",
+      "sourceUrl": "https://prices.azure.com/api/retail/prices"
+    },
+    {
+      "claim": "Free F0 tier with 0.5 million Neural characters per month.",
+      "sourceUrl": "https://azure.microsoft.com/en-us/pricing/details/cognitive-services/speech-services/"
+    }
+  ],
+  "limitations": [
+    {
+      "claim": "Neural HD voices, personal voices and embedded voices do not support all SSML tags.",
+      "sourceUrl": "https://learn.microsoft.com/en-us/azure/ai-services/speech-service/text-to-speech"
+    },
+    {
+      "claim": "Custom voice is a limited-access feature.",
+      "sourceUrl": "https://azure.microsoft.com/en-us/pricing/details/cognitive-services/speech-services/"
+    },
+    {
+      "claim": "Microsoft documents that most HTTP 429 errors with standard voices stem from limited backend capacity for a specific voice in the selected region rather than quota.",
+      "sourceUrl": "https://learn.microsoft.com/en-us/azure/ai-services/speech-service/speech-services-quotas-and-limits"
+    }
+  ],
+  "migration": {
+    "stepsToMove": [
+      "Endpoint: Azure takes SSML (<speak><voice name='en-US-...Neural'>...) in a POST to the regional Speech resource with X-Microsoft-OutputFormat; ReadAloud takes the OpenAI speech request or the ElevenLabs route with plain input text.",
+      "Auth: Azure uses a subscription key or token for a regional resource; ReadAloud uses an API key.",
+      "Voice names: Azure voice names (for example en-US-ChristopherNeural) do not exist on ReadAloud; choose a ReadAloud voice id.",
+      "SSML: strip or translate SSML (prosody, styles, voice tags); check ReadAloud's documented SSML behavior.",
+      "Output formats: X-Microsoft-OutputFormat values like riff-24khz-16bit-mono-pcm or audio-24khz-96kbitrate-mono-mp3 map to ReadAloud response_format or output_format; confirm supported subset.",
+      "WebSocket: Azure's SDK streams over WebSocket; ReadAloud's WebSocket route has its own message protocol."
+    ],
+    "sourceUrls": [
+      "https://learn.microsoft.com/en-us/azure/ai-services/speech-service/rest-text-to-speech",
+      "https://learn.microsoft.com/en-us/azure/ai-services/speech-service/text-to-speech"
+    ]
+  },
+  "bestFor": "Organizations on Azure or Microsoft 365 that need enterprise commitment tiers, many locales, and custom or personal voice options within the same cloud contract.",
+  "sources": [
+    {
+      "url": "https://azure.microsoft.com/en-us/pricing/details/cognitive-services/speech-services/",
+      "title": "Azure AI Speech pricing (renders prices client-side)",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://prices.azure.com/api/retail/prices",
+      "title": "Azure Retail Prices API, Azure Speech meters, eastus, USD",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://learn.microsoft.com/en-us/azure/ai-services/speech-service/text-to-speech",
+      "title": "Text to speech overview",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://learn.microsoft.com/en-us/azure/ai-services/speech-service/rest-text-to-speech",
+      "title": "Text to speech REST API reference",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://learn.microsoft.com/en-us/azure/ai-services/speech-service/speech-services-quotas-and-limits",
+      "title": "Speech service quotas and limits",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://learn.microsoft.com/en-us/azure/ai-services/speech-service/custom-neural-voice",
+      "title": "Custom neural voice",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://learn.microsoft.com/en-us/azure/ai-services/speech-service/how-to-lower-speech-synthesis-latency",
+      "title": "Lower speech synthesis latency",
+      "retrievedAt": "2026-10-10"
+    }
+  ],
+  "unknowns": [
+    "All Azure prices are single-source (Azure Retail Prices API, eastus); the pricing page does not show numbers in plain HTML and other regions may differ",
+    "Whether the $15 'S1 Neural' meter is the same price line as 'Neural/Neural HD Flash' on the page",
+    "MAI-Voice price",
+    "Exact voice count",
+    "Vendor-stated latency numbers (page describes how to measure first-byte latency but no figure was captured)",
+    "SSML max size for REST calls",
+    "HIPAA, SOC 2, GDPR statements for this product",
+    "Commercial-use statement for generated audio",
+    "OpenAI-compatible speech route on the Speech service (none found)"
+  ]
+}

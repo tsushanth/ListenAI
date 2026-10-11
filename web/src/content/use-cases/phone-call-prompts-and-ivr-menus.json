@@ -1,0 +1,89 @@
+{
+  "slug": "phone-call-prompts-and-ivr-menus",
+  "name": "Phone call prompts and IVR menus",
+  "h1": "Generate phone menu prompts and greetings as 8 kHz audio files",
+  "metaDescription": "Render IVR menus, hold messages and greetings with the ReadAloud API, saved as 8 kHz telephony audio or standard formats, edited by changing text.",
+  "intro": "Many phone systems do not need a live conversation at all. They need forty or fifty short recordings: a greeting, a menu, a hold message, an after-hours notice, a holiday closure. The usual workflow is to book a voice actor, wait for files, and repeat the whole process whenever a price, an opening hour or a department name changes. Generating the prompts from text turns that into an edit and a re-render. Because the prompts are fixed, you do not need a streaming connection or a low-latency tier. You can render once, listen, store the files in your phone platform and re-render only the prompts that changed. ReadAloud can return mp3, opus, wav or raw pcm over the OpenAI-compatible speech route, and the WebSocket interface can emit 8 kHz mu-law and A-law audio, the formats many telephone systems store. There is a real limit to be honest about: ReadAloud Live has one American English voice, and neither engine interprets SSML, so you cannot script pauses or emphasis with markup. You shape pacing with punctuation and the speed field, and you listen to every file before it goes live.",
+  "steps": [
+    "List every prompt in a spreadsheet or JSON file with an id, the exact words and the format your phone platform wants. Keep each prompt under 5,000 characters, which is the per-request limit.",
+    "For file output, call POST https://api.readaloudai.org/v1/audio/speech with Authorization: Bearer <key>, voice readaloud-default and response_format wav or mp3. Save the response bytes as the prompt file.",
+    "If your platform stores G.711, use the WebSocket flow instead: POST /tts/authorize with engine live, connect, send a synthesize message with format mulaw_8000 or alaw_8000, and write the received chunks to a file.",
+    "Adjust pacing with the speed field (0.25 to 4.0 on the OpenAI-compatible route) and with punctuation. Digits and phone numbers are safer written as words, for example 'four one five' where you want that reading.",
+    "Listen to each rendered file on the real phone path, not only in a browser, because compression on the line changes how short words land.",
+    "Store a hash of each prompt's text next to its file so a nightly job re-renders only prompts whose wording changed.",
+    "Upload the files to your telephony platform using its own provisioning method; ReadAloud does not connect to the phone network for you."
+  ],
+  "sampleExample": {
+    "title": "After-hours menu prompt",
+    "input": "You have reached the front desk at Larkspur Veterinary. Our office is closed. For an emergency, press one. To leave a message, press two. To hear our opening hours, press three.",
+    "notes": "Use ReadAloud Live. Render once as mulaw_8000 over the WebSocket, or as wav through /v1/audio/speech if your platform converts audio itself. This is a one-shot batch job, so streaming does not matter; the prompt is stored and replayed."
+  },
+  "whenToChooseReadAloud": [
+    "Your prompts are short English scripts that change a few times a year and you would rather edit text than re-record.",
+    "You want files in a format your phone platform accepts, including 8 kHz G.711 from the WebSocket interface.",
+    "You are rendering hundreds of short prompts, where a per-character price is easy to estimate: 1,000 characters costs $0.004 on Live.",
+    "A developer, not a studio, owns the prompt library and wants it in version control."
+  ],
+  "whenToChooseSomethingElse": [
+    "Your brand needs a specific, recognisable voice; a custom recording or a vendor with a large voice catalogue fits better.",
+    "You must support callers in several languages; look for a provider that lists each language and voice and offers pronunciation controls.",
+    "You need exact pauses, emphasis or pronunciation overrides through SSML or a lexicon; ReadAloud does not offer those.",
+    "A regulator or contract requires a named human recording for the greeting."
+  ],
+  "featuresUsed": [
+    {
+      "feature": "OpenAI-compatible speech route",
+      "howItHelps": "POST /v1/audio/speech returns mp3, opus, wav or pcm, so a small script can render a whole prompt list."
+    },
+    {
+      "feature": "G.711 output",
+      "howItHelps": "The WebSocket interface supports mulaw_8000 and alaw_8000, matching what many telephone platforms store."
+    },
+    {
+      "feature": "Speed control",
+      "howItHelps": "The speed field accepts 0.25 to 4.0 on the OpenAI-compatible route, useful for slowing menu options."
+    },
+    {
+      "feature": "5,000-character requests",
+      "howItHelps": "Each prompt fits comfortably in one request, so there is no chunking logic."
+    },
+    {
+      "feature": "Flat per-character pricing",
+      "howItHelps": "About $0.004 per 1,000 characters on Live, with no minimum, so re-rendering a changed prompt costs very little."
+    }
+  ],
+  "considerations": [
+    "Review every prompt by ear. Names, acronyms and street numbers can be read in a way you did not intend, and the only fix is to respell them.",
+    "If calls are recorded or the voice is synthetic, check whether your region or carrier requires a disclosure.",
+    "Menu accessibility rules, such as offering a way to reach a person, are the site owner's responsibility, not something the voice provider handles.",
+    "Keep source text under version control; the audio files are outputs, not the master copy."
+  ],
+  "faq": [
+    {
+      "q": "Which file format should I choose?",
+      "a": "Ask your telephony platform. Many accept 8 kHz mu-law or A-law WAV; ReadAloud's WebSocket interface can emit those raw, and the OpenAI-compatible route returns mp3, opus, wav or pcm at 24 kHz or 48 kHz."
+    },
+    {
+      "q": "Can I add a pause between menu options?",
+      "a": "Not with markup, since SSML is not supported. Use commas, full stops and separate sentences, or render options as separate files and join them in your phone platform."
+    },
+    {
+      "q": "How do I make phone numbers read digit by digit?",
+      "a": "Write them as words in the text, for example 'five five five, zero one two three'. The engine reads the text it is given, so spelling controls the output."
+    },
+    {
+      "q": "Can the greeting use my own voice?",
+      "a": "ReadAloud has a consent-gated voice cloning feature described on the developers page. It requires proof that the speaker agreed, and this page does not recommend it for a business greeting without that process."
+    },
+    {
+      "q": "What does a library of fifty prompts cost?",
+      "a": "If the prompts average 200 characters, fifty of them is 10,000 characters, which is about $0.04 on Live at list price. The free credits cover roughly that amount once."
+    }
+  ],
+  "relatedSlugs": [
+    "voice-agents-and-ivr",
+    "appointment-and-order-status-calls",
+    "customer-support-voice-bots",
+    "notifications-and-alerts"
+  ]
+}

@@ -1,0 +1,240 @@
+{
+  "slug": "speechify-api",
+  "name": "Speechify API (SpeechifyAI Build)",
+  "url": "https://speechify.ai/api",
+  "status": "active",
+  "retrievedAt": "2026-10-10",
+  "category": "api-platform",
+  "positioning": "SpeechifyAI is the developer text-to-speech and voice-cloning API from the company behind the Speechify reader app, with streaming-native Simba models, billed separately from the consumer app.",
+  "pricing": {
+    "model": "Monthly subscription plans that add a dollar balance (shown as included characters), then per-character pay-as-you-go from topped-up balance at the plan's rate. No annual commitment on self-serve plans.",
+    "headline": "Per-character rates fall with plan: USD 10 per 1M characters on Starter, USD 8 on Pro, USD 6 on Scale. Free includes 500K characters per month.",
+    "pricePer1MCharsUsd": 10,
+    "headlineTier": "Starter",
+    "tiers": [
+      {
+        "name": "Free",
+        "pricePer1MCharsUsd": null,
+        "unit": "USD 0; 500K characters per month",
+        "notes": "Pauses until next month when used up; cannot top up. Catalog voices, streaming, SSML, commercial use, community support."
+      },
+      {
+        "name": "Starter",
+        "pricePer1MCharsUsd": 10,
+        "unit": "USD 10 per month; 1.9M characters included; USD 10 per 1M after",
+        "notes": "Voice cloning, up to 3 seats, 15 concurrent requests. Effective about USD 5.26 per 1M if the included allowance is fully used. Verified on speechify.ai/pricing and, for the Scale rate, speechify.ai/api."
+      },
+      {
+        "name": "Pro",
+        "pricePer1MCharsUsd": 8,
+        "unit": "USD 99 per month; 13.5M characters included; USD 8 per 1M after",
+        "notes": "Priority support; 30 concurrent requests."
+      },
+      {
+        "name": "Scale",
+        "pricePer1MCharsUsd": 6,
+        "unit": "USD 499 per month; 78M characters included (USD 468 credit); USD 6 per 1M after",
+        "notes": "The plan that includes batch synthesis; up to 25 seats; 60 concurrent requests."
+      },
+      {
+        "name": "Enterprise / Custom",
+        "pricePer1MCharsUsd": null,
+        "unit": "custom volume pricing",
+        "notes": "SSO, SOC 2 Type II, custom DPA, custom voices and models. Voice agents are an enterprise product with no published per-minute rate."
+      }
+    ],
+    "freeTier": "500,000 characters per month, no credit card.",
+    "promotions": [],
+    "sourceUrls": [
+      "https://speechify.ai/pricing",
+      "https://speechify.ai/api"
+    ]
+  },
+  "voices": {
+    "count": null,
+    "languages": "simba-3.2: English only; simba-3.0 (API default): English, German, Spanish (Spain and Mexico), French, Italian, Brazilian Portuguese (six languages, seven locales). Legacy multilingual model listed with 30+ locales and scheduled to be served by a current model from 2026-11-21.",
+    "customVoiceOrCloning": "Zero-shot voice cloning from a 10-30 second sample with verified speaker consent (consent challenge); available on paid plans.",
+    "sourceUrl": "https://docs.speechify.ai/build/guides/concepts/models"
+  },
+  "streaming": {
+    "websocket": "yes",
+    "http": "yes",
+    "vendorStatedLatency": "Vendor-stated: Simba 3.2 first byte 56 ms p50 and 102 ms p90, measured 15 Sep 2026 on its US East streaming path (the vendor notes this is first byte, not audible latency, and not a commitment). Vendor also cites 106 ms on Coval and 123 ms on Voice Arena (24 Sep 2026).",
+    "sourceUrl": "https://docs.speechify.ai/build/guides/text-to-speech/latency"
+  },
+  "formats": [
+    "wav",
+    "mp3",
+    "ogg",
+    "aac",
+    "pcm",
+    "ulaw_8000",
+    "23 output_format values (PCM 8-48 kHz, MP3 22.05/24 kHz at 32-192 kbps, Ogg, AAC, WAV 24/48 kHz)"
+  ],
+  "ssml": "yes",
+  "compatibility": {
+    "openaiSpeechCompatible": "no",
+    "note": "Path POST /v1/audio/speech and an 'input' field resemble the OpenAI shape, but Speechify uses Bearer auth with model ids such as simba-3.2, a voice_id field and audio_format; the docs offer an open-source 'tts-shims' proxy to answer OpenAI-style speak requests for platforms like Deepgram, which implies it is not a native drop-in."
+  },
+  "licensing": {
+    "commercialUse": "Free plan listing states commercial use is included; paid-plan terms were not separately stated on pages read.",
+    "attributionOrConditions": "Voice cloning requires verified consent; a content policy screens input text; safety_identifier recommended for end-user abuse attribution.",
+    "sourceUrl": "https://speechify.ai/pricing"
+  },
+  "limits": {
+    "perRequestCharacters": "/v1/audio/speech: 2,000 spoken characters; /v1/audio/stream and with-timestamps: 20,000 characters including SSML tags",
+    "concurrency": "Concurrent requests / sustained requests per second by plan: Free 3/1, Starter 15/20, Pro 30/40, Scale 60/80, Enterprise 100/150 (as of 30 Sep 2026)",
+    "sourceUrl": "https://docs.speechify.ai/build/guides/concepts/api-limits"
+  },
+  "sdks": [
+    "Python (speechify-api)",
+    "TypeScript (@speechify/api)",
+    "Vercel AI SDK provider (@speechify/ai-sdk-provider)",
+    "LiveKit plugin",
+    "Pipecat service",
+    "Vapi and Deepgram via tts-shims",
+    "Docs MCP server"
+  ],
+  "compliance": {
+    "hipaa": "not-stated",
+    "soc2": "stated",
+    "gdpr": "not-stated",
+    "note": "Self-attested on speechify.ai/trust: SOC 2 Type II, encryption in transit and at rest, no training on customer data, managed cloud hosted in the United States. HIPAA and GDPR were not stated on the pages read.",
+    "sourceUrl": "https://speechify.ai/trust"
+  },
+  "strengths": [
+    {
+      "claim": "Transparent published per-character rates for every self-serve plan, falling to USD 6 per 1M on Scale, with no annual lock-in.",
+      "sourceUrl": "https://speechify.ai/pricing"
+    },
+    {
+      "claim": "Streaming-native models with a published, dated first-byte latency measurement (vendor-stated).",
+      "sourceUrl": "https://docs.speechify.ai/build/guides/text-to-speech/latency"
+    },
+    {
+      "claim": "Long-form streaming up to 20,000 characters per request plus WebSocket text-input streaming and word-level speech marks.",
+      "sourceUrl": "https://docs.speechify.ai/build/guides/text-to-speech/streaming"
+    },
+    {
+      "claim": "Broad voice-agent integrations: LiveKit, Pipecat, Vapi, Deepgram and Vercel AI SDK.",
+      "sourceUrl": "https://docs.speechify.ai/build/guides/integrations"
+    },
+    {
+      "claim": "Consent-verified zero-shot voice cloning from 10-30 seconds of audio, plus spend limits per API key.",
+      "sourceUrl": "https://docs.speechify.ai/build/guides/voice-cloning/overview"
+    }
+  ],
+  "limitations": [
+    {
+      "claim": "Simba 3.2 (the recommended model) is English only; other languages need simba-3.0, which covers six languages.",
+      "sourceUrl": "https://docs.speechify.ai/build/guides/text-to-speech/language-support"
+    },
+    {
+      "claim": "The speechify:style emotion tag is applied by the retired Simba 1.6 models; current models speak the text without the style.",
+      "sourceUrl": "https://docs.speechify.ai/build/guides/text-to-speech/emotion-control"
+    },
+    {
+      "claim": "Data is processed on a managed cloud hosted in the United States; voice agents have no self-serve plan.",
+      "sourceUrl": "https://speechify.ai/trust"
+    }
+  ],
+  "migration": {
+    "stepsToMove": [
+      "Create an API key at platform.speechify.ai; every endpoint uses an Authorization: Bearer header.",
+      "Swap the endpoint to POST https://api.speechify.ai/v1/audio/speech (up to 2,000 spoken characters) or /v1/audio/stream (up to 20,000), or WebSocket wss://api.speechify.ai/v1/audio/stream/ws for token streaming.",
+      "Map request fields: input (text), model (simba-3.2 or simba-3.0), voice_id, audio_format or output_format, and language for simba-3.0.",
+      "List voices with GET /v1/voices and map Speechify voice ids (for example geffen_32) to the target voices; recreate cloned voices on the target.",
+      "Remove Speechify-specific SSML, speech marks and tts-shims proxy configuration where used, and drop the per-account concurrency handling tied to its 429 responses."
+    ],
+    "sourceUrls": [
+      "https://docs.speechify.ai/build/guides/get-started/quickstart",
+      "https://docs.speechify.ai/build/guides/concepts/api-limits",
+      "https://docs.speechify.ai/build/guides/text-to-speech/streaming-text-input"
+    ]
+  },
+  "bestFor": "Developers who want a documented, low-cost streaming TTS API with clear per-character plan pricing, SSML and consent-verified cloning, especially for English-first products and voice-agent stacks.",
+  "sources": [
+    {
+      "url": "https://speechify.ai/api",
+      "title": "SpeechifyAI - Text-to-Speech API",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://speechify.ai/pricing",
+      "title": "SpeechifyAI - Pricing",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://speechify.ai/trust",
+      "title": "SpeechifyAI - Trust and security",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://docs.speechify.ai/",
+      "title": "SpeechifyAI Build docs - home",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://docs.speechify.ai/build/guides/concepts/models",
+      "title": "SpeechifyAI docs - models",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://docs.speechify.ai/build/guides/text-to-speech/language-support",
+      "title": "SpeechifyAI docs - language support",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://docs.speechify.ai/build/guides/concepts/api-limits",
+      "title": "SpeechifyAI docs - API limits",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://docs.speechify.ai/build/guides/concepts/audio-formats",
+      "title": "SpeechifyAI docs - audio formats",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://docs.speechify.ai/build/guides/text-to-speech/latency",
+      "title": "SpeechifyAI docs - latency",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://docs.speechify.ai/build/guides/text-to-speech/streaming-text-input",
+      "title": "SpeechifyAI docs - streaming text input (WebSocket)",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://docs.speechify.ai/build/guides/text-to-speech/emotion-control",
+      "title": "SpeechifyAI docs - emotion styles",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://docs.speechify.ai/build/guides/get-started/quickstart",
+      "title": "SpeechifyAI docs - quickstart",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://docs.speechify.ai/build/guides/text-to-speech/streaming",
+      "title": "SpeechifyAI docs - streaming",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://docs.speechify.ai/build/guides/integrations",
+      "title": "SpeechifyAI docs - integrations",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://docs.speechify.ai/build/guides/voice-cloning/overview",
+      "title": "SpeechifyAI docs - voice cloning overview",
+      "retrievedAt": "2026-10-10"
+    }
+  ],
+  "unknowns": [
+    "Total voice catalogue size is not stated on pages read.",
+    "HIPAA and GDPR status not stated on pages read.",
+    "Licensing terms for paid-plan output beyond the Free plan 'commercial use' line.",
+    "Whether Starter included allowance is the better comparison than the USD 10 per 1M overage rate (both recorded).",
+    "Behaviour of legacy simba-multilingual after the 2026-11-21 upgrade date."
+  ]
+}

@@ -1,0 +1,71 @@
+{
+  "slug": "vercel-ai-sdk",
+  "name": "Vercel AI SDK",
+  "h1": "ReadAloud speech provider for the Vercel AI SDK",
+  "metaDescription": "Call ReadAloud from the Vercel AI SDK generateSpeech function with ai-sdk-provider-readaloud. Tested on AI SDK 7: MP3, Opus, WAV and PCM output.",
+  "intro": "The Vercel AI SDK gives TypeScript applications one function, generateSpeech, for text to speech, and provider packages decide which service answers. ai-sdk-provider-readaloud is a provider for ReadAloud. It implements the SpeechModelV4 interface that AI SDK 7 uses, so you call generateSpeech with model: readaloud.speech() and get back the audio bytes, the media type, warnings and response metadata in the SDK's usual shape. It has a single runtime dependency, @ai-sdk/provider, ships TypeScript types and is ESM only. Output can be MP3, Opus in an Ogg container, WAV or raw 24 kHz PCM. Options the service cannot honor, such as instructions, do not fail silently: the provider returns an AI SDK warning that says the parameter was ignored. Errors from the API arrive as the SDK's APICallError with the status code, so the SDK's retry logic and your own error handling work as they do with other providers. The provider reads READALOUD_API_KEY when a request is made, and createReadAloud lets you set the base URL, headers or a custom fetch. We installed the published package with ai 7.0.137 from npm on 10 October 2026 and ran generateSpeech against the live API; the results and the untested parts are below.",
+  "install": "npm install ai ai-sdk-provider-readaloud\nexport READALOUD_API_KEY=rtts_...   # placeholder: use your own key\n\nTargets AI SDK 7 (specificationVersion v4); ESM only. Create a ReadAloud API key at https://readaloudai.org/developers and export it as READALOUD_API_KEY; new accounts start with free credits.",
+  "quickstart": {
+    "language": "javascript",
+    "code": "import { writeFile } from \"node:fs/promises\";\nimport { generateSpeech } from \"ai\";\nimport { readaloud } from \"ai-sdk-provider-readaloud\";\n\nconst { audio, warnings, providerMetadata } = await generateSpeech({\n  model: readaloud.speech(),\n  text: \"Thanks for calling. How can I help you today?\",\n  voice: \"readaloud-default\",\n  outputFormat: \"mp3\",\n});\nawait writeFile(\"vercel_out.mp3\", audio.uint8Array);\nconsole.log(audio.mediaType, audio.uint8Array.length, \"bytes\", JSON.stringify(warnings), JSON.stringify(providerMetadata));"
+  },
+  "verifiedWith": {
+    "packageOrSdk": "ai-sdk-provider-readaloud (npm), with ai 7.0.137, on Node 26.8.2",
+    "version": "0.1.1",
+    "date": "2026-10-10"
+  },
+  "whatWorks": [
+    "npm installed ai-sdk-provider-readaloud 0.1.1 next to ai 7.0.137 without peer-dependency errors, and the quickstart ran as written.",
+    "generateSpeech with outputFormat mp3 returned mediaType audio/mpeg and 39,213 bytes; ffprobe read the saved file as 24 kHz mono MP3 of 2.45 seconds. providerMetadata.readaloud reported characterCount 45, sampleRate 24000 and audioFormat mp3_24000_128.",
+    "The other formats returned the right container: opus gave audio/ogg starting with OggS (6,374 bytes), wav gave audio/wav starting with RIFF (37,382 bytes), and pcm gave audio/pcm (34,552 bytes).",
+    "Passing instructions returned a warning, 'ReadAloud speech models do not support instructions. The parameter was ignored.', and the call still succeeded.",
+    "A wrong API key threw the SDK's AI_APICallError with statusCode 401 and the message 'Invalid API key'."
+  ],
+  "limitations": [
+    "Tested on AI SDK 7 only, on Node 26.8.2; the package README lists Node 22 and 24 as its tested versions. The README's AI SDK 6 route through @ai-sdk/openai was not run by us.",
+    "ReadAloud Live has one English voice, readaloud-default, and only that voice was used. language and instructions are not supported. Text is limited to 5,000 characters per call.",
+    "We did not test speed clamping, abort signals, custom fetch or headers, or use in an edge runtime.",
+    "The package README and its default voice still use a legacy voice id that the API accepts as an alias; pass voice: 'readaloud-default' explicitly as shown."
+  ],
+  "links": [
+    {
+      "label": "ai-sdk-provider-readaloud on npm",
+      "url": "https://www.npmjs.com/package/ai-sdk-provider-readaloud"
+    },
+    {
+      "label": "ai-sdk-provider-readaloud source",
+      "url": "https://github.com/tsushanth/ai-sdk-provider-readaloud"
+    },
+    {
+      "label": "AI SDK documentation",
+      "url": "https://ai-sdk.dev"
+    },
+    {
+      "label": "ReadAloud developer docs",
+      "url": "https://readaloudai.org/developers"
+    }
+  ],
+  "faq": [
+    {
+      "q": "Does it work with AI SDK 6?",
+      "a": "This package targets AI SDK 7. Its README describes an AI SDK 6 route using @ai-sdk/openai with ReadAloud's OpenAI-compatible endpoint; we did not run that route."
+    },
+    {
+      "q": "Does the model id choose the voice?",
+      "a": "No. The voice option does. The model id is forwarded but does not select a voice, so readaloud.speech() with no argument is fine."
+    },
+    {
+      "q": "How are unsupported options handled?",
+      "a": "They appear in the warnings array of the result. In our run, instructions produced a warning and the audio was still generated."
+    },
+    {
+      "q": "What are the output formats?",
+      "a": "mp3, opus (Ogg), wav and pcm (24 kHz, 16-bit mono). We ran all four and checked the file signature of each."
+    }
+  ],
+  "relatedSlugs": [
+    "openai-sdk",
+    "elevenlabs-sdk",
+    "n8n"
+  ]
+}

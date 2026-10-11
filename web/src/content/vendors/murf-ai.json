@@ -1,0 +1,223 @@
+{
+  "slug": "murf-ai",
+  "name": "Murf AI (Murf API)",
+  "url": "https://murf.ai/api",
+  "status": "active",
+  "retrievedAt": "2026-10-10",
+  "category": "studio-tool",
+  "positioning": "Murf is known for its voiceover studio and also sells a developer text-to-speech API (Falcon 2 for real-time streaming, Gen2 for studio-style rendering) alongside dubbing, translation and voice-changer APIs.",
+  "pricing": {
+    "model": "Pay-as-you-go by character (character packs bought up front), a free trial credit, and custom Enterprise plans with volume discounts. Prices differ by model.",
+    "headline": "Falcon 2 (streaming model) is documented at 1 cent per 1,000 characters (USD 10 per 1M); Gen2 (non-streaming) is listed at USD 0.03 per 1,000 characters (USD 30 per 1M).",
+    "pricePer1MCharsUsd": 10,
+    "headlineTier": "Falcon 2 (pay-as-you-go)",
+    "tiers": [
+      {
+        "name": "Falcon 2 (pay-as-you-go)",
+        "pricePer1MCharsUsd": 10,
+        "unit": "USD per 1M characters (1 cent per 1,000)",
+        "notes": "From the Falcon 2 model docs page. The murf.ai/api marketing page instead gives a price of 1 cent per minute for Falcon; the two units are not reconciled on Murf's pages. Single-source: the Falcon 2 docs page; the live pricing page is JavaScript-rendered and could not be read."
+      },
+      {
+        "name": "Gen2 (pay-as-you-go)",
+        "pricePer1MCharsUsd": 30,
+        "unit": "USD per 1M characters (USD 0.03 per 1,000)",
+        "notes": "From Murf's Help Center 'Plans and Limits' page: buy 1,000 characters at USD 0.03, minimum purchase USD 2, optional autopay. Gen2 is available on the non-streaming Synthesize Speech endpoint and not on streaming. Single-source."
+      },
+      {
+        "name": "Free Trial",
+        "pricePer1MCharsUsd": null,
+        "unit": "100,000 characters, no time limit",
+        "notes": "Help Center: up to 1 API key; concurrency 5 and 1,000 requests/minute. API FAQ confirms 100,000 character credits with no expiry."
+      },
+      {
+        "name": "Enterprise / Custom",
+        "pricePer1MCharsUsd": null,
+        "unit": "custom",
+        "notes": "Volume-based tiered discounts, reserved concurrency (docs state up to 10,000 concurrent calls on Falcon 2), data residency, 24x7 support. Sales-quoted."
+      }
+    ],
+    "freeTier": "100,000 characters of free API credit, no time limit (Murf API FAQ and Help Center).",
+    "promotions": [
+      "Startup program: startups with fewer than 100 employees can get 50 million free characters for three months (Murf API FAQ; no end date stated for the programme itself)."
+    ],
+    "sourceUrls": [
+      "https://murf.ai/api/docs/text-to-speech-models/falcon-2",
+      "https://help.murf.ai/murf-api-plans-and-limits",
+      "https://murf.ai/api/docs/resources/faq",
+      "https://murf.ai/api"
+    ]
+  },
+  "voices": {
+    "count": "150+ voices",
+    "languages": "35 languages with 20+ speaking styles (vendor-stated); Falcon 2 voices can switch languages within a sentence ('MultiNative')",
+    "customVoiceOrCloning": "Instant voice cloning from a short sample and Professional voice cloning documented; Enterprise plan lists voice cloning on request.",
+    "sourceUrl": "https://murf.ai/api/docs/introduction/overview"
+  },
+  "streaming": {
+    "websocket": "yes",
+    "http": "yes",
+    "vendorStatedLatency": "Vendor-stated: Falcon 2 time-to-first-audio 'under 100ms' (docs); the murf.ai/api page separately states 55 ms model latency and sub-130 ms time to first audio for Falcon. WebSocket streaming supports Falcon; Gen2 is decommissioned for streaming.",
+    "sourceUrl": "https://murf.ai/api/docs/text-to-speech-models/falcon-2"
+  },
+  "formats": [
+    "MP3",
+    "WAV",
+    "FLAC",
+    "ALAW",
+    "ULAW",
+    "OGG",
+    "PCM",
+    "Base64-encoded audio (non-streaming)"
+  ],
+  "ssml": "unknown",
+  "compatibility": {
+    "openaiSpeechCompatible": "no",
+    "note": "Murf documents its own request schema (api-key header, POST /v1/speech/stream with voice_id/model/locale fields), not the OpenAI /v1/audio/speech shape. No OpenAI-compatible mode appears in the docs index."
+  },
+  "licensing": {
+    "commercialUse": null,
+    "attributionOrConditions": null,
+    "sourceUrl": null
+  },
+  "limits": {
+    "perRequestCharacters": "3,000 characters per request (API FAQ)",
+    "concurrency": "Docs rate-limit page: Falcon 2 free and pay-as-you-go 5 for US-East and 2 for global/regional endpoints; Gen2 5; Enterprise custom up to 10,000. Help Center page lists a different pay-as-you-go figure (15 concurrent, 10,000 requests/minute); the two pages disagree.",
+    "sourceUrl": "https://murf.ai/api/docs/resources/rate-limits"
+  },
+  "sdks": [
+    "Python (pip install murf)",
+    "JavaScript SDK (mentioned on murf.ai/api; docs index lists a Python SDK)",
+    "MCP server",
+    "Integrations: Zapier, Make, n8n, Pipecat, LiveKit, Agora"
+  ],
+  "compliance": {
+    "hipaa": "stated",
+    "soc2": "stated",
+    "gdpr": "stated",
+    "note": "Self-attested on murf.ai/api: SOC 2 Type II, ISO 27001, GDPR compliant and HIPAA compliant. The docs Enterprise page states SOC 2 Type II, ISO 27001, GDPR and CCPA alignment and a no-training covenant, but does not mention HIPAA.",
+    "sourceUrl": "https://murf.ai/api"
+  },
+  "strengths": [
+    {
+      "claim": "Falcon 2 is a streaming model aimed at voice agents, with data residency in several regions (US-East, US-West, India, Canada, Korea, UAE, Japan listed) and on-premise deployment documented.",
+      "sourceUrl": "https://murf.ai/api/docs/text-to-speech-models/falcon-2"
+    },
+    {
+      "claim": "Large catalogue stated at 150+ voices in 35 languages with 20+ styles and a multilingual voice capability.",
+      "sourceUrl": "https://murf.ai/api/docs/introduction/overview"
+    },
+    {
+      "claim": "Beyond TTS, the same API covers voice changer, translation and dubbing automation, useful for localisation workflows.",
+      "sourceUrl": "https://murf.ai/api"
+    },
+    {
+      "claim": "Enterprise documentation describes zero-retention mode (inline Base64 audio) and a no-training covenant.",
+      "sourceUrl": "https://murf.ai/api/docs/resources/enterprise"
+    },
+    {
+      "claim": "Gen2 non-streaming endpoint offers custom pause tags, a pronunciation dictionary, audio-duration control and variations for studio-style voiceovers.",
+      "sourceUrl": "https://murf.ai/api/docs/text-to-speech/speech-customization"
+    }
+  ],
+  "limitations": [
+    {
+      "claim": "Gen2 has been decommissioned for streaming; WebSocket streaming supports Falcon (Gen2 is not available for streaming), so the most customisable controls apply to non-streaming requests.",
+      "sourceUrl": "https://murf.ai/api/docs/text-to-speech/streaming"
+    },
+    {
+      "claim": "Requests are capped at 3,000 characters.",
+      "sourceUrl": "https://murf.ai/api/docs/resources/faq"
+    },
+    {
+      "claim": "Default concurrency on free and pay-as-you-go plans is low (5 on US-East per the docs) and higher capacity needs an Enterprise plan.",
+      "sourceUrl": "https://murf.ai/api/docs/resources/rate-limits"
+    }
+  ],
+  "migration": {
+    "stepsToMove": [
+      "Create an API key in the Murf API dashboard; Murf authenticates with an 'api-key' header.",
+      "Swap the endpoint: HTTP streaming is POST https://global.api.murf.ai/v1/speech/stream (regional hosts such as in.api.murf.ai exist) and WebSocket streaming is wss://global.api.murf.ai/v1/speech/stream-input.",
+      "Replace Murf voice IDs (for example 'Gordon') and the model value ('falcon-2' or 'Gen2') with the target service's voice names.",
+      "Map output settings: Murf takes format (MP3, WAV, PCM and others), sampleRate (8000 to 48000) and locale fields.",
+      "Re-point any usage of Murf-specific features (pronunciation dictionary, pause tags, duration control, cloned voices) to equivalents, and keep inputs under Murf's 3,000-character request size if splitting logic exists."
+    ],
+    "sourceUrls": [
+      "https://murf.ai/api/docs/introduction/quickstart",
+      "https://murf.ai/api/docs/text-to-speech/web-sockets",
+      "https://murf.ai/api/docs/api-reference/text-to-speech/stream"
+    ]
+  },
+  "bestFor": "Teams that want one vendor for voiceover studio work plus a TTS, dubbing and voice-changer API, or voice-agent builders who need regional data residency and a large multilingual voice catalogue.",
+  "sources": [
+    {
+      "url": "https://murf.ai/api",
+      "title": "Murf AI - voice API suite (marketing page)",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://murf.ai/api/docs/introduction/overview",
+      "title": "Murf API docs - overview",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://murf.ai/api/docs/text-to-speech-models/falcon-2",
+      "title": "Murf API docs - Falcon 2 (includes pricing line)",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://help.murf.ai/murf-api-plans-and-limits",
+      "title": "Murf Help Center - API plans and limits",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://murf.ai/api/docs/resources/faq",
+      "title": "Murf API docs - FAQ",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://murf.ai/api/docs/resources/rate-limits",
+      "title": "Murf API docs - rate limits",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://murf.ai/api/docs/resources/enterprise",
+      "title": "Murf API docs - Enterprise",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://murf.ai/api/docs/text-to-speech/streaming",
+      "title": "Murf API docs - streaming",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://murf.ai/api/docs/text-to-speech/web-sockets",
+      "title": "Murf API docs - WebSockets",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://murf.ai/api/docs/text-to-speech/speech-customization",
+      "title": "Murf API docs - speech customization",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://murf.ai/api/docs/introduction/quickstart",
+      "title": "Murf API docs - quickstart",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://murf.ai/api/docs/api-reference/text-to-speech/stream",
+      "title": "Murf API docs - Stream Speech reference",
+      "retrievedAt": "2026-10-10"
+    }
+  ],
+  "unknowns": [
+    "Live Murf pricing page (murf.ai/pricing?product=api) is JavaScript-rendered and was not readable, so current plan tiers, any promotions and whether Falcon is billed per character or per minute could not be confirmed on it.",
+    "Falcon pricing unit conflict: docs say 1 cent per 1,000 characters, murf.ai/api says 1 cent per minute.",
+    "Gen2 price (USD 30 per 1M) is single-source (Help Center).",
+    "Pay-as-you-go concurrency conflict between the docs (5) and the Help Center (15).",
+    "SSML support: docs describe pause tags and a pronunciation dictionary; no SSML page was found.",
+    "Commercial-use licence terms for API output were not found on the pages read.",
+    "JavaScript SDK existence is stated on the marketing page and not in the docs index."
+  ]
+}

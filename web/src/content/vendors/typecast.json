@@ -1,0 +1,195 @@
+{
+  "slug": "typecast",
+  "name": "Typecast API",
+  "url": "https://typecast.ai",
+  "status": "active",
+  "retrievedAt": "2026-10-10",
+  "category": "api-platform",
+  "positioning": "Typecast (Neosapience) is a voice platform whose separately priced API exposes 600+ character voices, emotion control (Smart Emotion), streaming, timestamps and instant voice cloning through its SSFM models.",
+  "pricing": {
+    "model": "Credit-based API plans separate from the Studio web plans: monthly credits (1 credit per character) with fixed-size pay-as-you-go top-ups once the allowance is used.",
+    "headline": "Lite plan is $15 per month for 200k credits ($0.075 per 1k credits, i.e. $75 per 1M characters); pay-as-you-go beyond the allowance is $0.09 per 1k credits ($90 per 1M). Plus is $280 per month for 4M credits ($70 per 1M; $80 per 1M beyond).",
+    "pricePer1MCharsUsd": 75,
+    "headlineTier": "Lite",
+    "tiers": [
+      {
+        "name": "Free",
+        "pricePer1MCharsUsd": null,
+        "unit": "15k credits per month, $0",
+        "notes": "Concurrency 2; output cannot be used commercially and must include attribution."
+      },
+      {
+        "name": "Lite",
+        "pricePer1MCharsUsd": 75,
+        "unit": "USD per 1M characters (200k credits for $15/month; $0.075 per 1k credits)",
+        "notes": "Concurrency 5; 50 custom voice slots; extra usage billed at $0.09 per 1k credits ($90 per 1M) in $9 / 100k-credit increments. Included-credit rate at 1 credit per character."
+      },
+      {
+        "name": "Plus",
+        "pricePer1MCharsUsd": 70,
+        "unit": "USD per 1M characters (4M credits for $280/month; $0.07 per 1k credits)",
+        "notes": "Concurrency 15; 800 custom voice slots; extra usage billed at $0.08 per 1k credits ($80 per 1M) in $100 / 1.25M-credit increments."
+      },
+      {
+        "name": "Enterprise",
+        "pricePer1MCharsUsd": null,
+        "unit": "Custom",
+        "notes": "Contact sales; dedicated account manager; no stated limit on custom voice slots."
+      }
+    ],
+    "freeTier": "Free API plan: 15k credits per month (1 credit per character, so about 15,000 characters), concurrency 2; not for commercial use and requires attribution.",
+    "promotions": [],
+    "sourceUrls": [
+      "https://typecast.ai/pricing/api/",
+      "https://typecast.ai/developers/api/pricing"
+    ]
+  },
+  "voices": {
+    "count": "600+ character voices",
+    "languages": "ssfm-v30 supports 35+ languages (37 listed in the models docs); ssfm-v21 supports 27",
+    "customVoiceOrCloning": "Instant Voice Cloning via POST /v1/voices/clone from WAV or MP3 samples (voice IDs start with uc_); custom voice slots per plan are 50 on Lite and 800 on Plus, with Professional Cloning slots of up to 2 and 5; the free plan lists no custom voice slots on the pricing page.",
+    "sourceUrl": "https://typecast.ai/docs/models"
+  },
+  "streaming": {
+    "websocket": "unknown",
+    "http": "yes",
+    "vendorStatedLatency": null,
+    "sourceUrl": "https://typecast.ai/docs/llms.txt"
+  },
+  "formats": [
+    "wav (PCM 16-bit mono, 44.1 kHz; streaming WAV is 32 kHz)",
+    "mp3 (320 kbps, 44.1 kHz)"
+  ],
+  "ssml": "no",
+  "compatibility": {
+    "openaiSpeechCompatible": "no",
+    "note": "Uses its own REST API at https://api.typecast.ai with an X-API-KEY header, voice_id, model (ssfm-v30 or ssfm-v21) and a 1 to 2,000 character text field; no OpenAI-compatible route is documented. The docs state the API does not support SSML."
+  },
+  "licensing": {
+    "commercialUse": "API Terms of Use license the APIs for commercial purposes; output from the free plan may not be used commercially.",
+    "attributionOrConditions": "Free plan output published externally must clearly identify that it was created using Typecast and keep any attribution notice.",
+    "sourceUrl": "https://help.typecast.ai/en/articles/11872662-typecast-api-terms-of-use"
+  },
+  "limits": {
+    "perRequestCharacters": "Text field is 1 to 2,000 characters per request.",
+    "concurrency": "Concurrency limit: Free 2, Lite 5, Plus 15, Enterprise custom.",
+    "sourceUrl": "https://typecast.ai/pricing/api/"
+  },
+  "sdks": [
+    "Python",
+    "JavaScript/TypeScript",
+    "Go",
+    "Rust",
+    "C#/.NET",
+    "Java",
+    "Kotlin",
+    "C/C++",
+    "Swift",
+    "Zig",
+    "PHP",
+    "Dart/Flutter",
+    "Ruby",
+    "Cast CLI",
+    "MCP server and integrations for Zapier, Make, n8n, Pipecat and LlamaIndex"
+  ],
+  "compliance": {
+    "hipaa": "not-stated",
+    "soc2": "not-stated",
+    "gdpr": "not-stated",
+    "note": "No compliance certification was found. The API Terms of Use ask customers to comply with GDPR and other data-protection laws when submitting personal data, which is a customer obligation rather than a vendor compliance claim.",
+    "sourceUrl": "https://help.typecast.ai/en/articles/11872662-typecast-api-terms-of-use"
+  },
+  "strengths": [
+    {
+      "claim": "Offers 600+ character voices with Smart Emotion and seven emotion presets on ssfm-v30, covering 35+ languages.",
+      "sourceUrl": "https://typecast.ai/docs/models"
+    },
+    {
+      "claim": "Official SDKs in 13 programming languages plus a CLI, MCP server and no-code integrations.",
+      "sourceUrl": "https://typecast.ai/docs/llms.txt"
+    },
+    {
+      "claim": "Returns word- and character-level timestamps for captions, and supports HTTP streaming TTS for low-latency playback.",
+      "sourceUrl": "https://typecast.ai/docs/llms.txt"
+    },
+    {
+      "claim": "Public, per-credit API pricing with a free plan and plan-level concurrency and custom-voice limits listed.",
+      "sourceUrl": "https://typecast.ai/pricing/api/"
+    }
+  ],
+  "limitations": [
+    {
+      "claim": "The API does not support SSML and does not expose a pronunciation dictionary.",
+      "sourceUrl": "https://typecast.ai/docs/llms.txt"
+    },
+    {
+      "claim": "Each request is limited to 2,000 characters.",
+      "sourceUrl": "https://typecast.ai/docs/llms.txt"
+    },
+    {
+      "claim": "Free-plan audio cannot be used commercially and must include attribution.",
+      "sourceUrl": "https://typecast.ai/pricing/api/"
+    }
+  ],
+  "migration": {
+    "stepsToMove": [
+      "Create an API key in the Typecast API console and send it in the X-API-KEY header (legacy Starter keys are not compatible with SSFM keys).",
+      "POST https://api.typecast.ai/v1/text-to-speech with JSON voice_id (tc_ for built-in, uc_ for cloned), text (1 to 2,000 characters), model (ssfm-v30 recommended), optional language (ISO 639-3), prompt (emotion) and output (audio_format wav or mp3, pitch, tempo, volume).",
+      "For low-latency playback use POST /v1/text-to-speech/stream; for captions use POST /v1/text-to-speech/with-timestamps.",
+      "Browse voices with GET /v3/voices and create custom ones with POST /v1/voices/clone.",
+      "Replace SSML with Typecast prompt, pause, tempo and pitch settings, and check credits and limits with GET /v1/users/me/subscription."
+    ],
+    "sourceUrls": [
+      "https://typecast.ai/docs/llms.txt",
+      "https://typecast.ai/docs/quickstart",
+      "https://typecast.ai/docs/models"
+    ]
+  },
+  "bestFor": "Content and character-voice products that value emotional range and a large curated voice library with SDKs in many languages, and where per-character pricing of about $70 to $90 per million is acceptable.",
+  "sources": [
+    {
+      "url": "https://typecast.ai/pricing/api/",
+      "title": "Text-to-Speech API Pricing & Plans - Typecast API",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://typecast.ai/developers/api/pricing",
+      "title": "Text-to-Speech API Pricing & Plans - Typecast API (alternate URL)",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://typecast.ai/docs/llms.txt",
+      "title": "Typecast API Documentation for AI Agents (llms.txt)",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://typecast.ai/docs/models",
+      "title": "Models - Typecast Documentation",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://typecast.ai/docs/quickstart",
+      "title": "Quickstart - Typecast Documentation",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://typecast.ai/docs",
+      "title": "Overview - Typecast Documentation",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://help.typecast.ai/en/articles/11872662-typecast-api-terms-of-use",
+      "title": "Typecast API Terms of Use",
+      "retrievedAt": "2026-10-10"
+    }
+  ],
+  "unknowns": [
+    "The '1 credit per character' conversion appears on the pricing page and was not found elsewhere (single-source); the docs say not to assume other conversions.",
+    "Whether a WebSocket streaming endpoint exists is not documented in the pages read.",
+    "No vendor-stated latency figure was found.",
+    "HIPAA, SOC 2 and GDPR compliance statements were not found.",
+    "The pricing page and its alternate URL returned identical content, so the plan prices are single-source.",
+    "Why Typecast was chosen: it has public API pricing and docs; the other candidates (Voicemod, Uberduck) were not researched.",
+    "Credit-to-audio-minute conversion is not published."
+  ]
+}

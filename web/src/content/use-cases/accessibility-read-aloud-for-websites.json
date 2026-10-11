@@ -1,0 +1,89 @@
+{
+  "slug": "accessibility-read-aloud-for-websites",
+  "name": "Accessibility: read aloud for websites",
+  "h1": "Add a listen button to your site with server-side text-to-speech",
+  "metaDescription": "Add a Listen button to pages using the ReadAloud API from your server: split text, request audio, and cache results. Includes accessibility limits.",
+  "intro": "A listen button helps a specific group of readers: people with dyslexia or low vision, people reading in a second language, and anyone who would rather hear a page while their eyes are busy. It is also easy to do badly. The audio must come from text that matches what is visible, the control must work with a keyboard and a screen reader, and your API key must never reach the browser. ReadAloud's clients take a key, so the call has to come from your server, which then hands audio to the page. A typical design extracts the article body on the server, splits it at paragraph boundaries under the 5,000-character request limit, requests audio for each part, stores the files, and serves them to a plain audio element. Caching matters, because the same article is read by many visitors but only needs synthesizing once. Be clear about what this does not do. A synthesized voice is not a substitute for accessible markup, and it does not make a site conform to any accessibility standard. People who use screen readers already have their own voice and settings, and your button should never get in their way.",
+  "steps": [
+    "On the server, extract the readable text of a page: headings, paragraphs and list items, without navigation, scripts or hidden elements. Keep the text identical to what is visible.",
+    "Split the text at paragraph boundaries into pieces under 5,000 characters, since that is the per-request limit.",
+    "For each piece, call POST https://api.readaloudai.org/v1/audio/speech with Authorization: Bearer <key>, response_format mp3 and a voice id. Use readaloud-default for Live or an English voice id from GET /v1/voices for Studio.",
+    "Store the audio files under a key made from the page URL and a hash of the text, so any edit to the article invalidates the cached audio.",
+    "Render a native audio element, or a small player, with a visible label, keyboard focus, play and pause, and a speed control. Test with a screen reader.",
+    "Pre-generate audio when content is published instead of when a visitor clicks, so the first listener does not wait.",
+    "Show a short note that the voice is synthetic, and keep the text version one click away."
+  ],
+  "sampleExample": {
+    "title": "Opening of a help article",
+    "input": "How to reset your password. First, open Settings and choose Security. Next, select Change password and enter your current password. Finally, enter a new password twice and save.",
+    "notes": "Choose ReadAloud Studio when the page is long-form prose and you want a broader English voice list, or Live for short help pages. Request mp3 through the OpenAI-compatible route in one-shot mode and cache the result; streaming adds nothing for pre-generated audio."
+  },
+  "whenToChooseReadAloud": [
+    "You publish English content and want an optional listen control without running your own speech software.",
+    "You can generate audio at publish time and cache it, which keeps cost proportional to new content rather than page views.",
+    "You already use an OpenAI client library and want a base-URL change rather than a new integration.",
+    "You want a straightforward per-character price: Live is about $0.004 and Studio about $0.01 per 1,000 characters."
+  ],
+  "whenToChooseSomethingElse": [
+    "Your audience reads many languages; look for a provider that lists supported languages and voices for each, and test the ones you publish in.",
+    "You need word-by-word highlighting synced to audio; ReadAloud's compatibility routes return no alignment data, so you would need a service that supplies timestamps.",
+    "You want a turnkey widget with analytics and a hosted player instead of building one.",
+    "You need the browser to read text locally with no server round trip; the built-in browser speech feature may be enough."
+  ],
+  "featuresUsed": [
+    {
+      "feature": "OpenAI-compatible speech route",
+      "howItHelps": "Server code can use an existing OpenAI client with a changed base URL and returns mp3 for an audio element."
+    },
+    {
+      "feature": "Studio voice list",
+      "howItHelps": "ReadAloud Studio offers a broader set of English voices than Live's single voice; GET /v1/voices lists the ids."
+    },
+    {
+      "feature": "mp3 and opus output",
+      "howItHelps": "mp3 plays in the audio element of every common browser; Ogg Opus support varies by browser, so test it on the ones you target."
+    },
+    {
+      "feature": "5,000-character requests",
+      "howItHelps": "Paragraph-level chunking keeps each request within the documented limit."
+    },
+    {
+      "feature": "Server-side keys",
+      "howItHelps": "Clients take your API key, so synthesis runs on your server and the browser only receives audio."
+    }
+  ],
+  "considerations": [
+    "Conformance to WCAG or any other accessibility standard is the site owner's responsibility. A listen button does not replace semantic HTML, captions, contrast or keyboard support.",
+    "Do not intercept or disable a visitor's own screen reader. Offer the audio as an extra, not a replacement.",
+    "Disclose that the voice is synthetic where your policy or local rules require it.",
+    "Keep spoken text identical to visible text, and re-generate audio whenever an article is edited."
+  ],
+  "faq": [
+    {
+      "q": "Can I call ReadAloud directly from the browser?",
+      "a": "No. The clients take your API key, so keep it on a server. Have the server return audio or a URL to a stored file."
+    },
+    {
+      "q": "Does this make my site WCAG compliant?",
+      "a": "No. Audio can help some readers, but compliance depends on markup, contrast, navigation and many other factors that you must assess yourself."
+    },
+    {
+      "q": "How do I handle a very long article?",
+      "a": "Split it at paragraph boundaries under 5,000 characters, request each part, and play them in order. The audiobook endpoints chain chapters, but they use a session token or the MCP tools rather than a plain API key."
+    },
+    {
+      "q": "Can the page highlight words as they are spoken?",
+      "a": "Not with the data ReadAloud returns on its compatibility routes. Alignment fields are null there, so you would have to estimate timing yourself."
+    },
+    {
+      "q": "What if a visitor needs another language?",
+      "a": "Only describe languages you have tested. The documentation commits to English for Live and Studio voices, so this page does not promise others."
+    }
+  ],
+  "relatedSlugs": [
+    "article-and-newsletter-to-audio",
+    "e-learning-narration",
+    "vercel-ai-sdk",
+    "openai-sdk"
+  ]
+}

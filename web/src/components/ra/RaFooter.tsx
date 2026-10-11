@@ -1,4 +1,9 @@
 import Link from 'next/link'
+import publish from '../../content/publish.json'
+
+// The library hubs (compare, alternatives, integrations, use cases, migrate) are linked from the footer once the first wave is published in
+// src/content/publish.json. The JSON is bundled at build time, so the footer never reads the filesystem at request time.
+const LIBRARY_PUBLISHED = (publish as { published: string[] }).published.length > 0
 
 export default function RaFooter() {
   return (
@@ -18,6 +23,18 @@ export default function RaFooter() {
             <li><Link href="/#pricing">Pricing</Link></li>
           </ul>
         </div>
+        {LIBRARY_PUBLISHED && (
+          <div>
+            <h4>Compare</h4>
+            <ul>
+              <li><Link href="/compare">Compare vendors</Link></li>
+              <li><Link href="/alternatives">Alternatives</Link></li>
+              <li><Link href="/migrate">Migration guides</Link></li>
+              <li><Link href="/integrations">Integrations</Link></li>
+              <li><Link href="/use-cases">Use cases</Link></li>
+            </ul>
+          </div>
+        )}
         <div>
           <h4>Reader app</h4>
           <ul>

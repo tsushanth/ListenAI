@@ -1,0 +1,227 @@
+{
+  "slug": "openai-tts",
+  "name": "OpenAI Text to Speech",
+  "url": "https://platform.openai.com/docs/guides/text-to-speech",
+  "status": "active",
+  "retrievedAt": "2026-10-10",
+  "category": "model-vendor",
+  "positioning": "OpenAI's Audio API speech endpoint, offering steerable gpt-4o-mini-tts and the earlier tts-1 and tts-1-hd models behind a single request shape that many tools and SDKs already support.",
+  "pricing": {
+    "model": "tts-1 and tts-1-hd are billed per character; gpt-4o-mini-tts is billed per token (text input tokens plus audio output tokens), so no per-character price is published for it.",
+    "headline": "tts-1 is $15 per 1M characters; tts-1-hd is $30 per 1M characters; gpt-4o-mini-tts is $0.60 per 1M text input tokens and $12.00 per 1M audio output tokens.",
+    "pricePer1MCharsUsd": 15,
+    "headlineTier": "tts-1",
+    "tiers": [
+      {
+        "name": "tts-1",
+        "pricePer1MCharsUsd": 15,
+        "unit": "USD per 1M characters",
+        "notes": "Described in the OpenAI guide as the lower-latency option next to tts-1-hd. Supports 9 voices. Does not accept the instructions parameter."
+      },
+      {
+        "name": "tts-1-hd",
+        "pricePer1MCharsUsd": 30,
+        "unit": "USD per 1M characters",
+        "notes": "Listed above tts-1 on the OpenAI pricing page."
+      },
+      {
+        "name": "gpt-4o-mini-tts",
+        "pricePer1MCharsUsd": null,
+        "unit": "USD per 1M tokens: $0.60 text input, $12.00 audio output",
+        "notes": "Token-billed, so cost per character depends on text and generated audio length; OpenAI states audio output is metered as tokens. Supports the instructions parameter and 13 voices; model page states max input is 2000 tokens."
+      }
+    ],
+    "freeTier": "No free character or credit allowance stated on pages read. The tts-1 model page lists a Free rate-limit tier of 3 requests per minute and 200 per day.",
+    "promotions": [],
+    "sourceUrls": [
+      "https://developers.openai.com/api/docs/pricing",
+      "https://developers.openai.com/api/docs/models/tts-1",
+      "https://developers.openai.com/api/docs/models/gpt-4o-mini-tts"
+    ]
+  },
+  "voices": {
+    "count": "13 built-in voices for gpt-4o-mini-tts (alloy, ash, ballad, coral, echo, fable, onyx, nova, sage, shimmer, verse, marin, cedar); 9 for tts-1 and tts-1-hd",
+    "languages": "Follows the language support of OpenAI's speech-to-text model (about 57 languages listed); voices are stated to be optimized for English",
+    "customVoiceOrCloning": "Custom voices are limited to eligible customers (contact sales). Creating one needs a consent recording reading a prescribed phrase plus a sample of 30 seconds or less; maximum 20 voices per organization; the Text-to-Speech Supplemental Agreement applies.",
+    "sourceUrl": "https://developers.openai.com/api/docs/guides/custom-voices"
+  },
+  "streaming": {
+    "websocket": "unknown",
+    "http": "yes",
+    "vendorStatedLatency": null,
+    "sourceUrl": "https://developers.openai.com/api/docs/guides/text-to-speech"
+  },
+  "formats": [
+    "mp3 (default)",
+    "opus",
+    "aac",
+    "flac",
+    "wav",
+    "pcm (24 kHz, 16-bit signed little-endian)"
+  ],
+  "ssml": "unknown",
+  "compatibility": {
+    "openaiSpeechCompatible": "yes",
+    "note": "This is the OpenAI speech request itself: POST /v1/audio/speech with model, input, voice, optional instructions, response_format, speed (0.25 to 4.0) and stream_format (sse or audio; sse not supported on tts-1 and tts-1-hd)."
+  },
+  "licensing": {
+    "commercialUse": null,
+    "attributionOrConditions": "OpenAI usage policies require a clear disclosure to end users that the TTS voice is AI-generated and not a human voice.",
+    "sourceUrl": "https://developers.openai.com/api/docs/guides/text-to-speech"
+  },
+  "limits": {
+    "perRequestCharacters": "4096 characters per request (API reference)",
+    "concurrency": "Rate limits by usage tier. tts-1: Free 3 RPM / 200 RPD, Build 2,500 RPM, Launch 7,500 RPM, Grow 10,000 RPM. gpt-4o-mini-tts: Build 2,000 RPM / 150,000 TPM, Launch 10,000 RPM, Grow 10,000 RPM.",
+    "sourceUrl": "https://developers.openai.com/api/docs/models/tts-1"
+  },
+  "sdks": [
+    "Node.js / TypeScript",
+    "Python",
+    "Go",
+    "Java",
+    "C# / .NET",
+    "Ruby",
+    "OpenAI CLI"
+  ],
+  "compliance": {
+    "hipaa": "not-stated",
+    "soc2": "not-stated",
+    "gdpr": "not-stated",
+    "note": "No compliance statements were found on the speech documentation or pricing pages read; OpenAI publishes security and privacy material elsewhere that was not reviewed.",
+    "sourceUrl": null
+  },
+  "strengths": [
+    {
+      "claim": "gpt-4o-mini-tts accepts natural-language instructions to steer accent, emotional range, intonation, speed, tone and whispering.",
+      "sourceUrl": "https://developers.openai.com/api/docs/guides/text-to-speech"
+    },
+    {
+      "claim": "A single endpoint with first-party SDKs in many languages and support in many third-party tools.",
+      "sourceUrl": "https://developers.openai.com/api/docs/guides/text-to-speech"
+    },
+    {
+      "claim": "Per-character pricing for tts-1 ($15) and tts-1-hd ($30) alongside a token-priced steerable model.",
+      "sourceUrl": "https://developers.openai.com/api/docs/pricing"
+    },
+    {
+      "claim": "Streaming through chunked transfer and, on gpt-4o-mini-tts, SSE; wav or pcm recommended by OpenAI for low-latency responses.",
+      "sourceUrl": "https://developers.openai.com/api/docs/guides/text-to-speech"
+    },
+    {
+      "claim": "Custom voices with a consent-recording requirement for eligible customers.",
+      "sourceUrl": "https://developers.openai.com/api/docs/guides/custom-voices"
+    }
+  ],
+  "limitations": [
+    {
+      "claim": "Voices are stated to be optimized for English.",
+      "sourceUrl": "https://developers.openai.com/api/docs/guides/text-to-speech"
+    },
+    {
+      "claim": "Custom voices are limited to eligible customers and capped at 20 voices per organization.",
+      "sourceUrl": "https://developers.openai.com/api/docs/guides/custom-voices"
+    },
+    {
+      "claim": "The instructions parameter and sse streaming are not supported on tts-1 and tts-1-hd.",
+      "sourceUrl": "https://developers.openai.com/api/reference/resources/audio/subresources/speech/methods/create"
+    }
+  ],
+  "migration": {
+    "stepsToMove": [
+      "Find the two settings that point an OpenAI client at a service: the base URL (for example https://api.openai.com/v1) and the Bearer key. Both are normally set once, in the client.",
+      "List the model values (tts-1, tts-1-hd, gpt-4o-mini-tts) and voice names (alloy, coral, marin and the others) that your call sites pass.",
+      "List the calls that pass instructions: this steering text is a gpt-4o-mini-tts feature.",
+      "List the response_format values you request (mp3, opus, aac, flac, wav, pcm) and the sample rate your playback path expects; OpenAI pcm is 24 kHz 16-bit mono.",
+      "Check whether you use stream_format=sse or chunked audio streaming.",
+      "OpenAI custom voice ids do not transfer to another service."
+    ],
+    "sourceUrls": [
+      "https://developers.openai.com/api/reference/resources/audio/subresources/speech/methods/create",
+      "https://developers.openai.com/api/docs/guides/text-to-speech"
+    ],
+    "mapping": [
+      {
+        "kind": "endpoint-http",
+        "vendorItem": "POST /v1/audio/speech",
+        "note": "The request shape is the same, so the OpenAI SDK works against the ReadAloud base URL"
+      },
+      {
+        "kind": "text",
+        "vendorItem": "input",
+        "note": ""
+      },
+      {
+        "kind": "model",
+        "vendorItem": "model (tts-1, tts-1-hd, gpt-4o-mini-tts)",
+        "note": ""
+      },
+      {
+        "kind": "voice",
+        "vendorItem": "voice (alloy, coral, marin and the other stock names)",
+        "note": "The OpenAI stock voice names are accepted and all map to readaloud-default"
+      },
+      {
+        "kind": "style",
+        "vendorItem": "instructions (a gpt-4o-mini-tts parameter)",
+        "note": ""
+      },
+      {
+        "kind": "format",
+        "vendorItem": "response_format (mp3, opus, aac, flac, wav, pcm)",
+        "note": ""
+      },
+      {
+        "kind": "speed",
+        "vendorItem": "speed (0.25 to 4.0)",
+        "note": ""
+      },
+      {
+        "kind": "ignored",
+        "vendorItem": "stream_format (sse or audio)",
+        "note": ""
+      }
+    ]
+  },
+  "bestFor": "Developers already on the OpenAI SDK who want steerable speech or a per-character model without adding another vendor, and who mainly synthesize English.",
+  "sources": [
+    {
+      "url": "https://developers.openai.com/api/docs/pricing",
+      "title": "OpenAI API pricing",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://developers.openai.com/api/docs/guides/text-to-speech",
+      "title": "Text to speech guide",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://developers.openai.com/api/reference/resources/audio/subresources/speech/methods/create",
+      "title": "Create speech (API reference)",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://developers.openai.com/api/docs/models/tts-1",
+      "title": "TTS-1 model page",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://developers.openai.com/api/docs/models/gpt-4o-mini-tts",
+      "title": "GPT-4o Mini TTS model page",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://developers.openai.com/api/docs/guides/custom-voices",
+      "title": "Custom voices",
+      "retrievedAt": "2026-10-10"
+    }
+  ],
+  "unknowns": [
+    "Per-character equivalent cost for gpt-4o-mini-tts (token-billed)",
+    "Whether the speech endpoint offers WebSocket streaming (the separate Realtime API does)",
+    "SSML support (no SSML parameter in the API reference read)",
+    "Commercial-use statement for generated audio (not found on pages read)",
+    "SOC 2, HIPAA and GDPR statements (not on pages read)",
+    "Vendor-stated latency figures (none quoted)",
+    "tts-1-hd price confirmed on pricing page and model page quick comparison as a table row; rate limit rows for tts-1-hd not read"
+  ]
+}

@@ -1,0 +1,89 @@
+{
+  "slug": "voice-agents-and-ivr",
+  "name": "Voice agents and IVR",
+  "h1": "Streaming text-to-speech for real-time voice agents and IVR",
+  "metaDescription": "Add streaming speech to a phone or web voice agent with ReadAloud Live: WebSocket or HTTP audio, 8 kHz telephony formats, and barge-in via a stop message.",
+  "intro": "A voice agent lives or dies on the gap between the moment a caller stops talking and the moment they hear a reply. Your language model streams tokens, your speech recognizer streams text, and the speech layer has to start producing audio before the full answer exists. It also has to stop instantly when the caller interrupts, and it has to emit audio in the format the phone network expects rather than a file you must transcode. ReadAloud Live was built around that loop. You open a WebSocket, keep it open across the turns of a call, send each sentence as it arrives from the model, and receive audio sentence by sentence. A stop message cancels the current utterance, and only finished requests are billed. For telephony you can ask for 8 kHz mu-law or A-law directly, so there is no resampling step between the API and your carrier. If you already use Pipecat or LiveKit Agents, ReadAloud maintains plugins for both. The trade-off is plain: Live has a single American English voice and no emotion or style controls, so it suits agents where a single plain voice without personality controls is acceptable.",
+  "steps": [
+    "Create an API key in the ReadAloud console and store it as READALOUD_API_KEY on your server. Never put it in a browser or mobile app.",
+    "Before each call, POST https://api.readaloudai.org/tts/authorize with {\"key\": ..., \"engine\": \"live\"}. You get back a token and a WebSocket url. The token lasts 60 seconds, so authorize again for every new connection.",
+    "Open the WebSocket at wss://.../tts?token=<token> and keep it open for the whole call. Send {\"type\":\"synthesize\",\"text\":\"...\",\"voice\":\"default\",\"format\":\"mulaw_8000\"} for each sentence your model produces.",
+    "Read chunk_meta frames, each followed by one binary audio frame, and forward the audio to your telephony stream. Each chunk_meta reports the format and sample_rate of the audio that follows.",
+    "When your voice-activity detector reports the caller is talking, send {\"type\":\"stop\"}. The server replies with cancelled and you discard any queued audio.",
+    "If you build on a framework, skip the socket code: pip install pipecat-readaloud and use ReadAloudHttpTTSService with sample_rate=8000, or pip install livekit-plugins-readaloud and pass readaloud.TTS(voice='readaloud-default') to AgentSession.",
+    "Handle a 1013 close or an 'at capacity' error by retrying after a short backoff, and handle 402 by prompting the account owner to add a payment method."
+  ],
+  "sampleExample": {
+    "title": "Greeting and first answer on a phone line",
+    "input": "Thanks for calling Harbor Dental. I can book, move or cancel an appointment. Which would you like to do today?",
+    "notes": "Choose ReadAloud Live with format mulaw_8000 for a PSTN or SIP trunk, or pcm_24000 for a web call. Stream over the WebSocket and send one sentence per synthesize message so playback starts after the first sentence rather than the whole reply. Keep the connection open between turns."
+  },
+  "whenToChooseReadAloud": [
+    "Your agent talks over a phone line and you want 8 kHz G.711 audio straight from the API.",
+    "You prefer to pay per character of speech rather than per minute of call time.",
+    "You use Pipecat or LiveKit Agents and want a maintained, MIT-licensed plugin rather than custom socket code.",
+    "One American English voice is acceptable, and you control the wording so the script stays short."
+  ],
+  "whenToChooseSomethingElse": [
+    "You need several distinct voices or personas in one product; Live has one voice, and Studio's English voice list is the only broader option here.",
+    "Callers speak languages other than English; look for a vendor that documents each language and voice you need.",
+    "You want laughter, whispers or controlled emotion; ReadAloud ignores style instructions and does not interpret SSML or audio tags.",
+    "You need a platform that already bundles telephony, recognition and the model into one hosted product with a support contract."
+  ],
+  "featuresUsed": [
+    {
+      "feature": "WebSocket streaming",
+      "howItHelps": "Audio arrives per sentence over a connection you keep open, so the first sentence can play while the model writes the rest."
+    },
+    {
+      "feature": "stop message",
+      "howItHelps": "Sending stop ends the current speech at once, which is how barge-in is implemented; only finished requests are billed."
+    },
+    {
+      "feature": "Telephony formats",
+      "howItHelps": "mulaw_8000, alaw_8000 and pcm_8000 are available per request, so phone audio needs no transcoding."
+    },
+    {
+      "feature": "Pipecat and LiveKit plugins",
+      "howItHelps": "pipecat-readaloud and livekit-plugins-readaloud read READALOUD_API_KEY and can output 8 kHz audio."
+    },
+    {
+      "feature": "Vapi custom voice route",
+      "howItHelps": "POST /v1/vapi/custom-voice returns raw 16-bit mono PCM at the rate Vapi requests; see the Vapi integration page for what was and was not tested."
+    }
+  ],
+  "considerations": [
+    "Some jurisdictions and carriers expect you to tell callers they are speaking with an automated system. That disclosure is your responsibility.",
+    "Each Live server accepts a limited number of simultaneous streams. Plan for retries and test your peak concurrency before launch.",
+    "Each synthesize request is limited to 5,000 characters; agent replies are normally far shorter, but cap them anyway.",
+    "Latency depends on your region and connection. Measure from your own servers, using the method described on the developers page, before you commit."
+  ],
+  "faq": [
+    {
+      "q": "Can callers interrupt the agent?",
+      "a": "Yes. Send {\"type\":\"stop\"} on the open WebSocket. The server confirms with a cancelled message, and a cancelled request is not billed."
+    },
+    {
+      "q": "What audio formats work for phone calls?",
+      "a": "On ReadAloud Live you can request mulaw_8000, alaw_8000 or pcm_8000 per synthesize message. The default is pcm_24000, which suits web audio."
+    },
+    {
+      "q": "Does ReadAloud work with Vapi?",
+      "a": "There is a custom-voice endpoint at /v1/vapi/custom-voice that returns raw PCM at the requested sample rate and accepts your key as x-vapi-secret. One real Vapi assistant call has been run, with the inline secret; the Vapi integration page lists what was and was not tested, so read it before relying on the setup."
+    },
+    {
+      "q": "Is there more than one voice for agents?",
+      "a": "ReadAloud Live has one American English voice, readaloud-default. ReadAloud Studio offers a broader list of English voices but is positioned for read-aloud content rather than live calls."
+    },
+    {
+      "q": "How do I test without paying?",
+      "a": "Every account gets free credits worth $0.10, roughly 10,000 characters, shared across all of its keys. When they run out the API returns 402 until a payment method is added."
+    }
+  ],
+  "relatedSlugs": [
+    "customer-support-voice-bots",
+    "pipecat",
+    "livekit-agents",
+    "vapi"
+  ]
+}

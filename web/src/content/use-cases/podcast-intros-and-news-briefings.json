@@ -1,0 +1,89 @@
+{
+  "slug": "podcast-intros-and-news-briefings",
+  "name": "Podcast intros and news briefings",
+  "h1": "Automated daily briefings and show intros from a text feed",
+  "metaDescription": "Build a daily audio briefing or podcast intro from headlines and summaries using the ReadAloud API, with a scheduled job, mp3 output and clear disclosure.",
+  "intro": "A daily briefing is a small publishing machine: collect items, write a script, voice it, publish a file, repeat tomorrow. The voicing step is where people get stuck, because a recording session does not fit a job that must run at six every morning. A scheduled script solves that. It pulls headlines from a feed or database, has your own code or a language model compose a short script, sends the script to a speech API, and uploads the resulting mp3 to wherever your listeners fetch it. Show intros follow the same pattern with less volume: a fixed opening line plus a changing episode title, rendered once per episode. The craft is in the script. Spoken news needs short sentences, numbers written the way you say them, and an obvious structure: what happened, why it matters, then the next item. With one synthetic voice and no emphasis control, structure does the work that delivery would otherwise do. Be honest with listeners that the voice is generated, and do not copy another publisher's text without permission.",
+  "steps": [
+    "Collect items on a schedule from your own feeds or sources, along with the source name and link for each.",
+    "Write the script. Keep each item to two or three short sentences, say source names aloud, and end with a fixed sign-off. Review the script before you voice it if the content is sensitive.",
+    "Choose Studio for a briefing people will listen to for several minutes, or Live if one voice is enough. List Studio ids with GET https://api.readaloudai.org/v1/voices.",
+    "Split the script at item boundaries into parts under 5,000 characters, then call POST /v1/audio/speech for each with response_format mp3.",
+    "Join the parts with ffmpeg. Optionally prepend a pre-recorded jingle that you have the rights to use.",
+    "Upload the file and update your feed or page. Include a text line stating the voice is synthetic and where the information came from.",
+    "Alert yourself if the job fails or credits run out (402), so a missing episode is noticed quickly."
+  ],
+  "sampleExample": {
+    "title": "Morning briefing opening",
+    "input": "Good morning. This is the Harbor briefing for Tuesday. Three stories today: a road closure on Mill Street, a new library schedule, and the weather for the weekend. First, Mill Street.",
+    "notes": "Use ReadAloud Studio and mp3, with one-shot requests per section. A scheduled batch job has no need for a streaming connection."
+  },
+  "whenToChooseReadAloud": [
+    "You publish a regular text-driven briefing in English and want the voicing step to run without a person.",
+    "You are comfortable owning the pipeline: collecting, scripting, joining files and hosting.",
+    "Per-character cost suits a daily job: a 4,000-character briefing is about $0.04 on Studio at list price.",
+    "Your intros are short and fixed, so a rendered file can be reused for every episode."
+  ],
+  "whenToChooseSomethingElse": [
+    "Your show's identity depends on a distinctive personality; use a human host or a service built around expressive performance.",
+    "You want multiple speakers in a conversational format; ReadAloud has no multi-speaker dialogue feature, though you could assign Studio voices per speaker yourself.",
+    "You publish in many languages; look for documented per-language voices.",
+    "You need legal clearance for music and effects; that is separate from speech and not provided here."
+  ],
+  "featuresUsed": [
+    {
+      "feature": "Studio voice list",
+      "howItHelps": "Several English voices let you assign one to the briefing and another to a sign-off or quote."
+    },
+    {
+      "feature": "OpenAI-compatible speech route",
+      "howItHelps": "Any scheduler that can make an HTTP request can run the voicing step."
+    },
+    {
+      "feature": "mp3 output",
+      "howItHelps": "Directly usable in a feed enclosure or on a web page."
+    },
+    {
+      "feature": "Sentence-by-sentence synthesis",
+      "howItHelps": "Audio is produced per sentence, which suits a script made of short, separate statements."
+    },
+    {
+      "feature": "Free credits",
+      "howItHelps": "New accounts can try a short briefing before adding a payment method."
+    }
+  ],
+  "considerations": [
+    "Disclose that the narration is synthetic, in the audio or the show notes.",
+    "You are responsible for the accuracy and the licensing of the text you convert. Do not read out content you do not have rights to.",
+    "Quoting a real person in a synthetic voice can mislead. Do not imitate or clone anyone without documented consent.",
+    "Per-request limit is 5,000 characters; the join step and ordering are your code's job."
+  ],
+  "faq": [
+    {
+      "q": "Can I schedule it daily?",
+      "a": "Yes. ReadAloud is an API, so any cron job or workflow tool that can make HTTP requests and upload a file can run it."
+    },
+    {
+      "q": "Can I use my own voice for the intro?",
+      "a": "ReadAloud supports consent-gated voice cloning, described on the developers page. Follow its consent process. This page does not recommend it for anyone who has not clearly agreed."
+    },
+    {
+      "q": "Will it handle numbers and dates?",
+      "a": "It reads the text it receives. Write dates and figures the way you want them spoken, for example 'March third', and check the audio."
+    },
+    {
+      "q": "How do I add music under the voice?",
+      "a": "ReadAloud only returns speech. Mix it with licensed music in your own audio tool or with ffmpeg."
+    },
+    {
+      "q": "Can listeners tell it is synthetic?",
+      "a": "Assume yes, and say so. Honest labelling is the more reliable approach compared with relying on listeners not noticing."
+    }
+  ],
+  "relatedSlugs": [
+    "article-and-newsletter-to-audio",
+    "video-voiceovers-and-explainers",
+    "internal-training-and-onboarding-audio",
+    "notifications-and-alerts"
+  ]
+}

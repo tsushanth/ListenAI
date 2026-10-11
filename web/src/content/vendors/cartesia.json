@@ -1,0 +1,192 @@
+{
+  "slug": "cartesia",
+  "name": "Cartesia",
+  "url": "https://cartesia.ai",
+  "status": "active",
+  "retrievedAt": "2026-10-10",
+  "category": "api-platform",
+  "positioning": "Cartesia offers the Sonic family of streaming text-to-speech models, plus speech-to-text and managed voice agents, aimed at real-time conversational use.",
+  "pricing": {
+    "model": "Monthly subscription that includes a pool of credits (1 credit is about 1 TTS character), with optional per-credit overage billing.",
+    "headline": "Pro plan: $5/month for 100K credits, an effective $50 per 1M characters; larger plans lower the effective rate to about $37 per 1M.",
+    "pricePer1MCharsUsd": 50,
+    "headlineTier": "Pro",
+    "tiers": [
+      {
+        "name": "Free",
+        "pricePer1MCharsUsd": null,
+        "unit": "20K credits/month, $0",
+        "notes": "Evaluation and personal use; no commercial license listed on the plan card."
+      },
+      {
+        "name": "Pro",
+        "pricePer1MCharsUsd": 50,
+        "unit": "$5/month for 100K credits (effective per 1M chars)",
+        "notes": "Per-1M figure derived by us: $5 per month divided by 100K credits, at about 1 credit per character (the rate Cartesia's docs state). Includes commercial use license and instant voice cloning. Overage $65 per 1M credits if enabled. Applies to Sonic-3.6; the first paid plan with a commercial license."
+      },
+      {
+        "name": "Startup",
+        "pricePer1MCharsUsd": 39.2,
+        "unit": "$49/month for 1.25M credits (effective per 1M chars)",
+        "notes": "Per-1M figure derived by us: $49 per month divided by 1.25M credits, at about 1 credit per character. Adds professional voice cloning (2 slots). Overage $45 per 1M credits."
+      },
+      {
+        "name": "Scale",
+        "pricePer1MCharsUsd": 37.38,
+        "unit": "$299/month for 8M credits (effective per 1M chars)",
+        "notes": "Per-1M figure derived by us: $299 per month divided by 8M credits (rounded), at about 1 credit per character. 4 PVC slots, priority support, higher concurrency. Overage $38 per 1M credits."
+      },
+      {
+        "name": "Enterprise",
+        "pricePer1MCharsUsd": null,
+        "unit": "custom",
+        "notes": "Volume pricing; BAAs/DPAs, SSO, custom concurrency."
+      }
+    ],
+    "freeTier": "20K credits per month (about 20K characters of Sonic TTS), 2 concurrent TTS requests.",
+    "promotions": [],
+    "sourceUrls": [
+      "https://cartesia.ai/pricing",
+      "https://docs.cartesia.ai/pricing.md"
+    ]
+  },
+  "voices": {
+    "count": null,
+    "languages": "44 languages for Sonic 3.6 (vendor-stated)",
+    "customVoiceOrCloning": "Instant voice cloning from a short clip (Pro and above); professional voice cloning on Startup and above; clones require verified consent.",
+    "sourceUrl": "https://docs.cartesia.ai/build-with-cartesia/tts-models/latest.md"
+  },
+  "streaming": {
+    "websocket": "yes",
+    "http": "yes",
+    "vendorStatedLatency": "Vendor-stated: first audio in under 90 ms (model latency), 'sub-90ms'. Not independently measured.",
+    "sourceUrl": "https://cartesia.ai/sonic"
+  },
+  "formats": [
+    "wav",
+    "mp3",
+    "raw: pcm_f32le",
+    "raw: pcm_s16le",
+    "raw: pcm_mulaw",
+    "raw: pcm_alaw"
+  ],
+  "ssml": "unknown",
+  "compatibility": {
+    "openaiSpeechCompatible": "unknown",
+    "note": "Cartesia documents its own /tts/bytes, /tts/sse and /tts/websocket endpoints with a different request shape (model_id, transcript, voice, output_format); no OpenAI-style /v1/audio/speech route was found in the pages read."
+  },
+  "licensing": {
+    "commercialUse": "Commercial use license is listed from the Pro plan upward; the Free plan is described as for evaluation and personal use.",
+    "attributionOrConditions": "Voice clones need verified consent; cloning people without permission is prohibited by the Terms of Use (vendor-stated).",
+    "sourceUrl": "https://cartesia.ai/pricing"
+  },
+  "limits": {
+    "perRequestCharacters": null,
+    "concurrency": "TTS concurrent requests by plan: Free 2, Pro 3, Startup 5, Scale 15, Enterprise custom. Exceeding returns 429.",
+    "sourceUrl": "https://docs.cartesia.ai/use-the-api/concurrency-limits-and-timeouts.md"
+  },
+  "sdks": [
+    "JavaScript/TypeScript (@cartesia/cartesia-js)",
+    "Python (cartesia)"
+  ],
+  "compliance": {
+    "hipaa": "stated",
+    "soc2": "stated",
+    "gdpr": "stated",
+    "note": "Self-attested on the Sonic product page: SOC 2 Type 2, HIPAA-eligible with BAAs, GDPR; BAAs/DPAs on the Enterprise plan. Zero data retention is described as available for enterprise customers.",
+    "sourceUrl": "https://cartesia.ai/sonic"
+  },
+  "strengths": [
+    {
+      "claim": "Vendor states Sonic delivers first audio in under 90 ms (vendor-stated, not independently verified).",
+      "sourceUrl": "https://cartesia.ai/sonic"
+    },
+    {
+      "claim": "Sonic 3.6 supports 44 languages from one model.",
+      "sourceUrl": "https://docs.cartesia.ai/build-with-cartesia/tts-models/latest.md"
+    },
+    {
+      "claim": "Offers instant and professional voice cloning plus an SSML-like tag set for speed, volume and emotion.",
+      "sourceUrl": "https://cartesia.ai/sonic"
+    },
+    {
+      "claim": "Publishes SOC 2 Type 2, HIPAA-eligibility with BAAs, and GDPR statements, with on-prem/VPC deployment for enterprise.",
+      "sourceUrl": "https://cartesia.ai/sonic"
+    },
+    {
+      "claim": "Failed requests do not consume credits; official Python and JavaScript SDKs and LiveKit/Pipecat integrations.",
+      "sourceUrl": "https://docs.cartesia.ai/pricing.md"
+    }
+  ],
+  "limitations": [
+    {
+      "claim": "Billing is a monthly subscription with a credit pool; Pro's effective rate is $50 per 1M characters and overage rates are $38 to $65 per 1M credits depending on plan.",
+      "sourceUrl": "https://cartesia.ai/pricing"
+    },
+    {
+      "claim": "Free-plan concurrency is 2 TTS requests and Pro is 3; higher concurrency requires Startup or above.",
+      "sourceUrl": "https://docs.cartesia.ai/use-the-api/concurrency-limits-and-timeouts.md"
+    }
+  ],
+  "migration": {
+    "stepsToMove": [
+      "Replace POST /tts/bytes (or /tts/sse or /tts/websocket) with ReadAloud's speech endpoint (OpenAI-style or ElevenLabs-style route).",
+      "Map Cartesia's 'transcript' field to the input text field and 'model_id' (e.g. sonic-3.6) to a ReadAloud model or tier.",
+      "Replace the Cartesia voice UUID in 'voice' with a ReadAloud voice name.",
+      "Swap 'output_format' (container wav/mp3/raw plus encoding and sample_rate) for ReadAloud's response format setting.",
+      "Replace the Bearer sk_car_ API key and Cartesia-Version header with the ReadAloud key.",
+      "Convert any Cartesia SSML tags (speed, volume, break) or generation_config to supported ReadAloud controls, or remove them.",
+      "Cloned voices and Cartesia-specific voice IDs do not carry over."
+    ],
+    "sourceUrls": [
+      "https://docs.cartesia.ai/api-reference/tts/bytes.md",
+      "https://docs.cartesia.ai/build-with-cartesia/tts-models/latest.md"
+    ]
+  },
+  "bestFor": "Teams building real-time voice agents or multilingual products who want a model Cartesia describes as low-latency, with 44 languages, cloning options and published compliance statements, and who are comfortable with a credit-based subscription.",
+  "sources": [
+    {
+      "url": "https://cartesia.ai/pricing",
+      "title": "Cartesia pricing page",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://docs.cartesia.ai/pricing.md",
+      "title": "Cartesia docs: Pricing",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://docs.cartesia.ai/build-with-cartesia/tts-models/latest.md",
+      "title": "Cartesia docs: Sonic 3.6 model",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://cartesia.ai/sonic",
+      "title": "Cartesia Sonic product page",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://docs.cartesia.ai/use-the-api/concurrency-limits-and-timeouts.md",
+      "title": "Cartesia docs: Concurrency and WebSocket limits",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://docs.cartesia.ai/api-reference/tts/bytes.md",
+      "title": "Cartesia API reference: TTS bytes",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://docs.cartesia.ai/tools/client-libraries.md",
+      "title": "Cartesia docs: Client libraries",
+      "retrievedAt": "2026-10-10"
+    }
+  ],
+  "unknowns": [
+    "Total number of voices in the voice library",
+    "Maximum characters per TTS request",
+    "SSML support is a Cartesia-specific tag subset (speed, volume, break/emotion), not full W3C SSML",
+    "Whether any OpenAI-compatible speech route exists",
+    "Credit use is 'approximately' 1 per character and may vary slightly with pre-processing",
+    "Plan prices and credit allotments are single-source (cartesia.ai/pricing); the docs pricing page confirms just the ~1 credit per character rate. Per-1M figures are derived by dividing plan price by credits"
+  ]
+}

@@ -36,3 +36,5 @@ Allow: /
 
 User-agent: *
 Allow: /
+
+Sitemap: https://readaloudai.org/sitemap.xml

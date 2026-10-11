@@ -1,0 +1,230 @@
+{
+  "slug": "amazon-polly",
+  "name": "Amazon Polly",
+  "url": "https://aws.amazon.com/polly/",
+  "status": "active",
+  "retrievedAt": "2026-10-10",
+  "category": "cloud-provider",
+  "positioning": "AWS's managed text-to-speech service offering Standard, Neural, Long-Form and Generative voice engines with SSML, lexicons and speech marks.",
+  "pricing": {
+    "model": "Pay per character of text converted to speech or Speech Marks, billed monthly; cached and replayed generated speech is free.",
+    "headline": "Standard $4 per 1M characters; Neural $16; Generative $30; Long-Form $100.",
+    "pricePer1MCharsUsd": 4,
+    "headlineTier": "Standard",
+    "tiers": [
+      {
+        "name": "Standard",
+        "pricePer1MCharsUsd": 4,
+        "unit": "USD per 1M characters",
+        "notes": "Free tier 5 million characters per month. Confirmed by AWS price list (us-east-1) at $0.000004 per character."
+      },
+      {
+        "name": "Neural",
+        "pricePer1MCharsUsd": 16,
+        "unit": "USD per 1M characters",
+        "notes": "Free tier 1 million characters per month for the first 12 months. AWS price list confirms $0.000016 per character."
+      },
+      {
+        "name": "Generative",
+        "pricePer1MCharsUsd": 30,
+        "unit": "USD per 1M characters",
+        "notes": "Applies to speech requests. Free tier 100 thousand characters per month for the first 12 months. AWS price list confirms $0.00003 per character."
+      },
+      {
+        "name": "Long-Form",
+        "pricePer1MCharsUsd": 100,
+        "unit": "USD per 1M characters",
+        "notes": "Free tier 500 thousand characters per month for the first 12 months. AWS price list confirms $0.0001 per character."
+      }
+    ],
+    "freeTier": "Standard: 5M characters per month; Neural: 1M per month for 12 months; Long-Form: 500K per month for 12 months; Generative: 100K per month for 12 months. New AWS customers (from July 15, 2025) also receive up to $200 in Free Tier credits (free plan for 6 months, credits usable within 12 months).",
+    "promotions": [],
+    "sourceUrls": [
+      "https://aws.amazon.com/polly/pricing/",
+      "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonPolly/current/index.json"
+    ]
+  },
+  "voices": {
+    "count": null,
+    "languages": "42 language and language-variant rows in the available-voices table",
+    "customVoiceOrCloning": "Brand Voice: custom voice built with AWS on request via an AWS account manager or contact form; cost and timeline scoped per engagement. No self-serve cloning stated on pages read.",
+    "sourceUrl": "https://aws.amazon.com/polly/faqs/"
+  },
+  "streaming": {
+    "websocket": "unknown",
+    "http": "yes",
+    "vendorStatedLatency": "No figure is given; the features page says 'consistently fast response times'.",
+    "sourceUrl": "https://docs.aws.amazon.com/polly/latest/dg/API_StartSpeechSynthesisStream.html"
+  },
+  "formats": [
+    "mp3",
+    "ogg_vorbis",
+    "ogg_opus",
+    "pcm (16-bit mono little-endian)",
+    "mulaw",
+    "alaw",
+    "json (speech marks)"
+  ],
+  "ssml": "yes",
+  "compatibility": {
+    "openaiSpeechCompatible": "no",
+    "note": "Native API is SynthesizeSpeech with Engine, VoiceId, OutputFormat, Text and TextType (SSML or text), signed with AWS credentials (SigV4); a bidirectional StartSpeechSynthesisStream over HTTP/2 exists. No OpenAI-compatible mode found in pages read."
+  },
+  "licensing": {
+    "commercialUse": "Features page lists the ability to securely store and redistribute speech in standard formats; pricing page states generated speech can be cached and replayed at no additional cost.",
+    "attributionOrConditions": null,
+    "sourceUrl": "https://aws.amazon.com/polly/features/"
+  },
+  "limits": {
+    "perRequestCharacters": "SynthesizeSpeech: up to 3,000 billed characters (6,000 total; SSML tags not billed); output stream limited to 10 minutes. Longer text uses asynchronous speech synthesis tasks.",
+    "concurrency": "SynthesizeSpeech: Standard 80 tps (80 concurrent), Neural 8 tps (18 concurrent), Long-Form 8 tps (26 concurrent), Generative 8 tps (26 concurrent).",
+    "sourceUrl": "https://docs.aws.amazon.com/polly/latest/dg/limits.html"
+  },
+  "sdks": [],
+  "compliance": {
+    "hipaa": "stated",
+    "soc2": "not-stated",
+    "gdpr": "not-stated",
+    "note": "Self-attested: Polly FAQ states it is a HIPAA Eligible Service covered under the AWS Business Associate Addendum. SOC 2 and GDPR not found on pages read.",
+    "sourceUrl": "https://aws.amazon.com/polly/faqs/"
+  },
+  "strengths": [
+    {
+      "claim": "Entry price: Standard voices at $4 per 1M characters with 5M free characters per month.",
+      "sourceUrl": "https://aws.amazon.com/polly/pricing/"
+    },
+    {
+      "claim": "Four voice engines (Standard, Neural, Long-Form, Generative) so cost and voice type can be matched per use case.",
+      "sourceUrl": "https://aws.amazon.com/polly/pricing/"
+    },
+    {
+      "claim": "Speech Marks metadata (sentence, word, viseme, SSML) for synchronized highlighting and lip-sync, plus lexicons for pronunciation.",
+      "sourceUrl": "https://aws.amazon.com/polly/faqs/"
+    },
+    {
+      "claim": "HIPAA Eligible Service under the AWS BAA.",
+      "sourceUrl": "https://aws.amazon.com/polly/faqs/"
+    },
+    {
+      "claim": "Generated speech can be cached and replayed at no additional cost.",
+      "sourceUrl": "https://aws.amazon.com/polly/pricing/"
+    }
+  ],
+  "limitations": [
+    {
+      "claim": "SynthesizeSpeech input is capped at 3,000 billed characters (6,000 total) and 10 minutes of audio per call.",
+      "sourceUrl": "https://docs.aws.amazon.com/polly/latest/dg/limits.html"
+    },
+    {
+      "claim": "The limits page lists the bidirectional StartSpeechSynthesisStream operation under Generative voice.",
+      "sourceUrl": "https://docs.aws.amazon.com/polly/latest/dg/limits.html"
+    },
+    {
+      "claim": "Brand Voice is offered through an engagement with AWS rather than self-serve.",
+      "sourceUrl": "https://aws.amazon.com/polly/faqs/"
+    }
+  ],
+  "migration": {
+    "stepsToMove": [
+      "Polly SynthesizeSpeech takes JSON {Engine, VoiceId, OutputFormat, Text, TextType, SampleRate, LexiconNames} signed with AWS SigV4; find each call site.",
+      "List the Polly VoiceIds you use (Joanna, Matthew, Ruth...) and the Engine you pick for each.",
+      "List where you use lexicons and SSML (TextType=ssml).",
+      "If you use OutputFormat=json (word, sentence and viseme speech marks), list what reads them, such as highlighting or lip-sync.",
+      "OutputFormat values are mp3, ogg_vorbis, ogg_opus, pcm, mulaw and alaw; list which ones you request.",
+      "Polly accepts up to 3,000 billed characters per SynthesizeSpeech call, so your code may already split long text."
+    ],
+    "sourceUrls": [
+      "https://docs.aws.amazon.com/polly/latest/dg/API_SynthesizeSpeech.html",
+      "https://docs.aws.amazon.com/polly/latest/dg/API_StartSpeechSynthesisStream.html"
+    ],
+    "mapping": [
+      {
+        "kind": "endpoint-http",
+        "vendorItem": "SynthesizeSpeech (signed with AWS SigV4)",
+        "note": "Polly signs requests with AWS credentials where ReadAloud uses an API key"
+      },
+      {
+        "kind": "text",
+        "vendorItem": "Text",
+        "note": ""
+      },
+      {
+        "kind": "ssml",
+        "vendorItem": "TextType=ssml and LexiconNames",
+        "note": ""
+      },
+      {
+        "kind": "voice",
+        "vendorItem": "VoiceId (Joanna, Matthew, Ruth...) with Engine",
+        "note": ""
+      },
+      {
+        "kind": "format",
+        "vendorItem": "OutputFormat (mp3, ogg_vorbis, ogg_opus, pcm, mulaw, alaw)",
+        "note": ""
+      },
+      {
+        "kind": "timing",
+        "vendorItem": "OutputFormat=json (speech marks: word, sentence, viseme)",
+        "note": ""
+      },
+      {
+        "kind": "other",
+        "vendorItem": "SampleRate",
+        "note": ""
+      }
+    ]
+  },
+  "bestFor": "Teams on AWS who need high-volume speech for IVR, notifications or accessibility, plus speech marks metadata and HIPAA-eligible handling.",
+  "sources": [
+    {
+      "url": "https://aws.amazon.com/polly/pricing/",
+      "title": "Amazon Polly pricing",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonPolly/current/index.json",
+      "title": "AWS Price List: Amazon Polly (us-east-1, published 2026-09-11)",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://aws.amazon.com/polly/faqs/",
+      "title": "Amazon Polly FAQs",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://aws.amazon.com/polly/features/",
+      "title": "Amazon Polly features",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://docs.aws.amazon.com/polly/latest/dg/limits.html",
+      "title": "Limits in Amazon Polly",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://docs.aws.amazon.com/polly/latest/dg/API_SynthesizeSpeech.html",
+      "title": "SynthesizeSpeech API reference",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://docs.aws.amazon.com/polly/latest/dg/API_StartSpeechSynthesisStream.html",
+      "title": "StartSpeechSynthesisStream API reference",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://docs.aws.amazon.com/polly/latest/dg/available-voices.html",
+      "title": "Available voices",
+      "retrievedAt": "2026-10-10"
+    }
+  ],
+  "unknowns": [
+    "Total voice count (table lists voices per language; not summed)",
+    "SDK languages (AWS SDK list not read)",
+    "WebSocket support (bidirectional streaming described over HTTP/2)",
+    "Quantified latency",
+    "SOC 2 and GDPR statements",
+    "Whether quotas are adjustable",
+    "OpenAI-compatible mode (none found)"
+  ]
+}
