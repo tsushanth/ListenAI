@@ -1,0 +1,246 @@
+{
+  "slug": "google-cloud-tts",
+  "name": "Google Cloud Text-to-Speech",
+  "url": "https://cloud.google.com/text-to-speech",
+  "status": "active",
+  "retrievedAt": "2026-10-10",
+  "category": "cloud-provider",
+  "positioning": "Google Cloud's text-to-speech API with a wide voice and language catalogue spanning low-cost Standard voices, WaveNet and Neural2, Chirp 3 HD voices, instant custom voices and token-priced Gemini-TTS models.",
+  "pricing": {
+    "model": "Per character sent (SSML tags count, except the mark tag) with monthly free allowances per voice type; Gemini-TTS models are priced per million text and audio tokens.",
+    "headline": "Standard voices $4 per 1M characters (first 4M characters per month free); Neural2 $16; Chirp 3: HD $30; Studio $160; Instant custom voice $60.",
+    "pricePer1MCharsUsd": 4,
+    "headlineTier": "Standard voices (4M free characters per month)",
+    "tiers": [
+      {
+        "name": "Standard voices",
+        "pricePer1MCharsUsd": 4,
+        "unit": "USD per 1M characters",
+        "notes": "Free: 0 to 4 million characters per month."
+      },
+      {
+        "name": "WaveNet voices",
+        "pricePer1MCharsUsd": 4,
+        "unit": "USD per 1M characters",
+        "notes": "Page lists the same SKU id as Standard and the same $4 price; free 0 to 4 million characters per month. See unknowns."
+      },
+      {
+        "name": "Neural2 voices",
+        "pricePer1MCharsUsd": 16,
+        "unit": "USD per 1M characters",
+        "notes": "Free: 0 to 1 million characters per month."
+      },
+      {
+        "name": "Polyglot (Preview) voices",
+        "pricePer1MCharsUsd": 16,
+        "unit": "USD per 1M characters",
+        "notes": "Free: 0 to 1 million characters per month."
+      },
+      {
+        "name": "Studio voices",
+        "pricePer1MCharsUsd": 160,
+        "unit": "USD per 1M characters",
+        "notes": "Free: 0 to 1 million characters per month."
+      },
+      {
+        "name": "Chirp 3: HD voices",
+        "pricePer1MCharsUsd": 30,
+        "unit": "USD per 1M characters",
+        "notes": "Free: 0 to 1 million characters per month. No SSML, speaking rate or pitch parameters."
+      },
+      {
+        "name": "Chirp 3: Instant custom voice",
+        "pricePer1MCharsUsd": 60,
+        "unit": "USD per 1M characters",
+        "notes": "No free allowance ('Not available')."
+      },
+      {
+        "name": "Gemini 3.8 Flash TTS (Preview)",
+        "pricePer1MCharsUsd": null,
+        "unit": "USD per 1M tokens: $0.50 text input, $9.00 audio output through 2026-12-31; $1.00 and $18.00 from 2027-01-01",
+        "notes": "Audio tokens are 25 per second of audio. Token-billed, so no per-character price."
+      },
+      {
+        "name": "Gemini 3.8 Flash-Lite TTS (Preview)",
+        "pricePer1MCharsUsd": null,
+        "unit": "USD per 1M tokens: $0.50 text input, $6.00 audio output through 2026-12-31; $1.00 and $12.00 from 2027-01-01",
+        "notes": "Token-billed."
+      },
+      {
+        "name": "Gemini 2.5 Flash TTS / Flash-Lite Preview TTS",
+        "pricePer1MCharsUsd": null,
+        "unit": "USD per 1M tokens: $0.50 text input, $10.00 audio output",
+        "notes": "Token-billed."
+      },
+      {
+        "name": "Gemini 3.1 Flash TTS (Preview)",
+        "pricePer1MCharsUsd": null,
+        "unit": "USD per 1M tokens: $1.00 text input, $20.00 audio output",
+        "notes": "Token-billed."
+      },
+      {
+        "name": "Gemini 2.5 Pro TTS",
+        "pricePer1MCharsUsd": null,
+        "unit": "USD per 1M tokens: $1.00 text input, $20.00 audio output",
+        "notes": "Token-billed."
+      }
+    ],
+    "freeTier": "Monthly free characters: 4 million for Standard and WaveNet voices; 1 million each for Neural2, Polyglot (Preview), Studio and Chirp 3: HD. No free allowance for Instant custom voice or Gemini-TTS. New Google Cloud customers also get $300 in free credits (stated on the bidirectional streaming quickstart).",
+    "promotions": [
+      "Gemini 3.8 Flash TTS and Flash-Lite TTS (Preview) list a lower price through 2026-12-31 and double on 2027-01-01 (text input $0.50 to $1.00; Flash audio output $9 to $18; Flash-Lite audio output $6 to $12 per 1M tokens)."
+    ],
+    "sourceUrls": [
+      "https://cloud.google.com/text-to-speech/pricing"
+    ]
+  },
+  "voices": {
+    "count": "380+ voices (product page); Chirp 3: HD voices come in 30 distinct styles",
+    "languages": "75+ languages and variants (product page)",
+    "customVoiceOrCloning": "Chirp 3: Instant Custom Voice creates a personal voice from a recording; a consent statement in the speaker's language ('I am the owner of this voice and I consent to Google using this voice...') is required. Supports streaming and several languages; priced at $60 per 1M characters. Access conditions beyond that were not stated on the page read.",
+    "sourceUrl": "https://cloud.google.com/text-to-speech/docs/chirp3-instant-custom-voice"
+  },
+  "streaming": {
+    "websocket": "unknown",
+    "http": "unknown",
+    "vendorStatedLatency": null,
+    "sourceUrl": "https://cloud.google.com/text-to-speech/docs/create-audio-text-streaming"
+  },
+  "formats": [
+    "LINEAR16 (WAV header)",
+    "MP3",
+    "OGG_OPUS",
+    "MULAW",
+    "ALAW",
+    "PCM (streaming)"
+  ],
+  "ssml": "yes",
+  "compatibility": {
+    "openaiSpeechCompatible": "no",
+    "note": "Native API is POST https://texttospeech.googleapis.com/v1/text:synthesize with input, voice (languageCode, name) and audioConfig (audioEncoding); OAuth or Google credentials rather than an OpenAI-style bearer key. No OpenAI-compatible mode found in the pages read. SSML is supported on most voice types but not Chirp 3: HD."
+  },
+  "licensing": {
+    "commercialUse": "Quotas page: audio files created with the service may be used in applications or media in compliance with the Google Cloud Platform Terms of Service and applicable law.",
+    "attributionOrConditions": null,
+    "sourceUrl": "https://cloud.google.com/text-to-speech/quotas"
+  },
+  "limits": {
+    "perRequestCharacters": "5,000 bytes per request (multi-byte characters such as ja-JP use more than one byte)",
+    "concurrency": "Quotas per project: 100 concurrent streaming sessions; 200 requests per minute for Chirp 3; 500 for Studio; 1,000 for Neural2, Polyglot and default voices; 30 per minute for Chirp voice cloning. Gemini-TTS 2.5: 150 (Flash) and 125 (Pro) queries per minute. Limits subject to change.",
+    "sourceUrl": "https://cloud.google.com/text-to-speech/quotas"
+  },
+  "sdks": [
+    "Google Cloud client libraries (languages not enumerated in pages read)",
+    "REST (v1, v1beta1)"
+  ],
+  "compliance": {
+    "hipaa": "not-stated",
+    "soc2": "not-stated",
+    "gdpr": "not-stated",
+    "note": "No product-specific compliance statements found on the Text-to-Speech pages read; Google Cloud publishes compliance information at the platform level that was not reviewed here.",
+    "sourceUrl": null
+  },
+  "strengths": [
+    {
+      "claim": "Broad catalogue: 380+ voices across 75+ languages and variants.",
+      "sourceUrl": "https://cloud.google.com/text-to-speech"
+    },
+    {
+      "claim": "Low entry price: Standard and WaveNet voices at $4 per 1M characters with 4M free characters per month.",
+      "sourceUrl": "https://cloud.google.com/text-to-speech/pricing"
+    },
+    {
+      "claim": "Chirp 3: HD voices (30 styles) designed for conversational agents with low-latency streaming, plus an instant custom voice option with a consent statement.",
+      "sourceUrl": "https://cloud.google.com/text-to-speech/docs/list-voices-and-types"
+    },
+    {
+      "claim": "SSML support on Studio, Neural2, WaveNet and Standard voices, and output formats including MULAW and ALAW for telephony.",
+      "sourceUrl": "https://cloud.google.com/text-to-speech/docs/reference/rest/v1/AudioEncoding"
+    },
+    {
+      "claim": "Gemini-TTS models give text-prompt control over delivery.",
+      "sourceUrl": "https://cloud.google.com/text-to-speech/pricing"
+    }
+  ],
+  "limitations": [
+    {
+      "claim": "Chirp 3: HD voices do not support SSML input, speaking rate and pitch parameters, or A-law encoding.",
+      "sourceUrl": "https://cloud.google.com/text-to-speech/docs/list-voices-and-types"
+    },
+    {
+      "claim": "Requests are limited to 5,000 bytes.",
+      "sourceUrl": "https://cloud.google.com/text-to-speech/quotas"
+    },
+    {
+      "claim": "Bidirectional streaming synthesis is documented as a Preview feature under Pre-GA terms.",
+      "sourceUrl": "https://cloud.google.com/text-to-speech/docs/create-audio-text-streaming"
+    }
+  ],
+  "migration": {
+    "stepsToMove": [
+      "Endpoint: Google uses POST /v1/text:synthesize with JSON {input:{text|ssml}, voice:{languageCode, name}, audioConfig:{audioEncoding}}; ReadAloud takes the OpenAI speech request (POST /v1/audio/speech with model, voice, input) or the ElevenLabs route, so the body must be remapped.",
+      "Auth: Google uses OAuth access tokens or service-account credentials; ReadAloud uses an API key.",
+      "Voice ids: names like en-US-Chirp3-HD-Charon or en-GB-Neural2-A do not exist on ReadAloud; pick a ReadAloud voice id and drop languageCode if the voice is language-specific.",
+      "SSML: if input uses ssml, convert to plain text first (Chirp 3: HD does not accept SSML either); check ReadAloud's documented SSML behavior.",
+      "Encoding: audioEncoding values LINEAR16, MP3, OGG_OPUS, MULAW and ALAW map to response_format or output_format choices; confirm ReadAloud-supported subset.",
+      "Billing counts: Google counts SSML tags as characters (except mark); expect different character totals when switching."
+    ],
+    "sourceUrls": [
+      "https://cloud.google.com/text-to-speech/docs/basics",
+      "https://cloud.google.com/text-to-speech/docs/reference/rest/v1/AudioEncoding",
+      "https://cloud.google.com/text-to-speech/pricing"
+    ]
+  },
+  "bestFor": "Teams already on Google Cloud, or those needing very broad language and voice coverage with a very low-cost Standard/WaveNet tier and optional higher-naturalness Chirp 3 HD voices.",
+  "sources": [
+    {
+      "url": "https://cloud.google.com/text-to-speech/pricing",
+      "title": "Text-to-Speech pricing",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://cloud.google.com/text-to-speech",
+      "title": "Text-to-Speech product page",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://cloud.google.com/text-to-speech/quotas",
+      "title": "Quotas and limits",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://cloud.google.com/text-to-speech/docs/list-voices-and-types",
+      "title": "Supported voices and languages",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://cloud.google.com/text-to-speech/docs/basics",
+      "title": "Text-to-Speech basics",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://cloud.google.com/text-to-speech/docs/chirp3-instant-custom-voice",
+      "title": "Chirp 3: Instant Custom Voice",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://cloud.google.com/text-to-speech/docs/create-audio-text-streaming",
+      "title": "Bidirectional streaming quickstart",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://cloud.google.com/text-to-speech/docs/reference/rest/v1/AudioEncoding",
+      "title": "AudioEncoding reference",
+      "retrievedAt": "2026-10-10"
+    }
+  ],
+  "unknowns": [
+    "All Google prices are single-source (the pricing page); no second Google page repeated the numbers",
+    "WaveNet is listed at $4 per 1M characters with the same SKU id as Standard; this may be a pricing-page quirk and should be re-checked against the pricing calculator",
+    "Whether streaming is WebSocket or HTTP (bidirectional streaming doc is a Preview; transport not confirmed)",
+    "Vendor-stated latency figures (none with numbers found)",
+    "Access requirements for Instant Custom Voice",
+    "Compliance statements (HIPAA, SOC 2, GDPR) for this product",
+    "Client library languages",
+    "OpenAI-compatible mode (none found)"
+  ]
+}
