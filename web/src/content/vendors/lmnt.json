@@ -1,0 +1,99 @@
+{
+  "slug": "lmnt",
+  "name": "LMNT",
+  "url": "https://www.lmnt.com/",
+  "status": "inactive",
+  "retrievedAt": "2026-10-10",
+  "category": "api-platform",
+  "positioning": "LMNT was a streaming text-to-speech and voice-cloning API provider; its website now states that it has shut down.",
+  "pricing": {
+    "model": "None; the vendor's pricing page now shows a shutdown notice.",
+    "headline": "No live pricing; the service has shut down.",
+    "pricePer1MCharsUsd": null,
+    "headlineTier": "n/a (service shut down)",
+    "tiers": [],
+    "freeTier": null,
+    "promotions": [],
+    "sourceUrls": [
+      "https://www.lmnt.com/",
+      "https://lmnt.com/pricing"
+    ]
+  },
+  "voices": {
+    "count": null,
+    "languages": null,
+    "customVoiceOrCloning": null,
+    "sourceUrl": null
+  },
+  "streaming": {
+    "websocket": "unknown",
+    "http": "unknown",
+    "vendorStatedLatency": null,
+    "sourceUrl": null
+  },
+  "formats": [],
+  "ssml": "unknown",
+  "compatibility": {
+    "openaiSpeechCompatible": "unknown",
+    "note": "No API documentation remains online."
+  },
+  "licensing": {
+    "commercialUse": null,
+    "attributionOrConditions": null,
+    "sourceUrl": null
+  },
+  "limits": {
+    "perRequestCharacters": null,
+    "concurrency": null,
+    "sourceUrl": null
+  },
+  "sdks": [],
+  "compliance": {
+    "hipaa": "not-stated",
+    "soc2": "not-stated",
+    "gdpr": "not-stated",
+    "note": "No pages remain online.",
+    "sourceUrl": null
+  },
+  "strengths": [],
+  "limitations": [
+    {
+      "claim": "The vendor's own site states: 'LMNT has shut down. Our speech generation journey has come to an end.' (lmnt.com, docs.lmnt.com and the pricing page all show this notice.)",
+      "sourceUrl": "https://www.lmnt.com/"
+    }
+  ],
+  "migration": {
+    "stepsToMove": [
+      "LMNT's site and docs show only a shutdown notice; the API (api.lmnt.com) did not complete a TLS connection from the research host, so integrations must move to another provider.",
+      "Replace the LMNT speech request and X-API-Key header with the ReadAloud speech endpoint and bearer key; voice IDs and any cloned voices do not carry over."
+    ],
+    "sourceUrls": [
+      "https://www.lmnt.com/"
+    ]
+  },
+  "bestFor": "Not applicable: the service has shut down.",
+  "sources": [
+    {
+      "url": "https://www.lmnt.com/",
+      "title": "LMNT home page (shutdown notice)",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://lmnt.com/pricing",
+      "title": "LMNT pricing URL (shutdown notice)",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://docs.lmnt.com",
+      "title": "LMNT docs URL (shutdown notice)",
+      "retrievedAt": "2026-10-10"
+    }
+  ],
+  "unknowns": [
+    "Shutdown date and reason",
+    "Whether a successor or acquirer exists",
+    "All historical pricing, voices, limits and compliance (pages offline; none guessed)",
+    "Strengths list is empty because no vendor pages remain from which to source claims",
+    "All three pages read are the same notice, so status is effectively single-source (one site, three URLs)"
+  ]
+}

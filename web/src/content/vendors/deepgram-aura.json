@@ -1,0 +1,217 @@
+{
+  "slug": "deepgram-aura",
+  "name": "Deepgram Aura (text-to-speech)",
+  "url": "https://deepgram.com/product/text-to-speech",
+  "status": "active",
+  "retrievedAt": "2026-10-10",
+  "category": "api-platform",
+  "positioning": "Deepgram's text-to-speech line (Aura, Aura-2 and the newer Flux TTS) sits alongside its speech-to-text and Voice Agent APIs on one developer platform.",
+  "pricing": {
+    "model": "Pay-as-you-go per character, with discounted Growth plan rates for annual prepaid commitments.",
+    "headline": "Aura-2 is $0.030 per 1K characters ($30 per 1M) pay-as-you-go; Flux TTS $45 per 1M; Aura (first generation) $15 per 1M.",
+    "pricePer1MCharsUsd": 30,
+    "headlineTier": "Aura-2, Pay As You Go (widest-language model; Flux TTS is English-only and recommended by Deepgram for new builds at $45)",
+    "tiers": [
+      {
+        "name": "Flux TTS (Pay As You Go)",
+        "pricePer1MCharsUsd": 45,
+        "unit": "$0.0450 per 1K characters",
+        "notes": "English-only today, served on /v2/speak; $45 also confirmed on the Flux product page."
+      },
+      {
+        "name": "Aura-2 (Pay As You Go)",
+        "pricePer1MCharsUsd": 30,
+        "unit": "$0.030 per 1K characters",
+        "notes": "Seven languages; $30 also confirmed on the Aura-2 launch article."
+      },
+      {
+        "name": "Aura (Pay As You Go)",
+        "pricePer1MCharsUsd": 15,
+        "unit": "$0.0150 per 1K characters",
+        "notes": "First-generation, English voices only. Single-source (pricing page)."
+      },
+      {
+        "name": "Flux TTS (Growth)",
+        "pricePer1MCharsUsd": 40.5,
+        "unit": "$0.0405 per 1K characters",
+        "notes": "Growth plan: $4K+/year prepaid credits. Single-source."
+      },
+      {
+        "name": "Aura-2 (Growth)",
+        "pricePer1MCharsUsd": 27,
+        "unit": "$0.027 per 1K characters",
+        "notes": "Growth plan. Single-source."
+      },
+      {
+        "name": "Aura (Growth)",
+        "pricePer1MCharsUsd": 13.5,
+        "unit": "$0.0135 per 1K characters",
+        "notes": "Growth plan. Single-source."
+      }
+    ],
+    "freeTier": "$200 free credit on sign-up, no credit card required, then pay-as-you-go (credit applies to all products, not TTS only).",
+    "promotions": [
+      "Flux TTS credit match: for every $1 spent on Flux TTS, $1 in credits is added, up to $500; Pay As You Go and Growth plans; offer ends 2026-12-31.",
+      "Flux TTS free build period (up to 45 concurrent streams) ran through 2026-09-12; standard pricing applies since 2026-09-13 (already ended)."
+    ],
+    "sourceUrls": [
+      "https://deepgram.com/pricing",
+      "https://deepgram.com/product/text-to-speech",
+      "https://deepgram.com/learn/introducing-aura-2-enterprise-text-to-speech"
+    ]
+  },
+  "voices": {
+    "count": "Docs catalog lists roughly 36 Flux TTS English voices, about 90 Aura-2 voices across 7 languages and 12 first-generation Aura English voices (counted from the voice catalog page text, approximate).",
+    "languages": "Flux TTS: English only (several accents). Aura-2: English, Spanish, German, French, Dutch, Italian, Japanese. Aura: English.",
+    "customVoiceOrCloning": null,
+    "sourceUrl": "https://developers.deepgram.com/docs/tts-models-languages-overview.md"
+  },
+  "streaming": {
+    "websocket": "yes",
+    "http": "yes",
+    "vendorStatedLatency": "Vendor-stated: Flux TTS output starts 'in as low as 80 ms'. Not independently measured.",
+    "sourceUrl": "https://deepgram.com/product/text-to-speech"
+  },
+  "formats": [
+    "linear16",
+    "mulaw",
+    "alaw",
+    "mp3 (REST)",
+    "opus (REST)",
+    "flac (REST)",
+    "aac (REST)"
+  ],
+  "ssml": "unknown",
+  "compatibility": {
+    "openaiSpeechCompatible": "unknown",
+    "note": "Deepgram uses its own /v1/speak (Aura) and /v2/speak (Flux TTS) endpoints with 'Authorization: Token' auth and the voice chosen via the model query parameter; no OpenAI-style speech route was found in the pages read."
+  },
+  "licensing": {
+    "commercialUse": null,
+    "attributionOrConditions": "Model Improvement Program opt-out parameter (mip_opt_out) exists; docs note pricing impacts of opting out.",
+    "sourceUrl": "https://developers.deepgram.com/reference/text-to-speech/speak-request.md"
+  },
+  "limits": {
+    "perRequestCharacters": null,
+    "concurrency": "Pay As You Go, North America: Aura and Aura-2 up to 15 concurrent REST and 45 concurrent streaming requests; Flux TTS 15 REST / 45 streaming in North America and 5 in other listed regions.",
+    "sourceUrl": "https://developers.deepgram.com/reference/api-rate-limits.md"
+  },
+  "sdks": [
+    "JavaScript (@deepgram/sdk)",
+    "Python (deepgram-sdk)",
+    "Go",
+    "C# (.NET)",
+    "Java"
+  ],
+  "compliance": {
+    "hipaa": "stated",
+    "soc2": "stated",
+    "gdpr": "stated",
+    "note": "Self-attested on the pricing page: SOC 2 Type 1 and Type 2, HIPAA compliant, GDPR with an EU endpoint (api.eu.deepgram.com). Flux TTS page also mentions cloud, private cloud or on-prem deployment.",
+    "sourceUrl": "https://deepgram.com/pricing"
+  },
+  "strengths": [
+    {
+      "claim": "Aura-2 supports seven languages; Flux TTS is a newer English model built for streaming voice agents with interruption reporting.",
+      "sourceUrl": "https://developers.deepgram.com/docs/tts-models-languages-overview.md"
+    },
+    {
+      "claim": "Vendor states Flux TTS output starts in as low as 80 ms (vendor-stated).",
+      "sourceUrl": "https://deepgram.com/product/text-to-speech"
+    },
+    {
+      "claim": "Offers speech-to-text, TTS and a Voice Agent API on one platform with a single account and API key.",
+      "sourceUrl": "https://deepgram.com/pricing"
+    },
+    {
+      "claim": "Publishes SOC 2, HIPAA and GDPR statements and a dedicated EU endpoint.",
+      "sourceUrl": "https://deepgram.com/pricing"
+    },
+    {
+      "claim": "Low entry price: Aura (first generation) is $15 per 1M characters and Aura-2 is $30 per 1M, with a $200 free credit.",
+      "sourceUrl": "https://deepgram.com/pricing"
+    }
+  ],
+  "limitations": [
+    {
+      "claim": "Flux TTS (the recommended newer model) is English-only today; other languages require Aura-2.",
+      "sourceUrl": "https://developers.deepgram.com/docs/tts-models-languages-overview.md"
+    },
+    {
+      "claim": "The Flux TTS credit-match promotion ends 2026-12-31 and the free build period ended 2026-09-12.",
+      "sourceUrl": "https://deepgram.com/pricing"
+    }
+  ],
+  "migration": {
+    "stepsToMove": [
+      "Replace POST https://api.deepgram.com/v1/speak?model=aura-2-<voice>-<lang> (or /v2/speak for Flux TTS) with ReadAloud's speech endpoint.",
+      "Move the text from the JSON body field 'text' to the corresponding ReadAloud input field; pick a ReadAloud voice instead of the Deepgram model string in the query.",
+      "Replace the 'Authorization: Token' header with the ReadAloud bearer key.",
+      "Map Deepgram's encoding/container/sample_rate/bit_rate query parameters to ReadAloud's response format option.",
+      "For streaming, replace the wss /v1/speak or /v2/speak message flow (Speak, Flush, Clear) with ReadAloud's WebSocket or HTTP streaming.",
+      "Voices and languages may not map one to one; Deepgram voices do not carry over."
+    ],
+    "sourceUrls": [
+      "https://developers.deepgram.com/reference/text-to-speech/speak-request.md",
+      "https://developers.deepgram.com/docs/flux-tts/migrating.md",
+      "https://developers.deepgram.com/docs/tts-media-output-settings.md"
+    ]
+  },
+  "bestFor": "Teams already using Deepgram for transcription or its Voice Agent API who want TTS on the same platform, plus developers needing a low per-character price (Aura) or multiple European and Japanese languages (Aura-2).",
+  "sources": [
+    {
+      "url": "https://deepgram.com/pricing",
+      "title": "Deepgram pricing page",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://deepgram.com/product/text-to-speech",
+      "title": "Deepgram Flux TTS product page",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://deepgram.com/learn/introducing-aura-2-enterprise-text-to-speech",
+      "title": "Deepgram: Introducing Aura-2",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://developers.deepgram.com/docs/tts-models-languages-overview.md",
+      "title": "Deepgram docs: TTS models and languages overview",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://developers.deepgram.com/docs/tts-media-output-settings.md",
+      "title": "Deepgram docs: TTS media output settings",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://developers.deepgram.com/reference/api-rate-limits.md",
+      "title": "Deepgram docs: API rate limits",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://developers.deepgram.com/reference/text-to-speech/speak-request.md",
+      "title": "Deepgram API reference: Single text request",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://developers.deepgram.com/docs/flux-tts/migrating.md",
+      "title": "Deepgram docs: Migrating from Aura to Flux TTS",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://developers.deepgram.com/docs/text-to-speech.md",
+      "title": "Deepgram docs: TTS getting started (SDK list)",
+      "retrievedAt": "2026-10-10"
+    }
+  ],
+  "unknowns": [
+    "Maximum characters per request",
+    "Custom voice or cloning availability",
+    "Commercial-use terms for TTS output (not stated on pages read)",
+    "SSML support (not documented in pages read; Flux page says no SSML needed)",
+    "Aura (first-gen) and Growth-plan prices are single-source (pricing page)",
+    "Whether an OpenAI-compatible speech route exists",
+    "Voice counts are approximate, counted from the docs catalog text"
+  ]
+}

@@ -1,0 +1,119 @@
+{
+  "slug": "play-ai",
+  "name": "Play.ai / PlayHT",
+  "url": "https://docs.play.ht/reference/api-getting-started",
+  "status": "inactive",
+  "retrievedAt": "2026-10-10",
+  "category": "api-platform",
+  "positioning": "PlayHT (later branded PlayAI) was a text-to-speech and voice-cloning API provider that third-party sources report was acquired by Meta in 2025 and shut down.",
+  "pricing": {
+    "model": "No current pricing: the vendor's marketing and pricing domains no longer resolve.",
+    "headline": "No live pricing available; the service appears to be discontinued.",
+    "pricePer1MCharsUsd": null,
+    "headlineTier": "n/a (service discontinued)",
+    "tiers": [],
+    "freeTier": null,
+    "promotions": [],
+    "sourceUrls": [
+      "https://docs.play.ht/reference/api-getting-started"
+    ]
+  },
+  "voices": {
+    "count": null,
+    "languages": "Historical docs list Play 3.0 Mini as multilingual and PlayDialog multilingual in beta (docs last updated 2025-09-15).",
+    "customVoiceOrCloning": "Historical docs describe voice cloning on Play 2.0, 3.0 Mini and PlayDialog.",
+    "sourceUrl": "https://docs.play.ht/reference/models.md"
+  },
+  "streaming": {
+    "websocket": "yes",
+    "http": "yes",
+    "vendorStatedLatency": "Vendor-stated (historical docs): time to first audio 230 ms (Play 2.0), 190 ms (Play 3.0 Mini), 350 ms (PlayDialog). Service no longer available.",
+    "sourceUrl": "https://docs.play.ht/reference/models.md"
+  },
+  "formats": [
+    "mp3 (from cached docs example)"
+  ],
+  "ssml": "unknown",
+  "compatibility": {
+    "openaiSpeechCompatible": "unknown",
+    "note": "Historical API used its own /api/v2/tts/stream endpoint with X-USER-ID and AUTHORIZATION headers. Its API host no longer resolves."
+  },
+  "licensing": {
+    "commercialUse": null,
+    "attributionOrConditions": null,
+    "sourceUrl": null
+  },
+  "limits": {
+    "perRequestCharacters": null,
+    "concurrency": null,
+    "sourceUrl": null
+  },
+  "sdks": [
+    "Node.js (playht)",
+    "Python (pyht)"
+  ],
+  "compliance": {
+    "hipaa": "not-stated",
+    "soc2": "not-stated",
+    "gdpr": "not-stated",
+    "note": "No compliance statements were read; the vendor's marketing site is offline.",
+    "sourceUrl": null
+  },
+  "strengths": [
+    {
+      "claim": "Historical docs (last updated 2025-09-15) describe PlayDialog as an emotive model for turn-based multi-voice dialogue, and Play 3.0 Mini as built for fast bulk generation.",
+      "sourceUrl": "https://docs.play.ht/reference/models.md"
+    },
+    {
+      "claim": "Historical docs offered both HTTP streaming and a WebSocket API, with Node.js and Python SDKs.",
+      "sourceUrl": "https://docs.play.ht/reference/api-getting-started"
+    }
+  ],
+  "limitations": [
+    {
+      "claim": "At retrieval (2026-10-10) play.ht, play.ai and api.play.ht did not resolve in DNS from the research host; only a static docs site (docs.play.ht) remained. Third-party reports state the service closed on 2025-12-31.",
+      "sourceUrl": "https://murf.ai/blog/play-ai-transition-guide"
+    }
+  ],
+  "migration": {
+    "stepsToMove": [
+      "The PlayHT API (https://api.play.ht/api/v2/tts/stream) no longer resolves, so existing integrations must move to another provider.",
+      "Replace the request body fields text, voice, voice_engine and output_format with the corresponding ReadAloud fields.",
+      "Replace the X-USER-ID and AUTHORIZATION headers with the ReadAloud bearer key.",
+      "Cloned voices were held by the vendor and cannot be assumed to be exportable."
+    ],
+    "sourceUrls": [
+      "https://docs.play.ht/reference/api-getting-started"
+    ]
+  },
+  "bestFor": "Not applicable: the service appears discontinued. Developers who relied on it need a replacement TTS provider.",
+  "sources": [
+    {
+      "url": "https://docs.play.ht/reference/api-getting-started",
+      "title": "PlayHT docs: Quickstart (static, cached)",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://docs.play.ht/reference/models.md",
+      "title": "PlayHT docs: Models (updated 2025-09-15)",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://murf.ai/blog/play-ai-transition-guide",
+      "title": "Murf AI: Play AI / Play HT transition guide (competitor blog, secondary source)",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://docs.play.ht/llms.txt",
+      "title": "PlayHT docs index",
+      "retrievedAt": "2026-10-10"
+    }
+  ],
+  "unknowns": [
+    "Official shutdown date and Meta acquisition terms (primary announcement not read; only a competitor blog and search-result summaries, which report an acquisition by Meta and closure by 2025-12-31)",
+    "Any pricing (pages offline)",
+    "Whether any successor product or API exists under Meta",
+    "Compliance, limits, licensing (pages offline)",
+    "Status relies on DNS non-resolution observed by the researcher plus secondary reports"
+  ]
+}
