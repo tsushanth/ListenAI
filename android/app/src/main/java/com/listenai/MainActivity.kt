@@ -26,6 +26,10 @@ import androidx.lifecycle.lifecycleScope
 import com.listenai.service.AppOpenTracker
 import com.listenai.service.auth.GoogleAuthService
 import com.listenai.service.billing.RevenueCatManager
+import com.listenai.service.import_content.IncomingContentHolder
+import com.listenai.service.import_content.IncomingContentParser
+import com.listenai.widget.ReadAloudWidget
+import androidx.glance.appwidget.updateAll
 import com.listenai.ui.MainScreen
 import com.listenai.ui.onboarding.OnboardingManager
 import com.listenai.ui.onboarding.OnboardingScreen
@@ -87,6 +91,7 @@ class MainActivity : AppCompatActivity() {
 
         // Handle OAuth redirect if launched from browser
         handleOAuthRedirect(intent)
+        handleIncomingContent(intent)
 
         setContent {
             ListenAITheme {
@@ -202,6 +207,42 @@ class MainActivity : AppCompatActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         handleOAuthRedirect(intent)
+        handleIncomingContent(intent)
+    }
+
+    private var pasteRequested = false
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus && pasteRequested) {
+            pasteRequested = false
+            val clip = (getSystemService(CLIPBOARD_SERVICE) as android.content.ClipboardManager).primaryClip
+            val text = clip?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.coerceToText(this)?.toString()
+            val content = IncomingContentParser.classifyText(text)
+            if (content != null) {
+                IncomingContentHolder.offer(content)
+            } else {
+                android.widget.Toast.makeText(this, R.string.widget_clipboard_empty, android.widget.Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    override fun onStop() {
+        super.onStop()
+        // Keep the home-screen widget's "continue listening" card current.
+        lifecycleScope.launch { runCatching { ReadAloudWidget().updateAll(applicationContext) } }
+    }
+
+    private fun handleIncomingContent(intent: Intent?) {
+        // Skip relaunches from recents/history so a stale share isn't re-offered.
+        if (intent == null || intent.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY != 0) return
+        when (intent.action) {
+            ReadAloudWidget.ACTION_RESUME ->
+                IncomingContentHolder.requestOpenArticle(intent.getStringExtra(ReadAloudWidget.EXTRA_ARTICLE_ID))
+            // The clipboard is only readable once the window has focus; see onWindowFocusChanged.
+            ReadAloudWidget.ACTION_PASTE_AND_READ -> pasteRequested = true
+        }
+        IncomingContentHolder.offer(IncomingContentParser.parse(intent, contentResolver))
     }
 
     private fun handleOAuthRedirect(intent: Intent?) {

@@ -8,6 +8,15 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -71,7 +80,9 @@ fun FormattedTextView(
     lineSpacing: Dp = 8.dp,
     highlightIndex: Int? = null,
     highlightColor: Color = Yellow,
-    highlightWordOnly: Boolean = false
+    highlightWordOnly: Boolean = false,
+    // Scroll the highlighted paragraph into view when it changes (inside a scrolling parent).
+    followHighlight: Boolean = false
 ) {
     val contentBlocks = remember(content) { parseMarkdown(content) }
 
@@ -86,12 +97,14 @@ fun FormattedTextView(
                 fontSize = fontSize,
                 isHighlighted = highlightIndex == index,
                 highlightColor = highlightColor,
-                highlightWordOnly = highlightWordOnly
+                highlightWordOnly = highlightWordOnly,
+                followHighlight = followHighlight
             )
         }
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun RenderBlock(
     block: ContentBlock,
@@ -99,7 +112,8 @@ private fun RenderBlock(
     fontSize: TextUnit,
     isHighlighted: Boolean,
     highlightColor: Color,
-    highlightWordOnly: Boolean
+    highlightWordOnly: Boolean,
+    followHighlight: Boolean = false
 ) {
     val content: @Composable () -> Unit = {
         when (block.type) {
@@ -173,11 +187,26 @@ private fun RenderBlock(
     }
 
     if (isHighlighted) {
-        HighlightWrapper(
-            highlightColor = highlightColor,
-            highlightWordOnly = highlightWordOnly
+        val requester = remember { BringIntoViewRequester() }
+        var heightPx by remember { mutableIntStateOf(0) }
+        // Ask for extra room below the paragraph so it clears the floating player bar.
+        val extraBelowPx = with(androidx.compose.ui.platform.LocalDensity.current) { 160.dp.toPx() }
+        LaunchedEffect(index, followHighlight) {
+            if (followHighlight) {
+                requester.bringIntoView(Rect(0f, 0f, 1f, heightPx + extraBelowPx))
+            }
+        }
+        Box(
+            modifier = Modifier
+                .bringIntoViewRequester(requester)
+                .onSizeChanged { heightPx = it.height }
         ) {
-            content()
+            HighlightWrapper(
+                highlightColor = highlightColor,
+                highlightWordOnly = highlightWordOnly
+            ) {
+                content()
+            }
         }
     } else {
         content()

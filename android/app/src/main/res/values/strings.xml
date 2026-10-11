@@ -489,4 +489,33 @@
     <string name="language_portuguese">Português</string>
     <string name="language_italian">Italiano</string>
     <string name="language_hindi">हिन्दी</string>
+    <!-- Content received from other apps (Share / Read aloud / Open with) -->
+    <string name="process_text_label">Read aloud</string>
+    <string name="incoming_title">Read this aloud</string>
+    <string name="incoming_read_now">Read now</string>
+    <string name="incoming_try_again">Try again</string>
+    <string name="incoming_preparing">Preparing…</string>
+    <string name="incoming_save_to_library">Save to library</string>
+    <string name="incoming_file_unreadable">Couldn\'t read that file. Try opening it from Files or share it to ReadAloud instead.</string>
+    <string name="incoming_cancel">Cancel</string>
+    <string name="incoming_source_text">Text, %1$d words</string>
+    <string name="incoming_source_link">Web page</string>
+    <string name="incoming_source_pdf">PDF</string>
+    <string name="incoming_source_epub">EPUB book</string>
+    <string name="incoming_source_txt">Text file</string>
+    <string name="bookmarks_title">Bookmarks</string>
+    <string name="bookmarks_add_here">Bookmark this spot</string>
+    <string name="bookmarks_added">Bookmarked at %1$s</string>
+    <string name="bookmarks_empty">No bookmarks yet. Open More options while listening and choose Bookmark this spot.</string>
+    <string name="bookmarks_delete">Delete bookmark</string>
+    <string name="widget_description">Resume your last article or read what you copied</string>
+    <string name="widget_continue">Continue listening</string>
+    <string name="widget_open">Open ReadAloud</string>
+    <string name="widget_percent_done">%1$d%% listened</string>
+    <string name="widget_clipboard_empty">Nothing to read. Copy some text or a link first.</string>
+    <string name="widget_paste_and_read">Read clipboard</string>
+    <string name="follow_along">Follow along</string>
+    <string name="follow_along_subtitle">Scroll the text to keep up with the voice</string>
+    <string name="on">On</string>
+    <string name="off">Off</string>
 </resources>

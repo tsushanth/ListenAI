@@ -22,6 +22,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -60,6 +61,9 @@ import com.listenai.ui.components.FormattedTextView
 import com.listenai.service.voice.VoiceCloningService
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
+import com.listenai.data.local.BookmarkDao
+import com.listenai.data.models.Bookmark
+import java.util.UUID
 
 sealed class PlayerState {
     object Loading : PlayerState()
@@ -87,13 +91,17 @@ fun PlayerScreen(
     ttsCoordinator: TTSCoordinator = koinInject(),
     appReviewService: AppReviewService = koinInject(),
     ttsNotificationService: TTSNotificationService = koinInject(),
-    voiceCloningService: VoiceCloningService = koinInject()
+    voiceCloningService: VoiceCloningService = koinInject(),
+    bookmarkDao: BookmarkDao = koinInject()
 ) {
     var playerState by remember { mutableStateOf<PlayerState>(PlayerState.Loading) }
     var synthesisProgress by remember { mutableFloatStateOf(0f) }
     var showVoicePicker by remember { mutableStateOf(false) }
     var showMoreOptions by remember { mutableStateOf(false) }
     var showSleepTimerPicker by remember { mutableStateOf(false) }
+    var showBookmarks by remember { mutableStateOf(false) }
+    // Keep the current paragraph on screen while listening; off lets the reader scroll freely.
+    var followAlong by rememberSaveable { mutableStateOf(true) }
     var selectedVoice by remember { mutableStateOf<VoicePreset?>(null) }
     var availableVoices by remember { mutableStateOf<List<VoicePreset>>(emptyList()) }
     // Set the instant the "Use offline AI voice instead" CTA is tapped, so
@@ -112,6 +120,8 @@ fun PlayerScreen(
     var pendingAutoStartId by remember { mutableStateOf<String?>(null) }
 
     val playbackState by playbackService.playbackState.collectAsState()
+    val bookmarks by remember(currentArticleId) { bookmarkDao.observeForArticle(currentArticleId) }
+        .collectAsState(initial = emptyList())
     val scrollState = rememberScrollState()
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -604,6 +614,31 @@ fun PlayerScreen(
                 selectedVoice = selectedVoice,
                 hasAudio = hasGeneratedAudio,
                 sleepTimerRemaining = playbackState.sleepTimerRemaining,
+                bookmarkCount = bookmarks.size,
+                followAlong = followAlong,
+                onToggleFollowAlong = { followAlong = !followAlong },
+                onAddBookmark = {
+                    scope.launch {
+                        bookmarkDao.insert(
+                            Bookmark(
+                                id = UUID.randomUUID().toString(),
+                                articleId = currentArticle.id,
+                                positionSeconds = playbackState.currentTime,
+                                createdAt = System.currentTimeMillis()
+                            )
+                        )
+                        Toast.makeText(
+                            context,
+                            context.getString(R.string.bookmarks_added, formatBookmarkTime(playbackState.currentTime)),
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                    showMoreOptions = false
+                },
+                onShowBookmarks = {
+                    showBookmarks = true
+                    showMoreOptions = false
+                },
                 onAddToQueue = {
                     // TODO: Implement queue functionality
                     Toast.makeText(context, context.getString(R.string.player_added_to_queue), Toast.LENGTH_SHORT).show()
@@ -671,11 +706,21 @@ fun PlayerScreen(
                 onDeleteArticle = {
                     scope.launch {
                         articleRepository.deleteArticleById(currentArticle.id)
+                        bookmarkDao.deleteForArticle(currentArticle.id)
                         playbackService.stop()
                         onNavigateBack()
                     }
                 },
                 onDismiss = { showMoreOptions = false }
+            )
+        }
+
+        if (showBookmarks) {
+            BookmarksSheet(
+                bookmarks = bookmarks,
+                onJumpTo = { playbackService.seekTo(it.positionSeconds); showBookmarks = false },
+                onDelete = { b -> scope.launch { bookmarkDao.delete(b.id) } },
+                onDismiss = { showBookmarks = false }
             )
         }
 
@@ -892,7 +937,8 @@ fun PlayerScreen(
                             text = article.rawText,
                             currentHighlightIndex = currentHighlightIndex,
                             scrollState = scrollState,
-                            scope = scope
+                            scope = scope,
+                            followAlong = followAlong && playbackState.status == AudioPlaybackStatus.PLAYING
                         )
 
                         // Bottom padding for player bar
@@ -1136,7 +1182,8 @@ private fun ArticleContent(
     text: String,
     currentHighlightIndex: Int?,
     scrollState: ScrollState,
-    scope: CoroutineScope
+    scope: CoroutineScope,
+    followAlong: Boolean
 ) {
     // Use FormattedTextView for markdown rendering with highlighting
     FormattedTextView(
@@ -1146,6 +1193,7 @@ private fun ArticleContent(
         highlightIndex = currentHighlightIndex,
         highlightColor = Yellow,
         highlightWordOnly = false,
+        followHighlight = followAlong,
         modifier = Modifier.fillMaxWidth()
     )
 }
@@ -1986,6 +2034,11 @@ private fun MoreOptionsSheet(
     selectedVoice: VoicePreset?,
     hasAudio: Boolean,
     sleepTimerRemaining: Int?,
+    bookmarkCount: Int,
+    followAlong: Boolean,
+    onToggleFollowAlong: () -> Unit,
+    onAddBookmark: () -> Unit,
+    onShowBookmarks: () -> Unit,
     onAddToQueue: () -> Unit,
     onMarkAsFinished: () -> Unit,
     onToggleFavorite: () -> Unit,
@@ -2061,6 +2114,27 @@ private fun MoreOptionsSheet(
                 HorizontalDivider(modifier = Modifier.padding(start = 60.dp))
             }
 
+            if (hasAudio) {
+                MoreOptionsRow(
+                    icon = Icons.Default.BookmarkAdd,
+                    title = stringResource(R.string.bookmarks_add_here)
+                ) { onAddBookmark() }
+            }
+            MoreOptionsRow(
+                icon = Icons.Default.Bookmarks,
+                title = stringResource(R.string.bookmarks_title),
+                trailing = if (bookmarkCount > 0) bookmarkCount.toString() else null,
+                showVoiceIcon = false
+            ) { onShowBookmarks() }
+
+            MoreOptionsRow(
+                icon = Icons.Default.VerticalAlignCenter,
+                title = stringResource(R.string.follow_along),
+                subtitle = stringResource(R.string.follow_along_subtitle),
+                trailing = stringResource(if (followAlong) R.string.on else R.string.off),
+                showVoiceIcon = false
+            ) { onToggleFollowAlong() }
+
             // Add to Queue
             MoreOptionsRow(
                 icon = Icons.Default.PlaylistAdd,
@@ -2115,6 +2189,7 @@ private fun MoreOptionsRow(
     title: String,
     subtitle: String? = null,
     trailing: String? = null,
+    showVoiceIcon: Boolean = true,
     isDestructive: Boolean = false,
     onClick: () -> Unit
 ) {
@@ -2156,12 +2231,14 @@ private fun MoreOptionsRow(
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(
-                        Icons.Default.GraphicEq,
-                        contentDescription = null,
-                        modifier = Modifier.size(14.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    if (showVoiceIcon) {
+                        Icon(
+                            Icons.Default.GraphicEq,
+                            contentDescription = null,
+                            modifier = Modifier.size(14.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                     Text(
                         text = trailing,
                         style = MaterialTheme.typography.labelSmall,
