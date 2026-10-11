@@ -1,6 +1,7 @@
 import AdmZip from 'adm-zip';
 import { JSDOM } from 'jsdom';
 import Anthropic from '@anthropic-ai/sdk';
+import { instrumentAnthropic, withFeature } from './llm.js';
 import { logger } from './logger.js';
 import { config } from './config.js';
 
@@ -24,7 +25,7 @@ export interface DetectedChapter {
 
 // Reuse the same Anthropic client construction pattern as routes/extract.ts.
 const anthropic = config.ANTHROPIC_API_KEY
-  ? new Anthropic({ apiKey: config.ANTHROPIC_API_KEY })
+  ? instrumentAnthropic(new Anthropic({ apiKey: config.ANTHROPIC_API_KEY }))
   : null;
 const LLM_MODEL = 'claude-sonnet-4-6';
 
@@ -344,13 +345,13 @@ Respond with ONLY a JSON array, no other text, in this exact shape:
 
   const startTime = Date.now();
 
-  const completion = await anthropic.messages.create({
+  const completion = await withFeature('chapter_detection', () => anthropic.messages.create({
     model: LLM_MODEL,
     system: systemPrompt,
     messages: [{ role: 'user', content: userPrompt }],
     max_tokens: 4000,
     temperature: 0.1,
-  });
+  }));
 
   const firstBlock = completion.content[0];
   const raw = firstBlock && firstBlock.type === 'text' ? firstBlock.text : undefined;

@@ -27,6 +27,7 @@ import { randomUUID } from 'crypto';
 import multer from 'multer';
 import { z } from 'zod';
 import Anthropic from '@anthropic-ai/sdk';
+import { instrumentAnthropic, withFeature } from '../lib/llm.js';
 import { config } from '../lib/config.js';
 import { logger } from '../lib/logger.js';
 import { ttsProvider } from '../lib/ttsProviderClient.js';
@@ -88,7 +89,7 @@ async function authorizeStt(): Promise<SttAuthorizeResult> {
 }
 
 const anthropic = config.ANTHROPIC_API_KEY
-  ? new Anthropic({ apiKey: config.ANTHROPIC_API_KEY })
+  ? instrumentAnthropic(new Anthropic({ apiKey: config.ANTHROPIC_API_KEY }))
   : null;
 const TRANSLATION_MODEL = 'claude-sonnet-4-6';
 
@@ -170,13 +171,13 @@ async function callClaudeForTranslations(system: string, items: TranslationInput
   if (!anthropic) throw new Error('ANTHROPIC_API_KEY is not configured; cannot translate dubbing segments.');
   let lastErr: Error | undefined;
   for (let attempt = 0; attempt < 2; attempt++) {
-    const completion = await anthropic.messages.create({
+    const completion = await withFeature('dubbing', () => anthropic.messages.create({
       model: TRANSLATION_MODEL,
       system,
       messages: [{ role: 'user', content: buildTranslationUserPrompt(items) }],
       max_tokens: 8000,
       temperature: 0.1,
-    });
+    }));
     const firstBlock = completion.content[0];
     const raw = firstBlock && firstBlock.type === 'text' ? firstBlock.text : '';
     try {

@@ -4,6 +4,7 @@ import axios from 'axios';
 import { JSDOM } from 'jsdom';
 import { Readability } from '@mozilla/readability';
 import Anthropic from '@anthropic-ai/sdk';
+import { instrumentAnthropic, withFeature } from '../lib/llm.js';
 import { logger } from '../lib/logger.js';
 import { config } from '../lib/config.js';
 
@@ -12,7 +13,7 @@ import { config } from '../lib/config.js';
 // cleanup well within an 8 K output budget — typical cleaned articles fit
 // comfortably under that.
 const anthropic = config.ANTHROPIC_API_KEY
-  ? new Anthropic({ apiKey: config.ANTHROPIC_API_KEY })
+  ? instrumentAnthropic(new Anthropic({ apiKey: config.ANTHROPIC_API_KEY }))
   : null;
 const LLM_MODEL = 'claude-sonnet-4-6';
 
@@ -416,7 +417,7 @@ IMPORTANT:
   try {
     const startTime = Date.now();
 
-    const completion = await anthropic.messages.create({
+    const completion = await withFeature('extract', () => anthropic.messages.create({
       model: LLM_MODEL,
       system: systemPrompt,
       messages: [{ role: 'user', content: userPrompt }],
@@ -426,7 +427,7 @@ IMPORTANT:
       // beta header instead of dropping back to OpenAI.
       max_tokens: 8000,
       temperature: 0.1, // Low temperature for consistent cleaning
-    });
+    }));
 
     const firstBlock = completion.content[0];
     const cleanedContent = firstBlock && firstBlock.type === 'text' ? firstBlock.text : undefined;

@@ -1,3 +1,4 @@
+import { flushLlmUsage } from './lib/llm.js';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -453,7 +454,8 @@ function shutdown(signal: string) {
 
   server.close(() => {
     logger.info('HTTP server closed');
-    process.exit(0);
+    // Send pending Claude spend rows (capped at 2.5 s) before exiting.
+    void flushLlmUsage(2500).finally(() => process.exit(0));
   });
 
   // Force exit after 10 seconds
