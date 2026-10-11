@@ -1,0 +1,278 @@
+{
+  "slug": "inworld-tts",
+  "name": "Inworld TTS",
+  "url": "https://inworld.ai",
+  "status": "active",
+  "retrievedAt": "2026-10-10",
+  "category": "api-platform",
+  "positioning": "Inworld TTS is a realtime text-to-speech API from Inworld AI, sold alongside speech-to-text, a speech-to-speech Realtime API and an LLM router under one credit-based plan structure.",
+  "pricing": {
+    "model": "Dollar-denominated credits. Free On-Demand tier, then monthly plans (Creator $25, Builder $100, Developer $300, Growth $1,500) whose credits equal the plan price and which lower the per-character rate; Enterprise is custom. Overage is charged at the plan's rate. Prices below are the monthly-billing view of the pricing page.",
+    "headline": "TTS-2 Flash is $15 per 1M characters and TTS-2 is $25 per 1M characters on the free On-Demand tier; paid plans lower these (Flash down to $7, TTS-2 down to $12.50 on Growth), and Enterprise is listed as low as $5 for TTS-2.",
+    "pricePer1MCharsUsd": 15,
+    "headlineTier": "Realtime TTS-2 Flash on On-Demand (lowest-cost model, entry tier); the flagship Realtime TTS-2 is $25 on the same tier",
+    "tiers": [
+      {
+        "name": "On-Demand: TTS-2 Flash",
+        "pricePer1MCharsUsd": 15,
+        "unit": "USD per 1M characters (monthly billing view)",
+        "notes": "Free plan, pay per use; includes up to 70 minutes of TTS free, 100 custom voices, commercial license."
+      },
+      {
+        "name": "On-Demand: TTS-2",
+        "pricePer1MCharsUsd": 25,
+        "unit": "USD per 1M characters (monthly billing view)",
+        "notes": "Flagship model with steering."
+      },
+      {
+        "name": "Creator ($25/mo): TTS-2 Flash",
+        "pricePer1MCharsUsd": 10,
+        "unit": "USD per 1M characters (monthly billing view)",
+        "notes": "$25 in credits per month."
+      },
+      {
+        "name": "Creator ($25/mo): TTS-2",
+        "pricePer1MCharsUsd": 20,
+        "unit": "USD per 1M characters (monthly billing view)",
+        "notes": "500 custom voices."
+      },
+      {
+        "name": "Builder ($100/mo): TTS-2 Flash",
+        "pricePer1MCharsUsd": 9,
+        "unit": "USD per 1M characters (monthly billing view)",
+        "notes": "$100 in credits per month."
+      },
+      {
+        "name": "Builder ($100/mo): TTS-2",
+        "pricePer1MCharsUsd": 17.5,
+        "unit": "USD per 1M characters (monthly billing view)",
+        "notes": "3,000 custom voices."
+      },
+      {
+        "name": "Developer ($300/mo): TTS-2 Flash",
+        "pricePer1MCharsUsd": 8,
+        "unit": "USD per 1M characters (monthly billing view)",
+        "notes": "$300 in credits per month; priority email support."
+      },
+      {
+        "name": "Developer ($300/mo): TTS-2",
+        "pricePer1MCharsUsd": 15,
+        "unit": "USD per 1M characters (monthly billing view)",
+        "notes": "10,000 custom voices; professional cloning as add-on."
+      },
+      {
+        "name": "Growth ($1,500/mo): TTS-2 Flash",
+        "pricePer1MCharsUsd": 7,
+        "unit": "USD per 1M characters (monthly billing view)",
+        "notes": "$1,500 in credits per month; HIPAA/BAA and zero data retention are add-ons."
+      },
+      {
+        "name": "Growth ($1,500/mo): TTS-2",
+        "pricePer1MCharsUsd": 12.5,
+        "unit": "USD per 1M characters (monthly billing view)",
+        "notes": "30,000 custom voices."
+      },
+      {
+        "name": "Enterprise: TTS-2",
+        "pricePer1MCharsUsd": 5,
+        "unit": "USD per 1M characters (monthly billing view)",
+        "notes": "Listed as 'As low as $5/1M'; custom terms, SLA and DPA, EU and India data residency. The $5 figure is a floor, not a standard price."
+      },
+      {
+        "name": "Enterprise: TTS-2 Flash",
+        "pricePer1MCharsUsd": null,
+        "unit": "USD per 1M characters (monthly billing view)",
+        "notes": "Listed as 'Sub-$5/1M'; no exact number published."
+      },
+      {
+        "name": "Batch synthesis (Preview)",
+        "pricePer1MCharsUsd": null,
+        "unit": "20% less per character than realtime synthesis",
+        "notes": "Docs state batch is metered at 20% less per character than the realtime endpoints on every plan."
+      }
+    ],
+    "freeTier": "On-Demand is free and includes up to 70 minutes of TTS (or 400 minutes of STT); pricing page lists 5 concurrent requests and 100 custom voices for it.",
+    "promotions": [
+      "Pricing page shows a Monthly/Yearly toggle labelled '2 months free' for annual billing; yearly per-character rates were not read and no end date is stated."
+    ],
+    "sourceUrls": [
+      "https://inworld.ai/pricing",
+      "https://docs.inworld.ai/portal/billing",
+      "https://docs.inworld.ai/tts/tts-models"
+    ]
+  },
+  "voices": {
+    "count": null,
+    "languages": "200+ languages and locales (the docs also describe 623 language/locale codes covering 470 languages in three support tiers; Tier 1 is the 15 most extensively evaluated)",
+    "customVoiceOrCloning": "Instant voice cloning from as little as 3 seconds of audio (landing page says 5 to 15 seconds), voice design from a text description, professional voice cloning (Beta, TTS-2 only), and a community Voice Library; custom voice counts per plan range from 100 to 30,000.",
+    "sourceUrl": "https://docs.inworld.ai/llms.txt"
+  },
+  "streaming": {
+    "websocket": "yes",
+    "http": "yes",
+    "vendorStatedLatency": "Vendor-stated: Realtime TTS-2 about 100 ms and TTS-2 Flash about 20 ms P90 time to first audio byte, measured server-side and excluding network latency. Not measured here.",
+    "sourceUrl": "https://docs.inworld.ai/tts/tts-models"
+  },
+  "formats": [
+    "MP3",
+    "PCM",
+    "WAV",
+    "Opus",
+    "FLAC",
+    "mu-law",
+    "A-law",
+    "LINEAR16"
+  ],
+  "ssml": "unknown",
+  "compatibility": {
+    "openaiSpeechCompatible": "yes",
+    "note": "POST https://api.inworld.ai/v1/audio/speech accepts OpenAI's request format; point the OpenAI SDK base URL at https://api.inworld.ai/v1. Model and voice must be Inworld IDs (OpenAI names such as tts-1 return 400 and voices such as alloy return 404). Input up to 4,000 characters; response_format mp3, opus, flac, wav or pcm; instructions only on inworld-tts-2."
+  },
+  "licensing": {
+    "commercialUse": "Pricing page lists a commercial license on every plan including free On-Demand.",
+    "attributionOrConditions": "No attribution requirement found on the pages read; model provider terms are linked from the site footer and were not read.",
+    "sourceUrl": "https://inworld.ai/pricing"
+  },
+  "limits": {
+    "perRequestCharacters": "Non-streaming HTTP: 2,000 characters; HTTP streaming and OpenAI-compatible endpoint: 4,000 characters; WebSocket: 2,000 characters per send_text message; async job: 100,000 characters (10,000 on On-Demand).",
+    "concurrency": "Guaranteed concurrent generations: On-Demand 5, Creator 10, Builder 50, Developer 150, Growth 500, Enterprise custom; WebSocket connections 50 / 100 / 500 / 1,500 / 5,000. Above the guarantee requests are best-effort.",
+    "sourceUrl": "https://docs.inworld.ai/resources/concurrency-limits"
+  },
+  "sdks": [
+    "Python (inworld-tts)",
+    "Node.js (@inworld/tts)",
+    "Inworld CLI (@inworld/cli) with an MCP server",
+    "Integrations listed for LiveKit, Twilio and Pipecat"
+  ],
+  "compliance": {
+    "hipaa": "stated",
+    "soc2": "stated",
+    "gdpr": "stated",
+    "note": "Self-attested. Vendor security page states SOC 2 Type II certification and HIPAA and GDPR compliance; the pricing page lists 'GDPR & SOC 2 Type II' on all plans and HIPAA/BAA and zero data retention as add-ons on Growth and above.",
+    "sourceUrl": "https://inworld.ai/security"
+  },
+  "strengths": [
+    {
+      "claim": "Offers an OpenAI-compatible /v1/audio/speech endpoint, so OpenAI SDK code needs only a base URL, key, model and voice change.",
+      "sourceUrl": "https://docs.inworld.ai/tts/openai-compatibility"
+    },
+    {
+      "claim": "Vendor-stated 20 ms (TTS-2 Flash) and 100 ms (TTS-2) P90 time to first audio byte, with HTTP streaming and WebSocket synthesis.",
+      "sourceUrl": "https://docs.inworld.ai/tts/tts-models"
+    },
+    {
+      "claim": "Covers 200+ languages and locales with instant voice cloning, voice design and natural-language steering on TTS-2.",
+      "sourceUrl": "https://docs.inworld.ai/tts/tts-models"
+    },
+    {
+      "claim": "Publishes tiered per-character rates, a free tier with 70 minutes of TTS, and states SOC 2 Type II, GDPR and HIPAA/BAA availability.",
+      "sourceUrl": "https://inworld.ai/pricing"
+    },
+    {
+      "claim": "Provides a free open-source ElevenLabs migration tool for batch-transferring cloned voices.",
+      "sourceUrl": "https://inworld.ai/tts"
+    }
+  ],
+  "limitations": [
+    {
+      "claim": "Published rates start at $15 per 1M characters (TTS-2 Flash) and $25 (TTS-2) on the free tier; the lowest listed rates require paid monthly plans or an Enterprise contract.",
+      "sourceUrl": "https://inworld.ai/pricing"
+    },
+    {
+      "claim": "The On-Demand tier is limited to 5 concurrent generations, and HIPAA/BAA and zero data retention are add-ons available from the Growth plan.",
+      "sourceUrl": "https://inworld.ai/pricing"
+    },
+    {
+      "claim": "Some features are labelled Preview or Beta (async and batch synthesis, professional voice cloning, SENTENCE_BOUNDARY segmentation).",
+      "sourceUrl": "https://docs.inworld.ai/llms.txt"
+    }
+  ],
+  "migration": {
+    "stepsToMove": [
+      "Create an API key in the Inworld portal (or with 'inworld workspace add-key') and send it as 'Authorization: Basic <key>' (the OpenAI-style endpoint also accepts Bearer).",
+      "Native REST: POST https://api.inworld.ai/tts/v1/voice with JSON text, voiceId, modelId (inworld-tts-2 or inworld-tts-2-flash) and audioConfig.audioEncoding; the response is JSON with Base64 audioContent and usage.processedCharactersCount.",
+      "For OpenAI SDK code, change the base URL to https://api.inworld.ai/v1 and set model and voice to Inworld IDs; OpenAI voice names do not resolve.",
+      "For low latency use HTTP streaming (POST /tts/v1/voice:stream, up to 4,000 characters) or the WebSocket at /v1/tts/synthesize:websocket (2,000 characters per message).",
+      "Recreate custom voices with instant voice cloning or voice design; Inworld publishes a tool to copy ElevenLabs cloned voices.",
+      "Plan for concurrency limits per plan (5 on On-Demand) and split long input across requests."
+    ],
+    "sourceUrls": [
+      "https://docs.inworld.ai/tts/synthesize-speech",
+      "https://docs.inworld.ai/tts/synthesize-speech-streaming",
+      "https://docs.inworld.ai/tts/synthesize-speech-websocket",
+      "https://docs.inworld.ai/tts/openai-compatibility",
+      "https://inworld.ai/tts"
+    ]
+  },
+  "bestFor": "Teams building realtime voice agents or multilingual products who want an OpenAI-compatible route, published latency targets, cloning and design tools, and stated enterprise compliance, and who are fine with per-character rates from about $7 to $25 per million depending on model and plan.",
+  "sources": [
+    {
+      "url": "https://inworld.ai/pricing",
+      "title": "Pricing - Inworld AI",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://docs.inworld.ai/portal/billing",
+      "title": "Billing - Inworld docs",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://docs.inworld.ai/tts/tts-models",
+      "title": "TTS models - Inworld docs",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://docs.inworld.ai/tts/openai-compatibility",
+      "title": "OpenAI compatibility - Inworld docs",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://docs.inworld.ai/tts/capabilities/generating-audio",
+      "title": "Generating audio - Inworld docs",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://docs.inworld.ai/resources/concurrency-limits",
+      "title": "Concurrency limits - Inworld docs",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://docs.inworld.ai/tts/synthesize-speech",
+      "title": "Synthesize speech - Inworld docs",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://docs.inworld.ai/tts/synthesize-speech-streaming",
+      "title": "Streaming synthesis - Inworld docs",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://docs.inworld.ai/tts/synthesize-speech-websocket",
+      "title": "WebSocket synthesis - Inworld docs",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://inworld.ai/security",
+      "title": "Security - Inworld AI",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://inworld.ai/tts",
+      "title": "Realtime TTS - Inworld AI",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://docs.inworld.ai/llms.txt",
+      "title": "Inworld docs index (llms.txt)",
+      "retrievedAt": "2026-10-10"
+    }
+  ],
+  "unknowns": [
+    "Number of built-in (non-custom) voices was not found.",
+    "Yearly-billing per-character rates were not read; the table above is the monthly-billing view.",
+    "Whether full SSML is supported is unclear: only SSML <break> tags are documented (pause controls); steering uses square-bracket instructions.",
+    "Model provider terms and any licensing conditions beyond the pricing-page 'Commercial license' line were not read.",
+    "Latency figures are vendor-stated P90 server-side values and were not verified.",
+    "Enterprise prices below the stated floor ('as low as $5', 'sub-$5') are not published."
+  ]
+}
