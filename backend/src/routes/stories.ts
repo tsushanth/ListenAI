@@ -2,6 +2,7 @@ import { Router, Request, Response, NextFunction, RequestHandler } from 'express
 import rateLimit from 'express-rate-limit';
 import { z } from 'zod';
 import Anthropic from '@anthropic-ai/sdk';
+import { instrumentAnthropic, withFeature } from '../lib/llm.js';
 import { randomUUID } from 'crypto';
 import { logger } from '../lib/logger.js';
 import { config } from '../lib/config.js';
@@ -10,7 +11,7 @@ import { ValidationError, AuthorizationError } from '../types/index.js';
 const storiesLogger = logger.child({ module: 'stories' });
 
 const anthropic = config.ANTHROPIC_API_KEY
-  ? new Anthropic({ apiKey: config.ANTHROPIC_API_KEY })
+  ? instrumentAnthropic(new Anthropic({ apiKey: config.ANTHROPIC_API_KEY }))
   : null;
 
 // Sonnet is overkill for ~400-word bedtime stories; Haiku is faster + cheaper
@@ -112,13 +113,13 @@ Hard rules:
     const startedAt = Date.now();
     let completion;
     try {
-      completion = await anthropic.messages.create({
+      completion = await withFeature('stories', () => anthropic.messages.create({
         model: STORY_MODEL,
         system: systemPrompt,
         messages: [{ role: 'user', content: userPrompt }],
         max_tokens: 1600,
         temperature: 0.8,
-      });
+      }));
     } catch (err) {
       storiesLogger.error({ err, deviceId, theme, length }, 'Anthropic call failed');
       throw err;

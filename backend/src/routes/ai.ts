@@ -1,6 +1,7 @@
 import { Router, Request, Response, NextFunction, RequestHandler } from 'express';
 import { z } from 'zod';
 import Anthropic from '@anthropic-ai/sdk';
+import { instrumentAnthropic, withFeature } from '../lib/llm.js';
 import { logger } from '../lib/logger.js';
 import { config } from '../lib/config.js';
 import type { AuthenticatedRequest } from '../types/index.js';
@@ -11,7 +12,7 @@ import { ValidationError, AuthorizationError } from '../types/index.js';
 // ============================================================================
 
 const anthropic = config.ANTHROPIC_API_KEY
-  ? new Anthropic({ apiKey: config.ANTHROPIC_API_KEY })
+  ? instrumentAnthropic(new Anthropic({ apiKey: config.ANTHROPIC_API_KEY }))
   : null;
 const LLM_MODEL = 'claude-sonnet-4-6';
 
@@ -130,13 +131,13 @@ Provide clear, accurate answers based on the article content.`;
     try {
       const startTime = Date.now();
 
-      const completion = await anthropic.messages.create({
+      const completion = await withFeature('ai', () => anthropic.messages.create({
         model: LLM_MODEL,
         system: systemPrompt,
         messages: [{ role: 'user', content: userPrompt }],
         max_tokens: 1000,
         temperature: 0.7,
-      });
+      }));
 
       const responseTime = Date.now() - startTime;
       const firstBlock = completion.content[0];
