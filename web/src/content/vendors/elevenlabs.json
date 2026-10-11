@@ -1,0 +1,237 @@
+{
+  "slug": "elevenlabs",
+  "name": "ElevenLabs",
+  "url": "https://elevenlabs.io/text-to-speech",
+  "status": "active",
+  "retrievedAt": "2026-10-10",
+  "category": "api-platform",
+  "positioning": "A voice-AI platform whose text-to-speech API offers expressive, multi-language models, a large voice library and voice cloning, alongside speech-to-text, agents and audio tools.",
+  "pricing": {
+    "model": "Per-character API list prices quoted per 1K characters on the ElevenAPI pricing page, also available through monthly subscription plans that include a shared credit pool (1 credit per character on most models; Flash/Turbo models cost 0.5 to 1 credit per character).",
+    "headline": "$0.04 per 1K characters ($40 per 1M) for Flash / Turbo; flagship v4 and v3 models list at $0.08 per 1K ($80 per 1M).",
+    "pricePer1MCharsUsd": 40,
+    "headlineTier": "Flash / Turbo (Flash v2.5), API list price, excluding promotions",
+    "tiers": [
+      {
+        "name": "Eleven v4",
+        "pricePer1MCharsUsd": 80,
+        "unit": "USD per 1M characters (list)",
+        "notes": "Promotional price $22 per 1M characters shown as '72% off until Oct 12'. Up to 10,000 characters per request; 90+ languages."
+      },
+      {
+        "name": "Eleven v4 Turbo",
+        "pricePer1MCharsUsd": 40,
+        "unit": "USD per 1M characters (list)",
+        "notes": "Promotional price $11 per 1M characters shown as '72% off until Oct 12'. Vendor-stated median inference latency ~100ms."
+      },
+      {
+        "name": "Eleven v3",
+        "pricePer1MCharsUsd": 80,
+        "unit": "USD per 1M characters",
+        "notes": "5,000 character limit per request; 70+ languages."
+      },
+      {
+        "name": "Eleven v3 Conversational",
+        "pricePer1MCharsUsd": 40,
+        "unit": "USD per 1M characters",
+        "notes": "Low-latency v3 tuned for realtime conversation; vendor-stated ~280ms."
+      },
+      {
+        "name": "Eleven Multilingual v2",
+        "pricePer1MCharsUsd": 80,
+        "unit": "USD per 1M characters",
+        "notes": "10,000 character limit per request; 29 languages."
+      },
+      {
+        "name": "Flash / Turbo (Flash v2.5)",
+        "pricePer1MCharsUsd": 40,
+        "unit": "USD per 1M characters",
+        "notes": "40,000 character limit per request; 32 languages; the models page describes it as 50% lower price per character for API generations."
+      },
+      {
+        "name": "Subscription plans (credits)",
+        "pricePer1MCharsUsd": null,
+        "unit": "USD per month; credits",
+        "notes": "Free $0 (10,000 credits), Starter $6 (30,000), Creator $22 (121,000), Pro $99 (600,000), Scale $299 (1,800,000), Business $990 (6,000,000), Enterprise custom. Credits are shared across all products."
+      }
+    ],
+    "freeTier": "Free plan: $0 per month with 10,000 credits per month (about 10 minutes of audio per the pricing page). The Commercial License is listed as starting at the Starter plan.",
+    "promotions": [
+      "Eleven v4 and v4 Turbo shown at 72% off until Oct 12 (v4 $0.022 and v4 Turbo $0.011 per 1K characters instead of $0.08 and $0.04). Source says 'Oct 12'; year not printed, retrieved 2026-10-10 so read as 2026-10-12.",
+      "Site banner: 3x credits included on Creator and above until October 12.",
+      "Starter plan first month $1 (83% off $6), shown 'Until Oct 18'; Creator first month $11 (50% off $22)."
+    ],
+    "sourceUrls": [
+      "https://elevenlabs.io/pricing/api",
+      "https://elevenlabs.io/pricing",
+      "https://elevenlabs.io/docs/overview/models"
+    ]
+  },
+  "voices": {
+    "count": "3,000+ community-shared voices in the Voice Library per docs; the Voice Changer entry on the pricing page cites 17,000+ voices",
+    "languages": "29 (Multilingual v2), 32 (Flash v2.5), 70+ (v3), 90+ (v4 and v4 Turbo), depending on model",
+    "customVoiceOrCloning": "Instant Voice Cloning (short samples, available on most plans, Starter and up per pricing page) and Professional Voice Cloning (Creator plan or above; verification step confirms the voice is the account holder's own; docs say cloning someone else's voice is not allowed even with consent). Voice Design creates voices from text descriptions. The Commercial License is listed from the Starter plan upward.",
+    "sourceUrl": "https://elevenlabs.io/docs/overview/capabilities/voices"
+  },
+  "streaming": {
+    "websocket": "yes",
+    "http": "yes",
+    "vendorStatedLatency": "Vendor-stated: 'Ultra-low latency (~75ms)' for Flash v2.5; footnote 'Excluding application & network latency' (https://elevenlabs.io/docs/overview/models). Not benchmarked by us.",
+    "sourceUrl": "https://elevenlabs.io/docs/overview/models"
+  },
+  "formats": [
+    "mp3 (22.05 to 44.1 kHz, 32 to 192 kbps)",
+    "pcm (8 to 48 kHz)",
+    "wav (8 to 48 kHz)",
+    "opus (48 kHz, 32 to 192 kbps)",
+    "ulaw_8000",
+    "alaw_8000"
+  ],
+  "ssml": "yes",
+  "compatibility": {
+    "openaiSpeechCompatible": "no",
+    "note": "Documented endpoint is POST /v1/text-to-speech/{voice_id} with an xi-api-key header and an output_format query such as mp3_44100_128; no OpenAI-style /v1/audio/speech mode was found in the pages read. SSML support is partial: break and phoneme tags on v2 models; v3 and v4 do not support break tags."
+  },
+  "licensing": {
+    "commercialUse": "Pricing page lists the Commercial License as included from the Starter plan; the Free plan row does not list it.",
+    "attributionOrConditions": "Voice cloning is subject to ElevenLabs Terms of Service and Prohibited Use Policy; Professional Voice Clones require a verification process (voice-cloning help page).",
+    "sourceUrl": "https://elevenlabs.io/pricing"
+  },
+  "limits": {
+    "perRequestCharacters": "Model dependent: 5,000 (v3), 10,000 (v4, Multilingual v2), 40,000 (Flash v2.5)",
+    "concurrency": null,
+    "sourceUrl": "https://elevenlabs.io/docs/overview/capabilities/text-to-speech"
+  },
+  "sdks": [
+    "Python (pip install elevenlabs)",
+    "JavaScript / TypeScript"
+  ],
+  "compliance": {
+    "hipaa": "stated",
+    "soc2": "not-stated",
+    "gdpr": "not-stated",
+    "note": "Self-attested: docs say ElevenAgents is HIPAA-eligible with BAAs available to eligible customers, and the pricing page lists Scribe v2 Medical as HIPAA-eligible. Whether this extends to the text-to-speech API was not stated on pages read. Zero Retention Mode for API use is described as an Enterprise option. A Trust Center exists (compliance.elevenlabs.io) but its content did not render for us, so SOC 2 and GDPR were not confirmed.",
+    "sourceUrl": "https://elevenlabs.io/docs/eleven-agents/legal/hipaa"
+  },
+  "strengths": [
+    {
+      "claim": "Expressive model line-up: v4 and v3 support audio tags and multi-speaker dialogue, covering 70+ to 90+ languages.",
+      "sourceUrl": "https://elevenlabs.io/docs/overview/capabilities/text-to-speech"
+    },
+    {
+      "claim": "Large voice catalogue: 3,000+ Voice Library voices plus instant and professional cloning and text-described Voice Design.",
+      "sourceUrl": "https://elevenlabs.io/docs/overview/capabilities/voices"
+    },
+    {
+      "claim": "WebSocket text-streaming endpoint with word-to-audio alignment for partial text input, plus a vendor-stated ~75ms Flash model for realtime use.",
+      "sourceUrl": "https://elevenlabs.io/docs/api-reference/text-to-speech/v-1-text-to-speech-voice-id-stream-input"
+    },
+    {
+      "claim": "Wide output format choice including mp3, pcm, wav, opus and 8 kHz mu-law and A-law for telephony.",
+      "sourceUrl": "https://elevenlabs.io/docs/api-reference/text-to-speech/convert"
+    },
+    {
+      "claim": "Pay-as-you-go and subscription options with a free plan for evaluation.",
+      "sourceUrl": "https://elevenlabs.io/pricing"
+    }
+  ],
+  "limitations": [
+    {
+      "claim": "The Free plan does not list a Commercial License; it begins at Starter.",
+      "sourceUrl": "https://elevenlabs.io/pricing"
+    },
+    {
+      "claim": "Eleven v4 and v3 do not support SSML break tags; the docs point to other pacing techniques.",
+      "sourceUrl": "https://elevenlabs.io/docs/overview/capabilities/text-to-speech/best-practices"
+    },
+    {
+      "claim": "The Voice Library is not available via the API to free-tier users.",
+      "sourceUrl": "https://elevenlabs.io/docs/overview/capabilities/text-to-speech"
+    }
+  ],
+  "migration": {
+    "stepsToMove": [
+      "Endpoint: ElevenLabs uses POST https://api.elevenlabs.io/v1/text-to-speech/{voice_id} (and a /stream-input WebSocket); ReadAloud accepts the same route shape on its own host, so for many apps the change is the base URL and key.",
+      "Auth: ElevenLabs sends the key in an xi-api-key header; replace with a ReadAloud API key in the same header.",
+      "Voice ids: ElevenLabs voice ids (for example JBFqnCBsd6RMkjVDRZzb) and library or cloned voices are account-specific and do not carry over; choose a ReadAloud voice id instead.",
+      "Output format: output_format query values such as mp3_44100_128 follow the codec_sample_rate_bitrate pattern; check the ReadAloud-supported subset.",
+      "Model ids and settings: model_id values (eleven_flash_v2_5, eleven_v3) and voice_settings are ElevenLabs-specific; audio tags and break tags do not translate."
+    ],
+    "sourceUrls": [
+      "https://elevenlabs.io/docs/api-reference/text-to-speech/convert",
+      "https://elevenlabs.io/docs/overview/models",
+      "https://elevenlabs.io/docs/api-reference/text-to-speech/v-1-text-to-speech-voice-id-stream-input"
+    ]
+  },
+  "bestFor": "Teams that want the most expressive, multi-language, voice-cloning-rich TTS and are comfortable paying premium per-character rates.",
+  "sources": [
+    {
+      "url": "https://elevenlabs.io/pricing/api",
+      "title": "ElevenAPI pricing",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://elevenlabs.io/pricing",
+      "title": "ElevenLabs pricing",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://elevenlabs.io/docs/overview/models",
+      "title": "Models",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://elevenlabs.io/docs/overview/capabilities/text-to-speech",
+      "title": "Text to Speech capabilities",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://elevenlabs.io/docs/api-reference/text-to-speech/convert",
+      "title": "Create speech (API reference)",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://elevenlabs.io/docs/api-reference/text-to-speech/v-1-text-to-speech-voice-id-stream-input",
+      "title": "WebSocket (API reference)",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://elevenlabs.io/docs/overview/capabilities/voices",
+      "title": "Voices",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://elevenlabs.io/docs/overview/capabilities/text-to-speech/best-practices",
+      "title": "TTS best practices",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://elevenlabs.io/docs/eleven-agents/legal/hipaa",
+      "title": "HIPAA",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://elevenlabs.io/docs/eleven-api/guides/how-to/text-to-speech/streaming",
+      "title": "Streaming text to speech",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://elevenlabs.io/docs/eleven-api/quickstart",
+      "title": "ElevenAPI quickstart",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://elevenlabs.io/docs/eleven-creative/voices/voice-cloning",
+      "title": "Voice cloning",
+      "retrievedAt": "2026-10-10"
+    }
+  ],
+  "unknowns": [
+    "Per-plan concurrency limits (pricing page table has a Concurrent requests row, column mapping ambiguous in extracted text)",
+    "SOC 2 and GDPR statements (Trust Center content did not render)",
+    "Whether HIPAA eligibility covers the text-to-speech API specifically",
+    "Whether an OpenAI-compatible speech route exists (none found in pages read)",
+    "Exact end date year for promotions (page prints 'Oct 12' and 'Oct 18' without a year)",
+    "Price per 1M characters under subscription plans (depends on credits per character; only list prices recorded)"
+  ]
+}
