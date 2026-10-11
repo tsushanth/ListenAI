@@ -1,0 +1,35 @@
+{
+  "_fixture": "TEST FIXTURE. Placeholder content for the library tests. Never publish.",
+  "slug": "pipecat",
+  "name": "Pipecat",
+  "h1": "Use ReadAloud text to speech in a Pipecat voice agent",
+  "metaDescription": "Add ReadAloud as the text-to-speech service in a Pipecat pipeline: install the plugin, set the key, run the quickstart and see what was tested and what is not supported.",
+  "intro": "Pipecat is an open-source Python framework for building voice agents as a pipeline of services: speech to text, a language model and text to speech. ReadAloud publishes a plugin that plugs into the text-to-speech slot of that pipeline. The plugin reads your key from an environment variable, streams audio from ReadAloud Live as sentences are ready, supports the 8 kHz formats that phone lines need, and stops speaking when the pipeline signals an interruption. This page shows the install command and a short quickstart, states which version of the framework we checked it with and on what date, and lists what was not tested, so you know where to look first if something differs on your setup. It does not claim anything about audio quality. Create a key, run the quickstart against the free credits, and measure the time to first audio from the machine where your agent will run, because results depend on location and network.",
+  "install": "pip install pipecat-readaloud",
+  "quickstart": {
+    "language": "python",
+    "code": "import os\nfrom pipecat_readaloud import ReadAloudTTSService\n\ntts = ReadAloudTTSService(api_key=os.environ[\"READALOUD_API_KEY\"], voice=\"readaloud-default\")\n# Add `tts` to your Pipecat pipeline in the text-to-speech position."
+  },
+  "verifiedWith": { "packageOrSdk": "pipecat-ai", "version": "1.12", "date": "2026-10-09" },
+  "whatWorks": [
+    "Streaming audio at 24 kHz, 16 kHz and 8 kHz was returned in a check against the live API.",
+    "Interrupting the agent stopped generation.",
+    "The plugin installed in a clean Python environment."
+  ],
+  "limitations": [
+    "A real telephony call was not tested.",
+    "Only the default English voice is covered here.",
+    "SSML is not supported."
+  ],
+  "links": [
+    { "label": "Pipecat documentation", "url": "https://docs.pipecat.ai" },
+    { "label": "Plugin on PyPI", "url": "https://pypi.org/project/pipecat-readaloud/" }
+  ],
+  "faq": [
+    { "q": "Where does the plugin read my key from?", "a": "From the READALOUD_API_KEY environment variable, or the api_key argument." },
+    { "q": "Does it support phone audio?", "a": "Yes, it can output 8 kHz audio." },
+    { "q": "Which Pipecat version was checked?", "a": "Version 1.12 on the date shown above; newer versions may differ." },
+    { "q": "What does it cost?", "a": "The same per-character price as the API, after the free credits." }
+  ],
+  "relatedSlugs": ["openai-sdk", "voice-agents", "audio-articles"]
+}

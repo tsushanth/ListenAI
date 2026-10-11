@@ -1,0 +1,33 @@
+{
+  "_fixture": "TEST FIXTURE. Placeholder content for the library tests. Never publish.",
+  "slug": "openai-sdk",
+  "name": "OpenAI SDKs",
+  "h1": "Call ReadAloud text to speech from an OpenAI SDK",
+  "metaDescription": "Point an OpenAI client at ReadAloud by changing the base URL and key: install, quickstart, the version we checked, and which fields are accepted or ignored.",
+  "intro": "ReadAloud serves an endpoint that accepts the OpenAI audio speech request, so code written for an OpenAI client can often be pointed at ReadAloud by changing two values: the base URL and the API key. The voice name decides what you hear, and the OpenAI stock names all map to the single default ReadAloud voice, so they sound the same. Several request fields are accepted and ignored, which keeps existing code working without errors but also means they have no effect, and a few output formats are not offered. This page shows the install command and a short quickstart in Python, states which version of the client library we checked it with and on what date, and lists what is not supported, so you know what to expect before you change production code. It makes no claim about audio quality or about how it compares with any other service. Run the quickstart with the free credits, play the result, and measure the time to first audio from the server where your code will run.",
+  "install": "pip install openai",
+  "quickstart": {
+    "language": "python",
+    "code": "from openai import OpenAI\n\nclient = OpenAI(base_url=\"https://api.readaloudai.org/v1\", api_key=\"YOUR_KEY\")\naudio = client.audio.speech.create(model=\"tts-1\", voice=\"readaloud-default\", input=\"Hello from ReadAloud.\", response_format=\"mp3\")\naudio.write_to_file(\"hello.mp3\")"
+  },
+  "verifiedWith": { "packageOrSdk": "openai (Python)", "version": "1.x", "date": "2026-10-09" },
+  "whatWorks": [
+    "mp3, wav and streamed pcm were returned in a live check.",
+    "Errors use the OpenAI shape, so existing error handling works."
+  ],
+  "limitations": [
+    "aac and flac output return an error.",
+    "The instructions field is ignored.",
+    "The OpenAI Realtime API is not supported."
+  ],
+  "links": [
+    { "label": "OpenAI Python library", "url": "https://github.com/openai/openai-python" }
+  ],
+  "faq": [
+    { "q": "Which voice should I use?", "a": "Use readaloud-default. The OpenAI stock voice names map to it." },
+    { "q": "Is the model field used?", "a": "It is accepted and ignored." },
+    { "q": "What is the request limit?", "a": "5,000 characters per request." },
+    { "q": "Does it stream?", "a": "Audio is streamed as it is produced, except wav, which is returned whole." }
+  ],
+  "relatedSlugs": ["pipecat", "voice-agents", "audio-articles"]
+}

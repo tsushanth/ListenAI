@@ -1,0 +1,85 @@
+{
+  "_fixture": "TEST FIXTURE. Placeholder data for the library tests. Never publish.",
+  "slug": "elevenlabs",
+  "name": "ElevenLabs",
+  "url": "https://elevenlabs.io",
+  "status": "active",
+  "retrievedAt": "2026-10-09",
+  "category": "api-platform",
+  "positioning": "A voice AI company that offers a text-to-speech API and a studio, with a large voice library, many languages and voice cloning.",
+  "pricing": {
+    "model": "Per-character API pricing that depends on the model, plus monthly subscription plans that include a character allowance",
+    "headline": "API list prices are quoted per 1,000 characters and differ by model",
+    "pricePer1MCharsUsd": 40,
+    "headlineTier": "Flash v2.5",
+    "tiers": [
+      { "name": "Flash v2.5", "pricePer1MCharsUsd": 40, "unit": "1M characters", "notes": "Listed as $0.04 per 1,000 characters" },
+      { "name": "Multilingual v2", "pricePer1MCharsUsd": 80, "unit": "1M characters", "notes": "Listed as $0.08 per 1,000 characters" }
+    ],
+    "freeTier": "A free plan with a small monthly character allowance",
+    "promotions": ["A promotional price on one newer model that ends on a stated date"],
+    "sourceUrls": ["https://elevenlabs.io/pricing/api"]
+  },
+  "voices": {
+    "count": "thousands of library voices",
+    "languages": "32 languages",
+    "customVoiceOrCloning": "Instant and professional voice cloning on paid plans",
+    "sourceUrl": "https://elevenlabs.io/text-to-speech"
+  },
+  "streaming": {
+    "websocket": "yes",
+    "http": "yes",
+    "vendorStatedLatency": "75 ms model latency for Flash",
+    "sourceUrl": "https://elevenlabs.io/docs/overview/models"
+  },
+  "formats": ["mp3_44100_128", "pcm_16000", "pcm_24000", "ulaw_8000", "opus_48000_64"],
+  "ssml": "yes",
+  "compatibility": { "openaiSpeechCompatible": "no", "note": "It has its own request shape and SDKs." },
+  "licensing": {
+    "commercialUse": "Commercial use of generated audio is allowed on paid plans",
+    "attributionOrConditions": "Free plan output requires attribution to the vendor",
+    "sourceUrl": "https://elevenlabs.io/terms-of-use"
+  },
+  "limits": {
+    "perRequestCharacters": "Up to 10,000 characters on some models and fewer on others",
+    "concurrency": "Concurrent request limits depend on the plan",
+    "sourceUrl": "https://elevenlabs.io/docs/api-reference/text-to-speech/convert"
+  },
+  "sdks": ["Python", "JavaScript"],
+  "compliance": {
+    "hipaa": "not-stated",
+    "soc2": "stated",
+    "gdpr": "stated",
+    "note": "The security page describes SOC 2 and GDPR; it does not mention HIPAA for the standard plans.",
+    "sourceUrl": "https://elevenlabs.io/security"
+  },
+  "strengths": [
+    { "claim": "Lists a large voice library across many languages, with cloning on paid plans", "sourceUrl": "https://elevenlabs.io/text-to-speech" },
+    { "claim": "Documents WebSocket streaming for text that arrives in pieces", "sourceUrl": "https://elevenlabs.io/docs/overview/models" },
+    { "claim": "Supports SSML-style controls and pronunciation dictionaries in its documentation", "sourceUrl": "https://elevenlabs.io/docs/api-reference/text-to-speech/convert" }
+  ],
+  "limitations": [
+    { "claim": "Per-request character limits differ by model, so long text has to be split", "sourceUrl": "https://elevenlabs.io/docs/api-reference/text-to-speech/convert" },
+    { "claim": "Free plan output carries an attribution requirement", "sourceUrl": "https://elevenlabs.io/terms-of-use" }
+  ],
+  "migration": {
+    "stepsToMove": [
+      "List the voice ids your application uses and note which are library voices and which are your own clones.",
+      "Download the audio you generated and want to keep, since clones and library voices stay with the vendor.",
+      "Export the pronunciation dictionaries you maintain, if any, so you can apply the same fixes in plain text.",
+      "Revoke the API keys you no longer need once traffic has moved."
+    ],
+    "sourceUrls": ["https://elevenlabs.io/docs/api-reference/voices/get-all"]
+  },
+  "bestFor": "Teams that need a wide choice of voices and languages, voice cloning, and SSML-style control.",
+  "sources": [
+    { "url": "https://elevenlabs.io/pricing/api", "title": "ElevenLabs API pricing", "retrievedAt": "2026-10-09" },
+    { "url": "https://elevenlabs.io/text-to-speech", "title": "ElevenLabs text to speech", "retrievedAt": "2026-10-09" },
+    { "url": "https://elevenlabs.io/docs/overview/models", "title": "ElevenLabs models", "retrievedAt": "2026-10-09" },
+    { "url": "https://elevenlabs.io/terms-of-use", "title": "ElevenLabs terms of use", "retrievedAt": "2026-10-09" },
+    { "url": "https://elevenlabs.io/docs/api-reference/text-to-speech/convert", "title": "ElevenLabs text-to-speech API reference", "retrievedAt": "2026-10-09" },
+    { "url": "https://elevenlabs.io/security", "title": "ElevenLabs security", "retrievedAt": "2026-10-09" },
+    { "url": "https://elevenlabs.io/docs/api-reference/voices/get-all", "title": "ElevenLabs voices API", "retrievedAt": "2026-10-09" }
+  ],
+  "unknowns": ["Concurrency numbers for each plan were not listed on the public pages we reviewed.", "Whether the attribution requirement applies to API use on the free plan was not clear."]
+}

@@ -1,0 +1,48 @@
+{
+  "_fixture": "TEST FIXTURE. Placeholder content for the library tests. Never publish.",
+  "slug": "audio-articles",
+  "name": "Audio versions of articles",
+  "h1": "Text to speech for audio versions of articles and newsletters",
+  "metaDescription": "How a publisher or newsletter turns written posts into audio with a text-to-speech API: the steps, a sample paragraph, when to choose ReadAloud and what to check.",
+  "intro": "Many readers prefer to listen to a long post while they commute or cook, and a publisher can offer that without hiring a narrator by sending the text of each post to a text-to-speech API and attaching the returned audio file to the page or the podcast feed. The work is mostly plumbing. You clean the markup out of the article, split it into pieces that fit the request limit, send the pieces in order, join the audio, and store the result next to the post. ReadAloud Studio is the higher-priced tier with several English voices and is positioned for read-aloud and narration, while ReadAloud Live costs less per character and has one voice. This page lists the steps, shows a sample paragraph as plain text, and explains when a different service is the better fit, for example when you need many languages or SSML control over pauses. Nothing here is a claim about how the audio sounds: listen to a few of your own articles with the free credits before you commit, and decide with the people who will hear it.",
+  "steps": [
+    "Strip navigation, ads and markup from the article so the text is only what you want spoken.",
+    "Split the text at paragraph or sentence boundaries into pieces under 5,000 characters.",
+    "Choose a tier and a voice, then send each piece to the API in order.",
+    "Join the returned audio files and add a short pause between pieces if you want one.",
+    "Store the file next to the post and re-generate it only when the article changes."
+  ],
+  "sampleExample": {
+    "title": "A paragraph from a newsletter",
+    "input": "This week the council voted to extend the library's opening hours through the winter. Doors will now open at eight on weekdays, and the Saturday session runs until six.",
+    "notes": "Numbers and times are written out the way you want them read, since SSML is not available."
+  },
+  "whenToChooseReadAloud": [
+    "You publish in English and want audio at a low price per character.",
+    "You want a flat per-character price with no plan to manage.",
+    "You want to try the OpenAI-compatible endpoint from an existing script."
+  ],
+  "whenToChooseSomethingElse": [
+    "You publish in several languages.",
+    "You need SSML to control pauses and pronunciation.",
+    "You need a large voice library or a cloned narrator voice with its own contract terms."
+  ],
+  "featuresUsed": [
+    { "feature": "ReadAloud Studio", "howItHelps": "The higher-priced tier offers several English voices." },
+    { "feature": "OpenAI-compatible speech endpoint", "howItHelps": "Existing scripts can switch by changing the base URL." },
+    { "feature": "mp3 output", "howItHelps": "A single mp3 file suits a podcast feed or an audio player on the page." }
+  ],
+  "considerations": [
+    "Listen to a few real articles before you pick a tier.",
+    "Names and acronyms may need to be respelled in the text.",
+    "Keep the original text so you can regenerate when you edit."
+  ],
+  "faq": [
+    { "q": "How long can one request be?", "a": "Up to 5,000 characters, so long articles are sent in pieces." },
+    { "q": "Which formats can I get?", "a": "mp3, opus, wav and pcm on the OpenAI-compatible route." },
+    { "q": "Can I use SSML?", "a": "No. Write the text the way you want it read." },
+    { "q": "Is there an audiobook option?", "a": "ReadAloud has an audiobook export tool; see the Voice API page for details." },
+    { "q": "What does one article cost?", "a": "Billing is per character, so multiply the article length by the price of the tier you choose." }
+  ],
+  "relatedSlugs": ["voice-agents", "openai-sdk", "pipecat", "audio-articles"]
+}
