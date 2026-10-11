@@ -75,11 +75,25 @@ export function validateVendor(v: Vendor, now: Date = new Date()): Issue[] {
   if (stated(v.limits.perRequestCharacters) || stated(v.limits.concurrency) || v.limits.sourceUrl) needSource('limits', v.limits.sourceUrl)
   // When hipaa, soc2 and gdpr are all 'not-stated' there is no compliance fact to cite. Any 'stated' value still needs a listed source.
   if ([v.compliance.hipaa, v.compliance.soc2, v.compliance.gdpr].some((x) => x !== 'not-stated') || v.compliance.sourceUrl) needSource('compliance', v.compliance.sourceUrl)
-  if (v.migration.stepsToMove.length && v.migration.sourceUrls.length === 0) err('FACT_NO_SOURCE', 'migration.stepsToMove has no sourceUrls')
+  if ((v.migration.stepsToMove.length || v.migration.mapping.length) && v.migration.sourceUrls.length === 0) err('FACT_NO_SOURCE', 'migration.stepsToMove or migration.mapping has no sourceUrls')
   v.migration.sourceUrls.forEach((u) => needSource('migration', u))
   v.strengths.forEach((s, i) => needSource(`strengths[${i}]`, s.sourceUrl))
   v.limitations.forEach((s, i) => needSource(`limitations[${i}]`, s.sourceUrl))
   for (const s of v.sources) if (!/^https:/i.test(s.url)) warn('SOURCE_NOT_HTTPS', `${s.url} is not https`)
+
+  // Status. Anything but 'active' needs a documented reason. 'sunsetting' needs the announced date and the vendor's own words, from pages
+  // listed in sources[]. A price that exists only in an archive must be marked archive-only so no page shows it.
+  if (v.status !== 'active' && !v.statusNote.trim()) err('STATUS_NOTE_MISSING', `status is "${v.status}" but statusNote is empty; say why, with evidence`)
+  if (v.status === 'sunsetting') {
+    if (!v.sunset) err('SUNSET_MISSING', 'status is "sunsetting" but sunset { date, notice, noticeSourceUrls } is missing')
+    else {
+      v.sunset.noticeSourceUrls.forEach((u) => needSource('sunset notice', u))
+      if (v.sunset.notice.length > 125) err('SUNSET_QUOTE_LONG', `sunset.notice is ${v.sunset.notice.length} characters; quotations are 125 or fewer`)
+      if (v.sunset.dataDeletion.length > 125) err('SUNSET_QUOTE_LONG', `sunset.dataDeletion is ${v.sunset.dataDeletion.length} characters; quotations are 125 or fewer`)
+      if (v.sunset.date <= t) warn('SUNSET_PASSED', `sunset date ${v.sunset.date} has passed; re-check the vendor and move it to "inactive"`)
+    }
+  } else if (v.sunset) warn('SUNSET_UNUSED', 'sunset is set but status is not "sunsetting"')
+  if (v.pricing.sourceUrls.some((u) => /(^|\/\/)web\.archive\.org\//i.test(u)) && v.pricing.priceBasis !== 'archive-only') err('ARCHIVE_PRICE_SHOWN', 'a pricing source is an archive.org snapshot but pricing.priceBasis is not "archive-only"; prices read from an archive are never shown')
 
   // Prices: a per-1M-characters price must say what tier it covers, and must not be a conversion from another unit.
   if (v.pricing.pricePer1MCharsUsd !== null && !v.pricing.headlineTier && v.pricing.tiers.length === 0) err('PRICE_NO_TIER', 'pricePer1MCharsUsd is set but headlineTier and tiers[] are empty, so the page cannot say what tier the price covers')
@@ -199,6 +213,13 @@ export function validatePage(lib: Library, p: LibraryPageModel): Issue[] {
     if (!/we make ReadAloud/i.test(body)) e('NO_DISCLOSURE', 'page does not say that we make ReadAloud')
     if (!p.blocks.some((b) => b.kind === 'sources' && b.items.length > 0)) e('NO_SOURCES', 'vendor page lists no sources')
     if (p.faqJsonLd || p.blocks.some((b) => b.kind === 'faq')) e('FAQ_ON_VENDOR_PAGE', 'vendor pages must not carry FAQ markup')
+    if (vendor?.status === 'sunsetting' && vendor.sunset) {
+      const alert = p.blocks.find((b) => b.kind === 'alert')
+      const text = alert && alert.kind === 'alert' ? alert.items.map((i) => i.text).join(' ') : ''
+      if (!alert || !text.includes(vendor.sunset.notice) || !alert.items.some((i) => i.sourceUrl)) e('SUNSET_NOT_SHOWN', 'a page about a vendor with an announced end date must open with the sourced notice quoting the vendor')
+    }
+    if (vendor?.status === 'sunsetting' && p.type === 'compare') e('SUNSET_COMPARED', 'a compare page exists for a vendor that is sunsetting')
+    if (vendor?.pricing.priceBasis === 'archive-only' && numericRows(vendor).length) e('ARCHIVE_PRICE_SHOWN', 'an archive-only price is in the price rows')
     if (vendor) {
       const lowerLive = numericRows(vendor).some((r) => relation(r.per1M, RA_LIVE.per1MUsd) === 'lower')
       const lowerStudio = numericRows(vendor).some((r) => relation(r.per1M, RA_STUDIO.per1MUsd) === 'lower')

@@ -31,7 +31,7 @@ export function slugFromSegment(type: PageType, segment: string): string | null 
 }
 
 /** The order migration pages are built in; capped. Vendors outside this list fill any remaining places alphabetically. */
-export const MIGRATE_PRIORITY = ['elevenlabs', 'openai-tts', 'google-cloud-tts', 'amazon-polly', 'azure-ai-speech', 'cartesia', 'deepgram-aura', 'play-ai', 'lmnt', 'rime', 'murf-ai', 'unreal-speech']
+export const MIGRATE_PRIORITY = ['hume-octave', 'elevenlabs', 'openai-tts', 'google-cloud-tts', 'amazon-polly', 'azure-ai-speech', 'cartesia', 'deepgram-aura', 'play-ai', 'lmnt', 'rime', 'murf-ai', 'unreal-speech']
 export const MIGRATE_CAP = 12
 
 /**

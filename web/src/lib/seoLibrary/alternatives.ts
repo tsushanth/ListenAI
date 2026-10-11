@@ -4,8 +4,8 @@ import {
 import type { Vendor, VendorCategory } from './schema.ts'
 import type { Library } from './load.ts'
 import type { Block } from './model.ts'
-import { NOT_STATED, hash, joinList, lowerFirst, poss, sentence, usd } from './helpers.ts'
-import { CATEGORY_LABEL, FAMILY_PHRASE, hasText, numericRows, priceFamily, priceRows, priceStatements, priceText, relatedOptions, withArticle } from './vendor.ts'
+import { NOT_STATED, hash, joinList, longDate, lowerFirst, poss, sentence, usd } from './helpers.ts'
+import { CATEGORY_LABEL, FAMILY_PHRASE, hasText, numericRows, priceFamily, priceIsArchiveOnly, priceRows, priceStatements, priceText, relatedOptions, withArticle } from './vendor.ts'
 import { vendorLatencyCell, voiceCount } from './compare.ts'
 
 // The body of every /alternatives/<slug>-alternatives page. Three rules keep these pages from becoming thin, near-duplicate
@@ -18,6 +18,8 @@ import { vendorLatencyCell, voiceCount } from './compare.ts'
 //      data, so two pages share facts only when the data does.
 
 const LANG_CLIP = 90
+const article = (name: string): string => (/^[aeiou]/i.test(name) ? 'an' : 'a')
+const cap = (s: string): string => s.charAt(0).toUpperCase() + s.slice(1)
 
 type Item = { text: string; sourceUrl?: string }
 type Section = (v: Vendor, lib: Library) => Block[]
@@ -59,9 +61,9 @@ const pricing: Section = (v) => {
     'model-vendor': 'Check which unit the speech endpoint is billed in, since model vendors often price speech differently from text, and compare in that unit before converting anything.',
     'open-source-host': 'Check whether you pay per second of compute or per request, what a cold start costs, and who owns the model license.',
   }
-  out.push({ kind: 'p', text: note[v.category] })
+  if (!priceIsArchiveOnly(v)) out.push({ kind: 'p', text: note[v.category] })
   for (const s of priceStatements(v)) out.push({ kind: 'p', text: s })
-  if (hasText(v.pricing.freeTier)) out.push({ kind: 'p', text: `Free tier at ${v.name}: ${sentence(v.pricing.freeTier)}` })
+  if (hasText(v.pricing.freeTier) && !priceIsArchiveOnly(v)) out.push({ kind: 'p', text: `Free tier at ${v.name}: ${sentence(v.pricing.freeTier)}` })
   return out
 }
 
@@ -71,17 +73,19 @@ const latency: Section = (v) => {
   const ws = v.streaming.websocket
   const http = v.streaming.http
   const bits = [ws !== 'unknown' ? `WebSocket streaming ${ws === 'yes' ? 'is listed' : 'is not listed'}` : '', http !== 'unknown' ? `HTTP streaming ${http === 'yes' ? 'is listed' : 'is not listed'}` : ''].filter(Boolean)
-  out.push({ kind: 'p', text: `${bits.length ? `${v.name}: ${joinList(bits)}.` : `We could not read a streaming statement on ${poss(v.name)} pages.`} ${hasText(v.streaming.vendorStatedLatency) ? `${lat.text}.` : 'No latency figure is stated on the pages we reviewed.'} Test from your own servers with your own text.` })
+  const streamNote = hasText(v.streaming.note) ? ` ${sentence(v.streaming.note)}` : ''
+  out.push({ kind: 'p', text: `${bits.length ? `${v.name}: ${joinList(bits)}.${streamNote}` : hasText(v.streaming.note) ? `${v.name}:${streamNote}` : `We could not read a streaming statement on ${poss(v.name)} pages.`} ${hasText(v.streaming.vendorStatedLatency) ? `${sentence(lat.text)}` : 'No latency figure is stated on the pages we reviewed.'} Test from your own servers with your own text.` })
   return out
 }
 
 const voices: Section = (v) => {
   const bits: string[] = []
-  if (hasText(v.voices.count)) bits.push(voiceCount(v))
-  if (hasText(v.voices.languages)) bits.push(`languages listed: ${v.voices.languages}`)
-  if (hasText(v.voices.customVoiceOrCloning)) bits.push(`custom voices: ${v.voices.customVoiceOrCloning}`)
+  const trim = (s: string) => s.trim().replace(/[.\s]+$/, '')
+  if (hasText(v.voices.count)) bits.push(trim(voiceCount(v)))
+  if (hasText(v.voices.languages)) bits.push(`languages listed: ${trim(v.voices.languages)}`)
+  if (hasText(v.voices.customVoiceOrCloning)) bits.push(`custom voices: ${trim(v.voices.customVoiceOrCloning)}`)
   if (!bits.length) return []
-  return [{ kind: 'h2', text: 'Voices and languages' }, { kind: 'p', text: `${v.name}: ${bits.join('; ')}.` }]
+  return [{ kind: 'h2', text: 'Voices and languages' }, { kind: 'p', text: sentence(`${v.name}: ${bits.join('; ')}`) }]
 }
 
 const limits: Section = (v) => {
@@ -145,9 +149,11 @@ function checklist(v: Vendor): Item[] {
   const fam = priceFamily(v)
   pool.push(fam === 'per-character'
     ? { text: `Price your monthly characters on each ${v.name} tier you would use.` }
+    : fam === 'no-list'
+    ? { text: `Price your monthly characters on each option you shortlist, because ${v.name} no longer has a public price list to compare against.` }
     : { text: `Convert your monthly volume into ${poss(v.name)} own unit before comparing, because ${v.name} ${FAMILY_PHRASE[fam]} and a per-character figure would need assumptions it does not state.` })
   pool.push(v.streaming.websocket === 'yes' ? { text: `If you stream text in as a language model produces it, confirm that ${poss(v.name)} WebSocket input handles partial sentences the way your code expects.` } : { text: 'Decide whether you need audio to start before the whole text is sent. If you do, check that the service you pick streams input as well as output.' })
-  pool.push(hasText(v.limits.perRequestCharacters) ? { text: `${poss(v.name)} per-request limit is stated as: ${lowerFirst(v.limits.perRequestCharacters)}. Compare it with the length of your longest text and plan how you will split it.`, sourceUrl: v.limits.sourceUrl } : { text: `${poss(v.name)} per-request limit is not stated on the pages we reviewed, so test your longest text before you commit.` })
+  pool.push(hasText(v.limits.perRequestCharacters) ? { text: `${poss(v.name)} per-request limit is stated as: ${lowerFirst(v.limits.perRequestCharacters).replace(/[.\s]+$/, '')}. Compare it with the length of your longest text and plan how you will split it.`, sourceUrl: v.limits.sourceUrl } : { text: `${poss(v.name)} per-request limit is not stated on the pages we reviewed, so test your longest text before you commit.` })
   pool.push(v.ssml === 'yes' ? { text: `If you rely on SSML for pauses or pronunciation, note that ${v.name} lists support for it and that ${RA_NAME} does not accept SSML.` } : { text: 'List the pronunciation problems you have today (names, acronyms, numbers) and test them, since not every service lets you correct them with markup.' })
   pool.push(hasText(v.voices.customVoiceOrCloning) ? { text: `If you need a custom voice, read ${poss(v.name)} consent and license terms before you record anyone.`, sourceUrl: v.voices.sourceUrl } : null)
   pool.push(v.compatibility.openaiSpeechCompatible === 'yes' ? { text: `${v.name} lists an OpenAI-compatible endpoint, so you can keep a thin adapter in your code and swap providers by changing a base URL.` } : null)
@@ -181,6 +187,8 @@ function raDifference(v: Vendor): Block[] {
   const rows = numericRows(v)
   const price = rows.length
     ? `${poss(v.name)} per-character figures are in the pricing list above, next to ${RA_LIVE.name} at ${usd(RA_LIVE.per1MUsd)} and ${RA_STUDIO.name} at ${usd(RA_STUDIO.per1MUsd)}.`
+    : priceIsArchiveOnly(v)
+    ? `${RA_NAME} bills per character (${usd(RA_LIVE.per1MUsd)} and ${usd(RA_STUDIO.per1MUsd)} per 1M characters), while ${v.name} has no current public price list.`
     : `${RA_NAME} bills per character (${usd(RA_LIVE.per1MUsd)} and ${usd(RA_STUDIO.per1MUsd)} per 1M characters), while ${v.name} uses a different unit.`
   return [
     { kind: 'h2', text: `How ${RA_NAME} differs from ${v.name}` },
@@ -201,14 +209,18 @@ export function alternativesBody(lib: Library, v: Vendor): { blocks: Block[]; re
 }
 
 export function alternativesLede(v: Vendor, date: string): string {
-  return `What to consider when choosing a ${v.name} alternative (${withArticle(catLabel(v))}), built from ${poss(v.name)} public pages as of ${date}. ${RA_NAME}, which we make, is one disclosed option among several.`
+  if (v.sunset) return `${v.name} has announced that access ends on ${longDate(v.sunset.date)}. What to consider when choosing ${article(v.name)} ${v.name} alternative, built from ${poss(v.name)} public pages as of ${date}. ${RA_NAME}, which we make, is one disclosed option among several.`
+  return `What to consider when choosing ${article(v.name)} ${v.name} alternative (${withArticle(catLabel(v))}), built from ${poss(v.name)} public pages as of ${date}. ${RA_NAME}, which we make, is one disclosed option among several.`
 }
 
 export function alternativesDescription(v: Vendor, date: string, n: number): string {
-  const c = [
-    `What to consider when choosing a ${v.name} alternative: questions to ask, ${n} related vendors and ${RA_NAME}, from pages reviewed ${date}.`,
-    `Choosing a ${v.name} alternative: what to check, ${n} related vendors and ${RA_NAME}, from pages reviewed ${date}.`,
-    `A ${v.name} alternative guide: what to check and ${n} options, from pages reviewed ${date}.`,
+  const c = v.sunset ? [
+    `${v.name} has announced that access ends ${longDate(v.sunset.date)}. What to consider when choosing an alternative, from pages reviewed ${date}.`,
+    `${v.name} access ends ${longDate(v.sunset.date)}. What to check when choosing an alternative, from pages reviewed ${date}.`,
+  ] : [
+    `What to consider when choosing ${article(v.name)} ${v.name} alternative: questions to ask, ${n} related vendors and ${RA_NAME}, from pages reviewed ${date}.`,
+    `Choosing ${article(v.name)} ${v.name} alternative: what to check, ${n} related vendors and ${RA_NAME}, from pages reviewed ${date}.`,
+    `${cap(article(v.name))} ${v.name} alternative guide: what to check and ${n} options, from pages reviewed ${date}.`,
   ]
   return c.find((x) => x.length <= 165) ?? c[c.length - 1]
 }

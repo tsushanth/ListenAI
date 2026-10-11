@@ -165,6 +165,32 @@ export const RA_VOICES = {
   noVoiceMapping: 'There is no table that maps another vendor\'s voices to ReadAloud voices.',
 } as const
 
+/**
+ * What ReadAloud does not offer in the way of expressive control. Printed on migrate pages for vendors whose data lists emotion, acting
+ * or style controls. Sources: developers page, "Not supported" (instructions ignored) and the no-SSML statement above.
+ */
+export const RA_EXPRESSIVE = {
+  statement: 'ReadAloud does not offer emotion or expressive control: it has no acting instructions, no style prompts, no SSML and no audio tags, and the instructions field of the OpenAI route is ignored.',
+  advice: 'If you need that, ReadAloud is not the right fit for that part of your product; evaluate other vendors that list it.',
+} as const
+
+/** What each kind of vendor request field or endpoint becomes at ReadAloud (migrate pages, vendor migration.mapping). */
+export const RA_MIGRATION_MAP = {
+  text: 'input on the OpenAI-compatible route (text on the WebSocket), up to 5,000 characters per request; split longer text at sentence boundaries',
+  voice: 'voice: readaloud-default on ReadAloud Live, or a ReadAloud Studio voice listed by GET /v1/voices. Vendor voice names and ids do not exist at ReadAloud',
+  style: 'No equivalent. ReadAloud has no acting instructions, style prompts, SSML or audio tags',
+  ssml: 'No equivalent. ReadAloud does not accept SSML; send plain text and remove markup',
+  model: 'model is accepted and ignored: the voice decides how the audio is made',
+  ignored: 'Accepted and ignored by the OpenAI-compatible route',
+  timing: 'No equivalent is documented. ReadAloud documents audio plus a per-sentence chunk_meta message on the WebSocket; no word or viseme marks are documented',
+  speed: 'speed, 0.25 to 4.0 on the OpenAI-compatible route',
+  format: 'response_format on the OpenAI-compatible route: mp3, opus, wav or pcm (aac and flac return 400); the WebSocket also offers 8 kHz mu-law and A-law',
+  other: 'No matching field is documented; leave it out and test the result',
+  'endpoint-http': 'POST /v1/audio/speech (the OpenAI-compatible route), which returns the audio in the response',
+  'endpoint-stream': 'POST /v1/audio/speech, which streams audio as it is produced (wav is returned whole)',
+  'endpoint-websocket': 'WebSocket streaming: call the authorize route for a 60-second token, then connect and send synthesize messages (see the Voice API page)',
+} as const
+
 export const RA_LANGUAGES = {
   headline: 'English',
   short: 'English today',
@@ -189,10 +215,24 @@ export const RA_OTHER_PRODUCTS = [
 export const RA_INTEGRATIONS = {
   pipecat: { name: 'Pipecat', pkg: 'pipecat-readaloud', status: 'plugin written and maintained by ReadAloud, MIT licensed' },
   livekit: { name: 'LiveKit Agents', pkg: 'livekit-plugins-readaloud', status: 'plugin written and maintained by ReadAloud, MIT licensed' },
-  vapi: { name: 'Vapi', status: 'custom voice endpoint verified directly; the developers page says it has not been tested from a real Vapi assistant, so treat the setup as unverified' },
+  vapi: { name: 'Vapi', status: 'custom voice endpoint verified directly, and one real Vapi assistant call run on 2026-10-10 with the inline secret; the Custom Credential flow, the sample rate Vapi requested, 429 and timeout handling, and audio quality by ear were not tested' },
+  n8n: { name: 'n8n', pkg: 'n8n-nodes-readaloud', status: 'community node on npm, in n8n\'s verification review; not verified by n8n' },
+  vercelAiSdk: { name: 'Vercel AI SDK', pkg: 'ai-sdk-provider-readaloud', status: 'provider package on npm' },
   openai: { name: 'OpenAI SDKs', status: 'OpenAI-compatible speech route' },
   mcp: { name: 'MCP server', status: 'hosted MCP server for Claude, Cursor and VS Code' },
 } as const
+
+/**
+ * Features that were checked against the live site on 2026-10-10 and added to the vocabulary below, each with the place that shows it.
+ * Add a feature here only with an evidence path; a use case that lists a feature nobody can point at is a false claim.
+ */
+export const RA_VERIFIED_FEATURES: readonly { feature: string; evidence: string }[] = [
+  { feature: '5,000-character requests', evidence: 'web/src/app/developers/page.tsx: "ReadAloud Live accepts up to 5,000 characters per request"; the OpenAI route returns 400 for input over 5,000 characters' },
+  { feature: 'server-side keys', evidence: 'web/src/app/developers/page.tsx, SDKs and MCP: "Because a client takes your API key, use it from a server, not a browser."' },
+  { feature: 'error codes', evidence: 'web/src/app/developers/page.tsx: 400, 401, 402, 404 and 429 on the OpenAI route; 401, 402 on authorize; 503 with Retry-After on HTTP streaming; close code 1013 on the WebSocket' },
+  { feature: 'g.711 output', evidence: 'web/src/app/developers/page.tsx, Audio formats: mulaw_8000 and alaw_8000 (G.711, 8 kHz)' },
+  { feature: 'sentence-by-sentence synthesis', evidence: 'web/src/app/developers/page.tsx: chunk_meta "once per sentence"; HTTP streaming "streams raw audio as each sentence is ready"' },
+]
 
 /** Product and feature names a use-case page may list under featuresUsed. Matched loosely (substring, either way). A miss is a warning. */
 export const RA_FEATURE_VOCABULARY: readonly string[] = [
@@ -235,6 +275,7 @@ export const RA_FEATURE_VOCABULARY: readonly string[] = [
   'chunk',
   'interrupt',
   'stop',
+  ...RA_VERIFIED_FEATURES.map((f) => f.feature.toLowerCase()),
 ]
 
 /** Names of the engines behind the tiers. They must not appear on any page the library renders about ReadAloud. */
@@ -246,7 +287,7 @@ export const RA_FORBIDDEN_ENGINE_NAMES: readonly string[] = ['piper', 'kokoro', 
  */
 export const UNVERIFIED: readonly string[] = [
   'How many Studio voices exist and which languages they cover: the site says "multiple English voices" only, so no count is printed.',
-  'Whether the Vapi custom-voice setup works from a real Vapi assistant: the developers page says untested, while the gateway status matrix in the realtime-tts repo records a real call on 2026-10-10. The page wording wins until the developers page is updated.',
+  'Vapi beyond one real assistant call on 2026-10-10 (inline secret, 24 seconds, two Vapi-reported custom-voice latencies): the Custom Credential flow, the sample rate Vapi requested, 429 and timeout handling and audio quality by ear are untested and stay off pages as claims.',
   'Latency for ReadAloud Studio: no measurement is published, so none is printed.',
   'Latency on the OpenAI-compatible route: a 150-170 ms warm figure sits in the gateway docs but not on the site, so it is not printed.',
   'A head-to-head latency figure against any vendor other than the one on the developers page; library pages print vendor latency only as vendor-stated.',

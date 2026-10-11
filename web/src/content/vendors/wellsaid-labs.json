@@ -7,7 +7,7 @@
   "category": "studio-tool",
   "positioning": "WellSaid is a voiceover studio for teams producing finished narration, with a separate REST text-to-speech API whose pricing is quoted on request.",
   "pricing": {
-    "model": "Studio: monthly or annual subscriptions metered by downloaded minutes of finished audio (generation is unlimited on paid plans). API: priced by monthly character quota with overages, rates not published.",
+    "model": "Studio: monthly or annual subscriptions metered by downloaded minutes of finished audio (no cap on generation is stated for paid plans). API: priced by monthly character quota with overages, rates not published.",
     "headline": "No public per-character API price. Studio plans start at USD 10 per month billed annually (240 downloaded minutes per year) or USD 19 per month billed monthly (20 minutes per month).",
     "pricePer1MCharsUsd": null,
     "headlineTier": "Not published: WellSaid's FAQ says API usage is charged by monthly character quota plus overages, but rates are not on its public pages",
@@ -28,7 +28,7 @@
         "name": "Pro (Studio)",
         "pricePer1MCharsUsd": null,
         "unit": "USD 33 per month billed annually (USD 396/year, 2,160 minutes/year) or USD 49 per month billed monthly (180 minutes/month)",
-        "notes": "Unlimited projects, up to 48 kHz, Adobe Express integration; extra minutes can be bought in Studio."
+        "notes": "No stated cap on projects, up to 48 kHz, Adobe Express integration; extra minutes can be bought in Studio."
       },
       {
         "name": "Business (Studio)",
@@ -63,7 +63,7 @@
   "streaming": {
     "websocket": "unknown",
     "http": "yes",
-    "vendorStatedLatency": "Vendor-stated: fastest render speed 'approximately 500ms per 30 characters' (API FAQ); streaming endpoint recommended for low latency.",
+    "vendorStatedLatency": "Vendor-stated: render speed 'approximately 500ms per 30 characters' (API FAQ); streaming endpoint recommended for low latency.",
     "sourceUrl": "https://docs.wellsaidlabs.com/docs/frequently-asked-questions"
   },
   "formats": [
@@ -137,7 +137,7 @@
       "Request an API key (a 7-day trial is available) and note that WellSaid authenticates with an X-Api-Key header.",
       "Swap the endpoint: POST https://api.wellsaidlabs.com/v1/tts/stream with text (1 to 1,000 characters), numeric speaker_id and optional model ('legacy' or 'caruso').",
       "Map each speaker_id to a voice on the target service using the avatars list (GET avatars endpoint).",
-      "Translate SSML (say-as only, via the X-Enable-SSML header) and replacement libraries (pronunciation respellings) to the target's pronunciation controls.",
+      "Translate SSML (the say-as tag, via the X-Enable-SSML header) and replacement libraries (pronunciation respellings) to the target's pronunciation controls.",
       "If you use async clips, word timing or clip combining with pauses, replace those workflows separately."
     ],
     "sourceUrls": [

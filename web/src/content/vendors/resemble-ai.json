@@ -2,13 +2,13 @@
   "slug": "resemble-ai",
   "name": "Resemble AI",
   "url": "https://www.resemble.ai",
-  "status": "active",
+  "status": "inactive",
   "retrievedAt": "2026-10-10",
   "category": "api-platform",
-  "positioning": "Resemble AI offers a voice API (text-to-speech, cloning, speech-to-speech, speech-to-text) alongside a now more prominent deepfake detection, watermarking and identity product line, and also maintains the open-source Chatterbox models.",
+  "positioning": "Resemble AI offers a voice API (text-to-speech, cloning, speech-to-speech, speech-to-text) alongside a now more prominent deepfake detection, watermarking and identity product line, and also maintains Resemble's open-source models.",
   "pricing": {
-    "model": "Platform plans (Flex pay-as-you-go credits, Team, Business, Enterprise). The current public pricing page lists per-unit processing rates for detection, intelligence, identity and watermarking only; no text-to-speech rate appears on it.",
-    "headline": "No text-to-speech price is listed on Resemble's current pricing page. Flex has no subscription fee and credits never expire; Team is USD 350 per month (USD 280 billed annually); Business is USD 1,000 per month (USD 800 billed annually).",
+    "model": "Platform plans (Flex pay-as-you-go credits, Team, Business, Enterprise). The current public pricing page lists per-unit processing rates for detection, intelligence, identity and watermarking; no text-to-speech rate appears on it.",
+    "headline": "No text-to-speech price is listed on Resemble's current pricing page. Flex has no subscription fee and credits do not expire; Team is USD 350 per month (USD 280 billed annually); Business is USD 1,000 per month (USD 800 billed annually).",
     "pricePer1MCharsUsd": null,
     "headlineTier": "Not published for TTS (current pricing page covers detection products)",
     "tiers": [
@@ -16,7 +16,7 @@
         "name": "Flex",
         "pricePer1MCharsUsd": null,
         "unit": "USD 0 per month; buy credits as you go",
-        "notes": "Credits never expire; 1 team seat; platform and API access listed. Listed rates on the page are for Detect (audio USD 0.035 per second), Intelligence, Identity, Watermarker and Agent Detection, not TTS."
+        "notes": "Credits do not expire; 1 team seat; platform and API access listed. Listed rates on the page are for Detect (audio USD 0.035 per second), Intelligence, Identity, Watermarker and Agent Detection, not TTS."
       },
       {
         "name": "Team",
@@ -56,7 +56,7 @@
   "streaming": {
     "websocket": "yes",
     "http": "yes",
-    "vendorStatedLatency": "No numeric TTS latency in the API docs. The Chatterbox open-source page states '~200ms' latency (vendor-stated, applies to that model family).",
+    "vendorStatedLatency": "No numeric TTS latency in the API docs. The open-source models page states '~200ms' latency (vendor-stated, applies to that model family).",
     "sourceUrl": "https://www.resemble.ai/chatterbox/"
   },
   "formats": [
@@ -72,7 +72,7 @@
   },
   "licensing": {
     "commercialUse": null,
-    "attributionOrConditions": "Chatterbox open-source models are described as MIT licensed with built-in PerTh watermarking; terms for the hosted API output were not found on pages read.",
+    "attributionOrConditions": "The open-source models are described as MIT licensed with built-in PerTh watermarking; terms for the hosted API output were not found on pages read.",
     "sourceUrl": "https://www.resemble.ai/chatterbox/"
   },
   "limits": {
@@ -107,7 +107,7 @@
       "sourceUrl": "https://docs.resemble.ai/getting-started/ssml"
     },
     {
-      "claim": "Maintains the open-source Chatterbox model family under the MIT licence, with 23-language multilingual and Turbo variants.",
+      "claim": "Maintains the open-source model family under the MIT licence, with 23-language multilingual and Turbo variants.",
       "sourceUrl": "https://www.resemble.ai/chatterbox/"
     },
     {
@@ -121,7 +121,7 @@
       "sourceUrl": "https://docs.resemble.ai/voice-generation/text-to-speech/streaming-websocket"
     },
     {
-      "claim": "Earlier TTS models, including the Chatterbox API versions, are end of life on the hosted API; voices must be upgraded to Resemble Ultra.",
+      "claim": "Earlier TTS models, including the earlier API versions, are end of life on the hosted API; voices must be upgraded to Resemble Ultra.",
       "sourceUrl": "https://docs.resemble.ai/getting-started/model-versions"
     },
     {
@@ -143,7 +143,7 @@
       "https://docs.resemble.ai/voice-generation/text-to-speech/streaming-websocket"
     ]
   },
-  "bestFor": "Teams that want a voice-cloning API alongside deepfake detection or watermarking from the same vendor, or that want to self-host the open-source Chatterbox models.",
+  "bestFor": "Teams that want a voice-cloning API alongside deepfake detection or watermarking from the same vendor, or that want to self-host Resemble's open-source models.",
   "sources": [
     {
       "url": "https://www.resemble.ai/pricing/",
@@ -157,7 +157,7 @@
     },
     {
       "url": "https://www.resemble.ai/chatterbox/",
-      "title": "Resemble AI - Chatterbox open-source TTS",
+      "title": "Resemble AI - open-source TTS models",
       "retrievedAt": "2026-10-10"
     },
     {
@@ -213,5 +213,6 @@
     "Commercial-use licence for hosted API output.",
     "Whether the pricing page change reflects a shift in focus is not stated by the vendor.",
     "Vendor-stated TTS latency for Resemble Ultra specifically."
-  ]
+  ],
+  "statusNote": "Treated as not currently a text-to-speech competitor. Evidence read 2026-10-10: resemble.ai and resemble.ai/pricing now present deepfake detection and watermarking, and the pricing page lists detection, intelligence, identity and watermarking rates with no text-to-speech rate; the API docs say earlier TTS models, including the earlier API versions, are end of life. Re-check before reactivating."
 }

@@ -3,7 +3,7 @@
   "name": "Article and newsletter to audio",
   "h1": "Turn articles and newsletters into listenable audio on publish",
   "metaDescription": "Generate an audio edition of each article or newsletter issue with the ReadAloud API: clean the text, chunk it, render mp3, and attach it to your feed.",
-  "intro": "Readers commute, cook and walk; newsletters pile up unread. An audio edition lets the same issue travel with them. The editorial problem is rarely synthesis itself. It is turning HTML or markdown into something worth hearing. Link lists, footers, image captions, tracking text and the phrase 'view in browser' all become spoken noise if you pass them through. After cleanup comes length: a long essay exceeds a single request, so you split it at paragraph boundaries and join the parts. Then there is the choice of tier. Newsletters are not interactive, so latency does not matter and you can use ReadAloud Studio, which has a broader list of English voices than Live. Rendering happens once per issue, and the result is a file you can host and reference from an RSS enclosure or an email link. Set expectations on quality: a single synthetic voice reading in a flat register is fine for news and essays and weaker for dialogue-heavy or emotional writing, and you should listen to a sample issue before you promise subscribers anything.",
+  "intro": "Readers commute, cook and walk; newsletters pile up unread. An audio edition lets the same issue travel with them. The editorial problem is rarely synthesis itself. It is turning HTML or markdown into something worth hearing. Link lists, footers, image captions, tracking text and the phrase 'view in browser' all become spoken noise if you pass them through. After cleanup comes length: a long essay exceeds a single request, so you split it at paragraph boundaries and join the parts. Then there is the choice of tier. Newsletters are not interactive, so latency does not matter and you can use ReadAloud Studio, which has a broader list of English voices than Live. Rendering happens once per issue, and the result is a file you can host and reference from an RSS enclosure or an email link. Set expectations: ReadAloud has no emotion or style control, so dialogue-heavy or emotional writing gets no performance, and you should listen to a sample issue before you promise subscribers anything.",
   "steps": [
     "On publish, take the final article text, not the rendered web page. Remove link lists, footers, boilerplate and image credits, and write out abbreviations you want read in full.",
     "Add a one-line spoken header such as the title and the date, then the body, so the audio stands alone.",
@@ -27,7 +27,7 @@
   "whenToChooseSomethingElse": [
     "You need a named, recognisable host voice with a performance; hire a narrator or look for a service with performance-focused voices.",
     "Your audience reads multiple languages; look for a vendor that documents per-language voices and test samples in each.",
-    "You need chapter markers and ready-made podcast hosting; ReadAloud has an audiobook workflow, but it was newly enabled and the export step has not been exercised end to end on a long book.",
+    "You need chapter markers and ready-made podcast hosting; ReadAloud has an audiobook workflow, but it has not been tested end to end on a long book, so check it yourself before relying on it.",
     "Your text includes a lot of tables, code or formulas that do not read well aloud."
   ],
   "featuresUsed": [
@@ -81,9 +81,9 @@
     }
   ],
   "relatedSlugs": [
-    "podcast-intros-and-news-briefings",
-    "text-to-speech-for-documents-and-pdfs",
     "accessibility-read-aloud-for-websites",
-    "video-voiceovers-and-explainers"
+    "e-learning-narration",
+    "n8n",
+    "openai-sdk"
   ]
 }

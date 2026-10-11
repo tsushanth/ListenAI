@@ -41,7 +41,7 @@
     },
     {
       "feature": "mp3 and opus output",
-      "howItHelps": "Both are standard formats an audio element plays without extra libraries."
+      "howItHelps": "mp3 plays in the audio element of every common browser; Ogg Opus support varies by browser, so test it on the ones you target."
     },
     {
       "feature": "5,000-character requests",
@@ -82,8 +82,8 @@
   ],
   "relatedSlugs": [
     "article-and-newsletter-to-audio",
-    "text-to-speech-for-documents-and-pdfs",
     "e-learning-narration",
-    "language-learning-practice"
+    "vercel-ai-sdk",
+    "openai-sdk"
   ]
 }

@@ -10,11 +10,11 @@
     "model": "Monthly subscription that includes a pool of credits (1 credit is about 1 TTS character), with optional per-credit overage billing.",
     "headline": "Pro plan: $5/month for 100K credits, an effective $50 per 1M characters; larger plans lower the effective rate to about $37 per 1M.",
     "pricePer1MCharsUsd": 50,
-    "headlineTier": "Pro plan, Sonic-3.6 (effective rate: $5 / 100K credits; first paid plan with commercial license)",
+    "headlineTier": "Pro",
     "tiers": [
       {
         "name": "Free",
-        "pricePer1MCharsUsd": 0,
+        "pricePer1MCharsUsd": null,
         "unit": "20K credits/month, $0",
         "notes": "Evaluation and personal use; no commercial license listed on the plan card."
       },
@@ -22,19 +22,19 @@
         "name": "Pro",
         "pricePer1MCharsUsd": 50,
         "unit": "$5/month for 100K credits (effective per 1M chars)",
-        "notes": "Derived: 5/100000*1e6. Includes commercial use license and instant voice cloning. Overage $65 per 1M credits if enabled."
+        "notes": "Per-1M figure derived by us: $5 per month divided by 100K credits, at about 1 credit per character (the rate Cartesia's docs state). Includes commercial use license and instant voice cloning. Overage $65 per 1M credits if enabled. Applies to Sonic-3.6; the first paid plan with a commercial license."
       },
       {
         "name": "Startup",
         "pricePer1MCharsUsd": 39.2,
         "unit": "$49/month for 1.25M credits (effective per 1M chars)",
-        "notes": "Derived: 49/1.25. Adds professional voice cloning (2 slots). Overage $45 per 1M credits."
+        "notes": "Per-1M figure derived by us: $49 per month divided by 1.25M credits, at about 1 credit per character. Adds professional voice cloning (2 slots). Overage $45 per 1M credits."
       },
       {
         "name": "Scale",
         "pricePer1MCharsUsd": 37.38,
         "unit": "$299/month for 8M credits (effective per 1M chars)",
-        "notes": "Derived: 299/8, rounded. 4 PVC slots, priority support, higher concurrency. Overage $38 per 1M credits."
+        "notes": "Per-1M figure derived by us: $299 per month divided by 8M credits (rounded), at about 1 credit per character. 4 PVC slots, priority support, higher concurrency. Overage $38 per 1M credits."
       },
       {
         "name": "Enterprise",
@@ -44,9 +44,7 @@
       }
     ],
     "freeTier": "20K credits per month (about 20K characters of Sonic TTS), 2 concurrent TTS requests.",
-    "promotions": [
-      "Managed Agent evaluations and LLM usage for UI-created agents are free 'for a limited time' (no end date stated); not relevant to TTS API pricing."
-    ],
+    "promotions": [],
     "sourceUrls": [
       "https://cartesia.ai/pricing",
       "https://docs.cartesia.ai/pricing.md"
@@ -72,7 +70,7 @@
     "raw: pcm_mulaw",
     "raw: pcm_alaw"
   ],
-  "ssml": "yes",
+  "ssml": "unknown",
   "compatibility": {
     "openaiSpeechCompatible": "unknown",
     "note": "Cartesia documents its own /tts/bytes, /tts/sse and /tts/websocket endpoints with a different request shape (model_id, transcript, voice, output_format); no OpenAI-style /v1/audio/speech route was found in the pages read."
@@ -145,7 +143,7 @@
       "https://docs.cartesia.ai/build-with-cartesia/tts-models/latest.md"
     ]
   },
-  "bestFor": "Teams building real-time voice agents or multilingual products who want a low-latency model with broad language coverage, cloning options and published compliance statements, and who are comfortable with a credit-based subscription.",
+  "bestFor": "Teams building real-time voice agents or multilingual products who want a model Cartesia describes as low-latency, with 44 languages, cloning options and published compliance statements, and who are comfortable with a credit-based subscription.",
   "sources": [
     {
       "url": "https://cartesia.ai/pricing",
@@ -189,6 +187,6 @@
     "SSML support is a Cartesia-specific tag subset (speed, volume, break/emotion), not full W3C SSML",
     "Whether any OpenAI-compatible speech route exists",
     "Credit use is 'approximately' 1 per character and may vary slightly with pre-processing",
-    "Plan prices and credit allotments are single-source (cartesia.ai/pricing); the docs pricing page confirms only the ~1 credit per character rate. Per-1M figures are derived by dividing plan price by credits"
+    "Plan prices and credit allotments are single-source (cartesia.ai/pricing); the docs pricing page confirms just the ~1 credit per character rate. Per-1M figures are derived by dividing plan price by credits"
   ]
 }

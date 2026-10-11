@@ -22,7 +22,7 @@
     "Your bot already works in text and you want to add an English voice without changing the rest of the stack.",
     "You use Pipecat or LiveKit Agents and want a maintained plugin.",
     "Cost per answer matters: 300 characters of reply is about $0.0012 on Live.",
-    "You value a plain, steady voice for factual answers over personality."
+    "A single voice without personality controls is acceptable for factual answers."
   ],
   "whenToChooseSomethingElse": [
     "Customers write or speak in many languages; look for documented per-language voices and test your top languages with fluent reviewers.",
@@ -82,8 +82,8 @@
   ],
   "relatedSlugs": [
     "voice-agents-and-ivr",
-    "appointment-and-order-status-calls",
-    "phone-call-prompts-and-ivr-menus",
-    "notifications-and-alerts"
+    "notifications-and-alerts",
+    "pipecat",
+    "livekit-agents"
   ]
 }

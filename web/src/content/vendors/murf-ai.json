@@ -5,24 +5,24 @@
   "status": "active",
   "retrievedAt": "2026-10-10",
   "category": "studio-tool",
-  "positioning": "Murf is best known for its voiceover studio and also sells a developer text-to-speech API (Falcon 2 for real-time streaming, Gen2 for studio-style rendering) alongside dubbing, translation and voice-changer APIs.",
+  "positioning": "Murf is known for its voiceover studio and also sells a developer text-to-speech API (Falcon 2 for real-time streaming, Gen2 for studio-style rendering) alongside dubbing, translation and voice-changer APIs.",
   "pricing": {
     "model": "Pay-as-you-go by character (character packs bought up front), a free trial credit, and custom Enterprise plans with volume discounts. Prices differ by model.",
     "headline": "Falcon 2 (streaming model) is documented at 1 cent per 1,000 characters (USD 10 per 1M); Gen2 (non-streaming) is listed at USD 0.03 per 1,000 characters (USD 30 per 1M).",
     "pricePer1MCharsUsd": 10,
-    "headlineTier": "Falcon 2 streaming model, pay-as-you-go (single-source: Murf's Falcon 2 docs page; the live pricing page is JavaScript-rendered and could not be read, and the murf.ai/api marketing page describes Falcon as '1 cent per minute', which conflicts)",
+    "headlineTier": "Falcon 2 (pay-as-you-go)",
     "tiers": [
       {
         "name": "Falcon 2 (pay-as-you-go)",
         "pricePer1MCharsUsd": 10,
         "unit": "USD per 1M characters (1 cent per 1,000)",
-        "notes": "From the Falcon 2 model docs page. The murf.ai/api marketing page instead says 'Priced at Only 1 cent per Minute' for Falcon; the two units are not reconciled on Murf's pages."
+        "notes": "From the Falcon 2 model docs page. The murf.ai/api marketing page instead gives a price of 1 cent per minute for Falcon; the two units are not reconciled on Murf's pages. Single-source: the Falcon 2 docs page; the live pricing page is JavaScript-rendered and could not be read."
       },
       {
         "name": "Gen2 (pay-as-you-go)",
         "pricePer1MCharsUsd": 30,
         "unit": "USD per 1M characters (USD 0.03 per 1,000)",
-        "notes": "From Murf's Help Center 'Plans and Limits' page: buy 1,000 characters at USD 0.03, minimum purchase USD 2, optional autopay. Gen2 is available on the non-streaming Synthesize Speech endpoint only. Single-source."
+        "notes": "From Murf's Help Center 'Plans and Limits' page: buy 1,000 characters at USD 0.03, minimum purchase USD 2, optional autopay. Gen2 is available on the non-streaming Synthesize Speech endpoint and not on streaming. Single-source."
       },
       {
         "name": "Free Trial",
@@ -57,7 +57,7 @@
   "streaming": {
     "websocket": "yes",
     "http": "yes",
-    "vendorStatedLatency": "Vendor-stated: Falcon 2 time-to-first-audio 'under 100ms' (docs); the murf.ai/api page separately states 55 ms model latency and sub-130 ms time to first audio for Falcon. WebSocket streaming supports Falcon only; Gen2 is decommissioned for streaming.",
+    "vendorStatedLatency": "Vendor-stated: Falcon 2 time-to-first-audio 'under 100ms' (docs); the murf.ai/api page separately states 55 ms model latency and sub-130 ms time to first audio for Falcon. WebSocket streaming supports Falcon; Gen2 is decommissioned for streaming.",
     "sourceUrl": "https://murf.ai/api/docs/text-to-speech-models/falcon-2"
   },
   "formats": [
@@ -87,7 +87,7 @@
   },
   "sdks": [
     "Python (pip install murf)",
-    "JavaScript SDK (mentioned on murf.ai/api; docs index lists the Python SDK only)",
+    "JavaScript SDK (mentioned on murf.ai/api; docs index lists a Python SDK)",
     "MCP server",
     "Integrations: Zapier, Make, n8n, Pipecat, LiveKit, Agora"
   ],
@@ -122,7 +122,7 @@
   ],
   "limitations": [
     {
-      "claim": "Gen2 has been decommissioned for streaming; WebSocket streaming supports Falcon only, so the most customisable controls apply to non-streaming requests.",
+      "claim": "Gen2 has been decommissioned for streaming; WebSocket streaming supports Falcon (Gen2 is not available for streaming), so the most customisable controls apply to non-streaming requests.",
       "sourceUrl": "https://murf.ai/api/docs/text-to-speech/streaming"
     },
     {
@@ -218,6 +218,6 @@
     "Pay-as-you-go concurrency conflict between the docs (5) and the Help Center (15).",
     "SSML support: docs describe pause tags and a pronunciation dictionary; no SSML page was found.",
     "Commercial-use licence terms for API output were not found on the pages read.",
-    "JavaScript SDK existence is stated only on the marketing page."
+    "JavaScript SDK existence is stated on the marketing page and not in the docs index."
   ]
 }

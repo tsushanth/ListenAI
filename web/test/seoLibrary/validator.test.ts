@@ -2,6 +2,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { validateLibrary, validatePage, validateVendor, LIMITS, type Issue } from '../../src/lib/seoLibrary/validate.ts'
 import { buildPages } from '../../src/lib/seoLibrary/pages.ts'
+import { textOfPage } from '../../src/lib/seoLibrary/text.ts'
 import { findBanned, BANNED_STRICT, BANNED_LITE } from '../../src/lib/seoLibrary/banned.ts'
 import { findCertClaims } from '../../src/lib/seoLibrary/certs.ts'
 import { SIMILARITY } from '../../src/lib/seoLibrary/similarity.ts'
@@ -92,6 +93,15 @@ test('certification wording: none for ReadAloud, none for a vendor unless its da
   const lib3 = fixtureLibrary()
   lib3.useCases[0].considerations[0] = 'ReadAloud is SOC 2 certified'
   assert.ok(run(lib3).errors.some((e) => e.code === 'CERT_CLAIM'))
+})
+
+test('certification wording: a negation after the claim ("were not found") passes, a real claim still fails', () => {
+  assert.equal(findCertClaims('HIPAA, SOC 2 and GDPR compliance statements were not found.').length, 0)
+  assert.equal(findCertClaims('No page states it, and GDPR compliance was not found.').length, 0)
+  assert.equal(findCertClaims('SOC 2 reports are not listed on the trust page.').length, 0)
+  assert.equal(findCertClaims('Fish Audio is GDPR compliant.').length, 1)
+  assert.equal(findCertClaims('Fish Audio is GDPR compliant, and pricing was not found on the page.').length, 1, 'a later unrelated negation does not excuse a claim')
+  assert.equal(findCertClaims('ReadAloud is HIPAA compliant but the details were not found.').length, 1)
 })
 
 test('ReadAloud engine names are an error on use-case and integration pages, a warning on vendor pages', () => {
@@ -236,4 +246,64 @@ test('migration pages: capped at 12, priority order, hand-written elevenlabs pag
   assert.ok(!pages.includes('elevenlabs'))
   assert.equal(pages[0], 'openai-tts')
   assert.equal(pages.length, 11) // 12 slots, one of them the hand-written ElevenLabs page
+})
+
+// ---------------------------------------------------------------- vendor status
+
+test('status: anything but active needs a documented reason; sunsetting needs a dated, sourced notice', () => {
+  const lib = fixtureLibrary()
+  const inactive = withVendor(lib, 'openai-tts', (v) => { v.status = 'inactive'; v.statusNote = '' })
+  assert.ok(codes(run(inactive).issues).includes('error:STATUS_NOTE_MISSING'))
+  const noSunset = withVendor(lib, 'openai-tts', (v) => { v.status = 'sunsetting'; v.statusNote = 'announced' })
+  assert.ok(codes(run(noSunset).issues).includes('error:SUNSET_MISSING'))
+  const unlisted = withVendor(lib, 'openai-tts', (v) => { v.status = 'sunsetting'; v.statusNote = 'announced'; v.sunset = { date: '2027-01-01', notice: 'Access ends on 1 January 2027', dataDeletion: '', noticeSourceUrls: ['https://example.com/not-listed'] } })
+  assert.ok(codes(run(unlisted).issues).includes('error:FACT_SOURCE_NOT_LISTED'))
+  const long = withVendor(lib, 'openai-tts', (v) => { v.status = 'sunsetting'; v.statusNote = 'announced'; v.sunset = { date: '2027-01-01', notice: 'x'.repeat(130), dataDeletion: '', noticeSourceUrls: [v.sources[0].url] } })
+  assert.ok(codes(run(long).issues).includes('error:SUNSET_QUOTE_LONG'))
+  const passed = withVendor(lib, 'openai-tts', (v) => { v.status = 'sunsetting'; v.statusNote = 'announced'; v.sunset = { date: '2026-01-01', notice: 'Access ended', dataDeletion: '', noticeSourceUrls: [v.sources[0].url] } })
+  assert.ok(codes(run(passed).issues).includes('warning:SUNSET_PASSED'))
+})
+
+test('status: a sunsetting vendor gets alternatives and migrate pages with a sourced notice first, and no compare page', () => {
+  const lib = withVendor(fixtureLibrary(), 'openai-tts', (v) => {
+    v.status = 'sunsetting'
+    v.statusNote = 'announced in its docs'
+    v.sunset = { date: '2027-02-03', notice: 'This service ends on February 3, 2027', dataDeletion: 'Your data is deleted afterwards.', noticeSourceUrls: [v.sources[0].url] }
+  })
+  const r = run(lib)
+  const pages = r.pages.filter((p) => p.vendorSlug === 'openai-tts')
+  assert.deepEqual(pages.map((p) => p.type).sort(), ['alternatives', 'migrate'])
+  for (const p of pages) {
+    assert.equal(p.blocks[0].kind, 'alert')
+    assert.match(textOfPage(p), /This service ends on February 3, 2027/)
+    assert.match(p.title + p.description + p.lede, /February 3, 2027/)
+  }
+  assert.deepEqual(r.errors.filter((e) => ['SUNSET_NOT_SHOWN', 'SUNSET_COMPARED'].includes(e.code)), [])
+})
+
+test('status: an archive.org price must be marked archive-only, and then no page shows it', () => {
+  const lib = fixtureLibrary()
+  const bad = withVendor(lib, 'openai-tts', (v) => { v.pricing.sourceUrls.push('https://web.archive.org/web/2026/https://example.com/pricing'); v.sources.push({ url: 'https://web.archive.org/web/2026/https://example.com/pricing', title: 'archive', retrievedAt: '2026-10-01' }) })
+  assert.ok(codes(run(bad).issues).includes('error:ARCHIVE_PRICE_SHOWN'))
+  const ok = withVendor(bad, 'openai-tts', (v) => { v.pricing.priceBasis = 'archive-only' })
+  const r = run(ok)
+  assert.ok(!codes(r.issues).includes('error:ARCHIVE_PRICE_SHOWN'))
+  const pages = r.pages.filter((p) => p.vendorSlug === 'openai-tts' && p.type === 'migrate')
+  for (const p of pages) assert.match(textOfPage(p), /no longer has a pricing page on its own site/)
+})
+
+test('migrate: request-field mapping comes from the vendor data and the ReadAloud side from the facts file; expressive note only when the vendor lists it', () => {
+  const lib = withVendor(fixtureLibrary(), 'openai-tts', (v) => {
+    v.migration.mapping = [
+      { kind: 'text', vendorItem: 'input', note: '' },
+      { kind: 'style', vendorItem: 'instructions', note: '' },
+    ]
+  })
+  const p = run(lib).pages.find((x) => x.key === 'migrate:openai-tts')!
+  const t = textOfPage(p)
+  assert.match(t, /Map each .* request field and endpoint/)
+  assert.match(t, /instructions \| No equivalent/)
+  assert.match(t, /does not offer emotion or expressive control/)
+  const plain = withVendor(fixtureLibrary(), 'openai-tts', (v) => { v.strengths = v.strengths.map((s) => ({ ...s, claim: 'Per-character pricing' })); v.positioning = 'A speech endpoint.'; v.migration.stepsToMove = ['Change the base URL.'] })
+  assert.ok(!textOfPage(run(plain).pages.find((x) => x.key === 'migrate:openai-tts')!).includes('expressive control'))
 })

@@ -71,7 +71,7 @@
   ],
   "limitations": [
     {
-      "claim": "At retrieval (2026-10-10) play.ht, play.ai and api.play.ht did not resolve in DNS from the research host; only a static docs site (docs.play.ht) remained. Third-party reports state the service closed on 2025-12-31.",
+      "claim": "At retrieval (2026-10-10) play.ht, play.ai and api.play.ht did not resolve in DNS from the research host; a static docs site (docs.play.ht) remained. Third-party reports state the service closed on 2025-12-31.",
       "sourceUrl": "https://murf.ai/blog/play-ai-transition-guide"
     }
   ],
@@ -110,10 +110,11 @@
     }
   ],
   "unknowns": [
-    "Official shutdown date and Meta acquisition terms (primary announcement not read; only a competitor blog and search-result summaries, which report an acquisition by Meta and closure by 2025-12-31)",
+    "Official shutdown date and Meta acquisition terms (primary announcement not read; a competitor blog and search-result summaries, which report an acquisition by Meta and closure by 2025-12-31)",
     "Any pricing (pages offline)",
     "Whether any successor product or API exists under Meta",
     "Compliance, limits, licensing (pages offline)",
     "Status relies on DNS non-resolution observed by the researcher plus secondary reports"
-  ]
+  ],
+  "statusNote": "No page is published. On 2026-10-10 play.ht, play.ai and api.play.ht did not resolve in DNS from the research host; only docs.play.ht (a static docs site) answered. The closure is known only from secondary reports (a competitor blog and search-result summaries); no primary announcement was read, so no claim about the company is made."
 }

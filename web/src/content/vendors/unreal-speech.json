@@ -5,12 +5,12 @@
   "status": "active",
   "retrievedAt": "2026-10-10",
   "category": "api-platform",
-  "positioning": "Unreal Speech is a low-price text-to-speech API with monthly character-allowance plans, HTTP and WebSocket streaming, word-level timestamps and a Kokoro-powered voice set.",
+  "positioning": "Unreal Speech is a low-price text-to-speech API with monthly character-allowance plans, HTTP and WebSocket streaming, word-level timestamps and a voice set built on an open-source model.",
   "pricing": {
     "model": "Monthly subscription plans with a character allowance; usage beyond the allowance is charged daily at the plan's per-million rate; unused characters on paid plans roll over.",
     "headline": "Basic plan is $49 per month for 3M characters (about $16.33 per 1M; the FAQ states $16 per 1M for additional usage); rates fall to about $8 per 1M on the Enterprise plan.",
     "pricePer1MCharsUsd": 16,
-    "headlineTier": "Basic plan overage rate stated in the FAQ ($16 per 1M characters); effective plan rate is $49 / 3M = $16.33. The first 6 months are discounted to $4.99 per month",
+    "headlineTier": "Basic",
     "tiers": [
       {
         "name": "Free",
@@ -22,7 +22,7 @@
         "name": "Basic",
         "pricePer1MCharsUsd": 16,
         "unit": "USD per 1M characters (overage); plan $49/month for 3M characters",
-        "notes": "Effective $16.33 per 1M within the allowance. Promotional $4.99/month for the first 6 months (about $1.66 per 1M for those months, derived). 8 requests per second per docs."
+        "notes": "Effective $16.33 per 1M within the allowance. Promotional $4.99/month for the first 6 months (about $1.66 per 1M for those months, derived). 8 requests per second per docs. Overage rate as stated in the FAQ."
       },
       {
         "name": "Plus",
@@ -59,7 +59,7 @@
     ]
   },
   "voices": {
-    "count": "48 voices (FAQ); the API parameter docs list 5 named voices (Dan, Will, Scarlett, Liv, Amy) and the homepage sample lists Kokoro-style IDs such as af_bella, am_adam, bf_emma",
+    "count": "48 voices (FAQ); the API parameter docs list 5 named voices (Dan, Will, Scarlett, Liv, Amy) and the homepage sample lists voice IDs such as af_bella, am_adam, bf_emma",
     "languages": "FAQ says 48 voices across '8 different languages' and then lists nine: US English, UK English, Mandarin Chinese, Hindi, Spanish, Portuguese, Japanese, French and Italian",
     "customVoiceOrCloning": "Voice cloning is not available; the FAQ says 'Not right now, but we're working on it!'",
     "sourceUrl": "https://unrealspeech.com"
@@ -116,7 +116,7 @@
       "sourceUrl": "https://unrealspeech.com"
     },
     {
-      "claim": "Allows commercial use of generated audio on all plans, with attribution only on the free plan.",
+      "claim": "Allows commercial use of generated audio on all plans, with attribution required on the free plan and not on paid plans.",
       "sourceUrl": "https://unrealspeech.com"
     }
   ],
@@ -140,7 +140,7 @@
       "Short, latency-sensitive text: POST /stream with JSON Text (up to 1,000 characters), VoiceId, Bitrate, Speed, Pitch and Codec; the response is raw audio.",
       "Medium text: POST /speech (up to 3,000 characters) returns MP3 and timestamp JSON URLs; long text: POST /synthesisTasks (up to 500,000 characters) returns a TaskId to poll or a CallbackUrl.",
       "For streaming audio with timestamps use the WebSocket wss://api.v8.unrealspeech.com/streamWithTimestamps shown on the homepage.",
-      "Map voices to Unreal voice IDs (Scarlett, Dan, Liv, Will, Amy or Kokoro-style IDs) and replace OpenAI/ElevenLabs request shapes with the PascalCase fields.",
+      "Map voices to Unreal voice IDs (Scarlett, Dan, Liv, Will, Amy or voice IDs such as af_bella) and replace OpenAI/ElevenLabs request shapes with the PascalCase fields.",
       "Respect plan rate limits (2, 8 or 32 requests per second on Free, Basic and Pro)."
     ],
     "sourceUrls": [
@@ -198,10 +198,10 @@
     "Plus and Enterprise request-per-second limits are not listed.",
     "Whether SSML is supported is not stated.",
     "Which API version (v7 or v8) is current is unclear; reference docs show v7 and homepage samples show v8.",
-    "The Starter plan ($10 for 500,000 characters, $20 per 1M) exists only in commented-out page markup and is treated as not offered.",
+    "The Starter plan ($10 for 500,000 characters, $20 per 1M) appears in commented-out page markup and is treated as not offered.",
     "The promotional Basic price has no stated end date or eligibility terms.",
     "SOC 2 and GDPR statements were not found.",
-    "Latency (0.3 s) is vendor-stated only.",
+    "Latency (0.3 s) is a vendor-stated figure.",
     "The FAQ says 8 languages but lists nine; the count of 48 voices was not verified against the API."
   ]
 }

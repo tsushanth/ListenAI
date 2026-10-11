@@ -77,7 +77,7 @@
     },
     {
       "q": "Can listeners tell it is synthetic?",
-      "a": "Assume yes, and say so. Honest labelling is better than relying on listeners not noticing."
+      "a": "Assume yes, and say so. Honest labelling is the more reliable approach compared with relying on listeners not noticing."
     }
   ],
   "relatedSlugs": [

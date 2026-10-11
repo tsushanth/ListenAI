@@ -3,7 +3,7 @@
   "name": "Voice agents and IVR",
   "h1": "Streaming text-to-speech for real-time voice agents and IVR",
   "metaDescription": "Add streaming speech to a phone or web voice agent with ReadAloud Live: WebSocket or HTTP audio, 8 kHz telephony formats, and barge-in via a stop message.",
-  "intro": "A voice agent lives or dies on the gap between the moment a caller stops talking and the moment they hear a reply. Your language model streams tokens, your speech recognizer streams text, and the speech layer has to start producing audio before the full answer exists. It also has to stop instantly when the caller interrupts, and it has to emit audio in the format the phone network expects rather than a file you must transcode. ReadAloud Live was built around that loop. You open a WebSocket, keep it open across the turns of a call, send each sentence as it arrives from the model, and receive audio sentence by sentence. A stop message cancels the current utterance, and only finished requests are billed. For telephony you can ask for 8 kHz mu-law or A-law directly, so there is no resampling step between the API and your carrier. If you already use Pipecat or LiveKit Agents, ReadAloud maintains plugins for both. The trade-off is plain: Live has a single American English voice and no emotion or style controls, so it suits agents where clarity and responsiveness matter more than character.",
+  "intro": "A voice agent lives or dies on the gap between the moment a caller stops talking and the moment they hear a reply. Your language model streams tokens, your speech recognizer streams text, and the speech layer has to start producing audio before the full answer exists. It also has to stop instantly when the caller interrupts, and it has to emit audio in the format the phone network expects rather than a file you must transcode. ReadAloud Live was built around that loop. You open a WebSocket, keep it open across the turns of a call, send each sentence as it arrives from the model, and receive audio sentence by sentence. A stop message cancels the current utterance, and only finished requests are billed. For telephony you can ask for 8 kHz mu-law or A-law directly, so there is no resampling step between the API and your carrier. If you already use Pipecat or LiveKit Agents, ReadAloud maintains plugins for both. The trade-off is plain: Live has a single American English voice and no emotion or style controls, so it suits agents where a single plain voice without personality controls is acceptable.",
   "steps": [
     "Create an API key in the ReadAloud console and store it as READALOUD_API_KEY on your server. Never put it in a browser or mobile app.",
     "Before each call, POST https://api.readaloudai.org/tts/authorize with {\"key\": ..., \"engine\": \"live\"}. You get back a token and a WebSocket url. The token lasts 60 seconds, so authorize again for every new connection.",
@@ -20,9 +20,9 @@
   },
   "whenToChooseReadAloud": [
     "Your agent talks over a phone line and you want 8 kHz G.711 audio straight from the API.",
-    "You pay per character and your call volume makes a per-minute voice bill hard to predict or justify.",
+    "You prefer to pay per character of speech rather than per minute of call time.",
     "You use Pipecat or LiveKit Agents and want a maintained, MIT-licensed plugin rather than custom socket code.",
-    "One clear American English voice is acceptable, and you control the wording so the script stays short and plain."
+    "One American English voice is acceptable, and you control the wording so the script stays short."
   ],
   "whenToChooseSomethingElse": [
     "You need several distinct voices or personas in one product; Live has one voice, and Studio's English voice list is the only broader option here.",
@@ -49,7 +49,7 @@
     },
     {
       "feature": "Vapi custom voice route",
-      "howItHelps": "POST /v1/vapi/custom-voice returns raw 16-bit mono PCM at the rate Vapi requests; check the developers page for its current verification status."
+      "howItHelps": "POST /v1/vapi/custom-voice returns raw 16-bit mono PCM at the rate Vapi requests; see the Vapi integration page for what was and was not tested."
     }
   ],
   "considerations": [
@@ -69,7 +69,7 @@
     },
     {
       "q": "Does ReadAloud work with Vapi?",
-      "a": "There is a custom-voice endpoint at /v1/vapi/custom-voice that returns raw PCM at the requested sample rate and accepts your key as x-vapi-secret. The developers page states how far it has been tested from a real assistant; read it before relying on it."
+      "a": "There is a custom-voice endpoint at /v1/vapi/custom-voice that returns raw PCM at the requested sample rate and accepts your key as x-vapi-secret. One real Vapi assistant call has been run, with the inline secret; the Vapi integration page lists what was and was not tested, so read it before relying on the setup."
     },
     {
       "q": "Is there more than one voice for agents?",
@@ -81,9 +81,9 @@
     }
   ],
   "relatedSlugs": [
-    "phone-call-prompts-and-ivr-menus",
     "customer-support-voice-bots",
-    "appointment-and-order-status-calls",
-    "in-car-and-smart-device-announcements"
+    "pipecat",
+    "livekit-agents",
+    "vapi"
   ]
 }

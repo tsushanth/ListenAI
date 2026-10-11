@@ -37,11 +37,25 @@ export const SourcedClaim = z.object({ claim: text, sourceUrl: httpUrl })
 export const PRICING_CATEGORIES = ['api-platform', 'cloud-provider', 'studio-tool', 'model-vendor', 'open-source-host'] as const
 export type VendorCategory = (typeof PRICING_CATEGORIES)[number]
 
+/** What a request field or endpoint of a vendor becomes at ReadAloud. The ReadAloud side is typed once in readaloudFacts.ts (RA_MIGRATION_MAP). */
+export const MAPPING_KINDS = ['text', 'voice', 'style', 'ssml', 'speed', 'format', 'model', 'ignored', 'timing', 'other', 'endpoint-http', 'endpoint-stream', 'endpoint-websocket'] as const
+export type MappingKind = (typeof MAPPING_KINDS)[number]
+
+/**
+ * The announced end of a service. Only for status 'sunsetting'. `notice` and `dataDeletion` are short quotations (125 characters or fewer)
+ * from the vendor's own pages; `noticeSourceUrls` are those pages (each must also be listed in sources[] with its retrievedAt).
+ */
+const Sunset = z.object({ date: isoDate, notice: text, dataDeletion: loose, noticeSourceUrls: z.array(httpUrl).min(1) })
+
 export const VendorSchema = z.object({
   slug,
   name: text,
   url: httpUrl,
-  status: z.enum(['active', 'unclear', 'inactive']),
+  /** 'sunsetting': the vendor has announced a shutdown date; compare pages are not built, alternatives and migrate pages carry a prominent sourced notice and no prices. */
+  status: z.enum(['active', 'unclear', 'inactive', 'sunsetting']),
+  /** Why the status is not 'active' (required for every other status; never rendered on a page that does not exist). */
+  statusNote: loose.default(''),
+  sunset: z.union([Sunset, z.null()]).transform((v) => v ?? undefined).optional(),
   retrievedAt: isoDate,
   category: z.enum(PRICING_CATEGORIES),
   positioning: text,
@@ -49,6 +63,8 @@ export const VendorSchema = z.object({
     model: text,
     headline: loose,
     pricePer1MCharsUsd: nullableNumber,
+    /** 'archive-only': the vendor's own pricing page is gone and the figures come from an archived copy; pages show no price for it. */
+    priceBasis: z.union([z.enum(['live', 'archive-only']), z.null()]).transform((v): 'live' | 'archive-only' => v ?? 'live').default('live'),
     headlineTier: loose,
     tiers: list(z.object({ name: text, pricePer1MCharsUsd: nullableNumber, unit: loose, notes: loose })),
     freeTier: loose,
@@ -56,7 +72,7 @@ export const VendorSchema = z.object({
     sourceUrls: list(httpUrl),
   }),
   voices: z.object({ count: loose, languages: z.union([z.string(), z.array(z.string()), z.number(), z.null(), z.undefined()]).transform((v) => (Array.isArray(v) ? v.join(', ') : v === null || v === undefined ? '' : String(v).trim())), customVoiceOrCloning: loose, sourceUrl: optUrl }),
-  streaming: z.object({ websocket: ynu, http: ynu, vendorStatedLatency: loose, sourceUrl: optUrl }),
+  streaming: z.object({ websocket: ynu, http: ynu, vendorStatedLatency: loose, /** What the vendor's pages say about streaming that yes/no cannot (a preview feature, a transport that was not confirmed). */ note: loose.default(''), sourceUrl: optUrl }),
   formats: list(text),
   ssml: ynu,
   compatibility: z.object({ openaiSpeechCompatible: ynu, note: loose }),
@@ -66,7 +82,12 @@ export const VendorSchema = z.object({
   compliance: z.object({ hipaa: stated, soc2: stated, gdpr: stated, note: loose, sourceUrl: optUrl }),
   strengths: list(SourcedClaim),
   limitations: list(SourcedClaim),
-  migration: z.object({ stepsToMove: list(text), sourceUrls: list(httpUrl) }),
+  migration: z.object({
+    stepsToMove: list(text),
+    sourceUrls: list(httpUrl),
+    /** Optional: the vendor's request fields and endpoints, so the migrate page can show what each becomes at ReadAloud. */
+    mapping: list(z.object({ kind: z.enum(MAPPING_KINDS), vendorItem: text, note: loose })).default([]),
+  }),
   bestFor: loose,
   sources: z.array(z.object({ url: httpUrl, title: text, retrievedAt: isoDate })).min(1),
   unknowns: list(text),

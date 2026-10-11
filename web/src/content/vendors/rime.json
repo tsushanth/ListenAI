@@ -10,13 +10,13 @@
     "model": "Usage-based per 1,000 characters on the Starter plan; custom volume pricing on Enterprise.",
     "headline": "Starter: $0.03 per 1K characters ($30 per 1M) for Mist v3 and $0.05 per 1K ($50 per 1M) for Coda, per the pricing page.",
     "pricePer1MCharsUsd": 30,
-    "headlineTier": "Starter plan, Mist v3 (the model served when modelId is omitted; Coda is Rime's recommended flagship at $50 per 1M)",
+    "headlineTier": "Starter - Mist v3",
     "tiers": [
       {
         "name": "Starter - Mist v3",
         "pricePer1MCharsUsd": 30,
         "unit": "$0.03 per 1K characters (about $0.03 per minute of audio per vendor)",
-        "notes": "Low-latency model; 20 concurrent generations."
+        "notes": "Low-latency model; 20 concurrent generations. The model served when modelId is omitted."
       },
       {
         "name": "Starter - Coda",
@@ -28,7 +28,7 @@
         "name": "Enterprise",
         "pricePer1MCharsUsd": null,
         "unit": "custom volume pricing",
-        "notes": "Unlimited concurrency, unlimited custom voice clones, SLAs, on-prem/VPC, BAA and SOC 2 reports."
+        "notes": "No stated cap on concurrency or custom voice clones; also lists SLAs, on-prem/VPC, BAA and SOC 2 reports."
       }
     ],
     "freeTier": "New Starter accounts get free usage; the pricing page is internally inconsistent: one card says about 800 minutes (about 800K characters) free, while the FAQ and docs say 3,000 free minutes.",
@@ -41,13 +41,13 @@
   "voices": {
     "count": "Docs: 287 Coda voices (176 English) and 78 Mist v3 voices; the pricing page comparison table instead says 184 and 94, and its marketing text says 600+ voices (inconsistent across pages).",
     "languages": "Coda: English, Arabic, French, German, Hindi, Italian, Japanese, Portuguese, Spanish (each voice serves one language). Mist v3: English, French, German, Spanish.",
-    "customVoiceOrCloning": "Enterprise voice cloning is offered; the docs say unlimited custom voice clones on Enterprise; the FAQ mentions instant custom voice cloning.",
+    "customVoiceOrCloning": "Enterprise voice cloning is offered; the docs state no cap on custom voice clones on Enterprise; the FAQ mentions instant custom voice cloning.",
     "sourceUrl": "https://docs.rime.ai/docs/voices.md"
   },
   "streaming": {
     "websocket": "yes",
     "http": "yes",
-    "vendorStatedLatency": "Vendor-stated benchmark (single H100 GPU, self-hosted): time to first audio p50 96 ms for Coda and 37 ms for Mist v3 at 1 concurrency; vendor states cloud API is sub-200 ms end to end. Not independently measured.",
+    "vendorStatedLatency": "Vendor-stated measurement (single H100 GPU, self-hosted): time to first audio p50 96 ms for Coda and 37 ms for Mist v3 at 1 concurrency; vendor states cloud API is sub-200 ms end to end. Not independently measured.",
     "sourceUrl": "https://docs.rime.ai/docs/latency.md"
   },
   "formats": [
@@ -70,7 +70,7 @@
   },
   "limits": {
     "perRequestCharacters": "Up to 1,000 characters per HTTP request (longer returns 400).",
-    "concurrency": "20 concurrent generations on Starter; unlimited on Enterprise.",
+    "concurrency": "20 concurrent generations on Starter; no stated cap on Enterprise.",
     "sourceUrl": "https://docs.rime.ai/docs/api-cheat-sheet.md"
   },
   "sdks": [
@@ -91,7 +91,7 @@
       "sourceUrl": "https://docs.rime.ai/docs/introduction.md"
     },
     {
-      "claim": "Vendor-stated: Mist v3 time to first audio of 37 ms p50 and Coda 96 ms p50 in Rime's own benchmark (vendor-stated).",
+      "claim": "Vendor-stated: Mist v3 time to first audio of 37 ms p50 and Coda 96 ms p50 in Rime's own measurement (vendor-stated).",
       "sourceUrl": "https://docs.rime.ai/docs/latency.md"
     },
     {
@@ -127,7 +127,7 @@
       "Map 'text' to the ReadAloud input field, 'speaker' to a ReadAloud voice, and drop 'modelId' or map it to a ReadAloud tier.",
       "Replace the Accept header audio type (audio/mpeg, wav, etc.) with ReadAloud's format option.",
       "Reuse the Bearer API key header pattern with a ReadAloud key.",
-      "Split any text over 1,000 characters only if ReadAloud's limits require it; remove Rime-specific controls (spell(), speedAlpha, phonemizeBetweenBrackets) or map them.",
+      "Split any text over 1,000 characters if ReadAloud's limits require it; remove Rime-specific controls (spell(), speedAlpha, phonemizeBetweenBrackets) or map them.",
       "Rime voice names and enterprise clones do not carry over."
     ],
     "sourceUrls": [

@@ -1,6 +1,6 @@
 {
   "slug": "azure-ai-speech",
-  "name": "Microsoft Azure AI Speech (text to speech)",
+  "name": "Microsoft Azure AI Speech",
   "url": "https://azure.microsoft.com/en-us/products/ai-services/text-to-speech",
   "status": "active",
   "retrievedAt": "2026-10-10",
@@ -10,13 +10,13 @@
     "model": "Per character synthesized, billed per 1M characters, with a free F0 tier, a pay-as-you-go S0 tier and discounted commitment tiers. The pricing page renders prices client-side, so figures below come from the Azure Retail Prices API (eastus, USD).",
     "headline": "Neural voices $15 per 1M characters; Neural HD $22 per 1M characters (eastus retail list).",
     "pricePer1MCharsUsd": 15,
-    "headlineTier": "Neural (standard) voices, pay-as-you-go, eastus",
+    "headlineTier": "Neural",
     "tiers": [
       {
         "name": "Neural",
         "pricePer1MCharsUsd": 15,
         "unit": "USD per 1M characters",
-        "notes": "Meter 'S1 Neural Text To Speech Characters'. Azure's page groups 'Neural/Neural HD Flash' on one price line; the mapping of this meter to that line is inferred."
+        "notes": "Meter 'S1 Neural Text To Speech Characters'. Azure's page groups 'Neural/Neural HD Flash' on one price line; the mapping of this meter to that line is inferred. Pay-as-you-go rate, eastus region."
       },
       {
         "name": "Neural HD",
@@ -117,7 +117,7 @@
   },
   "strengths": [
     {
-      "claim": "Very broad language coverage: standard neural voices in 100+ languages and locales.",
+      "claim": "Language coverage: standard neural voices in 100+ languages and locales.",
       "sourceUrl": "https://learn.microsoft.com/en-us/azure/ai-services/speech-service/text-to-speech"
     },
     {
@@ -129,7 +129,7 @@
       "sourceUrl": "https://learn.microsoft.com/en-us/azure/ai-services/speech-service/custom-neural-voice"
     },
     {
-      "claim": "Commitment tiers lower the effective per-character rate at volume (for example overage $6.00 per 1M on the 4000M tier).",
+      "claim": "Commitment tiers list lower overage rates at volume (for example $6.00 per 1M on the 4000M tier).",
       "sourceUrl": "https://prices.azure.com/api/retail/prices"
     },
     {

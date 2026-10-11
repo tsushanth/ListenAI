@@ -10,13 +10,13 @@
     "model": "Dollar-denominated credits. Free On-Demand tier, then monthly plans (Creator $25, Builder $100, Developer $300, Growth $1,500) whose credits equal the plan price and which lower the per-character rate; Enterprise is custom. Overage is charged at the plan's rate. Prices below are the monthly-billing view of the pricing page.",
     "headline": "TTS-2 Flash is $15 per 1M characters and TTS-2 is $25 per 1M characters on the free On-Demand tier; paid plans lower these (Flash down to $7, TTS-2 down to $12.50 on Growth), and Enterprise is listed as low as $5 for TTS-2.",
     "pricePer1MCharsUsd": 15,
-    "headlineTier": "Realtime TTS-2 Flash on On-Demand (lowest-cost model, entry tier); the flagship Realtime TTS-2 is $25 on the same tier",
+    "headlineTier": "On-Demand: TTS-2 Flash",
     "tiers": [
       {
         "name": "On-Demand: TTS-2 Flash",
         "pricePer1MCharsUsd": 15,
         "unit": "USD per 1M characters (monthly billing view)",
-        "notes": "Free plan, pay per use; includes up to 70 minutes of TTS free, 100 custom voices, commercial license."
+        "notes": "Free plan, pay per use; includes up to 70 minutes of TTS free, 100 custom voices, commercial license. Lowest-cost model on the entry tier."
       },
       {
         "name": "On-Demand: TTS-2",
@@ -104,7 +104,7 @@
   "voices": {
     "count": null,
     "languages": "200+ languages and locales (the docs also describe 623 language/locale codes covering 470 languages in three support tiers; Tier 1 is the 15 most extensively evaluated)",
-    "customVoiceOrCloning": "Instant voice cloning from as little as 3 seconds of audio (landing page says 5 to 15 seconds), voice design from a text description, professional voice cloning (Beta, TTS-2 only), and a community Voice Library; custom voice counts per plan range from 100 to 30,000.",
+    "customVoiceOrCloning": "Instant voice cloning from as little as 3 seconds of audio (landing page says 5 to 15 seconds), voice design from a text description, professional voice cloning (Beta, available on TTS-2), and a community Voice Library; custom voice counts per plan range from 100 to 30,000.",
     "sourceUrl": "https://docs.inworld.ai/llms.txt"
   },
   "streaming": {
@@ -126,7 +126,7 @@
   "ssml": "unknown",
   "compatibility": {
     "openaiSpeechCompatible": "yes",
-    "note": "POST https://api.inworld.ai/v1/audio/speech accepts OpenAI's request format; point the OpenAI SDK base URL at https://api.inworld.ai/v1. Model and voice must be Inworld IDs (OpenAI names such as tts-1 return 400 and voices such as alloy return 404). Input up to 4,000 characters; response_format mp3, opus, flac, wav or pcm; instructions only on inworld-tts-2."
+    "note": "POST https://api.inworld.ai/v1/audio/speech accepts OpenAI's request format; point the OpenAI SDK base URL at https://api.inworld.ai/v1. Model and voice must be Inworld IDs (OpenAI names such as tts-1 return 400 and voices such as alloy return 404). Input up to 4,000 characters; response_format mp3, opus, flac, wav or pcm; the instructions field applies to inworld-tts-2 and is not listed for other models."
   },
   "licensing": {
     "commercialUse": "Pricing page lists a commercial license on every plan including free On-Demand.",
@@ -135,7 +135,7 @@
   },
   "limits": {
     "perRequestCharacters": "Non-streaming HTTP: 2,000 characters; HTTP streaming and OpenAI-compatible endpoint: 4,000 characters; WebSocket: 2,000 characters per send_text message; async job: 100,000 characters (10,000 on On-Demand).",
-    "concurrency": "Guaranteed concurrent generations: On-Demand 5, Creator 10, Builder 50, Developer 150, Growth 500, Enterprise custom; WebSocket connections 50 / 100 / 500 / 1,500 / 5,000. Above the guarantee requests are best-effort.",
+    "concurrency": "Committed concurrent generations: On-Demand 5, Creator 10, Builder 50, Developer 150, Growth 500, Enterprise custom; WebSocket connections 50 / 100 / 500 / 1,500 / 5,000. Above the committed level, requests are handled without a stated commitment.",
     "sourceUrl": "https://docs.inworld.ai/resources/concurrency-limits"
   },
   "sdks": [
@@ -153,7 +153,7 @@
   },
   "strengths": [
     {
-      "claim": "Offers an OpenAI-compatible /v1/audio/speech endpoint, so OpenAI SDK code needs only a base URL, key, model and voice change.",
+      "claim": "Offers an OpenAI-compatible /v1/audio/speech endpoint, so OpenAI SDK code needs a base URL, key, model and voice change.",
       "sourceUrl": "https://docs.inworld.ai/tts/openai-compatibility"
     },
     {
@@ -270,7 +270,7 @@
   "unknowns": [
     "Number of built-in (non-custom) voices was not found.",
     "Yearly-billing per-character rates were not read; the table above is the monthly-billing view.",
-    "Whether full SSML is supported is unclear: only SSML <break> tags are documented (pause controls); steering uses square-bracket instructions.",
+    "Whether full SSML is supported is unclear: the documented SSML support covers <break> tags (pause controls); steering uses square-bracket instructions.",
     "Model provider terms and any licensing conditions beyond the pricing-page 'Commercial license' line were not read.",
     "Latency figures are vendor-stated P90 server-side values and were not verified.",
     "Enterprise prices below the stated floor ('as low as $5', 'sub-$5') are not published."

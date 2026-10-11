@@ -5,12 +5,12 @@
   "status": "active",
   "retrievedAt": "2026-10-10",
   "category": "cloud-provider",
-  "positioning": "Google Cloud's text-to-speech API with a wide voice and language catalogue spanning low-cost Standard voices, WaveNet and Neural2, Chirp 3 HD voices, instant custom voices and token-priced Gemini-TTS models.",
+  "positioning": "Google Cloud's text-to-speech API with a wide voice and language catalogue spanning Standard voices, WaveNet and Neural2, Chirp 3 HD voices, instant custom voices and token-priced Gemini-TTS models.",
   "pricing": {
     "model": "Per character sent (SSML tags count, except the mark tag) with monthly free allowances per voice type; Gemini-TTS models are priced per million text and audio tokens.",
     "headline": "Standard voices $4 per 1M characters (first 4M characters per month free); Neural2 $16; Chirp 3: HD $30; Studio $160; Instant custom voice $60.",
     "pricePer1MCharsUsd": 4,
-    "headlineTier": "Standard voices (4M free characters per month)",
+    "headlineTier": "Standard voices",
     "tiers": [
       {
         "name": "Standard voices",
@@ -22,7 +22,7 @@
         "name": "WaveNet voices",
         "pricePer1MCharsUsd": 4,
         "unit": "USD per 1M characters",
-        "notes": "Page lists the same SKU id as Standard and the same $4 price; free 0 to 4 million characters per month. See unknowns."
+        "notes": "Page lists the same SKU id as Standard and the same $4 price; free 0 to 4 million characters per month. See the list of things we could not confirm below."
       },
       {
         "name": "Neural2 voices",
@@ -103,7 +103,8 @@
     "websocket": "unknown",
     "http": "unknown",
     "vendorStatedLatency": null,
-    "sourceUrl": "https://cloud.google.com/text-to-speech/docs/create-audio-text-streaming"
+    "sourceUrl": "https://cloud.google.com/text-to-speech/docs/create-audio-text-streaming",
+    "note": "Google documents bidirectional streaming synthesis as a Preview feature under Pre-GA terms; whether the transport is WebSocket or HTTP was not confirmed on the pages read"
   },
   "formats": [
     "LINEAR16 (WAV header)",
@@ -145,11 +146,11 @@
       "sourceUrl": "https://cloud.google.com/text-to-speech"
     },
     {
-      "claim": "Low entry price: Standard and WaveNet voices at $4 per 1M characters with 4M free characters per month.",
+      "claim": "Entry price: Standard and WaveNet voices at $4 per 1M characters with 4M free characters per month.",
       "sourceUrl": "https://cloud.google.com/text-to-speech/pricing"
     },
     {
-      "claim": "Chirp 3: HD voices (30 styles) designed for conversational agents with low-latency streaming, plus an instant custom voice option with a consent statement.",
+      "claim": "Chirp 3: HD voices (30 styles), which Google describes as designed for conversational agents with low-latency streaming, plus an instant custom voice option with a consent statement.",
       "sourceUrl": "https://cloud.google.com/text-to-speech/docs/list-voices-and-types"
     },
     {
@@ -177,20 +178,57 @@
   ],
   "migration": {
     "stepsToMove": [
-      "Endpoint: Google uses POST /v1/text:synthesize with JSON {input:{text|ssml}, voice:{languageCode, name}, audioConfig:{audioEncoding}}; ReadAloud takes the OpenAI speech request (POST /v1/audio/speech with model, voice, input) or the ElevenLabs route, so the body must be remapped.",
-      "Auth: Google uses OAuth access tokens or service-account credentials; ReadAloud uses an API key.",
-      "Voice ids: names like en-US-Chirp3-HD-Charon or en-GB-Neural2-A do not exist on ReadAloud; pick a ReadAloud voice id and drop languageCode if the voice is language-specific.",
-      "SSML: if input uses ssml, convert to plain text first (Chirp 3: HD does not accept SSML either); check ReadAloud's documented SSML behavior.",
-      "Encoding: audioEncoding values LINEAR16, MP3, OGG_OPUS, MULAW and ALAW map to response_format or output_format choices; confirm ReadAloud-supported subset.",
-      "Billing counts: Google counts SSML tags as characters (except mark); expect different character totals when switching."
+      "Google uses POST /v1/text:synthesize with JSON {input:{text|ssml}, voice:{languageCode, name}, audioConfig:{audioEncoding}}; each call site builds this body.",
+      "Google uses OAuth access tokens or service-account credentials rather than an API key; find where your code obtains them.",
+      "List the voice names you use (for example en-US-Chirp3-HD-Charon or en-GB-Neural2-A) and the languageCode paired with each.",
+      "If input uses ssml, find every place that builds SSML (Chirp 3: HD voices do not accept SSML either).",
+      "audioEncoding values LINEAR16, MP3, OGG_OPUS, MULAW and ALAW are Google's names; list which ones you request.",
+      "Google counts SSML tags as characters (except mark), so character totals will differ if you stop sending markup."
     ],
     "sourceUrls": [
       "https://cloud.google.com/text-to-speech/docs/basics",
       "https://cloud.google.com/text-to-speech/docs/reference/rest/v1/AudioEncoding",
       "https://cloud.google.com/text-to-speech/pricing"
+    ],
+    "mapping": [
+      {
+        "kind": "endpoint-http",
+        "vendorItem": "POST https://texttospeech.googleapis.com/v1/text:synthesize",
+        "note": "The request body is different, so each call site is rewritten; Google uses OAuth or service-account credentials where ReadAloud uses an API key"
+      },
+      {
+        "kind": "text",
+        "vendorItem": "input.text",
+        "note": ""
+      },
+      {
+        "kind": "ssml",
+        "vendorItem": "input.ssml",
+        "note": ""
+      },
+      {
+        "kind": "voice",
+        "vendorItem": "voice.name (for example en-US-Chirp3-HD-Charon) with voice.languageCode",
+        "note": ""
+      },
+      {
+        "kind": "format",
+        "vendorItem": "audioConfig.audioEncoding (LINEAR16, MP3, OGG_OPUS, MULAW, ALAW)",
+        "note": ""
+      },
+      {
+        "kind": "speed",
+        "vendorItem": "audioConfig.speakingRate",
+        "note": ""
+      },
+      {
+        "kind": "other",
+        "vendorItem": "audioConfig.pitch",
+        "note": ""
+      }
     ]
   },
-  "bestFor": "Teams already on Google Cloud, or those needing very broad language and voice coverage with a very low-cost Standard/WaveNet tier and optional higher-naturalness Chirp 3 HD voices.",
+  "bestFor": "Teams already on Google Cloud, or teams that need broad language and voice coverage, with Standard and WaveNet voices at $4 per 1M characters and optional Chirp 3 HD voices.",
   "sources": [
     {
       "url": "https://cloud.google.com/text-to-speech/pricing",
@@ -235,7 +273,7 @@
   ],
   "unknowns": [
     "All Google prices are single-source (the pricing page); no second Google page repeated the numbers",
-    "WaveNet is listed at $4 per 1M characters with the same SKU id as Standard; this may be a pricing-page quirk and should be re-checked against the pricing calculator",
+    "WaveNet is listed at $4 per 1M characters with the same SKU id as Standard; this may be a pricing-page quirk, and we did not check the pricing calculator",
     "Whether streaming is WebSocket or HTTP (bidirectional streaming doc is a Preview; transport not confirmed)",
     "Vendor-stated latency figures (none with numbers found)",
     "Access requirements for Instant Custom Voice",

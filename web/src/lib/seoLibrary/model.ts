@@ -11,6 +11,8 @@ export type Block =
   | { kind: 'h3'; text: string }
   | { kind: 'p'; text: string; tone?: 'note' }
   | { kind: 'verified'; text: string }
+  /** A prominent notice at the top of a page (a service that is shutting down). Every item may carry the source it quotes. */
+  | { kind: 'alert'; title: string; items: { text: string; sourceUrl?: string }[] }
   | { kind: 'list'; ordered?: boolean; items: { text: string; sourceUrl?: string }[] }
   | { kind: 'table'; caption: string; columns: string[]; rows: Cell[][] }
   | { kind: 'cards'; items: { title: string; text: string; href?: string; external?: boolean; meta?: string; sourceUrl?: string }[] }

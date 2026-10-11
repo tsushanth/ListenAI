@@ -10,19 +10,19 @@
     "model": "Per-character API list prices quoted per 1K characters on the ElevenAPI pricing page, also available through monthly subscription plans that include a shared credit pool (1 credit per character on most models; Flash/Turbo models cost 0.5 to 1 credit per character).",
     "headline": "$0.04 per 1K characters ($40 per 1M) for Flash / Turbo; flagship v4 and v3 models list at $0.08 per 1K ($80 per 1M).",
     "pricePer1MCharsUsd": 40,
-    "headlineTier": "Flash / Turbo (Flash v2.5), API list price, excluding promotions",
+    "headlineTier": "Flash / Turbo (Flash v2.5)",
     "tiers": [
       {
         "name": "Eleven v4",
         "pricePer1MCharsUsd": 80,
         "unit": "USD per 1M characters (list)",
-        "notes": "Promotional price $22 per 1M characters shown as '72% off until Oct 12'. Up to 10,000 characters per request; 90+ languages."
+        "notes": "Up to 10,000 characters per request; 90+ languages."
       },
       {
         "name": "Eleven v4 Turbo",
         "pricePer1MCharsUsd": 40,
         "unit": "USD per 1M characters (list)",
-        "notes": "Promotional price $11 per 1M characters shown as '72% off until Oct 12'. Vendor-stated median inference latency ~100ms."
+        "notes": "Vendor-stated median inference latency ~100ms."
       },
       {
         "name": "Eleven v3",
@@ -46,7 +46,7 @@
         "name": "Flash / Turbo (Flash v2.5)",
         "pricePer1MCharsUsd": 40,
         "unit": "USD per 1M characters",
-        "notes": "40,000 character limit per request; 32 languages; the models page describes it as 50% lower price per character for API generations."
+        "notes": "40,000 character limit per request; 32 languages; the models page describes it as 50% lower price per character for API generations. Shown at API list price; time-limited promotions are not included."
       },
       {
         "name": "Subscription plans (credits)",
@@ -56,11 +56,7 @@
       }
     ],
     "freeTier": "Free plan: $0 per month with 10,000 credits per month (about 10 minutes of audio per the pricing page). The Commercial License is listed as starting at the Starter plan.",
-    "promotions": [
-      "Eleven v4 and v4 Turbo shown at 72% off until Oct 12 (v4 $0.022 and v4 Turbo $0.011 per 1K characters instead of $0.08 and $0.04). Source says 'Oct 12'; year not printed, retrieved 2026-10-10 so read as 2026-10-12.",
-      "Site banner: 3x credits included on Creator and above until October 12.",
-      "Starter plan first month $1 (83% off $6), shown 'Until Oct 18'; Creator first month $11 (50% off $22)."
-    ],
+    "promotions": [],
     "sourceUrls": [
       "https://elevenlabs.io/pricing/api",
       "https://elevenlabs.io/pricing",
@@ -76,7 +72,7 @@
   "streaming": {
     "websocket": "yes",
     "http": "yes",
-    "vendorStatedLatency": "Vendor-stated: 'Ultra-low latency (~75ms)' for Flash v2.5; footnote 'Excluding application & network latency' (https://elevenlabs.io/docs/overview/models). Not benchmarked by us.",
+    "vendorStatedLatency": "Vendor-stated: 'Ultra-low latency (~75ms)' for Flash v2.5; footnote 'Excluding application & network latency' (https://elevenlabs.io/docs/overview/models). Not measured by us.",
     "sourceUrl": "https://elevenlabs.io/docs/overview/models"
   },
   "formats": [
@@ -90,7 +86,7 @@
   "ssml": "yes",
   "compatibility": {
     "openaiSpeechCompatible": "no",
-    "note": "Documented endpoint is POST /v1/text-to-speech/{voice_id} with an xi-api-key header and an output_format query such as mp3_44100_128; no OpenAI-style /v1/audio/speech mode was found in the pages read. SSML support is partial: break and phoneme tags on v2 models; v3 and v4 do not support break tags."
+    "note": "Documented endpoint is POST /v1/text-to-speech/{voice_id} with an xi-api-key header and an output_format query such as mp3_44100_128; no OpenAI-style /v1/audio/speech mode was found in the pages read."
   },
   "licensing": {
     "commercialUse": "Pricing page lists the Commercial License as included from the Starter plan; the Free plan row does not list it.",
@@ -163,7 +159,7 @@
       "https://elevenlabs.io/docs/api-reference/text-to-speech/v-1-text-to-speech-voice-id-stream-input"
     ]
   },
-  "bestFor": "Teams that want the most expressive, multi-language, voice-cloning-rich TTS and are comfortable paying premium per-character rates.",
+  "bestFor": "Teams that want expressive, multi-language text to speech with a large voice library and voice cloning, and that pay per character or through ElevenLabs credit plans.",
   "sources": [
     {
       "url": "https://elevenlabs.io/pricing/api",
@@ -231,7 +227,7 @@
     "SOC 2 and GDPR statements (Trust Center content did not render)",
     "Whether HIPAA eligibility covers the text-to-speech API specifically",
     "Whether an OpenAI-compatible speech route exists (none found in pages read)",
-    "Exact end date year for promotions (page prints 'Oct 12' and 'Oct 18' without a year)",
-    "Price per 1M characters under subscription plans (depends on credits per character; only list prices recorded)"
+    "Price per 1M characters under subscription plans (depends on credits per character; list prices are what is recorded here)",
+    "Time-limited promotions were shown on the pricing pages when we reviewed them; they are left out, so the prices on this page are list prices; check the pricing page for current offers."
   ]
 }

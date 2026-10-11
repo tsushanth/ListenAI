@@ -10,13 +10,13 @@
     "model": "Pay-as-you-go per million characters by model (hd or turbo), identical for synchronous and asynchronous synthesis; separate per-voice fees for voice design and rapid cloning; an Audio Subscription sold in 'audio points' is also offered.",
     "headline": "speech-2.8-turbo is $60 per 1M characters and speech-2.8-hd is $100 per 1M characters (pay-as-you-go, sync and async).",
     "pricePer1MCharsUsd": 60,
-    "headlineTier": "speech-2.8-turbo, pay-as-you-go (lower-priced of the two current models); speech-2.8-hd is $100",
+    "headlineTier": "speech-2.8-turbo (sync and async)",
     "tiers": [
       {
         "name": "speech-2.8-turbo (sync and async)",
         "pricePer1MCharsUsd": 60,
         "unit": "USD per 1M characters",
-        "notes": "Optimised for speed and cost; same capabilities as hd."
+        "notes": "Optimised for speed and cost; same capabilities as hd. Lower-priced of the two current models."
       },
       {
         "name": "speech-2.8-hd (sync and async)",

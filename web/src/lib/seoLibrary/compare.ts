@@ -13,8 +13,24 @@ import { difference, hasText, numericRows, priceRows, priceStatements, priceText
 export const DISCLAIMER = (name: string, date: string) =>
   `Details about ${name} come from its public pages as they were on ${longDate(date)}. ${name} may have changed them since, and a page that was unclear to us may be clear to you. Corrections: ${RA_SUPPORT_EMAIL}. We make ${RA_NAME}, so read this page with that in mind and check anything important with ${name} directly.`
 
+/**
+ * The prominent notice on every page about a vendor with an announced end date. It quotes the vendor's own pages (short quotations
+ * kept in the vendor JSON, with the pages they come from) and says when we read them. Nothing here is our own claim about the vendor.
+ */
+export function sunsetBlocks(v: Vendor): Block[] {
+  const s = v.sunset
+  if (v.status !== 'sunsetting' || !s) return []
+  const when = longDate(s.date)
+  const src = s.noticeSourceUrls
+  const read = v.sources.find((x) => x.url === src[0])?.retrievedAt ?? v.retrievedAt
+  const items: { text: string; sourceUrl?: string }[] = [{ text: `${poss(v.name)} own documentation says: "${s.notice}"`, sourceUrl: src[0] }]
+  if (hasText(s.dataDeletion)) items.push({ text: `It also says: "${s.dataDeletion}"`, sourceUrl: src[1] ?? src[0] })
+  items.push({ text: `We read ${src.length > 1 ? 'these statements on its documentation pages' : 'this statement on its documentation page'} on ${longDate(read)}. If you use ${v.name} today, plan your move before ${when} and export anything you need first. Check ${poss(v.name)} documentation in case the date has changed.` })
+  return [{ kind: 'alert', title: `${v.name} is scheduled to end on ${when}`, items }]
+}
+
 export const certCell = (key: string) => (RA_CERTIFICATION_ALLOW_LIST.includes(key) ? 'Stated by ReadAloud' : 'Not claimed')
-export const statedCell = (v: 'stated' | 'not-stated'): string => (v === 'stated' ? 'Stated on their pages' : NOT_STATED_CAP)
+export const statedCell = (v: 'stated' | 'not-stated', hasNote = false): string => (v === 'stated' ? (hasNote ? 'Mentioned on their pages; see the note below the table for what it covers' : 'Stated on their pages') : NOT_STATED_CAP)
 
 export const ynuCell = (v: 'yes' | 'no' | 'unknown', note = ''): string => {
   const base = v === 'yes' ? 'Yes' : v === 'no' ? 'No' : NOT_STATED_CAP
@@ -27,7 +43,7 @@ export const raPriceCell = `${RA_LIVE.name} ${usd(RA_LIVE.per1MUsd)} and ${RA_ST
 
 /** The vendor's own latency statement, quoted and attributed, or null. ReadAloud never restates a vendor's figure as its own finding. */
 export function vendorLatencyCell(v: Vendor): Cell {
-  if (hasText(v.streaming.vendorStatedLatency)) return { text: `Vendor-stated: "${v.streaming.vendorStatedLatency.replace(/^["'“”]|["'“”]$/g, '')}"`, sourceUrl: v.streaming.sourceUrl }
+  if (hasText(v.streaming.vendorStatedLatency)) return { text: `Vendor-stated: ${v.streaming.vendorStatedLatency.replace(/^\s*vendor[- ]stated:?\s*/i, '')}`, sourceUrl: v.streaming.sourceUrl }
   return { text: NOT_STATED_CAP }
 }
 
@@ -36,9 +52,10 @@ export const raLatencyCell = `${RA_LIVE.name}: ${RA_LATENCY.liveWarmLabel} (${RA
 export function streamingText(v: Vendor): string {
   const ws = v.streaming.websocket
   const http = v.streaming.http
-  if (ws === 'unknown' && http === 'unknown') return NOT_STATED_CAP
+  const note = hasText(v.streaming.note) ? sentence(v.streaming.note) : ''
+  if (ws === 'unknown' && http === 'unknown') return note || NOT_STATED_CAP
   const bit = (label: string, x: 'yes' | 'no' | 'unknown') => `${label}: ${x === 'yes' ? 'yes' : x === 'no' ? 'no' : 'not stated'}`
-  return `${bit('WebSocket', ws)}; ${bit('HTTP streaming', http)}`
+  return `${bit('WebSocket', ws)}; ${bit('HTTP streaming', http)}${note ? `. ${note}` : ''}`
 }
 
 /** "thousands of library voices" stays as written; "120" becomes "120 voices". */
@@ -65,9 +82,9 @@ export function compareRows(v: Vendor): Cell[][] {
   rows.push([{ text: 'Limit per request' }, { text: `${RA_LIMITS.perRequestCharacters.toLocaleString('en-US')} characters` }, hasText(v.limits.perRequestCharacters) ? { text: v.limits.perRequestCharacters, sourceUrl: v.limits.sourceUrl } : { text: NOT_STATED_CAP }])
   rows.push([{ text: 'Concurrency' }, { text: RA_LIMITS.short }, hasText(v.limits.concurrency) ? { text: v.limits.concurrency, sourceUrl: v.limits.sourceUrl } : { text: NOT_STATED_CAP }])
   rows.push([{ text: 'SDKs and plugins' }, { text: 'Python and JavaScript libraries (readaloud), Pipecat and LiveKit plugins, any OpenAI SDK' }, v.sdks.length ? { text: joinList(v.sdks) } : { text: NOT_STATED_CAP }])
-  rows.push([{ text: 'HIPAA' }, { text: certCell('hipaa') }, { text: statedCell(v.compliance.hipaa), sourceUrl: c }])
-  rows.push([{ text: 'SOC 2' }, { text: certCell('soc2') }, { text: statedCell(v.compliance.soc2), sourceUrl: c }])
-  rows.push([{ text: 'GDPR' }, { text: certCell('gdpr') }, { text: statedCell(v.compliance.gdpr), sourceUrl: c }])
+  rows.push([{ text: 'HIPAA' }, { text: certCell('hipaa') }, { text: statedCell(v.compliance.hipaa, hasText(v.compliance.note)), sourceUrl: c }])
+  rows.push([{ text: 'SOC 2' }, { text: certCell('soc2') }, { text: statedCell(v.compliance.soc2, hasText(v.compliance.note)), sourceUrl: c }])
+  rows.push([{ text: 'GDPR' }, { text: certCell('gdpr') }, { text: statedCell(v.compliance.gdpr, hasText(v.compliance.note)), sourceUrl: c }])
   return rows
 }
 
@@ -86,14 +103,14 @@ export function priceBlocks(v: Vendor, opts: { heading?: string } = {}): Block[]
   const vendorRows = priceRows(v)
   for (const r of vendorRows) {
     const cmp = r.per1M === null ? `Not comparable: ${v.name} lists a different unit` : relationText(r.per1M)
-    rows.push([{ text: `${v.name}: ${r.name}` }, { text: priceText(r), sourceUrl: src }, { text: [r.unit && r.per1M === null ? r.unit : '', r.notes].filter(Boolean).join('. ') || `Tier as named by ${v.name}` }, { text: cmp }])
+    rows.push([{ text: `${v.name}: ${r.name}` }, { text: priceText(r), sourceUrl: src }, { text: r.notes || `Tier as named by ${v.name}` }, { text: cmp }])
   }
   out.push({ kind: 'table', caption: `List prices: ${RA_NAME} and ${v.name}`, columns: ['Option', 'Listed price', 'What it covers', `Against ${RA_LIVE.name}`], rows })
   for (const s of priceStatements(v)) out.push({ kind: 'p', text: s })
   if (hasText(v.pricing.headline)) out.push({ kind: 'p', text: `${poss(v.name)} own headline, as of ${longDate(v.retrievedAt)}: ${sentence(v.pricing.headline)}` })
   if (hasText(v.pricing.freeTier)) out.push({ kind: 'p', text: `Free tier at ${v.name}: ${sentence(v.pricing.freeTier)} ${RA_NAME}: ${RA_FREE_CREDITS.short}` })
   else out.push({ kind: 'p', text: `We did not find a free tier on ${poss(v.name)} pricing pages. ${RA_NAME}: ${RA_FREE_CREDITS.short}` })
-  if (v.pricing.promotions.length) out.push({ kind: 'list', items: v.pricing.promotions.map((t) => ({ text: `Listed promotion when we reviewed: ${sentence(t)}`, sourceUrl: src })) })
+  if (v.pricing.promotions.length) out.push({ kind: 'list', items: v.pricing.promotions.map((t) => ({ text: `Time-limited or scheduled pricing listed when we reviewed: ${sentence(t)}`, sourceUrl: src })) })
   out.push({ kind: 'p', text: `Tiers cover different things, so compare on your own monthly volume, and check ${poss(v.name)} pricing page before you decide. Current ${RA_NAME} prices: ${RA_PATHS.developers}.` })
   return out
 }

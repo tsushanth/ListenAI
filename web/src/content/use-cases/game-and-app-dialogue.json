@@ -32,7 +32,7 @@
   ],
   "featuresUsed": [
     {
-      "feature": "Build-time rendering",
+      "feature": "Speech endpoint",
       "howItHelps": "One request per line over /v1/audio/speech, with opus, wav, mp3 or pcm output."
     },
     {

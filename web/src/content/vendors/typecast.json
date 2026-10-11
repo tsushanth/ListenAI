@@ -10,7 +10,7 @@
     "model": "Credit-based API plans separate from the Studio web plans: monthly credits (1 credit per character) with fixed-size pay-as-you-go top-ups once the allowance is used.",
     "headline": "Lite plan is $15 per month for 200k credits ($0.075 per 1k credits, i.e. $75 per 1M characters); pay-as-you-go beyond the allowance is $0.09 per 1k credits ($90 per 1M). Plus is $280 per month for 4M credits ($70 per 1M; $80 per 1M beyond).",
     "pricePer1MCharsUsd": 75,
-    "headlineTier": "Lite plan included-credit rate (1 credit per character); pay-as-you-go beyond the allowance is $90 per 1M",
+    "headlineTier": "Lite",
     "tiers": [
       {
         "name": "Free",
@@ -22,7 +22,7 @@
         "name": "Lite",
         "pricePer1MCharsUsd": 75,
         "unit": "USD per 1M characters (200k credits for $15/month; $0.075 per 1k credits)",
-        "notes": "Concurrency 5; 50 custom voice slots; extra usage billed at $0.09 per 1k credits ($90 per 1M) in $9 / 100k-credit increments."
+        "notes": "Concurrency 5; 50 custom voice slots; extra usage billed at $0.09 per 1k credits ($90 per 1M) in $9 / 100k-credit increments. Included-credit rate at 1 credit per character."
       },
       {
         "name": "Plus",
@@ -184,7 +184,7 @@
     }
   ],
   "unknowns": [
-    "The '1 credit per character' conversion appears only on the pricing page (single-source); the docs say not to assume other conversions.",
+    "The '1 credit per character' conversion appears on the pricing page and was not found elsewhere (single-source); the docs say not to assume other conversions.",
     "Whether a WebSocket streaming endpoint exists is not documented in the pages read.",
     "No vendor-stated latency figure was found.",
     "HIPAA, SOC 2 and GDPR compliance statements were not found.",

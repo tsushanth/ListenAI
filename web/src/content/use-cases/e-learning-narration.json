@@ -3,7 +3,7 @@
   "name": "E-learning narration",
   "h1": "Narrate course modules from scripts and re-render when they change",
   "metaDescription": "Build narration for online course modules with ReadAloud: script per slide, one audio file each, rendered by API and re-rendered when lessons change.",
-  "intro": "Course content changes. A regulation is updated, a product screen is redesigned, a wrong figure is spotted in lesson four, and every change to a recorded lesson means booking the narrator again or living with a mismatch between slides and audio. Narration generated from a script keeps the two in step: the script is the master, the audio is a build artifact, and an edit is a re-render. That suits a team that maintains many short modules, each with a slide or screen and a few sentences of speech. A workable structure is one script entry per slide, one audio file per entry, and a manifest your course player reads. Because every entry is short, a request stays well under the 5,000-character limit and you re-render only what changed. Studio, with its broader English voice list, is the sensible default for learners who will hear an hour of it. The honest limits are that delivery is flat, there is no control over emphasis, and anything with heavy jargon needs respelling and a listen-through before release.",
+  "intro": "Course content changes. A regulation is updated, a product screen is redesigned, a wrong figure is spotted in lesson four, and every change to a recorded lesson means booking the narrator again or living with a mismatch between slides and audio. Narration generated from a script keeps the two in step: the script is the master, the audio is a build artifact, and an edit is a re-render. That suits a team that maintains many short modules, each with a slide or screen and a few sentences of speech. A workable structure is one script entry per slide, one audio file per entry, and a manifest your course player reads. Because every entry is short, a request stays well under the 5,000-character limit and you re-render only what changed. Studio, with its broader English voice list, is the sensible default for learners who will hear an hour of it. The honest limits are that there is no control over emphasis or delivery, and anything with heavy jargon needs respelling and a listen-through before release.",
   "steps": [
     "Write narration as a script file with one entry per slide or screen, each with an id and the exact words. Keep sentences short and spell out numbers and acronyms the way you want them spoken.",
     "Call GET https://api.readaloudai.org/v1/voices with your key and choose one ReadAloud Studio voice for the whole course, so learners hear a consistent narrator.",
@@ -20,7 +20,7 @@
   },
   "whenToChooseReadAloud": [
     "Course text changes often enough that re-recording would be a recurring cost or delay.",
-    "Your modules are in English and one steady narrator is acceptable.",
+    "Your modules are in English and one narrator voice is acceptable.",
     "You want the narration pipeline in your build system, with scripts in version control.",
     "Short per-slide requests keep each file small and each re-render cheap: a 400-character slide is about $0.004 on Studio."
   ],
@@ -61,7 +61,7 @@
   "faq": [
     {
       "q": "Can I use different voices for different characters?",
-      "a": "Studio has multiple English voices, so you can assign one per speaker. There is no emotion or style control, so dialogue will sound plain."
+      "a": "Studio has multiple English voices, so you can assign one per speaker. There is no emotion or style control, so you cannot direct how a line is delivered."
     },
     {
       "q": "How do I fix a mispronounced term?",
@@ -81,9 +81,9 @@
     }
   ],
   "relatedSlugs": [
-    "internal-training-and-onboarding-audio",
-    "language-learning-practice",
-    "video-voiceovers-and-explainers",
-    "accessibility-read-aloud-for-websites"
+    "accessibility-read-aloud-for-websites",
+    "article-and-newsletter-to-audio",
+    "openai-sdk",
+    "vercel-ai-sdk"
   ]
 }

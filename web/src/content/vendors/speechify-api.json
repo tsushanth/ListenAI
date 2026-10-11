@@ -10,7 +10,7 @@
     "model": "Monthly subscription plans that add a dollar balance (shown as included characters), then per-character pay-as-you-go from topped-up balance at the plan's rate. No annual commitment on self-serve plans.",
     "headline": "Per-character rates fall with plan: USD 10 per 1M characters on Starter, USD 8 on Pro, USD 6 on Scale. Free includes 500K characters per month.",
     "pricePer1MCharsUsd": 10,
-    "headlineTier": "Starter plan, USD 10 per month including 1.9M characters, USD 10 per 1M characters afterwards (effective about USD 5.26 per 1M if the included allowance is fully used). Verified on speechify.ai/pricing and, for the Scale rate, speechify.ai/api.",
+    "headlineTier": "Starter",
     "tiers": [
       {
         "name": "Free",
@@ -22,7 +22,7 @@
         "name": "Starter",
         "pricePer1MCharsUsd": 10,
         "unit": "USD 10 per month; 1.9M characters included; USD 10 per 1M after",
-        "notes": "Voice cloning, up to 3 seats, 15 concurrent requests."
+        "notes": "Voice cloning, up to 3 seats, 15 concurrent requests. Effective about USD 5.26 per 1M if the included allowance is fully used. Verified on speechify.ai/pricing and, for the Scale rate, speechify.ai/api."
       },
       {
         "name": "Pro",
@@ -34,7 +34,7 @@
         "name": "Scale",
         "pricePer1MCharsUsd": 6,
         "unit": "USD 499 per month; 78M characters included (USD 468 credit); USD 6 per 1M after",
-        "notes": "Only plan with batch synthesis; up to 25 seats; 60 concurrent requests."
+        "notes": "The plan that includes batch synthesis; up to 25 seats; 60 concurrent requests."
       },
       {
         "name": "Enterprise / Custom",
@@ -59,7 +59,7 @@
   "streaming": {
     "websocket": "yes",
     "http": "yes",
-    "vendorStatedLatency": "Vendor-stated: Simba 3.2 first byte 56 ms p50 and 102 ms p90, measured 15 Sep 2026 on its US East streaming path ('first byte, not audible latency or a guarantee'). Vendor also cites 106 ms on Coval and 123 ms on Voice Arena (24 Sep 2026).",
+    "vendorStatedLatency": "Vendor-stated: Simba 3.2 first byte 56 ms p50 and 102 ms p90, measured 15 Sep 2026 on its US East streaming path (the vendor notes this is first byte, not audible latency, and not a commitment). Vendor also cites 106 ms on Coval and 123 ms on Voice Arena (24 Sep 2026).",
     "sourceUrl": "https://docs.speechify.ai/build/guides/text-to-speech/latency"
   },
   "formats": [
@@ -130,7 +130,7 @@
       "sourceUrl": "https://docs.speechify.ai/build/guides/text-to-speech/language-support"
     },
     {
-      "claim": "The speechify:style emotion tag is applied only by the retired Simba 1.6 models; current models speak the text without the style.",
+      "claim": "The speechify:style emotion tag is applied by the retired Simba 1.6 models; current models speak the text without the style.",
       "sourceUrl": "https://docs.speechify.ai/build/guides/text-to-speech/emotion-control"
     },
     {
@@ -212,6 +212,21 @@
     {
       "url": "https://docs.speechify.ai/build/guides/get-started/quickstart",
       "title": "SpeechifyAI docs - quickstart",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://docs.speechify.ai/build/guides/text-to-speech/streaming",
+      "title": "SpeechifyAI docs - streaming",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://docs.speechify.ai/build/guides/integrations",
+      "title": "SpeechifyAI docs - integrations",
+      "retrievedAt": "2026-10-10"
+    },
+    {
+      "url": "https://docs.speechify.ai/build/guides/voice-cloning/overview",
+      "title": "SpeechifyAI docs - voice cloning overview",
       "retrievedAt": "2026-10-10"
     }
   ],

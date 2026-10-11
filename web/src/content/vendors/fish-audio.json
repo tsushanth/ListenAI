@@ -10,13 +10,13 @@
     "model": "Pay-as-you-go API billed per million UTF-8 bytes of input text, with no subscription or monthly minimum for API access; concurrency limits rise with total prepaid amount.",
     "headline": "$15.00 per 1M UTF-8 bytes for the s2.1-pro model (equal to about 1M characters of plain English/ASCII text); s2.1-pro-free is listed at $0 under a fair-use policy.",
     "pricePer1MCharsUsd": 15,
-    "headlineTier": "s2.1-pro, pay-as-you-go (per million UTF-8 bytes; 1 byte = 1 character for ASCII text, so the figure is exact for plain English and higher per character for scripts that use multi-byte UTF-8, which is a derived reading of the unit)",
+    "headlineTier": "s2.1-pro",
     "tiers": [
       {
         "name": "s2.1-pro",
         "pricePer1MCharsUsd": 15,
         "unit": "USD per 1M UTF-8 bytes",
-        "notes": "Recommended production model; TTFA and DPA guarantees apply to this model per the models page."
+        "notes": "Recommended production model; TTFA and DPA commitments apply to this model per the models page. Priced per million UTF-8 bytes; one byte is one character for ASCII text, so the figure is exact for plain English and higher per character for scripts that use multi-byte UTF-8 (a derived reading of the unit)."
       },
       {
         "name": "s2-pro",
@@ -34,7 +34,7 @@
         "name": "s2.1-pro-free",
         "pricePer1MCharsUsd": 0,
         "unit": "USD per 1M UTF-8 bytes",
-        "notes": "Same model as s2.1-pro for development and testing; fair-use limits, no TTFA or DPA guarantees, no hard character cap stated."
+        "notes": "Same model as s2.1-pro for development and testing; fair-use limits, no TTFA or DPA commitments, no hard character cap stated."
       },
       {
         "name": "Speech-to-text (transcribe-1 / transcribe-1-pro)",
@@ -49,7 +49,7 @@
         "notes": "Covers one request even when it returns several candidate voices."
       }
     ],
-    "freeTier": "Model string s2.1-pro-free at $0 under a fair-use policy; per the vendor blog it has no SLA or latency guarantee, requests may be used to improve model quality, and products above $1M ARR are asked to contact Fish Audio first.",
+    "freeTier": "Model string s2.1-pro-free at $0 under a fair-use policy; per the vendor blog it has no SLA or latency commitment, requests may be used to improve model quality, and products above $1M ARR are asked to contact Fish Audio first.",
     "promotions": [
       "Free access to s2.1-pro-free: the vendor blog shows several superseded end dates and its latest statement reads 'Free access is available through November 30, 2026'. Treat the end date as subject to change; the blog says changes will be communicated with notice."
     ],
@@ -84,7 +84,7 @@
     "note": "Vendor migration guide lists an OpenAI-SDK base URL https://api.fish.audio/compat/v1 (POST /audio/speech), plus OpenRouter-, ElevenLabs- (https://api.fish.audio/compat/elevenlabs) and Groq-style bases. Differences noted by the vendor: voice is a Fish voice ID, response_format defaults to pcm, instructions and stream_format=sse are refused with a 400. Names tts-1, tts-1-hd and gpt-4o-mini-tts are accepted as aliases of fish-audio/s2.1-pro."
   },
   "licensing": {
-    "commercialUse": "Terms of Service: users of Paid Services are licensed to use the Services for commercial uses; the free web plan is for personal use only (homepage FAQ). s2.1-pro-free: the vendor blog says some commercial scenarios may have restrictions and asks products above $1M ARR to contact Fish Audio.",
+    "commercialUse": "Terms of Service: users of Paid Services are licensed to use the Services for commercial uses; the free web plan is for personal use (homepage FAQ). s2.1-pro-free: the vendor blog says some commercial scenarios may have restrictions and asks products above $1M ARR to contact Fish Audio.",
     "attributionOrConditions": "No attribution requirement for paid use found on the pages read; free-model fair-use and ARR condition as above.",
     "sourceUrl": "https://fish.audio/terms/"
   },
@@ -129,7 +129,7 @@
   ],
   "limitations": [
     {
-      "claim": "The free model has no TTFA/DPA guarantees or SLA, requests may be used to improve model quality, and its free window has had its end date extended several times.",
+      "claim": "The free model has no TTFA/DPA commitments or SLA, requests may be used to improve model quality, and its free window has had its end date extended several times.",
       "sourceUrl": "https://fish.audio/blog/s2-1-pro-free-api/"
     },
     {
@@ -220,7 +220,7 @@
     "HIPAA, SOC 2 and GDPR compliance statements were not found.",
     "The current end date of the s2.1-pro-free window is ambiguous because the blog lists several superseded dates; the latest stated is November 30, 2026.",
     "Exact fair-use thresholds for s2.1-pro-free are not published on the pages read.",
-    "Latency figures differ between pages (about 70, 90, 100 and 300 ms) and are vendor-stated only.",
+    "Latency figures differ between pages (about 70, 90, 100 and 300 ms) and are vendor-stated figures.",
     "Web-app (Studio) subscription plan prices were not recorded because the pricing page is rendered client-side and the question concerns the API."
   ]
 }

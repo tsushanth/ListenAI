@@ -64,7 +64,7 @@
   ],
   "migration": {
     "stepsToMove": [
-      "LMNT's site and docs show only a shutdown notice; the API (api.lmnt.com) did not complete a TLS connection from the research host, so integrations must move to another provider.",
+      "LMNT's site and docs show a shutdown notice; the API (api.lmnt.com) did not complete a TLS connection from the research host, so integrations must move to another provider.",
       "Replace the LMNT speech request and X-API-Key header with the ReadAloud speech endpoint and bearer key; voice IDs and any cloned voices do not carry over."
     ],
     "sourceUrls": [
@@ -95,5 +95,6 @@
     "All historical pricing, voices, limits and compliance (pages offline; none guessed)",
     "Strengths list is empty because no vendor pages remain from which to source claims",
     "All three pages read are the same notice, so status is effectively single-source (one site, three URLs)"
-  ]
+  ],
+  "statusNote": "No page is published. On 2026-10-10 lmnt.com and docs.lmnt.com showed 'LMNT has shut down. Our speech generation journey has come to an end.'; api.lmnt.com did not complete a connection. A short factual page would need a discontinued-service template (vendor's own words, source, date); it is not in the first wave."
 }

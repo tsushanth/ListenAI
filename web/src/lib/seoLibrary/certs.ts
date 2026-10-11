@@ -32,6 +32,11 @@ const VERB = new RegExp(`\\b(?:${VERBS})\\s+(?:full\\s+|a\\s+|the\\s+)?(${ALL})\
 const NEGATION = /\b(not|no|isn't|aren't|doesn't|don't|does not|do not|cannot|can't|without|never|neither|nor|none|lack|lacks|lacking|unless|until|n't)\b/i
 const REQUIREMENT = /\b(must|should|need|needs|needed|require|required|requires|requirement|requirements|if|whether|ask|asks|verify|confirm|check|may|might|could|can|ensure|want|wants|wanting|looking for|when|before|depending|rules?|regulations?|laws?|obligations?|expected|expect|subject to|covered by|apply|applies)\b/i
 
+// A negation AFTER the match: "HIPAA, SOC 2 and GDPR compliance statements were not found." The words before the match carry no negation, so
+// the check above misreads it as a claim. Narrow on purpose: the negation must follow within three words and be about finding or stating
+// the claim ("not found", "were not stated", "is not listed"); "is HIPAA compliant" and "HIPAA compliant, and not expensive" still match.
+const TRAILING_NEGATION = /^[\s,]*(?:[\w-]+\s+){0,3}?(?:(?:were|was|are|is|could|can|did)\s+)?not\s+(?:been\s+)?(?:found|stated|listed|published|available|located|identified|confirmed|verified|claimed)\b/i
+
 export function certKeyOf(term: string): CertKey | null {
   for (const c of CERT_TERMS) if (new RegExp(`^${c.re}$`, 'i').test(term.trim())) return c.key
   return null
@@ -58,6 +63,7 @@ export function findCertClaims(text: string): CertClaim[] {
       if (!cert) continue
       const before = sentence.slice(Math.max(0, m.index - 120), m.index + m[0].length)
       if (NEGATION.test(before) || REQUIREMENT.test(before)) continue
+      if (TRAILING_NEGATION.test(sentence.slice(m.index + m[0].length))) continue
       out.push({ cert, sentence, raSubject: isRaSubject(sentence) })
       break
     }

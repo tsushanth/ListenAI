@@ -51,6 +51,18 @@ function BlockView({ b }: { b: Block }) {
       return <h3>{b.text}</h3>
     case 'verified':
       return <p className="ra-pill">{b.text}</p>
+    case 'alert':
+      return (
+        <aside role="alert" className="ra-lib-alert">
+          <h2>{b.title}</h2>
+          {b.items.map((i, n) => (
+            <p key={n}>
+              {i.text}
+              <SourceLink url={i.sourceUrl} />
+            </p>
+          ))}
+        </aside>
+      )
     case 'p':
       return b.tone === 'note' ? <p className="ra-lib-note">{b.text}</p> : <p>{b.text}</p>
     case 'list': {

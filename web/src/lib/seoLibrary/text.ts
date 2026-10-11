@@ -12,6 +12,9 @@ export function textOfBlocks(blocks: Block[], opts: { skip?: Block['kind'][] } =
       case 'verified':
         out.push(b.text)
         break
+      case 'alert':
+        out.push(b.title, ...b.items.map((i) => i.text))
+        break
       case 'list':
         for (const i of b.items) out.push(i.text)
         break

@@ -321,6 +321,9 @@ body {
 .ra-lib-body .ra-table th[scope="row"] { font-weight: 600; color: var(--ink); text-align: left; }
 .ra-pill { display: inline-block; background: var(--panel); border-radius: 999px; padding: 4px 12px; font-size: .85rem; font-weight: 600; margin-top: 22px; }
 .ra-lib-note { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px 16px; font-size: .9rem; color: var(--ink2); }
+.ra-lib-body .ra-lib-alert { background: #FFF1E6; border: 2px solid #C2410C; border-radius: 12px; padding: 16px 20px; margin: 22px 0 8px; }
+.ra-lib-body .ra-lib-alert h2 { margin: 0 0 8px; font-size: 1.25rem; color: #7C2D12; }
+.ra-lib-body .ra-lib-alert p { color: #3B1D0B; margin-top: 8px; }
 .ra-lib-src { font-size: .78rem; color: var(--mute); white-space: nowrap; }
 .ra-lib-cards { list-style: none; padding: 0; margin: 16px 0 0; display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
 @media (max-width: 700px) { .ra-lib-cards { grid-template-columns: 1fr; } }

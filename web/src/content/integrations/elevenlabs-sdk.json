@@ -3,7 +3,7 @@
   "name": "ElevenLabs SDK",
   "h1": "Run the ElevenLabs SDKs against the ReadAloud API",
   "metaDescription": "Use the official ElevenLabs Python and JavaScript SDKs with ReadAloud by changing the base URL, key and voice id. Tested convert calls, 10 Oct 2026.",
-  "intro": "The ReadAloud API serves the ElevenLabs text-to-speech routes, so code written with the official ElevenLabs SDKs can run against https://api.readaloudai.org with three changes: the base URL, the API key and the voice id. This page is the short version for a developer who already has ElevenLabs SDK code and wants to see the smallest working call. The full account of what was tested, what behaves differently and what is not supported is on the ReadAloud migration page, which this page links to instead of copying. In short, the text-to-speech convert call returns audio in the ElevenLabs shape, voice ids from ElevenLabs do not exist here, and only text to speech is covered, not their speech-to-text, dubbing or agents products. The voice is not an ElevenLabs voice and we make no claim that it sounds the same, so listen to it on your own text before switching. On 10 October 2026 we installed the current Python and JavaScript SDKs in clean environments and ran one convert call in each against the live API, which is all this page claims; broader route coverage is described on the migration page.",
+  "intro": "The ReadAloud API serves the ElevenLabs text-to-speech routes, so code written with the official ElevenLabs SDKs can run against https://api.readaloudai.org with three changes: the base URL, the API key and the voice id. This page is the short version for a developer who already has ElevenLabs SDK code and wants to see the smallest working call. The full account of what was tested, what behaves differently and what is not supported is on the ReadAloud migration page, which this page links to instead of copying. In short, the text-to-speech convert call returns audio in the ElevenLabs shape, voice ids from ElevenLabs do not exist here, and only text to speech is covered, not their speech-to-text, dubbing or agents products. The voice is not an ElevenLabs voice and we make no claim about how it compares, so listen to it on your own text before switching. On 10 October 2026 we installed the current Python and JavaScript SDKs in clean environments and ran one convert call in each against the live API, which is all this page claims; broader route coverage is described on the migration page.",
   "install": "pip install elevenlabs                  # Python\nnpm install @elevenlabs/elevenlabs-js   # JavaScript\nexport READALOUD_API_KEY=rtts_...   # placeholder: use your own key\n\nChange three values: base URL https://api.readaloudai.org, your ReadAloud key, and voice id readaloud-default. Create a ReadAloud API key at https://readaloudai.org/developers and export it as READALOUD_API_KEY; new accounts start with free credits.",
   "quickstart": {
     "language": "python",
@@ -22,7 +22,7 @@
   ],
   "limitations": [
     "This page's own runs are one convert call per SDK. For everything else, including streaming, WebSocket, voices and error classes, see the migration page, which records what was run.",
-    "ElevenLabs voice ids and your ElevenLabs voice clones do not exist on ReadAloud. The voice is readaloud-default, the single English voice on ReadAloud Live, and it does not sound like an ElevenLabs voice.",
+    "ElevenLabs voice ids and your ElevenLabs voice clones do not exist on ReadAloud. The voice is readaloud-default, the single English voice on ReadAloud Live, and it is not an ElevenLabs voice.",
     "The audio is made at 24 kHz, so the 44.1 kHz MP3 has the requested sample rate but no content above 12 kHz. Each request is limited to 5,000 characters.",
     "Speech to text, dubbing, agents and the other ElevenLabs products are not served through this API."
   ],
@@ -54,8 +54,8 @@
       "a": "No. ElevenLabs voice ids return 404 here and are not mapped to ReadAloud voices. Pass readaloud-default."
     },
     {
-      "q": "Will it sound the same?",
-      "a": "No. It is a different voice and we do not claim equal quality. Listen to it on your own text before switching."
+      "q": "Will it be the same voice?",
+      "a": "No. It is a different voice, and we make no claim about how it compares. Listen to it on your own text before switching."
     },
     {
       "q": "Where do I find the full list of what works and what does not?",

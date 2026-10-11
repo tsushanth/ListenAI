@@ -8,8 +8,8 @@ import type { Block, Crumb, HubModel, LibraryPageModel, PageType } from './model
 import { HAND_WRITTEN_MIGRATIONS, pathFor, paths } from './routes.ts'
 import { isPublished, publishKey } from './publish.ts'
 import { NOT_STATED, NOT_STATED_CAP, fitDescription, fitTitle, joinList, longDate, lowerFirst, poss, sentence, usd } from './helpers.ts'
-import { CATEGORY_LABEL, activeVendors, formatOverlap, hasText, migrationVendors, relatedOptions, withArticle } from './vendor.ts'
-import { DISCLAIMER, compareRows, priceBlocks, raTierSummary, voiceCount } from './compare.ts'
+import { CATEGORY_LABEL, activeVendors, formatOverlap, guideVendors, hasText, migrationVendors, relatedOptions, withArticle } from './vendor.ts'
+import { DISCLAIMER, compareRows, priceBlocks, raTierSummary, sunsetBlocks, voiceCount } from './compare.ts'
 import { alternativesBody, alternativesDescription, alternativesLede } from './alternatives.ts'
 import { migrateBlocks, migrateDescription, migrateLede } from './migrate.ts'
 
@@ -33,10 +33,10 @@ const present = <T,>(x: T | null): x is T => x !== null
 
 function differenceBullets(v: Vendor): { text: string; sourceUrl?: string }[] {
   const out: { text: string; sourceUrl?: string }[] = []
-  if (hasText(v.voices.count)) out.push({ text: `Voices: ${v.name} lists ${voiceCount(v)}, a wider choice than ${RA_NAME} offers.`, sourceUrl: v.voices.sourceUrl })
+  if (hasText(v.voices.count)) out.push({ text: `Voices: ${v.name} lists ${sentence(voiceCount(v))} ${RA_NAME}: ${RA_VOICES.short}`, sourceUrl: v.voices.sourceUrl })
   else out.push({ text: `Voices: we could not read a voice count on ${poss(v.name)} pages, so we make no comparison of choice.` })
   if (v.ssml === 'yes') out.push({ text: `SSML: ${v.name} lists SSML support; ${RA_NAME} does not accept it, so markup in your text would have to be removed or rewritten.` })
-  if (hasText(v.voices.customVoiceOrCloning)) out.push({ text: `Custom voices: ${v.name} lists ${lowerFirst(sentence(v.voices.customVoiceOrCloning))}`, sourceUrl: v.voices.sourceUrl })
+  if (hasText(v.voices.customVoiceOrCloning)) out.push({ text: `Custom voices, as ${poss(v.name)} pages describe them: ${sentence(v.voices.customVoiceOrCloning)}`, sourceUrl: v.voices.sourceUrl })
   const stated = (['hipaa', 'soc2', 'gdpr'] as const).filter((k) => v.compliance[k] === 'stated')
   if (stated.length) out.push({ text: `Compliance: ${poss(v.name)} pages mention ${joinList(stated.map((k) => (k === 'soc2' ? 'SOC 2' : k.toUpperCase())))}; ${RA_NAME} claims none.`, sourceUrl: v.compliance.sourceUrl })
   if (v.compatibility.openaiSpeechCompatible === 'yes') out.push({ text: `Switching: both list an OpenAI-compatible speech endpoint, so a base URL, a key and a voice name may be all that changes. The OpenAI stock voice names all map to ${RA_VOICES.defaultId}.` })
@@ -110,6 +110,7 @@ export function alternativesModel(lib: Library, v: Vendor): LibraryPageModel {
   const date = longDate(v.retrievedAt)
   const { blocks: body, relatedSlugs } = alternativesBody(lib, v)
   const blocks: Block[] = [
+    ...sunsetBlocks(v),
     { kind: 'verified', text: `Last verified ${date}.` },
     { kind: 'p', tone: 'note', text: `We make ${RA_NAME}, so it appears below as one of the options, and we say so. Options are listed alphabetically, not ranked.` },
     ...body,
@@ -125,7 +126,7 @@ export function alternativesModel(lib: Library, v: Vendor): LibraryPageModel {
   blocks.push({ kind: 'h2', text: 'Sources', id: 'sources' }, sourcesBlock(v))
   return {
     type: 'alternatives', slug: v.slug, key: publishKey('alternatives', v.slug), path,
-    title: fitTitle(`${v.name} alternatives: what to consider`, `${v.name} alternatives`),
+    title: v.sunset ? fitTitle(`${v.name} alternatives: service ends ${longDate(v.sunset.date)}`, `${v.name} alternatives`) : fitTitle(`${v.name} alternatives: what to consider`, `${v.name} alternatives`),
     description: alternativesDescription(v, date, relatedSlugs.length),
     h1: `${v.name} alternatives`,
     lede: alternativesLede(v, date),
@@ -145,7 +146,7 @@ export function migrateModel(lib: Library, v: Vendor): LibraryPageModel {
   blocks.push({ kind: 'h2', text: 'Sources', id: 'sources' }, sourcesBlock(v, (s) => v.migration.sourceUrls.includes(s.url) || v.pricing.sourceUrls.includes(s.url) || v.limits.sourceUrl === s.url || v.voices.sourceUrl === s.url || v.licensing.sourceUrl === s.url || v.streaming.sourceUrl === s.url))
   return {
     type: 'migrate', slug: v.slug, key: publishKey('migrate', v.slug), path,
-    title: fitTitle(`Moving from ${v.name} to ${RA_NAME}: a checklist`, `Moving from ${v.name} to ${RA_NAME}`),
+    title: v.sunset ? fitTitle(`Moving from ${v.name} to ${RA_NAME} before ${longDate(v.sunset.date)}`, `Moving from ${v.name} to ${RA_NAME}`) : fitTitle(`Moving from ${v.name} to ${RA_NAME}: a checklist`, `Moving from ${v.name} to ${RA_NAME}`),
     description: migrateDescription(v, date),
     h1: `Moving from ${v.name} to ${RA_NAME}`,
     lede: migrateLede(v, date),
@@ -200,7 +201,7 @@ function integrationBlocks(lib: Library, d: Integration): Block[] {
   if (hasText(d.install)) blocks.push({ kind: 'h2', text: 'Install' }, { kind: 'code', language: 'bash', code: d.install })
   blocks.push({ kind: 'h2', text: 'Quickstart' }, { kind: 'code', language: d.quickstart.language, code: d.quickstart.code, caption: `Quickstart (${d.quickstart.language})` })
   blocks.push({ kind: 'h2', text: 'What was tested' })
-  blocks.push({ kind: 'p', text: `Checked with ${d.verifiedWith.packageOrSdk}${hasText(d.verifiedWith.version) ? ` version ${d.verifiedWith.version}` : ''} on ${longDate(d.verifiedWith.date)}. This is one dated check against the live API. Other versions, and later releases, may behave differently.` })
+  blocks.push({ kind: 'p', text: `Checked with ${d.verifiedWith.packageOrSdk}.${hasText(d.verifiedWith.version) ? ` Version tested: ${d.verifiedWith.version}.` : ''} Date: ${longDate(d.verifiedWith.date)}. This is one dated check against the live API. Other versions, and later releases, may behave differently.` })
   if (d.whatWorks.length) blocks.push({ kind: 'h3', text: 'What worked' }, { kind: 'list', items: d.whatWorks.map((text) => ({ text })) })
   if (d.limitations.length) blocks.push({ kind: 'h3', text: 'Limits and what is not supported' }, { kind: 'list', items: d.limitations.map((text) => ({ text })) })
   blocks.push({ kind: 'h2', text: 'Limits that apply to every integration' }, { kind: 'list', items: [
@@ -243,8 +244,10 @@ export function integrationModel(lib: Library, d: Integration): LibraryPageModel
 export function buildPages(lib: Library): LibraryPageModel[] {
   const active = activeVendors(lib)
   return [
+    // Compare pages: active vendors only. A vendor that is shutting down, has closed or is no longer a text-to-speech product is not compared.
     ...active.map((v) => compareModel(lib, v)),
-    ...active.map((v) => alternativesModel(lib, v)),
+    // Alternatives and migrate pages also exist for a vendor with an announced end date: the people who must leave it are the audience.
+    ...guideVendors(lib).map((v) => alternativesModel(lib, v)),
     ...migrationVendors(lib, Object.keys(HAND_WRITTEN_MIGRATIONS)).map((v) => migrateModel(lib, v)),
     ...lib.integrations.map((d) => integrationModel(lib, d)),
     ...lib.useCases.map((d) => useCaseModel(lib, d)),

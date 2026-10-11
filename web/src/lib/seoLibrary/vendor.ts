@@ -7,6 +7,13 @@ import { hash, joinList, poss, usd } from './helpers.ts'
 // Data helpers for vendor pages: price rows, price families, format overlap, related vendors. Nothing here types a ReadAloud number.
 
 export const activeVendors = (lib: Library): Vendor[] => lib.vendors.filter((v) => v.status === 'active')
+/** Vendors that get compare pages: active ones only. A vendor that is shutting down, closed or no longer a text-to-speech product is not compared. */
+export const compareVendors = activeVendors
+/** Vendors that get alternatives and migrate pages: active ones, plus ones with an announced end date (the people who need to leave them are the audience). */
+export const guideVendors = (lib: Library): Vendor[] => lib.vendors.filter((v) => v.status === 'active' || v.status === 'sunsetting')
+export const isSunsetting = (v: Vendor): boolean => v.status === 'sunsetting'
+/** True when the vendor's own pricing page is gone and the only copy of its prices is an archive: pages then show no price for it. */
+export const priceIsArchiveOnly = (v: Vendor): boolean => v.pricing.priceBasis === 'archive-only'
 
 export const CATEGORY_LABEL: Record<VendorCategory, string> = {
   'api-platform': 'text-to-speech API platform',
@@ -26,6 +33,7 @@ export type PriceRow = { name: string; per1M: number | null; unit: string; notes
 
 /** Every listed tier. When the researcher gave only a headline number, it becomes one row named after headlineTier. */
 export function priceRows(v: Vendor): PriceRow[] {
+  if (priceIsArchiveOnly(v)) return []
   const rows: PriceRow[] = v.pricing.tiers.map((t) => ({ name: t.name, per1M: t.pricePer1MCharsUsd, unit: t.unit, notes: t.notes }))
   if (rows.length === 0 && v.pricing.pricePer1MCharsUsd !== null) {
     rows.push({ name: v.pricing.headlineTier || 'Headline tier', per1M: v.pricing.pricePer1MCharsUsd, unit: '1M characters', notes: '' })
@@ -35,6 +43,7 @@ export function priceRows(v: Vendor): PriceRow[] {
 
 /** The headline per-1M-characters price, when the data states one. */
 export function headlinePer1M(v: Vendor): number | null {
+  if (priceIsArchiveOnly(v)) return null
   if (v.pricing.pricePer1MCharsUsd !== null) return v.pricing.pricePer1MCharsUsd
   const named = v.pricing.headlineTier ? v.pricing.tiers.find((t) => t.name.toLowerCase() === v.pricing.headlineTier.toLowerCase()) : undefined
   return named?.pricePer1MCharsUsd ?? null
@@ -53,13 +62,17 @@ export const difference = (a: number, b: number): number => Math.abs(Math.round(
 /** "$15 per 1M characters" or, for a vendor that prices in other units, the vendor's own unit with no conversion. */
 export function priceText(r: PriceRow): string {
   if (r.per1M !== null) return `${usd(r.per1M)} per 1M characters`
-  return r.unit ? `Priced per ${r.unit.replace(/^per\s+/i, '')}; not converted` : 'No per-character price listed'
+  return r.unit ? `Vendor's own unit: ${r.unit}; not converted` : 'No per-character price listed'
 }
 
 /** The plain statement the TTS rules require: where the vendor is lower per character than a ReadAloud tier, say so. */
 export function priceStatements(v: Vendor): string[] {
   const rows = numericRows(v)
   const out: string[] = []
+  if (priceIsArchiveOnly(v)) {
+    out.push(`${v.name} no longer has a pricing page on its own site; the copy we found is an archived snapshot. We show no ${v.name} price, because a price that cannot be checked against the vendor's own page may be out of date.`)
+    return out
+  }
   if (rows.length === 0) {
     const unit = priceRows(v).map((r) => r.unit).find((u) => hasText(u))
     out.push(`${v.name} does not list a price per character that we could read. ${unit ? `It prices in a different unit (${unit}), which we show as written.` : 'We show its pricing as written.'} We have not converted it into a per-character figure, because converting needs assumptions about speaking rate that the vendor does not state, so a price comparison needs your own volume in the vendor's unit.`)
@@ -82,8 +95,9 @@ export function priceStatements(v: Vendor): string[] {
   return out
 }
 
-export type PriceFamily = 'per-character' | 'per-time' | 'credits-or-plan' | 'per-token' | 'other'
+export type PriceFamily = 'per-character' | 'per-time' | 'credits-or-plan' | 'per-token' | 'other' | 'no-list'
 export function priceFamily(v: Vendor): PriceFamily {
+  if (priceIsArchiveOnly(v)) return 'no-list'
   if (numericRows(v).length > 0) return 'per-character'
   const t = `${v.pricing.model} ${v.pricing.headline} ${v.pricing.tiers.map((x) => x.unit).join(' ')}`
   if (/credit|subscription|\bseat|\bplan\b|monthly|per month/i.test(t)) return 'credits-or-plan'
@@ -98,6 +112,7 @@ export const FAMILY_PHRASE: Record<PriceFamily, string> = {
   'credits-or-plan': 'sells plans or credits',
   'per-token': 'prices by tokens',
   other: 'prices in its own units',
+  'no-list': 'has no current public price list',
 }
 
 // ---------------------------------------------------------------- formats
@@ -129,7 +144,7 @@ export function formatOverlap(v: Vendor): { shared: string[]; vendorOnly: string
 
 /** Vendors that get a /migrate page: active, with steps to move, capped, in priority order. A hand-written slot counts against the cap. */
 export function migrationVendors(lib: Library, skip: readonly string[] = []): Vendor[] {
-  const eligible = activeVendors(lib).filter((v) => v.migration.stepsToMove.length > 0)
+  const eligible = guideVendors(lib).filter((v) => v.migration.stepsToMove.length > 0)
   const rank = (s: string) => {
     const i = MIGRATE_PRIORITY.indexOf(s)
     return i === -1 ? MIGRATE_PRIORITY.length : i
@@ -182,8 +197,11 @@ export function relatedOptions(lib: Library, v: Vendor): Related[] {
   if (!table) {
     table = new Map()
     const active = activeVendors(lib).sort((a, b) => a.slug.localeCompare(b.slug))
+    // Subjects: active vendors first (so their picks do not depend on anyone else), then vendors with an announced end date, which are
+    // given options but are never offered as an option themselves.
+    const subjects = [...active, ...guideVendors(lib).filter((g) => g.status !== 'active').sort((a, b) => a.slug.localeCompare(b.slug))]
     const picks = new Map<string, number>()
-    for (const a of active) {
+    for (const a of subjects) {
       const ranked = active
         .filter((o) => o.slug !== a.slug)
         .map((o) => {
