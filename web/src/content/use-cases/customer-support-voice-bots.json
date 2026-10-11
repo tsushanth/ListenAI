@@ -1,0 +1,89 @@
+{
+  "slug": "customer-support-voice-bots",
+  "name": "Customer support voice bots",
+  "h1": "Voice for a support bot: answers read aloud, handoff and fallbacks",
+  "metaDescription": "Give a support chatbot a voice with ReadAloud: stream answers sentence by sentence, shorten replies for speech, and hand off to a person cleanly.",
+  "intro": "A support bot that talks has to behave differently from one that types. Written answers are long, contain lists and links, and are scanned rather than read. Spoken answers have to be brief, ordered and free of anything that cannot be said, because a caller cannot scroll back. The work therefore starts before the speech API: rewrite your bot's output prompt to produce two or three short sentences, ban URLs and markdown in spoken replies, and have the bot read back confirmation details such as a case number slowly. After that, the speech layer is straightforward. Stream each sentence to the speech API as the model produces it, play audio as it arrives, and cancel when the customer talks over the bot. A support bot also needs a way out. When the customer says they want a person, or the bot is unsure twice in a row, hand off with a short spoken line and transfer. ReadAloud supplies the voice only; recognition, the language model, the knowledge base, the telephony and the handoff are yours, or a framework's.",
+  "steps": [
+    "Rewrite your bot's system prompt for speech: replies of one to three sentences, no lists, no URLs, no markdown, and numbers spelled the way they should be said.",
+    "Pick a framework or build directly. With Pipecat, pip install pipecat-readaloud and add ReadAloudHttpTTSService; with LiveKit Agents, pip install livekit-plugins-readaloud and pass readaloud.TTS() to AgentSession.",
+    "If you call the API yourself, authorize with POST https://api.readaloudai.org/tts/authorize and engine live, open the WebSocket, and send each sentence as a synthesize message with voice default.",
+    "Cancel speech when the customer interrupts: send {\"type\":\"stop\"} and discard audio still queued.",
+    "Add a handoff rule: after a second failed answer, or a direct request, say a short handoff line and transfer to a person with the conversation summary.",
+    "Log the text of each spoken reply, not the audio, so reviewers can read what the bot said and spot wrong answers.",
+    "Test with real support transcripts. Check reading of order numbers, email addresses and amounts, and rewrite the prompt for any that are awkward."
+  ],
+  "sampleExample": {
+    "title": "Spoken answer with confirmation",
+    "input": "I have reopened your case. Your reference number is A, four, seven, two, nine. I will say that once more. A, four, seven, two, nine. A specialist will reply within one working day.",
+    "notes": "Use ReadAloud Live over the WebSocket, pcm_24000 for web or mulaw_8000 for phone. Send sentence by sentence so the customer hears the first one while the next is being written. Spell out reference numbers."
+  },
+  "whenToChooseReadAloud": [
+    "Your bot already works in text and you want to add an English voice without changing the rest of the stack.",
+    "You use Pipecat or LiveKit Agents and want a maintained plugin.",
+    "Cost per answer matters: 300 characters of reply is about $0.0012 on Live.",
+    "You value a plain, steady voice for factual answers over personality."
+  ],
+  "whenToChooseSomethingElse": [
+    "Customers write or speak in many languages; look for documented per-language voices and test your top languages with fluent reviewers.",
+    "Your brand needs a recognisable voice, or empathetic delivery in difficult conversations; ReadAloud does not control emotion.",
+    "You want one vendor to run telephony, recognition, language model and speech with a service-level agreement.",
+    "Regulated conversations, such as payments or health data, need audited vendors and recorded consent flows, which you must set up and check."
+  ],
+  "featuresUsed": [
+    {
+      "feature": "WebSocket streaming",
+      "howItHelps": "Replies play sentence by sentence, so the customer hears the beginning while the model finishes."
+    },
+    {
+      "feature": "stop message",
+      "howItHelps": "Barge-in is a single message, and cancelled requests are not billed."
+    },
+    {
+      "feature": "Pipecat and LiveKit plugins",
+      "howItHelps": "Maintained packages with an MIT licence that read READALOUD_API_KEY."
+    },
+    {
+      "feature": "Telephony output",
+      "howItHelps": "8 kHz mu-law, A-law and pcm are available per request."
+    },
+    {
+      "feature": "Per-character pricing",
+      "howItHelps": "About $0.004 per 1,000 characters on Live, so pricing follows reply length."
+    }
+  ],
+  "considerations": [
+    "Tell customers they are talking to an automated assistant where law or policy requires it, and offer a route to a person.",
+    "Do not record or store calls without the consents your jurisdiction requires. This is separate from the speech provider.",
+    "Do not read out sensitive data such as full card numbers or health details.",
+    "Keep a text channel as a fallback for outages, 402 responses and capacity errors."
+  ],
+  "faq": [
+    {
+      "q": "Does ReadAloud include speech recognition for live calls?",
+      "a": "Its speech to text is batch only, with no live streaming transcription. For live calls, use a separate streaming recognizer."
+    },
+    {
+      "q": "Can the bot sound apologetic or warm?",
+      "a": "Not through settings. Style instructions are ignored. Write empathetic wording, and keep it short."
+    },
+    {
+      "q": "How should the bot read an email address?",
+      "a": "Spell it out in the text, for example 'sam at example dot com', since the engine reads exactly what it receives."
+    },
+    {
+      "q": "What happens when the service is at capacity?",
+      "a": "You get an 'at capacity' error and a 1013 close on the WebSocket. Retry with a brief backoff and have a text fallback."
+    },
+    {
+      "q": "Can I measure latency before committing?",
+      "a": "Yes. The developers page describes a method and its results; repeat it from your own region with your own sentences."
+    }
+  ],
+  "relatedSlugs": [
+    "voice-agents-and-ivr",
+    "appointment-and-order-status-calls",
+    "phone-call-prompts-and-ivr-menus",
+    "notifications-and-alerts"
+  ]
+}
