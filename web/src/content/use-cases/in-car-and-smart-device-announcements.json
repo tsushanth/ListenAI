@@ -1,0 +1,89 @@
+{
+  "slug": "in-car-and-smart-device-announcements",
+  "name": "In-car and smart device announcements",
+  "h1": "Short spoken announcements for devices, kiosks and in-vehicle apps",
+  "metaDescription": "Add spoken status messages to connected devices, kiosks and vehicle apps with the ReadAloud API, called from a server, with caching and offline fallbacks.",
+  "intro": "A device that talks needs messages that are short, predictable and reliable. A thermostat reports a fault, a kiosk announces a queue number, a fleet app tells a driver the next stop, a washing machine says the cycle is done. These devices share constraints that a web app does not have. They often have limited memory, spotty connectivity, a small speaker and no keyboard. Your key must not be embedded in firmware, so the device asks your server, and your server asks the speech API. That server-side design also gives you a place to cache. Most device announcements come from a small set of templates, so a clip rendered once can be stored and reused across thousands of devices. Connectivity decides the rest: if a message must be spoken when the network is down, bundle pre-rendered clips with the firmware and use live generation only for the variable parts. For a vehicle, driver-distraction and safety rules apply regardless of how good the audio is, and they are your responsibility, not the speech provider's.",
+  "steps": [
+    "List every message the device can speak and split them into fixed phrases and templates with variables, such as a number or a place name.",
+    "Pre-render the fixed phrases with POST https://api.readaloudai.org/v1/audio/speech using readaloud-default, and choose wav, mp3 or opus to match your device's decoder. Request pcm if the device plays raw samples.",
+    "Bundle these clips into the firmware or app so the most important announcements work offline.",
+    "For variable messages, have the device call your own endpoint with the variable values. Your server builds the text, checks its cache, and otherwise requests audio from ReadAloud.",
+    "Return the audio with a cache header, and store it by text hash. Common values such as small numbers will be reused heavily.",
+    "Set a timeout and a fallback. If audio is not available within your limit, show the text on screen or play a short tone.",
+    "Test on the real speaker in the real environment, at engine and road noise, and adjust wording rather than only volume."
+  ],
+  "sampleExample": {
+    "title": "Fleet app prompt",
+    "input": "Next stop, Cedar Street depot. Arrival in about six minutes. Please prepare the delivery list.",
+    "notes": "Use ReadAloud Live, mp3 or opus depending on the device decoder. Pre-render fixed phrases; generate variable messages through your server with a one-shot request and cache by text hash."
+  },
+  "whenToChooseReadAloud": [
+    "You have a limited set of English messages and can pre-render most of them.",
+    "Your devices can reach a server of yours, and you can keep the key server-side.",
+    "You want formats such as raw pcm or opus that suit small devices.",
+    "You prefer a flat per-character price over a per-device licence: 200 characters is about $0.0008 on Live."
+  ],
+  "whenToChooseSomethingElse": [
+    "The device must speak with no network at all and cannot bundle files; consider an on-device speech engine.",
+    "Drivers need hands-free, interactive conversation; use a full voice-agent platform and follow automotive safety guidance.",
+    "You sell in many countries and need local languages; look for documented per-language voices.",
+    "The product needs a distinct brand voice or an expressive character; that is beyond what Live offers."
+  ],
+  "featuresUsed": [
+    {
+      "feature": "Output formats",
+      "howItHelps": "mp3, opus, wav and pcm cover most embedded decoders."
+    },
+    {
+      "feature": "OpenAI-compatible speech route",
+      "howItHelps": "A server can generate clips with an existing OpenAI client after a base URL change."
+    },
+    {
+      "feature": "Server-side keys",
+      "howItHelps": "Clients take your API key, so devices call your server, not ReadAloud directly."
+    },
+    {
+      "feature": "Per-character billing",
+      "howItHelps": "Short announcements cost a very small fraction of a cent each."
+    },
+    {
+      "feature": "Speed field",
+      "howItHelps": "Slowing a message slightly can help in a noisy cabin."
+    }
+  ],
+  "considerations": [
+    "Driver-distraction rules, product safety standards and regional regulations apply to in-vehicle audio and are the maker's responsibility.",
+    "Disclose synthetic voice where rules require it, for example in product documentation.",
+    "Embed no API key in firmware or an app package; anyone can extract it.",
+    "The 5,000-character request limit is rarely an issue here, but a server's stream capacity can be, so cache heavily."
+  ],
+  "faq": [
+    {
+      "q": "Can the device call ReadAloud directly?",
+      "a": "Avoid it. The key would live on the device. Route requests through your own server."
+    },
+    {
+      "q": "What if the device is offline?",
+      "a": "Bundle pre-rendered clips for the messages that matter, and fall back to text or tones for the rest."
+    },
+    {
+      "q": "Which format suits a small microcontroller?",
+      "a": "Raw pcm is the simplest to play, at 24 kHz 16-bit mono on the OpenAI-compatible route. Check your device's memory and decoder."
+    },
+    {
+      "q": "Can it announce in the driver's language?",
+      "a": "Only if you verify it. The documented voices are English, so this page does not promise other languages."
+    },
+    {
+      "q": "Is the audio free to reuse across devices?",
+      "a": "Check ReadAloud's terms for output rights. Technically, a stored clip can be played any number of times without further charges."
+    }
+  ],
+  "relatedSlugs": [
+    "notifications-and-alerts",
+    "voice-agents-and-ivr",
+    "game-and-app-dialogue",
+    "appointment-and-order-status-calls"
+  ]
+}

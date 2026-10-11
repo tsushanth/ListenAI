@@ -1,0 +1,89 @@
+{
+  "slug": "appointment-and-order-status-calls",
+  "name": "Appointment and order status calls",
+  "h1": "Automated reminder and status calls built from your booking data",
+  "metaDescription": "Speak appointment reminders and order updates on outbound calls using your own telephony and the ReadAloud API, with consent, opt-out and retry rules.",
+  "intro": "Reminder and status calls are the simplest voice automation that earns its keep. The message is known in advance, the data comes from a table, and the goal is narrow: confirm, reschedule, or tell someone their order has shipped. Nobody expects a conversation. What matters is that the call reaches the right person, says the right thing in under twenty seconds, and lets them respond with one key press or one word. ReadAloud supplies the voice; it does not dial numbers, so you pair it with a telephony provider you already trust. Your job runner reads upcoming appointments, fills a template with the name, date and place, requests audio, and plays it when the call is answered. Because messages are generated from templates, you can pre-render the fixed parts and generate only the changing words. The serious part is compliance, not audio. Calling people with automated voices is regulated in many places, requires prior consent in some, and demands an easy opt-out. Those rules, and the choice of calling hours, are yours to check with counsel.",
+  "steps": [
+    "Read upcoming appointments or shipped orders from your database. Include only the fields needed: first name, date, time, location or order summary.",
+    "Write one template per message type, around fifteen seconds when spoken. Put the purpose in the first sentence and end with the single action you want, such as press one to confirm.",
+    "Pre-render fixed sentences with POST https://api.readaloudai.org/v1/audio/speech. For variable parts, generate short clips or use the WebSocket interface with engine live and format mulaw_8000.",
+    "Place the call using your own telephony provider, and play the audio when the call connects. Wait for the answer; do not speak into voicemail without a plan.",
+    "Capture the key press or reply through your telephony provider's tools, and write the outcome back to the booking record.",
+    "Respect your calling hours and consent list. Stop calling anyone who opts out, and put the opt-out instruction in the message.",
+    "Retry unanswered calls on a schedule you define, and fall back to a text message if two attempts fail."
+  ],
+  "sampleExample": {
+    "title": "Appointment reminder",
+    "input": "Hello, this is a reminder from Larkspur Veterinary. Your appointment for Biscuit is tomorrow at ten thirty. Press one to confirm, or press two to reschedule.",
+    "notes": "Use ReadAloud Live, mulaw_8000 for the phone line. Pre-render the fixed sentences and generate the name, date and time on demand. A one-shot request is enough; no conversation is required."
+  },
+  "whenToChooseReadAloud": [
+    "Messages are short, templated English announcements and a person-style conversation is not required.",
+    "You already have a telephony provider and only need the speech layer.",
+    "Per-character pricing suits high-volume short calls: a 200-character reminder is about $0.0008 on Live.",
+    "You can store pre-rendered clips and generate only changing values."
+  ],
+  "whenToChooseSomethingElse": [
+    "You need a conversational booking assistant that understands replies; look at a voice-agent platform or the voice-agent pattern, with a streaming recognizer.",
+    "Your customers speak many languages; look for a provider with documented languages and test each message type.",
+    "You want a vendor that manages consent, calling hours, caller identity registration and do-not-call lists for you.",
+    "Messages include sensitive health details; avoid speaking them to whoever answers, and check the rules."
+  ],
+  "featuresUsed": [
+    {
+      "feature": "Telephony formats",
+      "howItHelps": "mulaw_8000, alaw_8000 and pcm_8000 are available through the WebSocket interface."
+    },
+    {
+      "feature": "OpenAI-compatible speech route",
+      "howItHelps": "Pre-render fixed sentences as wav or mp3 with an ordinary client library."
+    },
+    {
+      "feature": "Vapi custom voice route",
+      "howItHelps": "POST /v1/vapi/custom-voice lets a Vapi assistant request speech; check the developers page for current verification status."
+    },
+    {
+      "feature": "Per-character billing",
+      "howItHelps": "Short calls cost a small fraction of a cent for the speech portion; telephony charges are separate."
+    },
+    {
+      "feature": "Error codes",
+      "howItHelps": "402 and 429 tell your job runner when to stop or back off."
+    }
+  ],
+  "considerations": [
+    "Automated and prerecorded calls are regulated in many countries and states. Consent, calling hours, identification and opt-out rules are the caller's responsibility.",
+    "Disclose that the call is automated and from whom, at the start of the message.",
+    "Limit personal data in the spoken message, since you cannot be sure who picked up.",
+    "ReadAloud does not place calls. Telephony costs and carrier registration are separate from speech."
+  ],
+  "faq": [
+    {
+      "q": "Does ReadAloud make the phone call?",
+      "a": "No. It generates speech. You need a telephony provider to dial and play the audio."
+    },
+    {
+      "q": "Can people reply by voice?",
+      "a": "ReadAloud does not offer live recognition, so use key presses or a separate streaming recognizer."
+    },
+    {
+      "q": "Can I read names correctly?",
+      "a": "Names are read as spelled. If a name is mispronounced, respell it in a separate field in your data."
+    },
+    {
+      "q": "Should I leave voicemail messages?",
+      "a": "That is a legal and design decision. Keep voicemail short, avoid sensitive details, and check the rules for automated messages."
+    },
+    {
+      "q": "How do I test safely?",
+      "a": "Call your own numbers first, from your telephony sandbox, using the free credits. Do not test on customer lists."
+    }
+  ],
+  "relatedSlugs": [
+    "customer-support-voice-bots",
+    "phone-call-prompts-and-ivr-menus",
+    "notifications-and-alerts",
+    "voice-agents-and-ivr"
+  ]
+}
