@@ -1,0 +1,70 @@
+{
+  "slug": "n8n",
+  "name": "n8n",
+  "h1": "ReadAloud text-to-speech node for n8n",
+  "metaDescription": "Turn text into speech inside n8n workflows with the n8n-nodes-readaloud community node. Install from npm; tested in a local n8n 2.42.6, with limits.",
+  "intro": "n8n is a workflow automation tool in which each step is a node and data moves between nodes as items. n8n-nodes-readaloud is a community node that adds a ReadAloud step: give it text, and it returns the spoken audio as n8n binary data on the item, ready to be written to disk, uploaded to storage, attached to an email or passed to an HTTP Request node. The node has one operation, Text to Speech, with a voice field, an output format of MP3, WAV, Opus or raw PCM, and a speed from 0.25 to 4. The JSON side of each output item reports the voice, format, character count, byte count and sample rate, which is handy for logging or billing checks. The node is marked usable as a tool, so an n8n AI agent can call it. It uses only n8n's built-in HTTP helpers and has no runtime dependencies. Version 0.1.2 is published on npm and is under review by n8n; it is not an n8n-verified node, so it is installed as a community node from npm rather than found in the verified list. We installed it through n8n's own community-package install route into a local n8n 2.42.6 on 10 October 2026 and ran a workflow against the live API. n8n Cloud, the editor's credential test, and other formats were not run.",
+  "install": "In a self-hosted n8n: Settings, Community Nodes, Install, then enter the package name n8n-nodes-readaloud (npm). Then create a 'ReadAloud API' credential with your key and leave Base URL at https://api.readaloudai.org. Create a ReadAloud API key at https://readaloudai.org/developers and export it as READALOUD_API_KEY; new accounts start with free credits.\n\nThis is a community node, not an n8n-verified node. Your n8n instance must allow community nodes that n8n has not verified.",
+  "quickstart": {
+    "language": "json",
+    "code": "{\n  \"nodes\": [\n    {\n      \"parameters\": {\n        \"path\": \"readaloud-demo\",\n        \"responseMode\": \"lastNode\"\n      },\n      \"name\": \"Webhook\",\n      \"type\": \"n8n-nodes-base.webhook\",\n      \"typeVersion\": 2,\n      \"position\": [\n        0,\n        0\n      ]\n    },\n    {\n      \"parameters\": {\n        \"resource\": \"speech\",\n        \"operation\": \"textToSpeech\",\n        \"text\": \"Thanks for calling. How can I help you today?\",\n        \"voice\": \"readaloud-default\",\n        \"format\": \"mp3\",\n        \"speed\": 1\n      },\n      \"name\": \"ReadAloud\",\n      \"type\": \"n8n-nodes-readaloud.readAloud\",\n      \"typeVersion\": 1,\n      \"position\": [\n        250,\n        0\n      ],\n      \"credentials\": {\n        \"readAloudApi\": {\n          \"id\": \"<select your ReadAloud API credential>\",\n          \"name\": \"ReadAloud API\"\n        }\n      }\n    },\n    {\n      \"parameters\": {\n        \"operation\": \"write\",\n        \"fileName\": \"/path/to/allowed/folder/speech.mp3\",\n        \"dataPropertyName\": \"data\",\n        \"options\": {}\n      },\n      \"name\": \"Write Binary File\",\n      \"type\": \"n8n-nodes-base.readWriteFile\",\n      \"typeVersion\": 1,\n      \"position\": [\n        500,\n        0\n      ]\n    }\n  ],\n  \"connections\": {\n    \"Webhook\": {\n      \"main\": [\n        [\n          {\n            \"node\": \"ReadAloud\",\n            \"type\": \"main\",\n            \"index\": 0\n          }\n        ]\n      ]\n    },\n    \"ReadAloud\": {\n      \"main\": [\n        [\n          {\n            \"node\": \"Write Binary File\",\n            \"type\": \"main\",\n            \"index\": 0\n          }\n        ]\n      ]\n    }\n  }\n}"
+  },
+  "verifiedWith": {
+    "packageOrSdk": "n8n-nodes-readaloud (npm), in a local n8n 2.42.6 on Node 24.17.0",
+    "version": "0.1.2",
+    "date": "2026-10-10"
+  },
+  "whatWorks": [
+    "n8n's community-package install route installed n8n-nodes-readaloud 0.1.2 from npm into a local n8n 2.42.6 (the route the Community Nodes screen uses), and n8n reported one installed node, ReadAloud.",
+    "A workflow of Webhook, ReadAloud and Write Binary File, using a ReadAloud API credential, finished with status success. The node output was {voice: readaloud-default, format: mp3, characters: 45, bytes: 39213, sampleRate: 24000}.",
+    "The file written by Write Binary File was 39,213 bytes, started with an ID3 tag, and ffprobe read it as 24 kHz mono MP3 of 2.45 seconds.",
+    "The node is configured entirely through its fields (voice, format, speed, text), so the workflow needed no Code or HTTP Request node."
+  ],
+  "limitations": [
+    "Only the MP3 format and the voice readaloud-default were run. WAV, Opus and PCM, the speed field and the options are untested by us.",
+    "We ran a self-hosted n8n 2.42.6, not n8n Cloud, and did not use the editor: the credential and workflow were created through n8n's internal REST routes. We did not run the credential's Test button, and we did not run the node as an AI-agent tool.",
+    "The node's default for the voice field is a legacy voice id that the API still accepts as an alias; set the field to readaloud-default as in the quickstart.",
+    "ReadAloud Live has one English voice. Each item may hold up to 5,000 characters, so longer text must be split into several items first. Version 0.1.2 is in n8n's review and is not verified by n8n."
+  ],
+  "links": [
+    {
+      "label": "n8n-nodes-readaloud on npm",
+      "url": "https://www.npmjs.com/package/n8n-nodes-readaloud"
+    },
+    {
+      "label": "n8n-nodes-readaloud source",
+      "url": "https://github.com/tsushanth/n8n-nodes-readaloud"
+    },
+    {
+      "label": "n8n community nodes installation guide",
+      "url": "https://docs.n8n.io/integrations/community-nodes/installation/"
+    },
+    {
+      "label": "ReadAloud developer docs",
+      "url": "https://readaloudai.org/developers"
+    }
+  ],
+  "faq": [
+    {
+      "q": "Is this an official, verified n8n node?",
+      "a": "No. It is a community node published on npm, and version 0.1.2 is in n8n's review. Until that finishes, install it from npm by package name. We make no claim of n8n verification."
+    },
+    {
+      "q": "Where does the audio end up?",
+      "a": "In the binary property data of the output item (the name can be changed under Options). Connect a Write Binary File, Google Drive, S3, email or HTTP Request node after it."
+    },
+    {
+      "q": "Why did my Write Binary File node say access is not allowed?",
+      "a": "In our run, n8n 2.42.6 refused to write outside its permitted files folder until we pointed the N8N_RESTRICT_FILE_ACCESS_TO setting at it. Write into a folder your instance allows."
+    },
+    {
+      "q": "Can an AI agent call it?",
+      "a": "The package declares the node usable as a tool. We did not run it inside an AI agent workflow, so test that path yourself."
+    }
+  ],
+  "relatedSlugs": [
+    "vapi",
+    "openai-sdk",
+    "vercel-ai-sdk"
+  ]
+}

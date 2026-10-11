@@ -1,0 +1,71 @@
+{
+  "slug": "pipecat",
+  "name": "Pipecat",
+  "h1": "ReadAloud text-to-speech for Pipecat voice agents",
+  "metaDescription": "Add ReadAloud streaming text-to-speech to a Pipecat pipeline with the pipecat-readaloud package. Tested install, 24 kHz and 8 kHz output, limits.",
+  "intro": "Pipecat is an open-source Python framework for building real-time voice agents: audio comes in from a transport, passes through speech-to-text and an LLM, and the reply is turned back into audio by a text-to-speech service before it goes out again. pipecat-readaloud is a Pipecat TTS service, ReadAloudHttpTTSService, that plugs ReadAloud into that last step. It sends each sentence the LLM produces to the ReadAloud API over HTTP and yields audio frames as the bytes arrive, so Pipecat can start playing a reply before the whole sentence has been rendered. The service can output 8 kHz audio, the rate that telephony transports such as Twilio and Telnyx use, as well as 16 kHz and the native 24 kHz, so a phone agent does not need a separate resampling step. Voice and speed can be changed while a pipeline is running with a TTSUpdateSettingsFrame, and the service stops the in-flight request when Pipecat interrupts the bot. The package is written and maintained by the ReadAloud author and is MIT licensed. This page records what we ran on 10 October 2026: we installed the published package from PyPI into a clean virtual environment, ran a one-sentence Pipecat pipeline against the live API, and checked the resulting audio with ffprobe. What we did not run is listed under limitations, so you know which parts to test yourself.",
+  "install": "pip install pipecat-readaloud\nexport READALOUD_API_KEY=rtts_...   # placeholder: use your own key\n\nRequires Python 3.10+ and pipecat-ai 1.12 or newer (below 2). Create a ReadAloud API key at https://readaloudai.org/developers and export it as READALOUD_API_KEY; new accounts start with free credits.",
+  "quickstart": {
+    "language": "python",
+    "code": "import asyncio\nimport os\nimport wave\n\nimport aiohttp\nfrom pipecat.frames.frames import EndFrame, Frame, TTSAudioRawFrame, TTSSpeakFrame\nfrom pipecat.pipeline.pipeline import Pipeline\nfrom pipecat.pipeline.worker import PipelineParams, PipelineWorker\nfrom pipecat.processors.frame_processor import FrameDirection, FrameProcessor\nfrom pipecat.workers.runner import WorkerRunner\nfrom pipecat_readaloud import ReadAloudHttpTTSService\n\nRATE = 24000\n\n\nclass WavWriter(FrameProcessor):\n    def __init__(self, path):\n        super().__init__()\n        self._path, self._chunks = path, []\n\n    async def process_frame(self, frame: Frame, direction: FrameDirection):\n        await super().process_frame(frame, direction)\n        if isinstance(frame, TTSAudioRawFrame):\n            self._chunks.append(frame.audio)\n        elif isinstance(frame, EndFrame):\n            with wave.open(self._path, \"wb\") as f:\n                f.setnchannels(1)\n                f.setsampwidth(2)\n                f.setframerate(RATE)\n                f.writeframes(b\"\".join(self._chunks))\n            print(\"frames:\", len(self._chunks), \"bytes:\", sum(map(len, self._chunks)))\n        await self.push_frame(frame, direction)\n\n\nasync def main():\n    async with aiohttp.ClientSession() as session:\n        tts = ReadAloudHttpTTSService(\n            api_key=os.environ[\"READALOUD_API_KEY\"],\n            aiohttp_session=session,\n            settings=ReadAloudHttpTTSService.Settings(voice=\"readaloud-default\", speed=1.0),\n        )\n        worker = PipelineWorker(\n            Pipeline([tts, WavWriter(\"pipecat_out.wav\")]),\n            params=PipelineParams(audio_out_sample_rate=RATE),\n        )\n        await worker.queue_frames([TTSSpeakFrame(\"Thanks for calling. How can I help you today?\"), EndFrame()])\n        runner = WorkerRunner(handle_sigint=False)\n        await runner.add_workers(worker)\n        await runner.run()\n\n\nasyncio.run(main())"
+  },
+  "verifiedWith": {
+    "packageOrSdk": "pipecat-readaloud (PyPI), with pipecat-ai 1.12.0, aiohttp 3.14.5, Python 3.14.6",
+    "version": "0.1.1",
+    "date": "2026-10-10"
+  },
+  "whatWorks": [
+    "Installed pipecat-readaloud 0.1.1 from PyPI into a clean virtual environment; it pulled in pipecat-ai 1.12.0 and the quickstart on this page ran unchanged.",
+    "A TTSSpeakFrame through ReadAloudHttpTTSService with voice readaloud-default produced 28 audio frames, 113,128 bytes, which ffprobe read as a 24 kHz mono 16-bit WAV of 2.36 seconds.",
+    "With sample_rate=8000 the same pipeline produced 7 frames, 37,526 bytes, read by ffprobe as 8 kHz mono audio of 2.35 seconds.",
+    "The package's own default voice value, \"default\", also synthesized audio (2.29 seconds in our run), so existing code that uses it keeps working.",
+    "A wrong API key surfaced as a Pipecat ErrorFrame reading '401 invalid_api_key', not as a hang or a crash."
+  ],
+  "limitations": [
+    "We ran a TTS-only pipeline that writes a WAV file. We did not run a full agent with speech-to-text, an LLM and a telephony or WebRTC transport.",
+    "Interruption handling, runtime voice and speed updates with TTSUpdateSettingsFrame, and the retry path for 429 and 503 responses are described in the package README; we did not exercise them.",
+    "ReadAloud Live has one English voice, readaloud-default, and we used only that voice. Each request is limited to 5,000 characters.",
+    "The API returns no word timestamps, so the text frames Pipecat emits are not time-aligned with the audio."
+  ],
+  "links": [
+    {
+      "label": "pipecat-readaloud on PyPI",
+      "url": "https://pypi.org/project/pipecat-readaloud/"
+    },
+    {
+      "label": "pipecat-readaloud source",
+      "url": "https://github.com/tsushanth/pipecat-readaloud"
+    },
+    {
+      "label": "Pipecat",
+      "url": "https://github.com/pipecat-ai/pipecat"
+    },
+    {
+      "label": "ReadAloud developer docs",
+      "url": "https://readaloudai.org/developers"
+    }
+  ],
+  "faq": [
+    {
+      "q": "Which voice should I pass?",
+      "a": "Use readaloud-default, the single English voice on ReadAloud Live. The package's built-in value \"default\" also worked in our run. We only tested this one voice."
+    },
+    {
+      "q": "Can I use it on a phone call?",
+      "a": "The service can request 8 kHz audio, which is what Twilio and Telnyx transports use, and our 8 kHz run produced a valid 8 kHz mono file. We did not place a phone call through Pipecat."
+    },
+    {
+      "q": "What happens if the user interrupts the bot?",
+      "a": "The README says Pipecat cancels the in-flight synthesis and the connection is closed, which stops generation on the server. We did not test an interruption, so confirm it in your own pipeline."
+    },
+    {
+      "q": "Does it need an LLM or a transport to try it?",
+      "a": "No. The quickstart here is a pipeline of the TTS service and a small processor that writes a WAV file, so a ReadAloud key is the only credential you need."
+    }
+  ],
+  "relatedSlugs": [
+    "livekit-agents",
+    "vapi",
+    "openai-sdk"
+  ]
+}
