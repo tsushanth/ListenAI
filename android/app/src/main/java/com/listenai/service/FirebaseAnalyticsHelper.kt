@@ -114,9 +114,22 @@ object FirebaseAnalyticsHelper {
     fun logContentImported(importMode: String, language: String? = null) {
         val params = Bundle().apply {
             putString("import_mode", importMode) // url, document, text, clipboard, email
-            language?.let { putString("content_language", it) } // demand signal for non-English voices
+            putString("content_language", language ?: "unknown") // demand signal; "unknown" = too short or low confidence
         }
         logEvent("content_imported", params)
+    }
+
+    /** A non-English article had to be read with a voice that is not native to its language. */
+    fun logVoiceFallback(language: String, reason: String) {
+        logEvent("voice_fallback", Bundle().apply {
+            putString("content_language", language)
+            putString("reason", reason) // no_voice, engine_error
+        })
+    }
+
+    /** The user tapped "I want a natural voice for this language". The strongest demand signal. */
+    fun logVoiceRequest(language: String) {
+        logEvent("voice_request", Bundle().apply { putString("content_language", language) })
     }
 
     fun logImportFailed(importMode: String, error: String? = null) {

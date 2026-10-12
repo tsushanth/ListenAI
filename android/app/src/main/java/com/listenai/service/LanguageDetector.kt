@@ -41,11 +41,15 @@ object LanguageDetector {
         return t.take(half) + "\n" + t.substring(mid, mid + half)
     }
 
-    suspend fun detect(text: String): String {
+    /** The detected ISO-2 code, or null when the text is too short or the model is not confident. */
+    suspend fun detectOrNull(text: String): String? {
         val sample = sample(text)
-        if (sample.length < MIN_CHARS) return DEFAULT
-        return runCatching { identify(sample) }.getOrNull() ?: DEFAULT
+        if (sample.length < MIN_CHARS) return null
+        return runCatching { identify(sample) }.getOrNull()
     }
+
+    /** Like [detectOrNull] but treats unknown as English, for callers that must always have a language. */
+    suspend fun detect(text: String): String = detectOrNull(text) ?: DEFAULT
 
     private suspend fun identify(sample: String): String? = suspendCancellableCoroutine { cont ->
         val client = LanguageIdentification.getClient(

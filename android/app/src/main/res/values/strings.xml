@@ -417,6 +417,8 @@
     <string name="player_sleep_timer_set">Sleep timer set for %d minutes</string>
     <string name="player_sleep_timer_cancelled">Sleep timer cancelled</string>
     <string name="player_by_author">by %s</string>
+    <string name="voice_request_cta">Want a natural %1$s voice? Tell us</string>
+    <string name="voice_request_thanks">Thanks, we have noted that you want a natural %1$s voice.</string>
     <string name="player_words_count">%d words</string>
     <string name="player_untitled">Untitled</string>
     <string name="player_article_fallback">Article</string>

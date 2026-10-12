@@ -63,6 +63,7 @@ class ListenAIApplication : Application() {
             TikTokHelper.initialize(this)
             FacebookSDKHelper.initialize(this)
             FirebaseAnalyticsHelper.logAppOpen()
+            FirebaseAnalyticsHelper.setUserProperty("device_language", java.util.Locale.getDefault().language)
             // Pick up any server-side paywall tuning for the next start; never blocks launch.
             Thread { com.listenai.service.PaywallRemoteConfig.refresh(this) }.start()
         }

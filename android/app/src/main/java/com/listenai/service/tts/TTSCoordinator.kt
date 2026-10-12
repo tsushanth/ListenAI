@@ -58,12 +58,17 @@ class TTSCoordinator(
         // eSpeak voice for its language: it costs no cloud quota and is not mispronounced by an
         // English model. Cloned voices keep their own path (the user chose that voice on purpose).
         val isCloned = voice.id.startsWith("cloned_") || voice.providerModelId == "chatterbox"
+        val lang2 = language?.substringBefore('-')?.lowercase()
+        if (!isCloned && !lang2.isNullOrBlank() && lang2 != "en" && !EspeakLocalSynth.shouldUse(lang2)) {
+            com.listenai.service.FirebaseAnalyticsHelper.logVoiceFallback(lang2, "no_voice")
+        }
         if (!isCloned && EspeakLocalSynth.shouldUse(language)) {
             // If the offline engine cannot start, fall through to the normal voice rather than fail.
             runCatching { EspeakLocalSynth.synthesize(context, text, language!!, adjustedOptions.speed) }
                 .onSuccess { return@withContext it }
                 .onFailure {
                     if (it is kotlinx.coroutines.CancellationException) throw it
+                    com.listenai.service.FirebaseAnalyticsHelper.logVoiceFallback(language!!, "engine_error")
                     android.util.Log.w("TTSCoordinator", "eSpeak failed, using default voice: ${it.message}")
                 }
         }
