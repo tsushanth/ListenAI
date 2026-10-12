@@ -10,8 +10,10 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.listenai.service.playback.AudioPlaybackService
 import com.listenai.service.playback.AudioPlaybackStatus
+import com.listenai.service.import_content.IncomingContentHolder
 import com.listenai.service.review.AppReviewService
 import com.listenai.ui.components.FeedbackPromptDialog
+import com.listenai.ui.import_content.IncomingContentSheet
 import com.listenai.ui.navigation.BottomNavBar
 import com.listenai.ui.navigation.NavGraph
 import com.listenai.ui.navigation.Screen
@@ -92,6 +94,26 @@ fun MainScreen() {
         ) {
             NavGraph(navController = navController)
         }
+    }
+
+    // Widget "Continue listening" tap
+    val openArticleId by IncomingContentHolder.openArticleId.collectAsState()
+    LaunchedEffect(openArticleId) {
+        openArticleId?.let { navController.navigate(Screen.Player.createRoute(it)) }
+        if (openArticleId != null) IncomingContentHolder.consumeOpenArticle()
+    }
+
+    // Content shared/opened from another app (Share, "Read aloud" text selection, Open with)
+    val incoming by IncomingContentHolder.pending.collectAsState()
+    incoming?.let { content ->
+        IncomingContentSheet(
+            content = content,
+            onDismiss = { IncomingContentHolder.clear() },
+            onReadNow = { articleId ->
+                IncomingContentHolder.clear()
+                navController.navigate(Screen.Player.createRoute(articleId))
+            }
+        )
     }
 
     // Feedback prompt dialog

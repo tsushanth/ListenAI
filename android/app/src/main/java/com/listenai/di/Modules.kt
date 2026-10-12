@@ -36,6 +36,16 @@ import org.koin.dsl.module
  * Database migration from version 1 to 2
  * Adds email-specific metadata columns to articles table
  */
+private val MIGRATION_2_3 = object : Migration(2, 3) {
+    override fun migrate(database: SupportSQLiteDatabase) {
+        database.execSQL(
+            "CREATE TABLE IF NOT EXISTS `bookmarks` (`id` TEXT NOT NULL, `articleId` TEXT NOT NULL, " +
+                "`positionSeconds` REAL NOT NULL, `createdAt` INTEGER NOT NULL, PRIMARY KEY(`id`))"
+        )
+        database.execSQL("CREATE INDEX IF NOT EXISTS `index_bookmarks_articleId` ON `bookmarks` (`articleId`)")
+    }
+}
+
 private val MIGRATION_1_2 = object : Migration(1, 2) {
     override fun migrate(database: SupportSQLiteDatabase) {
         // Add senderEmail column (nullable TEXT)
@@ -56,7 +66,7 @@ val dataModule = module {
             ListenAIDatabase::class.java,
             "listenai_database"
         )
-            .addMigrations(MIGRATION_1_2)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
             .build()
     }
 
@@ -64,6 +74,7 @@ val dataModule = module {
     single { get<ListenAIDatabase>().articleDao() }
     single { get<ListenAIDatabase>().playlistDao() }
     single { get<ListenAIDatabase>().usageDao() }
+    single { get<ListenAIDatabase>().bookmarkDao() }
 
     // Repositories
     single { ArticleRepository(get()) }

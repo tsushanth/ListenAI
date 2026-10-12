@@ -35,6 +35,9 @@ interface ArticleDao {
     @Query("SELECT * FROM articles WHERE isCompleted = 0 AND listenedDuration > 0 ORDER BY updatedAt DESC")
     fun getInProgressArticles(): Flow<List<Article>>
 
+    @Query("SELECT * FROM articles ORDER BY updatedAt DESC LIMIT 1")
+    suspend fun getMostRecentArticle(): Article?
+
     @Query("SELECT * FROM articles WHERE isCompleted = 1 ORDER BY updatedAt DESC")
     fun getCompletedArticles(): Flow<List<Article>>
 
