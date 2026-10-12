@@ -324,7 +324,7 @@ fun MailImportScreen(
                             publishDate = null,
                             rawText = email.body,
                             wordCount = email.body.split(Regex("\\s+")).size,
-                            language = "en",
+                            language = com.listenai.service.LanguageDetector.detect(email.body),
                             heroImageUrl = null,
                             // Email-specific metadata
                             senderEmail = email.senderEmail,

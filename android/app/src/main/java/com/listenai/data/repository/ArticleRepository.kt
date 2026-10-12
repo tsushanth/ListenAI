@@ -80,6 +80,8 @@ class ArticleRepository(
         articleDao.updatePlaybackProgress(id, listenedDuration, lastPosition, isCompleted)
     }
 
+    suspend fun updateLanguage(id: String, language: String) = articleDao.updateLanguage(id, language)
+
     suspend fun updateSynthesisStatus(
         id: String,
         status: String,

@@ -320,6 +320,11 @@ fun PlayerScreen(
 
         scope.launch {
             try {
+                // Articles imported before language detection were all stamped "en"; re-check once
+                // so a Spanish PDF from last month is read in Spanish, not mangled by an English voice.
+                val language = com.listenai.service.LanguageDetector.detect(article.rawText)
+                if (language != article.language) articleRepository.updateLanguage(article.id, language)
+
                 // Use currently selected voice or fall back to first available
                 val voice = selectedVoice ?: article.selectedVoiceId?.let { voiceId ->
                     availableVoices.find { it.id == voiceId }
@@ -336,6 +341,7 @@ fun PlayerScreen(
                 val result = ttsCoordinator.synthesize(
                     text = article.rawText,
                     voice = voice,
+                    language = language,
                     onProgress = { progress ->
                         // Update UI state (called from IO dispatcher, but Compose state is thread-safe)
                         synthesisProgress = progress.overallProgress
@@ -505,6 +511,7 @@ fun PlayerScreen(
                     text = article.rawText,
                     voice = voice,
                     forceOnDevice = forceOnDevice,
+                    language = if (forceOnDevice) null else article.language,
                     onProgress = { progress ->
                         // Update UI state (called from IO dispatcher, but Compose state is thread-safe)
                         synthesisProgress = progress.overallProgress
@@ -1034,6 +1041,17 @@ private fun ArticleHeader(article: Article) {
             ) {
                 // Source type badge
                 SourceBadge(sourceType = article.sourceType)
+
+                // Language, when it is not English: that is what decides which voice reads it
+                if (com.listenai.service.tts.EspeakLocalSynth.shouldUse(article.language)) {
+                    com.listenai.service.LanguageDetector.displayName(article.language)?.let { name ->
+                        Text(
+                            text = name,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
 
                 // Author
                 Text(

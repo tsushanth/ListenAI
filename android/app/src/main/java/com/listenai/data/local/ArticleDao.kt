@@ -62,6 +62,9 @@ interface ArticleDao {
     @Query("DELETE FROM articles WHERE id = :id")
     suspend fun deleteArticleById(id: String)
 
+    @Query("UPDATE articles SET language = :language WHERE id = :id")
+    suspend fun updateLanguage(id: String, language: String)
+
     @Query("UPDATE articles SET isFavorite = :isFavorite, updatedAt = :updatedAt WHERE id = :id")
     suspend fun updateFavoriteStatus(id: String, isFavorite: Boolean, updatedAt: Long = System.currentTimeMillis())
 

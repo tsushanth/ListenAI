@@ -45,6 +45,7 @@ class TTSCoordinator(
         quality: VoiceQuality = _selectedQuality.value,
         options: SynthesisOptions = SynthesisOptions.DEFAULT,
         forceOnDevice: Boolean = false,
+        language: String? = null,
         onProgress: (SynthesisProgress) -> Unit = {}
     ): SynthesisResult = withContext(Dispatchers.IO) {
         // Apply default settings
@@ -52,6 +53,14 @@ class TTSCoordinator(
             speed = if (options.speed == SynthesisOptions.DEFAULT.speed) defaultSpeed else options.speed,
             pitch = if (options.pitch == SynthesisOptions.DEFAULT.pitch) defaultPitch else options.pitch
         )
+
+        // Non-English content has no natural voice in the app yet, so read it with the offline
+        // eSpeak voice for its language: it costs no cloud quota and is not mispronounced by an
+        // English model. Cloned voices keep their own path (the user chose that voice on purpose).
+        val isCloned = voice.id.startsWith("cloned_") || voice.providerModelId == "chatterbox"
+        if (!isCloned && EspeakLocalSynth.shouldUse(language)) {
+            return@withContext EspeakLocalSynth.synthesize(context, text, language!!, adjustedOptions.speed)
+        }
 
         // All synthesis uses self-hosted Kokoro
         synthesizeWithKokoro(text, voice, adjustedOptions, forceOnDevice, onProgress)
