@@ -320,6 +320,12 @@ fun PlayerScreen(
 
         scope.launch {
             try {
+                // Articles imported before language detection were all stamped "en"; re-check once
+                // so a Spanish PDF from last month is read in Spanish, not mangled by an English voice.
+                val detected = com.listenai.service.LanguageDetector.detectOrNull(article.rawText)
+                if (detected != null && detected != article.language) articleRepository.updateLanguage(article.id, detected)
+                val language = detected ?: article.language
+
                 // Use currently selected voice or fall back to first available
                 val voice = selectedVoice ?: article.selectedVoiceId?.let { voiceId ->
                     availableVoices.find { it.id == voiceId }
@@ -336,6 +342,7 @@ fun PlayerScreen(
                 val result = ttsCoordinator.synthesize(
                     text = article.rawText,
                     voice = voice,
+                    language = language,
                     onProgress = { progress ->
                         // Update UI state (called from IO dispatcher, but Compose state is thread-safe)
                         synthesisProgress = progress.overallProgress
@@ -505,6 +512,7 @@ fun PlayerScreen(
                     text = article.rawText,
                     voice = voice,
                     forceOnDevice = forceOnDevice,
+                    language = if (forceOnDevice) null else article.language,
                     onProgress = { progress ->
                         // Update UI state (called from IO dispatcher, but Compose state is thread-safe)
                         synthesisProgress = progress.overallProgress
@@ -1010,6 +1018,38 @@ fun PlayerScreen(
     }
 }
 
+/**
+ * For non-English articles: one tap to tell us the user wants a natural voice for this language.
+ * Remembered per language so it turns into a thank-you instead of asking again.
+ */
+@Composable
+private fun VoiceRequestPrompt(language: String?) {
+    val lang = language?.substringBefore('-')?.lowercase()
+    if (lang.isNullOrBlank() || lang == "en") return
+    val name = com.listenai.service.LanguageDetector.displayName(lang) ?: return
+    val context = LocalContext.current
+    val prefs = remember { context.getSharedPreferences("voice_requests", android.content.Context.MODE_PRIVATE) }
+    var requested by remember(lang) { mutableStateOf(prefs.getBoolean(lang, false)) }
+    if (requested) {
+        Text(
+            text = stringResource(R.string.voice_request_thanks, name),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    } else {
+        androidx.compose.material3.TextButton(
+            onClick = {
+                prefs.edit().putBoolean(lang, true).apply()
+                com.listenai.service.FirebaseAnalyticsHelper.logVoiceRequest(lang)
+                requested = true
+            },
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)
+        ) {
+            Text(stringResource(R.string.voice_request_cta, name))
+        }
+    }
+}
+
 @Composable
 private fun ArticleHeader(article: Article) {
     Column(
@@ -1035,6 +1075,18 @@ private fun ArticleHeader(article: Article) {
                 // Source type badge
                 SourceBadge(sourceType = article.sourceType)
 
+                // Language, when it is not English: that is what decides which voice reads it
+                val lang2 = article.language?.substringBefore('-')?.lowercase()
+                if (!lang2.isNullOrBlank() && lang2 != "en") {
+                    com.listenai.service.LanguageDetector.displayName(lang2)?.let { name ->
+                        Text(
+                            text = name,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+
                 // Author
                 Text(
                     text = stringResource(R.string.player_by_author, article.displayAuthor),
@@ -1043,6 +1095,8 @@ private fun ArticleHeader(article: Article) {
                 )
             }
         }
+
+        VoiceRequestPrompt(article.language)
 
         // Stats row
         Row(

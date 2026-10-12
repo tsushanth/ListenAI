@@ -130,7 +130,7 @@ class ImportViewModel(
                     publishDate = null,
                     rawText = truncatedContent,
                     wordCount = truncatedContent.split(Regex("\\s+")).size,
-                    language = extractedContent.language,
+                    language = com.listenai.service.LanguageDetector.detectOrNull(truncatedContent),
                     heroImageUrl = extractedContent.imageUrl,
                     sourceType = SourceType.WEB,
                     sourceUrl = url,
@@ -142,7 +142,7 @@ class ImportViewModel(
                 articleRepository.saveArticle(article)
                 _progress.value = 1f
 
-                FirebaseAnalyticsHelper.logContentImported("url")
+                FirebaseAnalyticsHelper.logContentImported("url", article.language)
                 _importState.value = ImportState.Success(article.id)
             } catch (e: Exception) {
                 FirebaseAnalyticsHelper.logImportFailed("url", e.message)
@@ -195,7 +195,7 @@ class ImportViewModel(
                     publishDate = null,
                     rawText = truncatedContent,
                     wordCount = truncatedContent.split(Regex("\\s+")).size,
-                    language = "en",
+                    language = com.listenai.service.LanguageDetector.detectOrNull(truncatedContent),
                     heroImageUrl = null,
                     sourceType = SourceType.PDF,
                     sourceUrl = url,
@@ -210,7 +210,7 @@ class ImportViewModel(
                 pdfFile.delete()
 
                 _progress.value = 1f
-                FirebaseAnalyticsHelper.logContentImported("pdf_url")
+                FirebaseAnalyticsHelper.logContentImported("pdf_url", article.language)
                 _importState.value = ImportState.Success(article.id)
 
             } catch (e: Exception) {
@@ -288,7 +288,7 @@ class ImportViewModel(
                     publishDate = null,
                     rawText = truncatedContent,
                     wordCount = truncatedContent.split(Regex("\\s+")).size,
-                    language = "en",
+                    language = com.listenai.service.LanguageDetector.detectOrNull(truncatedContent),
                     heroImageUrl = null,
                     sourceType = SourceType.PDF,
                     sourceUrl = null,
@@ -300,7 +300,7 @@ class ImportViewModel(
                 articleRepository.saveArticle(article)
                 _progress.value = 1f
 
-                FirebaseAnalyticsHelper.logContentImported("pdf")
+                FirebaseAnalyticsHelper.logContentImported("pdf", article.language)
                 _importState.value = ImportState.Success(article.id)
             } catch (e: Exception) {
                 FirebaseAnalyticsHelper.logImportFailed("pdf", e.message)
@@ -374,7 +374,7 @@ class ImportViewModel(
                         publishDate = null,
                         rawText = partContent,
                         wordCount = partContent.split(Regex("\\s+")).size,
-                        language = "en",
+                        language = com.listenai.service.LanguageDetector.detectOrNull(partContent),
                         heroImageUrl = null,
                         sourceType = SourceType.EPUB,
                         sourceUrl = null,
@@ -420,7 +420,7 @@ class ImportViewModel(
                     publishDate = null,
                     rawText = truncatedContent,
                     wordCount = truncatedContent.split(Regex("\\s+")).size,
-                    language = "en",
+                    language = com.listenai.service.LanguageDetector.detectOrNull(truncatedContent),
                     heroImageUrl = null,
                     sourceType = SourceType.MANUAL,
                     sourceUrl = null,
@@ -432,7 +432,7 @@ class ImportViewModel(
                 articleRepository.saveArticle(article)
                 _progress.value = 1f
 
-                FirebaseAnalyticsHelper.logContentImported("text")
+                FirebaseAnalyticsHelper.logContentImported("text", article.language)
                 _importState.value = ImportState.Success(article.id)
             } catch (e: Exception) {
                 FirebaseAnalyticsHelper.logImportFailed("text", e.message)
@@ -478,7 +478,7 @@ class ImportViewModel(
                     publishDate = null,
                     rawText = truncatedContent,
                     wordCount = truncatedContent.split(Regex("\\s+")).size,
-                    language = "en",
+                    language = com.listenai.service.LanguageDetector.detectOrNull(truncatedContent),
                     heroImageUrl = null,
                     sourceType = SourceType.CLIPBOARD,
                     sourceUrl = null,
@@ -490,7 +490,7 @@ class ImportViewModel(
                 articleRepository.saveArticle(article)
                 _progress.value = 1f
 
-                FirebaseAnalyticsHelper.logContentImported("clipboard")
+                FirebaseAnalyticsHelper.logContentImported("clipboard", article.language)
                 _importState.value = ImportState.Success(article.id)
             } catch (e: Exception) {
                 FirebaseAnalyticsHelper.logImportFailed("clipboard", e.message)

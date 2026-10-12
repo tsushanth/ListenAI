@@ -422,6 +422,18 @@ class KokoroOnDeviceService(private val context: Context) : TTSService {
         voice: VoicePreset,
         options: SynthesisOptions,
         onChunk: (ShortArray, Int) -> Boolean,
+    ): Boolean = synthesizeChunkedPcmWithText(text, voice, options) { pcm, sr, _ -> onChunk(pcm, sr) }
+
+    /**
+     * Same as [synthesizeChunkedPcm], but also tells the sink which text each chunk of audio was
+     * synthesized from, so callers can report word positions (the system TTS engine uses this for
+     * `SynthesisCallback.rangeStart`).
+     */
+    suspend fun synthesizeChunkedPcmWithText(
+        text: String,
+        voice: VoicePreset,
+        options: SynthesisOptions,
+        onChunk: (ShortArray, Int, String) -> Boolean,
     ): Boolean = withContext(Dispatchers.IO) {
         val taskId = UUID.randomUUID()
         activeTasks.add(taskId)
@@ -444,7 +456,7 @@ class KokoroOnDeviceService(private val context: Context) : TTSService {
                 val chunkMs = System.currentTimeMillis() - chunkStart
                 Log.i(TAG, "synthesizeChunkedPcm: chunk ${i + 1}/${chunks.size} (${chunk.length} chars) → ${pcm.size} samples in ${chunkMs}ms")
                 if (pcm.isNotEmpty()) {
-                    val keepGoing = onChunk(pcm, 24_000)
+                    val keepGoing = onChunk(pcm, 24_000, chunk)
                     if (!keepGoing) {
                         Log.i(TAG, "synthesizeChunkedPcm: sink signalled stop after chunk ${i + 1}")
                         return@withContext false

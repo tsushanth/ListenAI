@@ -1,0 +1,3 @@
+Imported text, links, PDFs and EPUBs in other languages are now detected, shown in the player, and read aloud with a voice for that language.
+Faster, more reliable settings for the ReadAloud system voice engine.
+Fixes for paywall settings.

@@ -131,6 +131,9 @@ class ReadAloudTTSService : TextToSpeechService() {
         warmupKokoroInBackground()
         // Notification channel must exist before we ever post to it.
         ensureDownloadNotificationChannel()
+        // Initialise eSpeak (copies its data on first run) off the main thread, so eSpeak voices and the
+        // never-silent fallback are instant when first needed.
+        serviceScope.launch { runCatching { EspeakBridge.ensureInitialized(applicationContext) } }
     }
 
     override fun onDestroy() {
@@ -286,6 +289,10 @@ class ReadAloudTTSService : TextToSpeechService() {
 
     override fun onGetDefaultVoiceNameFor(lang: String?, country: String?, variant: String?): String {
         val iso2Lang = iso3ToIso2(lang) ?: "en"
+        // A non-English locale gets its eSpeak voice, never an English voice reading foreign text.
+        if (iso2Lang != "en") {
+            EspeakVoices.forLocale(iso2Lang, iso3ToIso2Country(country))?.let { return it.systemVoiceName }
+        }
         val iso2Country = iso3ToIso2Country(country) ?: "US"
         // Respect the user's selection from TTSEngineSettingsActivity (or any
         // other in-app voice picker, since SettingsManager.selectedVoiceId
@@ -317,6 +324,7 @@ class ReadAloudTTSService : TextToSpeechService() {
 
     override fun onStop() {
         stopRequested = true
+        EspeakBridge.cancel()
         Log.i(tag, "onStop()")
     }
 
@@ -333,50 +341,65 @@ class ReadAloudTTSService : TextToSpeechService() {
         if (request == null || callback == null) return
         stopRequested = false
 
-        val text = request.charSequenceText?.toString().orEmpty()
-        if (text.isBlank()) {
+        val rawText = request.charSequenceText
+        if (rawText.isNullOrBlank()) {
             callback.error()
             return
         }
+        val original = rawText.toString()
 
-        // Resolve voice FIRST so the fast-path gates can honor it. The
-        // cache + Piper fast paths are both single-voice (af_heart for
-        // cache, amy for Piper); if the user picked anything else we
-        // MUST skip them or they hear the wrong voice. Same for rate:
-        // the cache PCM is pre-rendered at 1.0x, and Piper's length_scale
-        // is wired below, so cache hits require rate==100.
+        // Resolve the voice FIRST: it decides the language (and so how the text is normalised) and which
+        // fast paths are valid. The cache and Piper fast paths are single-voice (af_heart / amy) and the
+        // cache PCM is pre-rendered at 1.0x, so they apply only to the default voice at the default rate.
         //
-        // Prefer the user's current SettingsManager pick over the
-        // framework's request.voiceName. The framework caches the result
-        // of onGetDefaultVoiceNameFor() at engine init time and does NOT
-        // re-query it when SettingsManager changes — which is fine on
-        // stock Android (a TalkBack restart forces a re-query) but
-        // breaks on Samsung One UI (where TalkBack restarts don't clear
-        // the framework's voice cache). Reading SettingsManager live on
-        // every synth call makes the user's pick take effect immediately
-        // regardless of OEM TalkBack behavior. Apps that explicitly call
-        // tts.setVoice() with a non-default voice still get overridden
-        // when SettingsManager is set, which matches user expectation
-        // (the in-app pick is the most-recent explicit choice). In-app
-        // voice previews don't route through this service at all
-        // (ChatterboxOnDeviceService.synthesize directly), so they
-        // remain correct.
+        // Language comes before the user's in-app pick: a caller asking for Spanish must never get an
+        // English voice reading Spanish text, so non-English requests go to eSpeak. For English the user's
+        // current SettingsManager pick wins over the framework's cached voice name (the framework does not
+        // re-query onGetDefaultVoiceNameFor when the pick changes, and Samsung One UI keeps its voice cache
+        // across TalkBack restarts), so the pick takes effect immediately on every OEM.
+        val reqLang = iso3ToIso2(request.language)
+        val reqCountry = iso3ToIso2Country(request.country)
         val settingsPick = com.listenai.service.settings.SettingsManager
             .getInstance(applicationContext).selectedVoiceId.value
             ?.takeIf { it.isNotBlank() }
             ?.let { com.listenai.systemtts.VoiceCatalog.voiceNameForPresetId(it) }
-        val voiceName = settingsPick
-            ?: request.voiceName
-            ?: VoiceCatalog.defaultVoiceName(
-                iso3ToIso2(request.language), iso3ToIso2Country(request.country), null
-            )
-        val preset = VoiceCatalog.resolvePreset(voiceName)
-        if (preset == null) {
-            Log.w(tag, "Unknown voice requested: $voiceName")
+        val requestedEspeak = EspeakVoices.fromVoiceName(request.voiceName)
+        val voiceName = when {
+            requestedEspeak != null -> requestedEspeak.systemVoiceName
+            reqLang != null && reqLang != "en" ->
+                EspeakVoices.forLocale(reqLang, reqCountry)?.systemVoiceName
+                    ?: VoiceCatalog.defaultVoiceName(reqLang, reqCountry, null)
+            else -> settingsPick ?: request.voiceName ?: VoiceCatalog.defaultVoiceName(reqLang, reqCountry, null)
+        }
+        val espeakEntry = EspeakVoices.fromVoiceName(voiceName)
+        val english = espeakEntry?.locale?.language?.let { it == "en" } ?: true
+        val text = TextNormalizer.normalize(rawText, english)
+        if (text.isBlank()) {
             callback.error()
             return
         }
-        Log.i(tag, "voiceResolved request.voiceName='${request.voiceName}' settingsPick='$settingsPick' final='$voiceName' preset=${preset.id} providerVoiceId=${preset.providerVoiceId}")
+        // Word positions are reported only while the spoken text still matches what the caller sent.
+        val rangeText = if (text == original) original else null
+
+        if (espeakEntry != null) {
+            if (serveEspeak(text, espeakEntry, request, callback, rangeText)) return
+            // eSpeak could not run. English can still fall back to the neural voices; other languages cannot.
+            if (!english) {
+                Log.w(tag, "eSpeak unavailable for ${espeakEntry.tag}")
+                callback.error()
+                return
+            }
+        }
+        val neuralVoiceName = if (espeakEntry != null) {
+            VoiceCatalog.voiceNameForPresetId("dorothy") ?: VoiceCatalog.defaultVoiceName("en", "US", null)
+        } else voiceName
+        val preset = VoiceCatalog.resolvePreset(neuralVoiceName)
+        if (preset == null) {
+            Log.w(tag, "Unknown voice requested: $neuralVoiceName")
+            callback.error()
+            return
+        }
+        Log.i(tag, "voiceResolved request.voiceName='${request.voiceName}' settingsPick='$settingsPick' final='$neuralVoiceName' preset=${preset.id} providerVoiceId=${preset.providerVoiceId}")
 
         val isClonedVoice = preset.id.startsWith("cloned_") || preset.providerModelId == "chatterbox"
         val voiceKey = preset.providerVoiceId ?: "af_heart"
@@ -405,7 +428,7 @@ class ReadAloudTTSService : TextToSpeechService() {
             }
             if (perVoice != null) {
                 Log.i(tag, "T_PER_VOICE_HIT text='${text.take(40)}' voice=$voiceKey lookup_ms=${System.currentTimeMillis() - perVoiceStart}")
-                servePcmDirect(perVoice.pcm, perVoice.sampleRate, callback)
+                servePcmDirect(perVoice.pcm, perVoice.sampleRate, callback, rangeText)
                 return
             }
         }
@@ -436,7 +459,7 @@ class ReadAloudTTSService : TextToSpeechService() {
             }
             if (pcm.isNotEmpty()) {
                 Log.i(tag, "T_PIPER_DONE text='${text.take(40)}' dt=${System.currentTimeMillis() - piperStart}ms samples=${pcm.size} rate=${request.speechRate}")
-                servePcmDirect(pcm, PiperLiveSynth.sampleRate(), callback)
+                servePcmDirect(pcm, PiperLiveSynth.sampleRate(), callback, rangeText)
                 return
             }
             Log.i(tag, "Piper returned empty PCM — falling through to Kokoro")
@@ -489,6 +512,12 @@ class ReadAloudTTSService : TextToSpeechService() {
                     }
                 }
             }
+            // Never leave a screen-reader user in silence while the model downloads: speak with eSpeak.
+            val fallback = EspeakVoices.forLocale("en", "US")
+            if (!isClonedVoice && fallback != null && serveEspeak(text, fallback, request, callback, rangeText)) {
+                Log.i(tag, "model not ready: spoke with eSpeak fallback")
+                return
+            }
             callback.error()
             return
         }
@@ -502,7 +531,7 @@ class ReadAloudTTSService : TextToSpeechService() {
                     pitch = request.pitch / 100f          // Android pitch is 100 = normal
                 )
                 if (service is KokoroOnDeviceService) {
-                    streamKokoroChunksToCallback(service, text, preset, opts, callback)
+                    streamKokoroChunksToCallback(service, text, preset, opts, callback, rangeText)
                 } else {
                     // Cloned voices still go through cloud round-trip + WAV file
                     // — keep the existing path until on-device Chatterbox lands.
@@ -528,20 +557,33 @@ class ReadAloudTTSService : TextToSpeechService() {
      * takes a ShortArray + sample rate directly instead of a cache
      * Hit. Used for the cache-miss-short-text Piper path.
      */
-    private fun servePcmDirect(pcm: ShortArray, sampleRate: Int, callback: SynthesisCallback) {
+    private fun servePcmDirect(
+        pcm: ShortArray,
+        sampleRate: Int,
+        callback: SynthesisCallback,
+        rangeText: String? = null
+    ) {
         val rc = callback.start(sampleRate, AudioFormat.ENCODING_PCM_16BIT, 1)
         if (rc != TextToSpeech.SUCCESS) {
             Log.w(tag, "servePcmDirect: callback.start returned $rc")
             return
         }
+        // Word positions are reported just before the audio that reaches them.
+        val words = if (rangeText != null) WordTimeline.compute(rangeText, pcm.size) else emptyList()
+        var nextWord = 0
         val maxBuf = callback.maxBufferSize.coerceAtLeast(2)
-        // ShortArray → ByteArray (16-bit LE)
+        // ShortArray -> ByteArray (16-bit LE)
         val bytes = ByteArray(pcm.size * 2)
         ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN).asShortBuffer().put(pcm)
         var offset = 0
         while (offset < bytes.size) {
             if (stopRequested) return
             val len = minOf(maxBuf, bytes.size - offset)
+            val chunkEndFrame = (offset + len) / 2
+            while (nextWord < words.size && words[nextWord].startFrame < chunkEndFrame) {
+                val w = words[nextWord++]
+                callback.rangeStart(w.startFrame, w.startChar, w.endChar)
+            }
             val pushRc = callback.audioAvailable(bytes, offset, len)
             if (pushRc != TextToSpeech.SUCCESS) {
                 Log.w(tag, "servePcmDirect: audioAvailable returned $pushRc")
@@ -550,6 +592,93 @@ class ReadAloudTTSService : TextToSpeechService() {
             offset += len
         }
         callback.done()
+    }
+
+    /** One chunk of audio for the Kokoro streaming consumer, with the word positions that go with it. */
+    private class AudioItem(val bytes: ByteArray, val ranges: List<WordTimeline.Word>)
+
+    /**
+     * Speaks [text] with eSpeak NG: a few milliseconds to first audio, fully offline, many languages and a
+     * very wide rate range. Returns true if eSpeak handled the request (including a stop part-way), and false,
+     * without touching [callback], if it could not produce any audio, so the caller can fall back.
+     */
+    private fun serveEspeak(
+        text: String,
+        entry: EspeakVoices.Entry,
+        request: SynthesisRequest,
+        callback: SynthesisCallback,
+        rangeText: String?
+    ): Boolean {
+        val sampleRate = EspeakBridge.ensureInitialized(applicationContext)
+        if (sampleRate <= 0 || !EspeakBridge.isReady()) return false
+        val wpm = EspeakVoices.rateToWpm(request.speechRate)
+        val pitch = EspeakVoices.pitchToEspeak(request.pitch)
+        val startMs = System.currentTimeMillis()
+        var started = false
+        var framesSent = 0
+        var textCursor = 0
+        for (piece in splitForEspeak(text)) {
+            if (stopRequested) return true
+            val pcm = EspeakBridge.synthesize(piece, entry.espeakVoice, wpm, pitch)
+            if (pcm == null) {
+                if (!started) return false
+                break
+            }
+            if (pcm.isEmpty()) continue
+            if (!started) {
+                if (callback.start(sampleRate, AudioFormat.ENCODING_PCM_16BIT, 1) != TextToSpeech.SUCCESS) return true
+                started = true
+                Log.i(tag, "T_ESPEAK_FIRST_AUDIO voice=${entry.espeakVoice} wpm=$wpm dt=${System.currentTimeMillis() - startMs}ms")
+            }
+            if (rangeText != null) {
+                val (located, next) = WordTimeline.locate(rangeText, piece, pcm.size, textCursor)
+                textCursor = next
+                for (w in located) callback.rangeStart(framesSent + w.startFrame, w.startChar, w.endChar)
+            }
+            if (!pushPcm(pcm, callback)) return true
+            framesSent += pcm.size
+        }
+        if (!started) return false
+        if (!stopRequested) callback.done()
+        return true
+    }
+
+    /** Pushes 16-bit mono PCM to the framework. False if it refused the audio or a stop was requested. */
+    private fun pushPcm(pcm: ShortArray, callback: SynthesisCallback): Boolean {
+        val bytes = ByteArray(pcm.size * 2)
+        ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN).asShortBuffer().put(pcm)
+        val maxBuf = callback.maxBufferSize.coerceAtLeast(2)
+        var offset = 0
+        while (offset < bytes.size) {
+            if (stopRequested) return false
+            val len = minOf(maxBuf, bytes.size - offset)
+            if (callback.audioAvailable(bytes, offset, len) != TextToSpeech.SUCCESS) return false
+            offset += len
+        }
+        return true
+    }
+
+    /**
+     * Splits text into sentence-sized pieces so the first sentence plays quickly and a stop request takes
+     * effect between sentences. Decimals ("3.14") are not split because a split needs whitespace after the
+     * punctuation (CJK full stops need none).
+     */
+    private fun splitForEspeak(text: String): List<String> {
+        val sentences = text.split(Regex("(?<=[.!?])\\s+|(?<=[\u3002\uFF01\uFF1F])|\\n+"))
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+        val pieces = ArrayList<String>()
+        for (sentence in sentences) {
+            var rest = sentence
+            while (rest.length > ESPEAK_MAX_PIECE) {
+                var cut = rest.lastIndexOf(' ', ESPEAK_MAX_PIECE)
+                if (cut <= 0) cut = ESPEAK_MAX_PIECE
+                pieces += rest.substring(0, cut).trim()
+                rest = rest.substring(cut).trim()
+            }
+            if (rest.isNotEmpty()) pieces += rest
+        }
+        return pieces
     }
 
     /**
@@ -614,6 +743,7 @@ class ReadAloudTTSService : TextToSpeechService() {
         preset: VoicePreset,
         opts: SynthesisOptions,
         callback: SynthesisCallback,
+        rangeText: String? = null,
     ) {
         val startRc = callback.start(
             24_000,
@@ -639,20 +769,23 @@ class ReadAloudTTSService : TextToSpeechService() {
         // drains the queue into AudioTrack at the framework's pace.
         // Bounded at 8 chunks so a slow consumer eventually backpressures
         // the producer rather than ballooning RAM on book-length input.
-        val queue = LinkedBlockingQueue<ByteArray>(8)
-        val sentinel = ByteArray(0)
+        val queue = LinkedBlockingQueue<AudioItem>(8)
+        val sentinel = AudioItem(ByteArray(0), emptyList())
         val pushedSomething = AtomicBoolean(false)
         val consumerAborted = AtomicBoolean(false)
 
         val consumer = thread(name = "ReadAloudTTS-AudioPush", start = true) {
             try {
                 while (true) {
-                    val bytes = queue.take()
-                    if (bytes === sentinel) return@thread
+                    val item = queue.take()
+                    if (item === sentinel) return@thread
+                    val bytes = item.bytes
                     if (stopRequested) {
                         consumerAborted.set(true)
                         return@thread
                     }
+                    // Word positions for this chunk go out before its audio.
+                    for (w in item.ranges) callback.rangeStart(w.startFrame, w.startChar, w.endChar)
                     var offset = 0
                     while (offset < bytes.size) {
                         val len = minOf(maxBuf, bytes.size - offset)
@@ -685,15 +818,23 @@ class ReadAloudTTSService : TextToSpeechService() {
         val accum = if (cacheableForPerVoice) ArrayList<ShortArray>(4) else null
         var accumSampleRate = 0
 
-        val completed = service.synthesizeChunkedPcm(text, preset, opts) { pcm, sr ->
-            if (stopRequested || consumerAborted.get()) return@synthesizeChunkedPcm false
+        var framesSoFar = 0
+        var textCursor = 0
+        val completed = service.synthesizeChunkedPcmWithText(text, preset, opts) { pcm, sr, chunkText ->
+            if (stopRequested || consumerAborted.get()) return@synthesizeChunkedPcmWithText false
             // ShortArray (signed 16-bit LE PCM) → ByteArray for audioAvailable.
             val bytes = ByteArray(pcm.size * 2)
             ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN).asShortBuffer().put(pcm)
+            val ranges = if (rangeText != null) {
+                val (located, next) = WordTimeline.locate(rangeText, chunkText, pcm.size, textCursor)
+                textCursor = next
+                located.map { it.copy(startFrame = framesSoFar + it.startFrame) }
+            } else emptyList()
+            framesSoFar += pcm.size
             try {
-                queue.put(bytes)   // backpressures if consumer falls 8 chunks behind
+                queue.put(AudioItem(bytes, ranges))   // backpressures if consumer falls 8 chunks behind
             } catch (ie: InterruptedException) {
-                return@synthesizeChunkedPcm false
+                return@synthesizeChunkedPcmWithText false
             }
             // Snapshot the chunk for per-voice caching. ShortArray is mutable
             // but synthesizeChunkedPcm doesn't reuse it across callbacks, so
@@ -864,48 +1005,12 @@ class ReadAloudTTSService : TextToSpeechService() {
     // M5 expands the supported set.
     // -------------------------------------------------------------------------
 
-    private fun iso3ToIso2(iso3: String?): String? {
-        return when (iso3?.lowercase()) {
-            "eng" -> "en"
-            "spa" -> "es"
-            "fra" -> "fr"
-            "deu", "ger" -> "de"
-            "ita" -> "it"
-            "por" -> "pt"
-            "jpn" -> "ja"
-            "kor" -> "ko"
-            "zho", "chi" -> "zh"
-            "hin" -> "hi"
-            "ara" -> "ar"
-            "rus" -> "ru"
-            null -> null
-            else -> null
-        }
-    }
+    private fun iso3ToIso2(iso3: String?): String? = LanguageCodes.toIso2(iso3)
 
-    private fun iso3ToIso2Country(iso3: String?): String? {
-        return when (iso3?.uppercase()) {
-            "USA" -> "US"
-            "GBR" -> "GB"
-            "ESP" -> "ES"
-            "MEX" -> "MX"
-            "FRA" -> "FR"
-            "DEU" -> "DE"
-            "ITA" -> "IT"
-            "BRA" -> "BR"
-            "PRT" -> "PT"
-            "JPN" -> "JP"
-            "KOR" -> "KR"
-            "CHN" -> "CN"
-            "IND" -> "IN"
-            "ARE", "SAU" -> "AE"
-            "RUS" -> "RU"
-            null -> null
-            else -> iso3
-        }
-    }
+    private fun iso3ToIso2Country(iso3: String?): String? = LanguageCodes.countryToIso2(iso3)
 
     companion object {
+        private const val ESPEAK_MAX_PIECE = 300
         private const val DOWNLOAD_CHANNEL_ID = "readaloud_tts_model_download"
         // 0x52 0x41 0x54 = "RAT" (ReadAloud TTS). Pick anything unique within
         // the app's notification ID namespace — KokoroDownloadWorker uses

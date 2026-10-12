@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application>
+        <!-- Debug builds only: drives the TTS engine through the public TextToSpeech API across languages,
+             rates and text shapes. Launch with:
+             adb shell am start -n <applicationId>/com.listenai.systemtts.EngineSelfTestActivity
+             Results: adb logcat -s EngineTest:I -->
+        <activity
+            android:name="com.listenai.systemtts.EngineSelfTestActivity"
+            android:label="TTS engine self-test"
+            android:exported="true"
+            android:theme="@style/Theme.ListenAI" />
+    </application>
+</manifest>

@@ -105,7 +105,9 @@ class MainActivity : AppCompatActivity() {
 
         // Handle OAuth redirect if launched from browser
         handleOAuthRedirect(intent)
-        handleIncomingContent(intent)
+        // A rotation or other recreation re-delivers the original intent; only a fresh launch should act on it,
+        // otherwise an already-imported share reopens its "Read this aloud" sheet.
+        if (savedInstanceState == null) handleIncomingContent(intent)
 
         setContent {
             ListenAITheme {

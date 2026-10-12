@@ -1,0 +1,3 @@
+See how many people want a natural voice in your language: a new Tell us button appears for non-English articles.
+Importing a shared text no longer reopens the Read this aloud sheet when you rotate the phone.
+More reliable language detection for short texts.

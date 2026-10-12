@@ -232,6 +232,8 @@ private fun VoiceCatalogScreen(padding: PaddingValues) {
     val settings = remember { SettingsManager.getInstance(context) }
     val selectedVoiceId by settings.selectedVoiceId.collectAsState()
     var clones by remember { mutableStateOf(VoiceCatalog.clonedVoices()) }
+    var espeakPlaying by remember { mutableStateOf<String?>(null) }
+    DisposableEffect(Unit) { onDispose { stopEspeakPreview() } }
 
     // Per-voice cache pre-warm orchestrator. Exposes Status (Idle /
     // Running / Done / Failed) per voiceKey so each VoiceRow can render
@@ -446,6 +448,33 @@ private fun VoiceCatalogScreen(padding: PaddingValues) {
                     onPreview = { preview(voiceName, preset) },
                     onOptimize = { preWarmMgr.start(voiceKey) },
                     onPauseOptimize = { preWarmMgr.cancel(voiceKey) },
+                )
+            }
+            item("espeak-header") {
+                SectionHeader(
+                    title = "Fast voices (eSpeak)",
+                    caption = "Instant, fully offline, many languages and very fast speech. Robotic by design; " +
+                        "many screen reader users choose these for speed."
+                )
+            }
+            items(EspeakVoices.all, key = { "espeak-${it.espeakVoice}" }) { entry ->
+                EspeakVoiceRow(
+                    entry = entry,
+                    isSelected = selectedVoiceId == entry.systemVoiceName,
+                    isPlaying = espeakPlaying == entry.systemVoiceName,
+                    onSelect = { settings.setSelectedVoiceId(entry.systemVoiceName) },
+                    onPreview = {
+                        if (espeakPlaying == entry.systemVoiceName) {
+                            stopEspeakPreview()
+                            espeakPlaying = null
+                        } else {
+                            espeakPlaying = entry.systemVoiceName
+                            scope.launch {
+                                playEspeakPreview(context, entry)
+                                if (espeakPlaying == entry.systemVoiceName) espeakPlaying = null
+                            }
+                        }
+                    },
                 )
             }
             item("diagnostics") {
@@ -786,6 +815,93 @@ private fun PreviewButton(isLoading: Boolean, isPlaying: Boolean, onClick: () ->
             )
             isPlaying -> Icon(Icons.Default.Stop, contentDescription = "Stop preview")
             else -> Icon(Icons.Default.PlayArrow, contentDescription = "Preview voice")
+        }
+    }
+}
+
+private var espeakTrack: android.media.AudioTrack? = null
+
+private fun stopEspeakPreview() {
+    runCatching { espeakTrack?.stop() }
+    runCatching { espeakTrack?.release() }
+    espeakTrack = null
+}
+
+/** Speaks the digits 1 to 10 in [entry]'s voice; digits are read in the voice's own language. */
+private suspend fun playEspeakPreview(context: android.content.Context, entry: EspeakVoices.Entry) {
+    withContext(Dispatchers.IO) {
+        stopEspeakPreview()
+        val sampleRate = EspeakBridge.ensureInitialized(context.applicationContext)
+        if (sampleRate <= 0) return@withContext
+        val pcm = EspeakBridge.synthesize("1 2 3 4 5 6 7 8 9 10", entry.espeakVoice, 175) ?: return@withContext
+        if (pcm.isEmpty()) return@withContext
+        val track = android.media.AudioTrack.Builder()
+            .setAudioAttributes(
+                android.media.AudioAttributes.Builder()
+                    .setUsage(android.media.AudioAttributes.USAGE_MEDIA)
+                    .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SPEECH)
+                    .build()
+            )
+            .setAudioFormat(
+                android.media.AudioFormat.Builder()
+                    .setEncoding(android.media.AudioFormat.ENCODING_PCM_16BIT)
+                    .setSampleRate(sampleRate)
+                    .setChannelMask(android.media.AudioFormat.CHANNEL_OUT_MONO)
+                    .build()
+            )
+            .setTransferMode(android.media.AudioTrack.MODE_STATIC)
+            .setBufferSizeInBytes(pcm.size * 2)
+            .build()
+        espeakTrack = track
+        track.write(pcm, 0, pcm.size)
+        track.play()
+        // MODE_STATIC has no completion callback; wait for the audio to finish (or a stop).
+        kotlinx.coroutines.delay(pcm.size * 1000L / sampleRate + 150)
+        if (espeakTrack === track) stopEspeakPreview()
+    }
+}
+
+@Composable
+private fun EspeakVoiceRow(
+    entry: EspeakVoices.Entry,
+    isSelected: Boolean,
+    isPlaying: Boolean,
+    onSelect: () -> Unit,
+    onPreview: () -> Unit,
+) {
+    // One focus target for TalkBack: name, language, kind and selected state together.
+    val description = buildString {
+        append(entry.displayName)
+        append(", ")
+        append(entry.tag)
+        append(", fast offline eSpeak voice")
+        append(if (isSelected) ", selected" else ", not selected. Double-tap to select.")
+    }
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .selectable(selected = isSelected, onClick = onSelect, role = Role.RadioButton)
+            .semantics(mergeDescendants = true) { contentDescription = description },
+        colors = CardDefaults.cardColors(),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = if (isSelected) Icons.Default.Check else Icons.Default.RadioButtonUnchecked,
+                contentDescription = null,
+            )
+            Column(modifier = Modifier.weight(1f).padding(start = 12.dp)) {
+                Text(entry.displayName, style = MaterialTheme.typography.titleMedium)
+                Text(entry.tag, style = MaterialTheme.typography.bodySmall)
+            }
+            IconButton(onClick = onPreview) {
+                Icon(
+                    imageVector = if (isPlaying) Icons.Default.Stop else Icons.Default.PlayArrow,
+                    contentDescription = if (isPlaying) "Stop preview of ${entry.displayName}" else "Preview ${entry.displayName}"
+                )
+            }
         }
     }
 }
