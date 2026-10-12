@@ -6,6 +6,7 @@ import androidx.core.net.toUri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.listenai.data.models.Article
+import com.listenai.service.FirebaseAnalyticsHelper
 import com.listenai.data.models.SourceType
 import com.listenai.data.repository.ArticleRepository
 import com.listenai.service.import_content.EpubImportService
@@ -141,8 +142,10 @@ class ImportViewModel(
                 articleRepository.saveArticle(article)
                 _progress.value = 1f
 
+                FirebaseAnalyticsHelper.logContentImported("url")
                 _importState.value = ImportState.Success(article.id)
             } catch (e: Exception) {
+                FirebaseAnalyticsHelper.logImportFailed("url", e.message)
                 _importState.value = ImportState.Error(e.message ?: "Failed to import from URL")
             }
         }
@@ -207,10 +210,12 @@ class ImportViewModel(
                 pdfFile.delete()
 
                 _progress.value = 1f
+                FirebaseAnalyticsHelper.logContentImported("pdf_url")
                 _importState.value = ImportState.Success(article.id)
 
             } catch (e: Exception) {
                 android.util.Log.e("ImportViewModel", "Failed to import PDF from URL", e)
+                FirebaseAnalyticsHelper.logImportFailed("pdf_url", e.message)
                 _importState.value = ImportState.Error(e.message ?: "Failed to import PDF from URL")
             }
         }
@@ -295,8 +300,10 @@ class ImportViewModel(
                 articleRepository.saveArticle(article)
                 _progress.value = 1f
 
+                FirebaseAnalyticsHelper.logContentImported("pdf")
                 _importState.value = ImportState.Success(article.id)
             } catch (e: Exception) {
+                FirebaseAnalyticsHelper.logImportFailed("pdf", e.message)
                 _importState.value = ImportState.Error(e.message ?: "Failed to import PDF")
             }
         }
@@ -381,8 +388,10 @@ class ImportViewModel(
                 }
 
                 _progress.value = 1f
+                FirebaseAnalyticsHelper.logContentImported("epub")
                 _importState.value = ImportState.Success(firstArticleId!!)
             } catch (e: Exception) {
+                FirebaseAnalyticsHelper.logImportFailed("epub", e.message)
                 _importState.value = ImportState.Error(e.message ?: "Failed to import EPUB")
             }
         }
@@ -423,8 +432,10 @@ class ImportViewModel(
                 articleRepository.saveArticle(article)
                 _progress.value = 1f
 
+                FirebaseAnalyticsHelper.logContentImported("text")
                 _importState.value = ImportState.Success(article.id)
             } catch (e: Exception) {
+                FirebaseAnalyticsHelper.logImportFailed("text", e.message)
                 _importState.value = ImportState.Error(e.message ?: "Failed to save article")
             }
         }
@@ -479,8 +490,10 @@ class ImportViewModel(
                 articleRepository.saveArticle(article)
                 _progress.value = 1f
 
+                FirebaseAnalyticsHelper.logContentImported("clipboard")
                 _importState.value = ImportState.Success(article.id)
             } catch (e: Exception) {
+                FirebaseAnalyticsHelper.logImportFailed("clipboard", e.message)
                 _importState.value = ImportState.Error(e.message ?: "Failed to import from clipboard")
             }
         }

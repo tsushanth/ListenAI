@@ -102,6 +102,13 @@ class OnboardingManager(private val context: Context) {
      */
     private fun shouldShow(page: OnboardingPage): Boolean {
         return when (page) {
+            // Short first run: welcome, then pick a voice. The explainer slides and the
+            // end-of-onboarding paywall are skipped; the paywall is shown later by PaywallPolicy.
+            OnboardingPage.DOCUMENT_TO_AUDIO,
+            OnboardingPage.TAKE_NOTES,
+            OnboardingPage.PRODUCTIVITY,
+            OnboardingPage.VOICE_SELECTION,
+            OnboardingPage.PAYWALL -> false
             OnboardingPage.OFFLINE_DOWNLOAD -> {
                 // Only show the model-download page if the user picked
                 // on-device Kokoro on the previous picker.
@@ -112,11 +119,19 @@ class OnboardingManager(private val context: Context) {
         }
     }
 
-    /**
-     * Skip directly to paywall page.
-     */
-    fun skipToPaywall() {
-        _currentPage.value = OnboardingPage.PAYWALL
+    /** Pages the user will actually see, in order (used for the progress dots). */
+    fun visiblePages(): List<OnboardingPage> = OnboardingPage.entries.filter { shouldShow(it) }
+
+    /** True when there is no further visible page after the current one. */
+    fun isOnLastVisiblePage(): Boolean {
+        var candidate = _currentPage.value.next
+        while (candidate != null && !shouldShow(candidate)) candidate = candidate.next
+        return candidate == null
+    }
+
+    /** Skip the rest of onboarding and go straight into the app. */
+    fun skipOnboarding() {
+        completeOnboarding()
     }
 
     /**

@@ -257,6 +257,24 @@ class RevenueCatManager private constructor() : UpdatedCustomerInfoListener {
         get() = _packages.value.find { it.packageType == PackageType.MONTHLY }
 
     /**
+     * Records a paywall view as RevenueCat customer attributes so paywall to purchase
+     * conversion can be measured in RevenueCat for Android users too.
+     */
+    fun recordPaywallView(source: String) {
+        if (!isConfigured) return
+        runCatching {
+            Purchases.sharedInstance.setAttributes(
+                mapOf(
+                    "last_paywall_source" to source,
+                    "last_paywall_date" to java.time.Instant.now().toString(),
+                    "platform" to "android",
+                    "app_name" to "ReadAloud"
+                )
+            )
+        }.onFailure { Log.w(TAG, "Failed to record paywall view: ${it.message}") }
+    }
+
+    /**
      * Set user ID for attribution (call after user signs in)
      */
     fun setUserID(userID: String) {

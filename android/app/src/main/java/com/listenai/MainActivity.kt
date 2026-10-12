@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -24,6 +25,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.lifecycleScope
 import com.listenai.service.AppOpenTracker
+import com.listenai.service.FirebaseAnalyticsHelper
+import com.listenai.service.PaywallPolicy
+import com.listenai.service.PaywallRemoteConfig
 import com.listenai.service.auth.GoogleAuthService
 import com.listenai.service.billing.RevenueCatManager
 import com.listenai.service.import_content.IncomingContentHolder
@@ -85,7 +89,17 @@ class MainActivity : AppCompatActivity() {
 
         // Check if we need to show the paywall
         val revenueCatManager = RevenueCatManager.getInstance()
-        if (AppOpenTracker.hasExceededFreeLimit() && !revenueCatManager.isPremium.value) {
+        // The paywall shows only after the user has had a chance to get value (or has opened the
+        // app many times without listening), and at most once per cooldown. See PaywallPolicy.
+        if (PaywallPolicy.shouldShow(
+                openCount = openCount,
+                hasListened = AppOpenTracker.hasListened(),
+                lastShownAtMs = AppOpenTracker.lastPaywallShownAt(),
+                nowMs = System.currentTimeMillis(),
+                isPremium = revenueCatManager.isPremium.value,
+                config = PaywallRemoteConfig.current(this)
+            )
+        ) {
             showPaywall = true
         }
 
@@ -149,6 +163,12 @@ class MainActivity : AppCompatActivity() {
 
                                 val activity = this@MainActivity as Activity
 
+                                LaunchedEffect(Unit) {
+                                    AppOpenTracker.markPaywallShown()
+                                    FirebaseAnalyticsHelper.logPaywallViewed("open_policy")
+                                    revenueCatManager.recordPaywallView("open_policy")
+                                }
+
                                 PaywallView(
                                     appId = "readaloudai",
                                     placement = if (com.kreativekoala.paywallkit.manager.PromoCodeManager.activeCode != null) "promo_code_onboarding" else "onboarding",
@@ -159,7 +179,8 @@ class MainActivity : AppCompatActivity() {
                                         accent = Color(0xFF6C63FF),
                                         accent2 = Color(0xFF9C27B0)
                                     ),
-                                    showWinback = true,
+                                    // One dismissal, not the multi-screen win-back chain, for returning users.
+                                    showWinback = false,
                                     isDismissible = true,
                                     onPurchase = { productId ->
                                         val pkg = packages.firstOrNull { it.product.id == productId }

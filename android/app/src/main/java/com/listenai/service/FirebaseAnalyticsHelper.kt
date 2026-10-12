@@ -128,6 +128,11 @@ object FirebaseAnalyticsHelper {
 
     // Playback Events
 
+    /** Fired once per install, the first time the user starts playing audio. */
+    fun logFirstListen() {
+        logEvent("first_listen")
+    }
+
     fun logPlaybackStarted(contentType: String? = null) {
         val params = Bundle().apply {
             contentType?.let { putString("content_type", it) }
