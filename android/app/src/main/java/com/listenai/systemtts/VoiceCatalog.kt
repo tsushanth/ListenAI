@@ -116,15 +116,37 @@ object VoiceCatalog {
         for (cloned in readyClones()) {
             voices += buildSystemVoiceForCloned(cloned)
         }
+        for (entry in EspeakVoices.all) {
+            voices += buildEspeakVoice(entry)
+        }
         return voices
     }
+
+    /**
+     * eSpeak NG voice: instant, fully offline, many languages, robotic by design. Quality is declared
+     * low so apps that prefer natural voices choose a ReadAloud voice, while screen readers that want
+     * speed can pick it.
+     */
+    private fun buildEspeakVoice(entry: EspeakVoices.Entry): Voice = Voice(
+        entry.systemVoiceName,
+        entry.locale,
+        Voice.QUALITY_LOW,
+        Voice.LATENCY_VERY_LOW,
+        /* requiresNetworkConnection = */ false,
+        emptySet()
+    )
 
     /** Default voice for a given locale. Falls back to the first built-in. */
     fun defaultVoiceName(lang: String?, country: String?, variant: String?): String {
         val target = (lang ?: "en").lowercase()
-        val match = builtInPresets.firstOrNull {
+        val builtInMatch = builtInPresets.firstOrNull {
             parseLanguageTag(it.languageCode).first.equals(target, ignoreCase = true)
-        } ?: builtInPresets.firstOrNull()
+        }
+        // A language the built-in voices don't cover is served by eSpeak, not by an English voice.
+        if (builtInMatch == null) {
+            EspeakVoices.forLocale(target, country)?.let { return it.systemVoiceName }
+        }
+        val match = builtInMatch ?: builtInPresets.firstOrNull()
         val (la, re) = parseLanguageTag(match?.languageCode ?: "en-US")
         return systemNameFor(match?.id ?: "rachel", la, re)
     }
@@ -139,6 +161,8 @@ object VoiceCatalog {
      */
     fun voiceNameForPresetId(presetId: String?): String? {
         if (presetId.isNullOrBlank()) return null
+        // The user may pick an eSpeak voice as their system voice; its id is its system voice name.
+        if (EspeakVoices.fromVoiceName(presetId) != null) return presetId
         val preset = builtInPresets.firstOrNull { it.id == presetId } ?: return null
         val (la, re) = parseLanguageTag(preset.languageCode)
         return systemNameFor(preset.id, la, re)
@@ -147,6 +171,7 @@ object VoiceCatalog {
     /** True if [voiceName] resolves to a known built-in or cloned voice. */
     fun isValid(voiceName: String?): Boolean {
         voiceName ?: return false
+        if (EspeakVoices.fromVoiceName(voiceName) != null) return true
         return resolvePreset(voiceName) != null
     }
 
@@ -186,7 +211,7 @@ object VoiceCatalog {
         val want = lang.lowercase()
         return builtInPresets.any {
             parseLanguageTag(it.languageCode).first.equals(want, ignoreCase = true)
-        }
+        } || EspeakVoices.supportsLanguage(want)
     }
 
     /** Returns true if a specific country variant is supported for [lang]. */
@@ -196,7 +221,7 @@ object VoiceCatalog {
         return builtInPresets.any {
             val (l, r) = parseLanguageTag(it.languageCode)
             l.equals(lang, ignoreCase = true) && r.equals(country, ignoreCase = true)
-        }
+        } || EspeakVoices.supportsLanguageCountry(lang, country)
     }
 
     /** All built-in presets (for the Settings catalog UI). */

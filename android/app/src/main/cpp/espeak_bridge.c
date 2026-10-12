@@ -95,6 +95,78 @@ Java_com_listenai_systemtts_EspeakBridge_nativePhonemize(JNIEnv *env, jobject th
     return result;
 }
 
+
+// ---------------------------------------------------------------------------
+// Direct speech synthesis (eSpeak NG as a voice, not just a phonemizer).
+//
+// espeak_Initialize was called with AUDIO_OUTPUT_SYNCHRONOUS, so espeak_Synth
+// runs to completion on the calling thread and delivers PCM through the synth
+// callback. We collect it into a growable buffer and hand it back as a
+// short[]. The Kotlin side serialises all calls (eSpeak is not thread-safe).
+// ---------------------------------------------------------------------------
+#include <stdlib.h>
+#include <string.h>
+#include <stdint.h>
+
+static int16_t *g_pcm = NULL;
+static size_t g_pcm_len = 0;
+static size_t g_pcm_cap = 0;
+static volatile int g_cancel = 0;
+
+static int synth_callback(short *wav, int numsamples, espeak_EVENT *events) {
+    (void)events;
+    if (g_cancel) return 1;               // non-zero aborts synthesis
+    if (!wav || numsamples <= 0) return 0; // end-of-synthesis marker
+    if (g_pcm_len + (size_t)numsamples > g_pcm_cap) {
+        size_t cap = g_pcm_cap ? g_pcm_cap : 16384;
+        while (cap < g_pcm_len + (size_t)numsamples) cap *= 2;
+        int16_t *grown = (int16_t *)realloc(g_pcm, cap * sizeof(int16_t));
+        if (!grown) return 1;
+        g_pcm = grown;
+        g_pcm_cap = cap;
+    }
+    memcpy(g_pcm + g_pcm_len, wav, (size_t)numsamples * sizeof(int16_t));
+    g_pcm_len += (size_t)numsamples;
+    return 0;
+}
+
+JNIEXPORT jshortArray JNICALL
+Java_com_listenai_systemtts_EspeakBridge_nativeSynthesize(
+        JNIEnv *env, jobject thiz, jstring text, jint rateWpm, jint pitch, jint volume, jint punctuation) {
+    const char *utf8 = (*env)->GetStringUTFChars(env, text, NULL);
+    if (!utf8) return NULL;
+
+    g_cancel = 0;
+    g_pcm_len = 0;
+    espeak_SetParameter(espeakRATE, rateWpm, 0);
+    espeak_SetParameter(espeakPITCH, pitch, 0);
+    espeak_SetParameter(espeakVOLUME, volume, 0);
+    espeak_SetParameter(espeakPUNCTUATION, punctuation, 0);
+    espeak_SetSynthCallback(synth_callback);
+
+    espeak_ERROR rc = espeak_Synth(utf8, strlen(utf8) + 1, 0, POS_CHARACTER, 0,
+                                   espeakCHARS_UTF8, NULL, NULL);
+    if (rc == EE_OK) espeak_Synchronize();
+    (*env)->ReleaseStringUTFChars(env, text, utf8);
+
+    if (rc != EE_OK) {
+        LOGE("nativeSynthesize: espeak_Synth rc=%d", (int)rc);
+        return NULL;
+    }
+    jshortArray out = (*env)->NewShortArray(env, (jsize)g_pcm_len);
+    if (!out) return NULL;
+    if (g_pcm_len > 0) {
+        (*env)->SetShortArrayRegion(env, out, 0, (jsize)g_pcm_len, (const jshort *)g_pcm);
+    }
+    return out;
+}
+
+// Asks an in-flight nativeSynthesize (on another thread) to stop at the next buffer.
+JNIEXPORT void JNICALL
+Java_com_listenai_systemtts_EspeakBridge_nativeCancel(JNIEnv *env, jobject thiz) {
+    g_cancel = 1;
+}
+
 JNIEXPORT void JNICALL
 Java_com_listenai_systemtts_EspeakBridge_nativeShutdown(JNIEnv *env, jobject thiz) {
     espeak_Terminate();

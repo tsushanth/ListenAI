@@ -181,6 +181,27 @@
                 android:resource="@xml/tts_engine" />
         </service>
 
+        <!-- Standard TTS engine contract activities: the example sentence Settings speaks for a
+             language, and the list of ready voices. -->
+        <activity
+            android:name=".systemtts.GetSampleTextActivity"
+            android:exported="true"
+            android:theme="@android:style/Theme.NoDisplay">
+            <intent-filter>
+                <action android:name="android.speech.tts.engine.GET_SAMPLE_TEXT" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name=".systemtts.CheckVoiceDataActivity"
+            android:exported="true"
+            android:theme="@android:style/Theme.NoDisplay">
+            <intent-filter>
+                <action android:name="android.speech.tts.engine.CHECK_TTS_DATA" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
         <!-- Settings UI launched from the system TTS engine row (⚙ icon). -->
         <activity
             android:name=".systemtts.TTSEngineSettingsActivity"
