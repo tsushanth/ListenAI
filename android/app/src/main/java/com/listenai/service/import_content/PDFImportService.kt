@@ -63,6 +63,7 @@ class PDFImportService(
                 }
             }
         } catch (e: Exception) {
+            android.util.Log.w("PDFImportService", "PDF text extraction failed", e)
             null
         }
     }
@@ -129,7 +130,10 @@ class PDFImportService(
     }
 
     private fun extractTitleFromFilename(uri: Uri): String {
-        val filename = uri.lastPathSegment ?: "Document"
+        // Content URIs usually end in an opaque id (e.g. a MediaStore row id), which makes a
+        // bad title. Only trust the last segment when it looks like a real file name; otherwise
+        // return blank so the caller can fall back to the provider's display name.
+        val filename = uri.lastPathSegment?.takeIf { it.contains('.') } ?: return ""
         return filename
             .substringBeforeLast(".")
             .replace("_", " ")
