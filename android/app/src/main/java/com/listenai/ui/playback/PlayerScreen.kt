@@ -61,6 +61,9 @@ import com.listenai.ui.components.FormattedTextView
 import com.listenai.service.voice.VoiceCloningService
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
+import com.listenai.service.playback.ResumePolicy
+import com.listenai.service.FirebaseAnalyticsHelper
+import com.listenai.service.AppOpenTracker
 import com.listenai.data.local.BookmarkDao
 import com.listenai.data.models.Bookmark
 import java.util.UUID
@@ -193,6 +196,7 @@ fun PlayerScreen(
             lastPosition = (playbackState.duration * 1000).toLong(),
             isCompleted = true
         )
+        FirebaseAnalyticsHelper.logPlaybackCompleted(playbackState.duration.toLong())
 
         if (finishedArticle.sourceType != SourceType.EPUB) {
             android.util.Log.i("PlayerScreen", "Auto-advance: not an EPUB chapter, stopping at end")
@@ -225,6 +229,60 @@ fun PlayerScreen(
         pendingAutoStartId = nextChapter.id
         currentArticleId = nextChapter.id
     }
+
+    // ---- Resume, progress saving and playback analytics ----
+    val latestPlayback by rememberUpdatedState(playbackState)
+    val latestArticle by rememberUpdatedState(currentArticle)
+    var resumeAppliedFor by remember { mutableStateOf<String?>(null) }
+    var startLoggedFor by remember { mutableStateOf<String?>(null) }
+
+    fun savePosition(reason: String = "") {
+        val article = latestArticle
+        val ps = latestPlayback
+        if (article == null) { android.util.Log.d("ResumeSave", "skip($reason): no article"); return }
+        if (ps.articleId != null && ps.articleId != article.id) { android.util.Log.d("ResumeSave", "skip($reason): other article"); return }
+        if (ps.playerMode != PlayerMode.FULL || ps.duration <= 0.0) { android.util.Log.d("ResumeSave", "skip($reason): mode=${ps.playerMode} dur=${ps.duration}"); return }
+        if (ps.status == AudioPlaybackStatus.COMPLETED) { android.util.Log.d("ResumeSave", "skip($reason): completed"); return }
+        // Merely opening the player leaves it paused at 0:00; saving that would erase the user's place.
+        if (ps.currentTime * 1000 < ResumePolicy.MIN_RESUME_MS) { android.util.Log.d("ResumeSave", "skip($reason): not started"); return }
+        android.util.Log.d("ResumeSave", "save($reason): ${(ps.currentTime * 1000).toLong()}ms status=${ps.status}")
+        articleRepository.savePositionAsync(article.id, (ps.currentTime * 1000).toLong())
+    }
+
+    // First sound of an article: count it, and remember the user has now heard something.
+    LaunchedEffect(playbackState.status) {
+        if (playbackState.status != AudioPlaybackStatus.PLAYING) return@LaunchedEffect
+        val article = latestArticle ?: return@LaunchedEffect
+        if (startLoggedFor == article.id) return@LaunchedEffect
+        startLoggedFor = article.id
+        FirebaseAnalyticsHelper.logPlaybackStarted(article.sourceType.name.lowercase())
+        if (AppOpenTracker.markListened()) FirebaseAnalyticsHelper.logFirstListen()
+    }
+
+    // Reopened a partly listened article: jump back to where the user left off.
+    LaunchedEffect(playbackState.status, playbackState.duration, playbackState.playerMode) {
+        val article = latestArticle ?: return@LaunchedEffect
+        val ps = latestPlayback
+        if (ps.status != AudioPlaybackStatus.PLAYING || ps.playerMode != PlayerMode.FULL) return@LaunchedEffect
+        if (resumeAppliedFor == article.id) return@LaunchedEffect
+        resumeAppliedFor = article.id
+        ResumePolicy.startPositionSeconds(article.lastPosition, article.isCompleted, ps.duration)
+            ?.let { playbackService.seekTo(it) }
+    }
+
+    // Save the position every few seconds while playing, and when paused or leaving the screen.
+    LaunchedEffect(playbackState.status, playbackState.playerMode) {
+        if (playbackState.playerMode != PlayerMode.FULL) return@LaunchedEffect
+        when (playbackState.status) {
+            AudioPlaybackStatus.PLAYING -> while (true) {
+                delay(5_000)
+                savePosition("periodic")
+            }
+            AudioPlaybackStatus.PAUSED -> savePosition("paused")
+            else -> Unit
+        }
+    }
+    DisposableEffect(Unit) { onDispose { savePosition("dispose") } }
 
     // Track whether we've started preview playback (to avoid duplicates)
     var hasStartedPreviewPlayback by remember { mutableStateOf(false) }
@@ -362,6 +420,7 @@ fun PlayerScreen(
                 when (e) {
                     is TTSError.QuotaExceeded -> {
                         android.util.Log.d("PlayerScreen", "Quota exceeded: remaining=${e.remaining}, required=${e.required}")
+                        FirebaseAnalyticsHelper.logQuotaReached()
                         playerState = PlayerState.QuotaExceeded(e.remaining, e.required, article)
                     }
                     is TTSError.RateLimited -> {

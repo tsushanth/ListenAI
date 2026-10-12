@@ -3,7 +3,11 @@ package com.listenai.data.repository
 import com.listenai.data.local.ArticleDao
 import com.listenai.data.models.Article
 import com.listenai.data.models.SourceType
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.launch
 
 class ArticleRepository(
     private val articleDao: ArticleDao
@@ -55,6 +59,16 @@ class ArticleRepository(
 
     suspend fun setArchived(id: String, isArchived: Boolean) {
         articleDao.updateArchivedStatus(id, isArchived)
+    }
+
+    // Outlives any screen, so a position saved as the player closes is not cancelled with it.
+    private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    /** Saves the listening position without blocking or being cancelled by the caller. */
+    fun savePositionAsync(id: String, positionMs: Long) {
+        appScope.launch {
+            articleDao.updatePlaybackProgress(id, positionMs, positionMs, false)
+        }
     }
 
     suspend fun updatePlaybackProgress(

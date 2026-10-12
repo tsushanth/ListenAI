@@ -121,6 +121,10 @@ class AudioPlaybackService(private val context: Context) {
                 _playbackState.value = _playbackState.value.copy(
                     status = if (isPlaying) AudioPlaybackStatus.PLAYING else AudioPlaybackStatus.PAUSED
                 )
+            } else if (isPlaying && current == AudioPlaybackStatus.COMPLETED) {
+                // Audio is genuinely playing again (replay of a finished article): leave the
+                // terminal state so progress saving and the UI see it as playing.
+                _playbackState.value = _playbackState.value.copy(status = AudioPlaybackStatus.PLAYING)
             }
 
             if (isPlaying) {
