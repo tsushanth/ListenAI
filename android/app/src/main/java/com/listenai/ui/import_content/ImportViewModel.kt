@@ -142,7 +142,7 @@ class ImportViewModel(
                 articleRepository.saveArticle(article)
                 _progress.value = 1f
 
-                FirebaseAnalyticsHelper.logContentImported("url")
+                FirebaseAnalyticsHelper.logContentImported("url", article.language)
                 _importState.value = ImportState.Success(article.id)
             } catch (e: Exception) {
                 FirebaseAnalyticsHelper.logImportFailed("url", e.message)
@@ -210,7 +210,7 @@ class ImportViewModel(
                 pdfFile.delete()
 
                 _progress.value = 1f
-                FirebaseAnalyticsHelper.logContentImported("pdf_url")
+                FirebaseAnalyticsHelper.logContentImported("pdf_url", article.language)
                 _importState.value = ImportState.Success(article.id)
 
             } catch (e: Exception) {
@@ -300,7 +300,7 @@ class ImportViewModel(
                 articleRepository.saveArticle(article)
                 _progress.value = 1f
 
-                FirebaseAnalyticsHelper.logContentImported("pdf")
+                FirebaseAnalyticsHelper.logContentImported("pdf", article.language)
                 _importState.value = ImportState.Success(article.id)
             } catch (e: Exception) {
                 FirebaseAnalyticsHelper.logImportFailed("pdf", e.message)
@@ -432,7 +432,7 @@ class ImportViewModel(
                 articleRepository.saveArticle(article)
                 _progress.value = 1f
 
-                FirebaseAnalyticsHelper.logContentImported("text")
+                FirebaseAnalyticsHelper.logContentImported("text", article.language)
                 _importState.value = ImportState.Success(article.id)
             } catch (e: Exception) {
                 FirebaseAnalyticsHelper.logImportFailed("text", e.message)
@@ -490,7 +490,7 @@ class ImportViewModel(
                 articleRepository.saveArticle(article)
                 _progress.value = 1f
 
-                FirebaseAnalyticsHelper.logContentImported("clipboard")
+                FirebaseAnalyticsHelper.logContentImported("clipboard", article.language)
                 _importState.value = ImportState.Success(article.id)
             } catch (e: Exception) {
                 FirebaseAnalyticsHelper.logImportFailed("clipboard", e.message)

@@ -111,9 +111,10 @@ object FirebaseAnalyticsHelper {
 
     // Content Import Events
 
-    fun logContentImported(importMode: String) {
+    fun logContentImported(importMode: String, language: String? = null) {
         val params = Bundle().apply {
             putString("import_mode", importMode) // url, document, text, clipboard, email
+            language?.let { putString("content_language", it) } // demand signal for non-English voices
         }
         logEvent("content_imported", params)
     }
