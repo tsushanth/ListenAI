@@ -30,7 +30,6 @@ import com.listenai.MainActivity
 import com.listenai.R
 import com.listenai.data.local.ArticleDao
 import com.listenai.data.models.Article
-import kotlinx.coroutines.flow.first
 import org.koin.core.context.GlobalContext
 
 /**
@@ -43,7 +42,7 @@ class ReadAloudWidget : GlanceAppWidget() {
         // Koin is started in Application; if the process was cold-started just for the
         // widget it may not be ready, in which case fall back to the static layout.
         val article: Article? = runCatching {
-            GlobalContext.getOrNull()?.get<ArticleDao>()?.getInProgressArticles()?.first()?.firstOrNull()
+            GlobalContext.getOrNull()?.get<ArticleDao>()?.getMostRecentArticle()
         }.getOrNull()
 
         provideContent { Content(context, article) }
@@ -76,7 +75,7 @@ class ReadAloudWidget : GlanceAppWidget() {
                     style = TextStyle(color = ink, fontSize = 16.sp, fontWeight = FontWeight.Bold),
                     maxLines = 2
                 )
-                if (article != null && article.totalDuration > 0) {
+                if (article != null && article.totalDuration > 0 && article.lastPosition > 0) {
                     val percent = (article.lastPosition * 100 / article.totalDuration).toInt().coerceIn(0, 100)
                     Text(
                         text = context.getString(R.string.widget_percent_done, percent),

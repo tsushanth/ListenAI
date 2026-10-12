@@ -508,8 +508,8 @@
     <string name="bookmarks_added">Bookmarked at %1$s</string>
     <string name="bookmarks_empty">No bookmarks yet. Open More options while listening and choose Bookmark this spot.</string>
     <string name="bookmarks_delete">Delete bookmark</string>
-    <string name="widget_description">Resume your last article or read what you copied</string>
-    <string name="widget_continue">Continue listening</string>
+    <string name="widget_description">Open your latest article or read what you copied</string>
+    <string name="widget_continue">Latest in your library</string>
     <string name="widget_open">Open ReadAloud</string>
     <string name="widget_percent_done">%1$d%% listened</string>
     <string name="widget_clipboard_empty">Nothing to read. Copy some text or a link first.</string>

@@ -615,6 +615,7 @@ fun PlayerScreen(
                 hasAudio = hasGeneratedAudio,
                 sleepTimerRemaining = playbackState.sleepTimerRemaining,
                 bookmarkCount = bookmarks.size,
+                canBookmark = playbackState.duration > 0,
                 followAlong = followAlong,
                 onToggleFollowAlong = { followAlong = !followAlong },
                 onAddBookmark = {
@@ -2035,6 +2036,7 @@ private fun MoreOptionsSheet(
     hasAudio: Boolean,
     sleepTimerRemaining: Int?,
     bookmarkCount: Int,
+    canBookmark: Boolean,
     followAlong: Boolean,
     onToggleFollowAlong: () -> Unit,
     onAddBookmark: () -> Unit,
@@ -2114,7 +2116,7 @@ private fun MoreOptionsSheet(
                 HorizontalDivider(modifier = Modifier.padding(start = 60.dp))
             }
 
-            if (hasAudio) {
+            if (canBookmark) {
                 MoreOptionsRow(
                     icon = Icons.Default.BookmarkAdd,
                     title = stringResource(R.string.bookmarks_add_here)
