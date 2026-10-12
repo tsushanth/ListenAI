@@ -59,7 +59,13 @@ class TTSCoordinator(
         // English model. Cloned voices keep their own path (the user chose that voice on purpose).
         val isCloned = voice.id.startsWith("cloned_") || voice.providerModelId == "chatterbox"
         if (!isCloned && EspeakLocalSynth.shouldUse(language)) {
-            return@withContext EspeakLocalSynth.synthesize(context, text, language!!, adjustedOptions.speed)
+            // If the offline engine cannot start, fall through to the normal voice rather than fail.
+            runCatching { EspeakLocalSynth.synthesize(context, text, language!!, adjustedOptions.speed) }
+                .onSuccess { return@withContext it }
+                .onFailure {
+                    if (it is kotlinx.coroutines.CancellationException) throw it
+                    android.util.Log.w("TTSCoordinator", "eSpeak failed, using default voice: ${it.message}")
+                }
         }
 
         // All synthesis uses self-hosted Kokoro
