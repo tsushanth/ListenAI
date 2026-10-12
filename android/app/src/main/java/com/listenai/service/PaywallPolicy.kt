@@ -50,7 +50,8 @@ object PaywallPolicy {
 object PaywallRemoteConfig {
     private const val TAG = "PaywallRemoteConfig"
     private const val PREFS = "paywall_remote_config"
-    private const val URL = "https://api.listenai.app/api/config"
+    // The app's real backend (api.listenai.app does not resolve).
+    private const val URL = "${com.listenai.ListenAIApplication.BACKEND_URL}/api/config"
 
     fun current(context: Context): PaywallConfig {
         val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
