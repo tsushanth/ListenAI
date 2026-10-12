@@ -14,24 +14,28 @@ object EspeakVoices {
 
     /** [espeakVoice] is eSpeak's own voice name; [tag] the BCP-47 locale Android sees. */
     data class Entry(
+        /** The name eSpeak resolves with espeak_SetVoiceByName. It is a voice *file* name, which is not
+         *  always the language code (UK English is "en", French is "fr"). */
         val espeakVoice: String,
         val tag: String,
         val displayName: String,
         /** Extra ISO-2 countries this voice is the best match for (for example es-419 for Mexico). */
-        val countries: Set<String> = emptySet()
+        val countries: Set<String> = emptySet(),
+        /** Stable id used in the Android voice name; defaults to [espeakVoice]. */
+        val id: String = espeakVoice
     ) {
         val locale: Locale get() = Locale.forLanguageTag(tag)
-        val systemVoiceName: String get() = PREFIX + espeakVoice
+        val systemVoiceName: String get() = PREFIX + id
     }
 
     const val PREFIX = "readaloud-espeak-"
 
     val all: List<Entry> = listOf(
         Entry("en-us", "en-US", "English (US)", setOf("US", "CA", "PH")),
-        Entry("en-gb", "en-GB", "English (UK)", setOf("GB", "AU", "NZ", "IE", "ZA", "IN", "SG")),
+        Entry("en", "en-GB", "English (UK)", setOf("GB", "AU", "NZ", "IE", "ZA", "IN", "SG"), id = "en-gb"),
         Entry("es", "es-ES", "Spanish (Spain)", setOf()),
         Entry("es-419", "es-MX", "Spanish (Latin America)", setOf("MX", "US", "AR", "CO", "CL", "PE", "VE", "EC", "GT", "CU", "BO", "DO", "HN", "PY", "SV", "NI", "CR", "PA", "UY", "PR")),
-        Entry("fr-fr", "fr-FR", "French", setOf("FR", "CA", "CH", "LU", "MC")),
+        Entry("fr", "fr-FR", "French", setOf("FR", "CA", "CH", "LU", "MC"), id = "fr-fr"),
         Entry("fr-be", "fr-BE", "French (Belgium)", setOf("BE")),
         Entry("de", "de-DE", "German", setOf()),
         Entry("it", "it-IT", "Italian", setOf()),

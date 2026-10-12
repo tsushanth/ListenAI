@@ -27,22 +27,22 @@ class EspeakVoicesTest {
     }
 
     @Test fun anExactCountryMatchWins() {
-        assertEquals("es", EspeakVoices.forLocale("es", "ES")!!.espeakVoice)
-        assertEquals("pt-br", EspeakVoices.forLocale("pt", "BR")!!.espeakVoice)
-        assertEquals("pt", EspeakVoices.forLocale("pt", "PT")!!.espeakVoice)
-        assertEquals("en-gb", EspeakVoices.forLocale("en", "GB")!!.espeakVoice)
+        assertEquals("es", EspeakVoices.forLocale("es", "ES")!!.id)
+        assertEquals("pt-br", EspeakVoices.forLocale("pt", "BR")!!.id)
+        assertEquals("pt", EspeakVoices.forLocale("pt", "PT")!!.id)
+        assertEquals("en-gb", EspeakVoices.forLocale("en", "GB")!!.id)
     }
 
     @Test fun regionAliasesPickTheRightVariant() {
-        assertEquals("es-419", EspeakVoices.forLocale("es", "MX")!!.espeakVoice)
-        assertEquals("es-419", EspeakVoices.forLocale("es", "US")!!.espeakVoice)
-        assertEquals("en-gb", EspeakVoices.forLocale("en", "AU")!!.espeakVoice)
-        assertEquals("fr-fr", EspeakVoices.forLocale("fr", "CA")!!.espeakVoice)
+        assertEquals("es-419", EspeakVoices.forLocale("es", "MX")!!.id)
+        assertEquals("es-419", EspeakVoices.forLocale("es", "US")!!.id)
+        assertEquals("en-gb", EspeakVoices.forLocale("en", "AU")!!.id)
+        assertEquals("fr-fr", EspeakVoices.forLocale("fr", "CA")!!.id)
     }
 
     @Test fun aLanguageWithoutACountryGetsItsFirstVoice() {
-        assertEquals("es", EspeakVoices.forLocale("es", null)!!.espeakVoice)
-        assertEquals("de", EspeakVoices.forLocale("de", "")!!.espeakVoice)
+        assertEquals("es", EspeakVoices.forLocale("es", null)!!.id)
+        assertEquals("de", EspeakVoices.forLocale("de", "")!!.id)
     }
 
     @Test fun unsupportedLanguagesAreReportedAsSuch() {
@@ -83,5 +83,13 @@ class EspeakVoicesTest {
         assertTrue(SampleTexts.forLanguage("zz").isNotEmpty())
         assertTrue(SampleTexts.forLanguage(null).isNotEmpty())
         assertEquals(SampleTexts.forLanguage("ES"), SampleTexts.forLanguage("es"))
+    }
+
+    @Test fun voicesWhoseFileNameDiffersFromTheirIdUseTheRealName() {
+        // eSpeak resolves voices by file name: UK English is "en" and French is "fr" ("en-gb"/"fr-fr" are not found).
+        assertEquals("en", EspeakVoices.forLocale("en", "GB")!!.espeakVoice)
+        assertEquals("fr", EspeakVoices.forLocale("fr", "FR")!!.espeakVoice)
+        assertEquals("readaloud-espeak-en-gb", EspeakVoices.forLocale("en", "GB")!!.systemVoiceName)
+        assertEquals("readaloud-espeak-fr-fr", EspeakVoices.forLocale("fr", "FR")!!.systemVoiceName)
     }
 }

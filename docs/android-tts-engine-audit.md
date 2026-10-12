@@ -48,4 +48,32 @@ engines, not from head-to-head listening tests.
 
 ## Verification
 
-See the device results section below.
+**Unit tests:** 176 pass, including new suites for text normalization, word timing, language codes, the voice table,
+the paywall and resume rules.
+
+**On a Pixel 9 Pro (Android 17), reader debug build, through the public `TextToSpeech` API** (the path TalkBack uses),
+using the debug-only `EngineSelfTestActivity`: 91 of 91 cases pass.
+
+- every one of the 57 eSpeak voices, by exact name: first audio median 15 ms (9 to 28 ms)
+- 22 languages with their default voice: each accepted and spoken by the right voice
+- Russian correctly reported as unsupported
+- single letters and symbols, a spelled-out span, a phone-number span, SSML, rates up to the eSpeak maximum
+- word positions (`rangeStart`) arrive for every multi-word case
+- never-silent fallback: with no neural model on disk the engine spoke with eSpeak, while the model downloaded in the background
+- selecting an eSpeak voice in Settings makes it the system default (default English requests then speak in 3 to 14 ms)
+- `GET_SAMPLE_TEXT` returns Spanish text for a Spanish request; `CHECK_TTS_DATA` passes and lists 57 locales
+
+**Bugs the device tests found in my own first version (all fixed):**
+1. a hard-coded language-code table supported only 12 languages and reported the rest as unsupported (it also mapped
+   Saudi Arabia to the UAE), so most of the new voices were unreachable
+2. two eSpeak voice names were wrong (`en-gb`, `fr-fr`; eSpeak wants `en`, `fr`), so French hung for 40 s
+3. the first test's pass check accepted audio from the wrong voice; it now requires the right voice and language
+4. the sample-text activity converted language codes incorrectly
+
+**Not verified:**
+- the `voice` flavor (the standalone engine app) on a device; it compiles and shares this code. Testing it would
+  mean replacing the `com.listenai.voice` already on the phone.
+- TalkBack itself, with a real screen-reader user. This needs a person: please ask a blind tester (for example the
+  closed-testing user who reported the original latency problem) to try the Fast voices.
+- audio quality by ear: the tests check that audio is non-silent and the right length, not that it sounds right.
+- natural (neural) voice latency is unchanged: about 1.7 s for short text and 3 s to first audio for long text.

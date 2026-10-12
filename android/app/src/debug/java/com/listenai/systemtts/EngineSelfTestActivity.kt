@@ -1,6 +1,7 @@
 package com.listenai.systemtts
 
 import android.app.Activity
+import android.content.Intent
 import android.os.Bundle
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
@@ -44,6 +45,12 @@ class EngineSelfTestActivity : Activity() {
         super.onCreate(savedInstanceState)
         status = TextView(this).apply { text = "TTS engine self-test running..."; textSize = 14f; setPadding(48, 48, 48, 48) }
         setContentView(status)
+        // The standard engine-contract activities Settings uses.
+        startActivityForResult(
+            Intent("android.speech.tts.engine.GET_SAMPLE_TEXT").setPackage(packageName)
+                .putExtra("language", "spa").putExtra("country", "ESP").putExtra("variant", ""),
+            REQ_SAMPLE
+        )
         tts = TextToSpeech(this, { rc ->
             if (rc != TextToSpeech.SUCCESS) {
                 Log.e(TAG, "ENGINE_TEST_DONE init failed rc=$rc")
@@ -51,6 +58,21 @@ class EngineSelfTestActivity : Activity() {
             }
             thread(name = "EngineSelfTest") { runAll() }
         }, packageName)
+    }
+
+    @Deprecated("Deprecated in Java")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        when (requestCode) {
+            REQ_SAMPLE -> {
+                Log.i(TAG, "CONTRACT get_sample_text resultCode=$resultCode text='${data?.getStringExtra(TextToSpeech.Engine.EXTRA_SAMPLE_TEXT)}'")
+                startActivityForResult(Intent("android.speech.tts.engine.CHECK_TTS_DATA").setPackage(packageName), REQ_CHECK)
+            }
+            REQ_CHECK -> {
+                val avail = data?.getStringArrayListExtra(TextToSpeech.Engine.EXTRA_AVAILABLE_VOICES)
+                Log.i(TAG, "CONTRACT check_tts_data resultCode=$resultCode (pass=${TextToSpeech.Engine.CHECK_VOICE_DATA_PASS}) available=${avail?.size} sample=${avail?.take(6)}")
+            }
+        }
     }
 
     private fun cases(): List<Case> {
@@ -89,6 +111,8 @@ class EngineSelfTestActivity : Activity() {
         )
         for ((tag, text) in langs) list += Case("lang-$tag", tag, text)
         list += Case("lang-ru-unsupported", "ru-RU", "Привет", expectUnsupported = true)
+        // Every eSpeak voice by its exact name: proves each name resolves and speaks.
+        for (e in EspeakVoices.all) list += Case("voice-${e.id}", e.tag, "1 2 3 4 5", voiceName = e.systemVoiceName, minDurMs = 400)
         return list
     }
 
@@ -142,9 +166,15 @@ class EngineSelfTestActivity : Activity() {
         val finished = rc == TextToSpeech.SUCCESS && done.await(40, TimeUnit.SECONDS)
         val totalMs = System.currentTimeMillis() - startAt
         val (durMs, rms) = analyse(file)
-        val ok = finished && !error && durMs >= case.minDurMs && rms >= 100.0
+        // The voice that spoke must be the one requested (by name) or speak the requested language, and the
+        // language must have been accepted. Audio from the wrong voice is a failure, not a pass.
+        val spoke = engine.voice
+        val voiceOk = if (case.voiceName != null) spoke?.name == case.voiceName
+        else spoke?.locale?.language == locale.language
+        val ok = finished && !error && avail >= TextToSpeech.LANG_AVAILABLE && voiceOk &&
+            durMs >= case.minDurMs && rms >= 100.0
         Log.i(TAG, "ENGINE_TEST id=${case.id} lang=${case.tag} avail=$avail set=$setRc voice=${engine.voice?.name} rate=${case.rate} " +
-            "total_ms=$totalMs first_audio_ms=${if (firstAudioAt > 0) firstAudioAt - startAt else -1} dur_ms=$durMs rms=${"%.0f".format(rms)} ranges=$ranges error=$error ok=$ok")
+            "voiceOk=$voiceOk total_ms=$totalMs first_audio_ms=${if (firstAudioAt > 0) firstAudioAt - startAt else -1} dur_ms=$durMs rms=${"%.0f".format(rms)} ranges=$ranges error=$error ok=$ok")
         file.delete()
         return ok
     }
@@ -174,5 +204,9 @@ class EngineSelfTestActivity : Activity() {
         tts = null
     }
 
-    companion object { private const val TAG = "EngineTest" }
+    companion object {
+        private const val TAG = "EngineTest"
+        private const val REQ_SAMPLE = 1
+        private const val REQ_CHECK = 2
+    }
 }

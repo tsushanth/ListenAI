@@ -4,7 +4,6 @@ import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
 import android.speech.tts.TextToSpeech
-import java.util.Locale
 
 /**
  * The standard activities an Android TTS engine exposes next to its service.
@@ -52,9 +51,8 @@ object SampleTexts {
 class GetSampleTextActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // Settings passes ISO-3 codes ("eng"); Locale knows how to turn them back into ISO-2.
-        val lang3 = intent?.getStringExtra("language")
-        val lang2 = lang3?.let { code -> runCatching { Locale(code).language }.getOrNull() }
+        // Settings passes ISO-3 codes ("spa"); the example texts are keyed by ISO-2.
+        val lang2 = LanguageCodes.toIso2(intent?.getStringExtra("language"))
         val result = Intent().putExtra(TextToSpeech.Engine.EXTRA_SAMPLE_TEXT, SampleTexts.forLanguage(lang2))
         setResult(TextToSpeech.LANG_AVAILABLE, result)
         finish()

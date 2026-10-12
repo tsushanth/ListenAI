@@ -1005,46 +1005,9 @@ class ReadAloudTTSService : TextToSpeechService() {
     // M5 expands the supported set.
     // -------------------------------------------------------------------------
 
-    private fun iso3ToIso2(iso3: String?): String? {
-        return when (iso3?.lowercase()) {
-            "eng" -> "en"
-            "spa" -> "es"
-            "fra" -> "fr"
-            "deu", "ger" -> "de"
-            "ita" -> "it"
-            "por" -> "pt"
-            "jpn" -> "ja"
-            "kor" -> "ko"
-            "zho", "chi" -> "zh"
-            "hin" -> "hi"
-            "ara" -> "ar"
-            "rus" -> "ru"
-            null -> null
-            else -> null
-        }
-    }
+    private fun iso3ToIso2(iso3: String?): String? = LanguageCodes.toIso2(iso3)
 
-    private fun iso3ToIso2Country(iso3: String?): String? {
-        return when (iso3?.uppercase()) {
-            "USA" -> "US"
-            "GBR" -> "GB"
-            "ESP" -> "ES"
-            "MEX" -> "MX"
-            "FRA" -> "FR"
-            "DEU" -> "DE"
-            "ITA" -> "IT"
-            "BRA" -> "BR"
-            "PRT" -> "PT"
-            "JPN" -> "JP"
-            "KOR" -> "KR"
-            "CHN" -> "CN"
-            "IND" -> "IN"
-            "ARE", "SAU" -> "AE"
-            "RUS" -> "RU"
-            null -> null
-            else -> iso3
-        }
-    }
+    private fun iso3ToIso2Country(iso3: String?): String? = LanguageCodes.countryToIso2(iso3)
 
     companion object {
         private const val ESPEAK_MAX_PIECE = 300
