@@ -13,6 +13,8 @@ object AppOpenTracker {
     private const val TAG = "AppOpenTracker"
     private const val PREFS_NAME = "app_open_tracker"
     private const val KEY_OPEN_COUNT = "open_count"
+    private const val KEY_HAS_LISTENED = "has_listened"
+    private const val KEY_LAST_PAYWALL_SHOWN_AT = "last_paywall_shown_at"
 
     /** Number of free app opens before the hard paywall is shown */
     const val FREE_OPEN_LIMIT = 3
@@ -54,5 +56,22 @@ object AppOpenTracker {
      */
     fun hasExceededFreeLimit(): Boolean {
         return getOpenCount() > FREE_OPEN_LIMIT
+    }
+
+    /** True once the user has started playing audio at least once. */
+    fun hasListened(): Boolean = prefs?.getBoolean(KEY_HAS_LISTENED, false) ?: false
+
+    /** Records the first listen. Returns true only the first time it is called. */
+    fun markListened(): Boolean {
+        if (hasListened()) return false
+        prefs?.edit()?.putBoolean(KEY_HAS_LISTENED, true)?.apply()
+        return true
+    }
+
+    /** When the paywall was last shown on a cold start, or 0 if never. */
+    fun lastPaywallShownAt(): Long = prefs?.getLong(KEY_LAST_PAYWALL_SHOWN_AT, 0L) ?: 0L
+
+    fun markPaywallShown(nowMs: Long = System.currentTimeMillis()) {
+        prefs?.edit()?.putLong(KEY_LAST_PAYWALL_SHOWN_AT, nowMs)?.apply()
     }
 }

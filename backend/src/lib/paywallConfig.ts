@@ -20,3 +20,27 @@ export function getPaywallMode(): PaywallMode {
 export function setPaywallMode(mode: PaywallMode): void {
   currentMode = mode;
 }
+
+/**
+ * Tuning for the Android paywall policy (see PaywallPolicy in the Android app). The app reads
+ * this from GET /api/config in the background and applies it from its next start. Each value
+ * falls back to the app's built-in default when unset here.
+ */
+export interface PaywallTuning {
+  minOpensAfterFirstListen: number
+  openLimitWithoutListen: number
+  cooldownHours: number
+}
+
+function intFromEnv(name: string, fallback: number): number {
+  const n = Number.parseInt(process.env[name] ?? '', 10)
+  return Number.isFinite(n) ? n : fallback
+}
+
+export function getPaywallTuning(): PaywallTuning {
+  return {
+    minOpensAfterFirstListen: intFromEnv('PAYWALL_MIN_OPENS_AFTER_FIRST_LISTEN', 2),
+    openLimitWithoutListen: intFromEnv('PAYWALL_OPEN_LIMIT_WITHOUT_LISTEN', 3),
+    cooldownHours: intFromEnv('PAYWALL_COOLDOWN_HOURS', 24),
+  }
+}

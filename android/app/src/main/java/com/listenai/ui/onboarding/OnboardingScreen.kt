@@ -49,6 +49,7 @@ import com.kreativekoala.paywallkit.models.PaywallFeature
 import com.kreativekoala.paywallkit.models.PaywallProduct
 import com.kreativekoala.paywallkit.models.PaywallTheme
 import com.kreativekoala.paywallkit.view.PaywallView
+import com.listenai.service.FirebaseAnalyticsHelper
 import com.listenai.service.billing.RevenueCatManager
 import com.listenai.ui.theme.*
 import com.revenuecat.purchases.PackageType
@@ -68,6 +69,20 @@ fun OnboardingScreen(
 ) {
     val currentPage by onboardingManager.currentPage.collectAsState()
     val isDarkTheme = isSystemInDarkTheme()
+
+    LaunchedEffect(Unit) { FirebaseAnalyticsHelper.logOnboardingStarted() }
+    LaunchedEffect(currentPage) { FirebaseAnalyticsHelper.logOnboardingPageViewed(currentPage.index) }
+
+    // Next page, or finish onboarding and enter the app from the last visible page.
+    val advance: () -> Unit = {
+        if (onboardingManager.isOnLastVisiblePage()) {
+            FirebaseAnalyticsHelper.logOnboardingCompleted()
+            onboardingManager.completeOnboarding()
+            onComplete()
+        } else {
+            onboardingManager.nextPage()
+        }
+    }
 
     // Theme-aware colors
     val backgroundColor = if (isDarkTheme) WarmBackgroundDark else WarmBackgroundLight
@@ -90,8 +105,13 @@ fun OnboardingScreen(
             // Top bar with back/skip buttons
             OnboardingTopBar(
                 currentPage = currentPage,
+                pages = onboardingManager.visiblePages(),
                 onBack = { onboardingManager.previousPage() },
-                onSkip = { onboardingManager.skipToPaywall() }
+                onSkip = {
+                    FirebaseAnalyticsHelper.logOnboardingSkipped(currentPage.index)
+                    onboardingManager.skipOnboarding()
+                    onComplete()
+                }
             )
 
             // Page content with animation
@@ -121,7 +141,7 @@ fun OnboardingScreen(
                     )
                     OnboardingPage.VOICE_PICKER -> VoicePickerPage()
                     OnboardingPage.OFFLINE_DOWNLOAD -> OfflineDownloadPage(
-                        onContinue = { onboardingManager.nextPage() }
+                        onContinue = advance
                     )
                     OnboardingPage.PAYWALL -> PaywallPage(
                         onComplete = {
@@ -136,7 +156,8 @@ fun OnboardingScreen(
             if (currentPage != OnboardingPage.PAYWALL) {
                 OnboardingFooter(
                     currentPage = currentPage,
-                    onContinue = { onboardingManager.nextPage() }
+                    isLastPage = onboardingManager.isOnLastVisiblePage(),
+                    onContinue = advance
                 )
             }
         }
@@ -146,6 +167,7 @@ fun OnboardingScreen(
 @Composable
 private fun OnboardingTopBar(
     currentPage: OnboardingPage,
+    pages: List<OnboardingPage>,
     onBack: () -> Unit,
     onSkip: () -> Unit
 ) {
@@ -177,7 +199,7 @@ private fun OnboardingTopBar(
         Row(
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            OnboardingPage.entries.forEach { page ->
+            pages.forEach { page ->
                 Box(
                     modifier = Modifier
                         .size(if (page == currentPage) 10.dp else 8.dp)
@@ -204,6 +226,7 @@ private fun OnboardingTopBar(
 @Composable
 private fun OnboardingFooter(
     currentPage: OnboardingPage,
+    isLastPage: Boolean,
     onContinue: () -> Unit
 ) {
     val uriHandler = LocalUriHandler.current
@@ -233,7 +256,11 @@ private fun OnboardingFooter(
             )
         ) {
             Text(
-                text = if (currentPage == OnboardingPage.VOICE_SELECTION) stringResource(R.string.onboarding_continue) else stringResource(R.string.next),
+                text = when {
+                    isLastPage -> stringResource(R.string.onboarding_get_started)
+                    currentPage == OnboardingPage.VOICE_SELECTION -> stringResource(R.string.onboarding_continue)
+                    else -> stringResource(R.string.next)
+                },
                 fontSize = 16.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = buttonTextColor

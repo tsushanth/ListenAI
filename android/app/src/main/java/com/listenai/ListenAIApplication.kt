@@ -62,6 +62,9 @@ class ListenAIApplication : Application() {
             FirebaseAnalyticsHelper.initialize(this)
             TikTokHelper.initialize(this)
             FacebookSDKHelper.initialize(this)
+            FirebaseAnalyticsHelper.logAppOpen()
+            // Pick up any server-side paywall tuning for the next start; never blocks launch.
+            Thread { com.listenai.service.PaywallRemoteConfig.refresh(this) }.start()
         }
 
         // Warm up the Kokoro ONNX session if the user opted into on-device

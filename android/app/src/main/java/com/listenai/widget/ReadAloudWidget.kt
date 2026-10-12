@@ -30,6 +30,7 @@ import com.listenai.MainActivity
 import com.listenai.R
 import com.listenai.data.local.ArticleDao
 import com.listenai.data.models.Article
+import kotlinx.coroutines.flow.first
 import org.koin.core.context.GlobalContext
 
 /**
@@ -41,15 +42,16 @@ class ReadAloudWidget : GlanceAppWidget() {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         // Koin is started in Application; if the process was cold-started just for the
         // widget it may not be ready, in which case fall back to the static layout.
-        val article: Article? = runCatching {
-            GlobalContext.getOrNull()?.get<ArticleDao>()?.getMostRecentArticle()
-        }.getOrNull()
+        val dao = runCatching { GlobalContext.getOrNull()?.get<ArticleDao>() }.getOrNull()
+        // Prefer something the user is partway through; otherwise show the latest article.
+        val inProgress: Article? = runCatching { dao?.getInProgressArticles()?.first()?.firstOrNull() }.getOrNull()
+        val article: Article? = inProgress ?: runCatching { dao?.getMostRecentArticle() }.getOrNull()
 
-        provideContent { Content(context, article) }
+        provideContent { Content(context, article, resuming = inProgress != null) }
     }
 
     @androidx.compose.runtime.Composable
-    private fun Content(context: Context, article: Article?) {
+    private fun Content(context: Context, article: Article?, resuming: Boolean) {
         val ink = ColorProvider(Color(0xFF0B0B0B))
         val secondary = ColorProvider(Color(0xFF6E6E73))
         val cream = ColorProvider(Color(0xFFFFF9EA))
@@ -66,7 +68,11 @@ class ReadAloudWidget : GlanceAppWidget() {
             Column(modifier = GlanceModifier.fillMaxWidth().clickable(actionStartActivity(resumeIntent))) {
                 Text(
                     text = context.getString(
-                        if (article != null) R.string.widget_continue else R.string.widget_open
+                        when {
+                            resuming -> R.string.widget_resume
+                            article != null -> R.string.widget_continue
+                            else -> R.string.widget_open
+                        }
                     ),
                     style = TextStyle(color = secondary, fontSize = 12.sp, fontWeight = FontWeight.Medium)
                 )

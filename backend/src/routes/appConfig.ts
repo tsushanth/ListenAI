@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { getPaywallMode } from '../lib/paywallConfig.js';
+import { getPaywallMode, getPaywallTuning } from '../lib/paywallConfig.js';
 
 export const appConfigRouter = Router();
 
@@ -11,5 +11,6 @@ export const appConfigRouter = Router();
 appConfigRouter.get('/', (_req: Request, res: Response) => {
   res.json({
     paywallMode: getPaywallMode(),
+    paywall: getPaywallTuning(),
   });
 });

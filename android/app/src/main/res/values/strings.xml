@@ -271,6 +271,7 @@
     <string name="onboarding_back">Back</string>
     <string name="skip">Skip</string>
     <string name="onboarding_continue">Continue</string>
+    <string name="onboarding_get_started">Get started</string>
     <string name="next">Next</string>
     <string name="onboarding_terms">By continuing, you agree to our Privacy Policy and Terms of Use.</string>
     <string name="privacy_policy">Privacy Policy</string>
@@ -509,6 +510,7 @@
     <string name="bookmarks_empty">No bookmarks yet. Open More options while listening and choose Bookmark this spot.</string>
     <string name="bookmarks_delete">Delete bookmark</string>
     <string name="widget_description">Open your latest article or read what you copied</string>
+    <string name="widget_resume">Continue listening</string>
     <string name="widget_continue">Latest in your library</string>
     <string name="widget_open">Open ReadAloud</string>
     <string name="widget_percent_done">%1$d%% listened</string>
