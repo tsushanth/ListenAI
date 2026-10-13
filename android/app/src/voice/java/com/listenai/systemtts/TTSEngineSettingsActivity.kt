@@ -477,10 +477,37 @@ private fun VoiceCatalogScreen(padding: PaddingValues) {
                     },
                 )
             }
+            item("notices") {
+                OpenSourceNotices()
+            }
             item("diagnostics") {
                 DiagnosticsCard()
             }
         }
+    }
+}
+
+/** Licence notice for the GPL-3.0 eSpeak NG voices bundled in this app, with where to get the source. */
+@Composable
+private fun OpenSourceNotices() {
+    var open by remember { mutableStateOf(false) }
+    TextButton(onClick = { open = true }) { Text("Open-source notices") }
+    if (open) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { open = false },
+            confirmButton = { TextButton(onClick = { open = false }) { Text("Close") } },
+            title = { Text("Open-source notices") },
+            text = {
+                Text(
+                    "The fast voices use eSpeak NG, copyright the eSpeak NG authors, licensed under the " +
+                        "GNU General Public License version 3 or later (https://www.gnu.org/licenses/gpl-3.0.html). " +
+                        "eSpeak NG source: https://github.com/espeak-ng/espeak-ng\n\n" +
+                        "ReadAloud Voice is distributed under the same licence. Its complete source code is at " +
+                        "https://github.com/tsushanth/ListenAI (android/, see android/GPL.md). " +
+                        "You may use, modify and share it under the terms of that licence, without any warranty."
+                )
+            }
+        )
     }
 }
 
