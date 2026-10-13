@@ -46,10 +46,8 @@ android {
         }
 
         ndk {
-            // The prebuilt libespeak-ng.so is arm64-v8a only. Limit
-            // our native bridge build to the same ABI; for other ABIs
-            // the eSpeak feature is silently absent (System.loadLibrary
-            // returns UnsatisfiedLinkError on x86 emulators etc).
+            // The prebuilt libespeak-ng.so (voice flavor only) is arm64-v8a only. Limit
+            // our native build to the same ABI.
             abiFilters += listOf("arm64-v8a")
         }
 
@@ -81,12 +79,19 @@ android {
             applicationIdSuffix = ".voice"
             versionNameSuffix = "-voice"
             manifestPlaceholders["appNameOverride"] = "ReadAloud Voice"
+            // eSpeak NG is GPL-3.0. It, its JNI bridge and the system TTS engine are built into this
+            // flavor only; the reader flavor ships none of it. See android/GPL.md.
+            externalNativeBuild {
+                cmake {
+                    arguments += listOf("-DESPEAK_BUILD=ON")
+                }
+            }
         }
     }
 
     externalNativeBuild {
         cmake {
-            path = file("src/main/cpp/CMakeLists.txt")
+            path = file("src/voice/cpp/CMakeLists.txt")
             version = "3.22.1"
         }
     }

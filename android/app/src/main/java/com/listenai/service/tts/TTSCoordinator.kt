@@ -54,23 +54,17 @@ class TTSCoordinator(
             pitch = if (options.pitch == SynthesisOptions.DEFAULT.pitch) defaultPitch else options.pitch
         )
 
-        // Non-English content has no natural voice in the app yet, so read it with the offline
-        // eSpeak voice for its language: it costs no cloud quota and is not mispronounced by an
-        // English model. Cloned voices keep their own path (the user chose that voice on purpose).
+        // Non-English content has no natural voice in the app yet, so read it through the phone's own
+        // text-to-speech engine in that language: offline, no cloud quota, and not an English model
+        // guessing at foreign words. Cloned voices keep their own path (the user chose that voice on purpose).
         val isCloned = voice.id.startsWith("cloned_") || voice.providerModelId == "chatterbox"
         val lang2 = language?.substringBefore('-')?.lowercase()
-        if (!isCloned && !lang2.isNullOrBlank() && lang2 != "en" && !EspeakLocalSynth.shouldUse(lang2)) {
+        if (!isCloned && !lang2.isNullOrBlank() && lang2 != "en") {
+            val local = runCatching { PlatformLanguageSynth.synthesize(context, text, lang2, adjustedOptions.speed) }
+                .onFailure { if (it is kotlinx.coroutines.CancellationException) throw it }
+                .getOrNull()
+            if (local != null) return@withContext local
             com.listenai.service.FirebaseAnalyticsHelper.logVoiceFallback(lang2, "no_voice")
-        }
-        if (!isCloned && EspeakLocalSynth.shouldUse(language)) {
-            // If the offline engine cannot start, fall through to the normal voice rather than fail.
-            runCatching { EspeakLocalSynth.synthesize(context, text, language!!, adjustedOptions.speed) }
-                .onSuccess { return@withContext it }
-                .onFailure {
-                    if (it is kotlinx.coroutines.CancellationException) throw it
-                    com.listenai.service.FirebaseAnalyticsHelper.logVoiceFallback(language!!, "engine_error")
-                    android.util.Log.w("TTSCoordinator", "eSpeak failed, using default voice: ${it.message}")
-                }
         }
 
         // All synthesis uses self-hosted Kokoro

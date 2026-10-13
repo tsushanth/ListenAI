@@ -8,6 +8,11 @@
 cmake_minimum_required(VERSION 3.22.1)
 project(espeak_bridge LANGUAGES C)
 
+# Only the voice flavor builds this (GPL-3.0 eSpeak NG). The reader flavor passes no ESPEAK_BUILD.
+if(NOT ESPEAK_BUILD)
+    return()
+endif()
+
 # Prebuilt eSpeak NG library as an imported target.
 # CMake resolves the .so path from jniLibs/${ANDROID_ABI}/.
 add_library(espeak-ng SHARED IMPORTED)
