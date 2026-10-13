@@ -1,0 +1,3 @@
+Non-English articles are now read with your phone's own speech engine in that language.
+The built-in ReadAloud speech engine for other apps and TalkBack moves to the separate ReadAloud Voice app.
+Smaller download.
