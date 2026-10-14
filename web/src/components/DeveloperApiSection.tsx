@@ -22,6 +22,9 @@ export default function DeveloperApiSection() {
   const [billingLoading, setBillingLoading] = useState(false)
   const [authMode, setAuthMode] = useState<'signin' | 'signup' | 'forgot'>('signin')
   const [recovering, setRecovering] = useState(false)
+  // Token from the emailed reset link. It is only spent when the person presses the button, so
+  // email scanners that prefetch the link cannot use it up before they do.
+  const [recoveryHash, setRecoveryHash] = useState<string | null>(null)
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [email, setEmail] = useState('')
@@ -30,6 +33,12 @@ export default function DeveloperApiSection() {
   const [authNotice, setAuthNotice] = useState<string | null>(null)
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const hash = params.get('token_hash')
+    if (params.get('type') === 'recovery' && hash) {
+      setRecoveryHash(hash)
+      window.history.replaceState(null, '', window.location.pathname + window.location.hash)
+    }
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session)
       setAuthLoading(false)
@@ -95,6 +104,24 @@ export default function DeveloperApiSection() {
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Authentication failed')
+    } finally {
+      setAuthSubmitting(false)
+    }
+  }
+
+  const confirmRecovery = async () => {
+    if (!recoveryHash) return
+    setError(null)
+    setAuthSubmitting(true)
+    try {
+      const { error: verifyError } = await supabase.auth.verifyOtp({ token_hash: recoveryHash, type: 'recovery' })
+      if (verifyError) throw verifyError
+      setRecoveryHash(null)
+      setRecovering(true)
+    } catch {
+      setRecoveryHash(null)
+      setAuthMode('forgot')
+      setError('That reset link is invalid or has expired. Enter your email to get a new one.')
     } finally {
       setAuthSubmitting(false)
     }
@@ -212,6 +239,20 @@ export default function DeveloperApiSection() {
         {authLoading ? (
           <div className="flex items-center gap-2 text-white/60">
             <Loader2 size={18} className="animate-spin" /> Loading…
+          </div>
+        ) : recoveryHash ? (
+          <div>
+            <p className="text-white/70 mb-4">Press the button to choose a new password for your account.</p>
+            {error && <p className="text-sm text-red-400 mb-3">{error}</p>}
+            <button
+              type="button"
+              onClick={confirmRecovery}
+              disabled={authSubmitting}
+              className="inline-flex items-center gap-2 bg-white text-black font-semibold px-5 py-2.5 rounded-lg hover:bg-white/90 transition-colors disabled:opacity-50"
+            >
+              {authSubmitting ? <Loader2 size={18} className="animate-spin" /> : null}
+              Continue to reset password
+            </button>
           </div>
         ) : recovering && session ? (
           <div>
