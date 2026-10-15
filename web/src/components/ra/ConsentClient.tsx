@@ -28,6 +28,15 @@ export default function ConsentClient({ clientName, params, cancelUrl }: { clien
     setBusy(false)
   }
 
+  // Accounts created with Google have no password, so password sign-in can never work for them. Full-page redirect to Google and back to THIS URL
+  // (the consent page with all its query parameters); Supabase restores the session from the URL on return (detectSessionInUrl). The return URL
+  // is on the project's redirect allow list (https://readaloudai.org/**).
+  const signInWithGoogle = async () => {
+    setBusy(true); setError(null)
+    const { error: err } = await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.href } })
+    if (err) { setError(err.message); setBusy(false) }
+  }
+
   const approve = async () => {
     if (!session) return
     setBusy(true); setError(null)
@@ -56,6 +65,8 @@ export default function ConsentClient({ clientName, params, cancelUrl }: { clien
       {!session ? (
         <form onSubmit={signIn}>
           <p className="ra-lede" style={{ marginBottom: 20 }}>Sign in to your ReadAloud AI account to continue. <strong>{clientName}</strong> wants to use it to generate speech.</p>
+          <button className="ra-btn ghost" disabled={busy} type="button" onClick={signInWithGoogle} style={{ width: '100%', marginBottom: 16 }}>Continue with Google</button>
+          <p style={{ textAlign: 'center', fontSize: '.9rem', margin: '0 0 16px' }}>or sign in with your email and password</p>
           <label htmlFor="c-email">Email</label>
           <input id="c-email" type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} style={field} />
           <label htmlFor="c-pw">Password</label>
