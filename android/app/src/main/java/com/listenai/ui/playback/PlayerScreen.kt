@@ -49,7 +49,6 @@ import com.listenai.service.playback.AudioPlaybackStatus
 import com.listenai.service.playback.PlayerMode
 import com.listenai.service.tts.TTSCoordinator
 import com.listenai.service.tts.TTSError
-import com.listenai.service.review.AppReviewService
 import com.listenai.service.notification.TTSNotificationService
 import com.listenai.ui.theme.Blue
 import com.listenai.ui.theme.Orange
@@ -92,7 +91,6 @@ fun PlayerScreen(
     articleRepository: ArticleRepository = koinInject(),
     playbackService: AudioPlaybackService = koinInject(),
     ttsCoordinator: TTSCoordinator = koinInject(),
-    appReviewService: AppReviewService = koinInject(),
     ttsNotificationService: TTSNotificationService = koinInject(),
     voiceCloningService: VoiceCloningService = koinInject(),
     bookmarkDao: BookmarkDao = koinInject()
@@ -300,9 +298,6 @@ fun PlayerScreen(
             playbackService.play(article, article.audioFileUrl, PlayerMode.FULL, null)
             playerState = PlayerState.Playing(article)
 
-            // Record TTS playback success for app review prompt
-            appReviewService.recordTTSPlaybackSuccess()
-            appReviewService.checkAndTriggerFeedbackPrompt()
             (context as? Activity)?.let { RatingKit.trackAction(it) }
             return
         }
@@ -361,9 +356,6 @@ fun PlayerScreen(
                                 playbackService.play(article, previewUrl, PlayerMode.PREVIEW, previewDuration)
                                 playerState = PlayerState.Playing(article)
 
-                                // Record TTS playback success for app review prompt
-                                appReviewService.recordTTSPlaybackSuccess()
-                                appReviewService.checkAndTriggerFeedbackPrompt()
                                 (context as? Activity)?.let { RatingKit.trackAction(it) }
                             }
                         }
@@ -409,8 +401,6 @@ fun PlayerScreen(
                         playbackService.play(article, audioFile.absolutePath, PlayerMode.FULL, null)
 
                         // Record TTS playback success for app review prompt (only if not already triggered by preview)
-                        appReviewService.recordTTSPlaybackSuccess()
-                        appReviewService.checkAndTriggerFeedbackPrompt()
                         (context as? Activity)?.let { RatingKit.trackAction(it) }
                     }
                     playerState = PlayerState.Playing(article)

@@ -11,8 +11,6 @@ import androidx.navigation.compose.rememberNavController
 import com.listenai.service.playback.AudioPlaybackService
 import com.listenai.service.playback.AudioPlaybackStatus
 import com.listenai.service.import_content.IncomingContentHolder
-import com.listenai.service.review.AppReviewService
-import com.listenai.ui.components.FeedbackPromptDialog
 import com.listenai.ui.import_content.IncomingContentSheet
 import com.listenai.ui.navigation.BottomNavBar
 import com.listenai.ui.navigation.NavGraph
@@ -28,14 +26,10 @@ fun MainScreen() {
     val navController = rememberNavController()
     val context = LocalContext.current
     val playbackService: AudioPlaybackService = koinInject()
-    val appReviewService: AppReviewService = koinInject()
 
     // Observe playback state
     val playbackState by playbackService.playbackState.collectAsState()
     val currentArticle by playbackService.currentArticle.collectAsState()
-
-    // Observe app review prompt state
-    val shouldShowFeedbackPrompt by appReviewService.shouldShowFeedbackPrompt.collectAsState()
 
     // Get current route to determine if we should show mini player
     val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -112,24 +106,6 @@ fun MainScreen() {
             onReadNow = { articleId ->
                 IncomingContentHolder.clear()
                 navController.navigate(Screen.Player.createRoute(articleId))
-            }
-        )
-    }
-
-    // Feedback prompt dialog
-    if (shouldShowFeedbackPrompt) {
-        FeedbackPromptDialog(
-            onYes = {
-                // Trigger native Play Store review
-                (context as? Activity)?.let { activity ->
-                    appReviewService.requestPlayStoreReview(activity)
-                }
-            },
-            onNo = {
-                appReviewService.userNotEnjoying()
-            },
-            onDismiss = {
-                appReviewService.dismissFeedbackPrompt()
             }
         )
     }

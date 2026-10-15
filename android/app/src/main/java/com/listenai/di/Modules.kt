@@ -24,7 +24,6 @@ import com.listenai.service.settings.SettingsManager
 import com.listenai.service.voice.SupabaseVoiceCloneAuth
 import com.listenai.service.voice.VoiceCloneAuth
 import com.listenai.service.voice.VoiceCloningService
-import com.listenai.service.review.AppReviewService
 import com.listenai.service.notification.TTSNotificationService
 import com.listenai.ui.import_content.ImportViewModel
 import com.listenai.ui.library.LibraryViewModel
@@ -131,7 +130,6 @@ val serviceModule = module {
     single { SettingsManager.getInstance(androidContext()) }
 
     // App Review Service
-    single { AppReviewService.getInstance(androidContext()) }
 
     // TTS Notification Service
     single { TTSNotificationService.getInstance(androidContext()) }

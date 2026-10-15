@@ -51,7 +51,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.viewModelFactory
 import androidx.lifecycle.viewmodel.initializer
-import com.listenai.service.review.AppReviewService
+import com.kreativekoala.ratingkit.RatingKit
 import com.listenai.service.voice.AudioClips
 import com.listenai.service.voice.Recovery
 import com.listenai.service.voice.VoiceCloningService
@@ -87,7 +87,6 @@ fun VoiceCloningFlowScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val cloning: VoiceCloningService = koinInject()
-    val appReviewService: AppReviewService = koinInject()
     val auth = cloning.authState
 
     val vm: VoiceCloneFlowViewModel = viewModel(
@@ -174,8 +173,8 @@ fun VoiceCloningFlowScreen(
             recordingFor = null
         }
         if (state.step == CloneStep.SUCCESS) {
-            appReviewService.recordVoiceCloneSuccess()
-            appReviewService.checkAndTriggerFeedbackPrompt()
+            // Magic moment: the user's cloned voice is ready. RatingKit decides whether to ask.
+            (context as? Activity)?.let { RatingKit.trackAction(it) }
         }
     }
     DisposableEffect(Unit) {
