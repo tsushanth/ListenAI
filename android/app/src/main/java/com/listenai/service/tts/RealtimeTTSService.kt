@@ -71,6 +71,14 @@ class RealtimeTTSService(
 
         private const val GATEWAY_BASE_URL = "https://api.readaloudai.org"
         private const val SAMPLE_RATE = 24000
+
+        /**
+         * How long the optional alignment worker gets to send its first message before we give up on word timings and use
+         * the normal Piper worker. The alignment worker scales to zero; a cold start takes 20+ seconds and Fly's proxy
+         * holds the request for a stopped machine for about 35 s, which must never be the user's wait for audio.
+         * (Connecting still wakes the machine, so a later read usually finds it warm.)
+         */
+        internal const val ALIGNMENT_FIRST_MESSAGE_TIMEOUT_MS = 7_000L
         private const val CHANNELS = 1
         private const val BITS_PER_SAMPLE = 16
     }
@@ -81,6 +89,10 @@ class RealtimeTTSService(
     override val supportsSSML = false
 
     private val activeTasks = mutableMapOf<UUID, Boolean>()
+
+    /** One daemon thread for the alignment first-message watchdog. */
+    private val alignmentWatchdog: java.util.concurrent.ScheduledExecutorService =
+        java.util.concurrent.Executors.newSingleThreadScheduledExecutor { r -> Thread(r, "tts-align-watchdog").apply { isDaemon = true } }
 
     private val httpClient = OkHttpClient.Builder()
         .connectTimeout(15, TimeUnit.SECONDS)
@@ -157,7 +169,8 @@ class RealtimeTTSService(
                 )
             )
 
-            val auth = authorize()
+            // Ask for word timings; the alignment worker is optional, so a failure there falls back to the plain Piper worker.
+            val auth = authorize(alignment = true)
 
             onProgress(
                 SynthesisProgress.INITIAL.copy(
@@ -168,7 +181,17 @@ class RealtimeTTSService(
                 )
             )
 
-            val pcm = synthesizeOverWebSocket(auth, totalText, voice, options, taskId)
+            val streamed = try {
+                synthesizeOverWebSocket(auth, totalText, voice, options, taskId)
+            } catch (e: TTSError.NetworkError) {
+                if (!auth.alignment) throw e
+                android.util.Log.w("RealtimeTTSService", "alignment worker failed (${e.message}); retrying without word timings")
+                synthesizeOverWebSocket(authorize(alignment = false), totalText, voice, options, taskId)
+            } catch (e: TTSError.ApiError) {
+                if (!auth.alignment) throw e
+                android.util.Log.w("RealtimeTTSService", "alignment worker rejected the request (${e.message}); retrying without word timings")
+                synthesizeOverWebSocket(authorize(alignment = false), totalText, voice, options, taskId)
+            }
 
             onProgress(
                 SynthesisProgress(
@@ -183,17 +206,21 @@ class RealtimeTTSService(
                 )
             )
 
-            buildResult(pcm, sections, totalText, voice, startTime)
+            buildResult(streamed.pcm, sections, totalText, voice, startTime, streamed.timings?.build(totalText))
         } finally {
             activeTasks.remove(taskId)
         }
     }
 
-    private data class AuthResponse(val token: String, val wsUrl: String)
+    private data class AuthResponse(val token: String, val wsUrl: String, val alignment: Boolean = false)
 
-    private fun authorize(): AuthResponse {
+    /** PCM plus, when the alignment worker was used, the word timings collected from its chunk_meta messages. */
+    private class StreamedAudio(val pcm: ByteArray, val timings: WordTimings.Collector?)
+
+    private fun authorize(alignment: Boolean = false): AuthResponse {
         val body = JSONObject().apply {
             put("engine", "piper")
+            if (alignment) put("alignment", true)
         }
         val request = Request.Builder()
             .url("$backendBaseUrl/api/realtime-tts/authorize")
@@ -208,7 +235,7 @@ class RealtimeTTSService(
             val responseBody = response.body?.string() ?: ""
             if (!response.isSuccessful) handleErrorResponse(response.code, responseBody)
             val json = JSONObject(responseBody)
-            return AuthResponse(token = json.getString("token"), wsUrl = json.getString("url"))
+            return AuthResponse(token = json.getString("token"), wsUrl = json.getString("url"), alignment = alignment && json.optBoolean("alignment", false))
         }
     }
 
@@ -218,8 +245,11 @@ class RealtimeTTSService(
         voice: VoicePreset,
         options: SynthesisOptions,
         taskId: UUID
-    ): ByteArray = suspendCancellableCoroutine { cont ->
+    ): StreamedAudio = suspendCancellableCoroutine { cont ->
         val pcmBuffer = ByteArrayOutputStream()
+        val collector = if (auth.alignment) WordTimings.Collector() else null
+        val gotFirstMessage = java.util.concurrent.atomic.AtomicBoolean(false)
+        var watchdog: java.util.concurrent.ScheduledFuture<*>? = null
         val wsUrl = "${auth.wsUrl}?token=${auth.token}"
         val request = Request.Builder().url(wsUrl).build()
 
@@ -231,11 +261,13 @@ class RealtimeTTSService(
                     put("text", text)
                     put("voice", PiperVoiceMapping.resolve(voice))
                     put("speed", options.speed.toDouble())
+                    if (auth.alignment) put("alignment", true)
                 }
                 webSocket.send(message.toString())
             }
 
             override fun onMessage(webSocket: WebSocket, bytes: ByteString) {
+                gotFirstMessage.set(true)
                 if (activeTasks[taskId] == true) {
                     webSocket.close(1000, "cancelled")
                     return
@@ -244,12 +276,14 @@ class RealtimeTTSService(
             }
 
             override fun onMessage(webSocket: WebSocket, text: String) {
+                gotFirstMessage.set(true)
                 try {
                     val json = JSONObject(text)
                     when (json.optString("type")) {
+                        "chunk_meta" -> collector?.add(json)
                         "done" -> {
                             webSocket.close(1000, "done")
-                            if (cont.isActive) cont.resume(pcmBuffer.toByteArray())
+                            if (cont.isActive) cont.resume(StreamedAudio(pcmBuffer.toByteArray(), collector))
                         }
                         "error" -> {
                             webSocket.close(1000, "error")
@@ -279,7 +313,15 @@ class RealtimeTTSService(
         }
 
         socket = httpClient.newWebSocket(request, listener)
-        cont.invokeOnCancellation { socket.close(1000, "task cancelled") }
+        if (auth.alignment) {
+            watchdog = alignmentWatchdog.schedule({
+                if (!gotFirstMessage.get() && cont.isActive) {
+                    socket?.cancel()
+                    cont.resumeWithException(TTSError.NetworkError("alignment worker did not answer within ${ALIGNMENT_FIRST_MESSAGE_TIMEOUT_MS / 1000}s"))
+                }
+            }, ALIGNMENT_FIRST_MESSAGE_TIMEOUT_MS, TimeUnit.MILLISECONDS)
+        }
+        cont.invokeOnCancellation { watchdog?.cancel(false); socket.close(1000, "task cancelled") }
     }
 
     private fun buildResult(
@@ -287,11 +329,16 @@ class RealtimeTTSService(
         sections: List<TextSection>,
         totalText: String,
         voice: VoicePreset,
-        startTime: Long
+        startTime: Long,
+        timings: WordTimings? = null
     ): SynthesisResult {
         val wavBytes = pcmToWav(pcm, SAMPLE_RATE, CHANNELS, BITS_PER_SAMPLE)
         val outputFile = File(context.cacheDir, "tts_${UUID.randomUUID()}.wav")
         outputFile.writeBytes(wavBytes)
+        // Sidecar next to the audio so a cached article keeps its word highlighting (see WordTimings).
+        timings?.let { WordTimings.save(outputFile, it) }
+        var sectionOffset = 0
+        val sectionStarts = sections.map { s -> val start = sectionOffset; sectionOffset += s.text.length + 1; start }  // sections are joined with " "
 
         val endTime = System.currentTimeMillis()
         val bytesPerSecond = SAMPLE_RATE * CHANNELS * (BITS_PER_SAMPLE / 8)
@@ -302,7 +349,7 @@ class RealtimeTTSService(
             audioFile = outputFile,
             duration = duration,
             sectionTimestamps = sectionTimestamps,
-            wordTimestamps = null,
+            wordTimestamps = timings?.toWordTimestamps(sectionStarts),
             fileSizeBytes = outputFile.length(),
             cost = SynthesisCost(
                 charactersUsed = totalText.length,

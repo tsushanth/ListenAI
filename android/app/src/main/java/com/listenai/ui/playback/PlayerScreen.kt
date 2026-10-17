@@ -96,6 +96,8 @@ fun PlayerScreen(
     bookmarkDao: BookmarkDao = koinInject()
 ) {
     var playerState by remember { mutableStateOf<PlayerState>(PlayerState.Loading) }
+    // Audio file whose word timings (sidecar next to it) drive word-level highlighting; null = paragraph highlighting only.
+    var wordTimingsAudioPath by remember(articleId) { mutableStateOf<String?>(null) }
     var synthesisProgress by remember { mutableFloatStateOf(0f) }
     var showVoicePicker by remember { mutableStateOf(false) }
     var showMoreOptions by remember { mutableStateOf(false) }
@@ -295,6 +297,7 @@ fun PlayerScreen(
         // Check if audio already exists
         if (article.audioFileUrl != null) {
             android.util.Log.d("PlayerScreen", "Playing existing audio: ${article.audioFileUrl}")
+            wordTimingsAudioPath = article.audioFileUrl
             playbackService.play(article, article.audioFileUrl, PlayerMode.FULL, null)
             playerState = PlayerState.Playing(article)
 
@@ -365,6 +368,7 @@ fun PlayerScreen(
                 // Full audio synthesis complete
                 val audioFile = result.audioFile
                 val durationMs = (result.duration * 1000).toLong()
+                wordTimingsAudioPath = audioFile.absolutePath
 
                 android.util.Log.d("PlayerScreen", "Synthesis complete: file=${audioFile.absolutePath}, duration=$durationMs ms")
 
@@ -527,6 +531,7 @@ fun PlayerScreen(
 
                 val audioFile = result.audioFile
                 val durationMs = (result.duration * 1000).toLong()
+                wordTimingsAudioPath = audioFile.absolutePath
 
                 // Update article with new audio URL
                 articleRepository.updateSynthesisStatus(
@@ -991,8 +996,17 @@ fun PlayerScreen(
                             null
                         }
 
+                        val wordTimings = remember(wordTimingsAudioPath) {
+                            wordTimingsAudioPath?.let { com.listenai.service.tts.WordTimings.load(it) }
+                        }
+                        val activeWordIndex = if (isPlaying && playbackState.articleId == article.id &&
+                            playbackState.playerMode != PlayerMode.PREVIEW) {
+                            wordTimings?.indexAt(playbackState.currentTime)
+                        } else null
                         ArticleContent(
                             text = article.rawText,
+                            wordTimings = wordTimings,
+                            activeWordIndex = activeWordIndex,
                             currentHighlightIndex = currentHighlightIndex,
                             scrollState = scrollState,
                             scope = scope,
@@ -1284,6 +1298,8 @@ private fun calculateHighlightIndex(
 @Composable
 private fun ArticleContent(
     text: String,
+    wordTimings: com.listenai.service.tts.WordTimings?,
+    activeWordIndex: Int?,
     currentHighlightIndex: Int?,
     scrollState: ScrollState,
     scope: CoroutineScope,
@@ -1295,6 +1311,8 @@ private fun ArticleContent(
         fontSize = 18.sp,
         lineSpacing = 8.dp,
         highlightIndex = currentHighlightIndex,
+        spokenText = wordTimings?.spokenText,
+        activeWordRange = activeWordIndex?.let { i -> wordTimings?.words?.getOrNull(i)?.let { it.startChar until it.endChar } },
         highlightColor = Yellow,
         highlightWordOnly = false,
         followHighlight = followAlong,
