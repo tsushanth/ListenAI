@@ -118,3 +118,43 @@ test('POST /authorize returns 500 and never calls the gateway when the key is no
     restoreFetch();
   }
 });
+
+
+test('POST /authorize with alignment:true forwards it and returns alignment:true plus the worker url the gateway gave', async () => {
+  process.env.REALTIME_TTS_API_KEY = 'test-dedicated-key';
+  const calls: { options: RequestInit }[] = [];
+  stubFetch((async (_url: string, options: RequestInit) => {
+    calls.push({ options });
+    return { ok: true, status: 200, json: async () => ({ token: 't', url: 'wss://piper-align-sjc.fly.dev/tts', alignment: true }), text: async () => '' } as Response;
+  }) as typeof fetch);
+  const { base, close } = await boot();
+  try {
+    const res = await REAL_FETCH(`${base}/authorize`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ engine: 'piper', alignment: true }) });
+    assert.deepEqual(await res.json(), { token: 't', url: 'wss://piper-align-sjc.fly.dev/tts', alignment: true });
+    assert.equal(JSON.parse(calls[0].options.body as string).alignment, true);
+  } finally { close(); restoreFetch(); }
+});
+
+test('POST /authorize with alignment:true against a gateway that does not support it returns alignment:false', async () => {
+  process.env.REALTIME_TTS_API_KEY = 'test-dedicated-key';
+  stubFetch((async () => ({ ok: true, status: 200, json: async () => ({ token: 't', url: 'wss://piper-tts-sjc.fly.dev/tts' }), text: async () => '' } as Response)) as typeof fetch);
+  const { base, close } = await boot();
+  try {
+    const res = await REAL_FETCH(`${base}/authorize`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ alignment: true }) });
+    assert.deepEqual(await res.json(), { token: 't', url: 'wss://piper-tts-sjc.fly.dev/tts', alignment: false });
+  } finally { close(); restoreFetch(); }
+});
+
+test('POST /authorize: alignment is only forwarded for a literal true and is absent from the answer otherwise', async () => {
+  process.env.REALTIME_TTS_API_KEY = 'test-dedicated-key';
+  const bodies: string[] = [];
+  stubFetch((async (_u: string, o: RequestInit) => { bodies.push(o.body as string); return { ok: true, status: 200, json: async () => ({ token: 't', url: 'u' }), text: async () => '' } as Response; }) as typeof fetch);
+  const { base, close } = await boot();
+  try {
+    for (const v of ['true', 1, 'yes', undefined]) {
+      const res = await REAL_FETCH(`${base}/authorize`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ alignment: v }) });
+      assert.deepEqual(await res.json(), { token: 't', url: 'u' });
+    }
+    assert.ok(bodies.every((b) => !('alignment' in JSON.parse(b))));
+  } finally { close(); restoreFetch(); }
+});
