@@ -71,6 +71,14 @@ class RealtimeTTSService(
 
         private const val GATEWAY_BASE_URL = "https://api.readaloudai.org"
         private const val SAMPLE_RATE = 24000
+
+        /**
+         * How long the optional alignment worker gets to send its first message before we give up on word timings and use
+         * the normal Piper worker. The alignment worker scales to zero; a cold start takes 20+ seconds and Fly's proxy
+         * holds the request for a stopped machine for about 35 s, which must never be the user's wait for audio.
+         * (Connecting still wakes the machine, so a later read usually finds it warm.)
+         */
+        internal const val ALIGNMENT_FIRST_MESSAGE_TIMEOUT_MS = 7_000L
         private const val CHANNELS = 1
         private const val BITS_PER_SAMPLE = 16
     }
@@ -81,6 +89,10 @@ class RealtimeTTSService(
     override val supportsSSML = false
 
     private val activeTasks = mutableMapOf<UUID, Boolean>()
+
+    /** One daemon thread for the alignment first-message watchdog. */
+    private val alignmentWatchdog: java.util.concurrent.ScheduledExecutorService =
+        java.util.concurrent.Executors.newSingleThreadScheduledExecutor { r -> Thread(r, "tts-align-watchdog").apply { isDaemon = true } }
 
     private val httpClient = OkHttpClient.Builder()
         .connectTimeout(15, TimeUnit.SECONDS)
@@ -236,6 +248,8 @@ class RealtimeTTSService(
     ): StreamedAudio = suspendCancellableCoroutine { cont ->
         val pcmBuffer = ByteArrayOutputStream()
         val collector = if (auth.alignment) WordTimings.Collector() else null
+        val gotFirstMessage = java.util.concurrent.atomic.AtomicBoolean(false)
+        var watchdog: java.util.concurrent.ScheduledFuture<*>? = null
         val wsUrl = "${auth.wsUrl}?token=${auth.token}"
         val request = Request.Builder().url(wsUrl).build()
 
@@ -253,6 +267,7 @@ class RealtimeTTSService(
             }
 
             override fun onMessage(webSocket: WebSocket, bytes: ByteString) {
+                gotFirstMessage.set(true)
                 if (activeTasks[taskId] == true) {
                     webSocket.close(1000, "cancelled")
                     return
@@ -261,6 +276,7 @@ class RealtimeTTSService(
             }
 
             override fun onMessage(webSocket: WebSocket, text: String) {
+                gotFirstMessage.set(true)
                 try {
                     val json = JSONObject(text)
                     when (json.optString("type")) {
@@ -297,7 +313,15 @@ class RealtimeTTSService(
         }
 
         socket = httpClient.newWebSocket(request, listener)
-        cont.invokeOnCancellation { socket.close(1000, "task cancelled") }
+        if (auth.alignment) {
+            watchdog = alignmentWatchdog.schedule({
+                if (!gotFirstMessage.get() && cont.isActive) {
+                    socket?.cancel()
+                    cont.resumeWithException(TTSError.NetworkError("alignment worker did not answer within ${ALIGNMENT_FIRST_MESSAGE_TIMEOUT_MS / 1000}s"))
+                }
+            }, ALIGNMENT_FIRST_MESSAGE_TIMEOUT_MS, TimeUnit.MILLISECONDS)
+        }
+        cont.invokeOnCancellation { watchdog?.cancel(false); socket.close(1000, "task cancelled") }
     }
 
     private fun buildResult(
