@@ -41,13 +41,16 @@ realtimeTtsRouter.post('/authorize', async (req, res) => {
     return;
   }
   const engine = typeof req.body?.engine === 'string' ? req.body.engine : 'piper';
+  // Optional: the app asks for word timings. Forwarded only when literally true; the gateway answers {alignment: true|false}
+  // and, when true, returns the alignment worker's WebSocket URL (which adds `words` to each chunk_meta message).
+  const wantAlignment = req.body?.alignment === true;
 
   let upstream: Response;
   try {
     upstream = await fetch(`${GATEWAY_URL}/tts/authorize`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ key: apiKey, engine }),
+      body: JSON.stringify({ key: apiKey, engine, ...(wantAlignment ? { alignment: true } : {}) }),
     });
   } catch (err) {
     realtimeTtsLogger.error({ err }, 'realtime-tts gateway unreachable');
@@ -65,12 +68,13 @@ realtimeTtsRouter.post('/authorize', async (req, res) => {
     return;
   }
 
-  const data = (await upstream.json().catch(() => null)) as { token?: string; url?: string } | null;
+  const data = (await upstream.json().catch(() => null)) as { token?: string; url?: string; alignment?: boolean } | null;
   if (!data?.token || !data.url) {
     realtimeTtsLogger.error({ data }, 'realtime-tts authorize returned an unexpected response');
     res.status(502).json({ error: 'realtime-tts authorize failed' });
     return;
   }
 
-  res.status(200).json({ token: data.token, url: data.url });
+  // `alignment` is only present when the app asked for it; an older gateway that ignores the field yields false.
+  res.status(200).json({ token: data.token, url: data.url, ...(wantAlignment ? { alignment: data.alignment === true } : {}) });
 });
