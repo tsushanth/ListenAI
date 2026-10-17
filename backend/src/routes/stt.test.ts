@@ -802,7 +802,7 @@ test('/v1/listen returns the Deepgram prerecorded shape', async () => {
   installFetchMock(); resetState();
   sttWorkerResult = { text: 'hello world.', language: 'en', duration: 3.5, words: WORDS };
   const s = await boot();
-  const r = await s.raw('valid-token', 'POST', '/v1/listen?model=nova-3&language=en&punctuate=true&smart_format=true&diarize=true&utterances=true', wavBytes(), { 'Content-Type': 'audio/wav' });
+  const r = await s.raw('valid-token', 'POST', '/v1/listen?model=nova-3&language=en&punctuate=true&smart_format=true&utterances=true', wavBytes(), { 'Content-Type': 'audio/wav' });
   assert.equal(r.status, 200);
   const b = await r.json();
   assert.equal(typeof b.metadata.request_id, 'string');
@@ -1055,7 +1055,7 @@ test('/v1/audio/transcriptions: missing file, sniff failure, oversize, 429 all u
 test('/v1/audio/transcriptions: Deepgram-only knobs and unsupported extras are accepted and ignored', async () => {
   installFetchMock(); resetState();
   const s = await boot();
-  const r = await s.raw('valid-token', 'POST', '/v1/audio/transcriptions', fileForm([['prompt', 'Notes about X.'], ['temperature', '0'], ['diarize', 'true']]));
+  const r = await s.raw('valid-token', 'POST', '/v1/audio/transcriptions', fileForm([['prompt', 'Notes about X.'], ['temperature', '0']]));
   assert.equal(r.status, 200);
   s.close(); uninstallFetchMock();
 });
