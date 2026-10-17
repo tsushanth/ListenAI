@@ -157,7 +157,8 @@ class RealtimeTTSService(
                 )
             )
 
-            val auth = authorize()
+            // Ask for word timings; the alignment worker is optional, so a failure there falls back to the plain Piper worker.
+            val auth = authorize(alignment = true)
 
             onProgress(
                 SynthesisProgress.INITIAL.copy(
@@ -168,7 +169,17 @@ class RealtimeTTSService(
                 )
             )
 
-            val pcm = synthesizeOverWebSocket(auth, totalText, voice, options, taskId)
+            val streamed = try {
+                synthesizeOverWebSocket(auth, totalText, voice, options, taskId)
+            } catch (e: TTSError.NetworkError) {
+                if (!auth.alignment) throw e
+                android.util.Log.w("RealtimeTTSService", "alignment worker failed (${e.message}); retrying without word timings")
+                synthesizeOverWebSocket(authorize(alignment = false), totalText, voice, options, taskId)
+            } catch (e: TTSError.ApiError) {
+                if (!auth.alignment) throw e
+                android.util.Log.w("RealtimeTTSService", "alignment worker rejected the request (${e.message}); retrying without word timings")
+                synthesizeOverWebSocket(authorize(alignment = false), totalText, voice, options, taskId)
+            }
 
             onProgress(
                 SynthesisProgress(
@@ -183,17 +194,21 @@ class RealtimeTTSService(
                 )
             )
 
-            buildResult(pcm, sections, totalText, voice, startTime)
+            buildResult(streamed.pcm, sections, totalText, voice, startTime, streamed.timings?.build(totalText))
         } finally {
             activeTasks.remove(taskId)
         }
     }
 
-    private data class AuthResponse(val token: String, val wsUrl: String)
+    private data class AuthResponse(val token: String, val wsUrl: String, val alignment: Boolean = false)
 
-    private fun authorize(): AuthResponse {
+    /** PCM plus, when the alignment worker was used, the word timings collected from its chunk_meta messages. */
+    private class StreamedAudio(val pcm: ByteArray, val timings: WordTimings.Collector?)
+
+    private fun authorize(alignment: Boolean = false): AuthResponse {
         val body = JSONObject().apply {
             put("engine", "piper")
+            if (alignment) put("alignment", true)
         }
         val request = Request.Builder()
             .url("$backendBaseUrl/api/realtime-tts/authorize")
@@ -208,7 +223,7 @@ class RealtimeTTSService(
             val responseBody = response.body?.string() ?: ""
             if (!response.isSuccessful) handleErrorResponse(response.code, responseBody)
             val json = JSONObject(responseBody)
-            return AuthResponse(token = json.getString("token"), wsUrl = json.getString("url"))
+            return AuthResponse(token = json.getString("token"), wsUrl = json.getString("url"), alignment = alignment && json.optBoolean("alignment", false))
         }
     }
 
@@ -218,8 +233,9 @@ class RealtimeTTSService(
         voice: VoicePreset,
         options: SynthesisOptions,
         taskId: UUID
-    ): ByteArray = suspendCancellableCoroutine { cont ->
+    ): StreamedAudio = suspendCancellableCoroutine { cont ->
         val pcmBuffer = ByteArrayOutputStream()
+        val collector = if (auth.alignment) WordTimings.Collector() else null
         val wsUrl = "${auth.wsUrl}?token=${auth.token}"
         val request = Request.Builder().url(wsUrl).build()
 
@@ -231,6 +247,7 @@ class RealtimeTTSService(
                     put("text", text)
                     put("voice", PiperVoiceMapping.resolve(voice))
                     put("speed", options.speed.toDouble())
+                    if (auth.alignment) put("alignment", true)
                 }
                 webSocket.send(message.toString())
             }
@@ -247,9 +264,10 @@ class RealtimeTTSService(
                 try {
                     val json = JSONObject(text)
                     when (json.optString("type")) {
+                        "chunk_meta" -> collector?.add(json)
                         "done" -> {
                             webSocket.close(1000, "done")
-                            if (cont.isActive) cont.resume(pcmBuffer.toByteArray())
+                            if (cont.isActive) cont.resume(StreamedAudio(pcmBuffer.toByteArray(), collector))
                         }
                         "error" -> {
                             webSocket.close(1000, "error")
@@ -287,11 +305,16 @@ class RealtimeTTSService(
         sections: List<TextSection>,
         totalText: String,
         voice: VoicePreset,
-        startTime: Long
+        startTime: Long,
+        timings: WordTimings? = null
     ): SynthesisResult {
         val wavBytes = pcmToWav(pcm, SAMPLE_RATE, CHANNELS, BITS_PER_SAMPLE)
         val outputFile = File(context.cacheDir, "tts_${UUID.randomUUID()}.wav")
         outputFile.writeBytes(wavBytes)
+        // Sidecar next to the audio so a cached article keeps its word highlighting (see WordTimings).
+        timings?.let { WordTimings.save(outputFile, it) }
+        var sectionOffset = 0
+        val sectionStarts = sections.map { s -> val start = sectionOffset; sectionOffset += s.text.length + 1; start }  // sections are joined with " "
 
         val endTime = System.currentTimeMillis()
         val bytesPerSecond = SAMPLE_RATE * CHANNELS * (BITS_PER_SAMPLE / 8)
@@ -302,7 +325,7 @@ class RealtimeTTSService(
             audioFile = outputFile,
             duration = duration,
             sectionTimestamps = sectionTimestamps,
-            wordTimestamps = null,
+            wordTimestamps = timings?.toWordTimestamps(sectionStarts),
             fileSizeBytes = outputFile.length(),
             cost = SynthesisCost(
                 charactersUsed = totalText.length,
