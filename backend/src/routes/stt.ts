@@ -151,7 +151,7 @@ async function authorizeStt(): Promise<AuthorizeResult> {
   return { token: body.token, url: body.url };
 }
 
-interface WorkerWord { word: string; start: number; end: number; probability?: number }
+interface WorkerWord { word: string; start: number; end: number; probability?: number; speaker?: number | null; overlap?: boolean }
 interface WorkerSegment { id: number; start: number; end: number; text: string; avg_logprob?: number; no_speech_prob?: number }
 interface TranscribeResult {
   text: string;
@@ -164,6 +164,8 @@ interface TranscribeResult {
   quality?: Record<string, unknown>;
   /** W18 dictionary report (truncation etc.); opaque passthrough. */
   dictionary?: Record<string, unknown>;
+  /** diarize=true only: {count, utterances[], warnings[], engine} from the improved worker; opaque passthrough. */
+  speakers?: Record<string, unknown>;
 }
 
 const isObj = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
@@ -174,6 +176,8 @@ interface WorkerCall {
   wordTimestamps: boolean;
   keyterms: string[];
   smartFormat: boolean;
+  /** Speaker labels (improved worker only; the production worker ignores the parameter, so it is never used for these calls). */
+  diarize?: boolean;
   signal: AbortSignal;
   timeoutMs: number;
 }
@@ -192,6 +196,7 @@ async function postToWorker(baseUrl: string, token: string, label: string, opts:
   if (opts.wordTimestamps) qs.set('word_timestamps', 'true');
   if (opts.smartFormat) qs.set('smart_format', 'true');
   for (const t of opts.keyterms) qs.append('keyterm', t);
+  if (opts.diarize) qs.set('diarize', 'true');
 
   const body = workerBody(opts.file.path, opts.file.size, opts.file.mime);
   const res = await fetch(`${baseUrl}/v1/stt?${qs.toString()}`, {
@@ -210,6 +215,8 @@ async function postToWorker(baseUrl: string, token: string, label: string, opts:
   if (!json || typeof json.text !== 'string' || typeof json.duration !== 'number' || !Number.isFinite(json.duration) || json.duration < 0) {
     throw new WorkerBadResponse(`${label} returned an unexpected response`);
   }
+  // A diarize request must come back with speaker data; never hand the caller an unlabeled transcript as if it were labeled.
+  if (opts.diarize && !isObj(json.speakers)) throw new WorkerBadResponse(`${label} did not return speaker labels`);
   return {
     text: json.text,
     language: typeof json.language === 'string' ? json.language : 'en',
@@ -219,6 +226,7 @@ async function postToWorker(baseUrl: string, token: string, label: string, opts:
     segments: Array.isArray(json.segments) ? (json.segments as WorkerSegment[]) : undefined,
     quality: isObj(json.quality) ? json.quality : undefined,
     dictionary: isObj(json.dictionary) ? json.dictionary : undefined,
+    speakers: isObj(json.speakers) ? json.speakers : undefined,
   };
 }
 
@@ -349,6 +357,7 @@ function deepgramBody(id: string, r: TranscribeResult, punctuate: boolean) {
       // No fabricated confidence: null when the worker did not provide a probability.
       confidence: typeof w.probability === 'number' ? w.probability : null,
       punctuated_word: punctuated,
+      ...(typeof w.speaker === 'number' ? { speaker: w.speaker } : {}),
     };
   });
   const probs = (r.words ?? []).map((w) => w.probability).filter((p): p is number => typeof p === 'number');
@@ -364,6 +373,13 @@ function deepgramBody(id: string, r: TranscribeResult, punctuate: boolean) {
     channels: [{ detected_language: r.language, alternatives: [alt] }],
   };
   if (r.quality) results.quality = r.quality;
+  if (r.speakers && Array.isArray(r.speakers.utterances)) {
+    // Deepgram `utterances` shape. confidence = mean ASR word probability (the worker produces no speaker confidence and none is invented).
+    results.utterances = (r.speakers.utterances as Array<Record<string, unknown>>).map((u, i) => ({
+      id: `u${i}`, start: u.start, end: u.end, channel: 0, speaker: u.speaker, transcript: u.text, confidence: u.confidence ?? null,
+      words: words.slice(Number(u.first_word), Number(u.last_word) + 1),
+    }));
+  }
   return {
     metadata: {
       request_id: id,
@@ -371,6 +387,7 @@ function deepgramBody(id: string, r: TranscribeResult, punctuate: boolean) {
       duration: r.duration,
       channels: 1,
       models: [MODEL_ID],
+      ...(r.speakers ? { stt_ext: { speakers: { count: r.speakers.count, warnings: r.speakers.warnings, engine: r.speakers.engine } } } : {}),
     },
     results,
   };
@@ -392,6 +409,7 @@ function openaiVerbose(r: TranscribeResult, withWords: boolean) {
   if (withWords) out.words = (r.words ?? []).map((w) => ({ word: bareWord(w.word), start: w.start, end: w.end }));
   if (r.dictionary) out.x_dictionary = r.dictionary;
   if (r.quality) out.x_quality = r.quality;
+  if (r.speakers) out.x_speakers = r.speakers;
   return out;
 }
 
@@ -638,8 +656,12 @@ export function createSttRouters(overrides: Partial<SttOptions> = {}): { sttRout
    * metadata only. A failed request is never billed.
    */
   async function runTranscription(ctx: Ctx, p: {
-    surface: string; language?: string; wordTimestamps: boolean; keyterms: string[]; smartFormat: boolean; mimeSniffed: string; size: number;
+    surface: string; language?: string; wordTimestamps: boolean; keyterms: string[]; smartFormat: boolean; diarize?: boolean; mimeSniffed: string; size: number;
   }): Promise<Outcome> {
+    // Speaker labels exist only on the improved worker: without it the request cannot be served (no silent unlabeled fallback).
+    if (p.diarize && !improvedEnabled) {
+      return { ok: false, status: 400, code: 'diarize_unavailable', message: 'Speaker labels (diarize) are not available right now.' };
+    }
     const retentionDays = Math.max(0, Math.min(Number(ctx.settings.retention_days ?? opts.defaultRetentionDays) || 0, opts.maxRetentionDays));
     const { data: row, error: insertErr } = await supabase
       .from('stt_transcriptions')
@@ -663,12 +685,12 @@ export function createSttRouters(overrides: Partial<SttOptions> = {}): { sttRout
     let worker: WorkerKind = 'prod';
     try {
       const call: WorkerCall = {
-        file: ctx.file!, language: p.language, wordTimestamps: p.wordTimestamps, keyterms: p.keyterms, smartFormat: p.smartFormat,
+        file: ctx.file!, language: p.language, wordTimestamps: p.wordTimestamps, keyterms: p.keyterms, smartFormat: p.smartFormat, diarize: p.diarize,
         signal: ctx.abort.signal, timeoutMs: opts.workerTimeoutMs,
       };
       let result: TranscribeResult | undefined;
       let fallbackReason: string | undefined;
-      if (improvedEnabled && opts.rng() < improvedPercent / 100) {
+      if (improvedEnabled && (p.diarize || opts.rng() < improvedPercent / 100)) {
         try {
           result = await postToWorker(improvedUrl, improvedToken, 'improved worker', { ...call, timeoutMs: opts.improvedTimeoutMs }, false);
           worker = 'improved';
@@ -680,7 +702,7 @@ export function createSttRouters(overrides: Partial<SttOptions> = {}): { sttRout
             log.warn({ id, worker: 'improved', status: d.status, surface: p.surface }, 'STT improved worker rejected the request (client error, no fallback)');
             return { ok: false, id, status: d.status, code: d.code, message: d.message, worker: 'improved' };
           }
-          if (d.kind === 'abort' || !opts.improvedFallback) { worker = 'improved'; throw err; }
+          if (d.kind === 'abort' || !opts.improvedFallback || p.diarize) { worker = 'improved'; throw err; }
           fallbackReason = d.reason;
           if (d.reason === 'unauthorized') log.error({ id, worker: 'improved', status: 401, surface: p.surface }, 'STT improved worker rejected our token (401): server misconfiguration, falling back to prod');
           else log.warn({ id, worker: 'improved', reason: d.reason, status: d.status, surface: p.surface }, 'STT improved worker failed, falling back to prod');
@@ -760,8 +782,15 @@ export function createSttRouters(overrides: Partial<SttOptions> = {}): { sttRout
       const wordTimestamps = req.body?.word_timestamps === 'true' || req.body?.word_timestamps === true;
       const keyterms = readKeyterms('legacy', res, ctx, [vals(req.body, 'keyterm'), vals(req.body, 'keyterms'), vals(req.body, 'dictionary')]);
       if (!keyterms) return;
+      let diarize: boolean;
+      try { diarize = parseBool(first(req.body, 'diarize'), false, 'diarize'); } catch (e) {
+        if (!(e instanceof BadParam)) throw e;
+        await ctx.done();
+        sendErr(res, 'legacy', 400, 'bad_param', e.message);
+        return;
+      }
 
-      const out = await runTranscription(ctx, { surface: 'api', language, wordTimestamps, keyterms, smartFormat: false, mimeSniffed: ctx.file!.mime, size: ctx.file!.size });
+      const out = await runTranscription(ctx, { surface: 'api', language, wordTimestamps, keyterms, smartFormat: false, diarize, mimeSniffed: ctx.file!.mime, size: ctx.file!.size });
       await ctx.done();
       if (out.worker) res.setHeader('X-STT-Worker', out.worker);
       if (!out.ok) { res.status(out.status).json({ id: out.id, status: 'failed', error: out.message }); return; }
@@ -777,6 +806,7 @@ export function createSttRouters(overrides: Partial<SttOptions> = {}): { sttRout
         segments: r.segments ?? undefined,
         quality: r.quality,
         dictionary: r.dictionary,
+        speakers: r.speakers,
       });
     } catch (e) { next(e); }
   });
@@ -855,14 +885,14 @@ export function createSttRouters(overrides: Partial<SttOptions> = {}): { sttRout
     const ctx = (req as CtxReq).stt!;
     try {
       if (!(await validateFile('deepgram', req, res, 'Audio body is required.'))) return;
-      let language: string | undefined; let punctuate: boolean; let smartFormat: boolean;
+      let language: string | undefined; let punctuate: boolean; let smartFormat: boolean; let diarize: boolean;
       try {
         if (first(req.query, 'callback')) throw new BadParam('callback is not supported (synchronous only).');
         language = parseBool(first(req.query, 'detect_language'), false, 'detect_language') ? undefined : parseLanguageCompat(first(req.query, 'language'));
         punctuate = parseBool(first(req.query, 'punctuate'), true, 'punctuate');
         smartFormat = parseBool(first(req.query, 'smart_format'), false, 'smart_format');
-        // Accepted and ignored for now (no diarization / utterance segmentation): validated so typos still 400.
-        parseBool(first(req.query, 'diarize'), false, 'diarize');
+        diarize = parseBool(first(req.query, 'diarize'), false, 'diarize');
+        // Accepted and ignored (utterances are returned whenever diarize=true): validated so typos still 400.
         parseBool(first(req.query, 'utterances'), false, 'utterances');
         parseBool(first(req.query, 'numerals'), false, 'numerals');
       } catch (e) {
@@ -877,7 +907,7 @@ export function createSttRouters(overrides: Partial<SttOptions> = {}): { sttRout
       const keyterms = readKeyterms('deepgram', res, ctx, [vals(req.query, 'keyterm'), legacyKeywords]);
       if (!keyterms) return;
 
-      const out = await runTranscription(ctx, { surface: 'listen', language, wordTimestamps: true, keyterms, smartFormat, mimeSniffed: ctx.file!.mime, size: ctx.file!.size });
+      const out = await runTranscription(ctx, { surface: 'listen', language, wordTimestamps: true, keyterms, smartFormat, diarize, mimeSniffed: ctx.file!.mime, size: ctx.file!.size });
       await ctx.done();
       if (out.worker) res.setHeader('X-STT-Worker', out.worker);
       if (!out.ok) { sendErr(res, 'deepgram', out.status, out.code, out.message, out.id); return; }
@@ -908,8 +938,15 @@ export function createSttRouters(overrides: Partial<SttOptions> = {}): { sttRout
       // `prompt`, `temperature` and any Deepgram-only knobs are accepted and ignored.
       const keyterms = readKeyterms('openai', res, ctx, [vals(req.body, 'keyterm'), vals(req.body, 'keyterms'), vals(req.body, 'dictionary')]);
       if (!keyterms) return;
+      let diarize: boolean;
+      try { diarize = parseBool(first(req.body, 'diarize'), false, 'diarize'); } catch (e) {
+        if (!(e instanceof BadParam)) throw e;
+        await ctx.done();
+        sendErr(res, 'openai', 400, 'bad_param', e.message, ctx.rid);
+        return;
+      }
 
-      const out = await runTranscription(ctx, { surface: 'audio_transcriptions', language, wordTimestamps: withWords, keyterms, smartFormat: false, mimeSniffed: ctx.file!.mime, size: ctx.file!.size });
+      const out = await runTranscription(ctx, { surface: 'audio_transcriptions', language, wordTimestamps: withWords, keyterms, smartFormat: false, diarize, mimeSniffed: ctx.file!.mime, size: ctx.file!.size });
       await ctx.done();
       if (out.worker) res.setHeader('X-STT-Worker', out.worker);
       if (!out.ok) { sendErr(res, 'openai', out.status, out.code, out.message); return; }
