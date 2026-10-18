@@ -178,6 +178,8 @@ interface WorkerCall {
   smartFormat: boolean;
   /** Speaker labels (improved worker only; the production worker ignores the parameter, so it is never used for these calls). */
   diarize?: boolean;
+  /** With diarize: merge the smallest speakers into the nearest until at most this many remain (1..8). */
+  maxSpeakers?: number;
   signal: AbortSignal;
   timeoutMs: number;
 }
@@ -197,6 +199,7 @@ async function postToWorker(baseUrl: string, token: string, label: string, opts:
   if (opts.smartFormat) qs.set('smart_format', 'true');
   for (const t of opts.keyterms) qs.append('keyterm', t);
   if (opts.diarize) qs.set('diarize', 'true');
+  if (opts.diarize && opts.maxSpeakers) qs.set('max_speakers', String(opts.maxSpeakers));
 
   const body = workerBody(opts.file.path, opts.file.size, opts.file.mime);
   const res = await fetch(`${baseUrl}/v1/stt?${qs.toString()}`, {
@@ -317,6 +320,16 @@ const first = (src: unknown, name: string): string | undefined => {
 };
 
 class BadParam extends Error { constructor(message: string) { super(message); } }
+
+/** max_speakers: integer 1..8, only valid together with diarize=true. */
+function parseMaxSpeakers(v: string | undefined, diarize: boolean): number | undefined {
+  if (v === undefined || v === '') return undefined;
+  if (!diarize) throw new BadParam('max_speakers requires diarize=true');
+  if (!/^[0-9]{1,2}$/.test(v.trim())) throw new BadParam('max_speakers must be an integer from 1 to 8');
+  const n = Number(v);
+  if (n < 1 || n > 8) throw new BadParam('max_speakers must be an integer from 1 to 8');
+  return n;
+}
 
 function parseBool(v: string | undefined, dflt: boolean, name: string): boolean {
   if (v === undefined || v === '') return dflt;
@@ -656,7 +669,7 @@ export function createSttRouters(overrides: Partial<SttOptions> = {}): { sttRout
    * metadata only. A failed request is never billed.
    */
   async function runTranscription(ctx: Ctx, p: {
-    surface: string; language?: string; wordTimestamps: boolean; keyterms: string[]; smartFormat: boolean; diarize?: boolean; mimeSniffed: string; size: number;
+    surface: string; language?: string; wordTimestamps: boolean; keyterms: string[]; smartFormat: boolean; diarize?: boolean; maxSpeakers?: number; mimeSniffed: string; size: number;
   }): Promise<Outcome> {
     // Speaker labels exist only on the improved worker: without it the request cannot be served (no silent unlabeled fallback).
     if (p.diarize && !improvedEnabled) {
@@ -685,7 +698,7 @@ export function createSttRouters(overrides: Partial<SttOptions> = {}): { sttRout
     let worker: WorkerKind = 'prod';
     try {
       const call: WorkerCall = {
-        file: ctx.file!, language: p.language, wordTimestamps: p.wordTimestamps, keyterms: p.keyterms, smartFormat: p.smartFormat, diarize: p.diarize,
+        file: ctx.file!, language: p.language, wordTimestamps: p.wordTimestamps, keyterms: p.keyterms, smartFormat: p.smartFormat, diarize: p.diarize, maxSpeakers: p.maxSpeakers,
         signal: ctx.abort.signal, timeoutMs: opts.workerTimeoutMs,
       };
       let result: TranscribeResult | undefined;
@@ -782,15 +795,15 @@ export function createSttRouters(overrides: Partial<SttOptions> = {}): { sttRout
       const wordTimestamps = req.body?.word_timestamps === 'true' || req.body?.word_timestamps === true;
       const keyterms = readKeyterms('legacy', res, ctx, [vals(req.body, 'keyterm'), vals(req.body, 'keyterms'), vals(req.body, 'dictionary')]);
       if (!keyterms) return;
-      let diarize: boolean;
-      try { diarize = parseBool(first(req.body, 'diarize'), false, 'diarize'); } catch (e) {
+      let diarize: boolean; let maxSpeakers: number | undefined;
+      try { diarize = parseBool(first(req.body, 'diarize'), false, 'diarize'); maxSpeakers = parseMaxSpeakers(first(req.body, 'max_speakers'), diarize); } catch (e) {
         if (!(e instanceof BadParam)) throw e;
         await ctx.done();
         sendErr(res, 'legacy', 400, 'bad_param', e.message);
         return;
       }
 
-      const out = await runTranscription(ctx, { surface: 'api', language, wordTimestamps, keyterms, smartFormat: false, diarize, mimeSniffed: ctx.file!.mime, size: ctx.file!.size });
+      const out = await runTranscription(ctx, { surface: 'api', language, wordTimestamps, keyterms, smartFormat: false, diarize, maxSpeakers, mimeSniffed: ctx.file!.mime, size: ctx.file!.size });
       await ctx.done();
       if (out.worker) res.setHeader('X-STT-Worker', out.worker);
       if (!out.ok) { res.status(out.status).json({ id: out.id, status: 'failed', error: out.message }); return; }
@@ -885,13 +898,14 @@ export function createSttRouters(overrides: Partial<SttOptions> = {}): { sttRout
     const ctx = (req as CtxReq).stt!;
     try {
       if (!(await validateFile('deepgram', req, res, 'Audio body is required.'))) return;
-      let language: string | undefined; let punctuate: boolean; let smartFormat: boolean; let diarize: boolean;
+      let language: string | undefined; let punctuate: boolean; let smartFormat: boolean; let diarize: boolean; let maxSpeakers: number | undefined;
       try {
         if (first(req.query, 'callback')) throw new BadParam('callback is not supported (synchronous only).');
         language = parseBool(first(req.query, 'detect_language'), false, 'detect_language') ? undefined : parseLanguageCompat(first(req.query, 'language'));
         punctuate = parseBool(first(req.query, 'punctuate'), true, 'punctuate');
         smartFormat = parseBool(first(req.query, 'smart_format'), false, 'smart_format');
         diarize = parseBool(first(req.query, 'diarize'), false, 'diarize');
+        maxSpeakers = parseMaxSpeakers(first(req.query, 'max_speakers'), diarize);
         // Accepted and ignored (utterances are returned whenever diarize=true): validated so typos still 400.
         parseBool(first(req.query, 'utterances'), false, 'utterances');
         parseBool(first(req.query, 'numerals'), false, 'numerals');
@@ -907,7 +921,7 @@ export function createSttRouters(overrides: Partial<SttOptions> = {}): { sttRout
       const keyterms = readKeyterms('deepgram', res, ctx, [vals(req.query, 'keyterm'), legacyKeywords]);
       if (!keyterms) return;
 
-      const out = await runTranscription(ctx, { surface: 'listen', language, wordTimestamps: true, keyterms, smartFormat, diarize, mimeSniffed: ctx.file!.mime, size: ctx.file!.size });
+      const out = await runTranscription(ctx, { surface: 'listen', language, wordTimestamps: true, keyterms, smartFormat, diarize, maxSpeakers, mimeSniffed: ctx.file!.mime, size: ctx.file!.size });
       await ctx.done();
       if (out.worker) res.setHeader('X-STT-Worker', out.worker);
       if (!out.ok) { sendErr(res, 'deepgram', out.status, out.code, out.message, out.id); return; }
@@ -938,15 +952,15 @@ export function createSttRouters(overrides: Partial<SttOptions> = {}): { sttRout
       // `prompt`, `temperature` and any Deepgram-only knobs are accepted and ignored.
       const keyterms = readKeyterms('openai', res, ctx, [vals(req.body, 'keyterm'), vals(req.body, 'keyterms'), vals(req.body, 'dictionary')]);
       if (!keyterms) return;
-      let diarize: boolean;
-      try { diarize = parseBool(first(req.body, 'diarize'), false, 'diarize'); } catch (e) {
+      let diarize: boolean; let maxSpeakers: number | undefined;
+      try { diarize = parseBool(first(req.body, 'diarize'), false, 'diarize'); maxSpeakers = parseMaxSpeakers(first(req.body, 'max_speakers'), diarize); } catch (e) {
         if (!(e instanceof BadParam)) throw e;
         await ctx.done();
         sendErr(res, 'openai', 400, 'bad_param', e.message, ctx.rid);
         return;
       }
 
-      const out = await runTranscription(ctx, { surface: 'audio_transcriptions', language, wordTimestamps: withWords, keyterms, smartFormat: false, diarize, mimeSniffed: ctx.file!.mime, size: ctx.file!.size });
+      const out = await runTranscription(ctx, { surface: 'audio_transcriptions', language, wordTimestamps: withWords, keyterms, smartFormat: false, diarize, maxSpeakers, mimeSniffed: ctx.file!.mime, size: ctx.file!.size });
       await ctx.done();
       if (out.worker) res.setHeader('X-STT-Worker', out.worker);
       if (!out.ok) { sendErr(res, 'openai', out.status, out.code, out.message); return; }

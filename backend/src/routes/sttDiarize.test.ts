@@ -292,3 +292,28 @@ test('invalid diarize value -> 400 bad_param on every surface, no worker call', 
     assert.equal(improvedCalls.length, 0);
   });
 });
+
+test('max_speakers is forwarded to the worker with diarize on all three surfaces', async () => {
+  await withBoot({}, async (s) => {
+    improvedMode = { ok: DIAR_OK };
+    await fetch(`${s.origin}/api/stt/transcriptions`, { method: 'POST', body: s.legacyForm([['diarize', 'true'], ['max_speakers', '2']]), headers: auth });
+    await fetch(`${s.origin}/v1/listen?diarize=true&max_speakers=3`, { method: 'POST', headers: { ...auth, 'Content-Type': 'audio/wav' }, body: wavBytes() });
+    await fetch(`${s.origin}/v1/audio/transcriptions`, { method: 'POST', headers: auth, body: oaForm([['diarize', 'true'], ['max_speakers', '4']]) });
+    assert.deepEqual(improvedCalls.map((c) => new URL(c.url).searchParams.get('max_speakers')), ['2', '3', '4']);
+    await s.transcribe();
+    assert.equal(new URL(improvedCalls[3]!.url).searchParams.has('max_speakers'), false);
+  });
+});
+
+test('max_speakers without diarize, or outside 1..8, or non-integer -> 400 on every surface, no worker call', async () => {
+  await withBoot({}, async (s) => {
+    for (const q of ['max_speakers=2', 'diarize=true&max_speakers=0', 'diarize=true&max_speakers=9', 'diarize=true&max_speakers=two', 'diarize=true&max_speakers=2.5']) {
+      assert.equal((await fetch(`${s.origin}/v1/listen?${q}`, { method: 'POST', headers: { ...auth, 'Content-Type': 'audio/wav' }, body: wavBytes() })).status, 400, q);
+    }
+    const leg = await fetch(`${s.origin}/api/stt/transcriptions`, { method: 'POST', body: s.legacyForm([['diarize', 'true'], ['max_speakers', '12']]), headers: auth });
+    assert.equal(leg.status, 400);
+    const oa = await fetch(`${s.origin}/v1/audio/transcriptions`, { method: 'POST', headers: auth, body: oaForm([['max_speakers', '2']]) });
+    assert.equal(oa.status, 400);
+    assert.equal(improvedCalls.length, 0);
+  });
+});
