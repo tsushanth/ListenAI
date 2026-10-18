@@ -79,12 +79,20 @@ fun FormattedTextView(
     fontSize: TextUnit = 18.sp,
     lineSpacing: Dp = 8.dp,
     highlightIndex: Int? = null,
+    // Word-level highlighting: the exact text that was synthesized and the character range of the word being spoken.
+    // When both are set and the words can be located in the rendered blocks, they pick the highlighted block
+    // (instead of the progress estimate in highlightIndex) and the word itself is marked inside plain paragraphs.
+    spokenText: String? = null,
+    activeWordRange: IntRange? = null,
     highlightColor: Color = Yellow,
     highlightWordOnly: Boolean = false,
     // Scroll the highlighted paragraph into view when it changes (inside a scrolling parent).
     followHighlight: Boolean = false
 ) {
     val contentBlocks = remember(content) { parseMarkdown(content) }
+    val blockSpans = remember(contentBlocks, spokenText) { locateBlocksInSpokenText(contentBlocks.map { it.text }, spokenText) }
+    val wordBlock = remember(blockSpans, activeWordRange) { blockForWord(blockSpans, activeWordRange) }
+    val effectiveHighlight = wordBlock ?: highlightIndex
 
     Column(
         modifier = modifier,
@@ -95,10 +103,11 @@ fun FormattedTextView(
                 block = block,
                 index = index,
                 fontSize = fontSize,
-                isHighlighted = highlightIndex == index,
+                isHighlighted = effectiveHighlight == index,
                 highlightColor = highlightColor,
                 highlightWordOnly = highlightWordOnly,
-                followHighlight = followHighlight
+                followHighlight = followHighlight,
+                wordRange = if (wordBlock == index) wordRangeInBlock(blockSpans[index], activeWordRange) else null
             )
         }
     }
@@ -113,7 +122,8 @@ private fun RenderBlock(
     isHighlighted: Boolean,
     highlightColor: Color,
     highlightWordOnly: Boolean,
-    followHighlight: Boolean = false
+    followHighlight: Boolean = false,
+    wordRange: IntRange? = null
 ) {
     val content: @Composable () -> Unit = {
         when (block.type) {
@@ -163,7 +173,8 @@ private fun RenderBlock(
 
             ContentBlockType.PARAGRAPH -> ParagraphView(
                 text = block.text,
-                fontSize = fontSize
+                fontSize = fontSize,
+                wordRange = wordRange
             )
 
             ContentBlockType.DIVIDER -> HorizontalDivider(
@@ -517,12 +528,14 @@ private fun TableView(
 @Composable
 private fun ParagraphView(
     text: String,
-    fontSize: TextUnit
+    fontSize: TextUnit,
+    wordRange: IntRange? = null
 ) {
     RichText(
         text = text,
         fontSize = fontSize,
-        lineHeight = fontSize * 1.5f
+        lineHeight = fontSize * 1.5f,
+        wordRange = wordRange
     )
 }
 
@@ -537,10 +550,19 @@ private fun RichText(
     fontStyle: FontStyle = FontStyle.Normal,
     color: Color = MaterialTheme.colorScheme.onSurface,
     lineHeight: TextUnit = TextUnit.Unspecified,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    // Character range (in `text`) of the word being spoken. Only honoured when the text has no inline markers, so
+    // offsets in the rendered string equal offsets in `text`.
+    wordRange: IntRange? = null
 ) {
-    val annotatedString = remember(text) {
-        parseInlineFormatting(text, fontSize, fontWeight)
+    val annotatedString = remember(text, wordRange) {
+        val base = parseInlineFormatting(text, fontSize, fontWeight)
+        if (wordRange != null && base.text == text && wordRange.first >= 0 && wordRange.last < text.length && wordRange.first <= wordRange.last) {
+            buildAnnotatedString {
+                append(base)
+                addStyle(SpanStyle(background = SpokenWordBackground), wordRange.first, wordRange.last + 1)
+            }
+        } else base
     }
 
     Text(
@@ -834,4 +856,42 @@ private fun countLeadingSpaces(line: String): Int {
         }
     }
     return count
+}
+
+
+// MARK: - Word-level highlighting helpers
+
+/** Background behind the word being spoken (stronger than the paragraph highlight around it). */
+private val SpokenWordBackground = Color(0xFFFFB300).copy(alpha = 0.55f)
+
+/**
+ * Where each rendered block's text sits in the text that was sent to the TTS server, found by searching in order.
+ * A block whose text is not found (markdown markers were stripped, or the text was edited since) gets null, and then
+ * word-level highlighting is not used for it. Empty when [spokenText] is null.
+ */
+internal fun locateBlocksInSpokenText(blockTexts: List<String>, spokenText: String?): List<IntRange?> {
+    if (spokenText.isNullOrEmpty()) return blockTexts.map { null }
+    var cursor = 0
+    return blockTexts.map { t ->
+        if (t.isBlank()) null else {
+            val i = spokenText.indexOf(t, cursor)
+            if (i < 0) null else { cursor = i + t.length; i until i + t.length }
+        }
+    }
+}
+
+/** The block containing the word that starts at [word].first, or null when it cannot be placed in any located block. */
+internal fun blockForWord(spans: List<IntRange?>, word: IntRange?): Int? {
+    if (word == null) return null
+    val pos = word.first
+    spans.forEachIndexed { i, r -> if (r != null && pos >= r.first && pos <= r.last) return i }
+    return null
+}
+
+/** The word's range translated to offsets inside its block's own text. */
+internal fun wordRangeInBlock(span: IntRange?, word: IntRange?): IntRange? {
+    if (span == null || word == null) return null
+    val a = word.first - span.first
+    val b = word.last - span.first
+    return if (a >= 0 && b >= a) a..b else null
 }
