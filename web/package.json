@@ -9,7 +9,8 @@
     "start": "next start",
     "lint": "next lint",
     "test": "node --test test/*.test.ts test/seoLibrary/*.test.ts",
-    "test:oauth": "node test/oauth-integration.mjs"
+    "test:oauth": "node test/oauth-integration.mjs",
+    "test:e2e:reader": "node test/e2e/reader-flow.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.30.0",
@@ -32,6 +33,7 @@
     "@types/ws": "^8.18.1",
     "autoprefixer": "^10.4.0",
     "postcss": "^8.4.0",
+    "puppeteer-core": "^24.43.1",
     "tailwindcss": "^3.4.0",
     "typescript": "^5.0.0"
   }
