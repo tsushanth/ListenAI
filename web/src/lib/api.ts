@@ -221,13 +221,17 @@ export const ttsApi = {
     speed?: number;
     format?: 'mp3' | 'wav';
   }): Promise<Blob> {
-    const response = await fetch(`${API_BASE_URL}/api/synthesize`, {
+    const response = await fetch(`${API_BASE_URL}/api/tts`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'X-Device-ID': getDeviceId(),
       },
-      body: JSON.stringify(data),
+      body: JSON.stringify({
+        text: data.text,
+        voice_id: data.voice_id ?? 'am_adam',
+        options: { speed: data.speed, format: data.format },
+      }),
     });
 
     if (!response.ok) {

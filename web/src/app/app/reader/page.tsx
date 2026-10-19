@@ -3,21 +3,22 @@
 import { useState, useRef, useEffect } from 'react'
 import { Play, Pause, RotateCcw, Loader2, Volume2, Settings2 } from 'lucide-react'
 
-// Default voices available
+// Voices the backend can synthesize (id = Kokoro voice id, see backend/src/lib/voiceMapping.ts).
+// Unknown ids silently fall back to am_adam on the server, so keep this list in sync with that table.
 const defaultVoices = [
-  { id: 'nova', name: 'Nova', description: 'Warm & Conversational' },
-  { id: 'alloy', name: 'Alloy', description: 'Balanced & Natural' },
-  { id: 'echo', name: 'Echo', description: 'Clear & Professional' },
-  { id: 'fable', name: 'Fable', description: 'Expressive & British' },
-  { id: 'onyx', name: 'Onyx', description: 'Deep & Authoritative' },
-  { id: 'shimmer', name: 'Shimmer', description: 'Light & Friendly' },
+  { id: 'af_nicole', name: 'Rachel', description: 'Warm & Clear' },
+  { id: 'am_adam', name: 'Adam', description: 'Professional Narrator' },
+  { id: 'bm_george', name: 'Brian', description: 'Deep British' },
+  { id: 'af_bella', name: 'Bella', description: 'Calm & Soothing' },
+  { id: 'am_michael', name: 'Josh', description: 'Storyteller' },
+  { id: 'bf_emma', name: 'Charlotte', description: 'Elegant & Articulate' },
 ]
 
 const speeds = [0.5, 0.75, 1, 1.25, 1.5, 2]
 
 export default function ReaderPage() {
   const [text, setText] = useState('')
-  const [selectedVoice, setSelectedVoice] = useState('nova')
+  const [selectedVoice, setSelectedVoice] = useState('af_nicole')
   const [speed, setSpeed] = useState(1)
   const [isPlaying, setIsPlaying] = useState(false)
   const [isSynthesizing, setIsSynthesizing] = useState(false)
@@ -50,7 +51,8 @@ export default function ReaderPage() {
       const deviceId = localStorage.getItem('deviceId') || crypto.randomUUID()
       localStorage.setItem('deviceId', deviceId)
 
-      const response = await fetch(`${API_URL}/api/synthesize`, {
+      // POST /api/tts returns the audio bytes directly; options carry speed/format.
+      const response = await fetch(`${API_URL}/api/tts`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -59,14 +61,13 @@ export default function ReaderPage() {
         body: JSON.stringify({
           text: text.trim(),
           voice_id: selectedVoice,
-          speed,
-          format: 'mp3',
+          options: { speed, format: 'mp3' },
         }),
       })
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.error || 'Synthesis failed')
+        throw new Error(errorData.message || errorData.error || 'Synthesis failed')
       }
 
       const blob = await response.blob()
