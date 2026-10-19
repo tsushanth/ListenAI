@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { Play, Pause, RotateCcw, Loader2, Volume2, Settings2 } from 'lucide-react'
+import { Play, Pause, RotateCcw, Loader2, Volume2 } from 'lucide-react'
 import { synthesizeWithPiper, PIPER_VOICE } from '@/lib/piperReader'
 
 // The reader speaks with the distilled Piper house voice (the same engine as the Android app and the API's live voices).
@@ -18,7 +18,8 @@ export default function ReaderPage() {
   const [isPlaying, setIsPlaying] = useState(false)
   const [isSynthesizing, setIsSynthesizing] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [showSettings, setShowSettings] = useState(false)
+  // Whether generated audio is ready to play. State (not a ref) so the buttons re-render when it changes.
+  const [hasAudio, setHasAudio] = useState(false)
 
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const audioUrlRef = useRef<string | null>(null)
@@ -33,6 +34,21 @@ export default function ReaderPage() {
       }
     }
   }, [])
+
+  // Drop the current audio (and any request in flight) and go back to the Generate button.
+  const clearAudio = () => {
+    abortRef.current?.abort()
+    if (audioRef.current) {
+      audioRef.current.pause()
+      audioRef.current = null
+    }
+    if (audioUrlRef.current) {
+      URL.revokeObjectURL(audioUrlRef.current)
+      audioUrlRef.current = null
+    }
+    setIsPlaying(false)
+    setHasAudio(false)
+  }
 
   const synthesize = async () => {
     if (!text.trim()) {
@@ -76,6 +92,7 @@ export default function ReaderPage() {
         setIsPlaying(false)
       }
 
+      setHasAudio(true)
       await audio.play()
       setIsPlaying(true)
     } catch (err) {
@@ -98,14 +115,6 @@ export default function ReaderPage() {
     }
   }
 
-  const reset = () => {
-    if (audioRef.current) {
-      audioRef.current.pause()
-      audioRef.current.currentTime = 0
-    }
-    setIsPlaying(false)
-  }
-
   const charCount = text.length
   const wordCount = text.trim().split(/\s+/).filter(Boolean).length
   const estimatedMinutes = Math.ceil(wordCount / 150)
@@ -126,7 +135,7 @@ export default function ReaderPage() {
         <div className="mb-4">
           <textarea
             value={text}
-            onChange={(e) => setText(e.target.value)}
+            onChange={(e) => { setText(e.target.value); if (hasAudio) clearAudio() }}
             placeholder="Paste or type your text here..."
             className="w-full h-64 bg-dark-tertiary border border-white/10 rounded-lg p-4 text-white placeholder:text-white/40 focus:outline-none focus:border-primary resize-none"
           />
@@ -159,7 +168,7 @@ export default function ReaderPage() {
             <label className="block text-sm text-white/60 mb-2">Speed</label>
             <select
               value={speed}
-              onChange={(e) => setSpeed(Number(e.target.value))}
+              onChange={(e) => { setSpeed(Number(e.target.value)); if (hasAudio) clearAudio() }}
               className="w-full bg-dark-tertiary border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-primary appearance-none cursor-pointer"
             >
               {speeds.map((s) => (
@@ -181,7 +190,7 @@ export default function ReaderPage() {
         {/* Controls */}
         <div className="flex items-center gap-4">
           {/* Main play/synthesize button */}
-          {!audioRef.current ? (
+          {!hasAudio ? (
             <button
               onClick={synthesize}
               disabled={isSynthesizing || !text.trim()}
@@ -219,26 +228,12 @@ export default function ReaderPage() {
               </button>
 
               <button
-                onClick={reset}
-                className="p-4 bg-dark-tertiary rounded-lg text-white/70 hover:bg-white/10 transition-colors"
-                title="Reset"
+                onClick={clearAudio}
+                className="flex items-center gap-2 px-5 py-4 bg-dark-tertiary rounded-lg text-white/80 hover:bg-white/10 transition-colors"
+                title="Start over"
               >
                 <RotateCcw size={20} />
-              </button>
-
-              <button
-                onClick={() => {
-                  if (audioUrlRef.current) {
-                    URL.revokeObjectURL(audioUrlRef.current)
-                    audioUrlRef.current = null
-                  }
-                  audioRef.current = null
-                  setIsPlaying(false)
-                }}
-                className="p-4 bg-dark-tertiary rounded-lg text-white/70 hover:bg-white/10 transition-colors"
-                title="New synthesis"
-              >
-                <Settings2 size={20} />
+                <span>Start over</span>
               </button>
             </>
           )}
