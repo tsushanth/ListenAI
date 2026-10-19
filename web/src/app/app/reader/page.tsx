@@ -2,23 +2,18 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { Play, Pause, RotateCcw, Loader2, Volume2, Settings2 } from 'lucide-react'
+import { synthesizeWithPiper, PIPER_VOICE } from '@/lib/piperReader'
 
-// Voices the backend can synthesize (id = Kokoro voice id, see backend/src/lib/voiceMapping.ts).
-// Unknown ids silently fall back to am_adam on the server, so keep this list in sync with that table.
+// The reader speaks with the distilled Piper house voice (the same engine as the Android app and the API's live voices).
 const defaultVoices = [
-  { id: 'af_nicole', name: 'Rachel', description: 'Warm & Clear' },
-  { id: 'am_adam', name: 'Adam', description: 'Professional Narrator' },
-  { id: 'bm_george', name: 'Brian', description: 'Deep British' },
-  { id: 'af_bella', name: 'Bella', description: 'Calm & Soothing' },
-  { id: 'am_michael', name: 'Josh', description: 'Storyteller' },
-  { id: 'bf_emma', name: 'Charlotte', description: 'Elegant & Articulate' },
+  { id: PIPER_VOICE, name: 'Warm', description: 'English, natural and fast' },
 ]
 
 const speeds = [0.5, 0.75, 1, 1.25, 1.5, 2]
 
 export default function ReaderPage() {
   const [text, setText] = useState('')
-  const [selectedVoice, setSelectedVoice] = useState('af_nicole')
+  const [selectedVoice, setSelectedVoice] = useState(PIPER_VOICE)
   const [speed, setSpeed] = useState(1)
   const [isPlaying, setIsPlaying] = useState(false)
   const [isSynthesizing, setIsSynthesizing] = useState(false)
@@ -27,10 +22,12 @@ export default function ReaderPage() {
 
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const audioUrlRef = useRef<string | null>(null)
+  const abortRef = useRef<AbortController | null>(null)
 
   // Cleanup audio URL on unmount
   useEffect(() => {
     return () => {
+      abortRef.current?.abort()
       if (audioUrlRef.current) {
         URL.revokeObjectURL(audioUrlRef.current)
       }
@@ -51,26 +48,12 @@ export default function ReaderPage() {
       const deviceId = localStorage.getItem('deviceId') || crypto.randomUUID()
       localStorage.setItem('deviceId', deviceId)
 
-      // POST /api/tts returns the audio bytes directly; options carry speed/format.
-      const response = await fetch(`${API_URL}/api/tts`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Device-ID': deviceId,
-        },
-        body: JSON.stringify({
-          text: text.trim(),
-          voice_id: selectedVoice,
-          options: { speed, format: 'mp3' },
-        }),
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.message || errorData.error || 'Synthesis failed')
-      }
-
-      const blob = await response.blob()
+      // Streams from the Piper worker and returns a WAV (about 1 s for a few sentences; long text is split into 4,000-character requests).
+      abortRef.current?.abort()
+      const ctrl = new AbortController()
+      abortRef.current = ctrl
+      const result = await synthesizeWithPiper(text.trim(), { apiUrl: API_URL, speed, deviceId, signal: ctrl.signal })
+      const blob = new Blob([result.wav as BlobPart], { type: 'audio/wav' })
 
       // Cleanup previous audio
       if (audioUrlRef.current) {
@@ -96,6 +79,7 @@ export default function ReaderPage() {
       await audio.play()
       setIsPlaying(true)
     } catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') return
       setError(err instanceof Error ? err.message : 'Failed to synthesize')
     } finally {
       setIsSynthesizing(false)
@@ -266,8 +250,7 @@ export default function ReaderPage() {
         <h2 className="text-lg font-semibold mb-4">Tips</h2>
         <ul className="space-y-2 text-sm text-white/60">
           <li>• For best results, use proper punctuation</li>
-          <li>• Longer texts may take more time to synthesize</li>
-          <li>• Try different voices to find what works best for your content</li>
+          <li>• Short passages start playing in about a second; very long texts are generated in parts and take longer</li>
           <li>• Adjust speed based on your listening preference</li>
         </ul>
       </div>
