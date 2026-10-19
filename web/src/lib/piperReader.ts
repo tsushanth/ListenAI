@@ -55,14 +55,26 @@ export function buildWav(pcm: Uint8Array[], sampleRate: number): Uint8Array {
 
 export interface PiperResult { wav: Uint8Array; sampleRate: number; durationSec: number; firstAudioMs: number | null }
 
-/** Synthesize `text` with the Piper house voice. Resolves with a WAV file; rejects with a readable Error. */
-export async function synthesizeWithPiper(
-  text: string,
-  opts: { apiUrl: string; speed?: number; deviceId?: string; signal?: AbortSignal },
-): Promise<PiperResult> {
-  const pieces = splitText(text)
-  if (!pieces.length) throw new Error('Please enter some text to read')
+interface Auth { token: string; url: string }
+interface SynthOpts { apiUrl: string; speed?: number; deviceId?: string; signal?: AbortSignal }
 
+/**
+ * The authorize endpoint is rate limited per IP (10 per 5 minutes), and the session token is a stateless signed token that
+ * lives 60 s (not single-use), so repeat generations within a short window reuse one. 40 s leaves margin for the connect.
+ */
+export const AUTH_REUSE_MS = 40000
+let cachedAuth: (Auth & { at: number; apiUrl: string }) | null = null
+export function clearAuthCache() { cachedAuth = null }
+
+/** The socket closed or errored before the server sent anything: a stale token looks like this. */
+class ConnectError extends Error {
+  constructor(message: string) { super(message); this.name = 'ConnectError' }
+}
+
+async function getAuth(opts: SynthOpts, fresh: boolean): Promise<{ auth: Auth; fromCache: boolean }> {
+  if (!fresh && cachedAuth && cachedAuth.apiUrl === opts.apiUrl && Date.now() - cachedAuth.at < AUTH_REUSE_MS) {
+    return { auth: cachedAuth, fromCache: true }
+  }
   const headers: Record<string, string> = { 'Content-Type': 'application/json' }
   if (opts.deviceId) headers['X-Device-ID'] = opts.deviceId
   let auth: { token?: string; url?: string } | null = null
@@ -76,15 +88,20 @@ export async function synthesizeWithPiper(
     throw new Error('Could not reach the voice service. Check your connection and try again.')
   }
   if (!auth?.token || !auth.url) throw new Error('The voice service is unavailable right now. Please try again.')
+  cachedAuth = { token: auth.token, url: auth.url, at: Date.now(), apiUrl: opts.apiUrl }
+  return { auth: cachedAuth, fromCache: false }
+}
 
+function streamPieces(auth: Auth, pieces: string[], opts: SynthOpts): Promise<PiperResult> {
   return new Promise<PiperResult>((resolve, reject) => {
-    const ws = new WebSocket(`${auth!.url}?token=${auth!.token}`)
+    const ws = new WebSocket(`${auth.url}?token=${auth.token}`)
     ws.binaryType = 'arraybuffer'
     const pcm: Uint8Array[] = []
     let sampleRate = DEFAULT_SAMPLE_RATE
     let index = 0
     let voice = PIPER_VOICE
     let triedFallback = false
+    let heardServer = false
     let firstAt: number | null = null
     let settled = false
     const started = performance.now()
@@ -107,9 +124,10 @@ export async function synthesizeWithPiper(
     opts.signal?.addEventListener('abort', onAbort)
     arm()
     ws.onopen = sendCurrent
-    ws.onerror = () => finish(new Error('Could not reach the voice server. Please try again.'))
-    ws.onclose = () => finish(new Error('The voice connection closed before the audio finished.'))
+    ws.onerror = () => finish(heardServer ? new Error('Could not reach the voice server. Please try again.') : new ConnectError('Could not reach the voice server. Please try again.'))
+    ws.onclose = () => finish(heardServer ? new Error('The voice connection closed before the audio finished.') : new ConnectError('The voice connection closed before the audio finished.'))
     ws.onmessage = (e) => {
+      heardServer = true
       arm()
       if (typeof e.data !== 'string') {
         if (firstAt === null) firstAt = performance.now() - started
@@ -129,4 +147,22 @@ export async function synthesizeWithPiper(
       }
     }
   })
+}
+
+/** Synthesize `text` with the Piper house voice. Resolves with a WAV file; rejects with a readable Error. */
+export async function synthesizeWithPiper(text: string, opts: SynthOpts): Promise<PiperResult> {
+  const pieces = splitText(text)
+  if (!pieces.length) throw new Error('Please enter some text to read')
+  const first = await getAuth(opts, false)
+  try {
+    return await streamPieces(first.auth, pieces, opts)
+  } catch (e) {
+    // A reused token that the server no longer accepts shows up as a connection that never spoke: authorize again, once.
+    if (e instanceof ConnectError && first.fromCache) {
+      clearAuthCache()
+      const fresh = await getAuth(opts, true)
+      return streamPieces(fresh.auth, pieces, opts)
+    }
+    throw e
+  }
 }

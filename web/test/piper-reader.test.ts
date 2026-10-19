@@ -60,3 +60,101 @@ test('buildWav concatenates frames in order after the header', () => {
   assert.equal(new DataView(wav.buffer).getUint32(40, true), 6)
   assert.equal(buildWav([], 24000).length, 44)
 })
+
+// ---- session token reuse (fake fetch + WebSocket) ----
+const { synthesizeWithPiper, clearAuthCache, AUTH_REUSE_MS } = await import('../src/lib/piperReader.ts')
+
+type Script = (ws: FakeWS) => void
+class FakeWS {
+  static instances: FakeWS[] = []
+  static script: Script = (ws) => ws.speak()
+  onopen: (() => void) | null = null
+  onmessage: ((e: { data: string | ArrayBuffer }) => void) | null = null
+  onerror: (() => void) | null = null
+  onclose: (() => void) | null = null
+  binaryType = ''
+  sent: string[] = []
+  url: string
+  constructor(url: string) { this.url = url; FakeWS.instances.push(this); queueMicrotask(() => this.onopen?.()) }
+  send(m: string) { this.sent.push(m); FakeWS.script(this) }
+  close() {}
+  speak() {
+    queueMicrotask(() => {
+      this.onmessage?.({ data: JSON.stringify({ type: 'chunk_meta', sample_rate: 24000 }) })
+      this.onmessage?.({ data: new Int16Array([1, 2, 3, 4]).buffer })
+      this.onmessage?.({ data: JSON.stringify({ type: 'done' }) })
+    })
+  }
+}
+
+function install(tokenFor: (n: number) => string) {
+  let n = 0
+  const calls: string[] = []
+  ;(globalThis as any).fetch = async (url: string) => {
+    calls.push(url)
+    n += 1
+    return { ok: true, status: 200, json: async () => ({ token: tokenFor(n), url: 'wss://worker.example/tts' }) }
+  }
+  ;(globalThis as any).WebSocket = FakeWS
+  FakeWS.instances = []
+  FakeWS.script = (ws) => ws.speak()
+  clearAuthCache()
+  return calls
+}
+const opts = { apiUrl: 'https://api.example' }
+
+test('repeat generations within the reuse window authorize only once', async () => {
+  const calls = install((n) => `tok${n}`)
+  await synthesizeWithPiper('First take.', opts)
+  await synthesizeWithPiper('Second take.', opts)
+  await synthesizeWithPiper('Third take.', opts)
+  assert.equal(calls.length, 1)
+  assert.equal(FakeWS.instances.length, 3)
+  assert.ok(FakeWS.instances.every((w) => w.url.endsWith('?token=tok1')))
+})
+
+test('the session token is not reused after the window expires', async () => {
+  const calls = install((n) => `tok${n}`)
+  const realNow = Date.now
+  let t = 1_000_000
+  Date.now = () => t
+  try {
+    await synthesizeWithPiper('First take.', opts)
+    t += AUTH_REUSE_MS - 1
+    await synthesizeWithPiper('Still inside the window.', opts)
+    assert.equal(calls.length, 1)
+    t += 2
+    await synthesizeWithPiper('Now expired.', opts)
+    assert.equal(calls.length, 2)
+    assert.ok(FakeWS.instances[2]!.url.endsWith('?token=tok2'))
+  } finally { Date.now = realNow }
+})
+
+test('a reused token the server drops is replaced once, transparently', async () => {
+  const calls = install((n) => `tok${n}`)
+  await synthesizeWithPiper('Warm the cache.', opts)
+  FakeWS.script = (ws) => {                         // the cached token tok1 is now rejected: the socket closes without a word
+    if (ws.url.endsWith('tok1')) queueMicrotask(() => ws.onclose?.())
+    else ws.speak()
+  }
+  const r = await synthesizeWithPiper('Retry me.', opts)
+  assert.equal(calls.length, 2)                      // initial authorize + one fresh authorize
+  assert.ok(r.durationSec > 0)
+  assert.ok(FakeWS.instances.at(-1)!.url.endsWith('tok2'))
+})
+
+test('a fresh token that is dropped is NOT retried forever', async () => {
+  const calls = install((n) => `tok${n}`)
+  FakeWS.script = (ws) => { queueMicrotask(() => ws.onclose?.()) }
+  await assert.rejects(() => synthesizeWithPiper('Doomed.', opts), /closed before the audio finished/)
+  assert.equal(calls.length, 1)
+})
+
+test('a 429 from authorize is reported and nothing is cached', async () => {
+  install((n) => `tok${n}`)
+  ;(globalThis as any).fetch = async () => ({ ok: false, status: 429, json: async () => ({}) })
+  await assert.rejects(() => synthesizeWithPiper('Hello there.', opts), /Too many requests/)
+  const calls = install((n) => `tok${n}`)
+  await synthesizeWithPiper('Hello again.', opts)
+  assert.equal(calls.length, 1)
+})
