@@ -188,9 +188,12 @@ export default function Home() {
             </div>
             <div className="ra-ref" style={{ marginTop: 0 }}>
               <ul>
-                <li>That is half of ElevenLabs Scribe&rsquo;s batch API list price (its realtime price is $0.39 per hour). We have not compared accuracy with Scribe.</li>
-                <li>Word error rate was 2.6% on clean read English and 2.8% on simulated phone audio. Real calls are noisier, so test on yours.</li>
-                <li>Batch only for now: no live transcription, speaker labels or entity detection.</li>
+                {/* Price: research/elevenlabs_pricing_2026-10-04.md and W11 (price only; no vendor accuracy or latency claims on this page, W31 vendor-terms caveat). */}
+                <li>That is half of ElevenLabs Scribe&rsquo;s batch API list price (its realtime price is $0.39 per hour). This page makes no accuracy or speed comparison with other vendors.</li>
+                {/* Accuracy: research/W32/data/results_w32gpu.md (the live guard; W31 test split, real 8 kHz 296 items, noisy 10 dB 578 items, no dictionary). */}
+                <li>On 296 real 8 kHz phone-style recordings (English, role-played calls) the word error rate was 9.8% and 90.2% of spoken digit sequences came out exactly right. With 10 dB background noise added it was 17.8% and 84.6%, so noisy lines are our weaker case. One test set, so test on your own audio. <Link href="/developers#stt-how-we-measured" style={{ textDecoration: 'underline' }}>How we measured</Link>.</li>
+                {/* Speaker labels: research/W43/REALCALL_VALIDATION.md; limits documented at /developers#speech-to-text. */}
+                <li>Batch only for now: no live transcription or entity detection. Speaker labels (<code>diarize=true</code>) are available: 99.0% of words went to the right side on 78 real two-person calls, but the speaker count was exactly right on only 67% of them.</li>
                 <li>Accepts wav, flac, mp3, ogg, m4a and raw mu-law or A-law phone audio. Up to 200 MB or 3 hours per file.</li>
               </ul>
             </div>

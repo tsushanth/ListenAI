@@ -12,7 +12,7 @@ export default function TranscribePage() {
     <ToolPageShell
       eyebrow="Voice API · Speech to text"
       title="Turn a recording into a transcript"
-      lede="Upload audio, get the text with word timestamps. Copy it or download it as TXT, SRT or VTT."
+      lede="Upload audio, get the text with word timestamps. Copy it or download it as TXT, SRT or VTT. Speaker labels and custom vocabulary are available through the API, not on this page."
     >
       <Transcriber />
     </ToolPageShell>
