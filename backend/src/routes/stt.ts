@@ -61,6 +61,9 @@ export interface SttOptions {
   maxKeyterms: number;
   /** Cap on the URL-encoded keyterm query string sent to the worker (query strings, not bodies, carry the terms). */
   keytermsMaxQueryBytes: number;
+  /** dict_mode=shortlist limits (more terms than the prompt budget; the improved worker picks a per-request shortlist). */
+  maxKeytermsShortlist: number;
+  keytermsShortlistMaxQueryBytes: number;
   defaultRetentionDays: number;
   maxRetentionDays: number;
   /** How long a stt_key_settings lookup is cached per key. 0 disables caching (tests). */
@@ -99,6 +102,8 @@ function defaultOptions(): SttOptions {
     concurrencyRetryAfterSec: 5,
     maxKeyterms: config.STT_MAX_KEYTERMS,
     keytermsMaxQueryBytes: config.STT_KEYTERMS_MAX_QUERY_BYTES,
+    maxKeytermsShortlist: config.STT_MAX_KEYTERMS_SHORTLIST,
+    keytermsShortlistMaxQueryBytes: config.STT_KEYTERMS_SHORTLIST_MAX_QUERY_BYTES,
     defaultRetentionDays: config.STT_DEFAULT_RETENTION_DAYS,
     maxRetentionDays: config.STT_MAX_RETENTION_DAYS,
     settingsTtlMs: 60_000,
@@ -178,6 +183,9 @@ interface WorkerCall {
   smartFormat: boolean;
   /** Speaker labels (improved worker only; the production worker ignores the parameter, so it is never used for these calls). */
   diarize?: boolean;
+  /** dict_mode=shortlist: forwarded to the improved worker with optional keyterms_json (tiers / alternatives). */
+  dictShortlist?: boolean;
+  keytermsJson?: string;
   /** With diarize: merge the smallest speakers into the nearest until at most this many remain (1..8). */
   maxSpeakers?: number;
   signal: AbortSignal;
@@ -198,6 +206,8 @@ async function postToWorker(baseUrl: string, token: string, label: string, opts:
   if (opts.wordTimestamps) qs.set('word_timestamps', 'true');
   if (opts.smartFormat) qs.set('smart_format', 'true');
   for (const t of opts.keyterms) qs.append('keyterm', t);
+  if (opts.dictShortlist) qs.set('dict_mode', 'shortlist');
+  if (opts.dictShortlist && opts.keytermsJson) qs.set('keyterms_json', opts.keytermsJson);
   if (opts.diarize) qs.set('diarize', 'true');
   if (opts.diarize && opts.maxSpeakers) qs.set('max_speakers', String(opts.maxSpeakers));
 
@@ -320,6 +330,34 @@ const first = (src: unknown, name: string): string | undefined => {
 };
 
 class BadParam extends Error { constructor(message: string) { super(message); } }
+
+/** dict_mode: `off` (default) or `shortlist` (more than the prompt budget; improved worker only). */
+function parseDictMode(v: string | undefined): boolean {
+  if (v === undefined || v === '' || v.toLowerCase() === 'off') return false;
+  if (v.toLowerCase() === 'shortlist') return true;
+  throw new BadParam('dict_mode must be off or shortlist');
+}
+
+/**
+ * keyterms_json (dict_mode=shortlist only): a JSON array of strings or {term, tier?: 1|2|3, alternatives?: string[]}.
+ * Validated here only for shape and size; the worker applies the tiers. Returns the raw string and the number of terms.
+ */
+function parseKeytermsJson(raw: string | undefined, maxTerms: number): { raw: string; count: number } | undefined {
+  if (raw === undefined || raw === '') return undefined;
+  let arr: unknown;
+  try { arr = JSON.parse(raw); } catch { throw new BadParam('keyterms_json must be valid JSON'); }
+  if (!Array.isArray(arr)) throw new BadParam('keyterms_json must be a JSON array');
+  if (arr.length > maxTerms) throw new BadParam(`Too many keyterms (max ${maxTerms}).`);
+  for (const e of arr) {
+    if (typeof e === 'string') continue;
+    if (!isObj(e) || typeof e.term !== 'string' || !e.term.trim()) throw new BadParam('keyterms_json entries must be strings or {term, tier, alternatives}');
+    if (e.tier !== undefined && e.tier !== 1 && e.tier !== 2 && e.tier !== 3) throw new BadParam('keyterms_json tier must be 1, 2 or 3');
+    if (e.alternatives !== undefined && (!Array.isArray(e.alternatives) || e.alternatives.length > 8 || e.alternatives.some((x) => typeof x !== 'string'))) {
+      throw new BadParam('keyterms_json alternatives must be an array of at most 8 strings');
+    }
+  }
+  return { raw, count: arr.length };
+}
 
 /** max_speakers: integer 1..8, only valid together with diarize=true. */
 function parseMaxSpeakers(v: string | undefined, diarize: boolean): number | undefined {
@@ -644,17 +682,39 @@ export function createSttRouters(overrides: Partial<SttOptions> = {}): { sttRout
   }
 
   /** Parse the shared keyterms/dictionary params; responds 400 and returns null when invalid. */
-  function readKeyterms(kind: Kind, res: Response, ctx: Ctx, sources: unknown[][]): string[] | null {
-    const r = parseKeyterms(sources.flat(), { maxTerms: opts.maxKeyterms });
+  function readKeyterms(kind: Kind, res: Response, ctx: Ctx, sources: unknown[][], dict?: { shortlist: boolean; json?: { raw: string; count: number } }): string[] | null {
+    const shortlist = !!dict?.shortlist;
+    const maxTerms = shortlist ? opts.maxKeytermsShortlist : opts.maxKeyterms;
+    const maxBytes = shortlist ? opts.keytermsShortlistMaxQueryBytes : opts.keytermsMaxQueryBytes;
+    const r = parseKeyterms(sources.flat(), { maxTerms });
     if ('error' in r) { void ctx.done(); sendErr(res, kind, 400, 'bad_param', r.error, ctx.rid); return null; }
+    if (shortlist && r.terms.length + (dict?.json?.count ?? 0) > maxTerms) {
+      void ctx.done(); sendErr(res, kind, 400, 'bad_param', `Too many keyterms (max ${maxTerms}).`, ctx.rid); return null;
+    }
     const q = new URLSearchParams();
     for (const t of r.terms) q.append('keyterm', t);
-    if (Buffer.byteLength(q.toString()) > opts.keytermsMaxQueryBytes) {
+    if (shortlist && dict?.json) q.set('keyterms_json', dict.json.raw);
+    if (Buffer.byteLength(q.toString()) > maxBytes) {
       void ctx.done();
-      sendErr(res, kind, 400, 'bad_param', `Keyterms are too long in total (max ${opts.keytermsMaxQueryBytes} bytes encoded). Send fewer or shorter terms.`, ctx.rid);
+      sendErr(res, kind, 400, 'bad_param', `Keyterms are too long in total (max ${maxBytes} bytes encoded). Send fewer or shorter terms.`, ctx.rid);
       return null;
     }
     return r.terms;
+  }
+
+  /** dict_mode / keyterms_json shared by all three surfaces; responds 400 and returns null when invalid. */
+  function readDict(kind: Kind, res: Response, ctx: Ctx, src: unknown): { shortlist: boolean; json?: { raw: string; count: number } } | null {
+    try {
+      const shortlist = parseDictMode(first(src, 'dict_mode'));
+      const rawJson = first(src, 'keyterms_json');
+      if (!shortlist && rawJson !== undefined && rawJson !== '') throw new BadParam('keyterms_json requires dict_mode=shortlist');
+      return { shortlist, json: shortlist ? parseKeytermsJson(rawJson, opts.maxKeytermsShortlist) : undefined };
+    } catch (e) {
+      if (!(e instanceof BadParam)) throw e;
+      void ctx.done();
+      sendErr(res, kind, 400, 'bad_param', e.message, ctx.rid);
+      return null;
+    }
   }
 
   // ---- core flow ------------------------------------------------------------
@@ -669,11 +729,15 @@ export function createSttRouters(overrides: Partial<SttOptions> = {}): { sttRout
    * metadata only. A failed request is never billed.
    */
   async function runTranscription(ctx: Ctx, p: {
-    surface: string; language?: string; wordTimestamps: boolean; keyterms: string[]; smartFormat: boolean; diarize?: boolean; maxSpeakers?: number; mimeSniffed: string; size: number;
+    surface: string; language?: string; wordTimestamps: boolean; keyterms: string[]; smartFormat: boolean; diarize?: boolean; maxSpeakers?: number; dictShortlist?: boolean; keytermsJson?: { raw: string; count: number }; mimeSniffed: string; size: number;
   }): Promise<Outcome> {
     // Speaker labels exist only on the improved worker: without it the request cannot be served (no silent unlabeled fallback).
     if (p.diarize && !improvedEnabled) {
       return { ok: false, status: 400, code: 'diarize_unavailable', message: 'Speaker labels (diarize) are not available right now.' };
+    }
+    // dict_mode=shortlist exists only on the improved worker: never silently serve it from the production worker (which would drop the dictionary).
+    if (p.dictShortlist && !improvedEnabled) {
+      return { ok: false, status: 400, code: 'dict_mode_unavailable', message: 'dict_mode=shortlist is not available right now.' };
     }
     const retentionDays = Math.max(0, Math.min(Number(ctx.settings.retention_days ?? opts.defaultRetentionDays) || 0, opts.maxRetentionDays));
     const { data: row, error: insertErr } = await supabase
@@ -686,7 +750,7 @@ export function createSttRouters(overrides: Partial<SttOptions> = {}): { sttRout
         input_mimetype: p.mimeSniffed,
         status: 'processing',
         surface: p.surface,
-        keyterm_count: p.keyterms.length,
+        keyterm_count: p.keyterms.length + (p.keytermsJson?.count ?? 0),
         retention_days: retentionDays,
       })
       .select('id')
@@ -698,12 +762,12 @@ export function createSttRouters(overrides: Partial<SttOptions> = {}): { sttRout
     let worker: WorkerKind = 'prod';
     try {
       const call: WorkerCall = {
-        file: ctx.file!, language: p.language, wordTimestamps: p.wordTimestamps, keyterms: p.keyterms, smartFormat: p.smartFormat, diarize: p.diarize, maxSpeakers: p.maxSpeakers,
+        file: ctx.file!, language: p.language, wordTimestamps: p.wordTimestamps, keyterms: p.keyterms, smartFormat: p.smartFormat, diarize: p.diarize, maxSpeakers: p.maxSpeakers, dictShortlist: p.dictShortlist, keytermsJson: p.keytermsJson?.raw,
         signal: ctx.abort.signal, timeoutMs: opts.workerTimeoutMs,
       };
       let result: TranscribeResult | undefined;
       let fallbackReason: string | undefined;
-      if (improvedEnabled && (p.diarize || opts.rng() < improvedPercent / 100)) {
+      if (improvedEnabled && (p.diarize || p.dictShortlist || opts.rng() < improvedPercent / 100)) {
         try {
           result = await postToWorker(improvedUrl, improvedToken, 'improved worker', { ...call, timeoutMs: opts.improvedTimeoutMs }, false);
           worker = 'improved';
@@ -713,9 +777,10 @@ export function createSttRouters(overrides: Partial<SttOptions> = {}): { sttRout
             // The caller's own bad request (400 bad audio, 413 ...): not a worker fault, never retried, never billed.
             await supabase.from('stt_transcriptions').update({ status: 'failed', error: `improved worker HTTP ${d.status}`, completed_at: new Date().toISOString() }).eq('id', id);
             log.warn({ id, worker: 'improved', status: d.status, surface: p.surface }, 'STT improved worker rejected the request (client error, no fallback)');
+            if (p.dictShortlist && d.status === 400) return { ok: false, id, status: 400, code: 'dict_mode_rejected', message: 'The worker rejected dict_mode=shortlist (not enabled or invalid dictionary).', worker: 'improved' };
             return { ok: false, id, status: d.status, code: d.code, message: d.message, worker: 'improved' };
           }
-          if (d.kind === 'abort' || !opts.improvedFallback || p.diarize) { worker = 'improved'; throw err; }
+          if (d.kind === 'abort' || !opts.improvedFallback || p.diarize || p.dictShortlist) { worker = 'improved'; throw err; }
           fallbackReason = d.reason;
           if (d.reason === 'unauthorized') log.error({ id, worker: 'improved', status: 401, surface: p.surface }, 'STT improved worker rejected our token (401): server misconfiguration, falling back to prod');
           else log.warn({ id, worker: 'improved', reason: d.reason, status: d.status, surface: p.surface }, 'STT improved worker failed, falling back to prod');
@@ -793,7 +858,9 @@ export function createSttRouters(overrides: Partial<SttOptions> = {}): { sttRout
         return;
       }
       const wordTimestamps = req.body?.word_timestamps === 'true' || req.body?.word_timestamps === true;
-      const keyterms = readKeyterms('legacy', res, ctx, [vals(req.body, 'keyterm'), vals(req.body, 'keyterms'), vals(req.body, 'dictionary')]);
+      const dict = readDict('legacy', res, ctx, req.body);
+      if (!dict) return;
+      const keyterms = readKeyterms('legacy', res, ctx, [vals(req.body, 'keyterm'), vals(req.body, 'keyterms'), vals(req.body, 'dictionary')], dict);
       if (!keyterms) return;
       let diarize: boolean; let maxSpeakers: number | undefined;
       try { diarize = parseBool(first(req.body, 'diarize'), false, 'diarize'); maxSpeakers = parseMaxSpeakers(first(req.body, 'max_speakers'), diarize); } catch (e) {
@@ -803,7 +870,7 @@ export function createSttRouters(overrides: Partial<SttOptions> = {}): { sttRout
         return;
       }
 
-      const out = await runTranscription(ctx, { surface: 'api', language, wordTimestamps, keyterms, smartFormat: false, diarize, maxSpeakers, mimeSniffed: ctx.file!.mime, size: ctx.file!.size });
+      const out = await runTranscription(ctx, { surface: 'api', language, wordTimestamps, keyterms, smartFormat: false, diarize, maxSpeakers, dictShortlist: dict.shortlist, keytermsJson: dict.json, mimeSniffed: ctx.file!.mime, size: ctx.file!.size });
       await ctx.done();
       if (out.worker) res.setHeader('X-STT-Worker', out.worker);
       if (!out.ok) { res.status(out.status).json({ id: out.id, status: 'failed', error: out.message }); return; }
@@ -918,10 +985,12 @@ export function createSttRouters(overrides: Partial<SttOptions> = {}): { sttRout
       }
       // Legacy Deepgram `keywords=Term:boost` is accepted as plain terms.
       const legacyKeywords = vals(req.query, 'keywords').map((k) => (typeof k === 'string' ? k.replace(/:-?\d+(\.\d+)?$/, '') : k));
-      const keyterms = readKeyterms('deepgram', res, ctx, [vals(req.query, 'keyterm'), legacyKeywords]);
+      const dict = readDict('deepgram', res, ctx, req.query);
+      if (!dict) return;
+      const keyterms = readKeyterms('deepgram', res, ctx, [vals(req.query, 'keyterm'), legacyKeywords], dict);
       if (!keyterms) return;
 
-      const out = await runTranscription(ctx, { surface: 'listen', language, wordTimestamps: true, keyterms, smartFormat, diarize, maxSpeakers, mimeSniffed: ctx.file!.mime, size: ctx.file!.size });
+      const out = await runTranscription(ctx, { surface: 'listen', language, wordTimestamps: true, keyterms, smartFormat, diarize, maxSpeakers, dictShortlist: dict.shortlist, keytermsJson: dict.json, mimeSniffed: ctx.file!.mime, size: ctx.file!.size });
       await ctx.done();
       if (out.worker) res.setHeader('X-STT-Worker', out.worker);
       if (!out.ok) { sendErr(res, 'deepgram', out.status, out.code, out.message, out.id); return; }
@@ -950,7 +1019,9 @@ export function createSttRouters(overrides: Partial<SttOptions> = {}): { sttRout
       const gran = vals(req.body, 'timestamp_granularities').filter((g): g is string => typeof g === 'string');
       const withWords = format === 'verbose_json' && gran.includes('word');
       // `prompt`, `temperature` and any Deepgram-only knobs are accepted and ignored.
-      const keyterms = readKeyterms('openai', res, ctx, [vals(req.body, 'keyterm'), vals(req.body, 'keyterms'), vals(req.body, 'dictionary')]);
+      const dict = readDict('openai', res, ctx, req.body);
+      if (!dict) return;
+      const keyterms = readKeyterms('openai', res, ctx, [vals(req.body, 'keyterm'), vals(req.body, 'keyterms'), vals(req.body, 'dictionary')], dict);
       if (!keyterms) return;
       let diarize: boolean; let maxSpeakers: number | undefined;
       try { diarize = parseBool(first(req.body, 'diarize'), false, 'diarize'); maxSpeakers = parseMaxSpeakers(first(req.body, 'max_speakers'), diarize); } catch (e) {
@@ -960,7 +1031,7 @@ export function createSttRouters(overrides: Partial<SttOptions> = {}): { sttRout
         return;
       }
 
-      const out = await runTranscription(ctx, { surface: 'audio_transcriptions', language, wordTimestamps: withWords, keyterms, smartFormat: false, diarize, maxSpeakers, mimeSniffed: ctx.file!.mime, size: ctx.file!.size });
+      const out = await runTranscription(ctx, { surface: 'audio_transcriptions', language, wordTimestamps: withWords, keyterms, smartFormat: false, diarize, maxSpeakers, dictShortlist: dict.shortlist, keytermsJson: dict.json, mimeSniffed: ctx.file!.mime, size: ctx.file!.size });
       await ctx.done();
       if (out.worker) res.setHeader('X-STT-Worker', out.worker);
       if (!out.ok) { sendErr(res, 'openai', out.status, out.code, out.message); return; }
