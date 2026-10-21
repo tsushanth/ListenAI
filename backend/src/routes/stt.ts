@@ -64,6 +64,8 @@ export interface SttOptions {
   /** dict_mode=shortlist limits (more terms than the prompt budget; the improved worker picks a per-request shortlist). */
   maxKeytermsShortlist: number;
   keytermsShortlistMaxQueryBytes: number;
+  /** More plain keyterms than this (and dict_mode not explicitly `off`) are served as dict_mode=shortlist. 0 disables. */
+  autoShortlistAbove: number;
   defaultRetentionDays: number;
   maxRetentionDays: number;
   /** How long a stt_key_settings lookup is cached per key. 0 disables caching (tests). */
@@ -104,6 +106,7 @@ function defaultOptions(): SttOptions {
     keytermsMaxQueryBytes: config.STT_KEYTERMS_MAX_QUERY_BYTES,
     maxKeytermsShortlist: config.STT_MAX_KEYTERMS_SHORTLIST,
     keytermsShortlistMaxQueryBytes: config.STT_KEYTERMS_SHORTLIST_MAX_QUERY_BYTES,
+    autoShortlistAbove: config.STT_AUTO_SHORTLIST_ABOVE,
     defaultRetentionDays: config.STT_DEFAULT_RETENTION_DAYS,
     maxRetentionDays: config.STT_MAX_RETENTION_DAYS,
     settingsTtlMs: 60_000,
@@ -332,10 +335,19 @@ const first = (src: unknown, name: string): string | undefined => {
 class BadParam extends Error { constructor(message: string) { super(message); } }
 
 /** dict_mode: `off` (default) or `shortlist` (more than the prompt budget; improved worker only). */
-function parseDictMode(v: string | undefined): boolean {
-  if (v === undefined || v === '' || v.toLowerCase() === 'off') return false;
-  if (v.toLowerCase() === 'shortlist') return true;
+function parseDictMode(v: string | undefined): { shortlist: boolean; explicitOff: boolean } {
+  if (v === undefined || v === '') return { shortlist: false, explicitOff: false };
+  if (v.toLowerCase() === 'off') return { shortlist: false, explicitOff: true };
+  if (v.toLowerCase() === 'shortlist') return { shortlist: true, explicitOff: false };
   throw new BadParam('dict_mode must be off or shortlist');
+}
+
+/** Result of readDict. `explicitOff`: client sent dict_mode=off. `auto`: set by readKeyterms when a plain request was upgraded to shortlist. */
+type DictParams = { shortlist: boolean; explicitOff?: boolean; auto?: boolean; json?: { raw: string; count: number } };
+
+/** Merge the auto-shortlist marker into the worker's dictionary report (additive field only). */
+function withAutoDict(r: TranscribeResult, auto: boolean | undefined): TranscribeResult {
+  return auto ? { ...r, dictionary: { ...(r.dictionary ?? {}), auto_shortlist: true } } : r;
 }
 
 /**
@@ -682,14 +694,25 @@ export function createSttRouters(overrides: Partial<SttOptions> = {}): { sttRout
   }
 
   /** Parse the shared keyterms/dictionary params; responds 400 and returns null when invalid. */
-  function readKeyterms(kind: Kind, res: Response, ctx: Ctx, sources: unknown[][], dict?: { shortlist: boolean; json?: { raw: string; count: number } }): string[] | null {
+  function readKeyterms(kind: Kind, res: Response, ctx: Ctx, sources: unknown[][], dict?: DictParams): string[] | null {
     const shortlist = !!dict?.shortlist;
     const maxTerms = shortlist ? opts.maxKeytermsShortlist : opts.maxKeyterms;
-    const maxBytes = shortlist ? opts.keytermsShortlistMaxQueryBytes : opts.keytermsMaxQueryBytes;
+    let maxBytes = shortlist ? opts.keytermsShortlistMaxQueryBytes : opts.keytermsMaxQueryBytes;
     const r = parseKeyterms(sources.flat(), { maxTerms });
     if ('error' in r) { void ctx.done(); sendErr(res, kind, 400, 'bad_param', r.error, ctx.rid); return null; }
     if (shortlist && r.terms.length + (dict?.json?.count ?? 0) > maxTerms) {
       void ctx.done(); sendErr(res, kind, 400, 'bad_param', `Too many keyterms (max ${maxTerms}).`, ctx.rid); return null;
+    }
+    // The live worker rejects more than ~500 plain terms: past the threshold serve the request as dict_mode=shortlist instead
+    // (same repeated `keyterm` params, order = priority), unless the client explicitly asked for dict_mode=off.
+    if (!shortlist && dict && opts.autoShortlistAbove > 0 && r.terms.length > opts.autoShortlistAbove) {
+      if (dict.explicitOff) {
+        void ctx.done();
+        sendErr(res, kind, 400, 'bad_param', `dict_mode=off supports at most ${opts.autoShortlistAbove} keyterms. Send fewer terms or omit dict_mode (or use dict_mode=shortlist) for up to ${opts.maxKeytermsShortlist}.`, ctx.rid);
+        return null;
+      }
+      dict.shortlist = true; dict.auto = true;
+      maxBytes = opts.keytermsShortlistMaxQueryBytes;
     }
     const q = new URLSearchParams();
     for (const t of r.terms) q.append('keyterm', t);
@@ -703,12 +726,12 @@ export function createSttRouters(overrides: Partial<SttOptions> = {}): { sttRout
   }
 
   /** dict_mode / keyterms_json shared by all three surfaces; responds 400 and returns null when invalid. */
-  function readDict(kind: Kind, res: Response, ctx: Ctx, src: unknown): { shortlist: boolean; json?: { raw: string; count: number } } | null {
+  function readDict(kind: Kind, res: Response, ctx: Ctx, src: unknown): DictParams | null {
     try {
-      const shortlist = parseDictMode(first(src, 'dict_mode'));
+      const { shortlist, explicitOff } = parseDictMode(first(src, 'dict_mode'));
       const rawJson = first(src, 'keyterms_json');
       if (!shortlist && rawJson !== undefined && rawJson !== '') throw new BadParam('keyterms_json requires dict_mode=shortlist');
-      return { shortlist, json: shortlist ? parseKeytermsJson(rawJson, opts.maxKeytermsShortlist) : undefined };
+      return { shortlist, explicitOff, json: shortlist ? parseKeytermsJson(rawJson, opts.maxKeytermsShortlist) : undefined };
     } catch (e) {
       if (!(e instanceof BadParam)) throw e;
       void ctx.done();
@@ -729,7 +752,7 @@ export function createSttRouters(overrides: Partial<SttOptions> = {}): { sttRout
    * metadata only. A failed request is never billed.
    */
   async function runTranscription(ctx: Ctx, p: {
-    surface: string; language?: string; wordTimestamps: boolean; keyterms: string[]; smartFormat: boolean; diarize?: boolean; maxSpeakers?: number; dictShortlist?: boolean; keytermsJson?: { raw: string; count: number }; mimeSniffed: string; size: number;
+    surface: string; language?: string; wordTimestamps: boolean; keyterms: string[]; smartFormat: boolean; diarize?: boolean; maxSpeakers?: number; dictShortlist?: boolean; dictAuto?: boolean; keytermsJson?: { raw: string; count: number }; mimeSniffed: string; size: number;
   }): Promise<Outcome> {
     // Speaker labels exist only on the improved worker: without it the request cannot be served (no silent unlabeled fallback).
     if (p.diarize && !improvedEnabled) {
@@ -737,7 +760,7 @@ export function createSttRouters(overrides: Partial<SttOptions> = {}): { sttRout
     }
     // dict_mode=shortlist exists only on the improved worker: never silently serve it from the production worker (which would drop the dictionary).
     if (p.dictShortlist && !improvedEnabled) {
-      return { ok: false, status: 400, code: 'dict_mode_unavailable', message: 'dict_mode=shortlist is not available right now.' };
+      return { ok: false, status: 400, code: 'dict_mode_unavailable', message: p.dictAuto ? 'Requests with this many keyterms need dict_mode=shortlist, which is not available right now. Send fewer terms.' : 'dict_mode=shortlist is not available right now.' };
     }
     const retentionDays = Math.max(0, Math.min(Number(ctx.settings.retention_days ?? opts.defaultRetentionDays) || 0, opts.maxRetentionDays));
     const { data: row, error: insertErr } = await supabase
@@ -777,7 +800,7 @@ export function createSttRouters(overrides: Partial<SttOptions> = {}): { sttRout
             // The caller's own bad request (400 bad audio, 413 ...): not a worker fault, never retried, never billed.
             await supabase.from('stt_transcriptions').update({ status: 'failed', error: `improved worker HTTP ${d.status}`, completed_at: new Date().toISOString() }).eq('id', id);
             log.warn({ id, worker: 'improved', status: d.status, surface: p.surface }, 'STT improved worker rejected the request (client error, no fallback)');
-            if (p.dictShortlist && d.status === 400) return { ok: false, id, status: 400, code: 'dict_mode_rejected', message: 'The worker rejected dict_mode=shortlist (not enabled or invalid dictionary).', worker: 'improved' };
+            if (p.dictShortlist && d.status === 400) return { ok: false, id, status: 400, code: 'dict_mode_rejected', message: p.dictAuto ? 'The worker rejected the large keyterm list (dict_mode=shortlist not enabled or invalid dictionary). Send fewer terms.' : 'The worker rejected dict_mode=shortlist (not enabled or invalid dictionary).', worker: 'improved' };
             return { ok: false, id, status: d.status, code: d.code, message: d.message, worker: 'improved' };
           }
           if (d.kind === 'abort' || !opts.improvedFallback || p.diarize || p.dictShortlist) { worker = 'improved'; throw err; }
@@ -806,7 +829,7 @@ export function createSttRouters(overrides: Partial<SttOptions> = {}): { sttRout
 
       opts.reportUsage(ctx.userId, result.duration).catch((err: unknown) =>
         log.warn({ err, userId: ctx.userId, id, duration: result!.duration }, 'STT billing report failed (non-critical)'));
-      log.info({ id, worker, fallback_reason: fallbackReason ?? null, surface: p.surface, audio_seconds: result.duration, elapsed_ms: opts.now() - t0 }, 'STT served');
+      log.info({ id, worker, dict_auto_shortlist: p.dictAuto ?? false, fallback_reason: fallbackReason ?? null, surface: p.surface, audio_seconds: result.duration, elapsed_ms: opts.now() - t0 }, 'STT served');
       return { ok: true, id, result, worker };
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
@@ -870,11 +893,12 @@ export function createSttRouters(overrides: Partial<SttOptions> = {}): { sttRout
         return;
       }
 
-      const out = await runTranscription(ctx, { surface: 'api', language, wordTimestamps, keyterms, smartFormat: false, diarize, maxSpeakers, dictShortlist: dict.shortlist, keytermsJson: dict.json, mimeSniffed: ctx.file!.mime, size: ctx.file!.size });
+      const out = await runTranscription(ctx, { surface: 'api', language, wordTimestamps, keyterms, smartFormat: false, diarize, maxSpeakers, dictShortlist: dict.shortlist, dictAuto: dict.auto, keytermsJson: dict.json, mimeSniffed: ctx.file!.mime, size: ctx.file!.size });
       await ctx.done();
       if (out.worker) res.setHeader('X-STT-Worker', out.worker);
+      if (dict.auto) res.setHeader('X-STT-Dict-Mode', 'shortlist-auto');
       if (!out.ok) { res.status(out.status).json({ id: out.id, status: 'failed', error: out.message }); return; }
-      const r = out.result;
+      const r = withAutoDict(out.result, dict.auto);
       res.status(201).json({
         id: out.id,
         status: 'done',
@@ -990,9 +1014,10 @@ export function createSttRouters(overrides: Partial<SttOptions> = {}): { sttRout
       const keyterms = readKeyterms('deepgram', res, ctx, [vals(req.query, 'keyterm'), legacyKeywords], dict);
       if (!keyterms) return;
 
-      const out = await runTranscription(ctx, { surface: 'listen', language, wordTimestamps: true, keyterms, smartFormat, diarize, maxSpeakers, dictShortlist: dict.shortlist, keytermsJson: dict.json, mimeSniffed: ctx.file!.mime, size: ctx.file!.size });
+      const out = await runTranscription(ctx, { surface: 'listen', language, wordTimestamps: true, keyterms, smartFormat, diarize, maxSpeakers, dictShortlist: dict.shortlist, dictAuto: dict.auto, keytermsJson: dict.json, mimeSniffed: ctx.file!.mime, size: ctx.file!.size });
       await ctx.done();
       if (out.worker) res.setHeader('X-STT-Worker', out.worker);
+      if (dict.auto) res.setHeader('X-STT-Dict-Mode', 'shortlist-auto');
       if (!out.ok) { sendErr(res, 'deepgram', out.status, out.code, out.message, out.id); return; }
       res.setHeader('X-Request-Id', out.id);
       res.json(deepgramBody(out.id, out.result, punctuate));
@@ -1031,14 +1056,15 @@ export function createSttRouters(overrides: Partial<SttOptions> = {}): { sttRout
         return;
       }
 
-      const out = await runTranscription(ctx, { surface: 'audio_transcriptions', language, wordTimestamps: withWords, keyterms, smartFormat: false, diarize, maxSpeakers, dictShortlist: dict.shortlist, keytermsJson: dict.json, mimeSniffed: ctx.file!.mime, size: ctx.file!.size });
+      const out = await runTranscription(ctx, { surface: 'audio_transcriptions', language, wordTimestamps: withWords, keyterms, smartFormat: false, diarize, maxSpeakers, dictShortlist: dict.shortlist, dictAuto: dict.auto, keytermsJson: dict.json, mimeSniffed: ctx.file!.mime, size: ctx.file!.size });
       await ctx.done();
       if (out.worker) res.setHeader('X-STT-Worker', out.worker);
+      if (dict.auto) res.setHeader('X-STT-Dict-Mode', 'shortlist-auto');
       if (!out.ok) { sendErr(res, 'openai', out.status, out.code, out.message); return; }
       res.setHeader('X-Request-Id', out.id);
       if (format === 'text') { res.type('text/plain').send(`${out.result.text}\n`); return; }
       if (format === 'json') { res.json({ text: out.result.text }); return; }
-      res.json(openaiVerbose(out.result, withWords));
+      res.json(openaiVerbose(withAutoDict(out.result, dict.auto), withWords));
     } catch (e) { next(e); }
   });
 
