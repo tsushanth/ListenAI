@@ -87,6 +87,10 @@ const envSchema = z.object({
   // dict_mode=shortlist (improved worker): more terms than the prompt budget; terms still travel as worker query params (the ingress accepts ~60 KB).
   STT_MAX_KEYTERMS_SHORTLIST: z.string().transform(Number).default('3000'),
   STT_KEYTERMS_SHORTLIST_MAX_QUERY_BYTES: z.string().transform(Number).default('48000'),
+  // Requests with MORE plain `keyterm`s than this are served through the dictionary shortlist path (improved worker only), because the
+  // live worker rejects more than 500 plain terms. 0 disables (plain requests then keep the STT_MAX_KEYTERMS limit and worker behaviour).
+  // Non-numeric or negative values fall back to 500.
+  STT_AUTO_SHORTLIST_ABOVE: z.string().transform((v) => { const n = Number(v); return Number.isFinite(n) && n >= 0 ? Math.floor(n) : 500; }).default('500'),
   // Minimum billed audio seconds per successful STT request (billing only; transcript/duration unchanged).
   // 0 disables. Applied once, inside reportSttUsage. Non-numeric or negative values fall back to 10.
   STT_MIN_BILLED_SECONDS: z.string().transform((v) => { const n = Number(v); return Number.isFinite(n) && n >= 0 ? n : 10; }).default('10'),

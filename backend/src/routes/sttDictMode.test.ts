@@ -309,3 +309,129 @@ test('worker 400 for dict_mode (flag off on the worker) -> clear 400 mentioning 
     assert.equal(usageCalls.length, 0);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Auto-shortlist: plain `keyterm`s above STT_AUTO_SHORTLIST_ABOVE (default 500) are served as dict_mode=shortlist
+// ---------------------------------------------------------------------------
+
+// One JSON `keyterms` field (multipart has a field-count limit); these are still plain terms for the backend.
+const plain = (n: number): Array<[string, string]> => [['keyterms', JSON.stringify(terms(n))]];
+
+test('auto-shortlist: 500 plain terms unchanged (no dict_mode sent, no marker); 501 and 1000 become dict_mode=shortlist on the improved worker only', async () => {
+  await withBoot({ improvedPercent: 1, rng: () => 0.99, keytermsMaxQueryBytes: 1_000_000 }, async (s) => {
+    const at = await post(s, plain(500));
+    assert.equal(at.status, 201);
+    const u0 = new URL(improvedCalls[0] ? improvedCalls[0].url : prodCalls[0]!.url);
+    assert.equal(u0.searchParams.has('dict_mode'), false);
+    assert.equal(u0.searchParams.getAll('keyterm').length, 500);
+    assert.equal(at.headers.get('x-stt-dict-mode'), null);
+    assert.equal(((await at.json()) as { dictionary?: unknown }).dictionary, undefined);
+    improvedCalls.length = 0; prodCalls.length = 0;
+
+    for (const n of [501, 1000]) {
+      const r = await post(s, plain(n));
+      assert.equal(r.status, 201, `n=${n}`);
+      assert.equal(r.headers.get('x-stt-worker'), 'improved');
+      assert.equal(r.headers.get('x-stt-dict-mode'), 'shortlist-auto');
+      const u = new URL(improvedCalls.at(-1)!.url);
+      assert.equal(u.searchParams.get('dict_mode'), 'shortlist');
+      assert.equal(u.searchParams.has('keyterms_json'), false);
+      assert.deepEqual(u.searchParams.getAll('keyterm'), terms(n)); // order preserved
+      const body = (await r.json()) as { dictionary?: { auto_shortlist?: boolean } };
+      assert.equal(body.dictionary?.auto_shortlist, true);
+    }
+    assert.equal(prodCalls.length, 0);
+  });
+});
+
+test('auto-shortlist: 1001 plain terms keep the existing "Too many keyterms" 400 (no worker call)', async () => {
+  await withBoot({ maxKeyterms: 1000 }, async (s) => {
+    const r = await post(s, plain(1001));
+    assert.equal(r.status, 400);
+    assert.match(JSON.stringify(await r.json()), /Too many keyterms \(max 1000\)/);
+    assert.equal(improvedCalls.length + prodCalls.length, 0);
+  });
+});
+
+test('auto-shortlist: explicit dict_mode=off above the threshold is a clear 400, never a worker call; 500 with dict_mode=off still works', async () => {
+  await withBoot({ keytermsMaxQueryBytes: 1_000_000 }, async (s) => {
+    const r = await post(s, [['dict_mode', 'off'], ...plain(501)]);
+    assert.equal(r.status, 400);
+    assert.match(JSON.stringify(await r.json()), /dict_mode=off supports at most 500/);
+    assert.equal(improvedCalls.length + prodCalls.length, 0);
+    assert.equal(usageCalls.length, 0);
+    const ok = await post(s, [['dict_mode', 'off'], ...plain(500)]);
+    assert.equal(ok.status, 201);
+    assert.equal(new URL(improvedCalls[0]!.url).searchParams.has('dict_mode'), false);
+  });
+});
+
+test('auto-shortlist: explicit dict_mode=shortlist is untouched (not marked auto)', async () => {
+  await withBoot({}, async (s) => {
+    const r = await post(s, [['dict_mode', 'shortlist'], ...plain(600)]);
+    assert.equal(r.status, 201);
+    assert.equal(r.headers.get('x-stt-dict-mode'), null);
+    assert.equal(new URL(improvedCalls[0]!.url).searchParams.get('dict_mode'), 'shortlist');
+  });
+});
+
+test('auto-shortlist: STT_AUTO_SHORTLIST_ABOVE=0 disables it (501 plain terms pass as plain, as before); a custom threshold is honoured', async () => {
+  await withBoot({ autoShortlistAbove: 0, keytermsMaxQueryBytes: 1_000_000 }, async (s) => {
+    const r = await post(s, plain(501));
+    assert.equal(r.status, 201);
+    assert.equal(new URL(improvedCalls[0]!.url).searchParams.has('dict_mode'), false);
+    assert.equal(r.headers.get('x-stt-dict-mode'), null);
+  });
+  await withBoot({ autoShortlistAbove: 3 }, async (s) => {
+    assert.equal((await post(s, plain(3))).status, 201);
+    assert.equal(new URL(improvedCalls[0]!.url).searchParams.has('dict_mode'), false);
+    assert.equal((await post(s, plain(4))).status, 201);
+    assert.equal(new URL(improvedCalls[1]!.url).searchParams.get('dict_mode'), 'shortlist');
+  });
+});
+
+test('auto-shortlist: over-threshold uses the shortlist byte budget, and the shortlist byte limit still applies', async () => {
+  await withBoot({ keytermsMaxQueryBytes: 7000, keytermsShortlistMaxQueryBytes: 48000 }, async (s) => {
+    const r = await post(s, plain(900)); // ~ 900 * 18 bytes encoded, far over the 7000 plain budget
+    assert.equal(r.status, 201);
+  });
+  await withBoot({ keytermsShortlistMaxQueryBytes: 2000 }, async (s) => {
+    const r = await post(s, plain(600));
+    assert.equal(r.status, 400);
+    assert.equal(improvedCalls.length + prodCalls.length, 0);
+  });
+});
+
+test('auto-shortlist: improved worker disabled -> clear 400, no worker call, nothing billed; improved down -> 502 with no prod fallback', async () => {
+  await withBoot({ improvedPercent: 0, keytermsMaxQueryBytes: 1_000_000 }, async (s) => {
+    const r = await post(s, plain(501));
+    assert.equal(r.status, 400);
+    assert.equal(improvedCalls.length + prodCalls.length, 0);
+    assert.equal(usageCalls.length, 0);
+    const ok = await post(s, plain(500)); // <= 500 still served by the production worker
+    assert.equal(ok.status, 201);
+    assert.equal(prodCalls.length, 1);
+  });
+  await withBoot({ improvedFallback: true }, async (s) => {
+    improvedMode = { status: 503 };
+    const r = await post(s, plain(501));
+    assert.equal(r.status, 502);
+    assert.equal(prodCalls.length, 0);
+    assert.equal(usageCalls.length, 0);
+  });
+});
+
+test('auto-shortlist works on /v1/listen and /v1/audio/transcriptions (header set; openai verbose carries x_dictionary.auto_shortlist)', async () => {
+  await withBoot({}, async (s) => {
+    // A single JSON-array `keyterm` value: >20 repeated query params are collapsed to an object by express's qs parser (pre-existing, separate issue).
+    const qs = `keyterm=${encodeURIComponent(JSON.stringify(terms(501)))}`;
+    const l = await fetch(`${s.origin}/v1/listen?${qs}`, { method: 'POST', headers: { ...auth, 'Content-Type': 'audio/wav' }, body: wavBytes() });
+    assert.equal(l.status, 200);
+    assert.equal(l.headers.get('x-stt-dict-mode'), 'shortlist-auto');
+    const o = await fetch(`${s.origin}/v1/audio/transcriptions`, { method: 'POST', headers: auth, body: oaForm([['response_format', 'verbose_json'], ...plain(501)]) });
+    assert.equal(o.status, 200);
+    assert.equal(o.headers.get('x-stt-dict-mode'), 'shortlist-auto');
+    assert.equal(((await o.json()) as { x_dictionary?: { auto_shortlist?: boolean } }).x_dictionary?.auto_shortlist, true);
+    assert.deepEqual(improvedCalls.map((c) => new URL(c.url).searchParams.get('dict_mode')), ['shortlist', 'shortlist']);
+  });
+});
