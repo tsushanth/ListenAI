@@ -50,6 +50,7 @@ import { dubRouter } from './routes/dub.js';
 import { soundEffectsRouter } from './routes/soundEffects.js';
 import { aggregateLatencyMetrics, checkSupabaseHealth, checkStorageHealth } from './lib/supabaseClient.js';
 import { startWorker, stopWorker } from './workers/ttsJobWorker.js';
+import { reapStaleVoiceConversions } from './lib/voiceConversionReaper.js';
 import { startSoundEffectJobWorker, stopSoundEffectJobWorker } from './workers/soundEffectJobWorker.js';
 import { startMusicJobWorker, stopMusicJobWorker } from './workers/musicJobWorker.js';
 import { checkPubSubHealth } from './lib/pubsub.js';
@@ -403,6 +404,14 @@ const server = app.listen(PORT, () => {
     };
     setTimeout(job, 60_000).unref();
     setInterval(job, THIRTY_MINUTES_MS).unref();
+  }
+
+  // Voice conversions whose client never polled stay 'queued' forever; mark rows older than 2h failed and send one
+  // aggregate signal per pass. At most 100 rows per pass, never in tests. Errors are swallowed (non-critical).
+  if (process.env.NODE_ENV !== 'test') {
+    const reap = () => { void reapStaleVoiceConversions().catch((err) => logger.warn({ err }, 'voice conversion reaper failed (non-critical)')); };
+    setTimeout(reap, 2 * 60_000).unref();
+    setInterval(reap, THIRTY_MINUTES_MS).unref();
   }
 
   // Pull-based worker disabled — jobs are now delivered via Pub/Sub push

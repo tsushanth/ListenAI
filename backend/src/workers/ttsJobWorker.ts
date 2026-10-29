@@ -43,6 +43,7 @@ import {
 import type { AudioFormat, DBVoice, TTSProvider } from '../types/index.js';
 import { getCloneDeps, eligibilityForSynthesis } from '../lib/voiceCloning/runtime.js';
 import { CLONE_MODEL_ID, getUsableVoice, recordOutput } from '../lib/voiceCloning/service.js';
+import { signalTtsJobFailure } from '../lib/jobFailureSignal.js';
 
 // ============================================================================
 // TTS Job Worker (Pub/Sub-based) with Preview-First Support
@@ -1292,12 +1293,23 @@ async function processJob(message: TTSJobMessage): Promise<void> {
 
       workerLogger.info({ jobId, nextAttempt: attempt + 1 }, 'Job queued for retry');
     } else {
-      await updateTTSJobProgress({
-        jobId,
-        status: 'failed',
-        errorCode: 'SYNTHESIS_FAILED',
-        errorMessage: `Failed after ${attempt} attempts: ${errorMessage}`,
-      });
+      try {
+        await updateTTSJobProgress({
+          jobId,
+          status: 'failed',
+          errorCode: 'SYNTHESIS_FAILED',
+          errorMessage: `Failed after ${attempt} attempts: ${errorMessage}`,
+        });
+      } finally {
+        // Tell the owner (class name + provider/attempts/size bucket only; no content). Fire-and-forget.
+        signalTtsJobFailure({
+          kind: jobData.cloned_voice_id && jobData.cloning_model ? 'clone' : 'tts',
+          rawMessage: errorMessage,
+          modelId,
+          attempts: attempt,
+          charCount,
+        });
+      }
 
       workerLogger.error({ jobId, attempt }, 'Job failed permanently after max retries');
     }
@@ -1580,7 +1592,7 @@ async function checkForStuckJobs(): Promise<void> {
   // false-positive failures on 5/31 + 6/2.
   const { data: stuckProcessingJobs, error: processingError } = await supabase
     .from('tts_jobs')
-    .select('id, started_at, retry_count, status')
+    .select('id, started_at, retry_count, status, model_id, input_char_count, cloned_voice_id')
     .eq('status', 'processing')
     .lt('started_at', cutoffTime);
 
@@ -1603,12 +1615,22 @@ async function checkForStuckJobs(): Promise<void> {
     const retryCount = (job.retry_count || 0) + 1;
 
     if (retryCount >= workerConfig.maxRetries) {
-      await updateTTSJobProgress({
-        jobId: job.id,
-        status: 'failed',
-        errorCode: 'STUCK_JOB',
-        errorMessage: `Job stuck in ${job.stuckType} for over ${workerConfig.stuckJobTimeoutMs / 1000}s after ${retryCount} attempts`,
-      });
+      try {
+        await updateTTSJobProgress({
+          jobId: job.id,
+          status: 'failed',
+          errorCode: 'STUCK_JOB',
+          errorMessage: `Job stuck in ${job.stuckType} for over ${workerConfig.stuckJobTimeoutMs / 1000}s after ${retryCount} attempts`,
+        });
+      } finally {
+        signalTtsJobFailure({
+          kind: job.cloned_voice_id ? 'clone' : 'tts',
+          stuck: true,
+          modelId: job.model_id,
+          attempts: retryCount,
+          charCount: job.input_char_count,
+        });
+      }
       workerLogger.error({ jobId: job.id, retryCount, stuckType: job.stuckType }, 'Stuck job marked as failed');
     } else {
       // Re-verify the job is STILL stuck before republishing. There's a race

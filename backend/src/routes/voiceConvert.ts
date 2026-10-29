@@ -10,6 +10,7 @@ import { config } from '../lib/config.js';
 import { supabase } from '../lib/supabaseClient.js';
 import { hasUsageAllowance, freeCreditsExhaustedMessage, reportVoiceConvertUsage } from '../lib/realtimeTtsBilling.js';
 import { logger } from '../lib/logger.js';
+import { signalVoiceConversionFailure, signalVoiceConvertDeployFailure } from '../lib/jobFailureSignal.js';
 import { decideDeploy } from '../lib/perUserDeploy.js';
 
 const log = logger.child({ module: 'voiceConvert' });
@@ -296,6 +297,7 @@ export const voiceConvertRouter: Router = (() => {
         } catch (err: unknown) {
           const msg = err instanceof Error ? err.message : String(err);
           log.error({ userId, appName, err }, 'voice convert deployment failed');
+          signalVoiceConvertDeployFailure();
           await supabase.from('user_voice_convert_deployments')
             .update({ status: 'failed', updated_at: new Date().toISOString() })
             .eq('user_id', userId)
@@ -435,6 +437,8 @@ export const voiceConvertRouter: Router = (() => {
           .update({ status: st.status, completed_at: new Date().toISOString(), error: (st as any).stderr_tail || null })
           .eq('modal_job_id', req.params.id)
           .eq('user_id', userId);
+        // Tell the owner once, on the first transition to failed (a client re-polling a failed job must not re-signal).
+        if (st.status === 'failed' && prior?.status !== 'failed') signalVoiceConversionFailure();
         if (st.status === 'done' && prior?.status !== 'done') {
           // Billed per second of SOURCE audio (rounded up, with a minimum), see AUDIO_JOB_PRICING.
           const sourceSeconds = typeof st.source_seconds === 'number' ? st.source_seconds : (prior?.source_seconds as number | null | undefined);
