@@ -135,6 +135,12 @@ class AudioPlaybackService(private val context: Context) {
         }
 
         override fun onPlayerError(error: PlaybackException) {
+            // Owner signal: the Media3 error code NAME only (e.g. ERROR_CODE_IO_NETWORK_CONNECTION_FAILED), never the
+            // message (it can carry the audio URL). Network errors are the user's connection, not an app failure.
+            if (error.errorCode != PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED &&
+                error.errorCode != PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT) {
+                com.listenai.FailureReporter.failure(flow = "Playback", message = "Playback error ${error.errorCodeName}")
+            }
             _playbackState.value = _playbackState.value.copy(
                 status = AudioPlaybackStatus.ERROR,
                 errorMessage = error.message
