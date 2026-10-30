@@ -22,6 +22,7 @@
 // STT NOTE: transcribeSourceAudio()/authorizeStt() duplicate stt.ts's gateway-authorize logic locally rather
 // than importing it, to keep this file's dependency surface small. Worth consolidating as a follow-up.
 
+import { signalMediaJobFailed } from '../lib/failureSignals.js';
 import { Router, Request, Response, NextFunction, RequestHandler } from 'express';
 import { randomUUID } from 'crypto';
 import multer from 'multer';
@@ -460,6 +461,7 @@ async function runDubJob(
     job.error = error instanceof Error ? error.message : 'Unknown error';
     touchJob(job);
     dubLogger.error({ jobId: job.id, error }, 'Dubbing job failed');
+    signalMediaJobFailed('dub');
   }
 }
 

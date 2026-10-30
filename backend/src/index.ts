@@ -12,6 +12,9 @@ import { requireAuth } from './middleware/auth.js';
 import { requireAuthOrApiKey } from './middleware/apiKeyAuth.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 import { reportFailure, reportCrash } from './lib/failureReporter.js';
+import { serverErrorNet } from './lib/serverErrorNet.js';
+import { runJobMonitor } from './lib/jobMonitor.js';
+import { signalConfigMissing, missingProdEnv, signalLoopFailure } from './lib/failureSignals.js';
 import { standardRateLimit, ttsRateLimitByTier, previewRateLimit, burstRateLimit, jobPollingRateLimit, realtimeTtsAuthorizeRateLimit } from './middleware/rateLimit.js';
 
 import { ttsRouter } from './routes/tts.js';
@@ -99,6 +102,9 @@ app.use(cors({
 
 // Compression
 app.use(compression());
+
+// Reports any 5xx that a handler answered itself (the central errorHandler only sees next(err)).
+app.use(serverErrorNet());
 
 // Stripe webhook needs raw body for signature verification
 // Must be before express.json() middleware
@@ -391,6 +397,7 @@ const server = app.listen(PORT, () => {
   setInterval(() => {
     reportUsageToStripe().catch(err => {
       logger.warn({ err }, 'Periodic realtime-tts usage report failed (non-critical)');
+      signalLoopFailure('usage_report'); // metered billing silently stops if this keeps failing
     });
   }, FIVE_MINUTES_MS);
 
@@ -412,6 +419,16 @@ const server = app.listen(PORT, () => {
     const reap = () => { void reapStaleVoiceConversions().catch((err) => logger.warn({ err }, 'voice conversion reaper failed (non-critical)')); };
     setTimeout(reap, 2 * 60_000).unref();
     setInterval(reap, THIRTY_MINUTES_MS).unref();
+  }
+
+  // Startup config: names of env vars that are unset in production (one alert per boot; dedupe makes redeploys quiet).
+  if (process.env.NODE_ENV === 'production') signalConfigMissing(missingProdEnv());
+
+  // Dead-man / invariant monitor over every job table (jobs created vs jobs that finished). Never in tests.
+  if (process.env.NODE_ENV !== 'test' && process.env.JOB_MONITOR !== 'false') {
+    const monitor = () => { void runJobMonitor().catch((err) => logger.warn({ err }, 'job monitor failed (non-critical)')); };
+    setTimeout(monitor, 5 * 60_000).unref();
+    setInterval(monitor, THIRTY_MINUTES_MS).unref();
   }
 
   // Pull-based worker disabled — jobs are now delivered via Pub/Sub push

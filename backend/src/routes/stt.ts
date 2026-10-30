@@ -33,6 +33,7 @@
 // and optional keyterms are forwarded to the worker as repeated `keyterm` query params (worker contract:
 // research/W20/REPORT.md section "Upstream worker contract").
 
+import { signalMediaJobFailed, signalSttWorkerFailure } from '../lib/failureSignals.js';
 import { Router, Request, Response, NextFunction } from 'express';
 import multer from 'multer';
 import { randomUUID } from 'node:crypto';
@@ -782,6 +783,8 @@ export function createSttRouters(overrides: Partial<SttOptions> = {}): { sttRout
           }
           if (d.kind === 'abort' || !opts.improvedFallback || p.diarize || p.dictShortlist) { worker = 'improved'; throw err; }
           fallbackReason = d.reason;
+          // The improved worker (Modal) failed and we fell back to prod: invisible to the user, so tell the owner (one class per reason per hour).
+          signalSttWorkerFailure(d.reason);
           if (d.reason === 'unauthorized') log.error({ id, worker: 'improved', status: 401, surface: p.surface }, 'STT improved worker rejected our token (401): server misconfiguration, falling back to prod');
           else log.warn({ id, worker: 'improved', reason: d.reason, status: d.status, surface: p.surface }, 'STT improved worker failed, falling back to prod');
         }
@@ -812,6 +815,7 @@ export function createSttRouters(overrides: Partial<SttOptions> = {}): { sttRout
       const message = err instanceof Error ? err.message : String(err);
       await supabase.from('stt_transcriptions').update({ status: 'failed', error: message.slice(0, 500), completed_at: new Date().toISOString() }).eq('id', id);
       log.error({ err, userId: ctx.userId, id, worker }, 'STT transcription failed');
+      if (!ctx.abort.signal.aborted) signalMediaJobFailed('stt', { worker: String(worker) }); // a caller hang-up is not a fault
       return { ok: false, id, status: 502, code: 'upstream_failed', message: 'Transcription failed. Please try again.', worker };
     }
   }

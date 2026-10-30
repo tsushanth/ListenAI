@@ -1,6 +1,7 @@
 import { claimNextMusicJob, updateMusicJobStatus, uploadMusicAudio, DBMusicJob, supabase } from '../lib/supabaseClient.js';
 import { generateMusicAudioPath } from '../lib/cacheKey.js';
 import { logger } from '../lib/logger.js';
+import { signalMediaJobFailed, signalStuckJobsReaped, signalProviderFailureFromStatus } from '../lib/failureSignals.js';
 import { reportMusicGenerationUsage } from '../lib/realtimeTtsBilling.js';
 
 const workerLogger = logger.child({ module: 'music-worker' });
@@ -65,6 +66,10 @@ export async function processOneJob(deps: MusicWorkerDeps = defaultDeps): Promis
     const message = err instanceof Error ? err.message : String(err);
     workerLogger.error({ jobId: job.id, error: message }, 'Music job failed');
     await deps.updateStatus(job.id, 'failed', { errorCode: 'GENERATION_FAILED', errorMessage: message });
+    // Owner signal: stable class only (the raw message can echo the prompt). A 401/402/5xx from the Modal worker is provider-wide.
+    signalMediaJobFailed('music');
+    const upstream = /returned (\d{3})/.exec(message);
+    signalProviderFailureFromStatus('modal_music_worker', upstream ? Number(upstream[1]) : undefined, /ETIMEDOUT|ECONNREFUSED|ECONNRESET|ENOTFOUND/.exec(message)?.[0]);
   }
 
   return true;
@@ -90,15 +95,17 @@ export async function checkForStuckMusicJobs(): Promise<void> {
     return;
   }
 
+  let reaped = 0;
   for (const job of stuckJobs || []) {
     workerLogger.warn({ jobId: job.id }, 'Reaping stuck music job');
     await updateMusicJobStatus(job.id, 'failed', {
       errorCode: 'STUCK_JOB',
       errorMessage: `Job stuck in processing for over ${STUCK_JOB_TIMEOUT_MS / 1000}s`,
-    }).catch((err) => {
+    }).then(() => { reaped++; }).catch((err) => {
       workerLogger.error({ err, jobId: job.id }, 'Failed to mark stuck music job as failed');
     });
   }
+  signalStuckJobsReaped('music', reaped);
 }
 
 let pollInterval: NodeJS.Timeout | null = null;
