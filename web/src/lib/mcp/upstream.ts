@@ -1,6 +1,7 @@
 import WebSocket from 'ws'
 import { MAX_AUDIO_SECONDS, REQUEST_TIMEOUT_MS } from './schemas.ts'
 import { BYTES_PER_SAMPLE, SAMPLE_RATE } from './wav.ts'
+import { buildSynthesizeMessage, type NormalizeMode } from '../piperNormalize.ts'
 
 export const GATEWAY = process.env.TTS_GATEWAY_URL || 'https://api.readaloudai.org'
 
@@ -42,7 +43,8 @@ export async function authorize(key: string, engine: string): Promise<{ token: s
 export interface SynthResult { pcm: Buffer; ttfaMs: number; totalMs: number; truncated: boolean }
 
 /** One synthesize request over the WebSocket, collecting PCM until done, the audio cap, or the timeout. */
-export function synthesize(opts: { url: string; token: string; text: string; voice: string; speed: number }): Promise<SynthResult> {
+/** `normalize` is only for Piper ("live") connections; leave it undefined for Studio. */
+export function synthesize(opts: { url: string; token: string; text: string; voice: string; speed: number; normalize?: NormalizeMode }): Promise<SynthResult> {
   const maxBytes = MAX_AUDIO_SECONDS * SAMPLE_RATE * BYTES_PER_SAMPLE
   return new Promise((resolve, reject) => {
     const ws = new WebSocket(`${opts.url}?token=${encodeURIComponent(opts.token)}`, { handshakeTimeout: REQUEST_TIMEOUT_MS })
@@ -67,7 +69,7 @@ export function synthesize(opts: { url: string; token: string; text: string; voi
 
     ws.on('open', () => {
       sentAt = Date.now()
-      ws.send(JSON.stringify({ type: 'synthesize', text: opts.text, voice: opts.voice, speed: opts.speed }))
+      ws.send(buildSynthesizeMessage(opts))
     })
     ws.on('message', (data, isBinary) => {
       if (isBinary) {
