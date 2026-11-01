@@ -39,7 +39,8 @@ const plans = [
       'No ads',
     ],
     cta: 'Start Free Trial',
-    href: '/api/checkout?plan=pro_weekly',
+    href: '/app',
+    checkoutPlan: 'pro_weekly',
     highlighted: true,
   },
   {
@@ -57,10 +58,18 @@ const plans = [
       'Save 90% vs weekly',
     ],
     cta: 'Start Free Trial',
-    href: '/api/checkout?plan=pro_yearly',
+    href: '/app',
+    checkoutPlan: 'pro_yearly',
     highlighted: false,
   },
 ]
+
+const buttonClass = (highlighted: boolean) =>
+  `block w-full py-3 px-4 rounded-xl font-semibold text-center transition-colors ${
+    highlighted
+      ? 'bg-primary text-dark hover:bg-primary-dark'
+      : 'bg-dark-tertiary text-white hover:bg-dark-tertiary/80'
+  }`
 
 export default function Pricing() {
   return (
@@ -129,16 +138,20 @@ export default function Pricing() {
                 ))}
               </ul>
 
-              <Link
-                href={plan.href}
-                className={`block w-full py-3 px-4 rounded-xl font-semibold text-center transition-colors ${
-                  plan.highlighted
-                    ? 'bg-primary text-dark hover:bg-primary-dark'
-                    : 'bg-dark-tertiary text-white hover:bg-dark-tertiary/80'
-                }`}
-              >
-                {plan.cta}
-              </Link>
+              {plan.checkoutPlan ? (
+                // A form POST, not a link: Next.js prefetches <Link>s and crawlers follow hrefs, and the old
+                // GET link created a Stripe Checkout Session each time. Only pressing the button creates one.
+                <form method="POST" action="/api/checkout">
+                  <input type="hidden" name="plan" value={plan.checkoutPlan} />
+                  <button type="submit" className={buttonClass(plan.highlighted)}>
+                    {plan.cta}
+                  </button>
+                </form>
+              ) : (
+                <Link href={plan.href} className={buttonClass(plan.highlighted)}>
+                  {plan.cta}
+                </Link>
+              )}
             </motion.div>
           ))}
         </div>
