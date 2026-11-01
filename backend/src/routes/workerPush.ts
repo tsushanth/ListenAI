@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { logger } from '../lib/logger.js';
 import { processJobById } from '../workers/ttsJobWorker.js';
+import { secretMatches } from '../lib/sharedSecret.js';
 
 // ============================================================================
 // Pub/Sub Push Endpoint
@@ -29,13 +30,11 @@ import { processJobById } from '../workers/ttsJobWorker.js';
 
 const pushLogger = logger.child({ module: 'worker-push' });
 
-const PUSH_SECRET = process.env.PUBSUB_PUSH_SECRET;
-
 export const workerPushRouter = Router();
 
 workerPushRouter.post('/worker/push', async (req: Request, res: Response): Promise<void> => {
-  // Verify shared secret
-  if (!PUSH_SECRET || req.query.token !== PUSH_SECRET) {
+  // Verify shared secret (read per request, constant-time, fail closed when unset)
+  if (!secretMatches(req.query.token, process.env.PUBSUB_PUSH_SECRET)) {
     pushLogger.warn({ ip: req.ip }, 'Unauthorized push request');
     res.status(401).json({ error: 'Unauthorized' });
     return;

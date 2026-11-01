@@ -1,6 +1,7 @@
 import { Router, Request, Response, NextFunction, RequestHandler } from 'express';
 import { z } from 'zod';
 import { logger } from '../lib/logger.js';
+import { secretMatches } from '../lib/sharedSecret.js';
 import {
   recordLatencyMetric,
   getLatencyEstimate,
@@ -95,9 +96,8 @@ latencyRouter.get('/cache', asyncHandler(async (_req: AuthenticatedRequest, res:
 // ============================================================================
 
 latencyRouter.post('/aggregate', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-  // Simple admin check - in production you'd want proper admin auth
-  const adminKey = req.headers['x-admin-key'];
-  if (adminKey !== process.env.ADMIN_API_KEY && process.env.NODE_ENV === 'production') {
+  // Fails closed in every environment: an unset ADMIN_API_KEY must not match a missing header.
+  if (!secretMatches(req.headers['x-admin-key'], process.env.ADMIN_API_KEY)) {
     res.status(403).json({ error: 'Admin access required' });
     return;
   }

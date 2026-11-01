@@ -2,6 +2,7 @@ import { Router, Request, Response, NextFunction, RequestHandler } from 'express
 import { createWriteStream, existsSync, statSync, unlinkSync } from 'fs';
 import crypto from 'crypto';
 import { logger } from '../lib/logger.js';
+import { secretMatches } from '../lib/sharedSecret.js';
 import { requireAuth } from '../middleware/auth.js';
 import { supabase } from '../lib/supabaseClient.js';
 import { processJobById } from '../workers/ttsJobWorker.js';
@@ -41,16 +42,16 @@ const adminLogger = logger.child({ module: 'admin' });
 // ============================================================================
 
 // Simple API key check for admin endpoints
-const ADMIN_API_KEY = process.env.ADMIN_API_KEY || 'listenai-admin-key-change-me';
+// No built-in default: the old default string was public in this repo. Unset (or still the old default) disables the router.
+const LEGACY_DEFAULT_ADMIN_KEY = 'listenai-admin-key-change-me';
 
 function requireAdminAuth(
   req: Request,
   res: Response,
   next: NextFunction
 ): void {
-  const apiKey = req.headers['x-admin-key'] as string;
-
-  if (!apiKey || apiKey !== ADMIN_API_KEY) {
+  const expected = process.env.ADMIN_API_KEY;
+  if (expected === LEGACY_DEFAULT_ADMIN_KEY || !secretMatches(req.headers['x-admin-key'], expected)) {
     adminLogger.warn({ ip: req.ip }, 'Unauthorized admin access attempt');
     res.status(401).json({ error: 'Unauthorized' });
     return;

@@ -24,11 +24,19 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
   apiVersion: '2023-10-16',
 });
 
-const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET || '';
-
 // Stripe webhook handler
 // Note: This route needs raw body, not JSON parsed
 router.post('/stripe', async (req: Request, res: Response): Promise<void> => {
+  // Read per request and fail closed: with no secret configured nothing can be verified, so refuse
+  // everything (Stripe retries) instead of verifying against an empty key.
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+  if (!webhookSecret) {
+    logger.error('STRIPE_WEBHOOK_SECRET is not set: refusing webhook');
+    signalWebhookFailure('SECRET_MISSING');
+    res.status(503).json({ error: 'Webhook not configured' });
+    return;
+  }
+
   const signature = req.headers['stripe-signature'] as string;
 
   if (!signature) {
