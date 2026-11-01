@@ -12,6 +12,7 @@
 // price_1UCU4gKFBTQTkmztYE2RuWia. (Was price_1UB47lKFBTQTkmztJ3XSMiev at $0.05/1k —
 // deactivated 2026-09-05, had zero real subscribers, safe to retire outright.)
 import Stripe from 'stripe';
+import { createHash } from 'node:crypto';
 import { supabase } from './supabaseClient.js';
 import { logger } from './logger.js';
 import { config } from './config.js';
@@ -285,22 +286,54 @@ export function buildCheckoutLineItems(): Stripe.Checkout.SessionCreateParams.Li
   return lineItems;
 }
 
+/**
+ * A Stripe customer this user already has and that still exists (not deleted), or null.
+ * Checkout in subscription mode makes a brand-new customer on every completed session unless one is passed,
+ * so a user who cancels and subscribes again would otherwise get a second customer record.
+ */
+export async function findReusableCustomerId(
+  userId: string,
+  getBilling: (userId: string) => Promise<RealtimeTtsBillingRow | null> = getBillingForUser,
+): Promise<string | null> {
+  const billing = await getBilling(userId);
+  const customerId = billing?.stripe_customer_id;
+  if (!customerId) return null;
+  try {
+    const customer = await stripe.customers.retrieve(customerId);
+    return customer.deleted ? null : customer.id;
+  } catch (err) {
+    // Missing / unreachable: fall back to customer_email (today's behaviour) rather than blocking checkout.
+    billingLogger.warn({ err, userId }, 'Stored Stripe customer could not be retrieved; checkout will create a new one');
+    return null;
+  }
+}
+
+// Repeat calls with identical parameters inside this window return the same Stripe session (idempotency key)
+// instead of minting another one; a changed email/URL hashes to a different key.
+const CHECKOUT_IDEMPOTENCY_WINDOW_MS = 5 * 60 * 1000;
+
 export async function createCheckoutSession(params: {
   userId: string;
   email: string;
   successUrl: string;
   cancelUrl: string;
 }): Promise<string> {
-  const session = await stripe.checkout.sessions.create({
+  const metadata = { ...REALTIME_TTS_CHECKOUT_METADATA, userId: params.userId };
+  const customerId = await findReusableCustomerId(params.userId);
+  const sessionParams: Stripe.Checkout.SessionCreateParams = {
     mode: 'subscription',
-    customer_email: params.email,
+    // Stripe rejects customer and customer_email together; an existing customer already carries the email.
+    ...(customerId ? { customer: customerId } : { customer_email: params.email }),
     line_items: buildCheckoutLineItems(),
     success_url: params.successUrl,
     cancel_url: params.cancelUrl,
-    metadata: { ...REALTIME_TTS_CHECKOUT_METADATA, userId: params.userId },
-    subscription_data: {
-      metadata: { ...REALTIME_TTS_CHECKOUT_METADATA, userId: params.userId },
-    },
+    metadata,
+    subscription_data: { metadata },
+  };
+  const fingerprint = createHash('sha256').update(JSON.stringify(sessionParams)).digest('hex').slice(0, 24);
+  const bucket = Math.floor(Date.now() / CHECKOUT_IDEMPOTENCY_WINDOW_MS);
+  const session = await stripe.checkout.sessions.create(sessionParams, {
+    idempotencyKey: `rtts-checkout:${params.userId}:${bucket}:${fingerprint}`,
   });
   if (!session.url) throw new Error('Stripe did not return a checkout URL');
   return session.url;

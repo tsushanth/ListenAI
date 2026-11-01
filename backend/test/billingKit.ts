@@ -123,6 +123,7 @@ export async function installKit(): Promise<Kit> {
     spy(probe.subscriptions, 'retrieve', 'subscriptions.retrieve', {}),
     spy(probe.customers, 'retrieve', 'customers.retrieve', { id: 'cus_1', invoice_settings: {} }),
     spy(probe.paymentMethods, 'list', 'paymentMethods.list', { data: [] }),
+    spy(probe.checkout.sessions, 'create', 'checkout.sessions.create', { id: 'cs_1', url: 'https://checkout.stripe.test/cs_1' }),
   ];
 
   const originalFetch = globalThis.fetch;
