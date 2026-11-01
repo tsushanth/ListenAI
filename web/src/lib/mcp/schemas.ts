@@ -21,6 +21,8 @@ export const textToSpeechInput = {
     .describe('Voice name. Live: "default". Studio: e.g. "af_heart" (default), "am_adam", "bf_emma". Custom trained voices: "custom:<id>". Call list_voices for the full list.'),
   speed: z.number().min(0.5).max(2).default(1)
     .describe('Speaking rate multiplier, 0.5 (slow) to 2.0 (fast). Default 1.0.'),
+  normalize: z.enum(['auto', 'basic', 'off']).optional()
+    .describe('Live engine only. Reads times, abbreviations, numbers and phone numbers aloud naturally ("9 AM", "Dr.", "ext. 12"). Default: "auto" for English voices. Use "off" to speak the text exactly as written.'),
 }
 export const textToSpeechSchema = z.object(textToSpeechInput)
 

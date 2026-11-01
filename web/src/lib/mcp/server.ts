@@ -9,6 +9,7 @@ import {
   soundEffectInput, soundEffectSchema, SOUND_EFFECT_MAX_DURATION_SEC,
   SOUND_EFFECT_POLL_TIMEOUT_MS, SOUND_EFFECT_POLL_INTERVAL_MS,
 } from './schemas.ts'
+import { piperNormalizeFields } from '../piperNormalize.ts'
 import { KOKORO_VOICES, PIPER_VOICES, resolveVoice, upstreamEngine } from './voices.ts'
 import {
   UpstreamError, authorize, authorizeStt, fetchPiperHealth, synthesize, transcribe, type ErrorCode,
@@ -75,7 +76,9 @@ export function createMcpServer(ctx: RequestContext): McpServer {
     if ('error' in v) return toolError('invalid_voice', v.error, false)
     try {
       const { token, url } = await authorize(ctx.apiKey, upstreamEngine(parsed.engine))
-      const r = await synthesize({ url, token, text: parsed.text, voice: v.voice, speed: parsed.speed })
+      // Text normalization is a Piper ("live") worker feature; the Studio worker does not take the field.
+      const normalize = parsed.engine === 'live' ? piperNormalizeFields(v.voice, parsed.normalize).normalize : undefined
+      const r = await synthesize({ url, token, text: parsed.text, voice: v.voice, speed: parsed.speed, normalize })
       const seconds = pcmDurationSeconds(r.pcm.length)
       return {
         content: [

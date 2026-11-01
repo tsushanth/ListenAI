@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Play, Square } from 'lucide-react'
+import { buildSynthesizeMessage, piperNormalizeFields } from '@/lib/piperNormalize'
 
 const PRESETS = [
   'Thanks for calling, I can help you with that. Let me pull up your account details right now.',
@@ -144,7 +145,7 @@ export default function LiveDemo() {
     ws.onopen = () => {
       setPhase('waiting')
       t0Ref.current = performance.now()
-      ws.send(JSON.stringify({ type: 'synthesize', text: clean, voice, speed: 1.0 }))
+      ws.send(buildSynthesizeMessage({ text: clean, voice, speed: 1.0, ...piperNormalizeFields(voice) }))
       rafRef.current = requestAnimationFrame(loop)
     }
     ws.onmessage = (e) => {
@@ -156,7 +157,7 @@ export default function LiveDemo() {
         }
         if (m.type === 'error' && voice !== 'default' && !gotFirstRef.current && /unknown voice/i.test(m.message)) {
           voice = 'default'
-          ws.send(JSON.stringify({ type: 'synthesize', text: clean, voice, speed: 1.0 }))
+          ws.send(buildSynthesizeMessage({ text: clean, voice, speed: 1.0, ...piperNormalizeFields(voice) }))
           return
         }
         if (m.type === 'error') {

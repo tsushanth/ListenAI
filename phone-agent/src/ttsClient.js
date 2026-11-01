@@ -6,6 +6,25 @@ import { WebSocket } from 'ws';
 import { EventEmitter } from 'node:events';
 
 /**
+ * True when `voice` speaks English on the worker: none, "default" or any non-`custom:` name (the worker maps those to
+ * its English default voice), or a `custom:en-*` house voice. Other custom voices are not normalized (the worker's
+ * normalizer only has English and Spanish rules and picks them from language_code, not from the voice).
+ */
+export function isEnglishVoice(voice) {
+  const v = String(voice ?? '').trim().toLowerCase();
+  return !v.startsWith('custom:') || v.startsWith('custom:en-');
+}
+
+/**
+ * JSON text of a `synthesize` message. Asks the worker for text normalization ("9 AM", "Dr.", phone numbers) on
+ * English voices; an explicit `normalize` from the caller (including "off") always wins.
+ */
+export function buildSynthesizeMessage(text, { voice, speed = 1.0, normalize } = {}) {
+  const mode = normalize || (isEnglishVoice(voice) ? 'auto' : undefined);
+  return JSON.stringify({ type: 'synthesize', text, voice, speed, ...(mode ? { normalize: mode } : {}) });
+}
+
+/**
  * events: 'open', 'chunk_meta' (metadata only), 'audio' (Buffer, PCM16LE
  * 24kHz mono — immediately follows chunk_meta per protocol), 'done',
  * 'cancelled', 'error', 'close'
@@ -55,9 +74,9 @@ export class PiperTtsClient extends EventEmitter {
   }
 
   /** Ask for one utterance of speech. Server streams chunk_meta+audio per sentence, then 'done'. */
-  synthesize(text, { voice, speed = 1.0 } = {}) {
+  synthesize(text, { voice, speed = 1.0, normalize } = {}) {
     if (this.ws?.readyState === WebSocket.OPEN) {
-      this.ws.send(JSON.stringify({ type: 'synthesize', text, voice, speed }));
+      this.ws.send(buildSynthesizeMessage(text, { voice, speed, normalize }));
     }
   }
 
