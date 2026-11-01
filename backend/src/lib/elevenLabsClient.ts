@@ -1,4 +1,5 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
+import { signalProviderFailure, signalProviderFailureFromStatus } from './failureSignals.js';
 import * as http from 'http';
 import * as https from 'https';
 import { Readable, Writable } from 'stream';
@@ -640,6 +641,9 @@ export class ElevenLabsClient implements TTSProviderInterface {
 
       const status = axiosError.response?.status;
       const detail = axiosError.response?.data?.detail;
+      // Provider-wide problem (key rejected, credit/quota exhausted, outage): one clear alert per class, not one per job.
+      signalProviderFailureFromStatus('elevenlabs', status === 422 ? undefined : status, axiosError.code);
+      if (status === 400 && /quota_exceeded|insufficient/i.test(JSON.stringify(axiosError.response?.data ?? {}).slice(0, 500))) signalProviderFailure('elevenlabs', 'CREDIT_EXHAUSTED');
 
       // Handle specific ElevenLabs errors
       if (status === 401) {

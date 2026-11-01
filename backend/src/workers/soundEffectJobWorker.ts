@@ -6,6 +6,7 @@
 import { claimNextSoundEffectJob, updateSoundEffectJobStatus, uploadSoundEffectAudio, DBSoundEffectJob, supabase } from '../lib/supabaseClient.js';
 import { generateSoundEffectAudioPath } from '../lib/cacheKey.js';
 import { logger } from '../lib/logger.js';
+import { signalMediaJobFailed, signalStuckJobsReaped, signalProviderFailureFromStatus } from '../lib/failureSignals.js';
 import { reportSoundEffectGenerationUsage } from '../lib/realtimeTtsBilling.js';
 
 const workerLogger = logger.child({ module: 'sound-effect-worker' });
@@ -71,6 +72,10 @@ export async function processOneJob(deps: SoundEffectWorkerDeps = defaultDeps): 
     const message = err instanceof Error ? err.message : String(err);
     workerLogger.error({ jobId: job.id, error: message }, 'Sound effect job failed');
     await deps.updateStatus(job.id, 'failed', { errorCode: 'GENERATION_FAILED', errorMessage: message });
+    // Owner signal: stable class only (the raw message can echo the prompt). A 401/402/5xx from the Modal worker is provider-wide.
+    signalMediaJobFailed('sound_effect');
+    const upstream = /returned (\d{3})/.exec(message);
+    signalProviderFailureFromStatus('modal_sound_effect_worker', upstream ? Number(upstream[1]) : undefined, /ETIMEDOUT|ECONNREFUSED|ECONNRESET|ENOTFOUND/.exec(message)?.[0]);
   }
 
   return true;
@@ -96,15 +101,17 @@ export async function checkForStuckSoundEffectJobs(): Promise<void> {
     return;
   }
 
+  let reaped = 0;
   for (const job of stuckJobs || []) {
     workerLogger.warn({ jobId: job.id }, 'Reaping stuck sound effect job');
     await updateSoundEffectJobStatus(job.id, 'failed', {
       errorCode: 'STUCK_JOB',
       errorMessage: `Job stuck in processing for over ${STUCK_JOB_TIMEOUT_MS / 1000}s`,
-    }).catch((err) => {
+    }).then(() => { reaped++; }).catch((err) => {
       workerLogger.error({ err, jobId: job.id }, 'Failed to mark stuck sound effect job as failed');
     });
   }
+  signalStuckJobsReaped('sound_effect', reaped);
 }
 
 let pollInterval: NodeJS.Timeout | null = null;

@@ -76,7 +76,9 @@ export const errorHandler: ErrorRequestHandler = (
   };
 
   if (statusCode >= 500) {
-    reportBackendError(req, err, statusCode);
+    res.locals.failureReported = true; // tells serverErrorNet this 5xx is already reported
+    // Route template, not the concrete path: ids in the path would defeat the per-fingerprint dedupe.
+    reportBackendError({ method: req.method, path: (req.baseUrl ?? '') + (typeof req.route?.path === 'string' ? req.route.path : '') || 'unmatched' }, err, statusCode);
     logger.error({ ...logData, stack: err.stack }, 'Server error');
   } else if (statusCode >= 400) {
     logger.warn(logData, 'Client error');

@@ -1,6 +1,7 @@
 // Client for realtime-tts-gateway's admin API (separate Fly app/repo,
 // github.com/tsushanth/realtime-tts). Used only by ttsApiKeys.ts to issue/revoke
 // keys on behalf of a signed-in ReadAloud user — never called from client code.
+import { signalProviderFailureFromStatus } from './failureSignals.js';
 import { config } from './config.js';
 import { logger } from './logger.js';
 
@@ -30,6 +31,7 @@ export async function issueGatewayKey(label: string, owner?: string, freeChars?:
   if (!res.ok) {
     const body = await res.text().catch(() => '');
     gatewayLogger.error({ status: res.status, body }, 'Failed to issue gateway key');
+    signalProviderFailureFromStatus('tts_gateway', res.status);
     throw new Error(`gateway key issuance failed: ${res.status}`);
   }
   return res.json();
@@ -47,6 +49,7 @@ export async function setGatewayKeyBilling(id: string, enabled: boolean): Promis
   if (!res.ok) {
     const body = await res.text().catch(() => '');
     gatewayLogger.error({ status: res.status, body, id }, 'Failed to set gateway key billing status');
+    signalProviderFailureFromStatus('tts_gateway', res.status);
     return false;
   }
   return true;
@@ -97,6 +100,7 @@ export async function drainGatewayUsage(): Promise<GatewayUsageEntry[] | Gateway
   if (!res.ok) {
     const body = await res.text().catch(() => '');
     gatewayLogger.error({ status: res.status, body }, 'Failed to drain gateway usage');
+    signalProviderFailureFromStatus('tts_gateway', res.status);
     return [];
   }
   return res.json();
@@ -115,6 +119,7 @@ export async function revokeGatewayKey(id: string): Promise<boolean> {
   if (!res.ok) {
     const body = await res.text().catch(() => '');
     gatewayLogger.error({ status: res.status, body, id }, 'Failed to revoke gateway key');
+    signalProviderFailureFromStatus('tts_gateway', res.status);
     throw new Error(`gateway key revocation failed: ${res.status}`);
   }
   return true;

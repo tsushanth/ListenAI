@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import { signalWebhookFailure } from '../lib/failureSignals.js';
 import Stripe from 'stripe';
 import { logger } from '../lib/logger.js';
 import { supabase } from '../lib/supabaseClient.js';
@@ -43,6 +44,7 @@ router.post('/stripe', async (req: Request, res: Response): Promise<void> => {
     event = stripe.webhooks.constructEvent(req.body, signature, webhookSecret);
   } catch (err) {
     logger.error({ err }, 'Webhook signature verification failed');
+    signalWebhookFailure('SIGNATURE_INVALID');
     res.status(400).json({ error: 'Invalid signature' });
     return;
   }
@@ -104,6 +106,7 @@ router.post('/stripe', async (req: Request, res: Response): Promise<void> => {
   } catch (error) {
     logger.error({ error, eventType: event.type }, 'Webhook handler error');
     void safeEvent(recordEvent, { kind: 'webhook_failed', detail: `${event.type}: ${error instanceof Error ? error.message : String(error)}` });
+    signalWebhookFailure('HANDLER_FAILED', { event: String(event.type).slice(0, 60) });
     res.status(500).json({ error: 'Webhook handler failed' });
   }
 });

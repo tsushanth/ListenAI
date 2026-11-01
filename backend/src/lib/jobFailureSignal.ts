@@ -16,6 +16,8 @@ export type JobFailureClass =
   | 'TTS_TIMEOUT'
   | 'TTS_SERVICE_404'
   | 'TTS_RATE_LIMITED'
+  | 'TTS_AUTH_REJECTED'
+  | 'TTS_CREDIT_EXHAUSTED'
   | 'CLONE_INPUT_INVALID'
   | 'STUCK_JOB'
   | 'VOICE_CONVERSION_FAILED'
@@ -39,6 +41,9 @@ export function classifyFailure(rawMessage: string | undefined | null, opts: { s
     return 'CLONE_INPUT_INVALID';
   }
   if (/timed out|timeout|etimedout|econnaborted|aborted due to/.test(m)) return 'TTS_TIMEOUT';
+  // Provider-wide problems first: one clear class instead of a per-job UNKNOWN.
+  if (/\b402\b|payment required|insufficient (credit|balance|funds)|quota[_ ]exceeded|credits? (exhausted|depleted)|out of credits?/.test(m)) return 'TTS_CREDIT_EXHAUSTED';
+  if (/\b401\b|\b403\b|unauthori[sz]ed|invalid api key|forbidden/.test(m)) return 'TTS_AUTH_REJECTED';
   if (/\b429\b|rate limit|too many requests/.test(m)) return 'TTS_RATE_LIMITED';
   if (/\b404\b/.test(m)) return 'TTS_SERVICE_404';
   // The clone service answers 400/422 for audio it cannot read.
@@ -67,7 +72,7 @@ export function providerLabel(modelId: unknown, kind: JobKind): string {
 }
 
 /** An Error whose message is exactly the class and whose stack is empty (stable fingerprint). */
-function classError(cls: string): Error {
+export function classError(cls: string): Error {
   const e = new Error(cls);
   e.stack = '';
   return e;

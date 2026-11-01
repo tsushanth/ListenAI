@@ -2,6 +2,7 @@
 // The backend deploys a Modal Demucs app on behalf of each user (with their own GPU container)
 // and tears it down when requested.  This keeps audio off our servers and gives users cost control.
 // Mirrors voiceConvert.ts's pattern exactly - see that file for the fuller rationale comments.
+import { signalMediaJobFailed } from '../lib/failureSignals.js';
 import express, { Router, Request, Response, NextFunction } from 'express';
 import rateLimit from 'express-rate-limit';
 import multer from 'multer';
@@ -295,6 +296,7 @@ export const voiceIsolateRouter: Router = (() => {
         } catch (err: unknown) {
           const msg = err instanceof Error ? err.message : String(err);
           log.error({ userId, appName, err }, 'voice isolate deployment failed');
+          signalMediaJobFailed('voice_isolate', { stage: 'deploy' });
           await supabase.from('user_voice_isolate_deployments')
             .update({ status: 'failed', updated_at: new Date().toISOString() })
             .eq('user_id', userId)
