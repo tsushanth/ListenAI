@@ -1,47 +1,67 @@
+import { randomUUID } from 'node:crypto'
 import { NextRequest, NextResponse } from 'next/server'
 import { stripe, STRIPE_PRICES } from '@/lib/stripe'
+import {
+  getOrCreateCheckoutSession,
+  isUserInitiatedNavigation,
+  parsePlan,
+  type CheckoutPlan,
+  type CheckoutStripeLike,
+} from '@/lib/checkoutSession'
 
-export async function GET(request: NextRequest) {
-  const searchParams = request.nextUrl.searchParams
-  const plan = searchParams.get('plan')
+const VISITOR_COOKIE = 'ra_vid'
+const sessionCookie = (plan: CheckoutPlan) => `ra_co_${plan}`
+const COOKIE_MAX_AGE = 60 * 60 * 24
 
-  if (!plan || !['pro_weekly', 'pro_yearly'].includes(plan)) {
-    return NextResponse.json({ error: 'Invalid plan' }, { status: 400 })
+function appUrl(): string {
+  return (process.env.NEXT_PUBLIC_APP_URL || 'https://readaloudai.org').replace(/\/$/, '')
+}
+
+function backToPricing(): NextResponse {
+  return NextResponse.redirect(`${appUrl()}/reader#pricing`, { status: 303 })
+}
+
+async function startCheckout(request: NextRequest, plan: CheckoutPlan): Promise<NextResponse> {
+  const priceId = STRIPE_PRICES[plan]
+  if (!priceId) {
+    return NextResponse.json({ error: 'Price not configured' }, { status: 500 })
   }
 
+  const visitorId = request.cookies.get(VISITOR_COOKIE)?.value || randomUUID()
   try {
-    const priceId = STRIPE_PRICES[plan as keyof typeof STRIPE_PRICES]
-
-    if (!priceId) {
-      return NextResponse.json({ error: 'Price not configured' }, { status: 500 })
-    }
-
-    const isSubscription = true // All plans are subscriptions now
-
-    const session = await stripe.checkout.sessions.create({
-      mode: isSubscription ? 'subscription' : 'payment',
-      payment_method_types: ['card'],
-      line_items: [
-        {
-          price: priceId,
-          quantity: 1,
-        },
-      ],
-      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/#pricing`,
-      allow_promotion_codes: true,
-      billing_address_collection: 'auto',
-      ...(isSubscription && {
-        subscription_data: {
-          trial_period_days: 7,
-        },
-      }),
+    const result = await getOrCreateCheckoutSession({
+      stripe: stripe as unknown as CheckoutStripeLike,
+      plan,
+      priceId,
+      appUrl: appUrl(),
+      visitorId,
+      existingSessionId: request.cookies.get(sessionCookie(plan))?.value ?? null,
     })
-
-    // Redirect to Stripe Checkout
-    return NextResponse.redirect(session.url!, { status: 303 })
+    const res = NextResponse.redirect(result.url, { status: 303 })
+    const cookie = { httpOnly: true, secure: true, sameSite: 'lax' as const, maxAge: COOKIE_MAX_AGE, path: '/' }
+    res.cookies.set(VISITOR_COOKIE, visitorId, cookie)
+    res.cookies.set(sessionCookie(plan), result.sessionId, cookie)
+    return res
   } catch (error) {
     console.error('Stripe checkout error:', error)
     return NextResponse.json({ error: 'Failed to create checkout session' }, { status: 500 })
   }
+}
+
+// The pricing page submits a form here, so a Checkout Session exists only because a person pressed a plan button.
+export async function POST(request: NextRequest) {
+  const form = await request.formData().catch(() => null)
+  const plan = parsePlan(form?.get('plan'))
+  if (!plan) return NextResponse.json({ error: 'Invalid plan' }, { status: 400 })
+  return startCheckout(request, plan)
+}
+
+// Legacy /api/checkout?plan=... links (old cached pages, bookmarks, outside links). GET must not have side
+// effects: prefetchers and crawlers hit it. Only a real user-initiated browser navigation starts checkout;
+// everything else is sent to the consumer pricing section (/reader), whose buttons POST.
+export async function GET(request: NextRequest) {
+  const plan = parsePlan(request.nextUrl.searchParams.get('plan'))
+  if (!plan) return NextResponse.json({ error: 'Invalid plan' }, { status: 400 })
+  if (!isUserInitiatedNavigation(request.headers)) return backToPricing()
+  return startCheckout(request, plan)
 }
