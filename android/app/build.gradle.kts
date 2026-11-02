@@ -1,5 +1,3 @@
-import java.util.Properties
-
 plugins {
     id("com.android.application")
     // android.builtInKotlin=false in gradle.properties opts out of AGP 9's
@@ -9,13 +7,6 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
     id("com.google.devtools.ksp")
     id("com.google.gms.google-services")
-}
-
-// Load keystore properties from local file (not committed to git)
-val keystorePropertiesFile = rootProject.file("keystore.properties")
-val keystoreProperties = Properties()
-if (keystorePropertiesFile.exists()) {
-    keystoreProperties.load(keystorePropertiesFile.inputStream())
 }
 
 android {
@@ -98,11 +89,16 @@ android {
 
     signingConfigs {
         create("release") {
-            if (keystorePropertiesFile.exists()) {
-                storeFile = file(keystoreProperties["storeFile"] as String)
-                storePassword = keystoreProperties["storePassword"] as String
-                keyAlias = keystoreProperties["keyAlias"] as String
-                keyPassword = keystoreProperties["keyPassword"] as String
+            // Credentials live outside the repo, in ~/.gradle/gradle.properties:
+            // ANDROID_UPLOAD_STORE_FILE, ANDROID_UPLOAD_STORE_PASSWORD, ANDROID_UPLOAD_KEY_ALIAS, ANDROID_UPLOAD_KEY_PASSWORD
+            val uploadStore = providers.gradleProperty("ANDROID_UPLOAD_STORE_FILE").orNull
+            if (uploadStore != null) {
+                storeFile = file(uploadStore)
+                storePassword = providers.gradleProperty("ANDROID_UPLOAD_STORE_PASSWORD").get()
+                keyAlias = providers.gradleProperty("ANDROID_UPLOAD_KEY_ALIAS").get()
+                keyPassword = providers.gradleProperty("ANDROID_UPLOAD_KEY_PASSWORD").get()
+            } else if (gradle.startParameter.taskNames.any { it.contains("Release", ignoreCase = true) }) {
+                throw GradleException("Release signing needs ANDROID_UPLOAD_* in ~/.gradle/gradle.properties (see build.gradle.kts).")
             }
         }
     }
