@@ -3,11 +3,10 @@
 import { useState, useRef, useEffect } from 'react'
 import { Play, Pause, RotateCcw, Loader2, Volume2 } from 'lucide-react'
 import { synthesizeWithPiper, PIPER_VOICE } from '@/lib/piperReader'
+import { READER_SPEEDS, loadReaderSettings, saveReaderSettings } from '@/lib/readerSettings'
 import { READER_VOICES, resolveReaderVoice } from '@/lib/readerVoices'
 
 // The reader speaks with Piper voices (the same engine and voice ids the Android app uses); see lib/readerVoices.ts.
-
-const speeds = [0.5, 0.75, 1, 1.25, 1.5, 2]
 
 export default function ReaderPage() {
   const [text, setText] = useState('')
@@ -23,6 +22,19 @@ export default function ReaderPage() {
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const audioUrlRef = useRef<string | null>(null)
   const abortRef = useRef<AbortController | null>(null)
+
+  // Restore the voice and speed from the last visit. Done after mount (not in the useState initializers) so the
+  // server-rendered markup matches the first client render.
+  const [settingsLoaded, setSettingsLoaded] = useState(false)
+  useEffect(() => {
+    const saved = loadReaderSettings(window.localStorage, (id) => READER_VOICES.some((v) => v.id === id))
+    if (saved.voice) setSelectedVoice(saved.voice)
+    setSpeed(saved.speed)
+    setSettingsLoaded(true)
+  }, [])
+  useEffect(() => {
+    if (settingsLoaded) saveReaderSettings(window.localStorage, { voice: selectedVoice, speed })
+  }, [settingsLoaded, selectedVoice, speed])
 
   // Cleanup audio URL on unmount
   useEffect(() => {
@@ -174,7 +186,7 @@ export default function ReaderPage() {
               onChange={(e) => { setSpeed(Number(e.target.value)); if (hasAudio) clearAudio() }}
               className="w-full bg-dark-tertiary border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-primary appearance-none cursor-pointer"
             >
-              {speeds.map((s) => (
+              {READER_SPEEDS.map((s) => (
                 <option key={s} value={s}>
                   {s}x
                 </option>
