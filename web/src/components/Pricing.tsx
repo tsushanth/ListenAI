@@ -30,11 +30,10 @@ const plans = [
     description: 'For daily listeners who want more',
     features: [
       'Unlimited articles',
-      '50+ AI voices',
       'Premium HD audio quality',
       'Voice cloning (up to 10)',
       'Import PDFs & documents',
-      'Speed control up to 3x',
+      'Speed control up to 2x',
       'Priority processing',
       'No ads',
     ],

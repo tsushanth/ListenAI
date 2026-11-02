@@ -6,7 +6,7 @@
 - Converts text (articles, PDFs, emails, documents) into speech using AI voices
 - Supports voice cloning (up to 10 cloned voices on paid plans)
 - Import content directly from a URL
-- Adjustable playback speed (up to 3x on paid plans)
+- Adjustable playback speed (0.5x to 2x)
 - Available as a web app and an Android app
 
 ## Key pages
@@ -18,7 +18,7 @@
 
 ## Consumer app pricing
 - Free plan: 5 articles/month, 10 AI voices, standard quality audio
-- Pro Weekly: $5.59/week — unlimited articles, 50+ AI voices, HD audio, voice cloning, PDF import
+- Pro Weekly: $5.59/week — unlimited articles, HD audio, voice cloning, PDF import
 - Pro Yearly: $27.99/year — everything in Pro Weekly plus unlimited voice clones
 
 ## Developer API — realtime streaming text-to-speech
