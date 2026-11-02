@@ -74,12 +74,12 @@ export default function Hero() {
             {/* Stats */}
             <div className="flex justify-center lg:justify-start gap-8 mt-12">
               <div>
-                <div className="text-3xl font-bold text-white">50+</div>
+                <div className="text-3xl font-bold text-white">10</div>
                 <div className="text-sm text-gray-400">AI Voices</div>
               </div>
               <div>
-                <div className="text-3xl font-bold text-white">10+</div>
-                <div className="text-sm text-gray-400">Languages</div>
+                <div className="text-3xl font-bold text-white">0.5-2x</div>
+                <div className="text-sm text-gray-400">Playback Speed</div>
               </div>
               <div>
                 <div className="text-3xl font-bold text-white">Unlimited</div>

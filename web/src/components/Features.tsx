@@ -12,12 +12,12 @@ const features = [
   {
     icon: Mic2,
     title: 'Voice Cloning',
-    description: 'Clone your own voice or anyone\'s voice with just 30 seconds of audio. Listen in a voice you love.',
+    description: 'Clone your own voice from a short recording (30 to 60 seconds works best) and listen to your content in it.',
   },
   {
     icon: Globe,
-    title: '50+ Natural Voices',
-    description: 'Choose from over 50 AI voices in 10+ languages. Find the perfect narrator for your content.',
+    title: '10 Natural Voices',
+    description: 'Choose from 10 AI voices and find the perfect narrator for your content.',
   },
   {
     icon: Zap,
@@ -27,17 +27,17 @@ const features = [
   {
     icon: Gauge,
     title: 'Speed Control',
-    description: 'Adjust playback speed from 0.5x to 3x. Listen faster or slower based on your preference.',
+    description: 'Adjust playback speed from 0.5x to 2x. Listen faster or slower based on your preference.',
   },
   {
     icon: Share2,
-    title: 'Share Extension',
-    description: 'Share directly from Safari, Chrome, or any app. One tap to add content to your library.',
+    title: 'Share From Any App',
+    description: 'Share a link, text, PDF or EPUB from Chrome or any app to open it in ReadAloud.',
   },
   {
     icon: BookOpen,
     title: 'Smart Library',
-    description: 'Organize your content with tags and folders. Search across all your saved articles.',
+    description: 'Keep everything in one library. Search your saved articles and filter by in progress, favorites, emails or archived.',
   },
   {
     icon: Headphones,

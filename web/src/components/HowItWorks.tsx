@@ -14,7 +14,7 @@ const steps = [
     number: '02',
     icon: Mic,
     title: 'Choose Your Voice',
-    description: 'Select from 50+ natural AI voices or use your own cloned voice for a personalized experience.',
+    description: 'Select from 10 natural AI voices or use your own cloned voice for a personalized experience.',
   },
   {
     number: '03',

@@ -15,7 +15,7 @@ const faqs = [
   },
   {
     question: 'How does voice cloning work?',
-    answer: 'Voice cloning requires just 30 seconds of your voice reading a provided text sample. Our AI analyzes your unique voice characteristics and creates a personalized voice that can read any text. This is a PRO feature.',
+    answer: 'Voice cloning works from a short recording of your own voice (30 to 60 seconds works best). You confirm the voice is yours before it is created. Our AI analyzes your unique voice characteristics and creates a personalized voice that can read any text. This is a PRO feature.',
   },
   {
     question: 'Is my voice data secure?',
@@ -27,7 +27,7 @@ const faqs = [
   },
   {
     question: 'What languages are supported?',
-    answer: 'ReadAloud supports 10+ languages including English, Spanish, French, German, Italian, Portuguese, Japanese, Korean, Chinese, and more. Each language has multiple natural-sounding voices to choose from.',
+    answer: 'The AI voices speak English. For an article in another language, the Android app detects the language and reads it with your phone\'s own text-to-speech voice for that language, if your phone has one installed.',
   },
   {
     question: 'How do I cancel my subscription?',

@@ -26,7 +26,7 @@ export default function VoiceCloning() {
             </h2>
 
             <p className="text-xl text-gray-400 mb-8">
-              Clone any voice with just 30 seconds of audio. Listen to articles, documents,
+              Clone your own voice from a short recording. Listen to articles, documents,
               and more read by you, or any voice you choose.
             </p>
 
