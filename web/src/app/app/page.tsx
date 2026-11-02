@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { Store, Mic, Gift, BookOpen, ArrowRight } from 'lucide-react'
 import { useMarketplaceStore } from '@/store/marketplaceStore'
 import { useEffect } from 'react'
+import UsageCard from '@/components/app/UsageCard'
 
 const features = [
   {
@@ -52,6 +53,8 @@ export default function AppHome() {
           Transform any text into natural-sounding speech with AI-powered voices.
         </p>
       </div>
+
+      <UsageCard />
 
       {/* Stats cards */}
       {rewards && (
