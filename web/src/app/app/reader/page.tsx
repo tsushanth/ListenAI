@@ -1,9 +1,10 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { Play, Pause, RotateCcw, Loader2, Volume2 } from 'lucide-react'
+import { Play, Pause, RotateCcw, Loader2, Volume2, Download } from 'lucide-react'
 import { synthesizeWithPiper, PIPER_VOICE } from '@/lib/piperReader'
 import { READER_VOICES, resolveReaderVoice } from '@/lib/readerVoices'
+import { readerDownloadFilename } from '@/lib/readerDownload'
 
 // The reader speaks with Piper voices (the same engine and voice ids the Android app uses); see lib/readerVoices.ts.
 
@@ -19,6 +20,8 @@ export default function ReaderPage() {
   const [notice, setNotice] = useState<string | null>(null)
   // Whether generated audio is ready to play. State (not a ref) so the buttons re-render when it changes.
   const [hasAudio, setHasAudio] = useState(false)
+  // The generated audio as a blob URL plus the file name for the Download button. State (the ref above is for cleanup).
+  const [download, setDownload] = useState<{ url: string; filename: string } | null>(null)
 
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const audioUrlRef = useRef<string | null>(null)
@@ -48,6 +51,7 @@ export default function ReaderPage() {
     setIsPlaying(false)
     setHasAudio(false)
     setNotice(null)
+    setDownload(null)
   }
 
   const synthesize = async () => {
@@ -95,6 +99,7 @@ export default function ReaderPage() {
         setIsPlaying(false)
       }
 
+      setDownload({ url, filename: readerDownloadFilename(text) })
       setHasAudio(true)
       await audio.play()
       setIsPlaying(true)
@@ -235,6 +240,18 @@ export default function ReaderPage() {
                   </>
                 )}
               </button>
+
+              {download && (
+                <a
+                  href={download.url}
+                  download={download.filename}
+                  className="flex items-center gap-2 px-5 py-4 bg-dark-tertiary rounded-lg text-white/80 hover:bg-white/10 transition-colors"
+                  title="Download the audio as a WAV file"
+                >
+                  <Download size={20} />
+                  <span>Download</span>
+                </a>
+              )}
 
               <button
                 onClick={clearAudio}
