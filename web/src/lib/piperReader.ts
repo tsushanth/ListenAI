@@ -53,10 +53,16 @@ export function buildWav(pcm: Uint8Array[], sampleRate: number): Uint8Array {
   return out
 }
 
-export interface PiperResult { wav: Uint8Array; sampleRate: number; durationSec: number; firstAudioMs: number | null }
+export interface PiperResult {
+  wav: Uint8Array; sampleRate: number; durationSec: number; firstAudioMs: number | null
+  /** The voice id the audio was actually spoken with; differs from the requested one only after the fallback below. */
+  voice: string
+  /** True when the worker did not know the requested voice and the default voice was used instead. */
+  usedFallbackVoice: boolean
+}
 
 interface Auth { token: string; url: string }
-interface SynthOpts { apiUrl: string; speed?: number; deviceId?: string; signal?: AbortSignal }
+interface SynthOpts { apiUrl: string; /** Piper voice id; defaults to the house voice PIPER_VOICE. */ voice?: string; speed?: number; deviceId?: string; signal?: AbortSignal }
 
 /**
  * The authorize endpoint is rate limited per IP (10 per 5 minutes), and the session token is a stateless signed token that
@@ -99,7 +105,7 @@ function streamPieces(auth: Auth, pieces: string[], opts: SynthOpts): Promise<Pi
     const pcm: Uint8Array[] = []
     let sampleRate = DEFAULT_SAMPLE_RATE
     let index = 0
-    let voice = PIPER_VOICE
+    let voice = opts.voice || PIPER_VOICE
     let triedFallback = false
     let heardServer = false
     let firstAt: number | null = null
@@ -115,7 +121,7 @@ function streamPieces(auth: Auth, pieces: string[], opts: SynthOpts): Promise<Pi
       try { ws.close() } catch { /* already closed */ }
       if (err) return reject(err)
       const wav = buildWav(pcm, sampleRate)
-      resolve({ wav, sampleRate, durationSec: (wav.length - 44) / 2 / sampleRate, firstAudioMs: firstAt === null ? null : Math.round(firstAt) })
+      resolve({ wav, sampleRate, durationSec: (wav.length - 44) / 2 / sampleRate, firstAudioMs: firstAt === null ? null : Math.round(firstAt), voice, usedFallbackVoice: triedFallback })
     }
     const onAbort = () => finish(Object.assign(new Error('Cancelled'), { name: 'AbortError' }))
     const arm = () => { clearTimeout(idle); idle = setTimeout(() => finish(new Error('The voice service timed out. Please try again.')), IDLE_TIMEOUT_MS) }
@@ -149,7 +155,7 @@ function streamPieces(auth: Auth, pieces: string[], opts: SynthOpts): Promise<Pi
   })
 }
 
-/** Synthesize `text` with the Piper house voice. Resolves with a WAV file; rejects with a readable Error. */
+/** Synthesize `text` with `opts.voice` (default: the Piper house voice). Resolves with a WAV file; rejects with a readable Error. */
 export async function synthesizeWithPiper(text: string, opts: SynthOpts): Promise<PiperResult> {
   const pieces = splitText(text)
   if (!pieces.length) throw new Error('Please enter some text to read')

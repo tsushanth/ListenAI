@@ -3,11 +3,9 @@
 import { useState, useRef, useEffect } from 'react'
 import { Play, Pause, RotateCcw, Loader2, Volume2 } from 'lucide-react'
 import { synthesizeWithPiper, PIPER_VOICE } from '@/lib/piperReader'
+import { READER_VOICES, resolveReaderVoice } from '@/lib/readerVoices'
 
-// The reader speaks with the distilled Piper house voice (the same engine as the Android app and the API's live voices).
-const defaultVoices = [
-  { id: PIPER_VOICE, name: 'Warm', description: 'English, natural and fast' },
-]
+// The reader speaks with Piper voices (the same engine and voice ids the Android app uses); see lib/readerVoices.ts.
 
 const speeds = [0.5, 0.75, 1, 1.25, 1.5, 2]
 
@@ -18,6 +16,7 @@ export default function ReaderPage() {
   const [isPlaying, setIsPlaying] = useState(false)
   const [isSynthesizing, setIsSynthesizing] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
   // Whether generated audio is ready to play. State (not a ref) so the buttons re-render when it changes.
   const [hasAudio, setHasAudio] = useState(false)
 
@@ -48,6 +47,7 @@ export default function ReaderPage() {
     }
     setIsPlaying(false)
     setHasAudio(false)
+    setNotice(null)
   }
 
   const synthesize = async () => {
@@ -58,6 +58,7 @@ export default function ReaderPage() {
 
     setIsSynthesizing(true)
     setError(null)
+    setNotice(null)
 
     try {
       const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://listenai-backend.fly.dev'
@@ -68,7 +69,9 @@ export default function ReaderPage() {
       abortRef.current?.abort()
       const ctrl = new AbortController()
       abortRef.current = ctrl
-      const result = await synthesizeWithPiper(text.trim(), { apiUrl: API_URL, speed, deviceId, signal: ctrl.signal })
+      const voice = resolveReaderVoice(selectedVoice)
+      const result = await synthesizeWithPiper(text.trim(), { apiUrl: API_URL, voice, speed, deviceId, signal: ctrl.signal })
+      if (result.usedFallbackVoice) setNotice('That voice is not available right now, so the default voice read this.')
       const blob = new Blob([result.wav as BlobPart], { type: 'audio/wav' })
 
       // Cleanup previous audio
@@ -152,10 +155,10 @@ export default function ReaderPage() {
             <label className="block text-sm text-white/60 mb-2">Voice</label>
             <select
               value={selectedVoice}
-              onChange={(e) => setSelectedVoice(e.target.value)}
+              onChange={(e) => { setSelectedVoice(resolveReaderVoice(e.target.value)); if (hasAudio) clearAudio() }}
               className="w-full bg-dark-tertiary border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-primary appearance-none cursor-pointer"
             >
-              {defaultVoices.map((voice) => (
+              {READER_VOICES.map((voice) => (
                 <option key={voice.id} value={voice.id}>
                   {voice.name} - {voice.description}
                 </option>
@@ -184,6 +187,12 @@ export default function ReaderPage() {
         {error && (
           <div className="mb-4 p-4 bg-red-500/20 border border-red-500/30 rounded-lg text-red-400">
             {error}
+          </div>
+        )}
+
+        {notice && (
+          <div role="status" className="mb-4 p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg text-yellow-200 text-sm">
+            {notice}
           </div>
         )}
 
