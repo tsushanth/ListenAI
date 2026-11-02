@@ -158,3 +158,43 @@ test('a 429 from authorize is reported and nothing is cached', async () => {
   await synthesizeWithPiper('Hello again.', opts)
   assert.equal(calls.length, 1)
 })
+
+// ---- chosen voice reaches the synthesize message ----
+const sentMessages = (ws: FakeWS) => ws.sent.map((m) => JSON.parse(m) as { type: string; text: string; voice: string; speed: number })
+
+test('the synthesize message carries the voice the caller chose, plus speed and text', async () => {
+  install((n) => `tok${n}`)
+  const r = await synthesizeWithPiper('Pick a voice.', { ...opts, voice: 'custom:en-gb-vctk-p229', speed: 1.75 })
+  const [m] = sentMessages(FakeWS.instances[0]!)
+  assert.deepEqual(m, { type: 'synthesize', text: 'Pick a voice.', voice: 'custom:en-gb-vctk-p229', speed: 1.75 })
+  assert.equal(r.voice, 'custom:en-gb-vctk-p229')
+  assert.equal(r.usedFallbackVoice, false)
+})
+
+test('without a voice option the house voice is requested, as before', async () => {
+  install((n) => `tok${n}`)
+  await synthesizeWithPiper('Default voice.', opts)
+  assert.equal(sentMessages(FakeWS.instances[0]!)[0]!.voice, PIPER_VOICE)
+})
+
+test('every piece of a long text is spoken with the chosen voice', async () => {
+  install((n) => `tok${n}`)
+  await synthesizeWithPiper('Sentence number one is here. '.repeat(400), { ...opts, voice: 'custom:en-us-norman' })
+  const msgs = sentMessages(FakeWS.instances[0]!)
+  assert.ok(msgs.length >= 2)
+  assert.ok(msgs.every((m) => m.voice === 'custom:en-us-norman'))
+})
+
+test('an unknown voice falls back to the default once, and the result says so', async () => {
+  install((n) => `tok${n}`)
+  FakeWS.script = (ws) => {
+    const sent = sentMessages(ws).at(-1)!
+    if (sent.voice === 'custom:en-us-gone') queueMicrotask(() => ws.onmessage?.({ data: JSON.stringify({ type: 'error', message: 'Unknown voice: custom:en-us-gone' }) }))
+    else ws.speak()
+  }
+  const r = await synthesizeWithPiper('Missing voice.', { ...opts, voice: 'custom:en-us-gone' })
+  assert.deepEqual(sentMessages(FakeWS.instances[0]!).map((m) => m.voice), ['custom:en-us-gone', 'default'])
+  assert.equal(r.usedFallbackVoice, true)
+  assert.equal(r.voice, 'default')
+  assert.ok(r.durationSec > 0)
+})
