@@ -63,3 +63,34 @@ export function successCopy(enabled: boolean = WEB_PRO_CHECKOUT_ENABLED): Succes
     showPlayLink: true,
   }
 }
+
+export type EntitlementState = 'checking' | 'active' | 'not_confirmed' | 'signed_out' | 'error'
+
+/**
+ * Copy for /success when web checkout is on. Only 'active' (the backend reported an active Stripe entitlement for the
+ * signed-in account) may say the plan is active, and it names no features: what Pro unlocks is whatever the backend tier
+ * gates (quotas, priority, premium voices), not the full Android marketing list.
+ */
+export function entitlementCopy(state: EntitlementState): SuccessCopy {
+  switch (state) {
+    case 'active':
+      return {
+        title: 'Your Pro plan is active',
+        body: 'Your ReadAloud AI account is on Pro. Your plan applies to the web app and the ReadAloud AI servers. The Android app takes Pro from Google Play and does not read web purchases yet.',
+        showPlayLink: false,
+      }
+    case 'checking':
+      return { title: 'Confirming your payment', body: 'This usually takes a few seconds. Please keep this page open.', showPlayLink: false }
+    case 'signed_out':
+      return { title: 'Sign in to see your plan', body: 'Sign in with the account you used at checkout and we will show your plan.', showPlayLink: false }
+    case 'error':
+      return { title: 'We could not check your plan', body: `We could not reach the server to confirm your plan. Try again in a minute, or email ${SUPPORT_EMAIL}.`, showPlayLink: false }
+    case 'not_confirmed':
+    default:
+      return {
+        title: 'We have not confirmed your plan yet',
+        body: `Your payment has not shown up on your account yet. Do not pay again. Check back in a few minutes, or email ${SUPPORT_EMAIL} with the email you paid with.`,
+        showPlayLink: false,
+      }
+  }
+}

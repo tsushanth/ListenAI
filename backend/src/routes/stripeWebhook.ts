@@ -5,6 +5,8 @@ import { logger } from '../lib/logger.js';
 import { supabase } from '../lib/supabaseClient.js';
 import { safeEvent, recordEvent } from '../lib/eventLog.js';
 import { activateBillingFromCheckout, deactivateBillingForSubscription, syncBillingFromSubscription } from '../lib/realtimeTtsBilling.js';
+import { handleStripeEvent, webProEntitlementEnabled, type EntitlementStore } from '../lib/webEntitlement.js';
+import { supabaseEntitlementStore } from '../lib/webEntitlementStore.js';
 
 // realtime-tts checkouts/subscriptions are tagged with this metadata so they
 // can be routed away from ReadAloud's own "pro" subscription handlers below
@@ -18,6 +20,26 @@ function isRealtimeTtsEvent(metadata: Stripe.Metadata | null | undefined): boole
 }
 
 const router = Router();
+
+// ReadAloud web Pro entitlement (DEPLOY-ON-MERGE, inert until WEB_PRO_ENTITLEMENT_ENABLED=true). When on, the non-realtime-tts
+// branches below hand the verified event to lib/webEntitlement.ts instead of the legacy handlers (which write a `users`
+// table that no migration defines and never touch the table getUserTier() reads). When off, behaviour is unchanged.
+let entitlementStore: EntitlementStore = supabaseEntitlementStore;
+/** Test seam: swap the store the web-Pro path writes to. */
+export function __setEntitlementStoreForTests(store: EntitlementStore | null): void {
+  entitlementStore = store ?? supabaseEntitlementStore;
+}
+
+async function applyWebProEvent(event: Stripe.Event): Promise<void> {
+  const result = await handleStripeEvent(event, { store: entitlementStore });
+  if (result.outcome === 'unresolved') {
+    // A customer paid for ReadAloud Pro on the web and no account could be matched: the owner has to act.
+    logger.error({ eventId: event.id, reason: result.reason }, 'Web Pro checkout could not be matched to an account');
+    signalWebhookFailure('USER_UNRESOLVED', { event: String(event.type).slice(0, 60) });
+  } else {
+    logger.info({ eventId: event.id, type: event.type, outcome: result.outcome }, 'Web Pro event processed');
+  }
+}
 
 // Initialize Stripe
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
@@ -65,6 +87,8 @@ router.post('/stripe', async (req: Request, res: Response): Promise<void> => {
         const session = event.data.object as Stripe.Checkout.Session;
         if (isRealtimeTtsEvent(session.metadata)) {
           await activateBillingFromCheckout(session);
+        } else if (webProEntitlementEnabled()) {
+          await applyWebProEvent(event);
         } else {
           await handleCheckoutCompleted(session);
         }
@@ -75,7 +99,8 @@ router.post('/stripe', async (req: Request, res: Response): Promise<void> => {
       case 'customer.subscription.updated': {
         const subscription = event.data.object as Stripe.Subscription;
         if (!isRealtimeTtsEvent(subscription.metadata)) {
-          await handleSubscriptionUpdate(subscription);
+          if (webProEntitlementEnabled()) await applyWebProEvent(event);
+          else await handleSubscriptionUpdate(subscription);
         } else if (event.type === 'customer.subscription.updated') {
           // canceled/unpaid/incomplete_expired deactivate; active again (with a payment method) re-activates;
           // past_due is a grace period and is left as-is. Comped rows are never touched.
@@ -88,6 +113,8 @@ router.post('/stripe', async (req: Request, res: Response): Promise<void> => {
         const subscription = event.data.object as Stripe.Subscription;
         if (isRealtimeTtsEvent(subscription.metadata)) {
           await deactivateBillingForSubscription(subscription.id);
+        } else if (webProEntitlementEnabled()) {
+          await applyWebProEvent(event);
         } else {
           await handleSubscriptionCancelled(subscription);
         }
@@ -102,7 +129,8 @@ router.post('/stripe', async (req: Request, res: Response): Promise<void> => {
 
       case 'invoice.payment_failed': {
         const invoice = event.data.object as Stripe.Invoice;
-        await handlePaymentFailed(invoice);
+        if (webProEntitlementEnabled()) await applyWebProEvent(event);
+        else await handlePaymentFailed(invoice);
         break;
       }
 
