@@ -8,6 +8,7 @@ import {
   type CheckoutPlan,
   type CheckoutStripeLike,
 } from '@/lib/checkoutSession'
+import { checkoutAccess } from '@/lib/webPro'
 
 const VISITOR_COOKIE = 'ra_vid'
 const sessionCookie = (plan: CheckoutPlan) => `ra_co_${plan}`
@@ -22,6 +23,10 @@ function backToPricing(): NextResponse {
 }
 
 async function startCheckout(request: NextRequest, plan: CheckoutPlan): Promise<NextResponse> {
+  // Web Pro is not sold until a purchase is tied to an account and an entitlement is granted (see lib/webPro.ts).
+  // Refuse before any Stripe call, so cached pages, bookmarks and old links cannot create sessions either.
+  if (checkoutAccess() === 'redirect_to_pricing') return backToPricing()
+
   const priceId = STRIPE_PRICES[plan]
   if (!priceId) {
     return NextResponse.json({ error: 'Price not configured' }, { status: 500 })

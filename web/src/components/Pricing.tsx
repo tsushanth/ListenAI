@@ -3,6 +3,7 @@
 import { motion } from 'framer-motion'
 import { Check, Sparkles } from 'lucide-react'
 import Link from 'next/link'
+import { proCta, WEB_PRO_CHECKOUT_ENABLED } from '@/lib/webPro'
 
 const plans = [
   {
@@ -37,9 +38,8 @@ const plans = [
       'Priority processing',
       'No ads',
     ],
-    cta: 'Start Free Trial',
     href: '/app',
-    checkoutPlan: 'pro_weekly',
+    checkoutPlan: 'pro_weekly' as const,
     highlighted: true,
   },
   {
@@ -56,9 +56,8 @@ const plans = [
       'Early access to new features',
       'Save 90% vs weekly',
     ],
-    cta: 'Start Free Trial',
     href: '/app',
-    checkoutPlan: 'pro_yearly',
+    checkoutPlan: 'pro_yearly' as const,
     highlighted: false,
   },
 ]
@@ -137,20 +136,33 @@ export default function Pricing() {
                 ))}
               </ul>
 
-              {plan.checkoutPlan ? (
-                // A form POST, not a link: Next.js prefetches <Link>s and crawlers follow hrefs, and the old
-                // GET link created a Stripe Checkout Session each time. Only pressing the button creates one.
-                <form method="POST" action="/api/checkout">
-                  <input type="hidden" name="plan" value={plan.checkoutPlan} />
-                  <button type="submit" className={buttonClass(plan.highlighted)}>
-                    {plan.cta}
-                  </button>
-                </form>
-              ) : (
-                <Link href={plan.href} className={buttonClass(plan.highlighted)}>
-                  {plan.cta}
-                </Link>
-              )}
+              {(() => {
+                if (!plan.checkoutPlan) {
+                  return (
+                    <Link href={plan.href} className={buttonClass(plan.highlighted)}>
+                      {plan.cta}
+                    </Link>
+                  )
+                }
+                const cta = proCta(plan.checkoutPlan)
+                if (cta.kind === 'checkout') {
+                  // A form POST, not a link: Next.js prefetches <Link>s and crawlers follow hrefs, and the old
+                  // GET link created a Stripe Checkout Session each time. Only pressing the button creates one.
+                  return (
+                    <form method="POST" action="/api/checkout">
+                      <input type="hidden" name="plan" value={cta.plan} />
+                      <button type="submit" className={buttonClass(plan.highlighted)}>
+                        {cta.label}
+                      </button>
+                    </form>
+                  )
+                }
+                return (
+                  <a href={cta.href} target="_blank" rel="noopener noreferrer" className={buttonClass(plan.highlighted)}>
+                    {cta.label}
+                  </a>
+                )
+              })()}
             </motion.div>
           ))}
         </div>
@@ -164,7 +176,9 @@ export default function Pricing() {
           className="text-center mt-12"
         >
           <p className="text-gray-400">
-            7-day free trial for Pro. Cancel anytime. 30-day money-back guarantee.
+            {WEB_PRO_CHECKOUT_ENABLED
+              ? 'Cancel anytime.'
+              : 'Pro is subscribed to in the Android app. Google Play shows the final price and any trial before you confirm, and you manage or cancel there.'}
           </p>
         </motion.div>
       </div>
