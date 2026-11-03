@@ -3,12 +3,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import { stripe, STRIPE_PRICES } from '@/lib/stripe'
 import {
   getOrCreateCheckoutSession,
-  isUserInitiatedNavigation,
   parsePlan,
   type CheckoutPlan,
   type CheckoutStripeLike,
 } from '@/lib/checkoutSession'
 import { checkoutAccess } from '@/lib/webPro'
+import { bearerToken, verifySupabaseUser } from '@/lib/checkoutAuth'
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from '@/lib/supabaseConfig'
 
 const VISITOR_COOKIE = 'ra_vid'
 const sessionCookie = (plan: CheckoutPlan) => `ra_co_${plan}`
@@ -27,6 +28,14 @@ async function startCheckout(request: NextRequest, plan: CheckoutPlan): Promise<
   // Refuse before any Stripe call, so cached pages, bookmarks and old links cannot create sessions either.
   if (checkoutAccess() === 'redirect_to_pricing') return backToPricing()
 
+  // Signed-in only: the Stripe session carries the account (client_reference_id), and the backend webhook grants Pro to it.
+  const token = bearerToken(request.headers)
+  const verified = token
+    ? await verifySupabaseUser(token, { supabaseUrl: SUPABASE_URL, anonKey: SUPABASE_ANON_KEY })
+    : ({ status: 'invalid' } as const)
+  if (verified.status === 'unavailable') return NextResponse.json({ error: 'auth_unavailable' }, { status: 503 })
+  if (verified.status !== 'ok') return NextResponse.json({ error: 'sign_in_required' }, { status: 401 })
+
   const priceId = STRIPE_PRICES[plan]
   if (!priceId) {
     return NextResponse.json({ error: 'Price not configured' }, { status: 500 })
@@ -40,9 +49,11 @@ async function startCheckout(request: NextRequest, plan: CheckoutPlan): Promise<
       priceId,
       appUrl: appUrl(),
       visitorId,
+      user: verified.user,
       existingSessionId: request.cookies.get(sessionCookie(plan))?.value ?? null,
     })
-    const res = NextResponse.redirect(result.url, { status: 303 })
+    // JSON, not a redirect: the browser called this with fetch() so it could send the bearer token.
+    const res = NextResponse.json({ url: result.url })
     const cookie = { httpOnly: true, secure: true, sameSite: 'lax' as const, maxAge: COOKIE_MAX_AGE, path: '/' }
     res.cookies.set(VISITOR_COOKIE, visitorId, cookie)
     res.cookies.set(sessionCookie(plan), result.sessionId, cookie)
@@ -53,20 +64,20 @@ async function startCheckout(request: NextRequest, plan: CheckoutPlan): Promise<
   }
 }
 
-// The pricing page submits a form here, so a Checkout Session exists only because a person pressed a plan button.
+// A Checkout Session exists only because a signed-in person pressed a plan button (the button POSTs JSON with the bearer token).
 export async function POST(request: NextRequest) {
-  const form = await request.formData().catch(() => null)
-  const plan = parsePlan(form?.get('plan'))
+  const contentType = request.headers.get('content-type') ?? ''
+  let raw: unknown = null
+  if (contentType.includes('application/json')) raw = ((await request.json().catch(() => null)) as { plan?: unknown } | null)?.plan
+  else raw = (await request.formData().catch(() => null))?.get('plan')
+  const plan = parsePlan(raw)
   if (!plan) return NextResponse.json({ error: 'Invalid plan' }, { status: 400 })
   return startCheckout(request, plan)
 }
 
-// Legacy /api/checkout?plan=... links (old cached pages, bookmarks, outside links). GET must not have side
-// effects: prefetchers and crawlers hit it. Only a real user-initiated browser navigation starts checkout;
-// everything else is sent to the consumer pricing section (/reader), whose buttons POST.
-export async function GET(request: NextRequest) {
-  const plan = parsePlan(request.nextUrl.searchParams.get('plan'))
-  if (!plan) return NextResponse.json({ error: 'Invalid plan' }, { status: 400 })
-  if (!isUserInitiatedNavigation(request.headers)) return backToPricing()
-  return startCheckout(request, plan)
+// Legacy /api/checkout?plan=... links (old cached pages, bookmarks, outside links). GET must not have side effects
+// (prefetchers and crawlers hit it), and a plain navigation carries no bearer token, so it can never start a signed-in
+// checkout: it always sends the visitor to the pricing section, whose buttons sign in first.
+export async function GET() {
+  return backToPricing()
 }

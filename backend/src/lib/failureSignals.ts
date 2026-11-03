@@ -51,7 +51,7 @@ export function signalProviderFailureFromStatus(provider: string, status: number
   if (cls && cls !== 'RATE_LIMITED') signalProviderFailure(provider, cls, report);
 }
 
-export type WebhookFailure = 'SIGNATURE_INVALID' | 'HANDLER_FAILED' | 'SECRET_MISSING';
+export type WebhookFailure = 'SIGNATURE_INVALID' | 'HANDLER_FAILED' | 'SECRET_MISSING' | 'USER_UNRESOLVED';
 
 /** Stripe (payment / subscription) webhook problem. SIGNATURE_INVALID means the endpoint secret is wrong or a forged call. */
 export function signalWebhookFailure(cls: WebhookFailure, ctx: Record<string, string> = {}, report: ReportFn = reportFailure): void {

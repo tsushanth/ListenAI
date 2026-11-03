@@ -62,13 +62,14 @@ test('the success page source no longer hardcodes the activation claim or the un
   assert.doesNotMatch(src, /Payment Successful/)
 })
 
-test('the Pricing component builds its Pro buttons from proCta, with no unconditional checkout form', () => {
+test('the Pricing component builds its Pro buttons from proCta; checkout can only start from the checkout branch', () => {
   const src = read('../src/components/Pricing.tsx')
   assert.match(src, /proCta\(/)
-  // the only form that posts to the checkout route must sit behind the cta.kind === "checkout" branch
-  const formAt = src.indexOf('action="/api/checkout"')
+  // no raw (anonymous) form post to the checkout route any more: the only way in is the signed-in button
+  assert.doesNotMatch(src, /action="\/api\/checkout"/)
   const branchAt = src.indexOf("cta.kind === 'checkout'")
-  assert.ok(branchAt > 0 && formAt > branchAt, 'checkout form must be inside the checkout branch')
+  const buttonAt = src.indexOf('<ProCheckoutButton')
+  assert.ok(branchAt > 0 && buttonAt > branchAt, 'ProCheckoutButton must sit inside the checkout branch')
 })
 
 test('the pricing section does not promise a trial or money-back guarantee that only checkout could honour', () => {

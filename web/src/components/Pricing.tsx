@@ -4,6 +4,7 @@ import { motion } from 'framer-motion'
 import { Check, Sparkles } from 'lucide-react'
 import Link from 'next/link'
 import { proCta, WEB_PRO_CHECKOUT_ENABLED } from '@/lib/webPro'
+import ProCheckoutButton from '@/components/ProCheckoutButton'
 
 const plans = [
   {
@@ -146,16 +147,8 @@ export default function Pricing() {
                 }
                 const cta = proCta(plan.checkoutPlan)
                 if (cta.kind === 'checkout') {
-                  // A form POST, not a link: Next.js prefetches <Link>s and crawlers follow hrefs, and the old
-                  // GET link created a Stripe Checkout Session each time. Only pressing the button creates one.
-                  return (
-                    <form method="POST" action="/api/checkout">
-                      <input type="hidden" name="plan" value={cta.plan} />
-                      <button type="submit" className={buttonClass(plan.highlighted)}>
-                        {cta.label}
-                      </button>
-                    </form>
-                  )
+                  // Signed-in only: the button signs the visitor in first, then POSTs the plan with their token.
+                  return <ProCheckoutButton plan={cta.plan} label={cta.label} className={buttonClass(plan.highlighted)} />
                 }
                 return (
                   <a href={cta.href} target="_blank" rel="noopener noreferrer" className={buttonClass(plan.highlighted)}>

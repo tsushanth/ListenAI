@@ -24,6 +24,7 @@ import { voicesRouter } from './routes/voices.js';
 import { extractRouter } from './routes/extract.js';
 import { audioRouter } from './routes/audio.js';
 import { subscriptionRouter } from './routes/subscription.js';
+import { entitlementRouter } from './routes/entitlement.js';
 import { latencyRouter } from './routes/latency.js';
 import { aiRouter } from './routes/ai.js';
 import { adminRouter } from './routes/admin.js';
@@ -238,6 +239,10 @@ app.use('/api/audio', audioRouter);
 
 // Subscription routes (requires auth) - for syncing App Store purchases
 app.use('/api/subscription', requireAuth, subscriptionRouter);
+
+// Entitlement (read-only). Authenticates strictly inside the router (401), NOT via requireAuth, whose
+// missing-token fallback is a shared default pro user.
+app.use('/api/entitlement', entitlementRouter);
 
 // Latency tracking routes - estimate is public, report requires auth
 app.use('/api/latency', latencyRouter);

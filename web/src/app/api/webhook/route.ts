@@ -1,3 +1,7 @@
+// NOT the ReadAloud entitlement handler. This route only logs; it grants and revokes nothing.
+// ReadAloud web Pro is granted by the backend webhook (POST /api/webhooks/stripe on the backend, backend/src/routes/stripeWebhook.ts,
+// behind WEB_PRO_ENTITLEMENT_ENABLED). The Stripe dashboard endpoint for ReadAloud must point there. If it points here, paid
+// events are accepted and silently dropped. Remove this route once the dashboard has been checked.
 import { NextRequest, NextResponse } from 'next/server'
 import { stripe } from '@/lib/stripe'
 import Stripe from 'stripe'

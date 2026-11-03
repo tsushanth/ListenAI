@@ -50,6 +50,14 @@ export const MIN_REMAINING_SECONDS = 30 * 60
 // Double-clicks / retries inside this window collapse into one Stripe session even without a cookie.
 export const IDEMPOTENCY_WINDOW_SECONDS = 5 * 60
 
+/** The signed-in account a checkout is for. Tying the session to it is what lets the backend grant Pro to the right user. */
+export interface CheckoutUser {
+  id: string
+  email: string | null
+}
+
+export const CHECKOUT_SOURCE = 'readaloud_web_pricing'
+
 export interface GetOrCreateParams {
   stripe: CheckoutStripeLike
   plan: CheckoutPlan
@@ -59,6 +67,8 @@ export interface GetOrCreateParams {
   visitorId: string
   /** Session id remembered in this visitor's cookie for this plan, if any. */
   existingSessionId?: string | null
+  /** Signed-in account. Required by the live route; optional here so the legacy anonymous tests keep their meaning. */
+  user?: CheckoutUser
   nowSeconds?: number
 }
 
@@ -74,7 +84,8 @@ export async function getOrCreateCheckoutSession(p: GetOrCreateParams): Promise<
   if (p.existingSessionId && /^cs_[A-Za-z0-9_]+$/.test(p.existingSessionId)) {
     try {
       const s = await p.stripe.checkout.sessions.retrieve(p.existingSessionId)
-      const sameVisitorAndPlan = s.metadata?.visitor === p.visitorId && s.metadata?.plan === p.plan
+      const sameVisitorAndPlan =
+        s.metadata?.visitor === p.visitorId && s.metadata?.plan === p.plan && (!p.user || s.metadata?.user_id === p.user.id)
       if (sameVisitorAndPlan && s.status === 'open' && s.url && (s.expires_at ?? 0) - now >= MIN_REMAINING_SECONDS) {
         return { url: s.url, sessionId: s.id, reused: true }
       }
@@ -93,11 +104,16 @@ export async function getOrCreateCheckoutSession(p: GetOrCreateParams): Promise<
       cancel_url: `${p.appUrl}/reader#pricing`,
       allow_promotion_codes: true,
       billing_address_collection: 'auto',
-      subscription_data: { trial_period_days: 7 },
+      // The subscription carries the same tags: customer.subscription.* webhooks include only the subscription object.
+      subscription_data: p.user
+        ? { trial_period_days: 7, metadata: { source: CHECKOUT_SOURCE, plan: p.plan, user_id: p.user.id } }
+        : { trial_period_days: 7 },
       // Lets us tell ReadAloud web sessions apart in the shared Stripe account, and match a reused session to its visitor.
-      metadata: { source: 'readaloud_web_pricing', plan: p.plan, visitor: p.visitorId },
+      metadata: { source: CHECKOUT_SOURCE, plan: p.plan, visitor: p.visitorId, ...(p.user ? { user_id: p.user.id } : {}) },
+      // What the backend webhook resolves the account from (client_reference_id first, then the email).
+      ...(p.user ? { client_reference_id: p.user.id, ...(p.user.email ? { customer_email: p.user.email } : {}) } : {}),
     },
-    { idempotencyKey: `ra-web-checkout:${p.visitorId}:${p.plan}:${Math.floor(now / IDEMPOTENCY_WINDOW_SECONDS)}` },
+    { idempotencyKey: `ra-web-checkout:${p.user?.id ?? p.visitorId}:${p.plan}:${Math.floor(now / IDEMPOTENCY_WINDOW_SECONDS)}` },
   )
   if (!session.url) throw new Error('Stripe did not return a checkout URL')
   return { url: session.url, sessionId: session.id, reused: false }
