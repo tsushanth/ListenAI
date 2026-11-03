@@ -35,7 +35,7 @@ const faqs = [
   },
   {
     question: 'Is there a free trial?',
-    answer: 'Yes! PRO subscriptions include a 7-day free trial. You can try all premium features without being charged. Cancel anytime during the trial period.',
+    answer: 'PRO is subscribed to in the Android app through Google Play. If a trial is offered, Google Play shows its length and the price before you confirm, and you can cancel there at any time.',
   },
 ]
 

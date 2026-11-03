@@ -17,6 +17,7 @@
 - Android app: https://play.google.com/store/apps/details?id=com.listenai
 
 ## Consumer app pricing
+Pro is subscribed to in the Android app (Google Play); web checkout for Pro is not open yet.
 - Free plan: 5 articles/month, 10 AI voices, standard quality audio
 - Pro Weekly: $5.59/week — unlimited articles, HD audio, voice cloning, PDF import
 - Pro Yearly: $27.99/year — everything in Pro Weekly plus unlimited voice clones
