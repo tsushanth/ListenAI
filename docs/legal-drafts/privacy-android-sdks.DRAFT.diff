@@ -1,0 +1,137 @@
+DRAFT FOR OWNER REVIEW, not lawyer-reviewed. NOT APPLIED. Do not publish before the owner has read it and removed every [OWNER VERIFY] note.
+Proposed update of web/src/app/privacy/page.tsx so it matches what the Android app and backend actually do (2026-11-04):
+ - adds Android usage-statistics (Firebase, opt-in), diagnostics, subscriptions disclosure (new Section 11)
+ - replaces stale processors: RunPod/Kokoro -> Piper on Fly + Kokoro on Modal/Fly; removes ElevenLabs; OpenAI GPT-4o-mini -> Anthropic
+   (audit: calldesk-private/overnight/readaloud-integrations/01_AUDIT.md lines 15, 41, 150-152; backend/src/lib/config.ts lines 18-20)
+ - describes Android on-device voices (audit line 152)
+Note: the apps link to https://kreativekoala.llc/privacy (not this page). That page is not in this repo; keep both in sync.
+Apply with:  git apply docs/legal-drafts/privacy-android-sdks.DRAFT.diff   (from the repo root, only after approval)
+
+diff --git a/web/src/app/privacy/page.tsx b/web/src/app/privacy/page.tsx
+index 27283d7..f3a8158 100644
+--- a/web/src/app/privacy/page.tsx
++++ b/web/src/app/privacy/page.tsx
+@@ -11,7 +11,8 @@ export default function PrivacyPage() {
+         <h1 className="text-4xl font-bold text-white mb-8">Privacy Policy</h1>
+ 
+         <div className="prose prose-invert max-w-none">
+-          <p className="text-gray-400 mb-6">Last updated: October 2026</p>
++          {/* DRAFT FOR OWNER REVIEW, not lawyer-reviewed. Remove every [OWNER VERIFY] note before publishing. */}
++          <p className="text-gray-400 mb-6">Last updated: [DATE]</p>
+ 
+           <section className="mb-8">
+             <h2 className="text-2xl font-semibold text-white mb-4">1. Information We Collect</h2>
+@@ -24,6 +25,7 @@ export default function PrivacyPage() {
+               <li>Content you import (articles, PDFs, text) for processing</li>
+               <li>Voice recordings for voice cloning (if you use this feature)</li>
+               <li>Usage data and preferences</li>
++              <li>In the Android app: usage statistics, but only if you allow them, and basic crash and error reports (see Section 11)</li>
+             </ul>
+           </section>
+ 
+@@ -58,16 +60,19 @@ export default function PrivacyPage() {
+               When you use cloud-based voices, your article text is sent to the following services for audio generation:
+             </p>
+             <ul className="list-disc pl-6 text-gray-300 space-y-2">
+-              <li><strong>Kokoro TTS</strong> (self-hosted on RunPod GPU cloud infrastructure) &mdash; processes text for standard quality voices</li>
+-              <li><strong>ElevenLabs</strong> (elevenlabs.io) &mdash; processes text for premium quality voices, subject to <a href="https://elevenlabs.io/privacy" className="text-primary hover:text-primary-dark">ElevenLabs&apos; privacy policy</a></li>
++              <li><strong>Piper</strong> (open-source text-to-speech model, run by us on Fly.io servers) &mdash; processes text for our standard voices</li>
++              <li><strong>Kokoro</strong> (open-source text-to-speech model, run by us on Modal&apos;s cloud GPU infrastructure and on Fly.io servers) &mdash; processes text for some voices</li>
+             </ul>
++            <p className="text-gray-300 mt-3">
++              We do not send your text to any other text-to-speech provider. {/* [OWNER VERIFY] Removed ElevenLabs and RunPod: the 2026-11-04 audit found no ElevenLabs key on the ReadAloud backend and Piper on Fly as the production default. If a premium third-party voice is re-enabled, this section must name it first. */}
++            </p>
+ 
+             <h3 className="text-xl font-semibold text-white mb-3 mt-6">AI Summarization</h3>
+             <p className="text-gray-300 mb-3">
+               When you request a content summary, your article text is sent to:
+             </p>
+             <ul className="list-disc pl-6 text-gray-300 space-y-2">
+-              <li><strong>OpenAI</strong> (openai.com, model: GPT-4o-mini) &mdash; processes text to generate summaries, subject to <a href="https://openai.com/policies/api-data-usage-policies" className="text-primary hover:text-primary-dark">OpenAI&apos;s API data usage policy</a>. Data sent via the API is not used for model training.</li>
++              <li><strong>Anthropic</strong> (anthropic.com, Claude models) &mdash; processes text to generate summaries and to clean up imported articles, subject to <a href="https://www.anthropic.com/legal/privacy" className="text-primary hover:text-primary-dark">Anthropic&apos;s privacy policy</a>. Data sent via the API is not used for model training. {/* [OWNER VERIFY] Confirm this sentence against our Anthropic API terms. Replaced OpenAI GPT-4o-mini: backend config says LLM calls moved to Anthropic and OpenAI billing is off. */}</li>
+             </ul>
+ 
+             <h3 className="text-xl font-semibold text-white mb-3 mt-6">Voice Cloning</h3>
+@@ -76,7 +81,7 @@ export default function PrivacyPage() {
+             </p>
+             <ul className="list-disc pl-6 text-gray-300 space-y-2">
+               <li><strong>Chatterbox</strong> (open-source model, run by us on Modal, modal.com) &mdash; processes your reference recording (and the consent recording, when we ask for one) and your text to create and speak with your voice clone</li>
+-              <li><strong>Speech-to-text service</strong> (our own transcription service) &mdash; transcribes the consent recording to check the phrase, when we ask for one</li>
++              <li><strong>Speech-to-text service</strong> (an open-source Whisper model, run by us on Modal) &mdash; transcribes the consent recording to check the phrase, when we ask for one</li>
+             </ul>
+ 
+             <h3 className="text-xl font-semibold text-white mb-3 mt-6">Backend &amp; Authentication</h3>
+@@ -86,8 +91,10 @@ export default function PrivacyPage() {
+ 
+             <h3 className="text-xl font-semibold text-white mb-3 mt-6">On-Device Processing</h3>
+             <p className="text-gray-300">
+-              Apple&apos;s built-in voices (AVSpeechSynthesizer) process text entirely on your device. No data is sent
+-              externally when using on-device voices. You can switch to on-device voices at any time in Settings.
++              Apple&apos;s built-in voices (AVSpeechSynthesizer) and, on Android, the voices built into your device process text entirely on
++              your device. On Android you can also turn on an on-device ReadAloud voice in Settings; its model (about 80 MB) is downloaded once from
++              Hugging Face (huggingface.co), and after that your text is processed on your device. No text is sent externally when using on-device
++              voices. You can switch to on-device voices at any time in Settings.
+             </p>
+           </section>
+ 
+@@ -119,9 +126,9 @@ export default function PrivacyPage() {
+             <h2 className="text-2xl font-semibold text-white mb-4">6. Third-Party Data Protection</h2>
+             <p className="text-gray-300">
+               All third-party services we use provide data protection measures consistent with industry standards.
+-              Self-hosted services (Kokoro TTS, and Chatterbox for voice cloning, which runs on Modal) run on cloud
+-              infrastructure under our accounts with encryption in transit (TLS). Third-party APIs (ElevenLabs, OpenAI) are accessed under
+-              API agreements that prohibit use of your data for model training.
++              Self-hosted services (Piper and Kokoro text-to-speech, Whisper speech-to-text, and Chatterbox for voice cloning) run on cloud
++              infrastructure (Fly.io and Modal) under our accounts with encryption in transit (TLS). Our language-model provider (Anthropic) is
++              accessed under an API agreement that prohibits use of your data for model training. {/* [OWNER VERIFY] same check as Section 3. */}
+             </p>
+           </section>
+ 
+@@ -142,6 +149,7 @@ export default function PrivacyPage() {
+               <li>Delete your account and associated data</li>
+               <li>Delete your voice clones at any time</li>
+               <li>Revoke consent for AI data sharing (limits you to on-device voices)</li>
++              <li>Turn off usage statistics in the Android app at any time (Settings, Usage statistics)</li>
+               <li>Export your data</li>
+               <li>Opt out of marketing communications</li>
+             </ul>
+@@ -180,6 +188,39 @@ export default function PrivacyPage() {
+               </a>
+             </p>
+           </section>
++
++          {/* DRAFT FOR OWNER REVIEW, not lawyer-reviewed. Describes the Android app once the android privacy PR is released. */}
++          <section className="mb-8">
++            <h2 className="text-2xl font-semibold text-white mb-4">11. Android App: Usage Statistics and Diagnostics</h2>
++            <ul className="list-disc pl-6 text-gray-300 space-y-2">
++              <li>
++                <strong>Usage statistics (optional, off until you say yes).</strong> The first time you open the app we ask whether to share usage
++                statistics. If you allow it, Google Firebase Analytics counts events such as opening the app, finishing onboarding, importing a
++                document (the kind of import and its language, never its text), starting and finishing playback, reaching the free limit, and
++                viewing or completing a purchase. Firebase ties these to a random app-instance ID and records your device model, app and Android
++                version and approximate location, as Google describes in its <a href="https://firebase.google.com/support/privacy" className="text-primary hover:text-primary-dark">Firebase privacy information</a>.
++                If you decline, nothing is sent and locally stored analytics data is reset. You can change your choice at any time in Settings.
++              </li>
++              <li>
++                <strong>No advertising.</strong> The app has no advertising or ad-attribution SDKs, does not read your advertising ID, and does not
++                use analytics data for advertising or personalised ads.
++              </li>
++              <li>
++                <strong>Crash and error reports.</strong> If the app crashes or a feature fails, it sends the error details, the app version, your
++                device maker and model and your Android version to a server we run (on Cloudflare Workers) so we can fix the problem. These reports
++                do not include the text you read or import, and they are sent whether or not you allow usage statistics.
++                {/* [OWNER VERIFY] Confirm: FailureReporter has no consent gate in this PR (it is first-party diagnostics); decide whether it should also be opt-in. */}
++              </li>
++              <li>
++                <strong>Subscriptions.</strong> Purchases and subscription status are handled by Google Play and RevenueCat (revenuecat.com), which receive
++                an app user ID and purchase details. Our paywall also sends paywall views and purchase events to a server we run (on Fly.io).
++                {/* [OWNER VERIFY] Confirm what PaywallKit sends from the ReadAloud app (it supports an email field; ReadAloud call sites were not seen passing one). */}
++              </li>
++              <li>
++                <strong>ReadAloud Voice</strong> (the separate text-to-speech engine app) contains none of the above: no analytics, no crash reports, no subscriptions.
++              </li>
++            </ul>
++          </section>
+         </div>
+       </div>
+     </main>

@@ -37,6 +37,7 @@ import androidx.glance.appwidget.updateAll
 import com.listenai.ui.MainScreen
 import com.listenai.ui.onboarding.OnboardingManager
 import com.listenai.ui.onboarding.OnboardingScreen
+import com.listenai.ui.privacy.AnalyticsConsentDialog
 import com.listenai.ui.theme.ListenAITheme
 import com.kreativekoala.paywallkit.models.PaywallFeature
 import com.kreativekoala.paywallkit.models.PaywallProduct
@@ -111,6 +112,8 @@ class MainActivity : AppCompatActivity() {
 
         setContent {
             ListenAITheme {
+                // Opt-in analytics choice; draws over everything while unanswered.
+                AnalyticsConsentDialog()
                 val hasCompletedOnboarding by onboardingManager.hasCompletedOnboarding.collectAsState()
                 val isPremium by revenueCatManager.isPremium.collectAsState()
                 val packages by revenueCatManager.packages.collectAsState()

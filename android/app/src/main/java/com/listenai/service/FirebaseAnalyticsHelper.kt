@@ -13,6 +13,10 @@ object FirebaseAnalyticsHelper {
     private var firebaseAnalytics: FirebaseAnalytics? = null
     private var isInitialized = false
 
+    /** True only after the user allowed analytics. Every event and user property is dropped otherwise. */
+    @Volatile
+    private var collectionAllowed = false
+
     fun initialize(context: Context) {
         try {
             firebaseAnalytics = Firebase.analytics
@@ -23,11 +27,44 @@ object FirebaseAnalyticsHelper {
         }
     }
 
+    /**
+     * Applies the user's analytics choice. Allowed: collection on (analytics storage only; ad storage,
+     * ad user data and ad personalization stay denied). Not allowed or not asked yet: collection off and
+     * any locally stored analytics data reset.
+     */
+    fun applyConsent(allowed: Boolean) {
+        val analytics = firebaseAnalytics ?: return
+        val wasAllowed = collectionAllowed
+        collectionAllowed = allowed
+        try {
+            analytics.setAnalyticsCollectionEnabled(allowed)
+            analytics.setConsent(
+                mapOf(
+                    FirebaseAnalytics.ConsentType.ANALYTICS_STORAGE to
+                        if (allowed) FirebaseAnalytics.ConsentStatus.GRANTED else FirebaseAnalytics.ConsentStatus.DENIED,
+                    FirebaseAnalytics.ConsentType.AD_STORAGE to FirebaseAnalytics.ConsentStatus.DENIED,
+                    FirebaseAnalytics.ConsentType.AD_USER_DATA to FirebaseAnalytics.ConsentStatus.DENIED,
+                    FirebaseAnalytics.ConsentType.AD_PERSONALIZATION to FirebaseAnalytics.ConsentStatus.DENIED
+                )
+            )
+            if (allowed && !wasAllowed) {
+                setUserProperty("device_language", java.util.Locale.getDefault().language)
+                logAppOpen()
+            } else if (!allowed) {
+                analytics.resetAnalyticsData()
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to apply analytics consent: ${e.message}")
+        }
+    }
+
     fun setUserId(userId: String?) {
+        if (!collectionAllowed) return
         firebaseAnalytics?.setUserId(userId)
     }
 
     fun setUserProperty(name: String, value: String?) {
+        if (!collectionAllowed) return
         firebaseAnalytics?.setUserProperty(name, value)
     }
 
@@ -132,10 +169,14 @@ object FirebaseAnalyticsHelper {
         logEvent("voice_request", Bundle().apply { putString("content_language", language) })
     }
 
+    /**
+     * [error] is accepted for source compatibility but deliberately not sent: exception messages can contain
+     * fragments of the URL or document the user imported.
+     */
+    @Suppress("UNUSED_PARAMETER")
     fun logImportFailed(importMode: String, error: String? = null) {
         val params = Bundle().apply {
             putString("import_mode", importMode)
-            error?.let { putString("error", it) }
         }
         logEvent("import_failed", params)
     }
@@ -189,6 +230,7 @@ object FirebaseAnalyticsHelper {
             Log.w(TAG, "Firebase Analytics not initialized, skipping event: $eventName")
             return
         }
+        if (!collectionAllowed) return
         try {
             firebaseAnalytics?.logEvent(eventName, params)
             Log.d(TAG, "Logged event: $eventName")

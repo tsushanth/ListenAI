@@ -25,7 +25,10 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.os.LocaleListCompat
+import com.listenai.BuildConfig
 import com.listenai.R
+import com.listenai.service.AnalyticsConsent
+import com.listenai.service.ConsentState
 import com.listenai.service.billing.RevenueCatManager
 import com.listenai.service.settings.SettingsManager
 import com.listenai.service.tts.KokoroModelDownloader
@@ -369,6 +372,8 @@ fun SettingsScreen(
                 }
 
                 HorizontalDivider(modifier = Modifier.padding(start = 56.dp))
+
+                AnalyticsConsentRow()
 
                 SettingsRow(
                     icon = Icons.Default.Policy,
@@ -933,6 +938,57 @@ private fun SettingsRow(
             tint = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
+}
+
+/** Settings toggle for the opt-in Firebase Analytics choice. Hidden in the voice flavor (no analytics there). */
+@Composable
+private fun AnalyticsConsentRow() {
+    if (BuildConfig.FLAVOR == "voice") return
+    val manager = AnalyticsConsent.get() ?: return
+    val state by manager.state.collectAsState()
+    val granted = state == ConsentState.GRANTED
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { manager.setGranted(!granted) }
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(36.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(Blue.copy(alpha = 0.15f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Default.Analytics,
+                contentDescription = null,
+                tint = Blue,
+                modifier = Modifier.size(20.dp)
+            )
+        }
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(2.dp)
+        ) {
+            Text(
+                text = stringResource(R.string.settings_analytics_title),
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium
+            )
+            Text(
+                text = stringResource(R.string.settings_analytics_subtitle),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        Switch(checked = granted, onCheckedChange = { manager.setGranted(it) })
+    }
+
+    HorizontalDivider(modifier = Modifier.padding(start = 56.dp))
 }
 
 @Composable

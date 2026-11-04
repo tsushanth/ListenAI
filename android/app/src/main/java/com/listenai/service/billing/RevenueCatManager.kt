@@ -4,9 +4,7 @@ import android.app.Activity
 import com.kreativekoala.paywallkit.manager.PromoCodeManager
 import android.app.Application
 import android.util.Log
-import com.listenai.service.FacebookSDKHelper
 import com.listenai.service.FirebaseAnalyticsHelper
-import com.listenai.service.TikTokHelper
 import com.revenuecat.purchases.CustomerInfo
 import com.revenuecat.purchases.LogLevel
 import com.revenuecat.purchases.Offering
@@ -183,19 +181,10 @@ class RevenueCatManager private constructor() : UpdatedCustomerInfoListener {
             PromoCodeManager.clearAfterConversion()
             Log.d(TAG, "Purchase successful: ${pkg.identifier}")
 
-            // Track purchase events for ad attribution
+            // First-party purchase event (dropped unless the user allowed analytics). No ad networks.
             val productId = pkg.product.id
             val price = pkg.product.price.amountMicros / 1_000_000.0
-            val currency = pkg.product.price.currencyCode
-            val isTrial = pkg.hasFreeTrial
             FirebaseAnalyticsHelper.logPurchaseCompleted(productId, price)
-            if (isTrial) {
-                TikTokHelper.trackEvent("StartTrial", mapOf("content_id" to productId))
-                FacebookSDKHelper.logTrialStarted(productId)
-            } else {
-                TikTokHelper.trackEvent("Subscribe", mapOf("content_id" to productId, "value" to price, "currency" to currency))
-                FacebookSDKHelper.logSubscription(price, currency, productId)
-            }
 
             Result.success(result.customerInfo)
         } catch (e: PurchasesException) {

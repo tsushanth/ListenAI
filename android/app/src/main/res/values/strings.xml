@@ -1,12 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
     <string name="app_name">ReadAloud AI</string>
     <string name="system_tts_engine_name">ReadAloud AI Voices</string>
     <string name="system_tts_back_content_description">Back</string>
 
-    <!-- Meta / Facebook SDK -->
-    <string name="facebook_app_id">1550416256518249</string>
-    <string name="facebook_client_token">f910f6a8466611d75d4f612740c5e8a8</string>
+    <!-- Analytics consent (Firebase Analytics, opt-in). English only for now; other locales fall back to English. -->
+    <string name="analytics_consent_title" tools:ignore="MissingTranslation">Share usage statistics?</string>
+    <string name="analytics_consent_body" tools:ignore="MissingTranslation">Allow Google Firebase to count which features are used, tied to a random app ID and not to your name or email. We never send the text you read or import, and we run no ads. You can change this in Settings at any time.</string>
+    <string name="analytics_consent_allow" tools:ignore="MissingTranslation">Allow</string>
+    <string name="analytics_consent_decline" tools:ignore="MissingTranslation">No thanks</string>
+    <string name="settings_analytics_title" tools:ignore="MissingTranslation">Usage statistics</string>
+    <string name="settings_analytics_subtitle" tools:ignore="MissingTranslation">Share anonymous usage statistics with Google Firebase</string>
 
     <!-- Tab Labels -->
     <string name="tab_home">Home</string>
