@@ -258,12 +258,6 @@ dependencies {
     // RatingKit
     implementation(project(":ratingkit"))
 
-    // TikTok Events SDK (install attribution & event tracking)
-    implementation("com.github.tiktok:tiktok-business-android-sdk:1.6.0")
-
-    // Meta / Facebook SDK (app events for Meta Ads attribution)
-    implementation("com.facebook.android:facebook-android-sdk:17.0.1")
-
     // Chrome Custom Tabs for OAuth
     implementation("androidx.browser:browser:1.8.0")
 
@@ -294,7 +288,8 @@ dependencies {
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
 
-    // Firebase Analytics (for Google Ads conversion tracking)
+    // Firebase Analytics. Collection is OFF until the user opts in (see AnalyticsConsent and the
+    // firebase_analytics_collection_enabled meta-data in AndroidManifest.xml).
     implementation(platform("com.google.firebase:firebase-bom:33.7.0"))
     implementation("com.google.firebase:firebase-analytics")
 }

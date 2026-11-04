@@ -5,9 +5,8 @@ import android.util.Log
 import com.listenai.BuildConfig
 import com.listenai.di.allModules
 import com.listenai.service.AppOpenTracker
-import com.listenai.service.FacebookSDKHelper
+import com.listenai.service.AnalyticsConsent
 import com.listenai.service.FirebaseAnalyticsHelper
-import com.listenai.service.TikTokHelper
 import com.listenai.service.billing.RevenueCatManager
 import com.listenai.service.import_content.WebImportService
 import com.listenai.service.settings.SettingsManager
@@ -47,12 +46,13 @@ class ListenAIApplication : Application() {
         // ReadAloud Voice app (BuildConfig.FLAVOR == "voice") is a
         // paid-upfront product — Play's IAP handles entitlement, so
         // there's no PaywallKit/RevenueCat surface to wire up.
-        // We also skip the marketing-attribution SDKs (Firebase
-        // Analytics, TikTok Events, Meta SDK) in the voice flavor
-        // because that app's entire UI is a single voice-picker
-        // screen; there are no funnels to attribute. Skipping these
-        // keeps the standalone's startup cost low and its data
-        // footprint honest for the BVI audience the app targets.
+        // We also skip Firebase Analytics in the voice flavor because
+        // that app's entire UI is a single voice-picker screen; there
+        // are no funnels to measure. Skipping it keeps the standalone's
+        // startup cost low and its data footprint honest for the BVI
+        // audience the app targets. In the reader flavor Firebase
+        // Analytics is opt-in: collection stays off until the user
+        // allows it (AnalyticsConsent; manifest default is off).
         if (BuildConfig.FLAVOR != "voice") {
             AppOpenTracker.init(this)
             RevenueCatManager.getInstance().configure(this)
@@ -60,10 +60,9 @@ class ListenAIApplication : Application() {
             com.kreativekoala.paywallkit.manager.PromoCodeManager.init(this)
             RatingKit.init(this, appId = "readaloud")
             FirebaseAnalyticsHelper.initialize(this)
-            TikTokHelper.initialize(this)
-            FacebookSDKHelper.initialize(this)
-            FirebaseAnalyticsHelper.logAppOpen()
-            FirebaseAnalyticsHelper.setUserProperty("device_language", java.util.Locale.getDefault().language)
+            // Applies the stored choice (off if never asked or declined) and, when allowed,
+            // logs app_open and the device_language property.
+            AnalyticsConsent.init(this)
             // Pick up any server-side paywall tuning for the next start; never blocks launch.
             Thread { com.listenai.service.PaywallRemoteConfig.refresh(this) }.start()
         }
