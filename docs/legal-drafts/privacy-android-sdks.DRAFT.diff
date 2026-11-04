@@ -2,8 +2,8 @@ DRAFT FOR OWNER REVIEW, not lawyer-reviewed. NOT APPLIED. Do not publish before 
 Proposed update of web/src/app/privacy/page.tsx so it matches what the Android app and backend actually do (2026-11-04):
  - adds Android usage-statistics (Firebase, opt-in), diagnostics, subscriptions disclosure (new Section 11)
  - replaces stale processors: RunPod/Kokoro -> Piper on Fly + Kokoro on Modal/Fly; removes ElevenLabs; OpenAI GPT-4o-mini -> Anthropic
-   (audit: calldesk-private/overnight/readaloud-integrations/01_AUDIT.md lines 15, 41, 150-152; backend/src/lib/config.ts lines 18-20)
- - describes Android on-device voices (audit line 152)
+   (internal audit of 2026-11-04; backend/src/lib/config.ts lines 18-20)
+ - describes Android on-device voices
 Note: the apps link to https://kreativekoala.llc/privacy (not this page). That page is not in this repo; keep both in sync.
 Apply with:  git apply docs/legal-drafts/privacy-android-sdks.DRAFT.diff   (from the repo root, only after approval)
 
