@@ -77,8 +77,9 @@ class ReadAloudTTSService : TextToSpeechService() {
 
     /**
      * Short requests (TalkBack / Maps labels) are **on-device only**: a cloud round trip
-     * would make the device feel broken. Longer English text tries the ReadAloud API first
-     * (see [serveFromApi] and the `tts.engineApiEnabled` flag) and falls back to the path below.
+     * would make the device feel broken. Longer English text can try the ReadAloud API first, but only when the
+     * `tts.engineApiEnabled` flag is on (OFF by default, privacy) and the caller is not a screen reader
+     * (see [serveFromApi], [callerMayUseApi]); everything else takes the path below.
      *
      * Synthesis routes directly to [com.listenai.service.tts.KokoroOnDeviceService]
      * via [TTSServiceFactory.getKokoroOnDeviceService]. We never fall back to
@@ -472,12 +473,14 @@ class ReadAloudTTSService : TextToSpeechService() {
             Log.i(tag, "Piper returned empty PCM — falling through to Kokoro")
         }
 
-        // Longer English text from other apps (reading, not screen-reader labels) is spoken by the ReadAloud API
+        // Only when the engine API flag is on (default OFF: other apps' text can be private) and the caller is not a
+        // screen reader or unidentified: longer English text from other apps is spoken by the ReadAloud API
         // (Piper on CPU) when online: first audio in about half a second and far faster than real time, where the
         // on-device Kokoro model is slower than playback on many phones. Anything the API cannot serve before the
         // first audio (offline, 429, timeout, flag off) continues below on the on-device path, unchanged.
         if (!isClonedVoice && espeakEntry == null && text.length >= API_MIN_CHARS &&
             com.listenai.service.tts.chain.TtsSourceFlags.engineApiEnabled(applicationContext) &&
+            callerMayUseApi(request) &&
             serveFromApi(text, preset, request, callback, rangeText)
         ) return
 
@@ -565,6 +568,22 @@ class ReadAloudTTSService : TextToSpeechService() {
                 callback.error()
             }
         }
+    }
+
+    /**
+     * Privacy gate for the API route (off by default, see docs/tts-sources.md). False for screen readers and
+     * accessibility services, and for any caller we cannot identify: their text stays on the phone.
+     */
+    private fun callerMayUseApi(request: SynthesisRequest): Boolean = try {
+        val uid = request.callerUid
+        val packages = packageManager.getPackagesForUid(uid)?.toList().orEmpty()
+        val am = getSystemService(Context.ACCESSIBILITY_SERVICE) as android.view.accessibility.AccessibilityManager
+        val enabled = am.getEnabledAccessibilityServiceList(android.accessibilityservice.AccessibilityServiceInfo.FEEDBACK_ALL_MASK)
+            .mapNotNull { it.resolveInfo?.serviceInfo?.packageName }
+        com.listenai.service.tts.chain.EngineCallerPolicy.mayRouteToApi(packages, enabled)
+    } catch (e: Exception) {
+        Log.w(tag, "caller check failed, keeping text on device: ${e.message}")
+        false
     }
 
     /**
