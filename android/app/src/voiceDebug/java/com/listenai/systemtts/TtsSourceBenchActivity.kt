@@ -6,6 +6,7 @@ import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
 import android.util.Log
 import android.widget.TextView
+import com.listenai.service.tts.chain.ChainConfig
 import com.listenai.service.tts.chain.ConnectivityCheck
 import com.listenai.service.tts.chain.ReadAloudApiSource
 import com.listenai.service.tts.chain.SourceId
@@ -38,7 +39,10 @@ import kotlin.concurrent.thread
  */
 class TtsSourceBenchActivity : Activity() {
 
-    private val paragraphs = listOf(
+    private var variant = ""
+    private val paragraphs get() = baseParagraphs.map { it + variant }
+
+    private val baseParagraphs = listOf(
         "The quick brown fox jumps over the lazy dog near the quiet river bank. It was a calm morning, and the mist had not yet lifted from the valley. Somewhere far away a bell rang twice, and the village slowly began to wake.",
         "Reading aloud is one of the oldest ways to share a story. A good voice makes the words feel close, even when the listener is far away. Many people now listen while they walk, cook, or drive, and the pages turn themselves.",
         "In the afternoon the clouds gathered, and by evening a soft rain was falling on the roofs of the town. People hurried home with their umbrellas, and the streetlights came on one by one along the wet and shining road."
@@ -54,6 +58,8 @@ class TtsSourceBenchActivity : Activity() {
         val run = (intent.getStringExtra("run") ?: "api,google,samsung,ondevice,engine,chain").split(',')
         val warmPass = !intent.getBooleanExtra("cold", false)
         val engineFlag = intent.getStringExtra("engineFlag")
+        // Appended to every paragraph so a run can avoid (or force) chunk-cache hits.
+        variant = intent.getStringExtra("variant") ?: ""
         thread(name = "tts-bench") {
             try {
                 if ("api" in run) benchSource("api", TtsChainProvider.get(this).api, warmPass)
@@ -79,7 +85,9 @@ class TtsSourceBenchActivity : Activity() {
 
     /** One source on its own, paragraph by paragraph. Pass 1 is "first" (cold socket / engine init), pass 2 "warm". */
     private fun benchSource(name: String, src: TtsSource, warmPass: Boolean) {
-        val chain = TtsSourceChain(mapOf(src.id to src), { listOf(src.id) }, cache = null)
+        // Deadlines are the app's own, except for the on-device model where the point is to measure how slow it is.
+        val cfg = if (src.id == SourceId.ON_DEVICE) ChainConfig(prefetch = 1, firstChunkBaseTimeoutMs = 120_000, chunkBaseTimeoutMs = 120_000) else ChainConfig()
+        val chain = TtsSourceChain(mapOf(src.id to src), { listOf(src.id) }, cache = null, config = cfg)
         for (pass in (if (warmPass) listOf("first", "warm") else listOf("first"))) {
             paragraphs.forEachIndexed { i, text -> measureChain(name, pass, i + 1, text, chain) }
         }

@@ -19,7 +19,9 @@ class OnDeviceModelSource(context: Context) : TtsSource {
     private val app = context.applicationContext
     override val id = SourceId.ON_DEVICE
     private val prefs = app.getSharedPreferences("tts_chain_ondevice", Context.MODE_PRIVATE)
-    private val verdict = RtfVerdict()
+    // 0.7, not 1.0: below 1.0 is only barely faster than playback, and the next chunk is not ready in time once
+    // a chunk is slow. On a Galaxy S22 the Kokoro model measured 0.83-1.01 with 6-10 s to the first audio.
+    private val verdict = RtfVerdict(needed = 2, maxRtf = 0.7)
 
     private fun storedVerdict(): Boolean? {
         if (prefs.getInt("version", -1) != VERSION_KEY) return null
