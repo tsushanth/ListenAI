@@ -19,7 +19,7 @@ One chain, `com.listenai.service.tts.chain.TtsSourceChain`, with three sources:
 Order: online and the flag on: API, system, on-device (English only). Flag off: on-device, system. Audio chunks from the API are cached on disk (hash of voice + speed + text, 150 MB, least recently used removed), so re-reading is free and works offline.
 When nothing can speak, the player shows an actionable message with an **Install voice data** (or **Install a speech engine**) button.
 
-The ReadAloud system engine tries the API first for English text of 100+ characters (shorter text is almost always screen-reader labels: caches and on-device Piper answer instantly and nothing leaves the phone), and continues on its own on-device path if the API cannot start. If the API fails after audio has started, the engine reports an error (the voice cannot change mid-sentence).
+The ReadAloud system engine can try the API first for English text of 100+ characters from other apps, but **this is OFF by default** (see "Privacy: engine API route" below). With it off, the engine uses its own on-device path only, as before. If the route is enabled and the API cannot start, the engine continues on its own on-device path; if the API fails after audio has started, the engine reports an error (the voice cannot change mid-sentence). The in-app reader's API-first behaviour is unaffected.
 
 ### Fallback matrix (reader)
 
@@ -39,11 +39,28 @@ The ReadAloud system engine tries the API first for English text of 100+ charact
 
 ### Switch
 
-`TtsSourceFlags`: local override (debug only) > remote `tts.apiEnabled` / `tts.engineApiEnabled` from `GET /api/config` (refreshed every 6 h, applies from the next read) > build default `BuildConfig.TTS_API_DEFAULT` / `TTS_ENGINE_API_DEFAULT` (both true; `-PttsApiDefault=false` builds an on-device-first variant).
+`TtsSourceFlags`: local override (debug only) > remote `tts.apiEnabled` / `tts.engineApiEnabled` from `GET /api/config` (refreshed every 6 h, applies from the next read) > build default `BuildConfig.TTS_API_DEFAULT` (true; `-PttsApiDefault=false` builds an on-device-first variant) / `TTS_ENGINE_API_DEFAULT` (**false**; `-PttsEngineApiDefault=true` is for local benchmarks only).
 
 ### Events (no text)
 
 `tts_session` (first_source, ttfa_ms, total_ms, audio_ms, chunks, cache_hits, chars, content_language, succeeded) and `tts_fallback` (from_source, reason). Sent only when the user allowed analytics; every read also logs one `TTS_CHAIN` line to logcat.
+
+## Privacy: engine API route (added 2026-11-04)
+
+The engine is a system service that **other apps** call. Their text can be a private message, an email, a form field, or whatever TalkBack or another screen reader is reading aloud. Sending it to our API, anonymously and without the user being told, is a privacy risk, so:
+
+- `TTS_ENGINE_API_DEFAULT` is **false** and a missing or malformed remote `tts.engineApiEnabled` also resolves to false. Only an explicit local override or an explicit remote `true` turns it on.
+- Even with the flag on, `EngineCallerPolicy` refuses to route when the caller (`SynthesisRequest.getCallerUid()` resolved to its packages) is a known screen reader (TalkBack, Samsung TalkBack, Select to Speak, Switch Access and others), has an accessibility-looking package name, shares a uid with any currently enabled accessibility service, or **cannot be identified** (fail closed; Android package visibility can hide the caller's package). Refused requests use the engine's on-device path.
+- The in-app reader is unchanged: it reads the user's own documents through the user's own action, API first.
+
+What leaves the phone when the engine route is enabled: the full text of each request (English, 100+ characters, split into sentence chunks) plus the chosen voice and speed, sent over TLS to `listenai-backend` (`/api/realtime-tts/authorize`) and the Piper worker. No account or device id is attached, but the connection exposes the IP address. The audio chunks are cached on the phone (hash of voice + speed + text). The `tts_session` events carry no text. The server-side retention of request text was not audited here; it must be before this is enabled.
+
+Preconditions before turning it on for users:
+1. An explicit in-app opt-in (off until the user chooses it) with a clear disclosure that text read aloud by other apps is sent to ReadAloud servers.
+2. A line in the privacy policy and the Play data-safety form covering this transfer and its retention.
+3. A caller allow-list (only named reading apps such as e-book readers), replacing today's deny-list, so that unknown callers stay on-device.
+4. The remote flag must not be able to enable it for users who have not opted in (today a remote `true` would; keep the remote value as a kill switch only).
+5. Server-side confirmation that request text is not logged or retained.
 
 ## Measurements
 
@@ -55,7 +72,7 @@ Galaxy S22 (SM-S901U), Wi-Fi, Android debug build `com.listenai.voice.debug` (si
 | Google TTS (explicit engine) | 2083 / 437 / 357 | 148 / 171 / 132 | 0.013 - 0.189 |
 | Samsung TTS (explicit engine) | 297 / 153 / 163 | 176 / 167 / 139 | 0.012 - 0.024 |
 | On-device Kokoro, chain (140-char first chunk) | 7286 / 8549 / 7827 | 6285 / 9941 / 9260 | 0.83 - 1.01 |
-| ReadAloud engine called as another app, API on | 994 / 609 / 704 | n/a | n/a |
+| ReadAloud engine called as another app, API on (flag forced on for the benchmark) | 994 / 609 / 704 | n/a | n/a |
 | Same, replayed from the chunk cache | 3 / 5 / 6 | | |
 | ReadAloud engine called as another app, API off (its own path: Kokoro) | 3351 / 3410 / 2448 | 4118 (para 2), 2701 (para 3) | 0.79 - 1.02 |
 | Offline, text already cached | 2 - 10 | | |

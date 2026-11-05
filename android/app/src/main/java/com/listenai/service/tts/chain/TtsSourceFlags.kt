@@ -12,7 +12,7 @@ import java.util.concurrent.TimeUnit
  * Where speech comes from by default. Three layers, first that is set wins:
  *  1. a local override (set by the debug benchmark / adb, never by users),
  *  2. the remote value from `GET /api/config` -> `tts.apiEnabled` / `tts.engineApiEnabled`, cached from the last fetch,
- *  3. the build default (`BuildConfig.TTS_API_DEFAULT`, `TTS_ENGINE_API_DEFAULT`; both true).
+ *  3. the build default (`BuildConfig.TTS_API_DEFAULT`, `TTS_ENGINE_API_DEFAULT`; the first true, the engine one FALSE for privacy).
  * Off means "the on-device model first, then the system engine", the way it was before the API path.
  * A new remote value applies from the next read, because it is looked up per session.
  */
@@ -27,7 +27,10 @@ object TtsSourceFlags {
     fun apiEnabled(c: Context): Boolean =
         TtsFlagLogic.resolve(opt(c, "override_api"), opt(c, "remote_api"), BuildConfig.TTS_API_DEFAULT)
 
-    /** Whether the ReadAloud system TTS engine (other apps' speech) tries the API first. */
+    /**
+     * Whether the ReadAloud system TTS engine (other apps' speech) tries the API first. Off unless explicitly enabled:
+     * that text can be private. Even when on, screen readers are never routed ([EngineCallerPolicy]).
+     */
     fun engineApiEnabled(c: Context): Boolean =
         TtsFlagLogic.resolve(opt(c, "override_engine_api"), opt(c, "remote_engine_api"), BuildConfig.TTS_ENGINE_API_DEFAULT)
 

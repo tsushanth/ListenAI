@@ -47,8 +47,10 @@ android {
         // so the default can be flipped without a release. `-PttsApiDefault=false` builds an on-device-first variant.
         val ttsApiDefault = (project.findProperty("ttsApiDefault") as String?) ?: "true"
         buildConfigField("boolean", "TTS_API_DEFAULT", ttsApiDefault)
-        // Same, for the ReadAloud system TTS engine (speech for other apps).
-        buildConfigField("boolean", "TTS_ENGINE_API_DEFAULT", (project.findProperty("ttsEngineApiDefault") as String?) ?: "true")
+        // Same, for the ReadAloud system TTS engine (speech for other apps). OFF by default: text other apps ask the
+        // engine to speak (including what screen readers read aloud) must not leave the phone until there is an
+        // explicit in-app opt-in. See docs/tts-sources.md. `-PttsEngineApiDefault=true` is for local benchmarks only.
+        buildConfigField("boolean", "TTS_ENGINE_API_DEFAULT", (project.findProperty("ttsEngineApiDefault") as String?) ?: "false")
         vectorDrawables {
             useSupportLibrary = true
         }
