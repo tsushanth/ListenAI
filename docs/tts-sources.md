@@ -1,0 +1,81 @@
+# Where the Android app gets speech (2026-11-04)
+
+## Before
+
+| Path | What happened |
+|---|---|
+| Reader, built-in voice | `TTSServiceFactory`: the ReadAloud API (Piper) through `RealtimeTTSService` (whole text, one WebSocket, buffered into one WAV before playback), unless the user had turned on offline Kokoro and the model was on disk. No fallback when the API failed: an error screen. |
+| Reader, non-English | `PlatformLanguageSynth` through the **default** system engine, which can be ReadAloud's own engine. |
+| ReadAloud system engine (`com.listenai.voice`), for other apps | On-device only: label caches, Piper (<= 80 chars), Kokoro, eSpeak. Never the API. |
+
+## Now
+
+One chain, `com.listenai.service.tts.chain.TtsSourceChain`, with three sources:
+
+1. **API**: the ReadAloud API (Piper on CPU, Fly `piper-tts-sjc`). Sentence chunks, two chunks prefetched, one WebSocket reused for many chunks, 4.5 s first-chunk deadline, one retry on timeout / 5xx, no retry on 429 / 402.
+2. **System TTS**: Android `TextToSpeech` bound to an explicit engine (Google, then Samsung, never `com.listenai*`), after `isLanguageAvailable`, an installed-voice check, and (offline) a "voice needs the network" check.
+3. **On-device model**: only if downloaded and its measured real-time factor is <= 0.7 (measured once, stored per app version).
+
+Order: online and the flag on: API, system, on-device (English only). Flag off: on-device, system. Audio chunks from the API are cached on disk (hash of voice + speed + text, 150 MB, least recently used removed), so re-reading is free and works offline.
+When nothing can speak, the player shows an actionable message with an **Install voice data** (or **Install a speech engine**) button.
+
+The ReadAloud system engine tries the API first for English text of 100+ characters (shorter text is almost always screen-reader labels: caches and on-device Piper answer instantly and nothing leaves the phone), and continues on its own on-device path if the API cannot start. If the API fails after audio has started, the engine reports an error (the voice cannot change mid-sentence).
+
+### Fallback matrix (reader)
+
+| Situation | Result | Reason logged |
+|---|---|---|
+| Online, API ok | API | none |
+| Chunk already cached | cache, no network | none |
+| Offline | cache, else system TTS | `OFFLINE` |
+| API 5xx / at capacity / socket closed | one retry, then system for the rest of the read; API skipped for 30 s | `SERVER_ERROR` |
+| API timeout (first chunk 4.5 s, later chunks 6 s + 25 ms/char) | one retry, then system; skipped 30 s | `TIMEOUT` |
+| 429 | no retry, system; API skipped for `Retry-After` (default 60 s) | `RATE_LIMITED` |
+| 402 | system; API skipped 10 min | `QUOTA` |
+| Non-English text | system (API voices in the app are English) | `UNSUPPORTED_LANGUAGE` |
+| Google/Samsung missing | on-device model if fast enough | `ENGINE_MISSING` |
+| Engine has no voice data for the language, or the voice needs the network and we are offline | on-device model (English) else message + **Install voice data** | `LANGUAGE_MISSING` |
+| Nothing works | message; install-engine / install-voice-data / check connection / try later | all of the above |
+
+### Switch
+
+`TtsSourceFlags`: local override (debug only) > remote `tts.apiEnabled` / `tts.engineApiEnabled` from `GET /api/config` (refreshed every 6 h, applies from the next read) > build default `BuildConfig.TTS_API_DEFAULT` / `TTS_ENGINE_API_DEFAULT` (both true; `-PttsApiDefault=false` builds an on-device-first variant).
+
+### Events (no text)
+
+`tts_session` (first_source, ttfa_ms, total_ms, audio_ms, chunks, cache_hits, chars, content_language, succeeded) and `tts_fallback` (from_source, reason). Sent only when the user allowed analytics; every read also logs one `TTS_CHAIN` line to logcat.
+
+## Measurements
+
+Galaxy S22 (SM-S901U), Wi-Fi, Android debug build `com.listenai.voice.debug` (side by side; the production app and the default engine setting were not touched). Three paragraphs of about 218 characters (about 12-13 s of audio), each cut into 2 chunks. TTFA = start of the read to the first audio; RTF = time to synthesize everything / audio duration (below 1 is faster than playback). "first" = first pass (cold socket / engine init), "warm" = second pass. One run each; no confidence intervals. Source: `TtsSourceBenchActivity`.
+
+| Source | TTFA first (ms) | TTFA warm (ms) | RTF |
+|---|---|---|---|
+| ReadAloud API (Piper CPU), chain | 1248 / 630 / 463 | 347 / 717 / 515 | 0.044 - 0.117 |
+| Google TTS (explicit engine) | 2083 / 437 / 357 | 148 / 171 / 132 | 0.013 - 0.189 |
+| Samsung TTS (explicit engine) | 297 / 153 / 163 | 176 / 167 / 139 | 0.012 - 0.024 |
+| On-device Kokoro, chain (140-char first chunk) | 7286 / 8549 / 7827 | 6285 / 9941 / 9260 | 0.83 - 1.01 |
+| ReadAloud engine called as another app, API on | 994 / 609 / 704 | n/a | n/a |
+| Same, replayed from the chunk cache | 3 / 5 / 6 | | |
+| ReadAloud engine called as another app, API off (its own path: Kokoro) | 3351 / 3410 / 2448 | 4118 (para 2), 2701 (para 3) | 0.79 - 1.02 |
+| Offline, text already cached | 2 - 10 | | |
+| Offline, text not cached | first chunk cached (15), then system | | `API:OFFLINE` logged |
+
+Notes and caveats
+- On this phone **Google and Samsung system TTS beat the API on latency** (about 150 ms vs 350-700 ms warm) and work offline. The API is the default for voice quality and consistency (one Piper voice everywhere), not speed. If speed or offline use is the goal, the system engine should come first; that is one line in `TtsFlagLogic.inAppOrder`.
+- The on-device Kokoro model runs at about 0.8-1.0x real time with 6-10 s to first audio here: too slow to be a default. The verdict threshold is 0.7, so on this phone the model would be skipped after two measured chunks.
+- One engine-on run had a 10.9 s first request right after the app process started (engine start plus Kokoro warm-up competing); a second run did not reproduce it (994 ms). The bench's own engine timings are unreliable for the engine-on case (file synthesis), so the engine rows above come from the service's `T_API_FIRST_AUDIO` and `T_FIRST_AUDIO_PUSH` log lines.
+- Cold: `piper-tts-sjc` keeps one machine always running, so a machine cold start was not measured (stopped machines were not woken). A cold **voice** was measured from a laptop: first request for `custom:en-us-kristin` 2652 ms to first audio, the next 382 ms. The app's voice mapping uses voices that are not in the worker's `PRELOAD_VOICES`, so the first read per voice per machine pays 2-3 s.
+- Authorize through the app backend: 320-390 ms from a laptop; the socket reuse means only the first chunk of a read pays it.
+
+## What the API costs us and how it is metered
+
+- `piper-tts-sjc`: Fly `performance-2x`, 4 GB, about $64 per month per machine while started; 4 machines exist, 1 always on, the others start under load. About 6-8 concurrent streams per machine at the measured latency (worker's `CAPACITY_PLAN.md`). At a measured RTF of about 0.075 per stream a saturated machine could synthesize on the order of 80 s of audio per second, so the marginal cost per character is far below the $0.004 per 1,000 characters list price; the real cost is the always-on machine (about $64 per month) and, past its capacity, extra machines.
+- The app's path (`POST /api/realtime-tts/authorize` on `listenai-backend`) is anonymous, billed to one shared platform key, bounded only by an IP rate limit. There is **no per-user quota or plan check on this path**; the plan quotas and `402` apply to developer API keys. So `QUOTA` handling is in place but nothing returns 402 to the app today, and an abusive client can only be limited by IP.
+
+## Backend changes this needs (not deployed)
+
+1. `GET /api/config`: add `tts: { apiEnabled, engineApiEnabled }` (from env) so the switch can be flipped without a release.
+2. Preload the app's mapped voices (`custom:en-us-kristin`, `-john`, `-libritts_r-f383`, ...) in `PRELOAD_VOICES` or map the app voices onto already-preloaded ones; otherwise the first read per voice pays 2-3 s.
+3. Real per-user auth or a session-bound quota on `/api/realtime-tts/authorize` (today anyone can mint sessions on the shared key).
+4. Decide whether the alignment worker (word highlighting) should stay scale-to-zero: the app now waits at most 2.5 s for it and skips it for 10 minutes after a miss.

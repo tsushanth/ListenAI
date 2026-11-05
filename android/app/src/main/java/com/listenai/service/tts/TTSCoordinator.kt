@@ -54,17 +54,29 @@ class TTSCoordinator(
             pitch = if (options.pitch == SynthesisOptions.DEFAULT.pitch) defaultPitch else options.pitch
         )
 
-        // Non-English content has no natural voice in the app yet, so read it through the phone's own
-        // text-to-speech engine in that language: offline, no cloud quota, and not an English model
-        // guessing at foreign words. Cloned voices keep their own path (the user chose that voice on purpose).
         val isCloned = voice.id.startsWith("cloned_") || voice.providerModelId == "chatterbox"
-        val lang2 = language?.substringBefore('-')?.lowercase()
-        if (!isCloned && !lang2.isNullOrBlank() && lang2 != "en") {
-            val local = runCatching { PlatformLanguageSynth.synthesize(context, text, lang2, adjustedOptions.speed) }
-                .onFailure { if (it is kotlinx.coroutines.CancellationException) throw it }
-                .getOrNull()
-            if (local != null) return@withContext local
-            com.listenai.service.FirebaseAnalyticsHelper.logVoiceFallback(lang2, "no_voice")
+
+        // Built-in voices go through the speech source chain: the ReadAloud API (Piper on CPU) first, then the phone's
+        // own TextToSpeech engine, then the on-device model if it is downloaded and fast enough (see tts/chain).
+        // Cloned voices keep their own path (the user chose that voice on purpose). Two cases keep the older routing:
+        //  - the user turned on offline Kokoro in settings and the model is on disk (they asked for on-device), and
+        //  - forceOnDevice (the "queue is busy, use offline AI" button).
+        if (!isCloned && !forceOnDevice && !userChoseOnDeviceKokoro()) {
+            val result = ChainSynthesizer.synthesize(
+                context = context,
+                text = text,
+                voice = voice,
+                language = language ?: "en",
+                speed = adjustedOptions.speed,
+                onProgress = onProgress,
+            )
+            usageTracker.trackStandardUsage(
+                charactersUsed = text.length,
+                voiceId = voice.kokoroVoiceId ?: voice.providerVoiceId,
+                articleId = null,
+                articleTitle = null
+            )
+            return@withContext result
         }
 
         // All synthesis uses self-hosted Kokoro
@@ -171,6 +183,13 @@ class TTSCoordinator(
         )
 
         return result
+    }
+
+    private fun userChoseOnDeviceKokoro(): Boolean = try {
+        com.listenai.service.settings.SettingsManager.getInstance(context).useOfflineKokoro.value &&
+            KokoroModelDownloader.getInstance(context).isModelOnDisk()
+    } catch (e: Exception) {
+        false
     }
 
     private fun isUuid(value: String): Boolean =

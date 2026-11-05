@@ -344,6 +344,15 @@ sealed class TTSError : Exception() {
         override val message = "Synthesis timed out."
     }
 
+    /** Every speech source failed. [installVoiceLanguage] / [installEngine] say which button to offer. */
+    data class SpeechUnavailable(
+        val userMessage: String,
+        val installVoiceLanguage: String? = null,
+        val installEngine: Boolean = false,
+    ) : TTSError() {
+        override val message = userMessage
+    }
+
     data class UnsupportedLanguage(val language: String) : TTSError() {
         override val message = "Language '$language' is not supported by this voice."
     }

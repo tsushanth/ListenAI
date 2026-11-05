@@ -164,6 +164,33 @@ object FirebaseAnalyticsHelper {
         })
     }
 
+    /**
+     * One read through the speech source chain. Source names, reasons and timings only; never any text.
+     * Funnel: tts_session (first_source) -> tts_fallback (reason) when the first choice did not work.
+     */
+    fun logTtsSession(r: com.listenai.service.tts.chain.SessionReport) {
+        val firstFallback = r.fallbackReasons.firstOrNull()
+        logEvent("tts_session", Bundle().apply {
+            putString("first_source", r.firstSource?.name ?: "none")
+            putLong("ttfa_ms", r.timeToFirstAudioMs ?: -1L)
+            putLong("total_ms", r.totalMs)
+            putLong("audio_ms", r.audioMs)
+            putLong("chunks", r.chunks.toLong())
+            putLong("cache_hits", r.cacheHits.toLong())
+            putLong("chars", r.chars.toLong())
+            putString("content_language", r.language)
+            putString("succeeded", r.succeeded.toString())
+        })
+        if (firstFallback != null) {
+            logEvent("tts_fallback", Bundle().apply {
+                putString("from_source", firstFallback.first.name)
+                putString("reason", firstFallback.second.name)
+                putString("first_source", r.firstSource?.name ?: "none")
+                putString("content_language", r.language)
+            })
+        }
+    }
+
     /** The user tapped "I want a natural voice for this language". The strongest demand signal. */
     fun logVoiceRequest(language: String) {
         logEvent("voice_request", Bundle().apply { putString("content_language", language) })

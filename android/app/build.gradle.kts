@@ -41,6 +41,14 @@ android {
         versionName = "2.14.51"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // Default speech source. true = the ReadAloud API (Piper on CPU) is tried first; false = the on-device model /
+        // the phone's engine first. A remote value from GET /api/config (tts.apiEnabled) overrides this at run time,
+        // so the default can be flipped without a release. `-PttsApiDefault=false` builds an on-device-first variant.
+        val ttsApiDefault = (project.findProperty("ttsApiDefault") as String?) ?: "true"
+        buildConfigField("boolean", "TTS_API_DEFAULT", ttsApiDefault)
+        // Same, for the ReadAloud system TTS engine (speech for other apps).
+        buildConfigField("boolean", "TTS_ENGINE_API_DEFAULT", (project.findProperty("ttsEngineApiDefault") as String?) ?: "true")
         vectorDrawables {
             useSupportLibrary = true
         }
@@ -114,6 +122,9 @@ android {
         }
         debug {
             isMinifyEnabled = false
+            // `-PsideBySide` installs the debug build next to the production app (com.listenai.debug / com.listenai.voice.debug)
+            // instead of over it. Voice-flavor builds only: the reader flavor's google-services.json has no client for it.
+            if (project.hasProperty("sideBySide")) applicationIdSuffix = ".debug"
         }
     }
 

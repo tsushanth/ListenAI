@@ -10,5 +10,13 @@
             android:label="TTS engine self-test"
             android:exported="true"
             android:theme="@style/Theme.ListenAI" />
+        <!-- Debug builds only: benchmarks the speech sources (API, system engines, on-device model, the ReadAloud engine itself).
+             adb shell am start -n <applicationId>/com.listenai.systemtts.TtsSourceBenchActivity -e run api,google
+             Results: adb logcat -s TTSBENCH:I -->
+        <activity
+            android:name="com.listenai.systemtts.TtsSourceBenchActivity"
+            android:label="TTS source bench"
+            android:exported="true"
+            android:theme="@style/Theme.ListenAI" />
     </application>
 </manifest>

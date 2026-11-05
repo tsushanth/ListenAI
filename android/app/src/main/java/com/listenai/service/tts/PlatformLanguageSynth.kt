@@ -88,9 +88,17 @@ object PlatformLanguageSynth {
     private suspend fun initEngine(context: Context): TextToSpeech? = withTimeoutOrNull(INIT_TIMEOUT_MS) {
         suspendCancellableCoroutine { cont ->
             var engine: TextToSpeech? = null
-            engine = TextToSpeech(context.applicationContext) { status ->
+            // An explicit engine (Google, then Samsung): the system default may be ReadAloud's own voice engine, and that
+            // engine now calls the API, so asking the default could loop back into ourselves.
+            val pkg = com.listenai.service.tts.chain.TtsEnginePicker.pick(
+                context.applicationContext.packageManager
+                    .queryIntentServices(android.content.Intent(TextToSpeech.Engine.INTENT_ACTION_TTS_SERVICE), 0)
+                    .mapNotNull { it.serviceInfo?.packageName },
+                context.applicationContext.packageName
+            )
+            engine = TextToSpeech(context.applicationContext, { status ->
                 if (cont.isActive) cont.resume(if (status == TextToSpeech.SUCCESS) engine else null)
-            }
+            }, pkg)
             cont.invokeOnCancellation { engine?.shutdown() }
         }
     }

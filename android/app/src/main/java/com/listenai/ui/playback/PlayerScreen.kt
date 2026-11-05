@@ -1,6 +1,7 @@
 package com.listenai.ui.playback
 
 import android.content.Intent
+import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
@@ -76,7 +77,13 @@ sealed class PlayerState {
         val detail: com.listenai.service.tts.SynthesisProgress? = null,
     ) : PlayerState()
     data class Playing(val article: Article) : PlayerState()
-    data class Error(val message: String, val article: Article? = null) : PlayerState()
+    /** [installVoiceLanguage] / [installEngine]: show a button that opens the text-to-speech data / engine installer. */
+    data class Error(
+        val message: String,
+        val article: Article? = null,
+        val installVoiceLanguage: String? = null,
+        val installEngine: Boolean = false,
+    ) : PlayerState()
     data class QuotaExceeded(val remaining: Int, val required: Int, val article: Article) : PlayerState()
     data class RateLimited(val retryAfterSeconds: Int, val article: Article) : PlayerState()
 }
@@ -428,6 +435,9 @@ fun PlayerScreen(
                         android.util.Log.d("PlayerScreen", "Rate limited: retryAfter=${e.retryAfterSeconds}")
                         playerState = PlayerState.RateLimited(e.retryAfterSeconds.toInt(), article)
                     }
+                    is TTSError.SpeechUnavailable -> {
+                        playerState = PlayerState.Error(e.userMessage, article, e.installVoiceLanguage, e.installEngine)
+                    }
                     else -> {
                         val errorMessage = when {
                             e.message?.contains("Network", ignoreCase = true) == true ->
@@ -569,7 +579,8 @@ fun PlayerScreen(
             } catch (e: Exception) {
                 android.util.Log.e("PlayerScreen", "Regeneration failed", e)
                 val errorMessage = e.message ?: context.getString(R.string.player_regeneration_failed)
-                playerState = PlayerState.Error(errorMessage, article)
+                val unavailable = e as? TTSError.SpeechUnavailable
+                playerState = PlayerState.Error(errorMessage, article, unavailable?.installVoiceLanguage, unavailable?.installEngine == true)
                 ttsNotificationService.showArticleTTSFailed(
                     articleId = article.id,
                     articleTitle = article.title ?: context.getString(R.string.player_article_fallback),
@@ -852,6 +863,24 @@ fun PlayerScreen(
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+                        if (state.installVoiceLanguage != null || state.installEngine) {
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Button(onClick = {
+                                // Voice data: ask the phone's engine (Google, then Samsung) to download it. No engine:
+                                // open Speech Services by Google in the store.
+                                val intent = if (state.installEngine) {
+                                    Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=com.google.android.tts"))
+                                } else {
+                                    com.listenai.service.tts.chain.TtsChainProvider.get(context).system.installVoiceDataIntent()
+                                        ?: Intent(android.provider.Settings.ACTION_SETTINGS)
+                                }
+                                try { context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) } catch (_: Exception) {
+                                    try { context.startActivity(Intent(android.provider.Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) } catch (_: Exception) { }
+                                }
+                            }) {
+                                Text(stringResource(if (state.installEngine) R.string.player_install_tts_engine else R.string.player_install_voice_data))
+                            }
+                        }
                         Spacer(modifier = Modifier.height(24.dp))
                         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                             OutlinedButton(onClick = onNavigateBack) {
