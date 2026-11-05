@@ -29,6 +29,11 @@ import {
   createVoiceClone, uploadVoiceCloneDataset, commitVoiceCloneDataset, getVoiceCloneStatus, deployVoiceClone, deleteVoiceClone,
   downloadZip, looksLikeZip,
 } from './voiceTools.ts'
+import {
+  CLONE_VOICE_PREFIX, CLONE_MCP_MAX_BASE64_AUDIO_MB, CLONE_MAX_AUDIO_MB, cloneCreateLimiter, cloneSpeechLimiter, parseCloneVoiceId,
+  issueConsentPhraseInput, createClonedVoiceInput, createClonedVoiceSchema, clonedVoiceIdInput, clonedVoiceIdSchema,
+  resolveAudioInput, issueConsentPhrase, createClonedVoice, listClonedVoices, deleteClonedVoice, synthesizeClonedVoice,
+} from './cloneClient.ts'
 
 // 15 speech calls per minute per API key (per server instance).
 export const keyLimiter = new SlidingWindowLimiter(15, 60_000)
@@ -45,18 +50,26 @@ export interface RequestContext {
   authFailed?: boolean // set when upstream said 401, so the route can answer HTTP 401
 }
 
-function toolError(code: ErrorCode, message: string, retryable: boolean): CallToolResult {
+function toolError(code: ErrorCode, message: string, retryable: boolean, extra: { detailCode?: string; details?: unknown } = {}): CallToolResult {
   return {
     isError: true,
-    content: [{ type: 'text', text: `Error (${code}): ${message}${retryable ? ' This is temporary; retry.' : ''}` }],
-    structuredContent: { error: { code, message, retryable } },
+    content: [{ type: 'text', text: `Error (${extra.detailCode ?? code}): ${message}${retryable ? ' This is temporary; retry.' : ''}` }],
+    structuredContent: { error: { code, message, retryable, ...(extra.detailCode ? { detail_code: extra.detailCode } : {}), ...(extra.details ? { details: extra.details } : {}) } },
   }
 }
 
 export function createMcpServer(ctx: RequestContext): McpServer {
   const server = new McpServer({ name: 'readaloud-ai', version: '1.0.0' }, {
-    instructions: 'ReadAloud AI text-to-speech, speech-to-text, dubbing, audiobooks, voice design, voice conversion and voice cloning. Use text_to_speech to turn short text into a WAV audio clip. Use list_voices before picking a non-default voice. Use speech_to_text to transcribe spoken audio. Use create_audiobook to turn long text or an ePub into a chaptered audiobook, then get_audiobook_status and export_audiobook. Use dub_audio to re-voice a spoken audio clip into another language (audio in, audio out — no video), then get_dub_status to poll for the result. Use generate_sound_effect to make a short sound effect from a text description. Use design_voice to generate a synthetic voice from a description (poll get_voice_design), and convert_voice to re-speak a clip in a target voice (poll get_voice_conversion). To clone a voice: create_voice_clone, upload_voice_clone_dataset, commit_voice_clone_dataset (billed, needs confirms_charge), get_voice_clone_status until ready, then deploy_voice_clone and use custom:<voice_id> in text_to_speech; delete_voice_clone removes it.',
+    instructions: 'ReadAloud AI text-to-speech, speech-to-text, dubbing, audiobooks, voice design, voice conversion and voice cloning. Use text_to_speech to turn short text into a WAV audio clip. Use list_voices before picking a non-default voice. Use speech_to_text to transcribe spoken audio. Use create_audiobook to turn long text or an ePub into a chaptered audiobook, then get_audiobook_status and export_audiobook. Use dub_audio to re-voice a spoken audio clip into another language (audio in, audio out — no video), then get_dub_status to poll for the result. Use generate_sound_effect to make a short sound effect from a text description. Use design_voice to generate a synthetic voice from a description (poll get_voice_design), and convert_voice to re-speak a clip in a target voice (poll get_voice_conversion). To clone a voice: create_voice_clone, upload_voice_clone_dataset, commit_voice_clone_dataset (billed, needs confirms_charge), get_voice_clone_status until ready, then deploy_voice_clone and use custom:<voice_id> in text_to_speech; delete_voice_clone removes it. To clone a voice instantly from a short recording (own voice, or a speaker who consents by reading a phrase themselves): readaloud_issue_consent_phrase, have the speaker record that phrase, then readaloud_create_voice_clone with the reference and consent recordings; use clone:<voice_id> in text_to_speech; readaloud_list_voices shows your cloned voices and readaloud_delete_voice_clone deletes one. Never clone a voice without the speaker\'s own consent recording.',
   })
+
+  const failClone = (e: unknown, fallback: string): CallToolResult => {
+    if (e instanceof UpstreamError) {
+      if (e.code === 'unauthorized') ctx.authFailed = true
+      return toolError(e.code, e.message, e.retryable, { detailCode: e.detailCode, details: e.details })
+    }
+    return toolError('upstream', fallback, true)
+  }
 
   server.registerTool('text_to_speech', {
     title: 'Text to speech',
@@ -65,13 +78,31 @@ export function createMcpServer(ctx: RequestContext): McpServer {
       `Limits: ${MAX_TEXT_CHARS} characters per call and about ${MAX_AUDIO_SECONDS} seconds of audio; longer audio is cut off, so split long text into several calls. ` +
       `Engines: "live" (ReadAloud Live) is fast and cheap (one voice); "studio" (ReadAloud Studio) sounds more natural and has many voices. ` +
       `The result also has a text block with duration and time to first audio. Uses the caller's free characters or billing, so avoid calling it repeatedly for the same text. ` +
-      `Errors are returned with a code: capacity (temporary, retry), payment_required (free characters used up), invalid_voice (call list_voices), rate_limited (wait).`,
+      `Cloned voices: pass voice "clone:<id>" (an id from readaloud_create_voice_clone or readaloud_list_voices) to speak in a voice you cloned; it works only for the account that owns it and returns the same WAV format. ` +
+      `Errors are returned with a code: capacity (temporary, retry), payment_required (free characters used up, or no paid plan for a cloned voice), invalid_voice (call list_voices), rate_limited (wait).`,
     inputSchema: textToSpeechInput,
     annotations: { title: 'Text to speech', readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
   }, async (args): Promise<CallToolResult> => {
     const parsed = textToSpeechSchema.parse(args)
     const rl = keyLimiter.check(ctx.keyId)
     if (!rl.ok) return toolError('rate_limited', `Too many speech requests for this key. Try again in ${rl.retryAfterSec} s.`, true)
+    // A cloned voice ("clone:<id>", see readaloud_list_voices) is spoken by the consent-gated cloning service, owner only.
+    const cloneId = parseCloneVoiceId(parsed.voice)
+    if (cloneId) {
+      const crl = cloneSpeechLimiter.check(ctx.keyId)
+      if (!crl.ok) return toolError('rate_limited', `Too many cloned-voice speech requests for this key. Try again in ${crl.retryAfterSec} s.`, true)
+      try {
+        const r = await synthesizeClonedVoice({ apiKey: ctx.apiKey, keyId: ctx.keyId, voiceId: cloneId, text: parsed.text, speed: parsed.speed })
+        const seconds = Math.max(0, r.wav.length - 44) / (24_000 * 2)
+        return {
+          content: [
+            { type: 'audio', data: r.wav.toString('base64'), mimeType: 'audio/wav' },
+            { type: 'text', text: `Spoke ${parsed.text.length} characters with cloned voice ${CLONE_VOICE_PREFIX}${cloneId} (about ${seconds.toFixed(1)} s of audio${r.ms ? `, generated in ${r.ms} ms` : ''}). The audio carries an inaudible watermark identifying it as synthetic.` },
+          ],
+          structuredContent: { voice: `${CLONE_VOICE_PREFIX}${cloneId}`, cloned: true, characters: parsed.text.length, watermark: r.watermark },
+        }
+      } catch (e) { return failClone(e, 'Unexpected error while generating speech with the cloned voice.') }
+    }
     const v = resolveVoice(parsed.engine, parsed.voice)
     if ('error' in v) return toolError('invalid_voice', v.error, false)
     try {
@@ -510,7 +541,7 @@ export function createMcpServer(ctx: RequestContext): McpServer {
   server.registerTool('create_voice_clone', {
     title: 'Create a voice clone',
     description:
-      `Start a custom cloned voice (fine-tuned voice) for a speaker who has agreed to it. Records the speaker's consent and returns a voice_id; ` +
+      `Start a custom TRAINED voice (fine-tuned from a ZIP of recordings, 30-60 minutes) for a speaker who has agreed to it. For an instant clone from a short recording with a spoken consent check, use readaloud_issue_consent_phrase and readaloud_create_voice_clone instead. Records the speaker's consent and returns a voice_id; ` +
       `next call upload_voice_clone_dataset, then commit_voice_clone_dataset (that step starts training and bills $2.50 per voice). ` +
       `Needs a billing-enabled API key and at most 3 active voices per key. You must pass consent: true and the consent_statement verbatim; ` +
       `only clone a voice you are authorized to. Errors are returned with a code: payment_required (billing not enabled on this key), invalid_input (names too short or consent wording wrong), rate_limited (wait).`,
@@ -640,6 +671,121 @@ export function createMcpServer(ctx: RequestContext): McpServer {
         structuredContent: { voice_id: parsed.voice_id, deleted: true },
       }
     } catch (e) { return failVoice(e, 'Unexpected error while deleting the voice clone.') }
+  })
+
+
+  // ==========================================================================
+  // Consent-gated instant voice cloning (own voice only). Schemas, limits and the backend client live in cloneClient.ts.
+  // Unlike create_voice_clone above (trains a fine-tuned voice from a ZIP of recordings), these clone from a short
+  // reference clip and verify, with a phrase the server issues, that the same person is speaking in both recordings.
+  // ==========================================================================
+
+  const CONSENT_RULE =
+    `CONSENT REQUIREMENT: only clone your own voice, or the voice of a person who has agreed and who personally records the consent phrase. ` +
+    `Never use a recording of someone else without their own live consent recording, and never generate, synthesize or edit the consent recording: ` +
+    `the service checks that the phrase was spoken and that the voice matches the reference, and refuses a mismatch. `
+
+  server.registerTool('readaloud_issue_consent_phrase', {
+    title: 'Issue a voice cloning consent phrase',
+    description:
+      `Step 1 of 3 for cloning a voice. Returns a single-use phrase with four random code words (valid about 5 minutes, at most 3 attempts) and a challenge_id. ` +
+      `The speaker whose voice will be cloned must read the phrase aloud and record it themselves; that recording is the proof of consent. ` +
+      CONSENT_RULE +
+      `Next: record the phrase and a reference clip of the same speaker (8-120 s of clean speech, one person), then call readaloud_create_voice_clone. ` +
+      `If the response says consent_required is false, this deployment uses attestation mode: no phrase or consent recording is needed, and readaloud_create_voice_clone needs attested: true instead. ` +
+      `Needs an API key that belongs to a verified ReadAloud account with a paid or complimentary plan. ` +
+      `Errors are returned with a code: payment_required (no paid or complimentary plan), forbidden (unverified email, or a key not tied to an account), rate_limited (wait).`,
+    inputSchema: issueConsentPhraseInput,
+    annotations: { title: 'Issue consent phrase', readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
+  }, async (): Promise<CallToolResult> => {
+    const rl = cloneCreateLimiter.check(ctx.keyId)
+    if (!rl.ok) return toolError('rate_limited', `Too many voice cloning requests for this key. Try again in ${rl.retryAfterSec} s.`, true)
+    try {
+      const r = await issueConsentPhrase({ apiKey: ctx.apiKey, keyId: ctx.keyId })
+      if (!r.consent_required) {
+        return {
+          content: [{ type: 'text', text: 'This deployment does not require a spoken consent phrase (attestation mode). Call readaloud_create_voice_clone with a reference recording and attested: true, only if this is your own voice or you have the speaker\'s permission.' }],
+          structuredContent: { consent_required: false },
+        }
+      }
+      return {
+        content: [{ type: 'text', text: `Have the speaker read this aloud and record it: "${r.phrase}" (challenge_id ${r.challenge_id}, expires ${r.expires_at}). Then call readaloud_create_voice_clone with challenge_id, the consent recording and a reference recording of the same speaker.` }],
+        structuredContent: { consent_required: true, challenge_id: r.challenge_id, phrase: r.phrase, expires_at: r.expires_at },
+      }
+    } catch (e) { return failClone(e, 'Unexpected error while issuing the consent phrase.') }
+  })
+
+  server.registerTool('readaloud_create_voice_clone', {
+    title: 'Create a cloned voice (consent verified)',
+    description:
+      `Step 2 of 3. Clone a voice from a reference recording, after verifying consent. ` + CONSENT_RULE +
+      `Send the challenge_id from readaloud_issue_consent_phrase, a recording of the speaker reading that phrase (consent_audio_base64 or consent_audio_url) and a reference recording of the same speaker (reference_audio_base64 or reference_audio_url; 8-120 s, clean, one speaker). ` +
+      `Base64 audio is limited to ${CLONE_MCP_MAX_BASE64_AUDIO_MB} MB decoded per recording (host larger files at a public https URL, up to ${CLONE_MAX_AUDIO_MB} MB); formats WAV, FLAC, OGG, MP3, M4A, WebM. ` +
+      `The service transcribes the consent recording and checks it matches the phrase, then checks the speaker in it matches the reference. ` +
+      `Quality, plan, daily-limit and abuse limits apply as on the website. Takes up to a few minutes if the GPU app is cold. Returns a voice_id; use "clone:<voice_id>" as the voice in text_to_speech (step 3). Generated audio is watermarked as synthetic. ` +
+      `In attestation mode (see readaloud_issue_consent_phrase) send attested: true and the reference recording only. ` +
+      `Errors are returned with a code and a detail_code: invalid_input with detail_code phrase_mismatch (the phrase was not read as issued; details.attemptsLeft, record again), speaker_mismatch (the consent voice does not match the reference, so you can only clone your own voice), reference_rejected / consent_clip_rejected (recording too short, noisy, clipped, music or several speakers), challenge_expired / challenge_used / challenge_attempts_exhausted (issue a new phrase), attestation_required; upstream (retryable) with detail_code asr_unavailable; payment_required (no paid or complimentary plan); forbidden (unverified email, or a key not tied to an account); rate_limited (including daily_limit).`,
+    inputSchema: createClonedVoiceInput,
+    annotations: { title: 'Create cloned voice', readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
+  }, async (args): Promise<CallToolResult> => {
+    const parsed = createClonedVoiceSchema.parse(args)
+    const rl = cloneCreateLimiter.check(ctx.keyId)
+    if (!rl.ok) return toolError('rate_limited', `Too many voice cloning requests for this key. Try again in ${rl.retryAfterSec} s.`, true)
+    try {
+      const reference = await resolveAudioInput({ label: 'reference', base64: parsed.reference_audio_base64, url: parsed.reference_audio_url, mime: parsed.reference_mime_type, maxBase64Mb: CLONE_MCP_MAX_BASE64_AUDIO_MB })
+      if (!reference) return toolError('invalid_input', 'Provide reference_audio_base64 or reference_audio_url (the speaker\'s reference recording).', false)
+      const consent = await resolveAudioInput({ label: 'consent', base64: parsed.consent_audio_base64, url: parsed.consent_audio_url, mime: parsed.consent_mime_type, maxBase64Mb: CLONE_MCP_MAX_BASE64_AUDIO_MB })
+      const v = await createClonedVoice({ apiKey: ctx.apiKey, keyId: ctx.keyId }, {
+        name: parsed.name, language: parsed.language, challengeId: parsed.challenge_id, reference, consent: consent ?? undefined, attested: parsed.attested,
+      })
+      return {
+        content: [{ type: 'text', text: `Created cloned voice ${v.id} ("${v.name}", ${v.language}). Use voice "${CLONE_VOICE_PREFIX}${v.id}" in text_to_speech. Delete it any time with readaloud_delete_voice_clone.` }],
+        structuredContent: { voice_id: v.id, voice: `${CLONE_VOICE_PREFIX}${v.id}`, name: v.name, language: v.language, status: v.status, reference_seconds: v.reference_seconds ?? null, created_at: v.created_at ?? null },
+      }
+    } catch (e) { return failClone(e, 'Unexpected error while creating the cloned voice.') }
+  })
+
+  server.registerTool('readaloud_list_voices', {
+    title: 'List voices including your cloned voices',
+    description:
+      'List the voices you can pass to text_to_speech: the built-in voices per engine (like list_voices) plus the voices you cloned, each marked cloned: true with the exact voice string to use ("clone:<id>"), name, language and status ("active" is usable). ' +
+      'Cloned voices are private to your account. If cloned voices cannot be listed (no paid plan, or a key not tied to an account) the built-in voices are still returned with a cloned_voices_note.',
+    inputSchema: listVoicesInput,
+    annotations: { title: 'List voices', readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+  }, async ({ engine }): Promise<CallToolResult> => {
+    const out: Record<string, unknown> = {}
+    if (!engine || engine === 'live') out.live = { voices: PIPER_VOICES, default: 'default' }
+    if (!engine || engine === 'studio') out.studio = { voices: KOKORO_VOICES, default: 'af_heart' }
+    out.custom = 'custom:<id>'
+    try {
+      const cloned = await listClonedVoices({ apiKey: ctx.apiKey, keyId: ctx.keyId })
+      out.cloned_voices = cloned.map((v) => ({ voice: `${CLONE_VOICE_PREFIX}${v.id}`, id: v.id, name: v.name, language: v.language, status: v.status, created_at: v.created_at ?? null, cloned: true, usable: v.status === 'active' }))
+    } catch (e) {
+      if (e instanceof UpstreamError && e.code === 'unauthorized') { ctx.authFailed = true; return toolError(e.code, e.message, e.retryable) }
+      out.cloned_voices = []
+      out.cloned_voices_note = e instanceof UpstreamError ? `Cloned voices could not be listed: ${e.message}` : 'Cloned voices could not be listed.'
+    }
+    return { content: [{ type: 'text', text: JSON.stringify(out, null, 2) }], structuredContent: out }
+  })
+
+  server.registerTool('readaloud_delete_voice_clone', {
+    title: 'Delete a cloned voice',
+    description:
+      'Permanently delete a voice you cloned with readaloud_create_voice_clone: its reference audio, voice embeddings and cached prompts are removed and the voice stops working immediately. ' +
+      'The record that consent was given is kept for the retention period (12 months) for abuse handling; audio you already generated is not recalled. Only the account that owns the voice can delete it (anything else answers "not found"). Cannot be undone, and a deleted voice still counts toward the daily creation limit.',
+    inputSchema: clonedVoiceIdInput,
+    annotations: { title: 'Delete cloned voice', readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: true },
+  }, async (args): Promise<CallToolResult> => {
+    const parsed = clonedVoiceIdSchema.parse(args)
+    const rl = cloneCreateLimiter.check(ctx.keyId)
+    if (!rl.ok) return toolError('rate_limited', `Too many voice cloning requests for this key. Try again in ${rl.retryAfterSec} s.`, true)
+    try {
+      const r = await deleteClonedVoice({ apiKey: ctx.apiKey, keyId: ctx.keyId, voiceId: parsed.voice_id.toLowerCase() })
+      return {
+        content: [{ type: 'text', text: r.alreadyDeleted ? `Cloned voice ${parsed.voice_id} was already deleted.` : `Deleted cloned voice ${parsed.voice_id}.` }],
+        structuredContent: { voice_id: parsed.voice_id, deleted: r.deleted },
+      }
+    } catch (e) { return failClone(e, 'Unexpected error while deleting the cloned voice.') }
   })
 
   return server

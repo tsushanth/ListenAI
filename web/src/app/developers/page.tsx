@@ -5,6 +5,7 @@ import CodeTabs from '@/components/ra/CodeTabs'
 import DeveloperApiSection from '@/components/DeveloperApiSection'
 import VoiceStudioLink from '@/components/ra/VoiceStudioLink'
 import VoiceCloningDocs from '@/components/ra/VoiceCloningDocs'
+import ConsentVoiceCloningDocs from '@/components/ra/ConsentVoiceCloningDocs'
 import publish from '../../content/publish.json'
 import { isPublished } from '@/lib/seoLibrary/publish'
 
@@ -255,8 +256,11 @@ export READALOUD_API_KEY=rtts_...`}</code></pre>
                 </ul>
 
                 <h3 id="voice-cloning">Voice cloning</h3>
-                <p>Create a custom voice from your own recordings and use it with <code className="inl">custom:&lt;id&gt;</code>. Training runs automatically on GPU and takes about 30–60 minutes.</p>
+                <p>Two ways to clone. <b>Trained voice:</b> upload your own recordings and use the result with <code className="inl">custom:&lt;id&gt;</code>; training runs automatically on GPU and takes about 30–60 minutes. <b>Instant clone:</b> from a short recording plus a spoken consent phrase, ready immediately; see <a href="#voice-cloning-api" style={{ textDecoration: 'underline' }}>instant voice cloning</a> below. Only clone your own voice, or one you have the speaker&rsquo;s recorded consent for.</p>
                 <VoiceCloningDocs />
+
+                <h3 id="voice-cloning-api">Instant voice cloning with consent (your own voice only)</h3>
+                <ConsentVoiceCloningDocs />
 
                 <h3 id="speech-to-text">Speech to text (batch)</h3>
                 <p>Transcribe a finished recording with ReadAloud speech to text. Try it in the browser at <Link href="/transcribe" style={{ textDecoration: 'underline' }}>/transcribe</Link>, or with an API key through the MCP tool <code>speech_to_text</code> (up to 25&nbsp;MB per call). This is batch only: you upload a file and get the whole transcript back. There is no live streaming transcription yet and no entity detection. Speaker labels are available with <code>diarize=true</code> (below).</p>
@@ -321,7 +325,7 @@ curl -L -X POST "<url>/v1/stt?language=auto" \\
                   in the console above belong to your account; a key that is not tied to an account
                   gets <code>402</code> from dubbing, voice design and voice conversion. Free credits are per account, so they follow the account, not the key.
                   Speech to text and voice cloning have their own key-based routes, described in their
-                  sections.
+                  sections (instant voice cloning is at <code>https://readaloudai.org/api/v1/voice-clones</code>).
                 </p>
                 <p><b>1. Submit.</b> <code>POST https://api.readaloudai.org/api/dub</code>,
                   <code>Authorization: Bearer &lt;your session token&gt;</code> (or use the MCP tool <code>dub_audio</code> with an API key; the tool takes clips up to 25&nbsp;MB),

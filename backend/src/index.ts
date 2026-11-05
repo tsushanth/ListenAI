@@ -48,6 +48,7 @@ import { voiceIsolateRouter } from './routes/voiceIsolate.js';
 import { voiceClonesRouter, voiceCloneAdminRouter } from './routes/voiceClones.js';
 import { sttRouter, sttCompatRouter } from './routes/stt.js';
 import { voiceStudioApiKeyRouter } from './routes/voiceStudioApiKey.js';
+import { voiceCloneApiKeyRouter } from './routes/voiceCloneApiKey.js';
 import { orpheusVoiceStudioApiKeyRouter } from './routes/orpheusVoiceStudioApiKey.js';
 import { orpheusVoiceStudioRouter } from './routes/orpheusVoiceStudio.js';
 import { dubRouter } from './routes/dub.js';
@@ -326,6 +327,11 @@ app.use('/api/voice-studio', voiceStudioRouter);
 // (realtime-tts-gateway proxies /v1/voices here after validating the key) — see routes/voiceStudioApiKey.ts.
 // Not behind requireAuth/standardRateLimit: it does its own shared-secret check and its own rate limiting.
 app.use('/internal/voice-studio-api', voiceStudioApiKeyRouter);
+
+// Consent-gated instant voice cloning (Chatterbox) via an API key: same trusted-forwarder pattern, and the same
+// createVoiceClonesRouter as /api/voice-clones underneath — see routes/voiceCloneApiKey.ts. Does its own shared-secret
+// check and rate limiting; VOICE_CLONE_API_DISABLED=true switches it off.
+app.use('/internal/voice-clone-api', voiceCloneApiKeyRouter);
 
 // Orpheus streaming voice cloning: same gateway-trusted pattern as voice-studio-api above, but a plain
 // direct router (no createVoiceStudioRouter factory) proxying to the Modal training/serving service.
