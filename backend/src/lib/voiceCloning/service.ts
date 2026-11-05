@@ -228,6 +228,23 @@ export async function getUsableVoice(store: CloneStore, voiceId: string, e: Elig
   return v;
 }
 
+/**
+ * Synthesis with a consent-gated cloned voice. Shared by POST /api/tts/cloned (Supabase session) and the API-key
+ * front door (routes/voiceCloneApiKey.ts) so both enforce the same rules: the voice must be active, owned by the
+ * caller (someone else's voice is indistinguishable from a missing one: 404), and the account still eligible.
+ * The output hash (and watermark metadata) is retained exactly as before.
+ */
+export async function synthesizeWithClone(
+  deps: CloneDeps,
+  p: { eligibility: Eligibility; voiceId: string; text: string; speed?: number },
+): Promise<{ voice: VoiceCloneRow; synth: SynthesisResult; ms: number }> {
+  const voice = await getUsableVoice(deps.store, p.voiceId, p.eligibility);
+  const started = Date.now();
+  const synth = await deps.service.synthesize({ voiceId: voice.id, text: p.text, language: voice.language, speed: p.speed });
+  await recordOutput(deps, { voiceId: voice.id, userId: p.eligibility.userId, audio: synth.audio, chars: p.text.length, synth });
+  return { voice, synth, ms: Date.now() - started };
+}
+
 /** User-initiated deletion: reference audio, embeddings and cached conditionals go; consent evidence stays for the retention period. */
 export async function deleteVoiceClone(deps: CloneDeps, userId: string, voiceId: string) {
   const { store, service, policy } = deps;

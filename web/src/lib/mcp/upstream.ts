@@ -5,15 +5,21 @@ import { buildSynthesizeMessage, type NormalizeMode } from '../piperNormalize.ts
 
 export const GATEWAY = process.env.TTS_GATEWAY_URL || 'https://api.readaloudai.org'
 
-export type ErrorCode = 'unauthorized' | 'payment_required' | 'capacity' | 'invalid_voice' | 'timeout' | 'upstream' | 'rate_limited' | 'invalid_input'
+export type ErrorCode = 'unauthorized' | 'payment_required' | 'capacity' | 'invalid_voice' | 'timeout' | 'upstream' | 'rate_limited' | 'invalid_input' | 'forbidden'
 
 export class UpstreamError extends Error {
   code: ErrorCode
   retryable: boolean
-  constructor(code: ErrorCode, message: string, retryable = false) {
+  /** The service's own, more specific error code (e.g. "phrase_mismatch"), when it sent one. */
+  detailCode?: string
+  /** Structured detail from the service (e.g. { attemptsLeft: 2 }), when it sent some. */
+  details?: unknown
+  constructor(code: ErrorCode, message: string, retryable = false, extra: { detailCode?: string; details?: unknown } = {}) {
     super(message)
     this.code = code
     this.retryable = retryable
+    this.detailCode = extra.detailCode
+    this.details = extra.details
   }
 }
 

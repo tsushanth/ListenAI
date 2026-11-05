@@ -97,6 +97,50 @@ gate, the Perth watermark on all output plus retained output hashes, the abuse t
 `disable`), and per-user records (the attestation row ties each voice to an account and a timestamp). Treat these as deterrence
 and after-the-fact accountability, not prevention. Revisit before widening access.
 
+## API-key access (public developer API and MCP)
+
+Added 2026-11-04. The same consent-gated flow is reachable with an API key. Nothing about the flow is reimplemented: the API-key
+front door mounts the existing `createVoiceClonesRouter` with a different identity resolver, so strict consent, attestation mode
+(`VOICE_CLONE_REQUIRE_CONSENT_PHRASE`), the verified-email and paid/comped-plan gate, the daily limit, the reference gate, the watermark,
+deletion and retention behave exactly as for the website.
+
+```
+caller --API key--> readaloud-web (REST /api/v1/voice-clones/*, MCP tools)
+                      | validates the key against the gateway (/tts/authorize), reads the bound uid
+                      | x-gateway-admin-secret (MCP_GATEWAY_FORWARD_SECRET) + x-gateway-uid
+                      v
+                 listenai-backend /internal/voice-clone-api/*   (routes/voiceCloneApiKey.ts)
+```
+
+Identity: same trusted-forwarder pattern as `/internal/voice-studio-api` (`MCP_AUTH_BRIDGE.md`): the backend checks `GATEWAY_FORWARD_SECRET`
+(timing-safe) and trusts the forwarded uid; it never sees the raw key. Cloning is stricter than the other API-key features: the uid must be a
+real Supabase user (email confirmed, plan from the billing row). A key with no bound account gets `403 account_required`, because a cloned voice,
+its consent record, the daily limit and a takedown all hang off the account.
+
+| Route (`/internal/voice-clone-api`, public name `/api/v1/voice-clones`) | Purpose |
+|---|---|
+| `POST /consent-phrase` | issue the phrase (alias of `/consent-challenges`); attestation mode answers `200 {consent_required:false}` |
+| `GET /config` | `{consent_required}` |
+| `POST /` | multipart `challenge_id, name, language, consent, reference` (or `reference, attested=true` in attestation mode). The web layer also takes JSON with base64 or https-URL audio and forwards multipart |
+| `GET /` | the caller's own cloned voices |
+| `DELETE /:id` | delete reference audio, embeddings, cached prompts; consent evidence retained per the retention rule above |
+| `POST /:id/speech` | `{text<=1500, speed 0.5-3}` -> `audio/wav`; shares `synthesizeWithClone` with `POST /api/tts/cloned`: owner only, active voice, plan still active, output hash recorded |
+
+Added limits (per account, hourly, in-process like the others): 5 creations, 60 speech calls; the website burst limiter (20/h) still applies underneath.
+`VOICE_CLONE_API_DISABLED=true` switches this API surface off (503 `unavailable`) without touching the website flow. The public abuse-report intake
+is deliberately not exposed on this surface.
+
+Own-voice only: in strict mode there is no path that clones without a consent recording of the issued phrase that matches the reference speaker.
+Reference or consent audio is never fetched by the backend; the web layer fetches https URLs (public hosts only, no redirects, size-capped) and forwards bytes.
+Audit: every issue/create/delete/speech writes a structured log line (`event`, `channel: "api"`, `userId`, `voiceId`, `mode`) with no audio and no key material;
+the consent row is the evidence record, unchanged.
+
+MCP tools: `readaloud_issue_consent_phrase`, `readaloud_create_voice_clone`, `readaloud_list_voices`, `readaloud_delete_voice_clone`, and `text_to_speech`
+accepts `voice: "clone:<id>"`. Errors keep the service code in `structuredContent.error.detail_code`.
+
+Known gaps: the realtime-tts gateway (separate repo) does not accept cloned voice ids on `/v1/audio/speech`, `/v1/text-to-speech/{id}` or the WebSocket yet;
+rate limits are per process; the two-step flow cannot stop a live voice changer or a real-time clone of the victim reading the phrase (same limit as the website).
+
 ## Safeguards: what each one does and does not do
 
 | Safeguard | Implementation | Limits (be honest about these) |

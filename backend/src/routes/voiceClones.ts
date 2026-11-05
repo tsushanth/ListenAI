@@ -40,6 +40,10 @@ export interface VoiceClonesRouterDeps {
   /** null = not signed in. Must verify the token against Supabase (no default-user fallback). */
   resolveEligibility: (req: Request) => Promise<Eligibility | null>;
   adminKey?: () => string | undefined;
+  /** Where the request comes from. Only used in audit log lines. Default 'web' (Supabase session). */
+  channel?: 'web' | 'api';
+  /** Mount the public abuse-report intake (no sign-in). Default true; the API-key front door turns it off. */
+  abuseReports?: boolean;
 }
 
 export async function resolveEligibilityFromSupabase(req: Request): Promise<Eligibility | null> {
@@ -52,7 +56,7 @@ export async function resolveEligibilityFromSupabase(req: Request): Promise<Elig
 
 type Authed = Request & { eligibility?: Eligibility };
 
-function sendError(res: Response, err: unknown) {
+export function sendError(res: Response, err: unknown) {
   if (res.headersSent) return;
   if (err instanceof CloneError) {
     res.status(err.status).json({ error: err.message, code: err.code, ...(err.details ? { details: err.details } : {}) });
@@ -106,8 +110,10 @@ export function createVoiceClonesRouter(rd: VoiceClonesRouterDeps): Router {
     message: { error: 'Too many requests. Try again later.', code: 'rate_limited' },
   });
 
+  const channel = rd.channel ?? 'web';
+
   // Public intake first: no sign-in needed to report abuse.
-  r.post('/abuse-reports',
+  if (rd.abuseReports !== false) r.post('/abuse-reports',
     rateLimit({ windowMs: 3600_000, max: 5, standardHeaders: true, legacyHeaders: false, validate: false, message: { error: 'Too many reports from this address. Email abuse@readaloudai.org.' } }),
     express.json({ limit: '16kb' }),
     h(async (req, res) => {
@@ -141,6 +147,7 @@ export function createVoiceClonesRouter(rd: VoiceClonesRouterDeps): Router {
   r.post('/consent-challenges', burst, h(async (req, res) => {
     if (!isConsentRequired(rd.getDeps()!)) { res.status(200).json({ consent_required: false }); return; }
     const c = await issueConsentChallenge(rd.getDeps()!, req.eligibility!);
+    log.info({ event: 'voice_clone_consent_phrase_issued', channel, userId: req.eligibility!.userId, challengeId: c.challengeId }, 'consent phrase issued');
     res.status(201).json({ challenge_id: c.challengeId, phrase: c.phrase, expires_at: c.expiresAt });
   }));
 
@@ -165,6 +172,7 @@ export function createVoiceClonesRouter(rd: VoiceClonesRouterDeps): Router {
         eligibility: req.eligibility!, name: a.data.name, language: a.data.language.toLowerCase(), attested: true,
         reference: { audio: reference.buffer, mime: reference.mimetype, filename: reference.originalname || 'reference' },
       });
+      log.info({ event: 'voice_clone_created', channel, mode: 'attested', userId: voice.userId, voiceId: voice.id, language: voice.language }, 'voice clone created (attestation mode)');
       res.status(201).json({ id: voice.id, name: voice.name, language: voice.language, status: voice.status, reference_seconds: voice.referenceSec, model: voice.modelId, created_at: voice.createdAt });
       return;
     }
@@ -184,6 +192,7 @@ export function createVoiceClonesRouter(rd: VoiceClonesRouterDeps): Router {
     });
     // `borderline` is for the operator (stored with the consent record); not exposed to the caller.
     if (borderline) log.info({ voiceId: voice.id, userId: voice.userId }, 'voice clone accepted within the borderline similarity margin');
+    log.info({ event: 'voice_clone_created', channel, mode: 'verified', userId: voice.userId, voiceId: voice.id, language: voice.language, borderline }, 'voice clone created (consent verified)');
     res.status(201).json({ id: voice.id, name: voice.name, language: voice.language, status: voice.status, reference_seconds: voice.referenceSec, model: voice.modelId, created_at: voice.createdAt });
   }));
 
@@ -196,6 +205,7 @@ export function createVoiceClonesRouter(rd: VoiceClonesRouterDeps): Router {
     const id = uuid.safeParse(req.params.id);
     if (!id.success) { res.status(400).json({ error: 'Invalid voice id.', code: 'validation' }); return; }
     const out = await deleteVoiceClone(rd.getDeps()!, req.eligibility!.userId, id.data);
+    log.info({ event: 'voice_clone_deleted', channel, userId: req.eligibility!.userId, voiceId: id.data, alreadyDeleted: out.alreadyDeleted }, 'voice clone deleted');
     res.json(out);
   }));
 

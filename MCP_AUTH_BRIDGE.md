@@ -188,5 +188,6 @@ Run: `cd backend && npm test` (all 80 tests pass, including the 8 new ones).
   and returns a retryable `capacity` error saying the converter is being provisioned (~3 minutes), so the
   caller just retries. Raw REST callers do the same by hand: on `deployment_required`, `POST /deploy`, poll
   `GET /deploy` until `status: "ready"`, retry.
-- **Cloning** does not go through this backend bridge at all: the MCP tools call the realtime-tts gateway's
+- **Instant, consent-gated cloning** (`readaloud_issue_consent_phrase`, `readaloud_create_voice_clone`, `readaloud_list_voices`, `readaloud_delete_voice_clone`, and `clone:<id>` in `text_to_speech`) DOES use this bridge: the web layer forwards `x-gateway-admin-secret` + `x-gateway-uid` to `/internal/voice-clone-api` (`routes/voiceCloneApiKey.ts`), which refuses keys with no bound account. See `docs/VOICE_CLONING_CONSENT.md`, "API-key access".
+- **Trained custom voices** (`create_voice_clone`, `upload_voice_clone_dataset`, ...) do not go through this backend bridge at all: the MCP tools call the realtime-tts gateway's
   `/v1/voices/*` with the caller's API key as bearer. `commit_voice_clone_dataset` is the billed step ($2.50).

@@ -66,7 +66,7 @@ import {
   AppError,
 } from '../types/index.js';
 import { getCloneDeps, eligibilityForSynthesis } from '../lib/voiceCloning/runtime.js';
-import { CLONE_MODEL_ID, getUsableVoice, recordOutput } from '../lib/voiceCloning/service.js';
+import { CLONE_MODEL_ID, getUsableVoice, synthesizeWithClone } from '../lib/voiceCloning/service.js';
 
 // ============================================================================
 // Fast Lane Micro Generation (Inline)
@@ -1109,19 +1109,15 @@ ttsRouter.post('/cloned', asyncHandler(async (req: AuthenticatedRequest, res: Re
 
   const deps = getCloneDeps();
   if (!deps) throw new AppError(503, 'CLONING_UNAVAILABLE', 'Voice cloning is not available.');
-  const voice = await getUsableVoice(deps.store, voiceId, await eligibilityForSynthesis(userId));
-
   ttsLogger.info({ userId, voiceId, characterCount }, 'Cloned voice synthesis request');
-  const started = Date.now();
-  const synth = await deps.service.synthesize({ voiceId: voice.id, text, language: voice.language, speed });
-  await recordOutput(deps, { voiceId: voice.id, userId, audio: synth.audio, chars: characterCount, synth });
+  const { synth, ms } = await synthesizeWithClone(deps, { eligibility: await eligibilityForSynthesis(userId), voiceId, text, speed });
 
   res.setHeader('Content-Type', 'audio/wav');
   res.setHeader('X-Voice-ID', voiceId);
   res.setHeader('X-Model', synth.modelId);
   res.setHeader('X-Watermark', synth.watermarkScheme);
   res.setHeader('X-Characters-Used', characterCount.toString());
-  res.setHeader('X-Synthesis-Time-Ms', String(Date.now() - started));
+  res.setHeader('X-Synthesis-Time-Ms', String(ms));
   res.send(synth.audio);
 }));
 

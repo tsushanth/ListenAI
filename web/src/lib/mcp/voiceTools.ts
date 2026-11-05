@@ -380,32 +380,32 @@ export function isPrivateAddress(ip: string): boolean {
   return true // not an IP at all: refuse
 }
 
-/** Downloads a ZIP from a public https URL, refusing internal addresses, redirects and oversize bodies. */
-export async function downloadZip(rawUrl: string, maxBytes = MAX_CLONE_ZIP_URL_MB * 1024 * 1024): Promise<Buffer> {
+/** Downloads a file from a public https URL, refusing internal addresses, redirects and oversize bodies. `label` is the argument name used in error messages. */
+export async function downloadPublicFile(rawUrl: string, maxBytes: number, label = 'url'): Promise<Buffer> {
   let url: URL
-  try { url = new URL(rawUrl) } catch { throw new UpstreamError('invalid_input', 'zip_url is not a valid URL.', false) }
-  if (url.protocol !== 'https:') throw new UpstreamError('invalid_input', 'zip_url must be an https URL.', false)
-  if (url.username || url.password) throw new UpstreamError('invalid_input', 'zip_url must not contain credentials.', false)
+  try { url = new URL(rawUrl) } catch { throw new UpstreamError('invalid_input', `${label} is not a valid URL.`, false) }
+  if (url.protocol !== 'https:') throw new UpstreamError('invalid_input', `${label} must be an https URL.`, false)
+  if (url.username || url.password) throw new UpstreamError('invalid_input', `${label} must not contain credentials.`, false)
   const host = url.hostname.replace(/^\[|\]$/g, '')
   let addrs: string[]
   try {
     addrs = isIP(host) ? [host] : (await lookup(host, { all: true })).map((a) => a.address)
   } catch {
-    throw new UpstreamError('invalid_input', 'zip_url host could not be resolved.', false)
+    throw new UpstreamError('invalid_input', `${label} host could not be resolved.`, false)
   }
   if (addrs.length === 0 || addrs.some(isPrivateAddress)) {
-    throw new UpstreamError('invalid_input', 'zip_url must point to a public host.', false)
+    throw new UpstreamError('invalid_input', `${label} must point to a public host.`, false)
   }
   let r: Response
   try {
     // redirect: 'error' - a redirect could otherwise hop to an internal address after the check above.
     r = await fetch(url, { redirect: 'error', cache: 'no-store', signal: AbortSignal.timeout(120_000) })
   } catch {
-    throw new UpstreamError('invalid_input', 'Could not download zip_url (network error, timeout, or it redirected).', false)
+    throw new UpstreamError('invalid_input', `Could not download ${label} (network error, timeout, or it redirected).`, false)
   }
-  if (!r.ok || !r.body) throw new UpstreamError('invalid_input', `Downloading zip_url failed with HTTP ${r.status}.`, false)
+  if (!r.ok || !r.body) throw new UpstreamError('invalid_input', `Downloading ${label} failed with HTTP ${r.status}.`, false)
   const declared = Number(r.headers.get('content-length') || 0)
-  if (declared > maxBytes) throw new UpstreamError('invalid_input', `zip_url is larger than ${Math.round(maxBytes / 1048576)} MB.`, false)
+  if (declared > maxBytes) throw new UpstreamError('invalid_input', `${label} is larger than ${Math.round(maxBytes / 1048576)} MB.`, false)
   const chunks: Uint8Array[] = []
   let total = 0
   const reader = r.body.getReader()
@@ -415,11 +415,16 @@ export async function downloadZip(rawUrl: string, maxBytes = MAX_CLONE_ZIP_URL_M
     total += value.length
     if (total > maxBytes) {
       await reader.cancel().catch(() => {})
-      throw new UpstreamError('invalid_input', `zip_url is larger than ${Math.round(maxBytes / 1048576)} MB.`, false)
+      throw new UpstreamError('invalid_input', `${label} is larger than ${Math.round(maxBytes / 1048576)} MB.`, false)
     }
     chunks.push(value)
   }
   return Buffer.concat(chunks)
+}
+
+/** Downloads a ZIP from a public https URL, refusing internal addresses, redirects and oversize bodies. */
+export function downloadZip(rawUrl: string, maxBytes = MAX_CLONE_ZIP_URL_MB * 1024 * 1024): Promise<Buffer> {
+  return downloadPublicFile(rawUrl, maxBytes, 'zip_url')
 }
 
 /** ZIP local-file-header magic ("PK\x03\x04", or "PK\x05\x06" for an empty archive). */
