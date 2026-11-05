@@ -24,11 +24,12 @@ import java.util.concurrent.ConcurrentHashMap
  *   source is skipped by later sessions for a while that depends on why it failed (429 honours Retry-After).
  * - When every source failed for a chunk, the flow throws [NoSourceAvailableException] carrying the action to offer.
  *
- * [order] is read at the start of every session, which is how the remote flag switches the default source.
+ * [order] is evaluated at the start of every session (it sees the request, so it can leave out sources that cannot
+ * speak the language), which is how the remote flag switches the default source.
  */
 class TtsSourceChain(
     private val sources: Map<SourceId, TtsSource>,
-    private val order: () -> List<SourceId>,
+    private val order: (TtsRequest) -> List<SourceId>,
     private val cache: ChunkCache? = null,
     private val config: ChainConfig = ChainConfig(),
     private val telemetry: TtsTelemetry = TtsTelemetry.None,
@@ -57,7 +58,7 @@ class TtsSourceChain(
 
     fun speak(text: String, request: TtsRequest): Flow<SpokenChunk> = flow {
         val chunks = TextChunker.split(text, config.maxChunkChars, config.firstChunkChars)
-        val session = Session(order(), request)
+        val session = Session(order(request), request)
         val started = nowMs()
         var firstAudioAt: Long? = null
         var emitted = 0
@@ -113,7 +114,7 @@ class TtsSourceChain(
             cache?.get(key)?.let { hit ->
                 s.cacheHits++
                 s.bySource.merge(SourceId.API, 1, Int::plus)
-                return SpokenChunk(index, total, Pcm.resample(hit, config.outputSampleRate), SourceId.API, true, text.length)
+                return SpokenChunk(index, total, Pcm.resample(hit, config.outputSampleRate), SourceId.API, true, text.length, text)
             }
         }
         val failures = LinkedHashMap<SourceId, FallbackReason>()
@@ -149,9 +150,9 @@ class TtsSourceChain(
                     val pcm = withTimeout(deadline) { src.synthesize(text, s.request) }
                     if (pcm.pcm.isEmpty()) throw SourceFailure(FallbackReason.SERVER_ERROR, message = "empty audio")
                     src.onChunkMeasured(nowMs() - t0, pcm.durationMs)
-                    if (key != null && id in config.cacheableSources) cache?.put(key, pcm)
+                    if (key != null && id in config.cacheableSources && pcm.words == null) cache?.put(key, pcm)
                     s.bySource.merge(id, 1, Int::plus)
-                    return SpokenChunk(index, total, Pcm.resample(pcm, config.outputSampleRate), id, false, text.length)
+                    return SpokenChunk(index, total, Pcm.resample(pcm, config.outputSampleRate), id, false, text.length, text)
                 } catch (e: TimeoutCancellationException) {
                     failures[id] = FallbackReason.TIMEOUT
                     if (attempt < attempts) { delay(config.retryBackoffMs); continue }

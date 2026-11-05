@@ -22,7 +22,7 @@ object Pcm {
             out[2 * i] = v.toByte()
             out[2 * i + 1] = (v shr 8).toByte()
         }
-        return PcmChunk(out, toRate)
+        return PcmChunk(out, toRate, chunk.words)
     }
 
     /** Parses a 16-bit PCM WAV (any mono/stereo, header chunks in any order). Stereo is mixed down. Null if not PCM16. */

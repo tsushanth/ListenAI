@@ -57,10 +57,9 @@ class TtsSourceChainTest {
         cache: ChunkCache? = null,
         telemetry: TtsTelemetry = TtsTelemetry.None,
         config: ChainConfig = ChainConfig(),
-        orderFn: (() -> List<SourceId>)? = null,
     ) = TtsSourceChain(
         sources = listOfNotNull(api, system, device).associateBy { it.id },
-        order = orderFn ?: { order },
+        order = { order },
         cache = cache, config = config, telemetry = telemetry,
         nowMs = { currentTime },
     )

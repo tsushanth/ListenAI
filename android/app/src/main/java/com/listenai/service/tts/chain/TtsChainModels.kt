@@ -25,6 +25,8 @@ enum class FallbackReason {
     LANGUAGE_MISSING,
     MODEL_ABSENT,
     MODEL_TOO_SLOW,
+    /** The source has no voice for this language (the API's app voices are English). */
+    UNSUPPORTED_LANGUAGE,
     UNKNOWN,
 }
 
@@ -51,8 +53,11 @@ class NoSourceAvailableException(
     val action: UserAction,
 ) : Exception("No speech source available: $failures")
 
-/** Mono 16-bit little-endian PCM. */
-class PcmChunk(val pcm: ByteArray, val sampleRate: Int) {
+/** One word's position inside a chunk: character offsets into the chunk text, seconds from the chunk's start. */
+class TimedWord(val startChar: Int, val endChar: Int, val start: Double, val end: Double)
+
+/** Mono 16-bit little-endian PCM, optionally with word timings (only the API's alignment worker supplies them). */
+class PcmChunk(val pcm: ByteArray, val sampleRate: Int, val words: List<TimedWord>? = null) {
     val durationMs: Long get() = if (sampleRate <= 0) 0 else pcm.size / 2 * 1000L / sampleRate
 }
 
@@ -62,6 +67,8 @@ data class TtsRequest(
     /** BCP-47 language of the text, e.g. "en" or "es-MX". */
     val language: String = "en",
     val speed: Float = 1.0f,
+    /** Ask the API for word timings (the reader highlights words). Slower to start when the alignment worker is cold. */
+    val wantWords: Boolean = false,
 )
 
 interface TtsSource {
@@ -88,8 +95,10 @@ class SpokenChunk(
     /** The source that produced the audio (for cache hits, the source that produced it originally is not tracked: [fromCache]). */
     val source: SourceId,
     val fromCache: Boolean,
-    /** Characters of text this chunk covers (no text is kept). */
+    /** Characters of text this chunk covers. */
     val chars: Int,
+    /** The text this chunk was made from, for word positions in the consumer. Never sent to telemetry. */
+    val text: String = "",
 )
 
 /** No text content. */

@@ -67,6 +67,9 @@ class ListenAIApplication : Application() {
             Thread { com.listenai.service.PaywallRemoteConfig.refresh(this) }.start()
         }
 
+        // Remote switch for the default speech source (GET /api/config -> tts.apiEnabled); both flavors.
+        Thread { com.listenai.service.tts.chain.TtsSourceFlags.refreshRemote(this) }.start()
+
         // Warm up the Kokoro ONNX session if the user opted into on-device
         // synthesis AND the model file is already on disk. Doing this at app
         // start (instead of lazily on first synth request) is what lets the

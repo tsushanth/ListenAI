@@ -394,6 +394,8 @@
     <string name="player_article_not_found">Article not found</string>
     <string name="player_no_text_content">No text content to synthesize.</string>
     <string name="player_no_voice_available">No voice available. Please check your TTS service connection.</string>
+    <string name="player_install_voice_data">Install voice data</string>
+    <string name="player_install_tts_engine">Install a speech engine</string>
     <string name="player_network_error">Network error. Please check your internet connection.</string>
     <string name="player_timeout_error">Request timed out. The server might be busy.</string>
     <string name="player_rate_limit_error">Server is busy. Please try again in a moment.</string>

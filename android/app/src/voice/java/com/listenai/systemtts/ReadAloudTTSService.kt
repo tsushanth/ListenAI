@@ -69,9 +69,16 @@ class ReadAloudTTSService : TextToSpeechService() {
     private val PIPER_MAX_CHARS = 80
 
     /**
-     * Hard rule: this engine is **on-device only**. TalkBack / Maps / Kindle
-     * hit it constantly — cloud round-trip latency makes the device feel broken
-     * and forces the system reader to talk to the network all day.
+     * English requests at least this long try the ReadAloud API first (see [serveFromApi]). Shorter ones are almost
+     * always screen-reader labels, which the label caches and on-device Piper answer instantly and which should not
+     * leave the phone.
+     */
+    private val API_MIN_CHARS = 100
+
+    /**
+     * Short requests (TalkBack / Maps labels) are **on-device only**: a cloud round trip
+     * would make the device feel broken. Longer English text tries the ReadAloud API first
+     * (see [serveFromApi] and the `tts.engineApiEnabled` flag) and falls back to the path below.
      *
      * Synthesis routes directly to [com.listenai.service.tts.KokoroOnDeviceService]
      * via [TTSServiceFactory.getKokoroOnDeviceService]. We never fall back to
@@ -465,6 +472,15 @@ class ReadAloudTTSService : TextToSpeechService() {
             Log.i(tag, "Piper returned empty PCM — falling through to Kokoro")
         }
 
+        // Longer English text from other apps (reading, not screen-reader labels) is spoken by the ReadAloud API
+        // (Piper on CPU) when online: first audio in about half a second and far faster than real time, where the
+        // on-device Kokoro model is slower than playback on many phones. Anything the API cannot serve before the
+        // first audio (offline, 429, timeout, flag off) continues below on the on-device path, unchanged.
+        if (!isClonedVoice && espeakEntry == null && text.length >= API_MIN_CHARS &&
+            com.listenai.service.tts.chain.TtsSourceFlags.engineApiEnabled(applicationContext) &&
+            serveFromApi(text, preset, request, callback, rangeText)
+        ) return
+
         // Pick the right on-device path for this voice.
         //   Built-in voice → Kokoro
         //   Cloned voice   → Chatterbox (once downloaded; rejected otherwise)
@@ -548,6 +564,75 @@ class ReadAloudTTSService : TextToSpeechService() {
                 Log.e(tag, "On-device synthesis failed ($kind)", e)
                 callback.error()
             }
+        }
+    }
+
+    /**
+     * Speaks [text] with the ReadAloud API through the source chain. Returns true when it has dealt with the request
+     * (spoken, stopped, or failed after audio had started: the voice cannot change mid-sentence), false when nothing
+     * was sent to [callback] yet so the caller can use the on-device path.
+     */
+    private fun serveFromApi(
+        text: String,
+        preset: VoicePreset,
+        request: SynthesisRequest,
+        callback: SynthesisCallback,
+        rangeText: String?
+    ): Boolean {
+        val holder = com.listenai.service.tts.chain.TtsChainProvider.get(applicationContext)
+        val req = com.listenai.service.tts.chain.TtsRequest(voiceId = preset.id, language = "en", speed = request.speechRate / 100f)
+        var started = false
+        var finished = false
+        var framesSent = 0
+        var textCursor = 0
+        val t0 = System.currentTimeMillis()
+        runBlocking {
+            val job = launch(Dispatchers.IO) {
+                try {
+                    holder.engine.speak(text, req).collect { c ->
+                        if (stopRequested) throw kotlinx.coroutines.CancellationException("stop")
+                        if (!started) {
+                            if (callback.start(c.audio.sampleRate, AudioFormat.ENCODING_PCM_16BIT, 1) != TextToSpeech.SUCCESS) {
+                                throw kotlinx.coroutines.CancellationException("start refused")
+                            }
+                            started = true
+                            Log.i(tag, "T_API_FIRST_AUDIO dt=${System.currentTimeMillis() - t0}ms source=${c.source} cached=${c.fromCache}")
+                        }
+                        val frames = c.audio.pcm.size / 2
+                        if (rangeText != null) {
+                            val (located, next) = WordTimeline.locate(rangeText, c.text, frames, textCursor)
+                            textCursor = next
+                            for (w in located) callback.rangeStart(framesSent + w.startFrame, w.startChar, w.endChar)
+                        }
+                        val maxBuf = callback.maxBufferSize.coerceAtLeast(2)
+                        var off = 0
+                        while (off < c.audio.pcm.size) {
+                            if (stopRequested) throw kotlinx.coroutines.CancellationException("stop")
+                            val len = minOf(maxBuf, c.audio.pcm.size - off)
+                            if (callback.audioAvailable(c.audio.pcm, off, len) != TextToSpeech.SUCCESS) {
+                                throw kotlinx.coroutines.CancellationException("audio refused")
+                            }
+                            off += len
+                        }
+                        framesSent += frames
+                    }
+                    finished = true
+                } catch (e: com.listenai.service.tts.chain.NoSourceAvailableException) {
+                    Log.i(tag, "API path unavailable (${e.failures}); started=$started")
+                }
+            }
+            // onStop() only sets a flag; poll it so a stop also cancels a chunk that is still being fetched.
+            while (job.isActive) {
+                if (stopRequested) job.cancel()
+                kotlinx.coroutines.delay(40)
+            }
+            job.join()
+        }
+        return when {
+            finished -> { if (!stopRequested) callback.done(); true }
+            stopRequested -> true
+            started -> { callback.error(); true }
+            else -> false
         }
     }
 
