@@ -1,5 +1,6 @@
 import rateLimit from 'express-rate-limit';
 import { config, TIER_LIMITS } from '../lib/config.js';
+import { parseInstallId } from '../lib/ttsQuota.js';
 import type { Request, Response, NextFunction } from 'express';
 import type { AuthenticatedRequest, SubscriptionTier } from '../types/index.js';
 
@@ -219,6 +220,13 @@ export const jobPollingRateLimit = rateLimit({
   },
 });
 
+/** Per-IP authorize ceiling per 5 minutes for requests that carry an install id. Env TTS_IDENTIFIED_IP_MAX_PER_5MIN, default 60. */
+function identifiedIpMax(): number {
+  const raw = (process.env.TTS_IDENTIFIED_IP_MAX_PER_5MIN ?? '').trim();
+  const n = /^\d+$/.test(raw) ? Number.parseInt(raw, 10) : NaN;
+  return Number.isSafeInteger(n) && n >= 1 ? n : 60;
+}
+
 /**
  * Rate limiter specific to POST /api/realtime-tts/authorize.
  *
@@ -240,7 +248,12 @@ export const jobPollingRateLimit = rateLimit({
  */
 export const realtimeTtsAuthorizeRateLimit = rateLimit({
   windowMs: 5 * 60 * 1000, // 5 minutes
-  max: 10, // 10 authorize calls per IP per 5 minutes
+  // Anonymous callers (no/invalid X-Install-Id, e.g. old app versions): 10 per IP per 5 minutes, as before.
+  // Callers with a well-formed X-Install-Id get a looser per-IP ceiling (many installs can share one NAT/carrier IP);
+  // their real limits are per install (lib/ttsQuota.ts). The id is NOT authenticated, so this ceiling is the
+  // backstop against a loop of fresh UUIDs from one address.
+  max: (req) =>
+    parseInstallId(req.headers['x-install-id']) ? identifiedIpMax() : 10,
   keyGenerator: (req) => `rt-tts-authorize:ip:${req.ip ?? 'unknown'}`,
   standardHeaders: true,
   legacyHeaders: false,

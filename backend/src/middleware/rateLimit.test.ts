@@ -61,3 +61,28 @@ test('realtimeTtsAuthorizeRateLimit rate-limits repeated unauthenticated calls f
     close();
   }
 });
+
+test('realtimeTtsAuthorizeRateLimit: a well-formed X-Install-Id gets the looser per-IP ceiling; garbage ids stay at 10 per 5 min', async () => {
+  const [{ default: express }, { realtimeTtsAuthorizeRateLimit }] = await Promise.all([import('express'), modP]);
+  const app = express();
+  app.set('trust proxy', 1); // distinct client IPs via X-Forwarded-For, so this test has its own limiter keys
+  app.use('/api/realtime-tts', realtimeTtsAuthorizeRateLimit, (_req: unknown, res: { status: (n: number) => { json: (b: unknown) => void } }) => {
+    res.status(200).json({ ok: true });
+  });
+  const server = app.listen(0);
+  const base = `http://127.0.0.1:${(server.address() as { port: number }).port}/api/realtime-tts/authorize`;
+  const hit = async (ip: string, installId?: string) =>
+    (await fetch(base, { method: 'POST', headers: { 'x-forwarded-for': ip, ...(installId ? { 'x-install-id': installId } : {}) } })).status;
+  try {
+    const identified: number[] = [];
+    for (let i = 0; i < 15; i++) identified.push(await hit('198.51.100.1', '0b6f2c7e-4a51-4d0e-9a3b-6f1d2c3e4a5b'));
+    assert.ok(identified.every((s) => s === 200), `identified callers should pass 15 in a row: ${identified}`);
+
+    const garbage: number[] = [];
+    for (let i = 0; i < 12; i++) garbage.push(await hit('198.51.100.2', 'not-a-uuid'));
+    assert.equal(garbage.filter((s) => s === 200).length, 10);
+    assert.equal(garbage.filter((s) => s === 429).length, 2);
+  } finally {
+    server.close();
+  }
+});

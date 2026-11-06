@@ -19,6 +19,7 @@ import { standardRateLimit, ttsRateLimitByTier, previewRateLimit, burstRateLimit
 
 import { ttsRouter } from './routes/tts.js';
 import { realtimeTtsRouter } from './routes/realtimeTts.js';
+import { ttsQuota } from './lib/ttsQuota.js';
 import { usageRouter } from './routes/usage.js';
 import { voicesRouter } from './routes/voices.js';
 import { extractRouter } from './routes/extract.js';
@@ -383,6 +384,8 @@ if (process.env.MUSIC_WORKER_ENABLED === 'true' && !process.env.MUSIC_WORKER_URL
 
 const server = app.listen(PORT, () => {
   logger.info({ port: PORT, env: config.NODE_ENV }, 'Server started');
+  // Hourly/daily TTS authorize cost summaries even when traffic stops (lib/ttsQuota.ts).
+  ttsQuota.startTelemetry();
 
   // Run latency aggregation on startup (after short delay) and every 6 hours
   // This is best-effort - fine if Cloud Run scales down and misses some runs
