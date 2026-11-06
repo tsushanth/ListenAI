@@ -72,7 +72,12 @@ object PaywallRemoteConfig {
                 .build()
             client.newCall(Request.Builder().url(URL).build()).execute().use { resp ->
                 if (!resp.isSuccessful) return
-                val paywall = JSONObject(resp.body?.string().orEmpty()).optJSONObject("paywall") ?: return
+                val root = JSONObject(resp.body?.string().orEmpty())
+                // Optional experiment flag; absent (today's server) means OFF.
+                com.listenai.service.fakedoor.FakeDoorRemoteFlag.store(
+                    context, root.optJSONObject("flags")?.optBoolean("offlineVoiceFakeDoor", false) ?: false
+                )
+                val paywall = root.optJSONObject("paywall") ?: return
                 val edit = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
                 if (paywall.has("minOpensAfterFirstListen"))
                     edit.putInt("minOpensAfterFirstListen", paywall.getInt("minOpensAfterFirstListen").coerceIn(1, 20))

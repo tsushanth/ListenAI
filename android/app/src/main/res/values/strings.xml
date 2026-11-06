@@ -528,4 +528,15 @@
     <string name="follow_along_subtitle">Scroll the text to keep up with the voice</string>
     <string name="on">On</string>
     <string name="off">Off</string>
+    <!-- Offline voice fake door (experiment). English only on purpose; flag is OFF by default. -->
+    <string name="fakedoor_title" tools:ignore="MissingTranslation">Offline voice + custom pronunciation</string>
+    <string name="fakedoor_row_subtitle" tools:ignore="MissingTranslation">Idea we are considering. Not built yet.</string>
+    <string name="fakedoor_headline" tools:ignore="MissingTranslation">This feature is not built yet</string>
+    <string name="fakedoor_body" tools:ignore="MissingTranslation">We are thinking about adding a natural voice that works fully offline, plus a list where you set how names and words are pronounced. We want to know if you would use it before we build it.</string>
+    <string name="fakedoor_no_payment" tools:ignore="MissingTranslation">Nothing to download or buy today. No payment is taken and none is requested.</string>
+    <string name="fakedoor_price" tools:ignore="MissingTranslation">Planned price: $6.99, one time. This is a plan, not an offer, and it may change.</string>
+    <string name="fakedoor_notify" tools:ignore="MissingTranslation">Notify me if it gets built</string>
+    <string name="fakedoor_notify_done" tools:ignore="MissingTranslation">Saved on this device only. We do not collect your email or anything else. If the feature is ever built, the app can show you a one-time note. Your tap is counted anonymously only if you have allowed usage statistics in Settings.</string>
+    <string name="fakedoor_withdraw" tools:ignore="MissingTranslation">Remove my interest</string>
+    <string name="fakedoor_close" tools:ignore="MissingTranslation">Close</string>
 </resources>

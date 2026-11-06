@@ -30,6 +30,7 @@ import com.listenai.R
 import com.listenai.service.AnalyticsConsent
 import com.listenai.service.ConsentState
 import com.listenai.service.billing.RevenueCatManager
+import com.listenai.ui.fakedoor.OfflineVoiceFakeDoorRow
 import com.listenai.service.settings.SettingsManager
 import com.listenai.service.tts.KokoroModelDownloader
 import com.listenai.service.tts.KokoroOnDeviceService
@@ -221,6 +222,9 @@ fun SettingsScreen(
                 )
 
                 HorizontalDivider(modifier = Modifier.padding(start = 56.dp))
+
+                // Experiment, hidden unless the fake-door flag is on (default OFF).
+                OfflineVoiceFakeDoorRow()
 
                 SettingsRow(
                     icon = Icons.Default.Speed,
