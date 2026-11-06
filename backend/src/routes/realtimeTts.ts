@@ -6,8 +6,7 @@
 // contract) but this route only needs the token/url hand-off, not the WebSocket relay that upstream.ts also
 // does for the MCP server.
 import { Router } from 'express';
-
-export const realtimeTtsRouter = Router();
+import { ttsQuota as defaultQuota, type TtsQuota } from '../lib/ttsQuota.js';
 
 // SECURITY NOTE: this router is mounted (see index.ts) behind requireAuth, but requireAuth defaults
 // any request with a missing/invalid/empty bearer token to a shared "pro user" instead of rejecting
@@ -33,48 +32,71 @@ const realtimeTtsLogger = {
 // which is the separate admin API used by ttsGatewayClient.ts to issue/revoke keys.
 const GATEWAY_URL = process.env.REALTIME_TTS_GATEWAY_URL || 'https://api.readaloudai.org';
 
-realtimeTtsRouter.post('/authorize', async (req, res) => {
-  const apiKey = process.env.REALTIME_TTS_API_KEY;
-  if (!apiKey) {
-    realtimeTtsLogger.error('REALTIME_TTS_API_KEY is not configured');
-    res.status(500).json({ error: 'realtime-tts not configured' });
-    return;
-  }
-  const engine = typeof req.body?.engine === 'string' ? req.body.engine : 'piper';
-  // Optional: the app asks for word timings. Forwarded only when literally true; the gateway answers {alignment: true|false}
-  // and, when true, returns the alignment worker's WebSocket URL (which adds `words` to each chunk_meta message).
-  const wantAlignment = req.body?.alignment === true;
+// Per-install quota, per-minute limit and global circuit breaker: see lib/ttsQuota.ts (in-memory, per instance;
+// the backend never sees the text, so characters are charged as a per-authorize estimate).
+export function createRealtimeTtsRouter(quota: TtsQuota = defaultQuota): Router {
+const router = Router();
 
-  let upstream: Response;
-  try {
-    upstream = await fetch(`${GATEWAY_URL}/tts/authorize`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ key: apiKey, engine, ...(wantAlignment ? { alignment: true } : {}) }),
-    });
-  } catch (err) {
-    realtimeTtsLogger.error({ err }, 'realtime-tts gateway unreachable');
-    res.status(502).json({ error: 'realtime-tts gateway unreachable' });
-    return;
-  }
+  router.post('/authorize', async (req, res) => {
+    const apiKey = process.env.REALTIME_TTS_API_KEY;
+    if (!apiKey) {
+      realtimeTtsLogger.error('REALTIME_TTS_API_KEY is not configured');
+      res.status(500).json({ error: 'realtime-tts not configured' });
+      return;
+    }
 
-  if (!upstream.ok) {
-    // Never forward the upstream response body verbatim: it's attacker/operator-controlled text from the
-    // gateway and, more importantly, this is the one place a misbehaving gateway could echo the key we just
-    // sent it back in an error body. Log it (server-side only) and return a fixed, key-free message.
-    const body = await upstream.text().catch(() => '');
-    realtimeTtsLogger.error({ status: upstream.status, body }, 'realtime-tts authorize failed');
-    res.status(502).json({ error: 'realtime-tts authorize failed' });
-    return;
-  }
+    // Optional X-Install-Id (random UUID from the app). Absent/malformed -> stricter anonymous bucket keyed by IP, so
+    // app versions that do not send it keep working.
+    const admission = quota.admit(req.get('x-install-id'), req.ip);
+    if (!admission.ok) {
+      if (admission.retryAfterSeconds !== undefined) res.set('Retry-After', String(admission.retryAfterSeconds));
+      res.status(admission.status).json(admission.body);
+      return;
+    }
 
-  const data = (await upstream.json().catch(() => null)) as { token?: string; url?: string; alignment?: boolean } | null;
-  if (!data?.token || !data.url) {
-    realtimeTtsLogger.error({ data }, 'realtime-tts authorize returned an unexpected response');
-    res.status(502).json({ error: 'realtime-tts authorize failed' });
-    return;
-  }
+    const engine = typeof req.body?.engine === 'string' ? req.body.engine : 'piper';
+    // Optional: the app asks for word timings. Forwarded only when literally true; the gateway answers {alignment: true|false}
+    // and, when true, returns the alignment worker's WebSocket URL (which adds `words` to each chunk_meta message).
+    const wantAlignment = req.body?.alignment === true;
 
-  // `alignment` is only present when the app asked for it; an older gateway that ignores the field yields false.
-  res.status(200).json({ token: data.token, url: data.url, ...(wantAlignment ? { alignment: data.alignment === true } : {}) });
-});
+    let upstream: Response;
+    try {
+      upstream = await fetch(`${GATEWAY_URL}/tts/authorize`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ key: apiKey, engine, ...(wantAlignment ? { alignment: true } : {}) }),
+      });
+    } catch (err) {
+      realtimeTtsLogger.error({ err }, 'realtime-tts gateway unreachable');
+      quota.refund(admission);
+      res.status(502).json({ error: 'realtime-tts gateway unreachable' });
+      return;
+    }
+
+    if (!upstream.ok) {
+      // Never forward the upstream response body verbatim: it's attacker/operator-controlled text from the
+      // gateway and, more importantly, this is the one place a misbehaving gateway could echo the key we just
+      // sent it back in an error body. Log it (server-side only) and return a fixed, key-free message.
+      const body = await upstream.text().catch(() => '');
+      realtimeTtsLogger.error({ status: upstream.status, body }, 'realtime-tts authorize failed');
+      quota.refund(admission);
+      res.status(502).json({ error: 'realtime-tts authorize failed' });
+      return;
+    }
+
+    const data = (await upstream.json().catch(() => null)) as { token?: string; url?: string; alignment?: boolean } | null;
+    if (!data?.token || !data.url) {
+      realtimeTtsLogger.error({ data }, 'realtime-tts authorize returned an unexpected response');
+      quota.refund(admission);
+      res.status(502).json({ error: 'realtime-tts authorize failed' });
+      return;
+    }
+
+    // `alignment` is only present when the app asked for it; an older gateway that ignores the field yields false.
+    res.status(200).json({ token: data.token, url: data.url, ...(wantAlignment ? { alignment: data.alignment === true } : {}) });
+  });
+
+  return router;
+}
+
+export const realtimeTtsRouter = createRealtimeTtsRouter();
