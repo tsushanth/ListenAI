@@ -7,6 +7,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { instrumentAnthropic, withFeature } from '../lib/llm.js';
 import { logger } from '../lib/logger.js';
 import { config } from '../lib/config.js';
+import { assertPublicHttpUrl, guardedHttpAgent, guardedHttpsAgent, SsrfBlockedError } from '../lib/ssrfGuard.js';
 
 // Anthropic client for content cleaning. Replaced OpenAI gpt-4o-mini after
 // OpenAI billing was turned off post-leak. Sonnet 4.6 handles long-form
@@ -73,17 +74,35 @@ extractRouter.post('/', async (req: Request, res: Response, next: NextFunction):
 
     logger.info({ url, clean }, 'Extracting content from URL');
 
-    // Fetch the HTML content
-    const response = await axios.get(url, {
-      timeout: 30000,
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        'Accept-Language': 'en-US,en;q=0.9',
-      },
-      maxRedirects: 5,
-      validateStatus: (status) => status < 500,
-    });
+    // Fetch the HTML content. The URL is caller-supplied, so every hop (including redirects) must resolve
+    // to a public address (see lib/ssrfGuard.ts). Redirects are followed manually for that reason.
+    let currentUrl = url;
+    let response;
+    for (let hop = 0; ; hop++) {
+      await assertPublicHttpUrl(currentUrl);
+      response = await axios.get(currentUrl, {
+        timeout: 30000,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          'Accept-Language': 'en-US,en;q=0.9',
+        },
+        maxRedirects: 0,
+        httpAgent: guardedHttpAgent,
+        httpsAgent: guardedHttpsAgent,
+        validateStatus: (status) => status < 500,
+      });
+      const location = response.headers?.location;
+      if (response.status >= 300 && response.status < 400 && location) {
+        if (hop >= 5) {
+          res.status(502).json({ error: 'Failed to fetch URL', message: 'Too many redirects' });
+          return;
+        }
+        currentUrl = new URL(location, currentUrl).toString();
+        continue;
+      }
+      break;
+    }
 
     if (response.status >= 400) {
       res.status(response.status).json({
@@ -185,6 +204,11 @@ extractRouter.post('/', async (req: Request, res: Response, next: NextFunction):
     return;
 
   } catch (error) {
+    if (error instanceof SsrfBlockedError || (error as { code?: string })?.code === 'ESSRFBLOCKED' || (error as { cause?: { code?: string } })?.cause?.code === 'ESSRFBLOCKED') {
+      logger.warn('Blocked extract request to a non-public address');
+      res.status(400).json({ error: 'URL not allowed', message: 'Only public web pages can be extracted' });
+      return;
+    }
     if (axios.isAxiosError(error)) {
       if (error.code === 'ECONNABORTED') {
         res.status(408).json({
