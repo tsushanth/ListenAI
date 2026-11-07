@@ -1,0 +1,3 @@
+Faster, steadier reading. Text is now read in short pieces so playback starts sooner, and recently read pieces are saved on your phone so re-reading is quick and works offline. If the connection is slow, busy or offline, reading continues with your phone's own voice instead of stopping.
+Analytics is now off until you choose to allow it (first launch and Settings).
+Removed advertising SDKs.
