@@ -693,6 +693,8 @@ private fun SleepTimerSelectionDialog(
 @Composable
 private fun ProBadge() {
     Surface(
+        // TopAppBar actions only inset 4dp from the edge; add 12dp so the pill lines up with the 16dp content margin.
+        modifier = Modifier.padding(end = 12.dp),
         shape = CircleShape,
         color = Green.copy(alpha = 0.9f)
     ) {
