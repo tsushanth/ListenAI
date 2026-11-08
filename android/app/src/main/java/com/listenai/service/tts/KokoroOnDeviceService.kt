@@ -297,69 +297,10 @@ class KokoroOnDeviceService(private val context: Context) : TTSService {
 
     /**
      * Break long text into pieces small enough to fit Kokoro's ~500-token
-     * context. We prefer to split on sentence boundaries; if a single
-     * sentence overflows, we further split on commas, then by hard
-     * character cap as a final fallback.
-     *
-     * The character cap (`CHUNK_CHAR_CAP`) is intentionally conservative —
-     * worse to break mid-clause than to overflow the model and lose the
-     * tail of a sentence.
+     * context; see [SpeechTextSplitter.chunkForModel] (never cuts inside a word).
      */
-    private fun chunkTextForModel(text: String, charCap: Int = CHUNK_CHAR_CAP): List<String> {
-        val trimmed = text.trim()
-        if (trimmed.isEmpty()) return emptyList()
-        val sentences = SENTENCE_SPLIT.split(trimmed).map { it.trim() }.filter { it.isNotEmpty() }
-        val chunks = ArrayList<String>()
-        val current = StringBuilder()
-        fun flushCurrent() {
-            if (current.isNotEmpty()) {
-                chunks.add(current.toString().trim())
-                current.clear()
-            }
-        }
-        for (s in sentences) {
-            // Sentence itself too long? Split further by comma or hard cap.
-            val pieces = if (s.length > charCap) splitOverlongSentence(s, charCap) else listOf(s)
-            for (piece in pieces) {
-                val pieceLen = piece.length
-                if (current.length + pieceLen + 1 > charCap) {
-                    flushCurrent()
-                }
-                if (current.isNotEmpty()) current.append(' ')
-                current.append(piece)
-            }
-        }
-        flushCurrent()
-        return chunks
-    }
-
-    private fun splitOverlongSentence(s: String, charCap: Int = CHUNK_CHAR_CAP): List<String> {
-        val byComma = s.split(",").map { it.trim() }.filter { it.isNotEmpty() }
-        val out = ArrayList<String>()
-        val cur = StringBuilder()
-        for (part in byComma) {
-            if (cur.length + part.length + 2 > charCap) {
-                if (cur.isNotEmpty()) {
-                    out.add(cur.toString().trim())
-                    cur.clear()
-                }
-                if (part.length > charCap) {
-                    // Truly pathological — hard cap.
-                    var i = 0
-                    while (i < part.length) {
-                        val end = minOf(i + charCap, part.length)
-                        out.add(part.substring(i, end))
-                        i = end
-                    }
-                    continue
-                }
-            }
-            if (cur.isNotEmpty()) cur.append(", ")
-            cur.append(part)
-        }
-        if (cur.isNotEmpty()) out.add(cur.toString().trim())
-        return out
-    }
+    private fun chunkTextForModel(text: String, charCap: Int = CHUNK_CHAR_CAP): List<String> =
+        SpeechTextSplitter.chunkForModel(text, charCap)
 
     override suspend fun synthesize(
         sections: List<TextSection>,
@@ -651,8 +592,6 @@ class KokoroOnDeviceService(private val context: Context) : TTSService {
         // per-chunk fixed overhead — but for TalkBack / Maps / Kindle the
         // user-perceived latency is what matters.
         private const val STREAMING_CHUNK_CHAR_CAP = 60
-
-        private val SENTENCE_SPLIT = Regex("(?<=[.!?])\\s+")
 
         // Approximate on-disk download size for the Kokoro ONNX bundle.
         // Used by the onboarding screen and Settings to set user

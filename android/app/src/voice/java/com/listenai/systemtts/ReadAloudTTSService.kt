@@ -762,28 +762,8 @@ class ReadAloudTTSService : TextToSpeechService() {
         return true
     }
 
-    /**
-     * Splits text into sentence-sized pieces so the first sentence plays quickly and a stop request takes
-     * effect between sentences. Decimals ("3.14") are not split because a split needs whitespace after the
-     * punctuation (CJK full stops need none).
-     */
-    private fun splitForEspeak(text: String): List<String> {
-        val sentences = text.split(Regex("(?<=[.!?])\\s+|(?<=[\u3002\uFF01\uFF1F])|\\n+"))
-            .map { it.trim() }
-            .filter { it.isNotEmpty() }
-        val pieces = ArrayList<String>()
-        for (sentence in sentences) {
-            var rest = sentence
-            while (rest.length > ESPEAK_MAX_PIECE) {
-                var cut = rest.lastIndexOf(' ', ESPEAK_MAX_PIECE)
-                if (cut <= 0) cut = ESPEAK_MAX_PIECE
-                pieces += rest.substring(0, cut).trim()
-                rest = rest.substring(cut).trim()
-            }
-            if (rest.isNotEmpty()) pieces += rest
-        }
-        return pieces
-    }
+    private fun splitForEspeak(text: String): List<String> =
+        com.listenai.service.tts.SpeechTextSplitter.splitForEspeak(text, ESPEAK_MAX_PIECE)
 
     /**
      * Cache-hit fast path: pre-rendered PCM straight to AudioTrack via
