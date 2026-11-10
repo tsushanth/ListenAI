@@ -34,6 +34,7 @@ class Settings:
     auth_fail_rpm: int = 10
     job_result_ttl_sec: int = 900
     job_wait_max_sec: float = 55.0
+    load_wait_sec: float = 150.0            # how long a request waits for the model after a cold start before answering 503 warming_up
     disabled: bool = False                  # operator kill switch (env); the file DATA_DIR/KILL does the same without a redeploy
     extras: dict = field(default_factory=dict)
 

@@ -103,6 +103,15 @@ def create_app(engine, settings: Settings, clock=time.time) -> FastAPI:
                 raise err(429, "rate_limited", {"Retry-After": "60"})
             raise err(401, "unauthorized")
 
+    ready_event = getattr(engine, "ready", None)  # absent on test engines: treated as always ready
+
+    def wait_ready() -> None:
+        """Model-using routes wait here after a cold start (the proxy holds the request), instead of failing with 503."""
+        if ready_event is None or ready_event.is_set():
+            return
+        if not ready_event.wait(settings.load_wait_sec):
+            raise err(503, "warming_up", {"Retry-After": "15"})
+
     def vdir_of(voice_id: str) -> str:
         if not UUID_RE.match(voice_id):
             raise err(404, "voice_not_found")
@@ -146,11 +155,11 @@ def create_app(engine, settings: Settings, clock=time.time) -> FastAPI:
     # ------------------------------------------------------------------ health / metrics
     @api.get("/healthz")
     def healthz():
-        return {"ok": True}  # unauthenticated, no state: used by the Fly check (which does not count as proxy traffic)
+        return {"ok": True}  # unauthenticated, no state: process is up (the model may still be loading); used by the Fly check
 
     @api.get("/health")
     def health(_=Depends(auth)):
-        return {"ok": True, "model": engine.model_id, "load_s": getattr(engine, "load_s", None), "breaker": breaker.status(),
+        return {"ok": True, "ready": ready_event is None or ready_event.is_set(), "model": engine.model_id, "load_s": getattr(engine, "load_s", None), "breaker": breaker.status(),
                 "queue": {"admitted": queue.position(), "capacity": queue.capacity}}
 
     @api.get("/metrics")
@@ -167,7 +176,7 @@ def create_app(engine, settings: Settings, clock=time.time) -> FastAPI:
     # Endpoints are `async` only to read uploads; every blocking step (ffmpeg, torch, the inference slot) runs in the thread pool
     # so /healthz and rate limiting stay responsive while a job is running.
     @api.post("/analyze")
-    async def analyze(audio: UploadFile = File(...), _=Depends(auth)):
+    async def analyze(audio: UploadFile = File(...), _=Depends(auth), __=Depends(wait_ready)):
         guard_breaker()
         data = await read_upload(audio)
 
@@ -185,7 +194,7 @@ def create_app(engine, settings: Settings, clock=time.time) -> FastAPI:
         return await _in_thread(go)
 
     @api.post("/similarity")
-    async def similarity(a: UploadFile = File(...), b: UploadFile = File(...), _=Depends(auth)):
+    async def similarity(a: UploadFile = File(...), b: UploadFile = File(...), _=Depends(auth), __=Depends(wait_ready)):
         guard_breaker()
         da, db = await read_upload(a), await read_upload(b)
 
@@ -205,7 +214,7 @@ def create_app(engine, settings: Settings, clock=time.time) -> FastAPI:
     # ------------------------------------------------------------------ voices
     @api.post("/voices")
     async def create_voice(voice_id: str = Form(...), language: str = Form(...), reference: UploadFile = File(...),
-                           consent_id: str = Form(""), _=Depends(auth)):
+                           consent_id: str = Form(""), _=Depends(auth), __=Depends(wait_ready)):
         guard_breaker()
         if language not in settings.langs:
             raise err(400, "unsupported_language")
@@ -296,7 +305,7 @@ def create_app(engine, settings: Settings, clock=time.time) -> FastAPI:
                 "X-Model-Id": engine.model_id, "X-Audio-Seconds": f"{r['audio_s']:.2f}", "X-Gen-Seconds": f"{r['gen_s']:.2f}"}
 
     @api.post("/voices/{voice_id}/synthesize")
-    async def synthesize(voice_id: str, request: Request, _=Depends(auth)):
+    async def synthesize(voice_id: str, request: Request, _=Depends(auth), __=Depends(wait_ready)):
         body = await request.json()
         guard_breaker()
         vdir, text, speed = validated_request(voice_id, body if isinstance(body, dict) else {})
@@ -325,7 +334,7 @@ def create_app(engine, settings: Settings, clock=time.time) -> FastAPI:
                 del jobs[k]
 
     @api.post("/voices/{voice_id}/jobs", status_code=202)
-    async def submit_job(voice_id: str, request: Request, _=Depends(auth)):
+    async def submit_job(voice_id: str, request: Request, _=Depends(auth), __=Depends(wait_ready)):
         body = await request.json()
         guard_breaker()
         vdir, text, speed = validated_request(voice_id, body if isinstance(body, dict) else {})

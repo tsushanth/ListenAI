@@ -245,3 +245,27 @@ def test_retention_sweep_deletes_only_expired_voices_and_stale_tmp(make):
     assert sweep_expired(s, eng) == 1
     assert not os.path.exists(os.path.join(s.data_dir, "voices", VID))
     assert os.path.exists(os.path.join(s.data_dir, "voices", VID2)) and not os.path.exists(stale)
+
+
+# ---- cold start: wait for the model instead of failing ---------------------------------------------
+def test_requests_wait_for_model_load_then_succeed(make):
+    import threading as th
+    eng = FakeEngine()
+    eng.ready = th.Event()
+    c, _, s, _ = make(engine=eng, load_wait_sec=5, ip_rpm=1000)
+    assert c.get("/healthz").status_code == 200                        # process is up immediately
+    assert c.get("/health", headers=AUTH).json()["ready"] is False     # ...and says it is still loading
+    th.Timer(0.5, eng.ready.set).start()
+    t0 = time.time()
+    assert create_voice(c).status_code == 200                          # held until the model is ready, not a 503
+    assert time.time() - t0 >= 0.4
+    assert c.get("/health", headers=AUTH).json()["ready"] is True
+
+
+def test_warming_up_503_when_model_never_loads(make):
+    import threading as th
+    eng = FakeEngine()
+    eng.ready = th.Event()
+    c, *_ = make(engine=eng, load_wait_sec=0.3, ip_rpm=1000)
+    r = create_voice(c)
+    assert r.status_code == 503 and r.json()["detail"]["code"] == "warming_up" and r.headers["Retry-After"] == "15"

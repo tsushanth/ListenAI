@@ -67,6 +67,8 @@ class ChatterboxEngine:
         self.model_id = f"chatterbox-{model}-cpu"
         self.lock = threading.Lock()  # chatterbox.generate and the shared .conds attribute are not thread-safe
         self._conds_cache: dict = {}
+        self.ready = threading.Event()   # set once load() has finished; requests wait on it after a cold start
+        self.load_error = None
 
     def load(self):
         import torch
