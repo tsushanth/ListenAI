@@ -11,19 +11,21 @@ export default function PrivacyPage() {
         <h1 className="text-4xl font-bold text-white mb-8">Privacy Policy</h1>
 
         <div className="prose prose-invert max-w-none">
-          <p className="text-gray-400 mb-6">Last updated: October 2026</p>
+          <p className="text-gray-400 mb-6">Last updated: November 10, 2026</p>
 
           <section className="mb-8">
             <h2 className="text-2xl font-semibold text-white mb-4">1. Information We Collect</h2>
             <p className="text-gray-300 mb-4">
               ReadAloud AI collects information you provide directly to us, such as when you create an account,
-              use our services, or contact us for support. This may include:
+              use our services, or contact us for support, and some technical information the apps send automatically.
+              This may include:
             </p>
             <ul className="list-disc pl-6 text-gray-300 space-y-2">
-              <li>Email address for account creation</li>
-              <li>Content you import (articles, PDFs, text) for processing</li>
+              <li>Email address, and in the Android app the name and profile picture of your Google account, if you sign in</li>
+              <li>Content you import or listen to (articles, PDFs, pasted text, web links, emails you choose to open), which is processed as described in Section 3</li>
               <li>Voice recordings for voice cloning (if you use this feature)</li>
               <li>Usage data and preferences</li>
+              <li>In the Android app: crash and error reports, which are sent automatically, and usage statistics, which are sent only if you allow them (Section 9)</li>
             </ul>
           </section>
 
@@ -47,27 +49,59 @@ export default function PrivacyPage() {
           </section>
 
           <section className="mb-8">
-            <h2 className="text-2xl font-semibold text-white mb-4">3. Third-Party AI Services</h2>
+            <h2 className="text-2xl font-semibold text-white mb-4">3. Where Your Text and Audio Go</h2>
             <p className="text-gray-300 mb-4">
-              ReadAloud AI uses the following third-party and cloud-based AI services to provide its features.
-              The app asks for your explicit consent before sending any data to these services.
+              ReadAloud AI turns text into speech on servers that we run, and uses a small number of other services, listed below.
+              <strong> In the Android app, text you listen to with a standard voice is sent to our speech service by default.
+              The app does not show a separate consent prompt before it does this.</strong> Section 8 explains how to read on
+              your device instead.
             </p>
 
-            <h3 className="text-xl font-semibold text-white mb-3 mt-6">Text-to-Speech</h3>
+            <h3 className="text-xl font-semibold text-white mb-3 mt-6">Text-to-Speech: the ReadAloud speech service</h3>
             <p className="text-gray-300 mb-3">
-              When you use cloud-based voices, your article text is sent to the following services for audio generation:
+              When the Android app reads English text with one of its standard voices, it works like this:
             </p>
             <ul className="list-disc pl-6 text-gray-300 space-y-2">
-              <li><strong>Kokoro TTS</strong> (self-hosted on RunPod GPU cloud infrastructure) &mdash; processes text for standard quality voices</li>
-              <li><strong>ElevenLabs</strong> (elevenlabs.io) &mdash; processes text for premium quality voices, subject to <a href="https://elevenlabs.io/privacy" className="text-primary hover:text-primary-dark">ElevenLabs&apos; privacy policy</a></li>
+              <li>The app first asks our backend (listenai-backend.fly.dev) for a short-lived session token. That request does not contain your text, your account or your name.</li>
+              <li>The app then sends the text, in sentence-sized pieces, together with the voice and speed you picked, directly to the ReadAloud speech service (api.readaloudai.org) over an encrypted connection, and plays the audio that comes back. The speech service runs Piper, an open-source speech model that we operate on cloud servers (Fly.io and Modal).</li>
+              <li>Like any internet connection, this shows your IP address to those servers. We do not attach your account to these requests.</li>
+              <li>This covers everything the app reads aloud: text you paste, documents and web pages you import, and, if you connect Gmail, the emails you open.</li>
+              <li>Audio that comes back is also kept on your phone (up to about 150 MB, oldest removed first) so that re-reading the same text does not need the network.</li>
             </ul>
-
-            <h3 className="text-xl font-semibold text-white mb-3 mt-6">AI Summarization</h3>
+            <p className="text-gray-300 mt-3 mb-3">
+              <strong>What we have not verified:</strong> we have not completed a review of whether the speech servers, or their
+              hosting providers, keep request text in operational logs, or for how long. We therefore do not state a retention
+              period for it, and we do not promise that it is not retained. Please do not send text through the app that you are
+              not willing to have processed on these servers.
+            </p>
             <p className="text-gray-300 mb-3">
-              When you request a content summary, your article text is sent to:
+              Text in languages other than English is not sent to the ReadAloud speech service. The app reads it with the
+              speech engine already on your phone (for example Google or Samsung text-to-speech). That engine is provided by its
+              maker, and its own privacy terms apply to what it does.
+            </p>
+            <p className="text-gray-300 mb-3">
+              Older app versions and some other voices may use Kokoro, an open-source speech model that we operate on cloud servers.
+              The ReadAloud text-to-speech engine app (ReadAloud Voice), which other apps can call, processes text on your device and, in its
+              current configuration, does not send text read by other apps to our servers.
+            </p>
+            <p className="text-gray-300 mb-3">
+              We do not send your text to any other text-to-speech provider.
+            </p>
+
+            <h3 className="text-xl font-semibold text-white mb-3 mt-6">Importing a Web Page by Link</h3>
+            <p className="text-gray-300 mb-3">
+              When you import a web page by link in the Android app, the link is sent to our backend. Our server downloads the page,
+              extracts the article text, and by default sends that text to a language-model service to clean it up (remove menus,
+              ads and similar clutter). The link may appear in our server logs. If our server cannot fetch the page, the app
+              tries to download the page directly from your phone instead.
+            </p>
+
+            <h3 className="text-xl font-semibold text-white mb-3 mt-6">AI Summarization and Article Cleanup</h3>
+            <p className="text-gray-300 mb-3">
+              When you ask for a summary, or when an imported web page is cleaned up as described above, the article text is sent to:
             </p>
             <ul className="list-disc pl-6 text-gray-300 space-y-2">
-              <li><strong>OpenAI</strong> (openai.com, model: GPT-4o-mini) &mdash; processes text to generate summaries, subject to <a href="https://openai.com/policies/api-data-usage-policies" className="text-primary hover:text-primary-dark">OpenAI&apos;s API data usage policy</a>. Data sent via the API is not used for model training.</li>
+              <li><strong>Anthropic</strong> (anthropic.com, Claude models) &mdash; processes the text and returns the result, subject to <a href="https://www.anthropic.com/legal/privacy" className="text-primary hover:text-primary-dark">Anthropic&apos;s privacy policy</a>. We have not independently verified Anthropic&apos;s retention of API requests.</li>
             </ul>
 
             <h3 className="text-xl font-semibold text-white mb-3 mt-6">Voice Cloning</h3>
@@ -82,12 +116,15 @@ export default function PrivacyPage() {
             <h3 className="text-xl font-semibold text-white mb-3 mt-6">Backend &amp; Authentication</h3>
             <ul className="list-disc pl-6 text-gray-300 space-y-2">
               <li><strong>Supabase</strong> (supabase.com) &mdash; provides authentication, database, and file storage services</li>
+              <li><strong>Google</strong> &mdash; Google sign-in, and Gmail access if you connect it (Section 9)</li>
             </ul>
 
             <h3 className="text-xl font-semibold text-white mb-3 mt-6">On-Device Processing</h3>
             <p className="text-gray-300">
-              Apple&apos;s built-in voices (AVSpeechSynthesizer) process text entirely on your device. No data is sent
-              externally when using on-device voices. You can switch to on-device voices at any time in Settings.
+              Importing PDF and EPUB files, recognising text in photos, and detecting the language of text happen on your device.
+              On Android you can also turn on Offline AI in Settings: its voice model is downloaded once from Hugging Face
+              (huggingface.co), and once it is loaded, standard voices read on your device and your text is not sent to our speech service.
+              Apple&apos;s built-in voices (AVSpeechSynthesizer) on iOS also process text entirely on the device.
             </p>
           </section>
 
@@ -95,8 +132,8 @@ export default function PrivacyPage() {
             <h2 className="text-2xl font-semibold text-white mb-4">4. How We Use Your Information</h2>
             <p className="text-gray-300 mb-4">We use the information we collect to:</p>
             <ul className="list-disc pl-6 text-gray-300 space-y-2">
-              <li>Provide, maintain, and improve our services</li>
-              <li>Process your content into audio using the AI services described in Section 3</li>
+              <li>Provide, maintain, and improve our services, including fixing crashes and errors</li>
+              <li>Process your content into audio and, where you ask for it, summaries, using the services described in Section 3</li>
               <li>Create and maintain your voice clones</li>
               <li>Send you technical notices and support messages</li>
               <li>Respond to your comments and questions</li>
@@ -107,48 +144,120 @@ export default function PrivacyPage() {
             <h2 className="text-2xl font-semibold text-white mb-4">5. Data Retention</h2>
             <ul className="list-disc pl-6 text-gray-300 space-y-2">
               <li><strong>TTS audio:</strong> Cached on our servers for up to 30 days for performance, then automatically deleted</li>
+              <li><strong>Text read aloud in the Android app with standard voices:</strong> Our backend never receives this text. Whether the speech servers keep it in logs has not been verified, so we state no retention period (Section 3). Audio is cached on your phone only.</li>
+              <li><strong>Crash and error reports:</strong> Sent to a reporting service we run; see Section 9. We have not set or verified a fixed retention period for them.</li>
               <li><strong>Voice clones and reference recordings:</strong> Stored until you delete them via the app</li>
               <li><strong>Consent records (confirmation and, when collected, consent recording, transcript, score):</strong> Kept while the voice exists and for 12 months after it is deleted</li>
               <li><strong>Fingerprints of generated audio:</strong> Kept for 90 days</li>
               <li><strong>AI summaries:</strong> Not stored on our servers after delivery to your device</li>
-              <li><strong>Account data:</strong> Retained while your account is active; deleted upon account deletion</li>
+              <li><strong>Account data:</strong> Kept while your account exists. If you ask us to delete your account, we delete it by hand as described in Section 10, subject to the exceptions listed there.</li>
             </ul>
           </section>
 
           <section className="mb-8">
-            <h2 className="text-2xl font-semibold text-white mb-4">6. Third-Party Data Protection</h2>
+            <h2 className="text-2xl font-semibold text-white mb-4">6. Service Providers</h2>
             <p className="text-gray-300">
-              All third-party services we use provide data protection measures consistent with industry standards.
-              Self-hosted services (Kokoro TTS, and Chatterbox for voice cloning, which runs on Modal) run on cloud
-              infrastructure under our accounts with encryption in transit (TLS). Third-party APIs (ElevenLabs, OpenAI) are accessed under
-              API agreements that prohibit use of your data for model training.
+              The speech models we operate (Piper, Kokoro and Chatterbox) run on cloud infrastructure under our own accounts, and
+              the app connects to them over encrypted connections (TLS). Services run by others (Supabase, Anthropic, Google,
+              RevenueCat, Hugging Face, Cloudflare, PostHog) handle data under their own terms and privacy policies, and we do not
+              control how they operate. Apart from the points stated in this policy, we have not verified how long those providers
+              keep data.
             </p>
           </section>
 
           <section className="mb-8">
             <h2 className="text-2xl font-semibold text-white mb-4">7. Data Security</h2>
             <p className="text-gray-300">
-              We implement appropriate security measures to protect your personal information. All data is
-              encrypted using industry-standard protocols. However, no method of transmission over the Internet
-              is 100% secure.
+              Data sent between the apps and our servers travels over encrypted connections (HTTPS/TLS). The Android app stores
+              your sign-in tokens in Android&apos;s encrypted storage on your phone. We do not claim that every piece of data
+              is encrypted wherever it is stored, and no method of transmission or storage is completely secure.
             </p>
           </section>
 
           <section className="mb-8">
-            <h2 className="text-2xl font-semibold text-white mb-4">8. Your Rights</h2>
-            <p className="text-gray-300 mb-4">You have the right to:</p>
+            <h2 className="text-2xl font-semibold text-white mb-4">8. Your Rights and Choices</h2>
+            <p className="text-gray-300 mb-4">What you can do, and how:</p>
             <ul className="list-disc pl-6 text-gray-300 space-y-2">
-              <li>Access your personal data</li>
-              <li>Delete your account and associated data</li>
-              <li>Delete your voice clones at any time</li>
-              <li>Revoke consent for AI data sharing (limits you to on-device voices)</li>
-              <li>Export your data</li>
-              <li>Opt out of marketing communications</li>
+              <li><strong>Keep reading on your device (Android).</strong> Turn on Offline AI in Settings (it needs Android 8 or later and 3 GB of RAM) and let the on-device voice finish downloading. Standard voices then read on your device. This is not an absolute guarantee: if the on-device voice cannot load, the app can fall back to our speech service.</li>
+              <li><strong>Delete a voice clone.</strong> In the app (Settings, Voice Cloning) or by email.</li>
+              <li><strong>Turn usage statistics on or off (Android).</strong> Settings, usage statistics. Crash and error reports cannot currently be turned off in the app.</li>
+              <li><strong>Delete your account and data, access your data, or export it.</strong> There is no button in the app or website for these yet. Email us as described in Section 10 and we handle the request by hand.</li>
+              <li><strong>Stop marketing email.</strong> Tell us by email and we will stop.</li>
             </ul>
           </section>
 
           <section className="mb-8">
-            <h2 className="text-2xl font-semibold text-white mb-4">9. Website Visits and the Homepage Demo</h2>
+            <h2 className="text-2xl font-semibold text-white mb-4">9. Android App: Sign-In, Gmail, Statistics, Crash Reports and Purchases</h2>
+            <ul className="list-disc pl-6 text-gray-300 space-y-2">
+              <li>
+                <strong>Google sign-in.</strong> Sign-in is optional and is needed for voice cloning and for syncing your plan. When you sign in, Google
+                gives the app an ID token that our backend exchanges for an account in Supabase, which stores your email, name and
+                profile picture from your Google account. Your phone&apos;s Android ID, or a random ID if that is unavailable, is sent to our
+                backend with some requests (sign-in, linking your device to your account, and browsing the voice marketplace).
+              </li>
+              <li>
+                <strong>Gmail (optional).</strong> If you connect Gmail to import emails, the app asks Google for the <code>gmail.modify</code> permission,
+                which is broader than reading. The app only lists and reads messages; it does not send, delete or change email. Your Google access
+                token is stored in encrypted storage on your phone and emails are fetched from Google directly to your phone, not through our servers.
+                If you then listen to an email, its text is processed like any other text (Section 3). You can disconnect at any time in your
+                Google Account settings under third-party access.
+              </li>
+              <li>
+                <strong>Usage statistics (optional, off until you say yes).</strong> The first time you open the app it asks whether to share usage
+                statistics. If you allow it, Google Firebase Analytics counts events such as opening the app, onboarding, importing content (the kind
+                of import and its language, never the text), starting and finishing playback, which speech source was used, reaching the free limit, and
+                viewing or completing a purchase. Firebase ties these to a random app-instance ID and records device model, app and Android version and
+                approximate location, as described in <a href="https://firebase.google.com/support/privacy" className="text-primary hover:text-primary-dark">Firebase&apos;s privacy information</a>.
+                If you decline, nothing is sent and locally stored analytics data is reset. The app does not read your advertising ID, has no advertising SDKs,
+                and does not use this data for advertising.
+              </li>
+              <li>
+                <strong>Crash and error reports (always on).</strong> If the app crashes, a feature fails, or one of our servers returns a server error, the app sends a
+                report to a reporting service we run on Cloudflare Workers (app-failure-reporter.t-sushanth.workers.dev). The report contains the error and its
+                stack trace, the app version, your device maker and model, your Android version and the name of the feature that failed (for a server error, the server name and request path, not the content). It is meant not to contain
+                the text you read or import. These reports are sent automatically and are not covered by the usage-statistics choice. They carry no account ID, but a
+                stack trace or error message could in rare cases include other details.
+              </li>
+              <li>
+                <strong>Purchases and subscriptions.</strong> Purchases are processed by Google Play. RevenueCat (revenuecat.com) receives purchase and subscription status
+                and an app user ID (your account ID if you are signed in), and some paywall information (such as which screen showed the paywall). Our paywall tooling also records paywall views and purchase events,
+                with a random ID and any product and price involved, on a server we run (on Fly.io).
+              </li>
+              <li>
+                <strong>Older versions.</strong> This describes the current Android app. Older versions may collect different data, including analytics that
+                were on by default, so please update to the latest version.
+              </li>
+            </ul>
+          </section>
+
+          <section className="mb-8">
+            <h2 className="text-2xl font-semibold text-white mb-4">10. Deleting Your Account and Data</h2>
+            <p className="text-gray-300 mb-4">
+              There is currently no delete-account button in the app or on the website. To have your account and data deleted:
+            </p>
+            <ol className="list-decimal pl-6 text-gray-300 space-y-2">
+              <li>
+                Email{' '}
+                <a href="mailto:puzzleverseai@gmail.com?subject=ReadAloud%20AI%20account%20deletion" className="text-primary hover:text-primary-dark">puzzleverseai@gmail.com</a>{' '}
+                with the subject &quot;ReadAloud AI account deletion&quot;, from the email address of the account you want deleted (the Google account you signed in with), so we can match the request to the account.
+              </li>
+              <li>We will reply to confirm that we received it. We handle these requests manually, so it is not instant.</li>
+              <li>We then delete your account and the data tied to it, including voice clones and their reference recordings, from the systems we run (Supabase and our voice-cloning service), apart from the exceptions below.</li>
+            </ol>
+            <p className="text-gray-300 mt-4 mb-2">What deletion does not remove:</p>
+            <ul className="list-disc pl-6 text-gray-300 space-y-2">
+              <li>Consent records for voice clones, kept for 12 months after the voice is deleted, and fingerprints of generated audio, kept for 90 days (Section 2).</li>
+              <li>Purchase and subscription records held by Google Play and RevenueCat, and any records we are legally required to keep. Deleting your account does not cancel a Google Play subscription: cancel it in Google Play.</li>
+              <li>Crash and error reports, which are not linked to your account. Anonymous usage statistics already sent to Google Firebase are covered by Firebase&apos;s own terms.</li>
+              <li>Anything held by other providers under their own policies, and text processed on our speech servers, whose retention we have not verified (Section 3).</li>
+            </ul>
+            <p className="text-gray-300 mt-4">
+              You can also delete a voice clone yourself in the app at any time, and stop sharing usage statistics in Settings, without deleting your account.
+            </p>
+          </section>
+
+          <section className="mb-8">
+            <h2 className="text-2xl font-semibold text-white mb-4">11. Website Visits and the Homepage Demo</h2>
             <p className="text-gray-300 mb-4">
               When you visit readaloudai.org we count the page load, without cookies and without any script running in your browser.
               For each visit we record:
@@ -172,12 +281,17 @@ export default function PrivacyPage() {
           </section>
 
           <section className="mb-8">
-            <h2 className="text-2xl font-semibold text-white mb-4">10. Contact Us</h2>
+            <h2 className="text-2xl font-semibold text-white mb-4">12. Contact Us</h2>
             <p className="text-gray-300">
-              If you have any questions about this Privacy Policy, please contact us at{' '}
+              If you have any questions about this Privacy Policy, or want to make a request described in it, please contact us at{' '}
+              <a href="mailto:puzzleverseai@gmail.com" className="text-primary hover:text-primary-dark">
+                puzzleverseai@gmail.com
+              </a>
+              . You can also write to{' '}
               <a href="mailto:privacy@readaloudai.org" className="text-primary hover:text-primary-dark">
                 privacy@readaloudai.org
               </a>
+              ; for deletion requests, please use puzzleverseai@gmail.com as described in Section 10.
             </p>
           </section>
         </div>
