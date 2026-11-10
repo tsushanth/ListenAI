@@ -36,7 +36,7 @@ def speechbrain_hf_compat():
         try:
             return orig(*args, **kwargs)
         except Exception as e:  # noqa: BLE001
-            if type(e).__name__ in ("RemoteEntryNotFoundError", "EntryNotFoundError"):
+            if type(e).__name__ in ("RemoteEntryNotFoundError", "EntryNotFoundError", "LocalEntryNotFoundError", "OfflineModeIsEnabled"):
                 import requests
 
                 raise requests.exceptions.HTTPError("404 Client Error: entry not found") from e
@@ -44,6 +44,17 @@ def speechbrain_hf_compat():
 
     compat._ra_compat = True
     huggingface_hub.hf_hub_download = compat
+
+
+def turbo_snapshot(nano: bool, local_only: bool) -> str:
+    """Local path of the Turbo/Nano checkpoint with ONLY the files the loader reads. The repos also hold s3gen.safetensors (1 GB) that
+    ChatterboxTurboTTS.from_local never opens; skipping it keeps the image under Fly's 8 GiB unpack limit."""
+    from chatterbox.tts_turbo import NANO_REPO_ID, REPO_ID
+    from huggingface_hub import snapshot_download
+
+    t3 = "t3_nano_v1.safetensors" if nano else "t3_turbo_v1.safetensors"
+    return snapshot_download(repo_id=NANO_REPO_ID if nano else REPO_ID, token=os.getenv("HF_TOKEN") or None, local_files_only=local_only,
+                             allow_patterns=["*.json", "*.txt", "*.model", "*.pt", "ve.safetensors", "s3gen_meanflow.safetensors", t3])
 
 
 class ChatterboxEngine:
@@ -67,7 +78,7 @@ class ChatterboxEngine:
         t0 = time.time()
         torch.set_num_threads(os.cpu_count() or 1)
         self.torch, self.Conditionals = torch, Conditionals
-        self.tts = ChatterboxTurboTTS.from_pretrained(device="cpu", nano=(self.model == "nano"))
+        self.tts = ChatterboxTurboTTS.from_local(turbo_snapshot(self.model == "nano", local_only=True), "cpu", nano=(self.model == "nano"))
         speechbrain_hf_compat()
         self.ecapa = EncoderClassifier.from_hparams(ECAPA_REPO, savedir=ECAPA_DIR, run_opts={"device": "cpu"})
         self.ast_fe = ASTFeatureExtractor.from_pretrained(AST_MODEL)

@@ -1,15 +1,14 @@
-"""Runs at image build so a cold start never downloads weights (Turbo, Nano, ECAPA, AST)."""
+"""Runs at image build so a cold start never downloads weights. BAKE_MODELS is a comma list of turbo,nano (default turbo)."""
 import os
 
-from chatterbox.tts_turbo import ChatterboxTurboTTS
 from speechbrain.inference.speaker import EncoderClassifier
 from transformers import ASTFeatureExtractor, ASTForAudioClassification
 
-from engine import AST_MODEL, ECAPA_DIR, ECAPA_REPO, speechbrain_hf_compat
+from engine import AST_MODEL, ECAPA_DIR, ECAPA_REPO, ChatterboxEngine, speechbrain_hf_compat, turbo_snapshot
 
-for nano in (False, True):
-    m = ChatterboxTurboTTS.from_pretrained(device="cpu", nano=nano)
-    print("baked", m.model_label, "sr", m.sr, flush=True)
+for name in os.environ.get("BAKE_MODELS", "turbo").split(","):
+    path = turbo_snapshot(name.strip() == "nano", local_only=False)
+    print("baked", name, path, flush=True)
 speechbrain_hf_compat()
 EncoderClassifier.from_hparams(ECAPA_REPO, savedir=ECAPA_DIR, run_opts={"device": "cpu"})
 ASTFeatureExtractor.from_pretrained(AST_MODEL)
