@@ -1,0 +1,1 @@
+Reading no longer cuts words in half when text is split for speech. The system voice engine now only breaks text at spaces.
