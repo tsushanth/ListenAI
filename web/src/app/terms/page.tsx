@@ -11,7 +11,7 @@ export default function TermsPage() {
         <h1 className="text-4xl font-bold text-white mb-8">Terms of Service</h1>
 
         <div className="prose prose-invert max-w-none">
-          <p className="text-gray-400 mb-6">Last updated: February 2026</p>
+          <p className="text-gray-400 mb-6">Last updated: November 10, 2026</p>
 
           <section className="mb-8">
             <h2 className="text-2xl font-semibold text-white mb-4">1. Acceptance of Terms</h2>
@@ -56,14 +56,18 @@ export default function TermsPage() {
           <section className="mb-8">
             <h2 className="text-2xl font-semibold text-white mb-4">5. AI Services and Data Processing</h2>
             <p className="text-gray-300 mb-4">
-              ReadAloud AI uses cloud-based AI services to provide text-to-speech, voice cloning, and content
-              summarization features. By using these cloud-based features, you acknowledge and consent to your
-              content being processed by the third-party services identified in our{' '}
-              <Link href="/privacy" className="text-primary hover:text-primary-dark">Privacy Policy</Link>.
-              These services include Kokoro TTS, ElevenLabs, OpenAI, and Chatterbox TTS.
+              ReadAloud AI uses cloud-based services to provide text-to-speech, voice cloning, article cleanup and
+              summarization. By using these features you acknowledge that your content is processed by the services
+              described in our{' '}
+              <Link href="/privacy" className="text-primary hover:text-primary-dark">Privacy Policy</Link>,
+              including our own speech servers (running Piper, Kokoro and Chatterbox), Anthropic for summaries and article cleanup,
+              and Google and Supabase for sign-in. In the Android app, text you listen to with a standard voice is sent to our
+              speech service by default, without a separate prompt each time.
             </p>
-            <p className="text-gray-300 mb-4">You may revoke this consent at any time in the app&apos;s Settings, which will limit
-              you to on-device voice processing. On-device Apple voices do not send any data externally.</p>
+            <p className="text-gray-300 mb-4">In the Android app you can keep standard voices on your device by turning on
+              Offline AI in Settings once its on-device voice has downloaded; the Privacy Policy explains the limits of this.
+              Voices that run on your device do not send your text to our servers. To delete your account and data, follow the
+              steps in Section 10 of the Privacy Policy.</p>
           </section>
 
           <section className="mb-8">
@@ -86,7 +90,7 @@ export default function TermsPage() {
             <ul className="list-disc pl-6 text-gray-300 space-y-2">
               <li>Pay all applicable fees</li>
               <li>Automatic renewal unless cancelled</li>
-              <li>Our refund policy (7-day trial, 30-day money-back guarantee)</li>
+              <li>Refunds for purchases made in Google Play are handled by Google Play under its refund policy; for purchases made on our website, contact us using the address below. We do not promise a free trial or money-back guarantee in these terms.</li>
             </ul>
           </section>
 
