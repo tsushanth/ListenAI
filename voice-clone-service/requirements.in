@@ -1,0 +1,19 @@
+# Runtime dependencies of the CPU voice-clone service. torch/torchaudio are installed first from the CPU wheel index (see Dockerfile).
+# chatterbox-tts is installed separately with --no-deps at a pinned commit (the upstream repo is archived) and so are its pins below.
+fastapi
+uvicorn[standard]
+python-multipart
+numpy<2
+soundfile
+librosa==0.11.0
+transformers==5.2.0
+diffusers==0.29.0
+conformer==0.3.2
+safetensors==0.5.3
+s3tokenizer
+spacy-pkuseg
+pykakasi==2.3.0
+pyloudnorm
+omegaconf
+speechbrain==1.0.2
+resemble-perth @ git+https://github.com/resemble-ai/Perth.git@ff1c8ac55a976971245cdd53c18d6131ca00d993

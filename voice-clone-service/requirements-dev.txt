@@ -1,0 +1,8 @@
+# test-only (the model stack is not needed: tests use a fake engine)
+fastapi>=0.110
+httpx>=0.27
+pytest>=8
+python-multipart>=0.0.9
+numpy>=1.26
+soundfile>=0.12
+uvicorn>=0.29
