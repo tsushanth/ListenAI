@@ -40,6 +40,13 @@ android {
         versionCode = 96
         versionName = "2.14.52"
 
+        // Offline-voice fake-door experiment. OFF unless a build passes -PofflineVoiceFakeDoor=true.
+        buildConfigField(
+            "boolean",
+            "OFFLINE_VOICE_FAKE_DOOR",
+            ((project.findProperty("offlineVoiceFakeDoor") as String?) == "true").toString()
+        )
+
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         // Default speech source. true = the ReadAloud API (Piper on CPU) is tried first; false = the on-device model /

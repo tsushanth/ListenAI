@@ -250,6 +250,9 @@ object FirebaseAnalyticsHelper {
         logEvent("quota_reached")
     }
 
+    /** Parameterless event, for experiments that only need a count. Still dropped unless analytics consent is on. */
+    fun logSimpleEvent(eventName: String) = logEvent(eventName)
+
     // Core Logging
 
     private fun logEvent(eventName: String, params: Bundle? = null) {
