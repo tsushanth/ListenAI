@@ -37,6 +37,7 @@ import { audiobooksRouter } from './routes/audiobooks.js';
 import { voiceMarketplaceRouter } from './routes/voiceMarketplace.js';
 import { stripeWebhookRouter } from './routes/stripeWebhook.js';
 import { authRouter } from './routes/auth.js';
+import { accountRouter } from './routes/account.js';
 import { appConfigRouter } from './routes/appConfig.js';
 import { ttsApiKeysRouter, requireRealAuth } from './routes/ttsApiKeys.js';
 import { textToMusicRouter } from './routes/textToMusic.js';
@@ -349,6 +350,9 @@ app.use('/api/marketplace', voiceMarketplaceRouter);
 
 // Auth routes - for Apple/Google sign-in (no auth middleware - handles its own auth)
 app.use('/api/auth', authRouter);
+
+// In-app account deletion. Strict (remote-verified) auth inside the router: requireAuth's default-user fallback must never apply here.
+app.use('/api/account', burstRateLimit, accountRouter);
 
 // App config - public, no auth required (paywall mode, feature flags)
 app.use('/api/config', appConfigRouter);

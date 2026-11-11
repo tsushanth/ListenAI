@@ -29,7 +29,9 @@ import com.listenai.BuildConfig
 import com.listenai.R
 import com.listenai.service.AnalyticsConsent
 import com.listenai.service.ConsentState
+import com.listenai.service.account.AccountDeletionFailure
 import com.listenai.service.billing.RevenueCatManager
+import com.listenai.service.voice.VoiceCloneAuth
 import com.listenai.service.settings.SettingsManager
 import com.listenai.service.tts.KokoroModelDownloader
 import com.listenai.service.tts.KokoroOnDeviceService
@@ -39,6 +41,7 @@ import com.kreativekoala.crosspromokit.view.CrossPromoSection
 import com.kreativekoala.paywallkit.models.PaywallFeature
 import com.kreativekoala.paywallkit.models.PaywallTheme
 import com.kreativekoala.paywallkit.view.PaywallPreview
+import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -49,7 +52,8 @@ fun SettingsScreen(
     onNavigateToVoiceCloning: () -> Unit = {},
     onNavigateToMarketplace: () -> Unit = {},
     onNavigateToSubscription: () -> Unit = {},
-    settingsManager: SettingsManager = koinInject()
+    settingsManager: SettingsManager = koinInject(),
+    deleteAccountViewModel: DeleteAccountViewModel = koinViewModel()
 ) {
     val context = LocalContext.current
     val scrollState = rememberScrollState()
@@ -79,6 +83,12 @@ fun SettingsScreen(
     // Subscription state
     val revenueCatManager = remember { RevenueCatManager.getInstance() }
     val isPremium by revenueCatManager.isPremium.collectAsState()
+
+    // Account (Delete account row is only offered while signed in; the dialogs outlive the sign-out that follows a deletion)
+    val voiceCloneAuth: VoiceCloneAuth = koinInject()
+    val signedInFlow = remember { runCatching { voiceCloneAuth.isSignedIn }.getOrNull() }
+    val isSignedIn by (signedInFlow ?: remember { kotlinx.coroutines.flow.MutableStateFlow(false) }).collectAsState()
+    val deleteState by deleteAccountViewModel.state.collectAsState()
 
     // Language picker state
     val languages = remember {
@@ -256,6 +266,19 @@ fun SettingsScreen(
                 GoogleConnectRow()
             }
 
+            // Account Section: in-app account deletion (Google Play requirement)
+            if (isSignedIn) {
+                SettingsSection(title = stringResource(R.string.settings_account)) {
+                    SettingsRow(
+                        icon = Icons.Default.DeleteForever,
+                        iconColor = Red,
+                        title = stringResource(R.string.settings_delete_account),
+                        subtitle = stringResource(R.string.settings_delete_account_subtitle),
+                        onClick = { deleteAccountViewModel.request() }
+                    )
+                }
+            }
+
             // Share Section
             SettingsSection(title = stringResource(R.string.settings_share)) {
                 SettingsRow(
@@ -404,6 +427,19 @@ fun SettingsScreen(
 
             Spacer(modifier = Modifier.height(32.dp))
         }
+
+        DeleteAccountDialogs(
+            state = deleteState,
+            onConfirm = deleteAccountViewModel::confirm,
+            onConfirmWithSubscription = deleteAccountViewModel::confirmWithActiveSubscription,
+            onRetry = deleteAccountViewModel::retry,
+            onDismiss = deleteAccountViewModel::dismiss,
+            onOpenPlay = {
+                runCatching {
+                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/account/subscriptions")))
+                }
+            }
+        )
 
         // Playback Speed Dialog
         if (showSpeedDialog) {

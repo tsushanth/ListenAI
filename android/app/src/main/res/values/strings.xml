@@ -528,4 +528,29 @@
     <string name="follow_along_subtitle">Scroll the text to keep up with the voice</string>
     <string name="on">On</string>
     <string name="off">Off</string>
+
+    <!-- Delete account (Settings). English only for now, same as the analytics strings above; other locales fall back to English. -->
+    <string name="settings_account" tools:ignore="MissingTranslation">Account</string>
+    <string name="settings_delete_account" tools:ignore="MissingTranslation">Delete account</string>
+    <string name="settings_delete_account_subtitle" tools:ignore="MissingTranslation">Permanently delete your account and cloud data</string>
+    <string name="delete_account_title" tools:ignore="MissingTranslation">Delete your account?</string>
+    <string name="delete_account_body" tools:ignore="MissingTranslation">This permanently deletes your account, your cloned voices and the audio and usage data stored for you in the cloud. This cannot be undone. Articles you imported stay on this device.</string>
+    <string name="delete_account_play_note" tools:ignore="MissingTranslation">Deleting your account does not cancel your Google Play subscription. Cancel it in Google Play to stop being charged.</string>
+    <string name="delete_account_confirm" tools:ignore="MissingTranslation">Delete account</string>
+    <string name="delete_account_deleting" tools:ignore="MissingTranslation">Deleting your account…</string>
+    <string name="delete_account_subscription_title" tools:ignore="MissingTranslation">You have an active subscription</string>
+    <string name="delete_account_subscription_body" tools:ignore="MissingTranslation">Deleting your account does not cancel your subscription, so you could still be charged.</string>
+    <string name="delete_account_subscription_play" tools:ignore="MissingTranslation">Google Play subscription: cancel it in Google Play (Subscriptions).</string>
+    <string name="delete_account_subscription_stripe" tools:ignore="MissingTranslation">Web subscription: cancel it first from your billing portal on the ReadAloud website, or email support@kreativekoala.llc.</string>
+    <string name="delete_account_open_play" tools:ignore="MissingTranslation">Open Google Play</string>
+    <string name="delete_account_anyway" tools:ignore="MissingTranslation">Delete anyway</string>
+    <string name="delete_account_error_title" tools:ignore="MissingTranslation">Could not delete your account</string>
+    <string name="delete_account_error_network" tools:ignore="MissingTranslation">No connection. Check your internet and try again.</string>
+    <string name="delete_account_error_server" tools:ignore="MissingTranslation">Something went wrong on our side. Your account is still active. Please try again in a moment.</string>
+    <string name="delete_account_error_unknown" tools:ignore="MissingTranslation">Something went wrong. Please try again.</string>
+    <string name="delete_account_error_signin" tools:ignore="MissingTranslation">Your session has ended, so you were signed out on this device. If your account still exists, sign in again and retry from Settings.</string>
+    <string name="delete_account_done_title" tools:ignore="MissingTranslation">Account deleted</string>
+    <string name="delete_account_done_body" tools:ignore="MissingTranslation">Your account and cloud data were deleted and you have been signed out on this device.</string>
+    <string name="delete_account_done_play" tools:ignore="MissingTranslation">Your Google Play subscription is still active. Cancel it in Google Play to stop being charged.</string>
+    <string name="delete_account_done_stripe" tools:ignore="MissingTranslation">Your web subscription is still active. Email support@kreativekoala.llc to have it cancelled and stop being charged.</string>
 </resources>

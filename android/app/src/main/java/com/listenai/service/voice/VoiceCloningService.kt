@@ -110,6 +110,16 @@ class VoiceCloningService private constructor(private val context: Context) {
             ?.forEach { it.delete() }
     }
 
+    /**
+     * Account deletion: forget everything this device kept for the signed-in account's cloned voices (the voice list,
+     * cached previews, the legacy list cache and notice flags). Reference audio is never stored on the device.
+     */
+    fun clearLocalAccountData() {
+        cached = emptyList()
+        File(context.cacheDir, "cloned_voice_previews").deleteRecursively()
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().clear().apply()
+    }
+
     /** Call after a successful create so other screens see the new voice immediately. */
     fun invalidateCache() {
         cached = emptyList()

@@ -21,12 +21,17 @@ import com.listenai.service.auth.AuthService
 import com.listenai.service.auth.GoogleAuthService
 import com.listenai.service.usage.UsageTrackerService
 import com.listenai.service.settings.SettingsManager
+import com.listenai.service.account.AccountApi
+import com.listenai.service.account.AccountDeletionClient
 import com.listenai.service.voice.SupabaseVoiceCloneAuth
 import com.listenai.service.voice.VoiceCloneAuth
 import com.listenai.service.voice.VoiceCloningService
 import com.listenai.service.notification.TTSNotificationService
 import com.listenai.ui.import_content.ImportViewModel
 import com.listenai.ui.library.LibraryViewModel
+import com.listenai.ui.settings.DeleteAccountViewModel
+import com.listenai.ui.settings.LocalAccountCleaner
+import com.listenai.service.billing.RevenueCatManager
 import org.koin.android.ext.koin.androidContext
 import org.koin.androidx.viewmodel.dsl.viewModel
 import org.koin.dsl.module
@@ -82,6 +87,13 @@ val dataModule = module {
     // ViewModels
     viewModel { LibraryViewModel(get()) }
     viewModel { ImportViewModel(get(), get(), get(), get()) }
+    viewModel {
+        DeleteAccountViewModel(
+            client = get(),
+            cleaner = get(),
+            playSubscriptionActive = { runCatching { RevenueCatManager.getInstance().isPremium.value }.getOrDefault(false) }
+        )
+    }
 }
 
 /**
@@ -123,6 +135,25 @@ val serviceModule = module {
     single(createdAtStart = true) {
         VoiceCloningService.getInstance(androidContext()).apply {
             configure(VoiceCloningService.DEFAULT_BACKEND_URL, get<VoiceCloneAuth>())
+        }
+    }
+
+    // Account deletion (Settings > Delete account): DELETE /api/account with the Supabase bearer token.
+    single<AccountDeletionClient> {
+        val voice = get<VoiceCloningService>()
+        AccountApi(VoiceCloningService.DEFAULT_BACKEND_URL, okhttp3.OkHttpClient.Builder()
+            .connectTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+            // Voice removal, storage cleanup and the auth user can take a while on the server.
+            .readTimeout(120, java.util.concurrent.TimeUnit.SECONDS)
+            .build()
+        ) { voice.authState?.accessToken() }
+    }
+    single {
+        LocalAccountCleaner {
+            // Ends the Supabase session (and the RevenueCat identity), then drops the account's local voice data.
+            // The on-device library (imported articles) is not account data and stays.
+            runCatching { get<VoiceCloneAuth>().signOut() }
+            get<VoiceCloningService>().clearLocalAccountData()
         }
     }
 
