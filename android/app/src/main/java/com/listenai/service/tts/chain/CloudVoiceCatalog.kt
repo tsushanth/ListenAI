@@ -3,6 +3,8 @@ package com.listenai.service.tts.chain
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONObject
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.util.concurrent.TimeUnit
 
 /** A voice the ReadAloud API lists. [id] is the id the Piper worker takes, for example "custom:es-pilot-f". */
@@ -77,13 +79,18 @@ class HttpCloudVoiceCatalog(
     private val client = http.newBuilder().callTimeout(3, TimeUnit.SECONDS).build()
     @Volatile private var cached: List<CloudVoice> = emptyList()
     @Volatile private var validUntil = 0L
+    // One fetch at a time: callers that arrive while one is running wait for it and then read what it stored.
+    private val fetching = Mutex()
 
     override suspend fun voices(): List<CloudVoice> {
         if (nowMs() < validUntil) return cached
-        val fetched = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { fetch() }
-        cached = fetched ?: emptyList()
-        validUntil = nowMs() + if (fetched != null && fetched.isNotEmpty()) okTtlMs else failTtlMs
-        return cached
+        return fetching.withLock {
+            if (nowMs() < validUntil) return@withLock cached
+            val fetched = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { fetch() }
+            cached = fetched ?: emptyList()
+            validUntil = nowMs() + if (fetched != null && fetched.isNotEmpty()) okTtlMs else failTtlMs
+            cached
+        }
     }
 
     private fun fetch(): List<CloudVoice>? = try {

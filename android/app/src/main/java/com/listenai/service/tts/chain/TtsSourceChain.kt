@@ -36,12 +36,20 @@ class TtsSourceChain(
     /** Monotonic milliseconds. Tests pass virtual time. */
     private val nowMs: () -> Long = { System.nanoTime() / 1_000_000 },
 ) {
-    private val cooldownUntil = ConcurrentHashMap<SourceId, Long>()
+    // A failure that depends on the language (a bad voice id, a slow Spanish worker) must not silence the source for
+    // other languages, so those are kept per (source, language). Reasons that hold for the whole source (no network,
+    // the account's quota, rate limits) apply to every language.
+    private val cooldownUntil = ConcurrentHashMap<Pair<SourceId, String>, Long>()
+    private val cooldownReasons = ConcurrentHashMap<Pair<SourceId, String>, FallbackReason>()
 
     /** Forget cooldowns, e.g. after the network comes back. */
     fun resetCooldowns() = cooldownUntil.clear()
 
     private class Session(val order: List<SourceId>, val request: TtsRequest) {
+        /** Language key (2 letters) of the request, for cooldowns and cache keys. */
+        val lang = request.language.substringBefore('-').lowercase()
+        /** Voice name to put in the cache key; null = this session may neither read nor write the cache (see [resolveCacheVoice]). */
+        @Volatile var cacheVoice: String? = null
         @Volatile var minIndex = 0
         val reasons = java.util.Collections.synchronizedList(ArrayList<Pair<SourceId, FallbackReason>>())
         val lastReason = ConcurrentHashMap<SourceId, FallbackReason>()
@@ -59,6 +67,7 @@ class TtsSourceChain(
     fun speak(text: String, request: TtsRequest): Flow<SpokenChunk> = flow {
         val chunks = TextChunker.split(text, config.maxChunkChars, config.firstChunkChars)
         val session = Session(order(request), request)
+        session.cacheVoice = resolveCacheVoice(session)
         val started = nowMs()
         var firstAudioAt: Long? = null
         var emitted = 0
@@ -109,7 +118,7 @@ class TtsSourceChain(
     }
 
     private suspend fun synthesizeChunk(index: Int, total: Int, text: String, s: Session): SpokenChunk {
-        val key = cache?.let { ChunkCache.key(s.request.voiceId, s.request.speed, text) }
+        val key = s.cacheVoice?.let { v -> cache?.let { ChunkCache.key(v, s.request.speed, text) } }
         if (key != null) {
             cache?.get(key)?.let { hit ->
                 s.cacheHits++
@@ -123,9 +132,9 @@ class TtsSourceChain(
             val id = s.order[i]
             val src = sources[id]
             if (src == null) { i++; continue }
-            val cooling = cooldownUntil[id]?.let { nowMs() < it } == true
-            if (cooling) {
-                val why = cooldownReasons[id] ?: FallbackReason.UNKNOWN
+            val coolingReason = activeCooldown(id, s.lang)
+            if (coolingReason != null) {
+                val why = coolingReason
                 failures[id] = why
                 if (s.lastReason[id] == null) s.note(id, why)
                 s.demote(id)
@@ -135,7 +144,7 @@ class TtsSourceChain(
             if (unavailable != null) {
                 failures[id] = unavailable
                 s.note(id, unavailable)
-                coolDown(id, SourceFailure(unavailable))
+                coolDown(id, s.lang, SourceFailure(unavailable))
                 s.demote(id)
                 i++; continue
             }
@@ -156,17 +165,17 @@ class TtsSourceChain(
                 } catch (e: TimeoutCancellationException) {
                     failures[id] = FallbackReason.TIMEOUT
                     if (attempt < attempts) { delay(config.retryBackoffMs); continue }
-                    s.note(id, FallbackReason.TIMEOUT); coolDown(id, SourceFailure(FallbackReason.TIMEOUT))
+                    s.note(id, FallbackReason.TIMEOUT); coolDown(id, s.lang, SourceFailure(FallbackReason.TIMEOUT))
                 } catch (e: CancellationException) {
                     throw e
                 } catch (e: SourceFailure) {
                     failures[id] = e.reason
                     val transient = e.reason == FallbackReason.TIMEOUT || e.reason == FallbackReason.SERVER_ERROR
                     if (transient && attempt < attempts) { delay(config.retryBackoffMs); continue }
-                    s.note(id, e.reason); coolDown(id, e)
+                    s.note(id, e.reason); coolDown(id, s.lang, e)
                 } catch (e: Exception) {
                     failures[id] = FallbackReason.UNKNOWN
-                    s.note(id, FallbackReason.UNKNOWN); coolDown(id, SourceFailure(FallbackReason.UNKNOWN))
+                    s.note(id, FallbackReason.UNKNOWN); coolDown(id, s.lang, SourceFailure(FallbackReason.UNKNOWN))
                 }
                 break
             }
@@ -176,7 +185,28 @@ class TtsSourceChain(
         throw NoSourceAvailableException(failures, actionFor(failures, s.request))
     }
 
-    private val cooldownReasons = ConcurrentHashMap<SourceId, FallbackReason>()
+    private fun activeCooldown(id: SourceId, lang: String): FallbackReason? {
+        for (k in listOf(id to ANY_LANGUAGE, id to lang)) {
+            if (cooldownUntil[k]?.let { nowMs() < it } == true) return cooldownReasons[k] ?: FallbackReason.UNKNOWN
+        }
+        return null
+    }
+
+    /**
+     * What the cache key says about the voice, or null for "do not use the cache in this session". Audio in the cache
+     * was made by a cacheable source (the cloud), so it may only be replayed when that source is the one this session
+     * would use first (not when the user chose the phone's voice, or the cloud is switched off) and still offers the
+     * voice (not when the catalog stopped listing it). The key carries the language and the resolved voice, never
+     * just the English app voice id.
+     */
+    private suspend fun resolveCacheVoice(s: Session): String? {
+        if (cache == null) return null
+        val first = s.order.firstOrNull { sources[it] != null } ?: return null
+        if (first !in config.cacheableSources) return null
+        val voice = try { sources.getValue(first).cacheVoice(s.request) } catch (e: CancellationException) { throw e } catch (e: Exception) { null }
+            ?: return null
+        return if (s.lang == "en") voice else "${s.lang}:$voice"
+    }
 
     private suspend fun checkOnce(s: Session, src: TtsSource): FallbackReason? {
         val mine = CompletableDeferred<FallbackReason?>()
@@ -191,7 +221,7 @@ class TtsSourceChain(
         }
     }
 
-    private fun coolDown(id: SourceId, f: SourceFailure) {
+    private fun coolDown(id: SourceId, lang: String, f: SourceFailure) {
         val ms = when (f.reason) {
             FallbackReason.OFFLINE -> config.cooldownOfflineMs
             FallbackReason.QUOTA -> f.retryAfterMs ?: config.cooldownQuotaMs
@@ -201,8 +231,14 @@ class TtsSourceChain(
             // do not remember it across sessions (the per-session check is cheap).
             else -> 0L
         }
-        if (ms > 0) { cooldownUntil[id] = nowMs() + ms; cooldownReasons[id] = f.reason }
+        if (ms > 0) {
+            val wholeSource = f.reason == FallbackReason.OFFLINE || f.reason == FallbackReason.QUOTA || f.reason == FallbackReason.RATE_LIMITED
+            val k = id to (if (wholeSource) ANY_LANGUAGE else lang)
+            cooldownUntil[k] = nowMs() + ms; cooldownReasons[k] = f.reason
+        }
     }
+
+    private companion object { const val ANY_LANGUAGE = "*" }
 
     internal fun actionFor(failures: Map<SourceId, FallbackReason>, request: TtsRequest): UserAction {
         val all = failures.values

@@ -85,6 +85,10 @@ class ReadAloudApiSource(
         else -> null
     }
 
+    /** The app voice id for English (what the cache has always been keyed by); the catalog's voice id for other languages, or null when it is not listed now. */
+    override suspend fun cacheVoice(request: TtsRequest): String? =
+        if (isEnglish(request.language)) request.voiceId else cloudVoiceFor(request.language)?.id
+
     private fun isEnglish(language: String) = language.substringBefore('-').lowercase() == "en"
 
     /** The vetted catalog voice for a non-English language, or null. Asks the catalog only for non-English text. */

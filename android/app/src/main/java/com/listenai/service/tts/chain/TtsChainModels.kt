@@ -85,6 +85,13 @@ interface TtsSource {
     /** Synthesizes one chunk. Throws [SourceFailure]. Cancellation must propagate. */
     suspend fun synthesize(text: String, request: TtsRequest): PcmChunk
 
+    /**
+     * Names the voice this source would speak [request] with, for the chunk cache key; null when the source has no
+     * voice for the request right now (then nothing of this source's may be replayed from the cache or stored).
+     * The default is the app voice id, which is all an English-only source needs.
+     */
+    suspend fun cacheVoice(request: TtsRequest): String? = request.voiceId
+
     /** Called once per chunk with the real-time factor (synth seconds / audio seconds), for sources that measure it. */
     fun onChunkMeasured(synthMs: Long, audioMs: Long) {}
 }
