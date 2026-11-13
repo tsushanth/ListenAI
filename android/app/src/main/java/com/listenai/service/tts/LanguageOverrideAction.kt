@@ -2,6 +2,7 @@ package com.listenai.service.tts
 
 import com.listenai.data.models.Article
 import com.listenai.data.repository.ArticleRepository
+import com.listenai.service.FirebaseAnalyticsHelper
 import com.listenai.service.LanguageDetector
 
 /**
@@ -12,6 +13,7 @@ object LanguageOverrideAction {
 
     /** [newCode] null means "automatic": detection runs again. Returns the document as it is now stored. */
     suspend fun apply(repository: ArticleRepository, prefs: LanguagePrefs, article: Article, newCode: String?): Article {
+        val before = LanguageChoice.resolve(prefs.override(article.id), null, article.language)
         prefs.setOverride(article.id, newCode)
         val language = LanguageChoice.resolve(
             override = newCode,
@@ -26,6 +28,7 @@ object LanguageOverrideAction {
             duration = 0L,
             voiceId = article.selectedVoiceId,
         )
+        runCatching { FirebaseAnalyticsHelper.logLangOverride(before, newCode) }
         return article.copy(language = language, audioFileUrl = null)
     }
 }

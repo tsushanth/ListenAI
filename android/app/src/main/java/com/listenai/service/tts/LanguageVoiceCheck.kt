@@ -5,6 +5,7 @@ import android.os.Handler
 import android.os.Looper
 import android.widget.Toast
 import com.listenai.R
+import com.listenai.service.FirebaseAnalyticsHelper
 import com.listenai.service.LanguageDetector
 import com.listenai.service.tts.chain.LanguageVoiceState
 import com.listenai.service.tts.chain.TtsChainProvider
@@ -12,6 +13,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import java.util.Locale
 
 /** What to do right after an import, given what the phone can speak. */
 object LanguageVoiceCheck {
@@ -38,6 +40,9 @@ object LanguageVoiceCheck {
         scope.launch {
             val state = runCatching { TtsChainProvider.get(app).system.voiceState(code) }.getOrNull() ?: return@launch
             if (shouldWarn(state)) {
+                runCatching {
+                    FirebaseAnalyticsHelper.logLangNoVoice(code, state == LanguageVoiceState.LISTED_UNUSABLE, Locale.getDefault().language)
+                }
                 val name = LanguageDetector.displayName(code) ?: code
                 Handler(Looper.getMainLooper()).post {
                     Toast.makeText(app, app.getString(R.string.lang_no_voice_import_notice, name), Toast.LENGTH_LONG).show()

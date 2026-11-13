@@ -156,13 +156,22 @@ object FirebaseAnalyticsHelper {
         logEvent("content_imported", params)
     }
 
-    /** A non-English article had to be read with a voice that is not native to its language. */
+    /** A read ended with no usable voice for its language; [reason] is no_voice, no_engine, offline or engine_error. */
     fun logVoiceFallback(language: String, reason: String) {
-        logEvent("voice_fallback", Bundle().apply {
-            putString("content_language", language)
-            putString("reason", reason) // no_voice, engine_error
-        })
+        logEvent("voice_fallback", LanguageAnalytics.voiceFallback(language, reason).toBundle())
     }
+
+    /** An import finished and the phone has no working system voice for its language. See [LanguageAnalytics.noVoice]. */
+    fun logLangNoVoice(language: String, voiceExists: Boolean, deviceLanguage: String) {
+        logEvent("lang_no_voice", LanguageAnalytics.noVoice(language, voiceExists, deviceLanguage).toBundle())
+    }
+
+    /** The user chose a reading language for a document ([to] null = back to automatic). */
+    fun logLangOverride(from: String?, to: String?) {
+        logEvent("lang_override", LanguageAnalytics.override(from, to).toBundle())
+    }
+
+    private fun Map<String, String>.toBundle(): Bundle = Bundle().also { b -> forEach { (k, v) -> b.putString(k, v) } }
 
     /**
      * One read through the speech source chain. Source names, reasons and timings only; never any text.

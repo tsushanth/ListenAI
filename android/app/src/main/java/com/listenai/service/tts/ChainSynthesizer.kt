@@ -2,6 +2,7 @@ package com.listenai.service.tts
 
 import android.content.Context
 import com.listenai.data.models.VoicePreset
+import com.listenai.service.FirebaseAnalyticsHelper
 import com.listenai.service.tts.chain.NoSourceAvailableException
 import com.listenai.service.tts.chain.Pcm
 import com.listenai.service.tts.chain.SourceId
@@ -77,7 +78,9 @@ object ChainSynthesizer {
             }
         } catch (e: NoSourceAvailableException) {
             file.delete()
-            throw speechUnavailable(e)
+            val unavailable = speechUnavailable(e)
+            runCatching { FirebaseAnalyticsHelper.logVoiceFallback(language, voiceFallbackReason(unavailable.kind)) }
+            throw unavailable
         } catch (e: Throwable) {
             file.delete()
             throw e
@@ -109,6 +112,14 @@ object ChainSynthesizer {
 
     private fun putLe32(b: ByteArray, o: Int, v: Int) {
         b[o] = v.toByte(); b[o + 1] = (v shr 8).toByte(); b[o + 2] = (v shr 16).toByte(); b[o + 3] = (v shr 24).toByte()
+    }
+
+    /** Reason sent with the voice_fallback event. */
+    internal fun voiceFallbackReason(kind: TTSError.SpeechUnavailable.Kind): String = when (kind) {
+        TTSError.SpeechUnavailable.Kind.NO_VOICE_DATA -> "no_voice"
+        TTSError.SpeechUnavailable.Kind.NO_ENGINE -> "no_engine"
+        TTSError.SpeechUnavailable.Kind.OFFLINE -> "offline"
+        TTSError.SpeechUnavailable.Kind.BUSY, TTSError.SpeechUnavailable.Kind.OTHER -> "engine_error"
     }
 
     internal fun speechUnavailable(e: NoSourceAvailableException): TTSError.SpeechUnavailable = when (val a = e.action) {

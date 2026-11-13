@@ -45,6 +45,26 @@ The ReadAloud system engine can try the API first for English text of 100+ chara
 
 `tts_session` (first_source, ttfa_ms, total_ms, audio_ms, chunks, cache_hits, chars, content_language, succeeded) and `tts_fallback` (from_source, reason). Sent only when the user allowed analytics; every read also logs one `TTS_CHAIN` line to logcat.
 
+Language and voice events (added 2026-11-13). All sent only when the user allowed analytics; parameters are built in `LanguageAnalytics` and are limited to ISO language codes, a fixed set of reasons and true/false flags, never text, titles, document ids or voice names:
+
+| Event | Parameters | When |
+|---|---|---|
+| `content_imported` | import_mode, content_language | an import finished (unchanged) |
+| `voice_request` | content_language | the user tapped "Want a natural X voice?" (unchanged) |
+| `voice_fallback` | content_language, reason (`no_voice`, `no_engine`, `offline`, `engine_error`) | a read ended with no usable voice (was declared but never sent before) |
+| `lang_no_voice` | content_language, voice_exists (`true` = the engine lists a voice that is not downloaded, or is network-only while offline; `false` = it lists none), device_language | an import finished in a language other than English and the phone cannot speak it now |
+| `lang_override` | from_language, to_language (`auto` = back to detection) | the user picked the reading language of a document |
+
+Play Data safety: no change. These are app-interaction events through the Firebase Analytics SDK that is already declared, with no new data type, no identifier and no content.
+
+## Languages other than English (added 2026-11-13)
+
+- The reading language of a document is detected on the phone (ML Kit). The reader shows a language chip: **Auto (detected language)** or the user's choice, with the languages the phone can speak. The choice is stored per document on the device (`LanguagePrefs`) and beats re-detection when playback starts; changing it drops the audio already made.
+- Non-English text is read by the phone's engine (the API voices are English). `VoiceSelection` ranks the engine's voices: one that works now, on-device over network-only, higher engine quality rating, the phone's region, then name. The reader lists the working voices for the language; the pick is stored per language and ignored if that voice later stops working.
+- No voice for the language: the error and the button are translated, the button opens the engine's voice-data installer, else the text-to-speech settings, else Settings, and the reader or Read Text re-checks when the user comes back. An import in a language the phone cannot speak shows a one-line notice.
+- Read Text (gallery photo): the recognised text goes through the same language detection and is spoken with that language's locale. Text recognition there is the Latin-script model, so Cyrillic, Arabic, CJK and similar scripts are not recognised yet.
+
+
 ## Privacy: engine API route (added 2026-11-04)
 
 The engine is a system service that **other apps** call. Their text can be a private message, an email, a form field, or whatever TalkBack or another screen reader is reading aloud. Sending it to our API, anonymously and without the user being told, is a privacy risk, so:
