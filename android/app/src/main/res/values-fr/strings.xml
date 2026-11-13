@@ -379,6 +379,7 @@
     <string name="lang_voice_row">Voix : %1$s</string>
     <string name="lang_voice_dialog_title">Voix pour %1$s</string>
     <string name="lang_voice_auto">Automatique (la meilleure disponible)</string>
+    <string name="lang_voice_cloud_beta">Voix ReadAloud (bêta, nécessite internet)</string>
     <string name="lang_voice_numbered">Voix %1$d</string>
     <string name="lang_voice_quality_high">haute qualité</string>
     <string name="lang_voice_quality_standard">qualité standard</string>

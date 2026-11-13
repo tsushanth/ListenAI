@@ -7,6 +7,7 @@ import android.widget.Toast
 import com.listenai.R
 import com.listenai.service.FirebaseAnalyticsHelper
 import com.listenai.service.LanguageDetector
+import com.listenai.service.tts.chain.CloudVoicePolicy
 import com.listenai.service.tts.chain.LanguageVoiceState
 import com.listenai.service.tts.chain.TtsChainProvider
 import kotlinx.coroutines.CoroutineScope
@@ -43,6 +44,9 @@ object LanguageVoiceCheck {
                 runCatching {
                     FirebaseAnalyticsHelper.logLangNoVoice(code, state == LanguageVoiceState.LISTED_UNUSABLE, Locale.getDefault().language)
                 }
+                // The ReadAloud API has a voice for it (Spanish): reading will work online, so no warning.
+                val cloud = runCatching { CloudVoicePolicy.voiceFor(code, TtsChainProvider.get(app).catalog.voices()) }.getOrNull()
+                if (cloud != null) return@launch
                 val name = LanguageDetector.displayName(code) ?: code
                 Handler(Looper.getMainLooper()).post {
                     Toast.makeText(app, app.getString(R.string.lang_no_voice_import_notice, name), Toast.LENGTH_LONG).show()

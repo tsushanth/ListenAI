@@ -379,6 +379,7 @@
     <string name="lang_voice_row">เสียง: %1$s</string>
     <string name="lang_voice_dialog_title">เสียงสำหรับภาษา%1$s</string>
     <string name="lang_voice_auto">อัตโนมัติ (ดีที่สุดที่มี)</string>
+    <string name="lang_voice_cloud_beta">เสียง ReadAloud (เบต้า ต้องใช้อินเทอร์เน็ต)</string>
     <string name="lang_voice_numbered">เสียง %1$d</string>
     <string name="lang_voice_quality_high">คุณภาพสูง</string>
     <string name="lang_voice_quality_standard">คุณภาพมาตรฐาน</string>

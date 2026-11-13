@@ -379,6 +379,7 @@
     <string name="lang_voice_row">Ses: %1$s</string>
     <string name="lang_voice_dialog_title">%1$s için ses</string>
     <string name="lang_voice_auto">Otomatik (mevcut en iyisi)</string>
+    <string name="lang_voice_cloud_beta">ReadAloud sesi (beta, internet gerekir)</string>
     <string name="lang_voice_numbered">Ses %1$d</string>
     <string name="lang_voice_quality_high">yüksek kalite</string>
     <string name="lang_voice_quality_standard">standart kalite</string>

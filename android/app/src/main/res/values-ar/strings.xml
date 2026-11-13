@@ -379,6 +379,7 @@
     <string name="lang_voice_row">الصوت: %1$s</string>
     <string name="lang_voice_dialog_title">صوت للغة %1$s</string>
     <string name="lang_voice_auto">تلقائي (أفضل صوت متاح)</string>
+    <string name="lang_voice_cloud_beta">صوت ReadAloud (تجريبي، يتطلب الإنترنت)</string>
     <string name="lang_voice_numbered">الصوت %1$d</string>
     <string name="lang_voice_quality_high">جودة عالية</string>
     <string name="lang_voice_quality_standard">جودة عادية</string>

@@ -379,6 +379,7 @@
     <string name="lang_voice_row">Boses: %1$s</string>
     <string name="lang_voice_dialog_title">Boses para sa %1$s</string>
     <string name="lang_voice_auto">Awtomatiko (pinakamahusay na magagamit)</string>
+    <string name="lang_voice_cloud_beta">Boses ng ReadAloud (beta, kailangan ng internet)</string>
     <string name="lang_voice_numbered">Boses %1$d</string>
     <string name="lang_voice_quality_high">mataas na kalidad</string>
     <string name="lang_voice_quality_standard">karaniwang kalidad</string>

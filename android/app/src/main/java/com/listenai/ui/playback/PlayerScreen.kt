@@ -147,7 +147,10 @@ fun PlayerScreen(
     var speakableLanguages by remember { mutableStateOf<Set<String>>(emptySet()) }
     LaunchedEffect(Unit) {
         speakableLanguages = withContext(Dispatchers.IO) {
-            com.listenai.service.tts.chain.TtsChainProvider.get(context).system.supportedLanguages()
+            val chain = com.listenai.service.tts.chain.TtsChainProvider.get(context)
+            // The phone's languages plus the ones the ReadAloud API lists a voice for.
+            chain.system.supportedLanguages() +
+                com.listenai.service.tts.chain.CloudVoicePolicy.languages(runCatching { chain.catalog.voices() }.getOrDefault(emptyList()))
         }
     }
 
@@ -157,6 +160,14 @@ fun PlayerScreen(
     } ?: com.listenai.service.LanguageDetector.DEFAULT
     var preferredSystemVoice by remember(readingLanguage) { mutableStateOf(languagePrefs.preferredVoice(readingLanguage)) }
     var systemVoices by remember { mutableStateOf<List<com.listenai.service.tts.chain.SystemVoiceInfo>>(emptyList()) }
+    // The ReadAloud cloud voice for this language, if the API lists one (shown next to the phone's voices).
+    var cloudVoiceAvailable by remember { mutableStateOf(false) }
+    LaunchedEffect(readingLanguage) {
+        cloudVoiceAvailable = readingLanguage != "en" && withContext(Dispatchers.IO) {
+            val chain = com.listenai.service.tts.chain.TtsChainProvider.get(context)
+            com.listenai.service.tts.chain.CloudVoicePolicy.voiceFor(readingLanguage, runCatching { chain.catalog.voices() }.getOrDefault(emptyList())) != null
+        }
+    }
     LaunchedEffect(readingLanguage, speakableLanguages) {
         systemVoices = if (readingLanguage == "en") emptyList() else withContext(Dispatchers.IO) {
             com.listenai.service.tts.chain.TtsChainProvider.get(context).system.voicesFor(readingLanguage)
@@ -1071,10 +1082,11 @@ fun PlayerScreen(
                             onSelect = { code -> onLanguageSelected(article, code) },
                         )
 
-                        if (readingLanguage != "en" && systemVoices.isNotEmpty()) {
+                        if (readingLanguage != "en" && (systemVoices.isNotEmpty() || cloudVoiceAvailable)) {
                             SystemVoiceRow(
                                 language = readingLanguage,
                                 voices = systemVoices,
+                                cloudAvailable = cloudVoiceAvailable,
                                 selectedName = systemVoices.firstOrNull { it.name == preferredSystemVoice }?.name,
                                 onPick = { name -> onSystemVoicePicked(article, name) },
                             )
@@ -1183,6 +1195,8 @@ private fun currentArticleForLanguage(state: PlayerState): Article? = when (stat
 private fun SystemVoiceRow(
     language: String,
     voices: List<com.listenai.service.tts.chain.SystemVoiceInfo>,
+    /** The ReadAloud API has a voice for this language: it is the automatic choice, and the phone's voices are the fallback. */
+    cloudAvailable: Boolean,
     selectedName: String?,
     onPick: (String?) -> Unit,
 ) {
@@ -1203,12 +1217,14 @@ private fun SystemVoiceRow(
         )
         return parts.joinToString(" \u00b7 ")
     }
-    val current = voices.firstOrNull { it.name == selectedName } ?: voices.first()
+    val current = voices.firstOrNull { it.name == selectedName } ?: voices.firstOrNull()
+    val automaticLabel = stringResource(if (cloudAvailable) R.string.lang_voice_cloud_beta else R.string.lang_voice_auto)
+    val currentLabel = if (selectedName == null && cloudAvailable || current == null) automaticLabel else label(current)
     androidx.compose.material3.TextButton(
         onClick = { open = true },
         contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp),
     ) {
-        Text(stringResource(R.string.lang_voice_row, label(current)))
+        Text(stringResource(R.string.lang_voice_row, currentLabel))
     }
     if (open) {
         AlertDialog(
@@ -1227,7 +1243,7 @@ private fun SystemVoiceRow(
                             Text(text)
                         }
                     }
-                    option(stringResource(R.string.lang_voice_auto), selectedName == null) { if (selectedName != null) onPick(null) }
+                    option(automaticLabel, selectedName == null) { if (selectedName != null) onPick(null) }
                     voices.forEach { v ->
                         option(label(v), v.name == selectedName) { if (v.name != selectedName) onPick(v.name) }
                     }

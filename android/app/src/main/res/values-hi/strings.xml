@@ -379,6 +379,7 @@
     <string name="lang_voice_row">आवाज़: %1$s</string>
     <string name="lang_voice_dialog_title">%1$s के लिए आवाज़</string>
     <string name="lang_voice_auto">अपने-आप (उपलब्ध सबसे अच्छी)</string>
+    <string name="lang_voice_cloud_beta">ReadAloud आवाज़ (बीटा, इंटरनेट ज़रूरी)</string>
     <string name="lang_voice_numbered">आवाज़ %1$d</string>
     <string name="lang_voice_quality_high">उच्च गुणवत्ता</string>
     <string name="lang_voice_quality_standard">सामान्य गुणवत्ता</string>

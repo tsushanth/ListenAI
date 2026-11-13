@@ -379,6 +379,7 @@
     <string name="lang_voice_row">语音:%1$s</string>
     <string name="lang_voice_dialog_title">%1$s语音</string>
     <string name="lang_voice_auto">自动(最佳可用)</string>
+    <string name="lang_voice_cloud_beta">ReadAloud 语音(测试版,需要联网)</string>
     <string name="lang_voice_numbered">语音 %1$d</string>
     <string name="lang_voice_quality_high">高音质</string>
     <string name="lang_voice_quality_standard">标准音质</string>

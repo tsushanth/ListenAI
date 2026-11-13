@@ -379,6 +379,7 @@
     <string name="lang_voice_row">Giọng đọc: %1$s</string>
     <string name="lang_voice_dialog_title">Giọng đọc cho tiếng %1$s</string>
     <string name="lang_voice_auto">Tự động (tốt nhất hiện có)</string>
+    <string name="lang_voice_cloud_beta">Giọng ReadAloud (thử nghiệm, cần internet)</string>
     <string name="lang_voice_numbered">Giọng %1$d</string>
     <string name="lang_voice_quality_high">chất lượng cao</string>
     <string name="lang_voice_quality_standard">chất lượng tiêu chuẩn</string>

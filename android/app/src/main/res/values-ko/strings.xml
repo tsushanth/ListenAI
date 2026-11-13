@@ -379,6 +379,7 @@
     <string name="lang_voice_row">음성: %1$s</string>
     <string name="lang_voice_dialog_title">%1$s 음성</string>
     <string name="lang_voice_auto">자동(사용 가능한 최적 음성)</string>
+    <string name="lang_voice_cloud_beta">ReadAloud 음성(베타, 인터넷 필요)</string>
     <string name="lang_voice_numbered">음성 %1$d</string>
     <string name="lang_voice_quality_high">고품질</string>
     <string name="lang_voice_quality_standard">표준 품질</string>

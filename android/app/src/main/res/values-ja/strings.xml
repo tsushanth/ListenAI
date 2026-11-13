@@ -379,6 +379,7 @@
     <string name="lang_voice_row">音声: %1$s</string>
     <string name="lang_voice_dialog_title">%1$sの音声</string>
     <string name="lang_voice_auto">自動(利用可能な最良のもの)</string>
+    <string name="lang_voice_cloud_beta">ReadAloudの音声(ベータ版、インターネットが必要)</string>
     <string name="lang_voice_numbered">音声 %1$d</string>
     <string name="lang_voice_quality_high">高品質</string>
     <string name="lang_voice_quality_standard">標準品質</string>

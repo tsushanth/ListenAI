@@ -401,6 +401,7 @@
     <string name="lang_voice_row">Voice: %1$s</string>
     <string name="lang_voice_dialog_title">Voice for %1$s</string>
     <string name="lang_voice_auto">Automatic (best available)</string>
+    <string name="lang_voice_cloud_beta">ReadAloud voice (beta, needs internet)</string>
     <string name="lang_voice_numbered">Voice %1$d</string>
     <string name="lang_voice_quality_high">high quality</string>
     <string name="lang_voice_quality_standard">standard quality</string>

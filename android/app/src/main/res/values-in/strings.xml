@@ -379,6 +379,7 @@
     <string name="lang_voice_row">Suara: %1$s</string>
     <string name="lang_voice_dialog_title">Suara untuk %1$s</string>
     <string name="lang_voice_auto">Otomatis (terbaik yang tersedia)</string>
+    <string name="lang_voice_cloud_beta">Suara ReadAloud (beta, perlu internet)</string>
     <string name="lang_voice_numbered">Suara %1$d</string>
     <string name="lang_voice_quality_high">kualitas tinggi</string>
     <string name="lang_voice_quality_standard">kualitas standar</string>
