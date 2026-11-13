@@ -1,6 +1,6 @@
 ReadAloud AI - Synthèse vocale pour la dyslexie, le TDAH et toute personne qui écoute pour lire
 
-La lecture est difficile lorsque votre cerveau ou vos yeux ne coopèrent pas. ReadAloud AI convertit les articles, les PDF, les EPUB, les pages Web et les documents en un son naturel afin que vous puissiez écouter au lieu de lire. Conçu avec une conception axée sur l'accessibilité : fonctionne parfaitement avec TalkBack, prend en charge une vitesse de lecture réglable et offre des paramètres à contraste élevé pour les utilisateurs malvoyants.
+La lecture est difficile lorsque votre cerveau ou vos yeux ne coopèrent pas. ReadAloud AI convertit les articles, les PDF, les EPUB, les pages Web et les documents en un son naturel afin que vous puissiez écouter au lieu de lire. Conçu avec une conception axée sur l'accessibilité : fonctionne parfaitement avec TalkBack et prend en charge une vitesse de lecture réglable.
 
 Conçu pour :
 • Les lecteurs dyslexiques qui absorbent mieux les informations en écoutant
@@ -18,7 +18,7 @@ Plusieurs options d'importation
 
 Voix IA premium
 • Voix d'IA au son naturel dans plusieurs langues
-• Vitesse de lecture réglable (0,5x à 3x)
+• Vitesse de lecture réglable (0,5x à 2x)
 • Mise en surbrillance au niveau des mots synchronisée avec l'audio
 • Voix basées sur le cloud avec IA hors ligne en option sur l'appareil
 
@@ -30,13 +30,11 @@ Lecture intelligente
 • Écran de verrouillage et commandes de notification
 • Avance automatique entre les chapitres lors de l'écoute de livres importés
 • Reprenez là où vous vous étiez arrêté au fil des sessions.
-• Articles en file d'attente pour une écoute continue
 
 Conception axée sur l'accessibilité
 • Prise en charge complète de TalkBack sur tous les écrans
 • Ordre de mise au point judicieux pour la navigation avec le lecteur d'écran
 • Testé avec de vrais utilisateurs de lecteurs d'écran : les correctifs sont livrés chaque semaine en fonction des commentaires.
-• Taille du texte réglable et options d'affichage à contraste élevé
 
 Comment ça marche :
 1. Importez du contenu via URL, PDF, EPUB, e-mail ou collage de texte

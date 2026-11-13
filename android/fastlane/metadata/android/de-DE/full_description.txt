@@ -1,6 +1,6 @@
 ReadAloud AI – Text-to-Speech für Legasthenie, ADHS und jeden, der zuhört
 
-Das Lesen ist schwierig, wenn Ihr Gehirn oder Ihre Augen nicht kooperieren. ReadAloud AI konvertiert Artikel, PDFs, EPUBs, Webseiten und Dokumente in natürlich klingendes Audio, sodass Sie zuhören statt lesen können. Gebaut mit barrierefreiem Design – funktioniert reibungslos mit TalkBack, unterstützt einstellbare Wiedergabegeschwindigkeit und bietet kontrastreiche Einstellungen für Benutzer mit Sehbehinderung.
+Das Lesen ist schwierig, wenn Ihr Gehirn oder Ihre Augen nicht kooperieren. ReadAloud AI konvertiert Artikel, PDFs, EPUBs, Webseiten und Dokumente in natürlich klingendes Audio, sodass Sie zuhören statt lesen können. Gebaut mit barrierefreiem Design – funktioniert reibungslos mit TalkBack und unterstützt einstellbare Wiedergabegeschwindigkeit.
 
 Entwickelt für:
 • Leser mit Legasthenie, die Informationen durch Zuhören besser aufnehmen
@@ -18,7 +18,7 @@ Mehrere Importoptionen
 
 Premium-KI-Stimmen
 • Natürlich klingende KI-Stimmen in mehreren Sprachen
-• Einstellbare Wiedergabegeschwindigkeit (0,5x bis 3x)
+• Einstellbare Wiedergabegeschwindigkeit (0,5x bis 2x)
 • Hervorhebung auf Wortebene, die mit Audio synchronisiert wird
 • Cloudbasierte Stimmen mit optionaler Offline-KI auf dem Gerät
 
@@ -30,13 +30,11 @@ Intelligente Wiedergabe
 • Sperrbildschirm und Benachrichtigungssteuerung
 • Automatischer Wechsel zwischen den Kapiteln beim Anhören importierter Bücher
 • Machen Sie sitzungsübergreifend dort weiter, wo Sie aufgehört haben
-• Stellen Sie Artikel in die Warteschlange, um sie kontinuierlich abzuhören
 
 Barrierefreiheit-First-Design
 • Volle TalkBack-Unterstützung auf jedem Bildschirm
 • Sinnvolle Fokusreihenfolge für die Screenreader-Navigation
 • Getestet mit echten Screenreader-Benutzern – Korrekturen werden wöchentlich basierend auf dem Feedback versendet
-• Anpassbare Textgröße und kontrastreiche Anzeigeoptionen
 
 So funktioniert es:
 1. Importieren Sie Inhalte per URL, PDF, EPUB, E-Mail oder Texteinfügung
