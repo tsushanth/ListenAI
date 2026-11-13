@@ -151,6 +151,18 @@ fun PlayerScreen(
         }
     }
 
+    // System voices for the reading language (non-English only: English is read with the app voices).
+    val readingLanguage = currentArticleForLanguage(playerState)?.let {
+        com.listenai.service.tts.LanguageChoice.resolve(languageOverride, null, it.language)
+    } ?: com.listenai.service.LanguageDetector.DEFAULT
+    var preferredSystemVoice by remember(readingLanguage) { mutableStateOf(languagePrefs.preferredVoice(readingLanguage)) }
+    var systemVoices by remember { mutableStateOf<List<com.listenai.service.tts.chain.SystemVoiceInfo>>(emptyList()) }
+    LaunchedEffect(readingLanguage, speakableLanguages) {
+        systemVoices = if (readingLanguage == "en") emptyList() else withContext(Dispatchers.IO) {
+            com.listenai.service.tts.chain.TtsChainProvider.get(context).system.voicesFor(readingLanguage)
+        }
+    }
+
     // Load article and set initial voice from article's selectedVoiceId
     LaunchedEffect(currentArticleId) {
         playerState = PlayerState.Loading
@@ -617,6 +629,21 @@ fun PlayerScreen(
         }
     }
 
+    // The user picked a system voice for this language (null = best available). Same effect as a language change:
+    // audio made with the old voice is dropped, and playback restarts if the user was listening.
+    fun onSystemVoicePicked(article: Article, voiceName: String?) {
+        scope.launch {
+            val wasPlaying = playerState is PlayerState.Playing
+            playbackService.stop()
+            languagePrefs.setPreferredVoice(readingLanguage, voiceName)
+            preferredSystemVoice = voiceName
+            articleRepository.updateSynthesisStatus(article.id, "pending", null, 0L, article.selectedVoiceId)
+            val updated = article.copy(audioFileUrl = null)
+            val voice = selectedVoice
+            if (wasPlaying && voice != null) regenerateWithVoice(voice, updated) else playerState = PlayerState.Ready(updated)
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -1029,6 +1056,15 @@ fun PlayerScreen(
                             onSelect = { code -> onLanguageSelected(article, code) },
                         )
 
+                        if (readingLanguage != "en" && systemVoices.isNotEmpty()) {
+                            SystemVoiceRow(
+                                language = readingLanguage,
+                                voices = systemVoices,
+                                selectedName = systemVoices.firstOrNull { it.name == preferredSystemVoice }?.name,
+                                onPick = { name -> onSystemVoicePicked(article, name) },
+                            )
+                        }
+
                         Divider(
                             modifier = Modifier.padding(vertical = 16.dp),
                             color = MaterialTheme.colorScheme.outlineVariant
@@ -1114,6 +1150,78 @@ private fun VoiceRequestPrompt(language: String?) {
         ) {
             Text(stringResource(R.string.voice_request_cta, name))
         }
+    }
+}
+
+private fun currentArticleForLanguage(state: PlayerState): Article? = when (state) {
+    is PlayerState.Ready -> state.article
+    is PlayerState.Synthesizing -> state.article
+    is PlayerState.Playing -> state.article
+    is PlayerState.Error -> state.article
+    is PlayerState.QuotaExceeded -> state.article
+    is PlayerState.RateLimited -> state.article
+    else -> null
+}
+
+/** "Voice: Voice 1 · Spain" and a dialog listing the voices the phone has for this language. */
+@Composable
+private fun SystemVoiceRow(
+    language: String,
+    voices: List<com.listenai.service.tts.chain.SystemVoiceInfo>,
+    selectedName: String?,
+    onPick: (String?) -> Unit,
+) {
+    var open by remember { mutableStateOf(false) }
+    val languageName = com.listenai.service.LanguageDetector.displayName(language) ?: language
+    @Composable
+    fun label(v: com.listenai.service.tts.chain.SystemVoiceInfo): String {
+        val index = voices.indexOf(v) + 1
+        val region = if (v.region.isBlank()) "" else java.util.Locale(v.language, v.region).getDisplayCountry(java.util.Locale.getDefault())
+        val quality = stringResource(
+            if (v.quality >= com.listenai.service.tts.chain.VoiceSelection.QUALITY_HIGH) R.string.lang_voice_quality_high else R.string.lang_voice_quality_standard
+        )
+        val parts = listOfNotNull(
+            stringResource(R.string.lang_voice_numbered, index),
+            region.takeIf { it.isNotBlank() },
+            quality,
+            if (v.networkRequired) stringResource(R.string.lang_voice_needs_internet) else null,
+        )
+        return parts.joinToString(" \u00b7 ")
+    }
+    val current = voices.firstOrNull { it.name == selectedName } ?: voices.first()
+    androidx.compose.material3.TextButton(
+        onClick = { open = true },
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp),
+    ) {
+        Text(stringResource(R.string.lang_voice_row, label(current)))
+    }
+    if (open) {
+        AlertDialog(
+            onDismissRequest = { open = false },
+            title = { Text(stringResource(R.string.lang_voice_dialog_title, languageName)) },
+            text = {
+                Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                    @Composable
+                    fun option(text: String, selected: Boolean, onClick: () -> Unit) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().clickable { open = false; onClick() }.padding(vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            RadioButton(selected = selected, onClick = null)
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text(text)
+                        }
+                    }
+                    option(stringResource(R.string.lang_voice_auto), selectedName == null) { if (selectedName != null) onPick(null) }
+                    voices.forEach { v ->
+                        option(label(v), v.name == selectedName) { if (v.name != selectedName) onPick(v.name) }
+                    }
+                }
+            },
+            confirmButton = {
+                androidx.compose.material3.TextButton(onClick = { open = false }) { Text(stringResource(R.string.cancel)) }
+            },
+        )
     }
 }
 

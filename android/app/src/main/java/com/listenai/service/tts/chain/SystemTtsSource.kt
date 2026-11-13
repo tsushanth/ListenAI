@@ -11,6 +11,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withTimeoutOrNull
+import com.listenai.service.tts.LanguagePrefs
 import java.io.File
 import java.util.Locale
 import java.util.UUID
@@ -73,14 +74,8 @@ class SystemTtsSource(
         val avail = tts.isLanguageAvailable(locale)
         if (avail < TextToSpeech.LANG_AVAILABLE) return FallbackReason.LANGUAGE_MISSING
         // The language can be "available" yet its voice not installed, or installed only as a network voice.
-        val voices = try { tts.voices } catch (e: Exception) { null }
-        val forLang = voices?.filter { it.locale.language == locale.language }
-        if (forLang != null && forLang.isNotEmpty()) {
-            val usable = forLang.any { v ->
-                !v.features.contains(TextToSpeech.Engine.KEY_FEATURE_NOT_INSTALLED) &&
-                    (!v.isNetworkConnectionRequired || isOnline())
-            }
-            if (!usable) return FallbackReason.LANGUAGE_MISSING
+        if (VoiceSelection.status(voiceInfosOf(tts), request.language, isOnline()) == VoiceSelection.Status.NOT_USABLE) {
+            return FallbackReason.LANGUAGE_MISSING
         }
         null
     }
@@ -89,6 +84,7 @@ class SystemTtsSource(
         val tts = ensureEngine() ?: throw SourceFailure(FallbackReason.ENGINE_MISSING)
         val locale = localeFor(request.language)
         tts.language = locale
+        chooseVoice(tts, request.language)
         tts.setSpeechRate(request.speed.coerceIn(0.25f, 4f))
         val file = File.createTempFile("sys_tts_", ".wav", app.cacheDir)
         val utt = UUID.randomUUID().toString()
@@ -113,9 +109,52 @@ class SystemTtsSource(
         }
     }
 
-    /** 2-letter codes of the languages the chosen engine says it supports (the language menu's source). Empty when there is no engine. */
+    /** The engine's voices as plain data; empty when it lists none or throws. */
+    private fun voiceInfosOf(tts: TextToSpeech): List<SystemVoiceInfo> {
+        val voices = try { tts.voices } catch (e: Exception) { null } ?: return emptyList()
+        return voices.mapNotNull { v ->
+            val loc = v.locale ?: return@mapNotNull null
+            SystemVoiceInfo(
+                name = v.name,
+                language = loc.language.lowercase(),
+                region = loc.country.orEmpty(),
+                quality = v.quality,
+                networkRequired = v.isNetworkConnectionRequired,
+                installed = v.features?.contains(TextToSpeech.Engine.KEY_FEATURE_NOT_INSTALLED) != true,
+            )
+        }
+    }
+
+    /** Uses the voice the user picked for this language, else the best one (see [VoiceSelection]); leaves the engine's default if none. */
+    private fun chooseVoice(tts: TextToSpeech, language: String) {
+        try {
+            val pick = VoiceSelection.choose(
+                voices = voiceInfosOf(tts),
+                language = language,
+                preferredName = LanguagePrefs.get(app).preferredVoice(language),
+                online = isOnline(),
+                deviceRegion = Locale.getDefault().country,
+            ) ?: return
+            tts.voices?.firstOrNull { it.name == pick.name }?.let { tts.voice = it }
+        } catch (e: Exception) {
+            Log.w(TAG, "could not select a voice for $language: ${e.message}")
+        }
+    }
+
+    /** Voices that work now for [language], best first, for the voice picker. */
+    suspend fun voicesFor(language: String): List<SystemVoiceInfo> = lock.withLock {
+        val tts = ensureEngine() ?: return emptyList()
+        VoiceSelection.usable(voiceInfosOf(tts), language, isOnline(), Locale.getDefault().country)
+    }
+
+    /**
+     * 2-letter codes of the languages this phone can speak now: those with a working voice, or, when the engine lists
+     * no voices at all, the languages it says it supports. Empty when there is no engine.
+     */
     suspend fun supportedLanguages(): Set<String> = lock.withLock {
         val tts = ensureEngine() ?: return emptySet()
+        val infos = voiceInfosOf(tts)
+        if (infos.isNotEmpty()) return VoiceSelection.speakableLanguages(infos, isOnline())
         try { tts.availableLanguages?.map { it.language }?.filter { it.isNotBlank() }?.toSet() ?: emptySet() } catch (e: Exception) { emptySet() }
     }
 

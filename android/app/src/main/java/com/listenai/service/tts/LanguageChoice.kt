@@ -3,6 +3,7 @@ package com.listenai.service.tts
 import android.content.Context
 import android.content.SharedPreferences
 import com.listenai.service.LanguageDetector
+import com.listenai.service.tts.chain.LanguageKey
 
 /** Tiny key-value seam so the preference logic is unit tested without Android. */
 interface KeyValueStore {
@@ -52,7 +53,7 @@ class LanguagePrefs(private val store: KeyValueStore) {
 object LanguageChoice {
 
     /** "es-MX" and "ES" become "es". */
-    fun normalize(code: String): String = code.trim().lowercase().replace('_', '-').substringBefore('-')
+    fun normalize(code: String): String = LanguageKey.of(code)
 
     /** The user's pick beats detection; detection beats what is stored; English is the last resort. */
     fun resolve(override: String?, detected: String?, stored: String?): String =
