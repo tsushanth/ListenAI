@@ -151,7 +151,7 @@ object FirebaseAnalyticsHelper {
     fun logContentImported(importMode: String, language: String? = null) {
         val params = Bundle().apply {
             putString("import_mode", importMode) // url, document, text, clipboard, email
-            putString("content_language", language ?: "unknown") // demand signal; "unknown" = too short or low confidence
+            putString("content_language", LanguageAnalytics.code(language)) // demand signal; "unknown" = too short or low confidence
         }
         logEvent("content_imported", params)
     }
@@ -225,16 +225,19 @@ object FirebaseAnalyticsHelper {
         logEvent("first_listen")
     }
 
-    fun logPlaybackStarted(contentType: String? = null) {
+    /** [voiceSource] is "system" or "cloud" (see [LanguageAnalytics.playbackParams]); [language] a language code. Neither carries text or ids. */
+    fun logPlaybackStarted(contentType: String? = null, voiceSource: String? = null, language: String? = null) {
         val params = Bundle().apply {
             contentType?.let { putString("content_type", it) }
+            LanguageAnalytics.playbackParams(voiceSource, language).forEach { (k, v) -> putString(k, v) }
         }
         logEvent("playback_started", params)
     }
 
-    fun logPlaybackCompleted(durationSeconds: Long? = null) {
+    fun logPlaybackCompleted(durationSeconds: Long? = null, voiceSource: String? = null, language: String? = null) {
         val params = Bundle().apply {
             durationSeconds?.let { putLong("duration_seconds", it) }
+            LanguageAnalytics.playbackParams(voiceSource, language).forEach { (k, v) -> putString(k, v) }
         }
         logEvent("playback_completed", params)
     }

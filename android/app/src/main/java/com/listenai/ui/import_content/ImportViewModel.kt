@@ -391,7 +391,7 @@ class ImportViewModel(
                 }
 
                 _progress.value = 1f
-                FirebaseAnalyticsHelper.logContentImported("epub")
+                FirebaseAnalyticsHelper.logContentImported("epub", firstArticleLanguage)
                 _importState.value = ImportState.Success(firstArticleId!!, firstArticleLanguage)
             } catch (e: Exception) {
                 FirebaseAnalyticsHelper.logImportFailed("epub", e.message)

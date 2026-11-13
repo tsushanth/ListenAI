@@ -41,6 +41,15 @@ object LanguageAnalytics {
         null -> "none"
     }
 
+    /**
+     * The language and voice kind of a playback event. [voiceSource] is "system" (made on the phone) or "cloud" (the
+     * ReadAloud API); audio whose origin is not known (made before this was recorded) is "unknown".
+     */
+    fun playbackParams(voiceSource: String?, language: String?): Map<String, String> = mapOf(
+        "voice_source" to (if (voiceSource == "system" || voiceSource == "cloud") voiceSource else "unknown"),
+        "content_language" to code(language),
+    )
+
     private val FALLBACK_REASONS = setOf("no_voice", "no_engine", "offline", "engine_error")
 
     /** A read ended with no usable voice. [reason] is one of no_voice, no_engine, offline, engine_error. */

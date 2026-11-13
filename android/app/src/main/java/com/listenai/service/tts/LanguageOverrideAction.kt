@@ -11,8 +11,17 @@ import com.listenai.service.LanguageDetector
  */
 object LanguageOverrideAction {
 
-    /** [newCode] null means "automatic": detection runs again. Returns the document as it is now stored. */
-    suspend fun apply(repository: ArticleRepository, prefs: LanguagePrefs, article: Article, newCode: String?): Article {
+    /**
+     * [newCode] null means "automatic": detection runs again. Returns the document as it is now stored.
+     * [deleteAudio] removes the old audio file from disk (given its path), so a file in the wrong language is not left behind.
+     */
+    suspend fun apply(
+        repository: ArticleRepository,
+        prefs: LanguagePrefs,
+        article: Article,
+        newCode: String?,
+        deleteAudio: (String) -> Unit = {},
+    ): Article {
         val before = LanguageChoice.resolve(prefs.override(article.id), null, article.language)
         prefs.setOverride(article.id, newCode)
         val language = LanguageChoice.resolve(
@@ -28,6 +37,7 @@ object LanguageOverrideAction {
             duration = 0L,
             voiceId = article.selectedVoiceId,
         )
+        article.audioFileUrl?.let { runCatching { deleteAudio(it) } }
         runCatching { FirebaseAnalyticsHelper.logLangOverride(before, newCode) }
         return article.copy(language = language, audioFileUrl = null)
     }
