@@ -145,7 +145,19 @@ fun PlayerScreen(
     val languagePrefs = remember { com.listenai.service.tts.LanguagePrefs.get(context) }
     var languageOverride by remember(currentArticleId) { mutableStateOf(languagePrefs.override(currentArticleId)) }
     var speakableLanguages by remember { mutableStateOf<Set<String>>(emptySet()) }
-    LaunchedEffect(Unit) {
+    // Set when the user opens the language menu.
+    var languageMenuOpened by remember { mutableStateOf(false) }
+
+    // System voices for the reading language (non-English only: English is read with the app voices).
+    val readingLanguage = currentArticleForLanguage(playerState)?.let {
+        com.listenai.service.tts.LanguageChoice.resolve(languageOverride, null, it.language)
+    } ?: com.listenai.service.LanguageDetector.DEFAULT
+    var preferredSystemVoice by remember(readingLanguage) { mutableStateOf(languagePrefs.preferredVoice(readingLanguage)) }
+    // What the phone can speak, and which languages the cloud voice list adds, is looked up only when it is needed:
+    // the document is not English, or the user opened the language menu. Reading an English document never binds the
+    // phone's speech engine or asks the voice list for this.
+    LaunchedEffect(readingLanguage != "en", languageMenuOpened) {
+        if (readingLanguage == "en" && !languageMenuOpened) return@LaunchedEffect
         speakableLanguages = withContext(Dispatchers.IO) {
             val chain = com.listenai.service.tts.chain.TtsChainProvider.get(context)
             // The phone's languages plus the ones the ReadAloud API lists a voice for.
@@ -153,12 +165,6 @@ fun PlayerScreen(
                 com.listenai.service.tts.chain.CloudVoicePolicy.languages(runCatching { chain.catalog.voices() }.getOrDefault(emptyList()))
         }
     }
-
-    // System voices for the reading language (non-English only: English is read with the app voices).
-    val readingLanguage = currentArticleForLanguage(playerState)?.let {
-        com.listenai.service.tts.LanguageChoice.resolve(languageOverride, null, it.language)
-    } ?: com.listenai.service.LanguageDetector.DEFAULT
-    var preferredSystemVoice by remember(readingLanguage) { mutableStateOf(languagePrefs.preferredVoice(readingLanguage)) }
     var systemVoices by remember { mutableStateOf<List<com.listenai.service.tts.chain.SystemVoiceInfo>>(emptyList()) }
     // The ReadAloud cloud voice for this language, if the API lists one (shown next to the phone's voices).
     var cloudVoiceAvailable by remember { mutableStateOf(false) }
@@ -170,8 +176,15 @@ fun PlayerScreen(
     }
     LaunchedEffect(readingLanguage, speakableLanguages) {
         systemVoices = if (readingLanguage == "en") emptyList() else withContext(Dispatchers.IO) {
-            com.listenai.service.tts.chain.TtsChainProvider.get(context).system.voicesFor(readingLanguage)
+            val system = com.listenai.service.tts.chain.TtsChainProvider.get(context).system
+            // A stored pick whose voice is gone is cleared, so the picker does not say "Automatic" over a stale choice.
+            val pick = languagePrefs.preferredVoice(readingLanguage)
+            if (pick != null && system.pickState(readingLanguage, pick) == com.listenai.service.tts.chain.VoiceSelection.PickState.GONE) {
+                languagePrefs.setPreferredVoice(readingLanguage, null)
+            }
+            system.voicesFor(readingLanguage)
         }
+        preferredSystemVoice = languagePrefs.preferredVoice(readingLanguage)
     }
 
     // Load article and set initial voice from article's selectedVoiceId
@@ -236,7 +249,11 @@ fun PlayerScreen(
             lastPosition = (playbackState.duration * 1000).toLong(),
             isCompleted = true
         )
-        FirebaseAnalyticsHelper.logPlaybackCompleted(playbackState.duration.toLong())
+        FirebaseAnalyticsHelper.logPlaybackCompleted(
+            playbackState.duration.toLong(),
+            voiceSource = com.listenai.service.tts.SynthesizedAudioFiles.readVoiceKind(wordTimingsAudioPath ?: finishedArticle.audioFileUrl),
+            language = readingLanguage,
+        )
 
         if (finishedArticle.sourceType != SourceType.EPUB) {
             android.util.Log.i("PlayerScreen", "Auto-advance: not an EPUB chapter, stopping at end")
@@ -295,7 +312,11 @@ fun PlayerScreen(
         val article = latestArticle ?: return@LaunchedEffect
         if (startLoggedFor == article.id) return@LaunchedEffect
         startLoggedFor = article.id
-        FirebaseAnalyticsHelper.logPlaybackStarted(article.sourceType.name.lowercase())
+        FirebaseAnalyticsHelper.logPlaybackStarted(
+            article.sourceType.name.lowercase(),
+            voiceSource = com.listenai.service.tts.SynthesizedAudioFiles.readVoiceKind(wordTimingsAudioPath ?: article.audioFileUrl),
+            language = readingLanguage,
+        )
         if (AppOpenTracker.markListened()) FirebaseAnalyticsHelper.logFirstListen()
     }
 
@@ -327,12 +348,20 @@ fun PlayerScreen(
     // Track whether we've started preview playback (to avoid duplicates)
     var hasStartedPreviewPlayback by remember { mutableStateOf(false) }
 
+    // At most one synthesis runs. Starting another (a new voice, a new language) or leaving cancels the old one, and
+    // anything the old one still tries to write after that is dropped (see LatestJob.isCurrent).
+    val synthesisJob = remember { com.listenai.service.tts.LatestJob() }
+    // The language / voice pick handlers run one at a time too, so a quick second pick replaces the first.
+    val selectionJob = remember { com.listenai.service.tts.LatestJob() }
+    DisposableEffect(Unit) { onDispose { synthesisJob.cancel(); selectionJob.cancel() } }
+
     // Function to start synthesis and play
     fun startSynthesisAndPlay(article: Article) {
         android.util.Log.d("PlayerScreen", "startSynthesisAndPlay: articleId=${article.id}, hasAudio=${article.audioFileUrl != null}, textLength=${article.rawText.length}")
 
         // Reset preview tracking
         hasStartedPreviewPlayback = false
+        synthesisJob.cancel()
 
         // Check if audio already exists
         if (article.audioFileUrl != null) {
@@ -356,7 +385,7 @@ fun PlayerScreen(
         switchedToOffline = false
         playerState = PlayerState.Synthesizing(article, 0f)
 
-        scope.launch {
+        synthesisJob.launch(scope) { isCurrent ->
             try {
                 // Articles imported before language detection were all stamped "en"; re-check once
                 // so a Spanish PDF from last month is read in Spanish, not mangled by an English voice.
@@ -386,6 +415,7 @@ fun PlayerScreen(
                     voice = voice,
                     language = language,
                     onProgress = { progress ->
+                      if (isCurrent()) {
                         // Update UI state (called from IO dispatcher, but Compose state is thread-safe)
                         synthesisProgress = progress.overallProgress
                         playerState = PlayerState.Synthesizing(article, progress.overallProgress, progress)
@@ -400,14 +430,23 @@ fun PlayerScreen(
 
                             // Start preview playback on main thread (ExoPlayer requirement)
                             scope.launch(Dispatchers.Main) {
+                                if (!isCurrent()) return@launch
                                 playbackService.play(article, previewUrl, PlayerMode.PREVIEW, previewDuration)
                                 playerState = PlayerState.Playing(article)
 
                                 (context as? Activity)?.let { RatingKit.trackAction(it) }
                             }
                         }
+                      }
                     }
                 )
+
+                // A newer synthesis (another voice or language) has replaced this one: its audio is for the wrong
+                // voice or language, so it must not be saved, played or shown.
+                if (!isCurrent()) {
+                    runCatching { result.audioFile.delete() }
+                    return@launch
+                }
 
                 // Full audio synthesis complete
                 val audioFile = result.audioFile
@@ -462,6 +501,7 @@ fun PlayerScreen(
                 throw e
             } catch (e: Exception) {
                 android.util.Log.e("PlayerScreen", "Synthesis failed", e)
+                if (!isCurrent()) return@launch
                 when (e) {
                     is TTSError.QuotaExceeded -> {
                         android.util.Log.d("PlayerScreen", "Quota exceeded: remaining=${e.remaining}, required=${e.required}")
@@ -528,7 +568,7 @@ fun PlayerScreen(
         hasStartedPreviewPlayback = false
 
         // Clear existing audio URL and update voice ID immediately
-        scope.launch {
+        synthesisJob.launch(scope) { isCurrent ->
             // Update voiceId immediately so "Try Again" uses correct voice
             articleRepository.updateSynthesisStatus(
                 id = article.id,
@@ -555,6 +595,7 @@ fun PlayerScreen(
                     forceOnDevice = forceOnDevice,
                     language = if (forceOnDevice) null else article.language,
                     onProgress = { progress ->
+                      if (isCurrent()) {
                         // Update UI state (called from IO dispatcher, but Compose state is thread-safe)
                         synthesisProgress = progress.overallProgress
                         playerState = PlayerState.Synthesizing(article, progress.overallProgress, progress)
@@ -569,12 +610,19 @@ fun PlayerScreen(
 
                             // Start preview playback on main thread (ExoPlayer requirement)
                             scope.launch(Dispatchers.Main) {
+                                if (!isCurrent()) return@launch
                                 playbackService.play(article, previewUrl, PlayerMode.PREVIEW, previewDuration)
                                 playerState = PlayerState.Playing(article)
                             }
                         }
+                      }
                     }
                 )
+
+                if (!isCurrent()) {
+                    runCatching { result.audioFile.delete() }
+                    return@launch
+                }
 
                 val audioFile = result.audioFile
                 val durationMs = (result.duration * 1000).toLong()
@@ -615,6 +663,7 @@ fun PlayerScreen(
                 throw e
             } catch (e: Exception) {
                 android.util.Log.e("PlayerScreen", "Regeneration failed", e)
+                if (!isCurrent()) return@launch
                 val unavailable = e as? TTSError.SpeechUnavailable
                 val errorMessage = unavailable?.let { com.listenai.service.tts.SpeechUnavailableText.resolve(context, it) }
                     ?: e.message ?: context.getString(R.string.player_regeneration_failed)
@@ -631,28 +680,36 @@ fun PlayerScreen(
     // The user picked a reading language for this document (null = automatic). Audio already made was spoken in the
     // wrong language, so it is dropped; if the user was listening, read it again in the new language.
     fun onLanguageSelected(article: Article, code: String?) {
-        scope.launch {
-            val wasPlaying = playerState is PlayerState.Playing
+        // The chip is also shown while audio is being made: that synthesis is for the old language, stop it first.
+        // Listening or waiting for audio both mean "read it again in the new language".
+        val wasActive = playerState is PlayerState.Playing || playerState is PlayerState.Synthesizing
+        synthesisJob.cancel()
+        selectionJob.launch(scope) { _ ->
             playbackService.stop()
-            val updated = com.listenai.service.tts.LanguageOverrideAction.apply(articleRepository, languagePrefs, article, code)
+            val updated = com.listenai.service.tts.LanguageOverrideAction.apply(
+                articleRepository, languagePrefs, article, code,
+                deleteAudio = { com.listenai.service.tts.SynthesizedAudioFiles.deleteIfOurs(it, context.cacheDir) },
+            )
             languageOverride = code
             val voice = selectedVoice
-            if (wasPlaying && voice != null) regenerateWithVoice(voice, updated) else playerState = PlayerState.Ready(updated)
+            if (wasActive && voice != null) regenerateWithVoice(voice, updated) else playerState = PlayerState.Ready(updated)
         }
     }
 
     // The user picked a system voice for this language (null = best available). Same effect as a language change:
     // audio made with the old voice is dropped, and playback restarts if the user was listening.
     fun onSystemVoicePicked(article: Article, voiceName: String?) {
-        scope.launch {
-            val wasPlaying = playerState is PlayerState.Playing
+        val wasActive = playerState is PlayerState.Playing || playerState is PlayerState.Synthesizing
+        synthesisJob.cancel()
+        selectionJob.launch(scope) { _ ->
             playbackService.stop()
             languagePrefs.setPreferredVoice(readingLanguage, voiceName)
             preferredSystemVoice = voiceName
             articleRepository.updateSynthesisStatus(article.id, "pending", null, 0L, article.selectedVoiceId)
+            article.audioFileUrl?.let { com.listenai.service.tts.SynthesizedAudioFiles.deleteIfOurs(it, context.cacheDir) }
             val updated = article.copy(audioFileUrl = null)
             val voice = selectedVoice
-            if (wasPlaying && voice != null) regenerateWithVoice(voice, updated) else playerState = PlayerState.Ready(updated)
+            if (wasActive && voice != null) regenerateWithVoice(voice, updated) else playerState = PlayerState.Ready(updated)
         }
     }
 
@@ -1079,6 +1136,7 @@ fun PlayerScreen(
                             article = article,
                             override = languageOverride,
                             speakable = speakableLanguages,
+                            onOpen = { languageMenuOpened = true },
                             onSelect = { code -> onLanguageSelected(article, code) },
                         )
 
@@ -1261,7 +1319,7 @@ private fun SystemVoiceRow(
  * languages this phone can speak. The choice is remembered for this document only.
  */
 @Composable
-private fun LanguageChip(article: Article, override: String?, speakable: Set<String>, onSelect: (String?) -> Unit) {
+private fun LanguageChip(article: Article, override: String?, speakable: Set<String>, onOpen: () -> Unit, onSelect: (String?) -> Unit) {
     var open by remember { mutableStateOf(false) }
     val detected = article.language
     fun nameOf(code: String): String = com.listenai.service.LanguageDetector.displayName(code) ?: code
@@ -1273,7 +1331,7 @@ private fun LanguageChip(article: Article, override: String?, speakable: Set<Str
     Spacer(modifier = Modifier.height(8.dp))
     Box {
         AssistChip(
-            onClick = { open = true },
+            onClick = { open = true; onOpen() },
             label = { Text(stringResource(R.string.lang_chip_label, label)) },
             leadingIcon = { Icon(Icons.Default.Language, contentDescription = null, modifier = Modifier.size(18.dp)) },
         )
