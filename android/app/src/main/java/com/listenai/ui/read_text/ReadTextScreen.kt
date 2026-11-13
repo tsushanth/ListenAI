@@ -54,6 +54,10 @@ import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import com.listenai.R
+import com.listenai.service.LanguageDetector
+import com.listenai.service.tts.ReadTextLanguage
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import java.util.Locale
 
@@ -79,6 +83,7 @@ import java.util.Locale
 @Composable
 fun ReadTextScreen() {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
 
     // Local UI state — kept simple, no ViewModel yet. Promote when state
     // surface grows (camera, history, multi-language, etc.).
@@ -151,6 +156,7 @@ fun ReadTextScreen() {
             context = context,
             uri = uri,
             tts = tts,
+            scope = scope,
             onResult = { text ->
                 recognizedText = text
                 // Move straight to LoadingVoice when text was found — the
@@ -387,6 +393,7 @@ private fun runOcrAndSpeak(
     context: android.content.Context,
     uri: Uri,
     tts: TextToSpeech,
+    scope: kotlinx.coroutines.CoroutineScope,
     onResult: (String) -> Unit,
     onError: (String) -> Unit,
 ) {
@@ -398,7 +405,22 @@ private fun runOcrAndSpeak(
                 val text = visionText.text
                 onResult(text)
                 if (text.isNotBlank()) {
-                    tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, AUTO_SPEAK_UTTERANCE_ID)
+                    // Detect what the text is written in and speak it with a voice for that language; the tab used
+                    // to force Locale.US, which reads Spanish or French with an English voice.
+                    scope.launch {
+                        val language = ReadTextLanguage.languageOrDefault(LanguageDetector.detectOrNull(text))
+                        val locale = ReadTextLanguage.localeFor(language)
+                        when (val plan = ReadTextLanguage.plan(language, tts.isLanguageAvailable(locale))) {
+                            is ReadTextLanguage.Plan.Speak -> {
+                                tts.language = plan.locale
+                                tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, AUTO_SPEAK_UTTERANCE_ID)
+                            }
+                            is ReadTextLanguage.Plan.NoVoice -> {
+                                val name = LanguageDetector.displayName(plan.language) ?: plan.language
+                                onError(context.getString(R.string.lang_no_voice_message, name))
+                            }
+                        }
+                    }
                 }
             }
             .addOnFailureListener { e ->

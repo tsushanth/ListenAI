@@ -395,6 +395,7 @@
     <string name="player_no_text_content">No text content to synthesize.</string>
     <string name="player_no_voice_available">No voice available. Please check your TTS service connection.</string>
     <string name="player_install_voice_data">Install voice data</string>
+    <string name="lang_no_voice_message">This phone has no %1$s voice installed yet. Install the voice data in your text-to-speech settings, then try again.</string>
     <string name="player_install_tts_engine">Install a speech engine</string>
     <string name="player_network_error">Network error. Please check your internet connection.</string>
     <string name="player_timeout_error">Request timed out. The server might be busy.</string>
