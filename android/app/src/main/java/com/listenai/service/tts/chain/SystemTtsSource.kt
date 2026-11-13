@@ -110,9 +110,13 @@ class SystemTtsSource(
     }
 
     /** The engine's voices as plain data; empty when it lists none or throws. */
-    private fun voiceInfosOf(tts: TextToSpeech): List<SystemVoiceInfo> {
-        val voices = try { tts.voices } catch (e: Exception) { null } ?: return emptyList()
-        return voices.mapNotNull { v ->
+    private fun voiceInfosOf(tts: TextToSpeech): List<SystemVoiceInfo> = voiceInfosOf(rawVoices(tts))
+
+    private fun rawVoices(tts: TextToSpeech): Set<android.speech.tts.Voice> =
+        try { tts.voices } catch (e: Exception) { null } ?: emptySet()
+
+    private fun voiceInfosOf(voices: Set<android.speech.tts.Voice>): List<SystemVoiceInfo> =
+        voices.mapNotNull { v ->
             val loc = v.locale ?: return@mapNotNull null
             SystemVoiceInfo(
                 name = v.name,
@@ -123,22 +127,37 @@ class SystemTtsSource(
                 installed = v.features?.contains(TextToSpeech.Engine.KEY_FEATURE_NOT_INSTALLED) != true,
             )
         }
-    }
 
-    /** Uses the voice the user picked for this language, else the best one (see [VoiceSelection]); leaves the engine's default if none. */
+    /**
+     * Sets the voice for one synthesis. English keeps the behaviour it had before other languages were supported: the
+     * engine's default voice for Locale.US, unless the user picked an English voice. Other languages use the user's pick,
+     * else the best voice (see [VoiceSelection]); the engine's default if none. The engine's voice list is read once.
+     */
     private fun chooseVoice(tts: TextToSpeech, language: String) {
         try {
+            val preferred = LanguagePrefs.get(app).preferredVoice(language)
+            if (LanguageKey.of(language) == "en" && preferred == null) return
+            val raw = rawVoices(tts)
             val pick = VoiceSelection.choose(
-                voices = voiceInfosOf(tts),
+                voices = voiceInfosOf(raw),
                 language = language,
-                preferredName = LanguagePrefs.get(app).preferredVoice(language),
+                preferredName = preferred,
                 online = isOnline(),
                 deviceRegion = Locale.getDefault().country,
             ) ?: return
-            tts.voices?.firstOrNull { it.name == pick.name }?.let { tts.voice = it }
+            raw.firstOrNull { it.name == pick.name }?.let { tts.voice = it }
         } catch (e: Exception) {
             Log.w(TAG, "could not select a voice for $language: ${e.message}")
         }
+    }
+
+    /**
+     * What became of the user's stored voice pick for [language]: see [VoiceSelection.PickState]. The ReadAloud
+     * synthesizer uses it so a voice that was uninstalled stops steering the order of sources.
+     */
+    suspend fun pickState(language: String, preferredName: String?): VoiceSelection.PickState = lock.withLock {
+        val tts = ensureEngine() ?: return VoiceSelection.PickState.UNUSABLE_NOW
+        VoiceSelection.pickState(voiceInfosOf(tts), language, preferredName, isOnline())
     }
 
     /** Voices that work now for [language], best first, for the voice picker. */

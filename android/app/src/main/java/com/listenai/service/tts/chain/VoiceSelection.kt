@@ -70,6 +70,25 @@ object VoiceSelection {
         return usable.firstOrNull { it.name == preferredName } ?: usable.firstOrNull()
     }
 
+    enum class PickState {
+        /** The user has not picked a voice for this language. */
+        NONE,
+        /** The picked voice is installed and works now. */
+        VALID,
+        /** The picked voice exists but cannot be used at the moment (network voice while offline, data not downloaded), or the engine could not be asked. Keep the pick. */
+        UNUSABLE_NOW,
+        /** The engine lists voices but not this one any more (uninstalled, engine changed): the pick is stale and should be cleared. */
+        GONE,
+    }
+
+    /** Whether the stored pick [preferredName] still refers to a voice for [language]. Nothing listed at all is "cannot tell", not "gone". */
+    fun pickState(voices: List<SystemVoiceInfo>, language: String, preferredName: String?, online: Boolean): PickState {
+        if (preferredName.isNullOrBlank()) return PickState.NONE
+        if (voices.isEmpty()) return PickState.UNUSABLE_NOW
+        val mine = forLanguage(voices, language).firstOrNull { it.name == preferredName } ?: return PickState.GONE
+        return if (isUsable(mine, online)) PickState.VALID else PickState.UNUSABLE_NOW
+    }
+
     fun status(voices: List<SystemVoiceInfo>, language: String, online: Boolean): Status {
         val forLang = forLanguage(voices, language)
         return when {

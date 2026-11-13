@@ -10,6 +10,7 @@ import com.listenai.service.tts.chain.TimedWord
 import com.listenai.service.tts.chain.TtsChainProvider
 import com.listenai.service.tts.chain.TtsRequest
 import com.listenai.service.tts.chain.UserAction
+import com.listenai.service.tts.chain.VoiceSelection
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.Dispatchers
 import java.io.File
@@ -34,7 +35,7 @@ object ChainSynthesizer {
         val started = System.currentTimeMillis()
         val chain = TtsChainProvider.get(context).inApp
         // A phone voice the user picked for this language means: try the phone's engine first.
-        val preferSystem = LanguageChoice.normalize(language) != "en" && LanguagePrefs.get(context).preferredVoice(language) != null
+        val preferSystem = phoneVoicePicked(context, language)
         val request = TtsRequest(voiceId = voice.id, language = language, speed = speed, wantWords = true, preferSystem = preferSystem)
         val file = File(context.cacheDir, "tts_${UUID.randomUUID()}.wav")
 
@@ -89,6 +90,7 @@ object ChainSynthesizer {
         }
 
         if (words.isNotEmpty()) WordTimings(spoken.toString(), words).let { WordTimings.save(file, it) }
+        SynthesizedAudioFiles.writeVoiceKind(file, SynthesizedAudioFiles.kindOf(sourceUsed))
         val durationSec = pcmBytes / 2.0 / rate
         val ended = System.currentTimeMillis()
         val providerLabel = "ReadAloud ${sourceUsed?.name ?: "chain"}"
@@ -104,6 +106,23 @@ object ChainSynthesizer {
                 startedAt = started, completedAt = ended, inputCharacterCount = text.length, outputSampleRate = rate,
             ),
         )
+    }
+
+    /**
+     * True when the user picked a phone voice for [language] and that voice is still there. A pick whose voice no longer
+     * exists (uninstalled, engine changed) is cleared, so the phone-first order and the picker's selection do not outlive it.
+     */
+    private suspend fun phoneVoicePicked(context: Context, language: String): Boolean {
+        if (LanguageChoice.normalize(language) == "en") return false
+        val prefs = LanguagePrefs.get(context)
+        val pick = prefs.preferredVoice(language) ?: return false
+        val system = TtsChainProvider.get(context).system
+        return when (system.pickState(language, pick)) {
+            VoiceSelection.PickState.VALID -> true
+            VoiceSelection.PickState.GONE -> { prefs.setPreferredVoice(language, null); false }
+            // Listed but not usable right now (a network voice while offline), or the engine could not be asked: keep the pick, read with the default order this time.
+            VoiceSelection.PickState.UNUSABLE_NOW, VoiceSelection.PickState.NONE -> false
+        }
     }
 
     /** Chunk-relative word offsets become offsets into the spoken text, and chunk-relative seconds become absolute. */
