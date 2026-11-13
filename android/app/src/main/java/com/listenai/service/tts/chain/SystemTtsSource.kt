@@ -113,6 +113,12 @@ class SystemTtsSource(
         }
     }
 
+    /** 2-letter codes of the languages the chosen engine says it supports (the language menu's source). Empty when there is no engine. */
+    suspend fun supportedLanguages(): Set<String> = lock.withLock {
+        val tts = ensureEngine() ?: return emptySet()
+        try { tts.availableLanguages?.map { it.language }?.filter { it.isNotBlank() }?.toSet() ?: emptySet() } catch (e: Exception) { emptySet() }
+    }
+
     fun release() {
         engine?.shutdown(); engine = null; enginePackage = null
     }

@@ -141,6 +141,16 @@ fun PlayerScreen(
         availableVoices = ttsCoordinator.getAvailableVoices()
     }
 
+    // Reading language: the user's choice for this document (null = automatic) and what the phone can speak.
+    val languagePrefs = remember { com.listenai.service.tts.LanguagePrefs.get(context) }
+    var languageOverride by remember(currentArticleId) { mutableStateOf(languagePrefs.override(currentArticleId)) }
+    var speakableLanguages by remember { mutableStateOf<Set<String>>(emptySet()) }
+    LaunchedEffect(Unit) {
+        speakableLanguages = withContext(Dispatchers.IO) {
+            com.listenai.service.tts.chain.TtsChainProvider.get(context).system.supportedLanguages()
+        }
+    }
+
     // Load article and set initial voice from article's selectedVoiceId
     LaunchedEffect(currentArticleId) {
         playerState = PlayerState.Loading
@@ -327,9 +337,13 @@ fun PlayerScreen(
             try {
                 // Articles imported before language detection were all stamped "en"; re-check once
                 // so a Spanish PDF from last month is read in Spanish, not mangled by an English voice.
-                val detected = com.listenai.service.LanguageDetector.detectOrNull(article.rawText)
+                // A language the user picked for this document is never overwritten by detection.
+                val chosen = languagePrefs.override(article.id)
+                val detected = if (com.listenai.service.tts.LanguageChoice.shouldRedetect(chosen)) {
+                    com.listenai.service.LanguageDetector.detectOrNull(article.rawText)
+                } else null
                 if (detected != null && detected != article.language) articleRepository.updateLanguage(article.id, detected)
-                val language = detected ?: article.language
+                val language = com.listenai.service.tts.LanguageChoice.resolve(chosen, detected, article.language)
 
                 // Use currently selected voice or fall back to first available
                 val voice = selectedVoice ?: article.selectedVoiceId?.let { voiceId ->
@@ -587,6 +601,19 @@ fun PlayerScreen(
                     reason = errorMessage
                 )
             }
+        }
+    }
+
+    // The user picked a reading language for this document (null = automatic). Audio already made was spoken in the
+    // wrong language, so it is dropped; if the user was listening, read it again in the new language.
+    fun onLanguageSelected(article: Article, code: String?) {
+        scope.launch {
+            val wasPlaying = playerState is PlayerState.Playing
+            playbackService.stop()
+            val updated = com.listenai.service.tts.LanguageOverrideAction.apply(articleRepository, languagePrefs, article, code)
+            languageOverride = code
+            val voice = selectedVoice
+            if (wasPlaying && voice != null) regenerateWithVoice(voice, updated) else playerState = PlayerState.Ready(updated)
         }
     }
 
@@ -995,6 +1022,13 @@ fun PlayerScreen(
                         // Article header
                         ArticleHeader(article = article)
 
+                        LanguageChip(
+                            article = article,
+                            override = languageOverride,
+                            speakable = speakableLanguages,
+                            onSelect = { code -> onLanguageSelected(article, code) },
+                        )
+
                         Divider(
                             modifier = Modifier.padding(vertical = 16.dp),
                             color = MaterialTheme.colorScheme.outlineVariant
@@ -1083,6 +1117,44 @@ private fun VoiceRequestPrompt(language: String?) {
     }
 }
 
+/**
+ * The reading language of this document, as a small chip. Tapping it opens a menu: Auto (what was detected) and the
+ * languages this phone can speak. The choice is remembered for this document only.
+ */
+@Composable
+private fun LanguageChip(article: Article, override: String?, speakable: Set<String>, onSelect: (String?) -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    val detected = article.language
+    fun nameOf(code: String): String = com.listenai.service.LanguageDetector.displayName(code) ?: code
+    val currentName = nameOf(override ?: detected ?: com.listenai.service.LanguageDetector.DEFAULT)
+    val label = if (override != null) currentName else stringResource(R.string.lang_chip_auto, currentName)
+    val options = remember(speakable, detected, override) {
+        com.listenai.service.tts.LanguageChoice.menuLanguages(speakable, detected, override) { nameOf(it) }
+    }
+    Spacer(modifier = Modifier.height(8.dp))
+    Box {
+        AssistChip(
+            onClick = { open = true },
+            label = { Text(stringResource(R.string.lang_chip_label, label)) },
+            leadingIcon = { Icon(Icons.Default.Language, contentDescription = null, modifier = Modifier.size(18.dp)) },
+        )
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.lang_chip_auto, nameOf(detected ?: com.listenai.service.LanguageDetector.DEFAULT))) },
+                leadingIcon = { if (override == null) Icon(Icons.Default.Check, contentDescription = null) },
+                onClick = { open = false; if (override != null) onSelect(null) },
+            )
+            options.forEach { code ->
+                DropdownMenuItem(
+                    text = { Text(nameOf(code)) },
+                    leadingIcon = { if (override == code) Icon(Icons.Default.Check, contentDescription = null) },
+                    onClick = { open = false; if (override != code) onSelect(code) },
+                )
+            }
+        }
+    }
+}
+
 @Composable
 private fun ArticleHeader(article: Article) {
     Column(
@@ -1107,18 +1179,6 @@ private fun ArticleHeader(article: Article) {
             ) {
                 // Source type badge
                 SourceBadge(sourceType = article.sourceType)
-
-                // Language, when it is not English: that is what decides which voice reads it
-                val lang2 = article.language?.substringBefore('-')?.lowercase()
-                if (!lang2.isNullOrBlank() && lang2 != "en") {
-                    com.listenai.service.LanguageDetector.displayName(lang2)?.let { name ->
-                        Text(
-                            text = name,
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                    }
-                }
 
                 // Author
                 Text(
