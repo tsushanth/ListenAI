@@ -85,6 +85,7 @@
     <string name="settings_privacy_subtitle">Gizlilik politikamızı görüntüleyin</string>
     <string name="settings_terms">Hizmet Şartları</string>
     <string name="settings_terms_subtitle">Şartlar ve koşulları görüntüleyin</string>
+    <string name="settings_credits">Açık kaynak katkıları</string>
 
     <!-- Playback -->
     <string name="now_playing">Şimdi Çalıyor</string>

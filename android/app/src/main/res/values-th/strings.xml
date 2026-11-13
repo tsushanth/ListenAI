@@ -85,6 +85,7 @@
     <string name="settings_privacy_subtitle">ดูนโยบายความเป็นส่วนตัว</string>
     <string name="settings_terms">ข้อกำหนดในการให้บริการ</string>
     <string name="settings_terms_subtitle">ดูข้อกำหนดและเงื่อนไข</string>
+    <string name="settings_credits">เครดิตโอเพนซอร์ส</string>
 
     <!-- Playback -->
     <string name="now_playing">กำลังเล่น</string>

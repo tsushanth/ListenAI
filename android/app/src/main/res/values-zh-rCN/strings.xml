@@ -85,6 +85,7 @@
     <string name="settings_privacy_subtitle">查看我们的隐私政策</string>
     <string name="settings_terms">服务条款</string>
     <string name="settings_terms_subtitle">查看条款和条件</string>
+    <string name="settings_credits">开源致谢</string>
 
     <!-- Playback -->
     <string name="now_playing">正在播放</string>

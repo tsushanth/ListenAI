@@ -85,6 +85,7 @@
     <string name="settings_privacy_subtitle">Zobacz naszą politykę prywatności</string>
     <string name="settings_terms">Warunki korzystania</string>
     <string name="settings_terms_subtitle">Zobacz warunki i zasady</string>
+    <string name="settings_credits">Informacje o oprogramowaniu open source</string>
 
     <!-- Playback -->
     <string name="now_playing">Teraz odtwarzane</string>

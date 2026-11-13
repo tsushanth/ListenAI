@@ -85,6 +85,7 @@
     <string name="settings_privacy_subtitle">Lihat dasar privasi kami</string>
     <string name="settings_terms">Terma Perkhidmatan</string>
     <string name="settings_terms_subtitle">Lihat terma dan syarat</string>
+    <string name="settings_credits">Kredit sumber terbuka</string>
 
     <!-- Playback -->
     <string name="now_playing">Sedang Dimainkan</string>

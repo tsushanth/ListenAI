@@ -85,6 +85,7 @@
     <string name="settings_privacy_subtitle">Xem chính sách quyền riêng tư</string>
     <string name="settings_terms">Điều khoản dịch vụ</string>
     <string name="settings_terms_subtitle">Xem điều khoản và điều kiện</string>
+    <string name="settings_credits">Ghi công mã nguồn mở</string>
 
     <!-- Playback -->
     <string name="now_playing">Đang phát</string>

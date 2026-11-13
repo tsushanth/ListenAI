@@ -85,6 +85,7 @@
     <string name="settings_privacy_subtitle">개인정보 처리방침 보기</string>
     <string name="settings_terms">서비스 약관</string>
     <string name="settings_terms_subtitle">이용약관 보기</string>
+    <string name="settings_credits">오픈소스 크레딧</string>
 
     <!-- Playback -->
     <string name="now_playing">지금 재생 중</string>

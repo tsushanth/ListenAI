@@ -85,6 +85,7 @@
     <string name="settings_privacy_subtitle">Bekijk ons privacybeleid</string>
     <string name="settings_terms">Servicevoorwaarden</string>
     <string name="settings_terms_subtitle">Bekijk voorwaarden en condities</string>
+    <string name="settings_credits">Open-sourcevermeldingen</string>
 
     <!-- Playback -->
     <string name="now_playing">Nu Aan Het Spelen</string>

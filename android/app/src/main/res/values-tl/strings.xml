@@ -85,6 +85,7 @@
     <string name="settings_privacy_subtitle">Tingnan ang aming patakaran sa privacy</string>
     <string name="settings_terms">Mga Tuntunin ng Serbisyo</string>
     <string name="settings_terms_subtitle">Tingnan ang mga tuntunin at kundisyon</string>
+    <string name="settings_credits">Mga kredito sa open-source</string>
 
     <!-- Playback -->
     <string name="now_playing">Kasalukuyang Pinapatugtog</string>

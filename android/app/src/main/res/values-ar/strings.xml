@@ -85,6 +85,7 @@
     <string name="settings_privacy_subtitle">عرض سياسة الخصوصية</string>
     <string name="settings_terms">شروط الخدمة</string>
     <string name="settings_terms_subtitle">عرض الشروط والأحكام</string>
+    <string name="settings_credits">إسنادات المصادر المفتوحة</string>
 
     <!-- Playback -->
     <string name="now_playing">يعمل الآن</string>

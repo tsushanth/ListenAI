@@ -85,6 +85,7 @@
     <string name="settings_privacy_subtitle">Ver nossa política de privacidade</string>
     <string name="settings_terms">Termos de Serviço</string>
     <string name="settings_terms_subtitle">Ver termos e condições</string>
+    <string name="settings_credits">Créditos de código aberto</string>
 
     <!-- Playback -->
     <string name="now_playing">Reproduzindo Agora</string>

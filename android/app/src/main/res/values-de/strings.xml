@@ -85,6 +85,7 @@
     <string name="settings_privacy_subtitle">Unsere Datenschutzrichtlinie anzeigen</string>
     <string name="settings_terms">Nutzungsbedingungen</string>
     <string name="settings_terms_subtitle">Allgemeine Gesch\u00e4ftsbedingungen anzeigen</string>
+    <string name="settings_credits">Open-Source-Nachweise</string>
 
     <!-- Playback -->
     <string name="now_playing">Wird gerade abgespielt</string>

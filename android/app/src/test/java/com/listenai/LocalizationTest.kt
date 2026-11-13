@@ -14,7 +14,7 @@ class LocalizationTest {
     private val res: File = listOf(File("src/main/res"), File("app/src/main/res")).first { it.isDirectory }
 
     private val explicitKeys = setOf(
-        "player_install_voice_data", "player_install_tts_engine", "voice_request_cta", "voice_request_thanks",
+        "player_install_voice_data", "player_install_tts_engine", "voice_request_cta", "voice_request_thanks", "settings_credits",
     )
 
     private fun strings(file: File): Map<String, String> =

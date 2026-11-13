@@ -85,6 +85,7 @@
     <string name="settings_privacy_subtitle">हमारी गोपनीयता नीति देखें</string>
     <string name="settings_terms">सेवा की शर्तें</string>
     <string name="settings_terms_subtitle">नियम और शर्तें देखें</string>
+    <string name="settings_credits">ओपन-सोर्स श्रेय</string>
 
     <!-- Playback -->
     <string name="now_playing">अभी चल रहा है</string>

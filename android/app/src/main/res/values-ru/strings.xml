@@ -85,6 +85,7 @@
     <string name="settings_privacy_subtitle">Просмотреть политику конфиденциальности</string>
     <string name="settings_terms">Условия использования</string>
     <string name="settings_terms_subtitle">Просмотреть условия и положения</string>
+    <string name="settings_credits">Использованное открытое ПО</string>
 
     <!-- Playback -->
     <string name="now_playing">Сейчас играет</string>

@@ -103,6 +103,8 @@
     <string name="settings_privacy_subtitle">View our privacy policy</string>
     <string name="settings_terms">Terms of Service</string>
     <string name="settings_terms_subtitle">View terms and conditions</string>
+    <string name="settings_credits">Open-source credits</string>
+    <string name="settings_credits_subtitle" translatable="false">CML-TTS (Oliveira et al. 2023) and LibriTTS-R, CC BY 4.0</string>
 
     <!-- Playback -->
     <string name="now_playing">Now Playing</string>

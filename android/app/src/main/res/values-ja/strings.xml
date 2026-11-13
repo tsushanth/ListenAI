@@ -85,6 +85,7 @@
     <string name="settings_privacy_subtitle">プライバシーポリシーを表示</string>
     <string name="settings_terms">利用規約</string>
     <string name="settings_terms_subtitle">利用規約を表示</string>
+    <string name="settings_credits">オープンソースのクレジット</string>
 
     <!-- Playback -->
     <string name="now_playing">再生中</string>
