@@ -405,6 +405,10 @@
     <string name="lang_voice_quality_high">high quality</string>
     <string name="lang_voice_quality_standard">standard quality</string>
     <string name="lang_voice_needs_internet">needs internet</string>
+    <string name="lang_no_voice_import_notice">This phone has no %1$s voice yet. Open the article to install one.</string>
+    <string name="speech_no_engine_message">No text-to-speech engine is installed on this phone. Install Speech Services by Google to listen offline.</string>
+    <string name="speech_offline_message">You are offline and this phone has no offline voice ready. Connect to the internet and try again.</string>
+    <string name="speech_busy_message">The voice service is busy right now. Please try again in a moment.</string>
     <string name="player_install_tts_engine">Install a speech engine</string>
     <string name="player_network_error">Network error. Please check your internet connection.</string>
     <string name="player_timeout_error">Request timed out. The server might be busy.</string>

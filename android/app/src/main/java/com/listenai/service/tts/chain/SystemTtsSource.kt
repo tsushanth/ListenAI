@@ -158,14 +158,18 @@ class SystemTtsSource(
         try { tts.availableLanguages?.map { it.language }?.filter { it.isNotBlank() }?.toSet() ?: emptySet() } catch (e: Exception) { emptySet() }
     }
 
-    fun release() {
-        engine?.shutdown(); engine = null; enginePackage = null
+    /** Whether this phone can speak [language] now (see [LanguageVoiceState]). Used at import and when the user comes back from installing voices. */
+    suspend fun voiceState(language: String): LanguageVoiceState = lock.withLock {
+        val tts = ensureEngine() ?: return LanguageVoiceState.NO_ENGINE
+        val available = try { tts.isLanguageAvailable(localeFor(language)) >= TextToSpeech.LANG_AVAILABLE } catch (e: Exception) { false }
+        LanguageVoiceState.from(true, available, VoiceSelection.status(voiceInfosOf(tts), language, isOnline()))
     }
 
-    /** Intent that asks the chosen engine to download voice data for [language]; null if there is no engine. */
-    fun installVoiceDataIntent(): Intent? {
-        val pkg = chosenEngine() ?: return null
-        return Intent(TextToSpeech.Engine.ACTION_INSTALL_TTS_DATA).setPackage(pkg).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    /** Drops the engine connection so the next call sees voice data installed in the meantime. */
+    suspend fun refresh() = lock.withLock { release() }
+
+    fun release() {
+        engine?.shutdown(); engine = null; enginePackage = null
     }
 
     companion object {

@@ -84,6 +84,7 @@ fun ImportScreen(
     LaunchedEffect(importState) {
         when (val state = importState) {
             is ImportState.Success -> {
+                com.listenai.service.tts.LanguageVoiceCheck.afterImport(context, state.language)
                 onImportComplete(state.articleId)
                 viewModel.resetState()
             }

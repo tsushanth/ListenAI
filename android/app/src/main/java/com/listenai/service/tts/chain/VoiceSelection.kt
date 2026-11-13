@@ -84,6 +84,31 @@ object VoiceSelection {
         voices.filter { isUsable(it, online) }.map { it.language }.toSet()
 }
 
+/** Whether the phone can speak a language right now, and if not, how far from it is. */
+enum class LanguageVoiceState {
+    /** A voice works now. */
+    USABLE,
+    /** The engine lists voices for the language but none works now: data not downloaded, or network-only while offline. */
+    LISTED_UNUSABLE,
+    /** The engine has nothing for the language. */
+    MISSING,
+    /** No speech engine at all. */
+    NO_ENGINE;
+
+    companion object {
+        /**
+         * [languageAvailable] is `isLanguageAvailable(locale) >= LANG_AVAILABLE`; [status] is [VoiceSelection.status]
+         * over the engine's voices. A language the engine calls available with no voices listed is trusted (USABLE).
+         */
+        fun from(hasEngine: Boolean, languageAvailable: Boolean, status: VoiceSelection.Status): LanguageVoiceState = when {
+            !hasEngine -> NO_ENGINE
+            status == VoiceSelection.Status.NOT_USABLE -> LISTED_UNUSABLE
+            !languageAvailable -> MISSING
+            else -> USABLE
+        }
+    }
+}
+
 internal object LanguageKey {
     /** "es-MX" and "ES" become "es". */
     fun of(code: String): String = code.trim().lowercase().replace('_', '-').substringBefore('-')

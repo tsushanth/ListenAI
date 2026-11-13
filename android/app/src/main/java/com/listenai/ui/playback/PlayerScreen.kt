@@ -462,7 +462,7 @@ fun PlayerScreen(
                         playerState = PlayerState.RateLimited(e.retryAfterSeconds.toInt(), article)
                     }
                     is TTSError.SpeechUnavailable -> {
-                        playerState = PlayerState.Error(e.userMessage, article, e.installVoiceLanguage, e.installEngine)
+                        playerState = PlayerState.Error(com.listenai.service.tts.SpeechUnavailableText.resolve(context, e), article, e.installVoiceLanguage, e.installEngine)
                     }
                     else -> {
                         val errorMessage = when {
@@ -604,8 +604,9 @@ fun PlayerScreen(
                 throw e
             } catch (e: Exception) {
                 android.util.Log.e("PlayerScreen", "Regeneration failed", e)
-                val errorMessage = e.message ?: context.getString(R.string.player_regeneration_failed)
                 val unavailable = e as? TTSError.SpeechUnavailable
+                val errorMessage = unavailable?.let { com.listenai.service.tts.SpeechUnavailableText.resolve(context, it) }
+                    ?: e.message ?: context.getString(R.string.player_regeneration_failed)
                 playerState = PlayerState.Error(errorMessage, article, unavailable?.installVoiceLanguage, unavailable?.installEngine == true)
                 ttsNotificationService.showArticleTTSFailed(
                     articleId = article.id,
@@ -641,6 +642,28 @@ fun PlayerScreen(
             val updated = article.copy(audioFileUrl = null)
             val voice = selectedVoice
             if (wasPlaying && voice != null) regenerateWithVoice(voice, updated) else playerState = PlayerState.Ready(updated)
+        }
+    }
+
+    // Back from installing voice data: look again, and read the article if the voice is there now.
+    var resumeTick by remember { mutableIntStateOf(0) }
+    val lifecycleOwner = androidx.compose.ui.platform.LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) resumeTick++
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+    LaunchedEffect(resumeTick) {
+        val st = playerState as? PlayerState.Error ?: return@LaunchedEffect
+        val language = st.installVoiceLanguage ?: return@LaunchedEffect
+        val article = st.article ?: return@LaunchedEffect
+        val system = com.listenai.service.tts.chain.TtsChainProvider.get(context).system
+        val state = withContext(Dispatchers.IO) { system.refresh(); system.voiceState(language) }
+        if (state == com.listenai.service.tts.chain.LanguageVoiceState.USABLE) {
+            speakableLanguages = withContext(Dispatchers.IO) { system.supportedLanguages() }
+            startSynthesisAndPlay(article)
         }
     }
 
@@ -920,17 +943,9 @@ fun PlayerScreen(
                         if (state.installVoiceLanguage != null || state.installEngine) {
                             Spacer(modifier = Modifier.height(16.dp))
                             Button(onClick = {
-                                // Voice data: ask the phone's engine (Google, then Samsung) to download it. No engine:
-                                // open Speech Services by Google in the store.
-                                val intent = if (state.installEngine) {
-                                    Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=com.google.android.tts"))
-                                } else {
-                                    com.listenai.service.tts.chain.TtsChainProvider.get(context).system.installVoiceDataIntent()
-                                        ?: Intent(android.provider.Settings.ACTION_SETTINGS)
-                                }
-                                try { context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) } catch (_: Exception) {
-                                    try { context.startActivity(Intent(android.provider.Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) } catch (_: Exception) { }
-                                }
+                                // Voice data: the engine's installer, else the system text-to-speech settings, else Settings.
+                                // No engine: Speech Services by Google in the store. On return the screen re-checks (see ON_RESUME).
+                                com.listenai.service.tts.TtsInstall.open(context, state.installEngine)
                             }) {
                                 Text(stringResource(if (state.installEngine) R.string.player_install_tts_engine else R.string.player_install_voice_data))
                             }

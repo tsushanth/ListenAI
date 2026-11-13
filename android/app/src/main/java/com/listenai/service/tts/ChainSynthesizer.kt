@@ -113,10 +113,16 @@ object ChainSynthesizer {
 
     internal fun speechUnavailable(e: NoSourceAvailableException): TTSError.SpeechUnavailable = when (val a = e.action) {
         is UserAction.InstallVoiceData -> TTSError.SpeechUnavailable(
-            "This device has no offline voice data for this language. Install it to listen without a connection.", installVoiceLanguage = a.language)
+            "This device has no offline voice data for this language. Install it to listen without a connection.",
+            installVoiceLanguage = a.language, kind = TTSError.SpeechUnavailable.Kind.NO_VOICE_DATA)
         UserAction.InstallEngine -> TTSError.SpeechUnavailable(
-            "No text-to-speech engine is installed on this device. Install Speech Services by Google to listen offline.", installEngine = true)
-        UserAction.CheckConnection -> TTSError.SpeechUnavailable("You are offline and this device has no offline voice ready. Connect to the internet and try again.")
-        UserAction.TryLater -> TTSError.SpeechUnavailable("The voice service is busy right now. Please try again in a moment.")
+            "No text-to-speech engine is installed on this device. Install Speech Services by Google to listen offline.",
+            installEngine = true, kind = TTSError.SpeechUnavailable.Kind.NO_ENGINE)
+        UserAction.CheckConnection -> TTSError.SpeechUnavailable(
+            "You are offline and this device has no offline voice ready. Connect to the internet and try again.",
+            kind = TTSError.SpeechUnavailable.Kind.OFFLINE)
+        UserAction.TryLater -> TTSError.SpeechUnavailable(
+            "The voice service is busy right now. Please try again in a moment.",
+            kind = TTSError.SpeechUnavailable.Kind.BUSY)
     }
 }
