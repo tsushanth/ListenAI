@@ -1,41 +1,48 @@
-ReadAloud AI - Trasforma Qualsiasi Testo in Audio
+ReadAloud AI: sintesi vocale per dislessia, ADHD e chiunque ascolti leggere
 
-Cambia il modo in cui consumi i contenuti. ReadAloud AI converte articoli, PDF, pagine web e documenti in audio dal suono naturale utilizzando una tecnologia avanzata di sintesi vocale basata sull'intelligenza artificiale.
+Leggere è difficile quando il tuo cervello o i tuoi occhi non collaborano. ReadAloud AI converte articoli, PDF, EPUB, pagine Web e documenti in audio dal suono naturale in modo da poterli ascoltare anziché leggere. Progettato con un design orientato all'accessibilità: funziona perfettamente con TalkBack, supporta la velocità di riproduzione regolabile e offre impostazioni ad alto contrasto per gli utenti ipovedenti.
 
-Funzionalità principali:
+Progettato per:
+• Lettori con dislessia che assorbono meglio le informazioni ascoltando
+• Persone con ADHD che si concentrano meglio con l'input uditivo
+• Utenti non vedenti e ipovedenti con flussi di lavoro per la lettura dello schermo
+• Chiunque preferisca ascoltare durante gli spostamenti, gli allenamenti o le faccende domestiche
+• Studenti di lingue che praticano la comprensione orale
 
 Molteplici opzioni di importazione
-• Importa articoli da URL: basta incollare un link web
-• Carica documenti PDF direttamente
-• Importa dalla tua casella di posta elettronica
-• Incolla testo manualmente
+• Articoli da qualsiasi URL: incolla un collegamento web
+• Documenti PDF direttamente dal tuo dispositivo
+• Libri EPUB con riproduzione capitolo per capitolo
+• Importazioni della casella di posta elettronica
+• Incolla testo normale
 
-Voci IA Premium
-• Scegli tra una varietà di voci dal suono naturale
-• Supporto per più lingue
-• Velocità di riproduzione regolabile
-• Crea la tua voce clonata personalizzata usando solo un breve campione audio
+Voci AI premium
+• Voci AI dal suono naturale in più lingue
+• Velocità di riproduzione regolabile (da 0,5x a 3x)
+• Evidenziazione a livello di parola sincronizzata con l'audio
+• Voci basate su cloud con AI offline opzionale sul dispositivo
 
-Clonazione Vocale
-Registra un breve campione di qualsiasi voce e crea un clone vocale IA personalizzato. Usa la tua voce o qualsiasi voce di cui hai il permesso di clonare per leggere i tuoi contenuti ad alta voce.
+Clonazione vocale resa accessibile
+Crea un clone vocale AI personalizzato dalla tua stessa voce o da qualsiasi voce che sei autorizzato a clonare. Il flusso di clonazione supporta sia la registrazione dal vivo che il caricamento di un file audio preregistrato, progettato in modo che gli utenti di screen reader possano registrare in modo pulito senza interferenze del microfono.
 
-Riproduzione Intelligente
-• Riproduzione audio in background: ascolta mentre usi altre app
-• Controlli di riproduzione dalla notifica e dalla schermata di blocco
-• Riprendi da dove ti eri fermato
-• Metti in coda più articoli per un ascolto continuo
+Riproduzione intelligente
+• Audio di sottofondo durante l'utilizzo di altre app
+• Schermata di blocco e controlli di notifica
+• Avanzamento automatico tra i capitoli durante l'ascolto di libri importati
+• Riprendi da dove avevi interrotto le sessioni
+• Articoli in coda per un ascolto continuo
 
-Perfetto per:
-• Pendolari che vogliono recuperare le letture arretrate
-• Multitasker che ascoltano mentre si allenano o fanno le faccende domestiche
-• Chiunque abbia disabilità visive o difficoltà di lettura
-• Studenti di lingue che praticano la comprensione orale
-• Professionisti impegnati che vogliono restare informati in movimento
+Progettazione prioritaria dell'accessibilità
+• Supporto completo di TalkBack su ogni schermata
+• Ordine di messa a fuoco ragionevole per la navigazione tramite screen reader
+• Testato con utenti reali di lettori di schermo: le correzioni vengono spedite settimanalmente in base al feedback
+• Dimensioni del testo regolabili e opzioni di visualizzazione ad alto contrasto
 
 Come funziona:
+1. Importa contenuti tramite URL, PDF, EPUB, e-mail o incolla testo
+2. Scegli la tua voce AI preferita
+3. Tocca Riproduci e ascolta ovunque
 
-Importa contenuti tramite URL, PDF, e-mail o incollando testo
-Seleziona la tua voce IA preferita
-Tocca play e ascolta ovunque
+Che tu stia lavorando sulla dislessia, sull'ADHD o sui limiti della vista, ReadAloud AI trasforma il tuo elenco di lettura in un elenco di ascolto.
 
-Trasforma la tua lista di lettura in una lista di ascolto. Scarica ReadAloud AI oggi e non restare mai più indietro con le tue letture.
+Scarica ReadAloud AI oggi stesso.

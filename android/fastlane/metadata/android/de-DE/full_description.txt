@@ -1,41 +1,48 @@
-ReadAloud AI - Verwandle Jeden Text in Audio
+ReadAloud AI – Text-to-Speech für Legasthenie, ADHS und jeden, der zuhört
 
-Verändere die Art, wie du Inhalte konsumierst. ReadAloud AI wandelt Artikel, PDFs, Webseiten und Dokumente mithilfe fortschrittlicher KI-Text-zu-Sprache-Technologie in natürlich klingendes Audio um.
+Das Lesen ist schwierig, wenn Ihr Gehirn oder Ihre Augen nicht kooperieren. ReadAloud AI konvertiert Artikel, PDFs, EPUBs, Webseiten und Dokumente in natürlich klingendes Audio, sodass Sie zuhören statt lesen können. Gebaut mit barrierefreiem Design – funktioniert reibungslos mit TalkBack, unterstützt einstellbare Wiedergabegeschwindigkeit und bietet kontrastreiche Einstellungen für Benutzer mit Sehbehinderung.
 
-Hauptfunktionen:
+Entwickelt für:
+• Leser mit Legasthenie, die Informationen durch Zuhören besser aufnehmen
+• Menschen mit ADHS, die sich durch auditive Eingaben besser konzentrieren können
+• Blinde und sehbehinderte Benutzer mit Screenreader-Workflows
+• Jeder, der lieber beim Pendeln, beim Training oder bei der Hausarbeit zuhört
+• Sprachlerner üben Hörverständnis
 
-Vielfältige Importoptionen
-• Importiere Artikel von URLs – einfach einen Weblink einfügen
-• Lade PDF-Dokumente direkt hoch
-• Importiere aus deinem E-Mail-Posteingang
-• Füge Text manuell ein
+Mehrere Importoptionen
+• Artikel von einer beliebigen URL – fügen Sie einen Weblink ein
+• PDF-Dokumente direkt von Ihrem Gerät
+• EPUB-Bücher mit kapitelweiser Wiedergabe
+• E-Mail-Posteingangsimporte
+• Nur-Text einfügen
 
-Premium KI-Stimmen
-• Wähle aus einer Vielzahl natürlich klingender Stimmen
-• Mehrere Sprachen unterstützt
-• Einstellbare Wiedergabegeschwindigkeit
-• Erstelle deine eigene geklonte Stimme mit nur einer kurzen Audioaufnahme
+Premium-KI-Stimmen
+• Natürlich klingende KI-Stimmen in mehreren Sprachen
+• Einstellbare Wiedergabegeschwindigkeit (0,5x bis 3x)
+• Hervorhebung auf Wortebene, die mit Audio synchronisiert wird
+• Cloudbasierte Stimmen mit optionaler Offline-KI auf dem Gerät
 
-Stimmklonen
-Nimm eine kurze Probe einer beliebigen Stimme auf und erstelle einen personalisierten KI-Stimmklon. Verwende deine eigene Stimme oder jede Stimme, die du klonen darfst, um deine Inhalte vorlesen zu lassen.
+Sprachklonen zugänglich gemacht
+Erstellen Sie einen personalisierten KI-Stimmenklon aus Ihrer eigenen Stimme oder einer beliebigen Stimme, zu deren Klonen Sie berechtigt sind. Der Klonvorgang unterstützt sowohl Live-Aufnahmen als auch das Hochladen einer vorab aufgenommenen Audiodatei – so konzipiert, dass Benutzer von Bildschirmleseprogrammen sauber und ohne Mikrofonstörungen aufnehmen können.
 
 Intelligente Wiedergabe
-• Audiowiedergabe im Hintergrund – höre zu, während du andere Apps nutzt
-• Wiedergabesteuerung über Benachrichtigung und Sperrbildschirm
-• Setze dort fort, wo du aufgehört hast
-• Reihe mehrere Artikel für durchgehende Wiedergabe aneinander
+• Hintergrundton während der Verwendung anderer Apps
+• Sperrbildschirm und Benachrichtigungssteuerung
+• Automatischer Wechsel zwischen den Kapiteln beim Anhören importierter Bücher
+• Machen Sie sitzungsübergreifend dort weiter, wo Sie aufgehört haben
+• Stellen Sie Artikel in die Warteschlange, um sie kontinuierlich abzuhören
 
-Perfekt für:
-• Pendler, die ihre Leseliste aufholen möchten
-• Multitasker, die beim Sport oder bei Hausarbeit zuhören
-• Menschen mit Sehbeeinträchtigungen oder Leseschwierigkeiten
-• Sprachlerner, die ihr Hörverstehen üben
-• Vielbeschäftigte Berufstätige, die unterwegs informiert bleiben
+Barrierefreiheit-First-Design
+• Volle TalkBack-Unterstützung auf jedem Bildschirm
+• Sinnvolle Fokusreihenfolge für die Screenreader-Navigation
+• Getestet mit echten Screenreader-Benutzern – Korrekturen werden wöchentlich basierend auf dem Feedback versendet
+• Anpassbare Textgröße und kontrastreiche Anzeigeoptionen
 
-So funktioniert's:
+So funktioniert es:
+1. Importieren Sie Inhalte per URL, PDF, EPUB, E-Mail oder Texteinfügung
+2. Wählen Sie Ihre bevorzugte KI-Stimme
+3. Tippen Sie auf „Wiedergabe“ und hören Sie überall zu
 
-Importiere Inhalte per URL, PDF, E-Mail oder Texteingabe
-Wähle deine bevorzugte KI-Stimme
-Tippe auf Wiedergabe und höre überall zu
+Ganz gleich, ob Sie an Legasthenie, ADHS oder Sehbehinderungen arbeiten, ReadAloud AI verwandelt Ihre Leseliste in eine Hörliste.
 
-Verwandle deine Leseliste in eine Hörliste. Lade ReadAloud AI noch heute herunter und verpasse nie wieder eine Lektüre.
+Laden Sie ReadAloud AI noch heute herunter.

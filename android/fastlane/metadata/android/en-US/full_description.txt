@@ -1,40 +1,48 @@
-ReadAloud AI - Turn Any Text Into Audio
+ReadAloud AI - Text to Speech for Dyslexia, ADHD, and Anyone Who Listens to Read
 
-Transform how you consume content. ReadAloud AI converts articles, PDFs, web pages, and documents into natural-sounding audio using advanced AI text-to-speech technology.
+Reading is hard when your brain or your eyes don't cooperate. ReadAloud AI converts articles, PDFs, EPUBs, web pages, and documents into natural-sounding audio so you can listen instead of read. Built with accessibility-first design — works fluently with TalkBack, supports adjustable playback speed, and offers high-contrast settings for low vision users.
 
-Key Features:
+Designed For:
+• Readers with dyslexia who absorb information better by listening
+• People with ADHD who focus better with auditory input
+• Blind and low-vision users with screen reader workflows
+• Anyone who'd rather listen during commutes, workouts, or chores
+• Language learners practicing listening comprehension
 
 Multiple Import Options
-• Import articles from URLs - just paste any web link
-• Upload PDF documents directly
-• Import from your email inbox
-• Paste text manually
+• Articles from any URL — paste a web link
+• PDF documents directly from your device
+• EPUB books with chapter-by-chapter playback
+• Email inbox imports
+• Plain text paste
 
 Premium AI Voices
-• Choose from a variety of natural-sounding voices
-• Multiple languages supported
-• Adjustable playback speed
-• Create your own custom cloned voice using just a short audio sample
+• Natural-sounding AI voices in multiple languages
+• Adjustable playback speed (0.5x to 3x)
+• Word-level highlighting that syncs with audio
+• Cloud-based voices with optional on-device offline AI
 
-Voice Cloning
-Record a short sample of any voice and create a personalized AI voice clone. Use your own voice or any voice you have permission to clone to read your content aloud.
+Voice Cloning Made Accessible
+Create a personalized AI voice clone from your own voice, or any voice you have permission to clone. The cloning flow supports both live recording AND uploading a pre-recorded audio file — designed so screen reader users can record cleanly without microphone interference.
 
 Smart Playback
-• Background audio playback - listen while using other apps
-• Playback controls from notification and lock screen
-• Resume where you left off
-• Queue multiple articles for continuous listening
+• Background audio while using other apps
+• Lock screen and notification controls
+• Auto-advance between chapters when listening to imported books
+• Resume from where you left off across sessions
+• Queue articles for continuous listening
 
-Perfect For:
-• Commuters who want to catch up on reading
-• Multitaskers who listen while working out or doing chores
-• Anyone with visual impairments or reading difficulties
-• Language learners practicing listening comprehension
-• Busy professionals staying informed on the go
+Accessibility-First Design
+• Full TalkBack support across every screen
+• Sensible focus order for screen reader navigation
+• Tested with real screen reader users — fixes ship weekly based on feedback
+• Adjustable text size and high-contrast display options
 
 How It Works:
+1. Import content via URL, PDF, EPUB, email, or text paste
+2. Pick your preferred AI voice
+3. Tap play and listen anywhere
 
-Import content via URL, PDF, email, or text paste
-Select your preferred AI voice
-Tap play and listen anywhere
-Turn your reading list into a listening list. Download ReadAloud AI today and never fall behind on your reading again.
+Whether you're working around dyslexia, working with ADHD, or working around vision limitations, ReadAloud AI turns your reading list into a listening list.
+
+Download ReadAloud AI today.
