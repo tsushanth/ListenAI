@@ -188,6 +188,7 @@ object FirebaseAnalyticsHelper {
             putLong("cache_hits", r.cacheHits.toLong())
             putLong("chars", r.chars.toLong())
             putString("content_language", r.language)
+            putString("voice_source", LanguageAnalytics.voiceSource(r.firstSource, r.language)) // cloud_es, cloud_en, system, on_device, none
             putString("succeeded", r.succeeded.toString())
         })
         if (firstFallback != null) {

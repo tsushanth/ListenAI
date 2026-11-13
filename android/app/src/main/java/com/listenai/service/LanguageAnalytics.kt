@@ -30,6 +30,17 @@ object LanguageAnalytics {
         "to_language" to (to?.let { code(it) } ?: "auto"),
     )
 
+    /**
+     * Which kind of voice served a read: `cloud_<language>` for the ReadAloud API (cloud_es for the Spanish voice,
+     * cloud_en for English), `system` (the phone's engine), `on_device` or `none`. Codes only, never a voice name.
+     */
+    fun voiceSource(first: com.listenai.service.tts.chain.SourceId?, language: String?): String = when (first) {
+        com.listenai.service.tts.chain.SourceId.API -> "cloud_" + code(language)
+        com.listenai.service.tts.chain.SourceId.SYSTEM -> "system"
+        com.listenai.service.tts.chain.SourceId.ON_DEVICE -> "on_device"
+        null -> "none"
+    }
+
     private val FALLBACK_REASONS = setOf("no_voice", "no_engine", "offline", "engine_error")
 
     /** A read ended with no usable voice. [reason] is one of no_voice, no_engine, offline, engine_error. */

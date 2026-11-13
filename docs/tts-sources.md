@@ -43,7 +43,7 @@ The ReadAloud system engine can try the API first for English text of 100+ chara
 
 ### Events (no text)
 
-`tts_session` (first_source, ttfa_ms, total_ms, audio_ms, chunks, cache_hits, chars, content_language, succeeded) and `tts_fallback` (from_source, reason). Sent only when the user allowed analytics; every read also logs one `TTS_CHAIN` line to logcat.
+`tts_session` (first_source, ttfa_ms, total_ms, audio_ms, chunks, cache_hits, chars, content_language, voice_source, succeeded; `voice_source` is `cloud_es`, `cloud_en`, `system`, `on_device` or `none`, added 2026-11-13) and `tts_fallback` (from_source, reason). Sent only when the user allowed analytics; every read also logs one `TTS_CHAIN` line to logcat.
 
 Language and voice events (added 2026-11-13). All sent only when the user allowed analytics; parameters are built in `LanguageAnalytics` and are limited to ISO language codes, a fixed set of reasons and true/false flags, never text, titles, document ids or voice names:
 

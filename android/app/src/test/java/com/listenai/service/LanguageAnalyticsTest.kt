@@ -2,6 +2,7 @@ package com.listenai.service
 
 import com.listenai.service.tts.ChainSynthesizer
 import com.listenai.service.tts.TTSError
+import com.listenai.service.tts.chain.SourceId
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -40,11 +41,22 @@ class LanguageAnalyticsTest {
         assertEquals("engine_error", ChainSynthesizer.voiceFallbackReason(TTSError.SpeechUnavailable.Kind.BUSY))
     }
 
+    @Test fun `voice_source says cloud Spanish, cloud English, phone, device or none`() {
+        assertEquals("cloud_es", LanguageAnalytics.voiceSource(SourceId.API, "es"))
+        assertEquals("cloud_es", LanguageAnalytics.voiceSource(SourceId.API, "es-MX"))
+        assertEquals("cloud_en", LanguageAnalytics.voiceSource(SourceId.API, "en-US"))
+        assertEquals("system", LanguageAnalytics.voiceSource(SourceId.SYSTEM, "es"))
+        assertEquals("on_device", LanguageAnalytics.voiceSource(SourceId.ON_DEVICE, "en"))
+        assertEquals("none", LanguageAnalytics.voiceSource(null, "es"))
+        assertEquals("cloud_unknown", LanguageAnalytics.voiceSource(SourceId.API, "not a code"))
+    }
+
     @Test fun `no event carries free text, ids or voice names`() {
         val all = listOf(
             LanguageAnalytics.noVoice("es", true, "en"),
             LanguageAnalytics.override("es", "fr"),
             LanguageAnalytics.voiceFallback("es", "no_voice"),
+            mapOf("voice_source" to LanguageAnalytics.voiceSource(SourceId.API, "es")),
         ).flatMap { it.entries }
         // every value is a short token: a language code, auto, unknown, true/false, or a reason
         assertTrue(all.all { it.value.length <= 12 && it.value.all { c -> c.isLowerCase() || c == '_' } })
