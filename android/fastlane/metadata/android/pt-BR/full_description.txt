@@ -1,6 +1,6 @@
 ReadAloud AI - Texto em fala para dislexia, TDAH e qualquer pessoa que ouça ler
 
-Ler é difícil quando seu cérebro ou seus olhos não cooperam. ReadAloud AI converte artigos, PDFs, EPUBs, páginas da web e documentos em áudio com som natural para que você possa ouvir em vez de ler. Construído com um design que prioriza a acessibilidade – funciona fluentemente com o TalkBack, suporta velocidade de reprodução ajustável e oferece configurações de alto contraste para usuários com visão reduzida.
+Ler é difícil quando seu cérebro ou seus olhos não cooperam. ReadAloud AI converte artigos, PDFs, EPUBs, páginas da web e documentos em áudio com som natural para que você possa ouvir em vez de ler. Construído com um design que prioriza a acessibilidade – funciona fluentemente com o TalkBack e suporta velocidade de reprodução ajustável.
 
 Projetado para:
 • Leitores com dislexia que absorvem melhor as informações ouvindo
@@ -18,7 +18,7 @@ Várias opções de importação
 
 Vozes de IA premium
 • Vozes de IA com som natural em vários idiomas
-• Velocidade de reprodução ajustável (0,5x a 3x)
+• Velocidade de reprodução ajustável (0,5x a 2x)
 • Destaque em nível de palavra que sincroniza com áudio
 • Vozes baseadas na nuvem com IA off-line opcional no dispositivo
 
@@ -30,13 +30,11 @@ Reprodução Inteligente
 • Tela de bloqueio e controles de notificação
 • Avanço automático entre capítulos ao ouvir livros importados
 • Retome de onde parou nas sessões
-• Enfileirar artigos para escuta contínua
 
 Design que prioriza a acessibilidade
 • Suporte completo ao TalkBack em todas as telas
 • Ordem de foco sensata para navegação por leitor de tela
 • Testado com usuários reais de leitores de tela. As correções são enviadas semanalmente com base no feedback
-• Tamanho de texto ajustável e opções de exibição de alto contraste
 
 Como funciona:
 1. Importe conteúdo via URL, PDF, EPUB, e-mail ou colagem de texto

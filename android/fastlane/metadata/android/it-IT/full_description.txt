@@ -1,6 +1,6 @@
 ReadAloud AI: sintesi vocale per dislessia, ADHD e chiunque ascolti leggere
 
-Leggere è difficile quando il tuo cervello o i tuoi occhi non collaborano. ReadAloud AI converte articoli, PDF, EPUB, pagine Web e documenti in audio dal suono naturale in modo da poterli ascoltare anziché leggere. Progettato con un design orientato all'accessibilità: funziona perfettamente con TalkBack, supporta la velocità di riproduzione regolabile e offre impostazioni ad alto contrasto per gli utenti ipovedenti.
+Leggere è difficile quando il tuo cervello o i tuoi occhi non collaborano. ReadAloud AI converte articoli, PDF, EPUB, pagine Web e documenti in audio dal suono naturale in modo da poterli ascoltare anziché leggere. Progettato con un design orientato all'accessibilità: funziona perfettamente con TalkBack e supporta la velocità di riproduzione regolabile.
 
 Progettato per:
 • Lettori con dislessia che assorbono meglio le informazioni ascoltando
@@ -18,7 +18,7 @@ Molteplici opzioni di importazione
 
 Voci AI premium
 • Voci AI dal suono naturale in più lingue
-• Velocità di riproduzione regolabile (da 0,5x a 3x)
+• Velocità di riproduzione regolabile (da 0,5x a 2x)
 • Evidenziazione a livello di parola sincronizzata con l'audio
 • Voci basate su cloud con AI offline opzionale sul dispositivo
 
@@ -30,13 +30,11 @@ Riproduzione intelligente
 • Schermata di blocco e controlli di notifica
 • Avanzamento automatico tra i capitoli durante l'ascolto di libri importati
 • Riprendi da dove avevi interrotto le sessioni
-• Articoli in coda per un ascolto continuo
 
 Progettazione prioritaria dell'accessibilità
 • Supporto completo di TalkBack su ogni schermata
 • Ordine di messa a fuoco ragionevole per la navigazione tramite screen reader
 • Testato con utenti reali di lettori di schermo: le correzioni vengono spedite settimanalmente in base al feedback
-• Dimensioni del testo regolabili e opzioni di visualizzazione ad alto contrasto
 
 Come funziona:
 1. Importa contenuti tramite URL, PDF, EPUB, e-mail o incolla testo
