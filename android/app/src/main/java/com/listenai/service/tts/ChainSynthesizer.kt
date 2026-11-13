@@ -33,7 +33,9 @@ object ChainSynthesizer {
     ): SynthesisResult {
         val started = System.currentTimeMillis()
         val chain = TtsChainProvider.get(context).inApp
-        val request = TtsRequest(voiceId = voice.id, language = language, speed = speed, wantWords = true)
+        // A phone voice the user picked for this language means: try the phone's engine first.
+        val preferSystem = LanguageChoice.normalize(language) != "en" && LanguagePrefs.get(context).preferredVoice(language) != null
+        val request = TtsRequest(voiceId = voice.id, language = language, speed = speed, wantWords = true, preferSystem = preferSystem)
         val file = File(context.cacheDir, "tts_${UUID.randomUUID()}.wav")
 
         var rate = 0

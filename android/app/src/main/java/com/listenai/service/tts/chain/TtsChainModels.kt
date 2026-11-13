@@ -69,6 +69,8 @@ data class TtsRequest(
     val speed: Float = 1.0f,
     /** Ask the API for word timings (the reader highlights words). Slower to start when the alignment worker is cold. */
     val wantWords: Boolean = false,
+    /** The user picked one of the phone's own voices for this language: try the phone's engine before the cloud. */
+    val preferSystem: Boolean = false,
 )
 
 interface TtsSource {

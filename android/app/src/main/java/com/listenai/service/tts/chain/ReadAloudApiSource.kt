@@ -42,6 +42,8 @@ class ReadAloudApiSource(
     private val isOnline: () -> Boolean,
     /** App voice id -> Piper voice id on the platform. */
     private val voiceFor: (String) -> String,
+    /** The voices the API lists; non-English languages are accepted only when it lists a vetted voice for them (see [CloudVoicePolicy]). */
+    private val catalog: CloudVoiceCatalog = CloudVoiceCatalog.Empty,
     private val nowMs: () -> Long = System::currentTimeMillis,
 ) : TtsSource {
 
@@ -78,10 +80,15 @@ class ReadAloudApiSource(
         Executors.newSingleThreadScheduledExecutor { r -> Thread(r, "tts-api-watchdog").apply { isDaemon = true } }
 
     override suspend fun unavailableReason(request: TtsRequest): FallbackReason? = when {
-        request.language.substringBefore('-').lowercase() != "en" -> FallbackReason.UNSUPPORTED_LANGUAGE
+        !isEnglish(request.language) && cloudVoiceFor(request.language) == null -> FallbackReason.UNSUPPORTED_LANGUAGE
         !isOnline() -> FallbackReason.OFFLINE
         else -> null
     }
+
+    private fun isEnglish(language: String) = language.substringBefore('-').lowercase() == "en"
+
+    /** The vetted catalog voice for a non-English language, or null. Asks the catalog only for non-English text. */
+    private suspend fun cloudVoiceFor(language: String): CloudVoice? = CloudVoicePolicy.voiceFor(language, catalog.voices())
 
     /** Opens a socket ahead of the first chunk (authorize + connect), so the first synthesize pays neither. */
     suspend fun prewarm() {
@@ -94,13 +101,19 @@ class ReadAloudApiSource(
     }
 
     override suspend fun synthesize(text: String, request: TtsRequest): PcmChunk {
-        val useWords = request.wantWords && nowMs() >= alignmentBlockedUntil
+        // Resolved once per chunk: the English app voice, or the catalog's Spanish voice. A request that got past
+        // unavailableReason always has one; the check keeps a catalog change mid-read from sending an unknown voice.
+        val voice = if (isEnglish(request.language)) voiceFor(request.voiceId)
+        else cloudVoiceFor(request.language)?.id ?: throw SourceFailure(FallbackReason.UNSUPPORTED_LANGUAGE)
+        val resolved = request.copy(voiceId = voice)
+        // Word timings come from an alignment worker that is only known to work for English text.
+        val useWords = request.wantWords && isEnglish(request.language) && nowMs() >= alignmentBlockedUntil
         return try {
-            attempt(text, request, useWords)
+            attempt(text, resolved, useWords)
         } catch (e: AlignmentSlow) {
             alignmentBlockedUntil = nowMs() + ALIGNMENT_BACKOFF_MS
             Log.i(TAG, "alignment worker slow; plain Piper for the next ${ALIGNMENT_BACKOFF_MS / 60000} min")
-            attempt(text, request, false)
+            attempt(text, resolved, false)
         }
     }
 
@@ -203,7 +216,7 @@ class ReadAloudApiSource(
                 val msg = JSONObject()
                     .put("type", "synthesize")
                     .put("text", text)
-                    .put("voice", voiceFor(request.voiceId))
+                    .put("voice", request.voiceId)
                     .put("speed", request.speed.toDouble())
                 if (conn.alignment) msg.put("alignment", true)
                 if (!conn.ws.send(msg.toString())) {
