@@ -101,6 +101,52 @@ send:     {"text": "Thanks for calling. "}       then text, as it arrives
 send:     {"text": ""}                           end of input
 receive:  {"audio": "<base64>", ...}  ...        then {"isFinal": true} and a normal close`
 
+const CLONE_JS = `// npm i @elevenlabs/elevenlabs-js   (the voices.ivc.create call, run with 2.78.0)
+import fs from "node:fs";
+import { ElevenLabsClient } from "@elevenlabs/elevenlabs-js";
+
+const client = new ElevenLabsClient({ apiKey: process.env.READALOUD_API_KEY, baseUrl: "https://api.readaloudai.org" });
+
+// 1. A phrase for the speaker to read aloud as consent (the one step ElevenLabs does not have). Record it as consent.wav.
+const { challenge_id, phrase } = await (await fetch("https://api.readaloudai.org/v1/voices/add/consent-phrase", {
+  method: "POST", headers: { "xi-api-key": process.env.READALOUD_API_KEY } })).json();
+
+// 2. The usual call: samples plus the consent recording (a file named consent.*), the challenge id as a query parameter.
+const voice = await client.voices.ivc.create(
+  { name: "My voice", files: [fs.createReadStream("sample.wav"), fs.createReadStream("consent.wav")] },
+  { queryParams: { consent_challenge_id: challenge_id } },
+);
+
+// 3. Use the returned id in text to speech (up to 1,500 characters per request).
+const audio = await client.textToSpeech.convert(voice.voiceId, { text: "Hello from my cloned voice.", outputFormat: "mp3_44100_128" });`
+
+const CLONE_CURL = `API=https://api.readaloudai.org
+
+# 1. the phrase to read aloud (record it as consent.wav)
+curl -s -X POST $API/v1/voices/add/consent-phrase -H "xi-api-key: $READALOUD_API_KEY"
+
+# 2. create the voice
+curl -s -X POST $API/v1/voices/add -H "xi-api-key: $READALOUD_API_KEY" \\
+  -F name="My voice" -F consent_challenge_id=<challenge_id> \\
+  -F files=@sample.wav -F files=@consent.wav
+# {"voice_id":"clone-...","requires_verification":false,"language":"en","consent":"verified",...}
+
+# 3. speak with it
+curl -s -X POST "$API/v1/text-to-speech/<voice_id>?output_format=mp3_44100_128" \\
+  -H "xi-api-key: $READALOUD_API_KEY" -H "Content-Type: application/json" \\
+  -d '{"text":"Hello from my cloned voice."}' -o out.mp3
+
+# 4. delete it
+curl -s -X DELETE $API/v1/voices/<voice_id> -H "xi-api-key: $READALOUD_API_KEY"`
+
+const CLONE_ERR = `# 400, the plain ElevenLabs call has no consent step: the body says how to finish
+{"detail":{"status":"consent_required","message":"Cloning a voice needs the speaker's recorded consent. ...",
+  "consent":{"mode":"recorded_phrase","consent_phrase_url":"/v1/voices/add/consent-phrase","steps":["..."],
+             "missing":["consent_challenge_id","consent"]}}}
+
+# 422, an option we do not support
+{"detail":[{"loc":["body","remove_background_noise"],"msg":"remove_background_noise=true is not supported: ...","type":"unsupported_parameter"}]}`
+
 const ERR = `# 404, unknown voice id (an ElevenLabs voice id)
 {"detail":{"status":"voice_not_found","message":"Voice 21m00Tcm4TlvDq8ikWAM not found. ..."}}
 
@@ -131,6 +177,7 @@ export default function MigrateFromElevenLabsPage() {
               <ul className="ra-small" style={{ listStyle: 'none', padding: 0, display: 'flex', flexWrap: 'wrap', gap: '8px 18px' }}>
                 <li><a href="#three-changes" style={ul}>Three changes</a></li>
                 <li><a href="#before-after" style={ul}>Before and after</a></li>
+                <li><a href="#voice-cloning" style={ul}>Voice cloning</a></li>
                 <li><a href="#verified" style={ul}>What we tested</a></li>
                 <li><a href="#differences" style={ul}>Differences and unsupported</a></li>
                 <li><a href="#errors" style={ul}>Errors</a></li>
@@ -174,6 +221,31 @@ export default function MigrateFromElevenLabsPage() {
             <p>
               Text is buffered and spoken at sentence boundaries, on <code>flush</code>, and at end of input. The <code>multi-stream-input</code> route (several contexts on one socket) also worked in our run. <code>opus_*</code> output is rejected on WebSocket routes. Word-level timing is not provided.
             </p>
+          </div>
+        </section>
+
+        <section className="ra-section" id="voice-cloning">
+          <div className="ra-wrap ra-narrow ra-ref" style={{ maxWidth: 820 }}>
+            <h2>Instant voice cloning</h2>
+            <p>
+              <code>voices.ivc.create</code> (<code>POST /v1/voices/add</code>), <code>voices.get</code> and <code>voices.delete</code> work for cloned voices, and the returned <code>voice_id</code> works in the text-to-speech routes above. It needs an API key with billing enabled that belongs to your ReadAloud account. Cloned voices speak <b>English only</b> for now: another language returns a <code>422</code> that lists the supported ones.
+            </p>
+            <p>
+              ElevenLabs has no consent step, so we add one. A plain <code>voices.ivc.create</code> call is answered with a <code>400</code> whose <code>detail.consent</code> object tells you what to send; the SDKs surface it as an API error. Clone your own voice, or one you have the speaker&rsquo;s recorded consent for.
+            </p>
+            <h3>JavaScript</h3>
+            <pre style={pre} tabIndex={0}><code>{CLONE_JS}</code></pre>
+            <h3>curl</h3>
+            <pre style={pre} tabIndex={0}><code>{CLONE_CURL}</code></pre>
+            <h3>What we do with the other parameters</h3>
+            <ul>
+              <li><b><code>files</code></b>: one or more recordings; only the largest one is used, and the response says so (<code>reference_files_used</code>).</li>
+              <li><b><code>description</code>, <code>labels</code></b>: accepted, not stored, and listed in the response&rsquo;s <code>ignored</code> field.</li>
+              <li><b><code>remove_background_noise=true</code></b>: <code>422</code>. We do not clean recordings; a recording that is too noisy, too short or has several speakers is rejected with the reason.</li>
+              <li>Each request to speak with a cloned voice takes up to 1,500 characters. <code>with-timestamps</code> and the WebSocket routes are not available for cloned voices.</li>
+              <li>The audio carries an inaudible watermark (response header <code>x-audio-watermarked: true</code>).</li>
+            </ul>
+            <pre style={pre} tabIndex={0}><code>{CLONE_ERR}</code></pre>
           </div>
         </section>
 
@@ -229,13 +301,13 @@ export default function MigrateFromElevenLabsPage() {
             </ul>
             <h3>Not supported on the ElevenLabs paths</h3>
             <p>
-              These paths returned <code>404</code> in our run (or, for voice creation, a ReadAloud error rather than an ElevenLabs-style result), so do not expect the ElevenLabs SDK methods for them to work against ReadAloud:
+              These paths returned <code>404</code> in our run (or, for voice creation, a ReadAloud error rather than an ElevenLabs-style result; instant cloning has since been added, see above), so do not expect the ElevenLabs SDK methods for them to work against ReadAloud:
             </p>
             <ul>
               <li>Speech to text (Scribe), <code>/v1/speech-to-text</code>. ReadAloud has its own transcription API with a different interface; see the <Link href="/developers#speech-to-text" style={ul}>Voice API page</Link>.</li>
               <li>Dubbing, <code>/v1/dubbing</code>. ReadAloud&rsquo;s dubbing is a separate API, not this one.</li>
               <li>The Agents platform (Conversational AI), <code>/v1/convai/...</code>.</li>
-              <li>Voice cloning with ElevenLabs semantics, <code>POST /v1/voices/add</code> (instant and professional voice clones). Sending it with an <code>xi-api-key</code> header returned a ReadAloud authentication error, not a clone. ReadAloud cloning has its own API and needs a payment method.</li>
+              <li>Professional voice cloning. Instant cloning is covered in <a href="#voice-cloning" style={ul}>Instant voice cloning</a> above; trained voices use ReadAloud&rsquo;s own cloning API and need a payment method.</li>
               <li>Speech to speech, text to voice (voice design), audio isolation, sound generation, history, pronunciation dictionaries and projects.</li>
               <li>Not tested: the deprecated ElevenLabs npm package and the ElevenLabs plugins for voice-agent frameworks, see above.</li>
             </ul>
