@@ -8,6 +8,7 @@ import VoiceCloningDocs from '@/components/ra/VoiceCloningDocs'
 import ConsentVoiceCloningDocs from '@/components/ra/ConsentVoiceCloningDocs'
 import publish from '../../content/publish.json'
 import { isPublished } from '@/lib/seoLibrary/publish'
+import { RA_REGISTRY, RA_LIVE_LANGUAGE_ROWS, RA_VOICE_COUNTS } from '@/content/readaloudFacts'
 
 // An /integrations page is linked from here only once it is listed in src/content/publish.json (the same list that decides what is indexed).
 const integrationHref = (slug: string): string | null => (isPublished(publish as { published: string[] }, 'integration', slug) ? `/integrations/${slug}` : null)
@@ -106,7 +107,7 @@ fs.writeFileSync('hello.mp3', Buffer.from(await res.arrayBuffer()))`}</code></pr
                 <thead><tr><th>Field</th><th>Behaviour</th></tr></thead>
                 <tbody>
                   <tr><td><code>input</code></td><td>Required, up to 5,000 characters.</td></tr>
-                  <tr><td><code>voice</code></td><td>Use <code>readaloud-default</code>. The OpenAI stock names (<code>alloy</code>, <code>ash</code>, <code>ballad</code>, <code>coral</code>, <code>echo</code>, <code>fable</code>, <code>nova</code>, <code>onyx</code>, <code>sage</code>, <code>shimmer</code>, <code>verse</code>, <code>marin</code>, <code>cedar</code>) all map to <code>readaloud-default</code>, so they sound the same. Any other value is a ReadAloud voice id from <code>GET /v1/voices</code>, or <code>custom:&lt;id&gt;</code> for a voice you cloned (the German, Spanish, French, Italian and Brazilian Portuguese beta voices use this form too; see Languages below). An unknown voice returns <code>404</code>.</td></tr>
+                  <tr><td><code>voice</code></td><td>Use <code>readaloud-default</code>. The OpenAI stock names (<code>alloy</code>, <code>ash</code>, <code>ballad</code>, <code>coral</code>, <code>echo</code>, <code>fable</code>, <code>nova</code>, <code>onyx</code>, <code>sage</code>, <code>shimmer</code>, <code>verse</code>, <code>marin</code>, <code>cedar</code>) all map to <code>readaloud-default</code>, so they sound the same. Any other value is a ReadAloud voice id from <code>GET /v1/voices</code>, or <code>custom:&lt;id&gt;</code> for a voice you cloned (the {RA_REGISTRY.phrase.liveExtraLanguages} {RA_REGISTRY.phrase.liveBetaPrefix}voices use this form too; see Languages below). An unknown voice returns <code>404</code>.</td></tr>
                   <tr><td><code>model</code></td><td>Accepted and ignored. The voice decides how the audio is made.</td></tr>
                   <tr><td><code>response_format</code></td><td><code>mp3</code> (default, 24 kHz), <code>opus</code> (48 kHz, Ogg), <code>wav</code> (24 kHz) or <code>pcm</code> (24 kHz, 16-bit, mono). <code>aac</code> and <code>flac</code> return <code>400</code>.</td></tr>
                   <tr><td><code>speed</code></td><td>0.25 to 4.0.</td></tr>
@@ -237,15 +238,13 @@ export READALOUD_API_KEY=rtts_...`}</code></pre>
                 <p>Each ReadAloud Live server handles up to 12 simultaneous streams, and a second server starts automatically under load. Beyond that you get <code>{'{ "type": "error", "message": "at capacity, retry shortly" }'}</code> and the socket closes with code <code>1013</code>. Retry with a short backoff.</p>
 
                 <h3 id="languages">Languages (beta)</h3>
-                <p>Besides English, ReadAloud Live has ten beta voices in German, Spanish, French, Italian and Brazilian Portuguese. They are ordinary voice ids: pass one as <code className="inl">voice</code> (OpenAI route) or in the path of <code className="inl">POST /v1/text-to-speech/&#123;voice_id&#125;</code>, and write the text in that language. <code className="inl">GET /v1/voices</code> lists them with <code>language</code> and <code>gender</code>.</p>
+                <p>Besides English, ReadAloud Live has {RA_VOICE_COUNTS.liveListedNonDefault} {RA_REGISTRY.phrase.liveBetaPrefix}voices in {RA_REGISTRY.phrase.liveExtraLanguages}. ReadAloud Studio has {RA_VOICE_COUNTS.studio} {RA_REGISTRY.phrase.studioLanguages} voices. The non-English voices are ordinary voice ids: pass one as <code className="inl">voice</code> (OpenAI route) or in the path of <code className="inl">POST /v1/text-to-speech/&#123;voice_id&#125;</code>, and write the text in that language. <code className="inl">GET /v1/voices</code> lists them with <code>language</code> and <code>gender</code>.</p>
                 <table className="ra-table">
                   <thead><tr><th>Language</th><th>Voices</th></tr></thead>
                   <tbody>
-                    <tr><td>German</td><td><code>custom:de-de-mls-f</code>, <code>custom:de-de-mls-m</code></td></tr>
-                    <tr><td>Spanish</td><td><code>custom:es-pilot-f</code>, <code>custom:es-pilot-m</code></td></tr>
-                    <tr><td>French</td><td><code>custom:fr-fr-mls-f</code>, <code>custom:fr-fr-mls-m</code></td></tr>
-                    <tr><td>Italian</td><td><code>custom:it-it-serena</code>, <code>custom:it-it-paola</code> (both female)</td></tr>
-                    <tr><td>Portuguese (Brazil)</td><td><code>custom:pt-br-faber</code>, <code>custom:pt-br-cadu</code> (both male)</td></tr>
+                    {RA_LIVE_LANGUAGE_ROWS.map((r) => (
+                      <tr key={r.language}><td>{r.label}</td><td>{r.voices.map((v, i) => <span key={v}>{i > 0 ? ', ' : ''}<code>{v}</code></span>)}{r.note ? ` ${r.note}` : ''}</td></tr>
+                    ))}
                   </tbody>
                 </table>
                 <ul>
@@ -440,7 +439,7 @@ curl -L -X POST "<url>/v1/stt?language=auto" \\
                 <ul>
                   <li><b>Price:</b> at list prices ReadAloud is one tenth of ElevenLabs Flash and v4 Turbo ($4 against $40 per million characters) and one twentieth of v2 Multilingual, v3 and v4 ($4 against $80). ElevenLabs runs time-limited promotions that lower some of these prices; the figures here are list prices. ElevenLabs conversational agents list at $0.08 per call minute with the language model billed separately; ReadAloud bills text to speech by character only.</li>
                   <li><b>Speed:</b> ElevenLabs Flash was faster than ReadAloud in our runs, by roughly 80 ms at the median on a warm connection. We do not claim ReadAloud is faster than Flash. It was about four times faster than v2 Multilingual, the model most often chosen for quality.</li>
-                  <li><b>Quality:</b> we do not claim the same voice quality as ElevenLabs, which has far more voices and languages. ReadAloud has one English voice for most uses, plus ten beta voices in German, Spanish, French, Italian and Brazilian Portuguese. We do not publish side-by-side audio; try the default voice on your own text.</li>
+                  <li><b>Quality:</b> we do not claim the same voice quality as ElevenLabs, which has far more voices and languages. ReadAloud Live has a default English voice and {RA_VOICE_COUNTS.liveListedNonDefault} {RA_REGISTRY.phrase.liveBetaPrefix}voices in {RA_REGISTRY.phrase.liveExtraLanguages}; ReadAloud Studio has {RA_VOICE_COUNTS.studio} {RA_REGISTRY.phrase.studioLanguages} voices. We do not publish side-by-side audio; try the default voice on your own text.</li>
                   <li><b>Capacity:</b> each server accepts a limited number of simultaneous streams and more servers start under load. Past capacity you get the <code>at capacity</code> error described above; retry with backoff.</li>
                 </ul>
                 <p className="ra-small">Method: two runs on 2026-10-10, 08:11 to 08:16 UTC (about 1 a.m. in San Jose, a quiet hour), from a throwaway machine in the Fly.io San Jose region, requests interleaved between services. Each run had 40 requests per service on a reused connection and 20 on a new connection, rotating through six sentences of 35 to 60 characters. Time is from sending the request to the first audio byte. ReadAloud was reached the way a customer reaches it: authorize (about 15 ms), then a direct WebSocket; the new-connection figure includes the connection handshake but not the authorize call. ElevenLabs was reached over its streaming HTTP API, <code>pcm_24000</code> output, default settings, with our own account; its new-connection figure includes TCP and TLS setup. v2 Multilingual was measured in one run only. With 20 to 40 samples the 95th percentile is rough, and results change with the hour, the sentence and the connection. Prices exclude taxes and ElevenLabs plan allowances. Re-check ElevenLabs&rsquo; pricing page before you rely on these figures; ElevenLabs advertises lower model latency than the end-to-end figures here, which include the network.</p>

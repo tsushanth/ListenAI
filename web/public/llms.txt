@@ -25,6 +25,7 @@ Pro is subscribed to in the Android app (Google Play); web checkout for Pro is n
 ## Developer API — realtime streaming text-to-speech
 Two engines, ReadAloud Live and ReadAloud Studio, stream natural-sounding speech over WebSocket as it's generated.
 - Docs and signup: https://readaloudai.org/developers
+- Voices and languages: ReadAloud Live has a default English voice and 10 beta voices in German, Spanish, French, Italian and Brazilian Portuguese; ReadAloud Studio has 20 English voices. GET /v1/voices lists them.
 - Free tier: 10,000 characters, no credit card required
 - Pay-as-you-go: $0.01 per 1,000 characters (no plan to manage, scales with usage)
 - Typical warm latency: well under a second to first audio

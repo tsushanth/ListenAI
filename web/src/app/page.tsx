@@ -3,6 +3,7 @@ import RaHeader from '@/components/ra/RaHeader'
 import RaFooter from '@/components/ra/RaFooter'
 import LiveDemo from '@/components/ra/LiveDemo'
 import CodeTabs from '@/components/ra/CodeTabs'
+import { RA_LANGUAGES, RA_VOICES } from '@/content/readaloudFacts'
 
 export default function Home() {
   return (
@@ -52,7 +53,7 @@ export default function Home() {
                 <tbody>
                   <tr><td>Built for</td><td className="hl">Live calls and voice agents</td><td>The most natural read-aloud</td></tr>
                   <tr><td>Price</td><td className="hl">$0.004 per 1,000 characters</td><td>$0.01 per 1,000 characters</td></tr>
-                  <tr><td>Voices</td><td className="hl">One American English voice</td><td>Multiple English voices</td></tr>
+                  <tr><td>Voices</td><td className="hl">{RA_VOICES.liveCell}</td><td>{RA_VOICES.studioCell}</td></tr>
                   <tr><td>Limits</td><td className="hl">5,000 characters per request. Limited capacity, so retry when you get an &ldquo;at capacity&rdquo; error.</td><td>See the docs</td></tr>
                 </tbody>
               </table>
@@ -204,7 +205,7 @@ export default function Home() {
           <div className="ra-wrap ra-two">
             <div><h2>Questions</h2></div>
             <div className="ra-faq">
-              <details><summary>Which languages does it speak?</summary><p>English today. More languages are on the roadmap, and we would rather say so plainly than list languages we cannot yet do well.</p></details>
+              <details><summary>Which languages does it speak?</summary><p>{RA_LANGUAGES.faq}</p></details>
               <details><summary>How many calls can it handle at once?</summary><p>Each ReadAloud Live server handles up to 12 simultaneous streams, and a second server starts automatically under load. Beyond that, new connections get an &ldquo;at capacity&rdquo; error and should retry shortly. If you need guaranteed capacity, email us.</p></details>
               <details><summary>Why is it so much cheaper than ElevenLabs?</summary><p>ReadAloud Live is a small model that runs on ordinary CPUs, so we do not pay for an always-on GPU. The trade-off is fewer voices and a less expressive read than the largest models.</p></details>
               <details><summary>Can I hear how it compares before I commit?</summary><p>Yes. Type your own text into the demo above, then use your free 10,000 characters to test it in your own app.</p></details>

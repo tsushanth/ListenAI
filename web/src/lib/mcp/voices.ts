@@ -1,12 +1,21 @@
-// ReadAloud Studio voice names, read from realtime-tts/worker/models/voices-v1.0.bin.
-// English voices only: prefix af/am = American female/male, bf/bm = British female/male.
-export const KOKORO_VOICES = [
-  'af_alloy', 'af_aoede', 'af_bella', 'af_heart', 'af_jessica', 'af_kore', 'af_nicole', 'af_nova', 'af_river', 'af_sarah', 'af_sky',
-  'am_adam', 'am_echo', 'am_eric', 'am_fenrir', 'am_liam', 'am_michael', 'am_onyx', 'am_puck', 'am_santa',
-  'bf_alice', 'bf_emma', 'bf_isabella', 'bf_lily',
-  'bm_daniel', 'bm_fable', 'bm_george', 'bm_lewis',
-] as const
+import { TTS_REGISTRY } from '../../generated/tts-registry.ts'
+
+// Voice lists come from the TTS registry (src/generated/tts-registry.json, written by scripts/sync-tts-registry.mjs), as the
+// gateway lists them with voices the worker cannot speak left out. Do not hand-type a voice here.
+const STUDIO = TTS_REGISTRY.engines.studio
+const LIVE = TTS_REGISTRY.engines.live
+
+/** Studio voices the docs and list_voices advertise (the registry's gateway catalog, unsupported voices hidden). */
+export const KOKORO_VOICES: readonly string[] = STUDIO.voices.map((v) => v.id)
+/** The voice names Live accepts without a `custom:` prefix. list_voices still returns only this (see LIVE_VOICES for the full list). */
 export const PIPER_VOICES = ['default'] as const
+/** Every Live voice the registry lists: the default English voice, then the beta voices in other languages. */
+export const LIVE_VOICES: readonly string[] = [...(LIVE.defaultVoice ? [LIVE.defaultVoice.id] : []), ...LIVE.voices.map((v) => v.id)]
+/**
+ * Studio voices the registry lists on the API that the worker cannot speak. They are not advertised, but resolveVoice still passes
+ * them upstream exactly as before this list existed (the gateway decides), so no caller that sends one gets a new local error.
+ */
+export const STUDIO_UNSUPPORTED_VOICES: readonly string[] = TTS_REGISTRY.hiddenUnsupportedVoiceIds.studio ?? []
 export const DEFAULT_KOKORO_VOICE = 'af_heart'
 export const CUSTOM_VOICE_RE = /^custom:[A-Za-z0-9_-]{1,64}$/
 
@@ -21,7 +30,8 @@ export function upstreamEngine(engine: Engine): 'live' | 'studio' {
 export function resolveVoice(engine: Engine, voice: string | undefined): { voice: string } | { error: string } {
   const v = voice?.trim() || (engine === 'live' ? 'default' : DEFAULT_KOKORO_VOICE)
   if (CUSTOM_VOICE_RE.test(v)) return { voice: v }
-  const known: readonly string[] = engine === 'live' ? PIPER_VOICES : KOKORO_VOICES
+  const known: readonly string[] = engine === 'live' ? LIVE_VOICES : KOKORO_VOICES
   if (known.includes(v)) return { voice: v }
+  if (engine === 'studio' && STUDIO_UNSUPPORTED_VOICES.includes(v)) return { voice: v }
   return { error: `Unknown voice "${v}" for engine ${engine}. Valid: ${known.join(', ')}, or custom:<id>. Call list_voices to see them.` }
 }
