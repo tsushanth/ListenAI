@@ -10,7 +10,7 @@
     "Split at paragraph or heading boundaries into parts shorter than 5,000 characters, which is the per-request limit.",
     "Render each part with POST https://api.readaloudai.org/v1/audio/speech using your Bearer key, a voice id (readaloud-default or a Studio English voice from GET /v1/voices) and response_format mp3.",
     "Join the parts in order with ffmpeg and add a short silence between sections. Keep a table of contents mapping section titles to timestamps.",
-    "For book-length material, consider the audiobook endpoints: POST /api/audiobooks accepts text or EPUB, detects chapters and exports one mp3 with chapter markers, through a session token or the MCP tools create_audiobook and export_audiobook.",
+    "For book-length material, consider the audiobook endpoints: POST /api/audiobooks accepts text or EPUB, detects chapters and exports one mp3 with chapter markers, with your API key (Authorization: Bearer or xi-api-key), a session token, or the MCP tools create_audiobook and export_audiobook.",
     "Deliver the audio with the original document, and keep the text so users can search and copy."
   ],
   "sampleExample": {
@@ -69,7 +69,7 @@
     },
     {
       "q": "What about very long documents?",
-      "a": "Split into sections under 5,000 characters, or use the audiobook endpoints, which chain chapters and export one mp3. They authenticate with a session token or the MCP tools, not a plain API key."
+      "a": "Split into sections under 5,000 characters, or use the audiobook endpoints, which chain chapters and export one mp3. They accept the same API key as the speech endpoints, a session token, or the MCP tools."
     },
     {
       "q": "Can I avoid reading headers on every page?",

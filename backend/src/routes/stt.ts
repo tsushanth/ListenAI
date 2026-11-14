@@ -285,7 +285,7 @@ function classifyImprovedFailure(err: unknown, clientAborted: boolean): Improved
 // --------------------------------------------------------------------------
 
 type Kind = 'legacy' | 'deepgram' | 'openai';
-type AuthedReq = Request & { userId?: string; authMethod?: string };
+type AuthedReq = Request & { userId?: string; authMethod?: string; apiKeyId?: string };
 
 function cleanStr(v: unknown, max: number): string {
   if (typeof v !== 'string') return '';
@@ -312,6 +312,8 @@ function subjectOf(req: AuthedReq, userId: string): string {
     const k = String(req.headers['x-gateway-key-id'] ?? '').trim();
     if (k && k.length <= 128) return `key:${k}`;
   }
+  // Public rtts_ key sent straight to this API (see middleware/apiKeyAuth.ts): same per-key subject as the MCP path.
+  if (req.authMethod === 'api-key' && req.apiKeyId) return `key:${req.apiKeyId}`;
   return userId;
 }
 

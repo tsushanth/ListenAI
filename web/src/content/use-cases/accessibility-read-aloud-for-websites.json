@@ -69,7 +69,7 @@
     },
     {
       "q": "How do I handle a very long article?",
-      "a": "Split it at paragraph boundaries under 5,000 characters, request each part, and play them in order. The audiobook endpoints chain chapters, but they use a session token or the MCP tools rather than a plain API key."
+      "a": "Split it at paragraph boundaries under 5,000 characters, request each part, and play them in order. The audiobook endpoints chain chapters, and they accept the same API key as the speech endpoints, a session token, or the MCP tools."
     },
     {
       "q": "Can the page highlight words as they are spoken?",
