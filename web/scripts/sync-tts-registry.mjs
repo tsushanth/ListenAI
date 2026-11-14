@@ -63,6 +63,8 @@ export function build(registryDir) {
 
   const engines = {}
   for (const [registryId, e] of Object.entries(reg.engines)) {
+    // Staged engines are not public yet: the docs describe only live engines (the registry's docs view and catalogs skip them too).
+    if ((e.status ?? 'live') !== 'live') continue
     const alias = e.public_alias
     if (!alias) fail(`engine ${registryId} has no public_alias`)
     const voices = listed.filter((v) => v.registryEngine === registryId).map((v) => {
