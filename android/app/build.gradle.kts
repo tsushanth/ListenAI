@@ -37,8 +37,8 @@ android {
         applicationId = "com.listenai"
         minSdk = 26
         targetSdk = 36
-        versionCode = 98
-        versionName = "2.14.54"
+        versionCode = 99
+        versionName = "2.14.55"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
