@@ -47,8 +47,8 @@ test('text_to_speech schema: defaults, limits, engine enum', () => {
 
 test('voice resolution', () => {
   assert.deepEqual(resolveVoice('live', undefined), { voice: 'default' })
-  assert.deepEqual(resolveVoice('studio', undefined), { voice: 'af_heart' })
-  assert.deepEqual(resolveVoice('studio', 'bf_emma'), { voice: 'bf_emma' })
+  assert.deepEqual(resolveVoice('studio', undefined), { voice: 'en-heart' })
+  assert.deepEqual(resolveVoice('studio', 'bf_emma'), { voice: 'en-emma' })
   assert.deepEqual(resolveVoice('live', 'custom:abc_123'), { voice: 'custom:abc_123' })
   assert.ok('error' in resolveVoice('live', 'af_heart'))
   assert.ok('error' in resolveVoice('studio', 'nope'))

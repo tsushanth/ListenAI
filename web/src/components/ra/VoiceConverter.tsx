@@ -218,7 +218,7 @@ export default function VoiceConverter() {
             <div className="ra-vs-spin" aria-hidden="true" />
             <div>
               <h3 style={{ margin: 0 }}>Deploying converter</h3>
-              <p>Building your Seed-VC GPU container. This takes 1–2 minutes.</p>
+              <p>Building your GPU container. This takes 1–2 minutes.</p>
             </div>
           </div>
         ) : deployment.status === 'ready' ? (
@@ -338,7 +338,7 @@ export default function VoiceConverter() {
                 <div className="ra-vs-spin" aria-hidden="true" />
                 <div>
                   <h3 style={{ margin: 0 }}>Converting voice</h3>
-                  <p>Seed-VC is processing your audio. This usually takes 20–30 seconds.</p>
+                  <p>Your audio is being converted. This usually takes 20–30 seconds.</p>
                 </div>
               </div>
             </div>

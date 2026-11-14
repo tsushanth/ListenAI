@@ -57,7 +57,7 @@ export const createClonedVoiceInput = {
   name: z.string().trim().min(1).max(100).default('My cloned voice')
     .describe('A label for the voice, 1-100 characters.'),
   language: z.string().trim().min(2).max(5).default('en')
-    .describe('Language of the voice, e.g. "en", "es", "fr", "de", "ja". Chatterbox Multilingual supports 23 languages.'),
+    .describe('Language of the voice, e.g. "en", "es", "fr", "de", "ja". Instant cloning supports 23 languages.'),
   reference_audio_base64: z.string().min(1).optional()
     .describe(`The reference recording of the speaker, base64 (8-120 s of clean speech by ONE person; up to ${CLONE_MCP_MAX_BASE64_AUDIO_MB} MB decoded). Give this or reference_audio_url.`),
   reference_audio_url: z.string().url().max(2048).optional()

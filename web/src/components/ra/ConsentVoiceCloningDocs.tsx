@@ -35,7 +35,7 @@ curl -X POST "$BASE/voice-clones" \\
 # {
 #   "id": "8b1d2c34-9e57-4a0b-b6f1-2f6c7d0e9a42",
 #   "name": "My narrator voice", "language": "en", "status": "active",
-#   "reference_seconds": 31.4, "model": "chatterbox-mtl-v3",
+#   "reference_seconds": 31.4,
 #   "created_at": "2026-11-04T18:02:11.000Z"
 # }`
 

@@ -56,7 +56,7 @@ export default function DevelopersPage() {
               <code>POST https://api.readaloudai.org/v1/audio/speech</code> accepts the OpenAI <code>audio.speech.create</code> request. OpenAI SDKs, Open WebUI, LiteLLM and other tools that take an OpenAI base URL work by changing only the base URL and the key. Auth is <code>Authorization: Bearer &lt;your key&gt;</code>, the same <code>rtts_</code> key as the rest of this page.
             </p>
 
-            <p className="ra-small" style={{ marginBottom: 16 }}>The earlier names piper-default, piper and kokoro keep working as aliases.</p>
+            <p className="ra-small" style={{ marginBottom: 16 }}>Earlier voice and engine names keep working as aliases.</p>
 
             <h3>Python (openai)</h3>
             <pre style={{ overflowX: 'auto' }}><code>{`# pip install openai
@@ -107,7 +107,7 @@ fs.writeFileSync('hello.mp3', Buffer.from(await res.arrayBuffer()))`}</code></pr
                 <thead><tr><th>Field</th><th>Behaviour</th></tr></thead>
                 <tbody>
                   <tr><td><code>input</code></td><td>Required, up to 5,000 characters.</td></tr>
-                  <tr><td><code>voice</code></td><td>Use <code>readaloud-default</code>. The OpenAI stock names (<code>alloy</code>, <code>ash</code>, <code>ballad</code>, <code>coral</code>, <code>echo</code>, <code>fable</code>, <code>nova</code>, <code>onyx</code>, <code>sage</code>, <code>shimmer</code>, <code>verse</code>, <code>marin</code>, <code>cedar</code>) all map to <code>readaloud-default</code>, so they sound the same. Any other value is a ReadAloud voice id from <code>GET /v1/voices</code>, or <code>custom:&lt;id&gt;</code> for a voice you cloned (the {RA_REGISTRY.phrase.liveExtraLanguages} {RA_REGISTRY.phrase.liveBetaPrefix}voices use this form too; see Languages below). An unknown voice returns <code>404</code>.</td></tr>
+                  <tr><td><code>voice</code></td><td>Use <code>readaloud-default</code>. The OpenAI stock names (<code>alloy</code>, <code>ash</code>, <code>ballad</code>, <code>coral</code>, <code>echo</code>, <code>fable</code>, <code>nova</code>, <code>onyx</code>, <code>sage</code>, <code>shimmer</code>, <code>verse</code>, <code>marin</code>, <code>cedar</code>) all map to <code>readaloud-default</code>, so they sound the same. Any other value is a ReadAloud voice id from <code>GET /v1/voices</code>, or <code>custom:&lt;id&gt;</code> for a voice you cloned (the {RA_REGISTRY.phrase.liveExtraLanguages} {RA_REGISTRY.phrase.liveBetaPrefix}voices are ordinary voice ids too; see Languages below). An unknown voice returns <code>404</code>.</td></tr>
                   <tr><td><code>model</code></td><td>Accepted and ignored. The voice decides how the audio is made.</td></tr>
                   <tr><td><code>response_format</code></td><td><code>mp3</code> (default, 24 kHz), <code>opus</code> (48 kHz, Ogg), <code>wav</code> (24 kHz) or <code>pcm</code> (24 kHz, 16-bit, mono). <code>aac</code> and <code>flac</code> return <code>400</code>.</td></tr>
                   <tr><td><code>speed</code></td><td>0.25 to 4.0.</td></tr>
@@ -238,12 +238,12 @@ export READALOUD_API_KEY=rtts_...`}</code></pre>
                 <p>Each ReadAloud Live server handles up to 12 simultaneous streams, and a second server starts automatically under load. Beyond that you get <code>{'{ "type": "error", "message": "at capacity, retry shortly" }'}</code> and the socket closes with code <code>1013</code>. Retry with a short backoff.</p>
 
                 <h3 id="languages">Languages (beta)</h3>
-                <p>Besides English, ReadAloud Live has {RA_VOICE_COUNTS.liveListedNonDefault} {RA_REGISTRY.phrase.liveBetaPrefix}voices in {RA_REGISTRY.phrase.liveExtraLanguages}. ReadAloud Studio has {RA_VOICE_COUNTS.studio} {RA_REGISTRY.phrase.studioLanguages} voices. The non-English voices are ordinary voice ids: pass one as <code className="inl">voice</code> (OpenAI route) or in the path of <code className="inl">POST /v1/text-to-speech/&#123;voice_id&#125;</code>, and write the text in that language. <code className="inl">GET /v1/voices</code> lists them with <code>language</code> and <code>gender</code>.</p>
+                <p>Besides English, ReadAloud Live has {RA_VOICE_COUNTS.liveListedNonDefault} {RA_REGISTRY.phrase.liveBetaPrefix}voices in {RA_REGISTRY.phrase.liveExtraLanguages}. ReadAloud Studio has {RA_VOICE_COUNTS.studio} {RA_REGISTRY.phrase.studioLanguages} voices. Every voice has a name, a language and a dialect, and is selected by its voice id: pass it as <code className="inl">voice</code> (OpenAI route) or in the path of <code className="inl">POST /v1/text-to-speech/&#123;voice_id&#125;</code>, and write the text in that language. <code className="inl">GET /v1/voices</code> lists them with <code>name</code>, <code>language</code>, <code>dialect</code> and <code>gender</code>.</p>
                 <table className="ra-table">
-                  <thead><tr><th>Language</th><th>Voices</th></tr></thead>
+                  <thead><tr><th>Language</th><th>Voices (name, dialect, voice id)</th></tr></thead>
                   <tbody>
                     {RA_LIVE_LANGUAGE_ROWS.map((r) => (
-                      <tr key={r.language}><td>{r.label}</td><td>{r.voices.map((v, i) => <span key={v}>{i > 0 ? ', ' : ''}<code>{v}</code></span>)}{r.note ? ` ${r.note}` : ''}</td></tr>
+                      <tr key={r.language}><td>{r.label}</td><td>{r.details.map((v, i) => <span key={v.id}>{i > 0 ? '; ' : ''}{v.name}{v.dialect ? `, ${v.dialect}` : ''}, <code>{v.id}</code></span>)}{r.note ? ` ${r.note}` : ''}</td></tr>
                     ))}
                   </tbody>
                 </table>
@@ -251,7 +251,7 @@ export READALOUD_API_KEY=rtts_...`}</code></pre>
                   <li><b>Beta quality.</b> Spanish is a pilot and can sound weak on very short sentences. German and French read at a slow, audiobook pace. Portuguese starts with a short lead-in silence on some voices.</li>
                   <li><b>First use.</b> Voices that are not kept warm can take 2 to 3 seconds on the first request, then run at normal speed.</li>
                   <li><b>Model ids.</b> <code>eleven_flash_v2_5</code> and <code>eleven_turbo_v2_5</code> still list English only; a language voice is selected by its voice id.</li>
-                  <li><b>Attribution.</b> The German, French, Spanish and Italian (Serena) voices are trained on CC BY 4.0 data. If you publish audio, credit the data sets named in each voice's <code>description</code> from <code>GET /v1/voices</code>.</li>
+                  <li><b>Attribution.</b> The German, French, Spanish, Italian and Portuguese voices are trained on openly licensed (CC BY 4.0) data. If you publish audio, credit the dataset authors listed on the <a href="/credits" style={{ textDecoration: 'underline' }}>credits page</a>.</li>
                 </ul>
 
                 <h3 id="voice-cloning">Voice cloning</h3>
@@ -296,7 +296,7 @@ curl -L -X POST "<url>/v1/stt?language=auto" \\
                 <ul>
                   <li><b>Real narrowband phone-style audio.</b> 296 clips of role-played customer calls recorded as real 8 kHz telephone-bandwidth audio. Word error rate 9.8% (10.4% with a 40-term dictionary), and 90.2% of spoken digit sequences were exactly right (89.7% with the dictionary). Scoring ignores filler words and number formatting. The files are stored at 16 kHz and we do not know the original phone codec, the calls are role-played rather than live customer calls, and this is a single test set.</li>
                   <li><b>Noise is our weaker case.</b> With background noise mixed in at 10 dB (578 clips, noise recordings from a public sound library mixed in by us) the word error rate was 17.8% and digit sequences were 84.6% right (17.0% and 86.2% with a dictionary). The same test set mixes clean, simulated-telephone, real-telephone and noisy clips; over all 1,156 items the word error rate was 13.8%.</li>
-                  <li><b>Clean read speech.</b> On 100 short clips of read English speech (LibriTTS-R, about 9 minutes, roughly 1,500 words) word error rate was 2.6% on clean audio and 2.8% on the same clips simulated as 8 kHz telephone audio. That is studio-quality read speech with no background noise or real codec damage, so it is the best case, not what to expect on calls.</li>
+                  <li><b>Clean read speech.</b> On 100 short clips of read English speech (a public read-speech test set, about 9 minutes, roughly 1,500 words) word error rate was 2.6% on clean audio and 2.8% on the same clips simulated as 8 kHz telephone audio. That is studio-quality read speech with no background noise or real codec damage, so it is the best case, not what to expect on calls.</li>
                   <li><b>Known failure modes.</b> In the test set above 0.3% of clips (4 of 1,156) came back with no text at all. On recordings with no speech, text was invented on about 6% of 184 English noise, music and call-line-gap clips (2026-10-05; a later change to the filter did not alter this within noise), and on 3 to 11% of non-speech clips across the language check. Check the output when the audio may be silent.</li>
                 </ul>
                 <p>We have not measured live customer calls, accents, far-field microphones or real background noise, and we measured other languages only on clean read speech (see the language list above). The first request after a quiet period can take about ten extra seconds while a GPU starts.</p>

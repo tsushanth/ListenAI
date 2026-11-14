@@ -60,7 +60,7 @@ export default function TermsPage() {
               summarization. By using these features you acknowledge that your content is processed by the services
               described in our{' '}
               <Link href="/privacy" className="text-primary hover:text-primary-dark">Privacy Policy</Link>,
-              including our own speech servers (running Piper, Kokoro and Chatterbox), Anthropic for summaries and article cleanup,
+              including our own speech servers, Anthropic for summaries and article cleanup,
               and Google and Supabase for sign-in. In the Android app, text you listen to with a standard voice is sent to our
               speech service by default, without a separate prompt each time.
             </p>

@@ -51,12 +51,13 @@ export const RA_REGISTRY = TTS_REGISTRY
 export const RA_LIVE_ENGINE = TTS_REGISTRY.engines.live
 export const RA_STUDIO_ENGINE = TTS_REGISTRY.engines.studio
 export const RA_VOICE_COUNTS = TTS_REGISTRY.counts
-export type RaVoiceRow = { language: string; label: string; voices: readonly string[]; note: string }
+export type RaVoiceRow = { language: string; label: string; voices: readonly string[]; details: readonly { id: string; name: string; dialect?: string }[]; note: string }
 /** One row per listed non-default Live language, in registry order, for the Languages table. `note` is "(both female)" style when the voices share a gender. */
 export const RA_LIVE_LANGUAGE_ROWS: readonly RaVoiceRow[] = Object.entries(RA_LIVE_ENGINE.voicesByLanguage).map(([code, ids]) => {
   const genders = new Set(RA_LIVE_ENGINE.voices.filter((v) => v.language === code).map((v) => v.gender))
   const note = ids.length > 1 && genders.size === 1 ? `(${ids.length === 2 ? 'both' : 'all'} ${Array.from(genders)[0]})` : ''
-  return { language: code, label: (TTS_REGISTRY.languageLabels as Record<string, string>)[code] ?? code, voices: ids, note }
+  const details = RA_LIVE_ENGINE.voices.filter((v) => v.language === code).map((v) => ({ id: v.id, name: v.name, dialect: (v as { dialect?: string }).dialect }))
+  return { language: code, label: (TTS_REGISTRY.languageLabels as Record<string, string>)[code] ?? code, voices: ids, details, note }
 })
 const P = TTS_REGISTRY.phrase
 

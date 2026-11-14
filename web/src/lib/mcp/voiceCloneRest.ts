@@ -44,13 +44,25 @@ function fromUpstream(e: UpstreamError): Response {
   }
 }
 
-/** Relays a backend response (status, JSON or audio body, and the few headers that matter) without re-interpreting it. */
+/** Fields of a backend answer that name the model behind a voice. They are not part of the public API and are dropped from the body. */
+const HIDDEN_BODY_KEYS = new Set(['model', 'engine', 'provider'])
+export function stripHiddenFields(v: unknown): unknown {
+  if (Array.isArray(v)) return v.map(stripHiddenFields)
+  if (v && typeof v === 'object') return Object.fromEntries(Object.entries(v as Record<string, unknown>).filter(([k]) => !HIDDEN_BODY_KEYS.has(k)).map(([k, x]) => [k, stripHiddenFields(x)]))
+  return v
+}
+
+/** Relays a backend response (status, JSON or audio body, and the few headers that matter) without re-interpreting it, minus fields that name the model. */
 async function relay(r: Response): Promise<Response> {
   if (r.status === 401) return jsonError(401, 'unauthenticated', 'Invalid or revoked API key, or this server is not trusted by the backend for voice cloning yet.')
   const h = new Headers({ 'Cache-Control': 'no-store' })
-  for (const k of ['content-type', 'x-voice-id', 'x-model', 'x-watermark', 'x-characters-used', 'x-synthesis-time-ms', 'retry-after']) {
+  for (const k of ['content-type', 'x-voice-id', 'x-watermark', 'x-characters-used', 'x-synthesis-time-ms', 'retry-after']) {
     const v = r.headers.get(k)
     if (v) h.set(k, v)
+  }
+  if ((h.get('content-type') ?? '').toLowerCase().includes('json')) {
+    const text = await r.text()
+    try { return new Response(JSON.stringify(stripHiddenFields(JSON.parse(text))), { status: r.status, headers: h }) } catch { return new Response(text, { status: r.status, headers: h }) }
   }
   return new Response(await r.arrayBuffer(), { status: r.status, headers: h })
 }

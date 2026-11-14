@@ -6,7 +6,7 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { spawnSync } from 'node:child_process'
 import { TTS_REGISTRY } from '../src/generated/tts-registry.ts'
-import { KOKORO_VOICES, LIVE_VOICES, PIPER_VOICES, DEFAULT_KOKORO_VOICE, STUDIO_UNSUPPORTED_VOICES, resolveVoice } from '../src/lib/mcp/voices.ts'
+import { KOKORO_VOICES, LIVE_VOICES, PUBLIC_VOICES, DEFAULT_STUDIO_VOICE, STUDIO_UNSUPPORTED_VOICES, backendVoiceId, resolveVoice } from '../src/lib/mcp/voices.ts'
 import { RA_LANGUAGES, RA_VOICES, RA_TIERS, RA_LIVE_LANGUAGE_ROWS } from '../src/content/readaloudFacts.ts'
 // @ts-ignore plain .mjs script
 import { build, llmsWith } from '../scripts/sync-tts-registry.mjs'
@@ -18,7 +18,7 @@ test('the generated .json and its .ts twin hold the same data, stamped with a re
   const json = JSON.parse(read('../src/generated/tts-registry.json'))
   assert.deepEqual(JSON.parse(JSON.stringify(TTS_REGISTRY)), json)
   assert.match(json.registry.hash, /^[0-9a-f]{16}$/)
-  assert.equal(json.registry.catalog, 'gateway-catalog.hide-unsupported.json')
+  assert.equal(json.registry.catalog, 'public-catalog.json')
 })
 
 test('counts add up and every language and voice list is consistent', () => {
@@ -39,18 +39,38 @@ test('docs never advertise a voice the worker cannot speak (hide-unsupported app
   assert.ok(hidden.size > 0, 'the registry currently hides some Studio voices')
   for (const id of KOKORO_VOICES) assert.ok(!hidden.has(id), `${id} is advertised but the worker cannot speak it`)
   for (const id of TTS_REGISTRY.engines.studio.voices.map((v) => v.id)) assert.ok(!hidden.has(id), id)
-  assert.ok(KOKORO_VOICES.includes(DEFAULT_KOKORO_VOICE))
-  assert.ok(!KOKORO_VOICES.includes('bf_emma'), 'bf_emma is worker_supported=false in the registry')
+  assert.ok(KOKORO_VOICES.includes(DEFAULT_STUDIO_VOICE))
+  assert.ok(!KOKORO_VOICES.includes('en-emma'), 'en-emma (old id bf_emma) is worker_supported=false in the registry')
+  assert.ok(STUDIO_UNSUPPORTED_VOICES.includes('bf_emma'))
 })
 
-test('voice resolution: listed voices pass, a hidden Studio voice is still passed through as before, unknown ones are refused', () => {
-  assert.deepEqual(resolveVoice('studio', 'af_heart'), { voice: 'af_heart' })
-  assert.deepEqual(resolveVoice('studio', 'bf_emma'), { voice: 'bf_emma' }) // not advertised, not newly refused
+test('voice resolution: public ids pass, old ids map to the public id, a hidden Studio voice is still passed through, unknown ones are refused', () => {
+  assert.deepEqual(resolveVoice('studio', 'en-heart'), { voice: 'en-heart' })
+  assert.deepEqual(resolveVoice('studio', 'af_heart'), { voice: 'en-heart' }) // old id, mapped
+  assert.deepEqual(resolveVoice('studio', 'bf_emma'), { voice: 'en-emma' }) // not advertised, not newly refused
   assert.ok('error' in resolveVoice('studio', 'nope'))
   assert.deepEqual(resolveVoice('live', undefined), { voice: 'default' })
-  assert.deepEqual(resolveVoice('live', 'custom:de-de-mls-f'), { voice: 'custom:de-de-mls-f' })
-  assert.ok(LIVE_VOICES.includes('default') && LIVE_VOICES.includes('custom:pt-br-cadu'))
-  assert.deepEqual([...PIPER_VOICES], ['default']) // list_voices (server.ts) still returns this; see the hand-off note
+  assert.deepEqual(resolveVoice('studio', undefined), { voice: 'en-heart' })
+  assert.deepEqual(resolveVoice('live', 'de-f1'), { voice: 'de-f1' })
+  assert.deepEqual(resolveVoice('live', 'custom:de-de-mls-f'), { voice: 'de-f1' }) // old id, mapped
+  assert.deepEqual(resolveVoice('live', 'custom:pt-br-cadu'), { voice: 'pt-br-m2' })
+  assert.deepEqual(resolveVoice('live', 'custom:my_trained_voice'), { voice: 'custom:my_trained_voice' })
+  assert.ok('error' in resolveVoice('live', 'af_heart'), 'a Studio voice is not a Live voice')
+  assert.ok('error' in resolveVoice('studio', 'de-f1'))
+  assert.ok(LIVE_VOICES.includes('default') && LIVE_VOICES.includes('pt-br-m2'))
+  assert.equal(backendVoiceId('en-heart'), 'af_heart') // the audiobook route still takes the old ids
+  assert.equal(backendVoiceId('something-else'), 'something-else')
+})
+
+test('list_voices data: public ids with name, language, dialect and gender only', () => {
+  for (const t of ['live', 'studio'] as const) {
+    assert.ok(PUBLIC_VOICES[t].length > 0)
+    for (const v of PUBLIC_VOICES[t]) {
+      assert.ok(Object.keys(v).every((k) => ['voice_id', 'name', 'language', 'dialect', 'gender'].includes(k)), JSON.stringify(v))
+      assert.match(v.voice_id, /^[a-z0-9][a-z0-9-]{1,40}$/)
+    }
+  }
+  assert.equal(PUBLIC_VOICES.live[0].voice_id, 'default')
 })
 
 test('facts: Live is not "one voice" and not "English today"', () => {
@@ -92,52 +112,70 @@ test('MCP page, MCP server text and the two edited use cases make no stale voice
   assert.match(read('../src/lib/mcp/server.ts'), /TTS_REGISTRY\.counts\.studio/)
 })
 
-// --- the sync script itself, against a synthetic registry ---
-function fakeRegistry(patch?: (d: { reg: any; cat: any }) => void) {
+// --- the sync script itself, against a synthetic registry (public-catalog.json + registry.json for the hash and old ids + the policy) ---
+function fakeRegistry(patch?: (d: { reg: any; pub: any; policy: any }) => void) {
   const dir = mkdtempSync(join(tmpdir(), 'tts-registry-'))
   mkdirSync(join(dir, 'dist'))
   const reg = {
     version: 1, hash: 'abcdef0123456789',
     engines: {
-      piper: { label: 'Live', public_alias: 'live', hardware: 'cpu', price_class: 'live', languages: ['en', 'fr'] },
-      kokoro: { label: 'Studio', public_alias: 'studio', hardware: 'gpu', price_class: 'studio', languages: ['en'] },
+      e1: { label: 'Live', public_alias: 'live', tier: 'live', languages: ['en', 'fr'] },
+      e2: { label: 'Studio', public_alias: 'studio', tier: 'studio', languages: ['en'] },
+      e3: { label: 'Staged', public_alias: 'staged', tier: 'live', status: 'staged', languages: ['en'] },
     },
     voices: [
-      { voice_id: 'default', engine: 'piper', language: 'en', surfaces: { api: false } },
-      { voice_id: 'custom:fr-a', engine: 'piper', language: 'fr', surfaces: { api: true } },
-      { voice_id: 'k1', engine: 'kokoro', language: 'en', surfaces: { api: true } },
-      { voice_id: 'k2', engine: 'kokoro', language: 'en', surfaces: { api: true } },
-      { voice_id: 'kx', engine: 'kokoro', language: 'en', surfaces: { api: true }, worker_supported: false },
+      { voice_id: 'default', engine: 'e1', language: 'en', surfaces: { api: false } },
+      { voice_id: 'custom:fr-a', engine: 'e1', language: 'fr', status: 'live', surfaces: { api: true }, public_id: 'fr-f1', aliases: ['custom:fr-a'] },
+      { voice_id: 'k1', engine: 'e2', language: 'en', status: 'live', surfaces: { api: true }, public_id: 'en-k1', aliases: ['k1'] },
+      { voice_id: 'k2', engine: 'e2', language: 'en', status: 'live', surfaces: { api: true }, public_id: 'en-k2', aliases: ['k2'] },
+      { voice_id: 'kx', engine: 'e2', language: 'en', status: 'live', surfaces: { api: true }, worker_supported: false, public_id: 'en-kx', aliases: ['kx'] },
+      { voice_id: 'st:1', engine: 'e3', language: 'en', status: 'staged', surfaces: { api: true }, public_id: 'aria', aliases: ['st:1'] },
     ],
   }
-  const cat = {
-    builtIn: [{ voice_id: 'k1', name: 'K1', language: 'en', gender: 'female' }, { voice_id: 'k2', name: 'K2', language: 'en', gender: 'male' }],
-    piperLanguage: [{ voice_id: 'custom:fr-a', name: 'French', language: 'fr', gender: 'female', description: 'Beta. Something.', engine: 'piper' }],
+  const pub = {
+    tiers: { live: { languages: ['en', 'fr'] }, studio: { languages: ['en'] } },
+    voices: [
+      { voice_id: 'fr-f1', name: 'French female', language: 'fr', dialect: 'French', gender: 'female', tier: 'live' },
+      { voice_id: 'en-k1', name: 'K1', language: 'en', dialect: 'American', gender: 'female', tier: 'studio' },
+      { voice_id: 'en-k2', name: 'K2', language: 'en', dialect: 'American', gender: 'male', tier: 'studio' },
+    ],
   }
-  patch?.({ reg, cat })
+  const policy = { denylist: ['secretmodel', 'fish speech'] }
+  patch?.({ reg, pub, policy })
   writeFileSync(join(dir, 'dist/registry.json'), JSON.stringify(reg))
-  writeFileSync(join(dir, 'dist/gateway-catalog.hide-unsupported.json'), JSON.stringify(cat))
+  writeFileSync(join(dir, 'dist/public-catalog.json'), JSON.stringify(pub))
+  writeFileSync(join(dir, 'public-policy.json'), JSON.stringify(policy))
   return dir
 }
 
-test('sync: builds counts, phrases and hidden voices from the registry dist, and the same input gives the same output', () => {
+test('sync: builds counts and phrases from the public catalog, maps old ids of live voices, and the same input gives the same output', () => {
   const dir = fakeRegistry()
   try {
     const a: any = build(dir)
     assert.deepEqual(build(dir), a)
     assert.deepEqual(a.counts, { total: 3, live: 1, studio: 2, liveListedNonDefault: 1 })
     assert.equal(a.phrase.llms, 'ReadAloud Live has a default English voice and 1 beta voices in French; ReadAloud Studio has 2 English voices. GET /v1/voices lists them.')
-    assert.deepEqual(a.hiddenUnsupportedVoiceIds, { studio: ['kx'] })
     assert.equal(a.registry.hash, 'abcdef0123456789')
+    assert.equal(a.registry.catalog, 'public-catalog.json')
+    assert.deepEqual(a.engines.live.defaultVoice, { id: 'default', name: 'Default', language: 'en' })
+    assert.deepEqual(a.engines.studio.voices[0], { id: 'en-k1', name: 'K1', language: 'en', gender: 'female', dialect: 'American', beta: false })
+    // old ids: live voices only (the hidden worker_supported=false voice is kept so a caller that sends it still gets through; the staged engine is not)
+    assert.deepEqual(a._legacy, { 'custom:fr-a': { id: 'fr-f1', tier: 'live' }, k1: { id: 'en-k1', tier: 'studio' }, k2: { id: 'en-k2', tier: 'studio' }, kx: { id: 'en-kx', tier: 'studio' } })
+    // nothing internal leaks into the public data
+    const text = JSON.stringify({ ...a, _legacy: undefined })
+    for (const internal of ['e1', 'e2', 'custom:fr-a', 'hardware', 'registryId', 'priceClass', 'worker']) assert.ok(!text.includes(internal), `public data mentions ${internal}`)
   } finally { rmSync(dir, { recursive: true, force: true }) }
 })
 
-test('sync: an unknown language code, a voice outside its engine languages, and an empty engine all fail loudly', () => {
-  const cases: Array<[RegExp, (d: { reg: any; cat: any }) => void]> = [
-    [/xx/, ({ reg }) => { reg.engines.piper.languages.push('xx') }],
-    [/is not one of kokoro's languages/, ({ cat }) => { cat.builtIn[0].language = 'fr' }],
-    [/lists no voices/, ({ cat }) => { cat.builtIn = [] }],
+test('sync: an unknown language code, a voice outside its tier languages, a tier with no voices, a missing tier and a denylisted term all fail loudly', () => {
+  const cases: Array<[RegExp, (d: { reg: any; pub: any; policy: any }) => void]> = [
+    [/xx/, ({ pub }) => { pub.tiers.live.languages.push('xx') }],
+    [/is not one of tier studio's languages/, ({ pub }) => { pub.voices[1].language = 'fr' }],
+    [/have no listed voice/, ({ pub }) => { pub.voices = pub.voices.filter((v: any) => v.tier !== 'studio') }],
     [/lacks hash/, ({ reg }) => { delete reg.hash }],
+    [/has no tier "studio"/, ({ pub }) => { delete pub.tiers.studio }],
+    [/denylisted term \("secretmodel"\)/, ({ pub }) => { pub.voices[1].name = 'SecretModel voice' }],
+    [/denylisted term \("fish speech"\)/, ({ pub }) => { pub.voices[2].dialect = 'Fish-Speech' }],
   ]
   for (const [re, patch] of cases) {
     const dir = fakeRegistry(patch)

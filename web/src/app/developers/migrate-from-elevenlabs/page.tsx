@@ -144,7 +144,7 @@ export default function MigrateFromElevenLabsPage() {
         <section className="ra-section" id="three-changes" style={{ paddingTop: 40 }}>
           <div className="ra-wrap ra-narrow ra-ref" style={{ maxWidth: 820 }}>
             <h2>Three things to change</h2>
-            <p className="ra-small" style={{ marginTop: 0 }}>The earlier names piper-default, piper and kokoro keep working as aliases.</p>
+            <p className="ra-small" style={{ marginTop: 0 }}>Earlier voice and engine names keep working as aliases.</p>
             <ol style={{ paddingLeft: 24, listStyle: 'decimal', display: 'grid', gap: 10, color: 'var(--ink2)' }}>
               <li><b>Base URL:</b> <code>https://api.readaloudai.org</code> instead of <code>https://api.elevenlabs.io</code>.</li>
               <li><b>API key:</b> your ReadAloud key (it starts with <code>rtts_</code>). Send it as <code>xi-api-key</code> or as <code>Authorization: Bearer</code>; both work.</li>
