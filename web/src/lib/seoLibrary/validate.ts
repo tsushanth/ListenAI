@@ -72,6 +72,8 @@ export function validateVendor(v: Vendor, now: Date = new Date()): Issue[] {
   if (stated(v.voices.count) || stated(v.voices.languages) || stated(v.voices.customVoiceOrCloning) || v.voices.sourceUrl) needSource('voices', v.voices.sourceUrl)
   if (stated(v.streaming.vendorStatedLatency) || v.streaming.websocket !== 'unknown' || v.streaming.http !== 'unknown' || v.streaming.sourceUrl) needSource('streaming', v.streaming.sourceUrl)
   if (stated(v.licensing.commercialUse) || stated(v.licensing.attributionOrConditions) || v.licensing.sourceUrl) needSource('licensing', v.licensing.sourceUrl)
+  if (v.speechToText) needSource('speechToText', v.speechToText.sourceUrl)
+  if (v.ourMeasurement && v.ourMeasurement.measuredOn > t) err('DATE_FUTURE', `ourMeasurement.measuredOn ${v.ourMeasurement.measuredOn} is in the future`)
   if (stated(v.limits.perRequestCharacters) || stated(v.limits.concurrency) || v.limits.sourceUrl) needSource('limits', v.limits.sourceUrl)
   // When hipaa, soc2 and gdpr are all 'not-stated' there is no compliance fact to cite. Any 'stated' value still needs a listed source.
   if ([v.compliance.hipaa, v.compliance.soc2, v.compliance.gdpr].some((x) => x !== 'not-stated') || v.compliance.sourceUrl) needSource('compliance', v.compliance.sourceUrl)

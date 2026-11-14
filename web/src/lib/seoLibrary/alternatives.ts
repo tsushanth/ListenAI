@@ -1,12 +1,12 @@
 import {
-  RA_COMPLIANCE_STATEMENT, RA_FORMATS, RA_FREE_CREDITS, RA_LANGUAGES, RA_LIMITS, RA_LIVE, RA_NAME, RA_OPENAI_ROUTE, RA_PATHS, RA_STREAMING, RA_STUDIO, RA_VOICES,
+  RA_COMPLIANCE_STATEMENT, RA_SPEECH_TO_TEXT, RA_FORMATS, RA_FREE_CREDITS, RA_LANGUAGES, RA_LIMITS, RA_LIVE, RA_NAME, RA_OPENAI_ROUTE, RA_PATHS, RA_STREAMING, RA_STUDIO, RA_VOICES,
 } from '../../content/readaloudFacts.ts'
 import type { Vendor, VendorCategory } from './schema.ts'
 import type { Library } from './load.ts'
 import type { Block } from './model.ts'
 import { NOT_STATED, hash, joinList, longDate, lowerFirst, poss, sentence, usd } from './helpers.ts'
 import { CATEGORY_LABEL, FAMILY_PHRASE, hasText, numericRows, priceFamily, priceIsArchiveOnly, priceRows, priceStatements, priceText, relatedOptions, withArticle } from './vendor.ts'
-import { vendorLatencyCell, voiceCount } from './compare.ts'
+import { vendorLatencyCell, vendorSttCell, voiceCount } from './compare.ts'
 
 // The body of every /alternatives/<slug>-alternatives page. Three rules keep these pages from becoming thin, near-duplicate
 // programmatic pages:
@@ -74,8 +74,15 @@ const latency: Section = (v) => {
   const http = v.streaming.http
   const bits = [ws !== 'unknown' ? `WebSocket streaming ${ws === 'yes' ? 'is listed' : 'is not listed'}` : '', http !== 'unknown' ? `HTTP streaming ${http === 'yes' ? 'is listed' : 'is not listed'}` : ''].filter(Boolean)
   const streamNote = hasText(v.streaming.note) ? ` ${sentence(v.streaming.note)}` : ''
+  if (v.ourMeasurement) out.push({ kind: 'p', text: `In our own side-by-side run, measured ${longDate(v.ourMeasurement.measuredOn)}: ${sentence(v.ourMeasurement.summary)} ${RA_NAME} makes no claim of lower latency than ${v.name}.${v.ourMeasurement.methodPath ? ` Method: ${v.ourMeasurement.methodPath}.` : ''}` })
   out.push({ kind: 'p', text: `${bits.length ? `${v.name}: ${joinList(bits)}.${streamNote}` : hasText(v.streaming.note) ? `${v.name}:${streamNote}` : `We could not read a streaming statement on ${poss(v.name)} pages.`} ${hasText(v.streaming.vendorStatedLatency) ? `${sentence(lat.text)}` : 'No latency figure is stated on the pages we reviewed.'} Test from your own servers with your own text.` })
   return out
+}
+
+const speech: Section = (v) => {
+  const stt = vendorSttCell(v)
+  if (!stt) return []
+  return [{ kind: 'h2', text: 'Speech to text' }, { kind: 'p', text: `${v.name} lists speech to text at: ${sentence(stt.text)} ${RA_NAME}: ${sentence(RA_SPEECH_TO_TEXT.cell)} Current prices: ${RA_PATHS.developers}.` }]
 }
 
 const voices: Section = (v) => {
@@ -135,7 +142,7 @@ const listed: Section = (v) => {
 const unconfirmed: Section = (v) => (v.unknowns.length ? [{ kind: 'h2', text: `What we could not confirm about ${v.name}` }, { kind: 'list', items: v.unknowns.map((text): Item => ({ text })) }] : [])
 
 const SECTIONS: Record<VendorCategory, Section[]> = {
-  'api-platform': [who, pricing, listed, latency, voices, limits, compat, unconfirmed],
+  'api-platform': [who, pricing, listed, latency, speech, voices, limits, compat, unconfirmed],
   'cloud-provider': [who, listed, pricing, voices, compliance, limits, unconfirmed],
   'studio-tool': [who, pricing, voices, listed, licensing, limits, unconfirmed],
   'model-vendor': [who, pricing, compat, listed, voices, limits, compliance, unconfirmed],
