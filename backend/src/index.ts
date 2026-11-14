@@ -6,7 +6,7 @@ import compression from 'compression';
 import pinoHttp from 'pino-http';
 
 import { config } from './lib/config.js';
-import { logger } from './lib/logger.js';
+import { logger, LOG_REDACT_PATHS } from './lib/logger.js';
 
 import { requireAuth } from './middleware/auth.js';
 import { requireAuthOrApiKey } from './middleware/apiKeyAuth.js';
@@ -123,7 +123,7 @@ app.use(pinoHttp({
   autoLogging: {
     ignore: (req) => req.url === '/health',
   },
-  redact: ['req.headers.authorization'],
+  redact: LOG_REDACT_PATHS,
 }));
 
 // Trust proxy (required for rate limiting behind load balancer)

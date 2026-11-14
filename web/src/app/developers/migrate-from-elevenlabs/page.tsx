@@ -233,7 +233,7 @@ export default function MigrateFromElevenLabsPage() {
             </p>
             <ul>
               <li>Speech to text (Scribe), <code>/v1/speech-to-text</code>. ReadAloud has its own transcription API with a different interface; see the <Link href="/developers#speech-to-text" style={ul}>Voice API page</Link>.</li>
-              <li>Dubbing, <code>/v1/dubbing</code>. ReadAloud&rsquo;s dubbing is a separate API, not this one.</li>
+              <li>Dubbing, <code>/v1/dubbing</code>. ReadAloud&rsquo;s dubbing is a separate API, not this one, but the same <code>rtts_</code> key works on it (and on voice conversion, voice design, audio isolation and audiobooks).</li>
               <li>The Agents platform (Conversational AI), <code>/v1/convai/...</code>.</li>
               <li>Voice cloning with ElevenLabs semantics, <code>POST /v1/voices/add</code> (instant and professional voice clones). Sending it with an <code>xi-api-key</code> header returned a ReadAloud authentication error, not a clone. ReadAloud cloning has its own API and needs a payment method.</li>
               <li>Speech to speech, text to voice (voice design), audio isolation, sound generation, history, pronunciation dictionaries and projects.</li>

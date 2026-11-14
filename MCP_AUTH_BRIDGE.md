@@ -191,3 +191,24 @@ Run: `cd backend && npm test` (all 80 tests pass, including the 8 new ones).
 - **Instant, consent-gated cloning** (`readaloud_issue_consent_phrase`, `readaloud_create_voice_clone`, `readaloud_list_voices`, `readaloud_delete_voice_clone`, and `clone:<id>` in `text_to_speech`) DOES use this bridge: the web layer forwards `x-gateway-admin-secret` + `x-gateway-uid` to `/internal/voice-clone-api` (`routes/voiceCloneApiKey.ts`), which refuses keys with no bound account. See `docs/VOICE_CLONING_CONSENT.md`, "API-key access".
 - **Trained custom voices** (`create_voice_clone`, `upload_voice_clone_dataset`, ...) do not go through this backend bridge at all: the MCP tools call the realtime-tts gateway's
   `/v1/voices/*` with the caller's API key as bearer. `commit_voice_clone_dataset` is the billed step ($2.50).
+
+## Direct public-key access (rtts_ key, no MCP needed)
+
+Dubbing, voice conversion, voice design, audio isolation, audiobooks, sound effects and the speech-to-text
+compat routes are all mounted behind `requireAuthOrApiKey`, which now also accepts the public API key directly:
+`Authorization: Bearer rtts_...` or the ElevenLabs header `xi-api-key`. Off by default: set
+`RTTS_KEY_AUTH_ENABLED=true` on the backend to turn it on (see `.env.example` for the optional tuning vars).
+
+How a key becomes an identity (`lib/apiKeyResolver.ts`): the gateway validates the key
+(`POST {REALTIME_TTS_GATEWAY_URL}/dubbing/authorize`, 401 invalid or revoked, 402 free credits used up), then the
+gateway's key id is mapped to the owning account through `realtimetts_api_keys` (revoked rows ignored). A key the
+gateway accepts but with no live account row gets 403 and is never billed to a made-up account. Results are cached
+for 10 s (`RTTS_KEY_CACHE_TTL_MS`), so a revoked key stops working within that time. From there the request is
+identical to a JWT or MCP request: `req.user.id` is the account, so billing, free credits, job rows and per-user
+limits all follow the key's owner. STT limits are keyed on the gateway key id, same as the MCP path.
+
+Limits: a per-account ceiling across all families (`RTTS_KEY_RATE_PER_MIN`, default 300) and a per-IP cut-off for
+repeated invalid keys (`RTTS_KEY_MAX_FAILURES_PER_5MIN`, default 30), both per process; each router keeps its own
+limits. Key management (`/api/tts-api-keys`) stays session-only. There are no per-family scopes because the key
+model has none. The key is never logged (`xi-api-key` and `authorization` are redacted by `LOG_REDACT_PATHS`), and
+an `rtts_` bearer is never sent to JWT verification.

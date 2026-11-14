@@ -5,6 +5,17 @@ import { config } from './config.js';
 // Logger Configuration
 // ============================================================================
 
+// Credential-carrying request headers that must never reach a log line. `xi-api-key` is the ElevenLabs-style way
+// to send the public rtts_ key (middleware/apiKeyAuth.ts); the authorization header can also carry one.
+export const LOG_REDACT_PATHS = [
+  'req.headers.authorization',
+  'req.headers.cookie',
+  'req.headers["xi-api-key"]',
+  'req.headers["x-gateway-admin-secret"]',
+  'headers.authorization',
+  'headers["xi-api-key"]',
+];
+
 export const logger = pino({
   level: config.NODE_ENV === 'production' ? 'info' : 'debug',
   transport:
@@ -23,7 +34,7 @@ export const logger = pino({
     env: config.NODE_ENV,
   },
   redact: {
-    paths: ['req.headers.authorization', 'req.headers.cookie'],
+    paths: LOG_REDACT_PATHS,
     censor: '[REDACTED]',
   },
 });

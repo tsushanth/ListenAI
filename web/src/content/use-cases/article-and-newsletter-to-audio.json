@@ -49,7 +49,7 @@
     },
     {
       "feature": "Audiobook endpoints",
-      "howItHelps": "POST /api/audiobooks chains chapters and exports one mp3 with chapter markers, through a session token or the MCP tools."
+      "howItHelps": "POST /api/audiobooks chains chapters and exports one mp3 with chapter markers, with your API key, a session token or the MCP tools."
     }
   ],
   "considerations": [
