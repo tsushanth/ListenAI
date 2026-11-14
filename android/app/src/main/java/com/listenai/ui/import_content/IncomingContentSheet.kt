@@ -68,6 +68,7 @@ fun IncomingContentSheet(
     LaunchedEffect(state) {
         val done = state as? ImportState.Success ?: return@LaunchedEffect
         viewModel.resetState()
+        com.listenai.service.tts.LanguageVoiceCheck.afterImport(context, done.language)
         if (openAfterImport) onReadNow(done.articleId) else onDismiss()
     }
 

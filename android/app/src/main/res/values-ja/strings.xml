@@ -85,6 +85,7 @@
     <string name="settings_privacy_subtitle">プライバシーポリシーを表示</string>
     <string name="settings_terms">利用規約</string>
     <string name="settings_terms_subtitle">利用規約を表示</string>
+    <string name="settings_credits">オープンソースのクレジット</string>
 
     <!-- Playback -->
     <string name="now_playing">再生中</string>
@@ -373,6 +374,25 @@
     <string name="player_synthesis_failed">合成に失敗しました</string>
     <string name="player_regeneration_failed">再生成に失敗しました</string>
     <string name="player_something_went_wrong">エラーが発生しました</string>
+    <string name="lang_no_voice_message">このスマートフォンには%1$sの音声がまだインストールされていません。テキスト読み上げの設定で音声データをインストールしてから、もう一度お試しください。</string>
+    <string name="lang_chip_label">言語: %1$s</string>
+    <string name="lang_chip_auto">自動(%1$s)</string>
+    <string name="lang_voice_row">音声: %1$s</string>
+    <string name="lang_voice_dialog_title">%1$sの音声</string>
+    <string name="lang_voice_auto">自動(利用可能な最良のもの)</string>
+    <string name="lang_voice_cloud_beta">ReadAloudの音声(ベータ版、インターネットが必要)</string>
+    <string name="lang_voice_numbered">音声 %1$d</string>
+    <string name="lang_voice_quality_high">高品質</string>
+    <string name="lang_voice_quality_standard">標準品質</string>
+    <string name="lang_voice_needs_internet">インターネットが必要</string>
+    <string name="lang_no_voice_import_notice">このスマートフォンには%1$sの音声がまだありません。記事を開いてインストールしてください。</string>
+    <string name="speech_no_engine_message">このスマートフォンにはテキスト読み上げエンジンがインストールされていません。オフラインで聞くには、Google の音声サービスをインストールしてください。</string>
+    <string name="speech_offline_message">オフラインで、このスマートフォンにはオフライン用の音声が用意されていません。インターネットに接続してもう一度お試しください。</string>
+    <string name="speech_busy_message">音声サービスは現在混み合っています。しばらくしてからもう一度お試しください。</string>
+    <string name="player_install_voice_data">音声データをインストール</string>
+    <string name="player_install_tts_engine">音声エンジンをインストール</string>
+    <string name="voice_request_cta">自然な%1$sの音声がほしいですか?お知らせください</string>
+    <string name="voice_request_thanks">ありがとうございます。自然な%1$sの音声をご希望であることを記録しました。</string>
     <string name="player_go_back">戻る</string>
     <string name="player_try_again">再試行</string>
     <string name="player_preparing_audio">音声を準備中…</string>

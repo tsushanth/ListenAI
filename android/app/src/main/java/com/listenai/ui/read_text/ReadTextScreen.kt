@@ -54,6 +54,13 @@ import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import com.listenai.R
+import com.listenai.service.LanguageDetector
+import com.listenai.service.tts.ReadTextLanguage
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
+import androidx.compose.runtime.mutableIntStateOf
 import kotlinx.coroutines.tasks.await
 import java.util.Locale
 
@@ -79,29 +86,89 @@ import java.util.Locale
 @Composable
 fun ReadTextScreen() {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
 
     // Local UI state — kept simple, no ViewModel yet. Promote when state
     // surface grows (camera, history, multi-language, etc.).
     var status by remember { mutableStateOf(Status.Idle) }
     var recognizedText by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    // Set when the phone has no voice for the language of the text: shows the install button, and is re-checked on return.
+    var noVoiceLanguage by remember { mutableStateOf<String?>(null) }
+    // Bumped to build a fresh engine connection after the user installed voice data (a live one does not see it).
+    var ttsGeneration by remember { mutableIntStateOf(0) }
+    var speakAgainOnReady by remember { mutableStateOf(false) }
 
     // System TextToSpeech — uses the user's preferred engine. Initialized
-    // once for the lifetime of this screen; released in DisposableEffect.
+    // once per generation; released in DisposableEffect.
     val mainHandler = remember { Handler(Looper.getMainLooper()) }
-    val tts = remember {
+    val ready = remember(ttsGeneration) { CompletableDeferred<Boolean>() }
+    val tts = remember(ttsGeneration) {
         var instance: TextToSpeech? = null
         instance = TextToSpeech(context.applicationContext) { result ->
             if (result == TextToSpeech.SUCCESS) {
                 instance?.language = Locale.US
             }
+            ready.complete(result == TextToSpeech.SUCCESS)
         }
         instance
     }
+
+    // Detect the language of [text], then speak it with a voice for that language, or show the missing-voice message.
+    // The tab used to force Locale.US, which reads Spanish or French text with an English voice.
+    fun speak(text: String, utteranceId: String) {
+        scope.launch {
+            val engineUp = withTimeoutOrNull(ENGINE_WAIT_MS) { ready.await() } == true
+            if (!engineUp) {
+                errorMessage = context.getString(R.string.speech_no_engine_message)
+                status = Status.Error
+                return@launch
+            }
+            val language = ReadTextLanguage.languageOrDefault(LanguageDetector.detectOrNull(text))
+            when (val plan = ReadTextLanguage.plan(language, tts.isLanguageAvailable(ReadTextLanguage.localeFor(language)))) {
+                is ReadTextLanguage.Plan.Speak -> {
+                    noVoiceLanguage = null
+                    tts.language = plan.locale
+                    tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, utteranceId)
+                }
+                is ReadTextLanguage.Plan.NoVoice -> {
+                    noVoiceLanguage = plan.language
+                    errorMessage = context.getString(R.string.lang_no_voice_message, LanguageDetector.displayName(plan.language) ?: plan.language)
+                    status = Status.Error
+                }
+            }
+        }
+    }
+
+    // Back from the voice-data installer: build a new engine connection and read the text again.
+    var resumeTick by remember { mutableIntStateOf(0) }
+    val lifecycleOwner = androidx.compose.ui.platform.LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) resumeTick++
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+    LaunchedEffect(resumeTick) {
+        if (noVoiceLanguage != null && recognizedText.isNotBlank()) {
+            speakAgainOnReady = true
+            ttsGeneration++
+        }
+    }
+    LaunchedEffect(ttsGeneration) {
+        if (speakAgainOnReady) {
+            speakAgainOnReady = false
+            errorMessage = null
+            status = Status.LoadingVoice
+            speak(recognizedText, REPLAY_UTTERANCE_ID)
+        }
+    }
+
     // Wire TTS lifecycle callbacks → UI status. Engine-spinup time between
     // tts.speak() and the first audible sample can be 0.5-2 s; without
     // explicit feedback the user thinks the app is dead.
-    DisposableEffect(Unit) {
+    DisposableEffect(tts) {
         tts.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
             override fun onStart(utteranceId: String?) {
                 mainHandler.post { if (status == Status.LoadingVoice) status = Status.Speaking }
@@ -147,16 +214,16 @@ fun ReadTextScreen() {
         status = Status.Recognizing
         errorMessage = null
         recognizedText = ""
-        runOcrAndSpeak(
+        runOcr(
             context = context,
             uri = uri,
-            tts = tts,
             onResult = { text ->
                 recognizedText = text
                 // Move straight to LoadingVoice when text was found — the
                 // OnUtteranceProgressListener will transition us to
                 // Speaking when the TTS engine actually emits audio.
                 status = if (text.isBlank()) Status.NoText else Status.LoadingVoice
+                if (text.isNotBlank()) speak(text, AUTO_SPEAK_UTTERANCE_ID)
             },
             onError = { msg ->
                 errorMessage = msg
@@ -180,6 +247,8 @@ fun ReadTextScreen() {
             status = status,
             recognizedText = recognizedText,
             errorMessage = errorMessage,
+            showInstallVoice = noVoiceLanguage != null,
+            onInstallVoice = { com.listenai.service.tts.TtsInstall.open(context, installEngine = false) },
             onPickGallery = {
                 pickImage.launch(
                     PickVisualMediaRequest(
@@ -194,7 +263,7 @@ fun ReadTextScreen() {
                 if (recognizedText.isNotBlank()) {
                     errorMessage = null
                     status = Status.LoadingVoice
-                    tts.speak(recognizedText, TextToSpeech.QUEUE_FLUSH, null, REPLAY_UTTERANCE_ID)
+                    speak(recognizedText, REPLAY_UTTERANCE_ID)
                 }
             },
         )
@@ -213,6 +282,8 @@ private enum class Status {
 
 private const val REPLAY_UTTERANCE_ID = "read_text_replay"
 private const val AUTO_SPEAK_UTTERANCE_ID = "read_text_auto"
+/** How long to wait for the speech engine to connect before saying there is none. */
+private const val ENGINE_WAIT_MS = 5_000L
 
 @Composable
 private fun ReadTextContent(
@@ -220,6 +291,8 @@ private fun ReadTextContent(
     status: Status,
     recognizedText: String,
     errorMessage: String?,
+    showInstallVoice: Boolean,
+    onInstallVoice: () -> Unit,
     onPickGallery: () -> Unit,
     onTakePhoto: () -> Unit,
     onReplay: () -> Unit,
@@ -362,6 +435,12 @@ private fun ReadTextContent(
                         color = MaterialTheme.colorScheme.error,
                         textAlign = TextAlign.Center,
                     )
+                    if (showInstallVoice) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Button(onClick = onInstallVoice) {
+                            Text(text = stringResource(R.string.player_install_voice_data))
+                        }
+                    }
                     if (recognizedText.isNotBlank()) {
                         Spacer(modifier = Modifier.height(12.dp))
                         TextButton(onClick = onReplay) {
@@ -375,18 +454,12 @@ private fun ReadTextContent(
 }
 
 /**
- * Run ML Kit Text Recognition on the picked URI, then push the result
- * to the system TextToSpeech engine.
- *
- * Launched as a fire-and-forget kotlinx coroutine because we want to
- * avoid blocking the Compose recomposition path. Errors and successes
- * both surface via the supplied callbacks so the composable can
- * re-render its status liveRegion.
+ * Run ML Kit Text Recognition on the picked URI and hand the text to [onResult]; the caller detects its language and
+ * speaks it. Errors surface via [onError] so the composable can re-render its status liveRegion.
  */
-private fun runOcrAndSpeak(
+private fun runOcr(
     context: android.content.Context,
     uri: Uri,
-    tts: TextToSpeech,
     onResult: (String) -> Unit,
     onError: (String) -> Unit,
 ) {
@@ -394,13 +467,7 @@ private fun runOcrAndSpeak(
         val image = InputImage.fromFilePath(context, uri)
         val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
         recognizer.process(image)
-            .addOnSuccessListener { visionText ->
-                val text = visionText.text
-                onResult(text)
-                if (text.isNotBlank()) {
-                    tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, AUTO_SPEAK_UTTERANCE_ID)
-                }
-            }
+            .addOnSuccessListener { visionText -> onResult(visionText.text) }
             .addOnFailureListener { e ->
                 onError("Text recognition failed: ${e.message}")
             }

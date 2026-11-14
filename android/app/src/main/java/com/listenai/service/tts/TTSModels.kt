@@ -349,8 +349,12 @@ sealed class TTSError : Exception() {
         val userMessage: String,
         val installVoiceLanguage: String? = null,
         val installEngine: Boolean = false,
+        /** Which message to show in the user's language (see SpeechUnavailableText); [userMessage] is the English fallback. */
+        val kind: Kind = Kind.OTHER,
     ) : TTSError() {
         override val message = userMessage
+
+        enum class Kind { NO_VOICE_DATA, NO_ENGINE, OFFLINE, BUSY, OTHER }
     }
 
     data class UnsupportedLanguage(val language: String) : TTSError() {

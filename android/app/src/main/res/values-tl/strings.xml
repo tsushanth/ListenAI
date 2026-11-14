@@ -85,6 +85,7 @@
     <string name="settings_privacy_subtitle">Tingnan ang aming patakaran sa privacy</string>
     <string name="settings_terms">Mga Tuntunin ng Serbisyo</string>
     <string name="settings_terms_subtitle">Tingnan ang mga tuntunin at kundisyon</string>
+    <string name="settings_credits">Mga kredito sa open-source</string>
 
     <!-- Playback -->
     <string name="now_playing">Kasalukuyang Pinapatugtog</string>
@@ -373,6 +374,25 @@
     <string name="player_synthesis_failed">Nabigo ang synthesis</string>
     <string name="player_regeneration_failed">Nabigo ang regeneration</string>
     <string name="player_something_went_wrong">May nangyaring mali</string>
+    <string name="lang_no_voice_message">Wala pang naka-install na boses sa %1$s ang telepono na ito. I-install ang voice data sa mga setting ng text-to-speech, pagkatapos ay subukan ulit.</string>
+    <string name="lang_chip_label">Wika: %1$s</string>
+    <string name="lang_chip_auto">Awtomatiko (%1$s)</string>
+    <string name="lang_voice_row">Boses: %1$s</string>
+    <string name="lang_voice_dialog_title">Boses para sa %1$s</string>
+    <string name="lang_voice_auto">Awtomatiko (pinakamahusay na magagamit)</string>
+    <string name="lang_voice_cloud_beta">Boses ng ReadAloud (beta, kailangan ng internet)</string>
+    <string name="lang_voice_numbered">Boses %1$d</string>
+    <string name="lang_voice_quality_high">mataas na kalidad</string>
+    <string name="lang_voice_quality_standard">karaniwang kalidad</string>
+    <string name="lang_voice_needs_internet">kailangan ng internet</string>
+    <string name="lang_no_voice_import_notice">Wala pang boses sa %1$s ang telepono na ito. Buksan ang artikulo para mag-install.</string>
+    <string name="speech_no_engine_message">Walang naka-install na text-to-speech engine sa telepono na ito. I-install ang Speech Services by Google para makinig offline.</string>
+    <string name="speech_offline_message">Offline ka at walang handang offline na boses ang telepono na ito. Kumonekta sa internet at subukan ulit.</string>
+    <string name="speech_busy_message">Abala ang voice service ngayon. Pakisubukan ulit sa ilang sandali.</string>
+    <string name="player_install_voice_data">I-install ang voice data</string>
+    <string name="player_install_tts_engine">Mag-install ng speech engine</string>
+    <string name="voice_request_cta">Gusto mo ba ng natural na boses sa %1$s? Sabihin mo sa amin</string>
+    <string name="voice_request_thanks">Salamat, naitala namin na gusto mo ng natural na boses sa %1$s.</string>
     <string name="player_go_back">Bumalik</string>
     <string name="player_try_again">Subukan Muli</string>
     <string name="player_preparing_audio">Inihahanda ang audio…</string>

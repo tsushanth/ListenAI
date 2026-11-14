@@ -85,6 +85,7 @@
     <string name="settings_privacy_subtitle">개인정보 처리방침 보기</string>
     <string name="settings_terms">서비스 약관</string>
     <string name="settings_terms_subtitle">이용약관 보기</string>
+    <string name="settings_credits">오픈소스 크레딧</string>
 
     <!-- Playback -->
     <string name="now_playing">지금 재생 중</string>
@@ -373,6 +374,25 @@
     <string name="player_synthesis_failed">합성 실패</string>
     <string name="player_regeneration_failed">재생성 실패</string>
     <string name="player_something_went_wrong">문제가 발생했습니다</string>
+    <string name="lang_no_voice_message">이 휴대전화에는 %1$s 음성이 아직 설치되어 있지 않습니다. 텍스트 음성 변환 설정에서 음성 데이터를 설치한 후 다시 시도하세요.</string>
+    <string name="lang_chip_label">언어: %1$s</string>
+    <string name="lang_chip_auto">자동(%1$s)</string>
+    <string name="lang_voice_row">음성: %1$s</string>
+    <string name="lang_voice_dialog_title">%1$s 음성</string>
+    <string name="lang_voice_auto">자동(사용 가능한 최적 음성)</string>
+    <string name="lang_voice_cloud_beta">ReadAloud 음성(베타, 인터넷 필요)</string>
+    <string name="lang_voice_numbered">음성 %1$d</string>
+    <string name="lang_voice_quality_high">고품질</string>
+    <string name="lang_voice_quality_standard">표준 품질</string>
+    <string name="lang_voice_needs_internet">인터넷 필요</string>
+    <string name="lang_no_voice_import_notice">이 휴대전화에는 %1$s 음성이 아직 없습니다. 기사를 열어 설치하세요.</string>
+    <string name="speech_no_engine_message">이 휴대전화에 텍스트 음성 변환 엔진이 설치되어 있지 않습니다. 오프라인으로 들으려면 Google 음성 서비스를 설치하세요.</string>
+    <string name="speech_offline_message">오프라인 상태이고 이 휴대전화에는 오프라인 음성이 준비되어 있지 않습니다. 인터넷에 연결한 후 다시 시도하세요.</string>
+    <string name="speech_busy_message">음성 서비스가 지금 혼잡합니다. 잠시 후 다시 시도하세요.</string>
+    <string name="player_install_voice_data">음성 데이터 설치</string>
+    <string name="player_install_tts_engine">음성 엔진 설치</string>
+    <string name="voice_request_cta">자연스러운 %1$s 음성을 원하시나요? 알려 주세요</string>
+    <string name="voice_request_thanks">감사합니다. 자연스러운 %1$s 음성을 원하신다는 점을 기록했습니다.</string>
     <string name="player_go_back">뒤로 가기</string>
     <string name="player_try_again">다시 시도</string>
     <string name="player_preparing_audio">오디오 준비 중…</string>

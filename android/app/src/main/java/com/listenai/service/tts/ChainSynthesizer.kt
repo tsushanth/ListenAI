@@ -2,6 +2,7 @@ package com.listenai.service.tts
 
 import android.content.Context
 import com.listenai.data.models.VoicePreset
+import com.listenai.service.FirebaseAnalyticsHelper
 import com.listenai.service.tts.chain.NoSourceAvailableException
 import com.listenai.service.tts.chain.Pcm
 import com.listenai.service.tts.chain.SourceId
@@ -9,6 +10,7 @@ import com.listenai.service.tts.chain.TimedWord
 import com.listenai.service.tts.chain.TtsChainProvider
 import com.listenai.service.tts.chain.TtsRequest
 import com.listenai.service.tts.chain.UserAction
+import com.listenai.service.tts.chain.VoiceSelection
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.Dispatchers
 import java.io.File
@@ -32,7 +34,9 @@ object ChainSynthesizer {
     ): SynthesisResult {
         val started = System.currentTimeMillis()
         val chain = TtsChainProvider.get(context).inApp
-        val request = TtsRequest(voiceId = voice.id, language = language, speed = speed, wantWords = true)
+        // A phone voice the user picked for this language means: try the phone's engine first.
+        val preferSystem = phoneVoicePicked(context, language)
+        val request = TtsRequest(voiceId = voice.id, language = language, speed = speed, wantWords = true, preferSystem = preferSystem)
         val file = File(context.cacheDir, "tts_${UUID.randomUUID()}.wav")
 
         var rate = 0
@@ -77,13 +81,16 @@ object ChainSynthesizer {
             }
         } catch (e: NoSourceAvailableException) {
             file.delete()
-            throw speechUnavailable(e)
+            val unavailable = speechUnavailable(e)
+            runCatching { FirebaseAnalyticsHelper.logVoiceFallback(language, voiceFallbackReason(unavailable.kind)) }
+            throw unavailable
         } catch (e: Throwable) {
             file.delete()
             throw e
         }
 
         if (words.isNotEmpty()) WordTimings(spoken.toString(), words).let { WordTimings.save(file, it) }
+        SynthesizedAudioFiles.writeVoiceKind(file, SynthesizedAudioFiles.kindOf(sourceUsed))
         val durationSec = pcmBytes / 2.0 / rate
         val ended = System.currentTimeMillis()
         val providerLabel = "ReadAloud ${sourceUsed?.name ?: "chain"}"
@@ -101,6 +108,23 @@ object ChainSynthesizer {
         )
     }
 
+    /**
+     * True when the user picked a phone voice for [language] and that voice is still there. A pick whose voice no longer
+     * exists (uninstalled, engine changed) is cleared, so the phone-first order and the picker's selection do not outlive it.
+     */
+    private suspend fun phoneVoicePicked(context: Context, language: String): Boolean {
+        if (LanguageChoice.normalize(language) == "en") return false
+        val prefs = LanguagePrefs.get(context)
+        val pick = prefs.preferredVoice(language) ?: return false
+        val system = TtsChainProvider.get(context).system
+        return when (system.pickState(language, pick)) {
+            VoiceSelection.PickState.VALID -> true
+            VoiceSelection.PickState.GONE -> { prefs.setPreferredVoice(language, null); false }
+            // Listed but not usable right now (a network voice while offline), or the engine could not be asked: keep the pick, read with the default order this time.
+            VoiceSelection.PickState.UNUSABLE_NOW, VoiceSelection.PickState.NONE -> false
+        }
+    }
+
     /** Chunk-relative word offsets become offsets into the spoken text, and chunk-relative seconds become absolute. */
     private fun addWords(out: MutableList<WordTimings.Word>, ws: List<TimedWord>, textOffset: Int, pcmBytesBefore: Long, rate: Int) {
         val t0 = pcmBytesBefore / 2.0 / rate
@@ -111,12 +135,26 @@ object ChainSynthesizer {
         b[o] = v.toByte(); b[o + 1] = (v shr 8).toByte(); b[o + 2] = (v shr 16).toByte(); b[o + 3] = (v shr 24).toByte()
     }
 
+    /** Reason sent with the voice_fallback event. */
+    internal fun voiceFallbackReason(kind: TTSError.SpeechUnavailable.Kind): String = when (kind) {
+        TTSError.SpeechUnavailable.Kind.NO_VOICE_DATA -> "no_voice"
+        TTSError.SpeechUnavailable.Kind.NO_ENGINE -> "no_engine"
+        TTSError.SpeechUnavailable.Kind.OFFLINE -> "offline"
+        TTSError.SpeechUnavailable.Kind.BUSY, TTSError.SpeechUnavailable.Kind.OTHER -> "engine_error"
+    }
+
     internal fun speechUnavailable(e: NoSourceAvailableException): TTSError.SpeechUnavailable = when (val a = e.action) {
         is UserAction.InstallVoiceData -> TTSError.SpeechUnavailable(
-            "This device has no offline voice data for this language. Install it to listen without a connection.", installVoiceLanguage = a.language)
+            "This device has no offline voice data for this language. Install it to listen without a connection.",
+            installVoiceLanguage = a.language, kind = TTSError.SpeechUnavailable.Kind.NO_VOICE_DATA)
         UserAction.InstallEngine -> TTSError.SpeechUnavailable(
-            "No text-to-speech engine is installed on this device. Install Speech Services by Google to listen offline.", installEngine = true)
-        UserAction.CheckConnection -> TTSError.SpeechUnavailable("You are offline and this device has no offline voice ready. Connect to the internet and try again.")
-        UserAction.TryLater -> TTSError.SpeechUnavailable("The voice service is busy right now. Please try again in a moment.")
+            "No text-to-speech engine is installed on this device. Install Speech Services by Google to listen offline.",
+            installEngine = true, kind = TTSError.SpeechUnavailable.Kind.NO_ENGINE)
+        UserAction.CheckConnection -> TTSError.SpeechUnavailable(
+            "You are offline and this device has no offline voice ready. Connect to the internet and try again.",
+            kind = TTSError.SpeechUnavailable.Kind.OFFLINE)
+        UserAction.TryLater -> TTSError.SpeechUnavailable(
+            "The voice service is busy right now. Please try again in a moment.",
+            kind = TTSError.SpeechUnavailable.Kind.BUSY)
     }
 }

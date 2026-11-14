@@ -24,8 +24,8 @@ const software: Row[] = [
 ]
 
 const data: Row[] = [
-  { name: 'CML-TTS', use: 'Training data for Spanish dubbing voices', licence: 'CC BY 4.0', href: 'https://www.openslr.org/146/' },
-  { name: 'LibriTTS-R', use: 'Base data for Spanish dubbing voices', licence: 'CC BY 4.0', href: 'https://www.openslr.org/141/' },
+  { name: 'CML-TTS', use: 'Training data for the Spanish voice (ReadAloud app and dubbing)', licence: 'CC BY 4.0', href: 'https://www.openslr.org/146/' },
+  { name: 'LibriTTS-R', use: 'Base data for the Spanish voice (ReadAloud app and dubbing)', licence: 'CC BY 4.0', href: 'https://www.openslr.org/141/' },
   { name: 'Multilingual LibriSpeech (MLS)', use: 'Training data for French dubbing voices', licence: 'CC BY 4.0', href: 'https://www.openslr.org/94/' },
 ]
 

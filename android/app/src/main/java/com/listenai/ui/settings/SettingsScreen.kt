@@ -421,6 +421,20 @@ fun SettingsScreen(
                         context.startActivity(intent)
                     }
                 )
+
+                HorizontalDivider(modifier = Modifier.padding(start = 56.dp))
+
+                // CC BY 4.0 requires crediting the data behind the Spanish voice; the full list is on the credits page.
+                SettingsRow(
+                    icon = Icons.Default.Info,
+                    iconColor = Blue,
+                    title = stringResource(R.string.settings_credits),
+                    subtitle = stringResource(R.string.settings_credits_subtitle),
+                    onClick = {
+                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://readaloudai.org/credits"))
+                        runCatching { context.startActivity(intent) }
+                    }
+                )
             }
 
             CrossPromoSection(currentApp = AppId.READALOUD)

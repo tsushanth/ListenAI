@@ -85,6 +85,7 @@
     <string name="settings_privacy_subtitle">Visualizza la nostra informativa sulla privacy</string>
     <string name="settings_terms">Termini di Servizio</string>
     <string name="settings_terms_subtitle">Visualizza termini e condizioni</string>
+    <string name="settings_credits">Crediti open source</string>
 
     <!-- Playback -->
     <string name="now_playing">In Riproduzione</string>
@@ -373,6 +374,25 @@
     <string name="player_synthesis_failed">Sintesi fallita</string>
     <string name="player_regeneration_failed">Rigenerazione fallita</string>
     <string name="player_something_went_wrong">Qualcosa è andato storto</string>
+    <string name="lang_no_voice_message">Su questo telefono non è ancora installata una voce in %1$s. Installa i dati vocali nelle impostazioni di sintesi vocale e riprova.</string>
+    <string name="lang_chip_label">Lingua: %1$s</string>
+    <string name="lang_chip_auto">Automatica (%1$s)</string>
+    <string name="lang_voice_row">Voce: %1$s</string>
+    <string name="lang_voice_dialog_title">Voce per %1$s</string>
+    <string name="lang_voice_auto">Automatica (la migliore disponibile)</string>
+    <string name="lang_voice_cloud_beta">Voce ReadAloud (beta, richiede internet)</string>
+    <string name="lang_voice_numbered">Voce %1$d</string>
+    <string name="lang_voice_quality_high">alta qualità</string>
+    <string name="lang_voice_quality_standard">qualità standard</string>
+    <string name="lang_voice_needs_internet">richiede internet</string>
+    <string name="lang_no_voice_import_notice">Questo telefono non ha ancora una voce in %1$s. Apri l\'articolo per installarne una.</string>
+    <string name="speech_no_engine_message">Su questo telefono non è installato alcun motore di sintesi vocale. Installa Servizi vocali di Google per ascoltare offline.</string>
+    <string name="speech_offline_message">Sei offline e questo telefono non ha una voce offline pronta. Collegati a internet e riprova.</string>
+    <string name="speech_busy_message">Il servizio vocale è occupato in questo momento. Riprova tra poco.</string>
+    <string name="player_install_voice_data">Installa i dati vocali</string>
+    <string name="player_install_tts_engine">Installa un motore vocale</string>
+    <string name="voice_request_cta">Vuoi una voce naturale in %1$s? Faccelo sapere</string>
+    <string name="voice_request_thanks">Grazie, abbiamo preso nota che vuoi una voce naturale in %1$s.</string>
     <string name="player_go_back">Torna Indietro</string>
     <string name="player_try_again">Riprova</string>
     <string name="player_preparing_audio">Preparazione audio…</string>

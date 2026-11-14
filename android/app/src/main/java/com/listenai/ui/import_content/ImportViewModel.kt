@@ -29,7 +29,8 @@ import java.util.concurrent.TimeUnit
 sealed class ImportState {
     object Idle : ImportState()
     object Loading : ImportState()
-    data class Success(val articleId: String) : ImportState()
+    /** [language] is the detected reading language of the new article, null when unknown; the screens use it for the missing-voice notice. */
+    data class Success(val articleId: String, val language: String? = null) : ImportState()
     data class Error(val message: String) : ImportState()
 }
 
@@ -143,7 +144,7 @@ class ImportViewModel(
                 _progress.value = 1f
 
                 FirebaseAnalyticsHelper.logContentImported("url", article.language)
-                _importState.value = ImportState.Success(article.id)
+                _importState.value = ImportState.Success(article.id, article.language)
             } catch (e: Exception) {
                 FirebaseAnalyticsHelper.logImportFailed("url", e.message)
                 _importState.value = ImportState.Error(e.message ?: "Failed to import from URL")
@@ -211,7 +212,7 @@ class ImportViewModel(
 
                 _progress.value = 1f
                 FirebaseAnalyticsHelper.logContentImported("pdf_url", article.language)
-                _importState.value = ImportState.Success(article.id)
+                _importState.value = ImportState.Success(article.id, article.language)
 
             } catch (e: Exception) {
                 android.util.Log.e("ImportViewModel", "Failed to import PDF from URL", e)
@@ -301,7 +302,7 @@ class ImportViewModel(
                 _progress.value = 1f
 
                 FirebaseAnalyticsHelper.logContentImported("pdf", article.language)
-                _importState.value = ImportState.Success(article.id)
+                _importState.value = ImportState.Success(article.id, article.language)
             } catch (e: Exception) {
                 FirebaseAnalyticsHelper.logImportFailed("pdf", e.message)
                 _importState.value = ImportState.Error(e.message ?: "Failed to import PDF")
@@ -351,6 +352,7 @@ class ImportViewModel(
                 android.util.Log.d("EpubImport", "Total parts: ${parts.size}, sizes: ${parts.map { it.second.length }}")
 
                 var firstArticleId: String? = null
+                var firstArticleLanguage: String? = null
                 // Stamp each chapter with a unique sequential createdAt so the
                 // library can sort chapters back into reading order. Without
                 // the +index offset, the tight save loop gives all chapters
@@ -364,7 +366,8 @@ class ImportViewModel(
 
                     val (partTitle, partContent) = part
                     val articleId = UUID.randomUUID().toString()
-                    if (firstArticleId == null) firstArticleId = articleId
+                    val partLanguage = com.listenai.service.LanguageDetector.detectOrNull(partContent)
+                    if (firstArticleId == null) { firstArticleId = articleId; firstArticleLanguage = partLanguage }
 
                     val article = Article(
                         id = articleId,
@@ -374,7 +377,7 @@ class ImportViewModel(
                         publishDate = null,
                         rawText = partContent,
                         wordCount = partContent.split(Regex("\\s+")).size,
-                        language = com.listenai.service.LanguageDetector.detectOrNull(partContent),
+                        language = partLanguage,
                         heroImageUrl = null,
                         sourceType = SourceType.EPUB,
                         sourceUrl = null,
@@ -388,8 +391,8 @@ class ImportViewModel(
                 }
 
                 _progress.value = 1f
-                FirebaseAnalyticsHelper.logContentImported("epub")
-                _importState.value = ImportState.Success(firstArticleId!!)
+                FirebaseAnalyticsHelper.logContentImported("epub", firstArticleLanguage)
+                _importState.value = ImportState.Success(firstArticleId!!, firstArticleLanguage)
             } catch (e: Exception) {
                 FirebaseAnalyticsHelper.logImportFailed("epub", e.message)
                 _importState.value = ImportState.Error(e.message ?: "Failed to import EPUB")
@@ -433,7 +436,7 @@ class ImportViewModel(
                 _progress.value = 1f
 
                 FirebaseAnalyticsHelper.logContentImported("text", article.language)
-                _importState.value = ImportState.Success(article.id)
+                _importState.value = ImportState.Success(article.id, article.language)
             } catch (e: Exception) {
                 FirebaseAnalyticsHelper.logImportFailed("text", e.message)
                 _importState.value = ImportState.Error(e.message ?: "Failed to save article")
@@ -491,7 +494,7 @@ class ImportViewModel(
                 _progress.value = 1f
 
                 FirebaseAnalyticsHelper.logContentImported("clipboard", article.language)
-                _importState.value = ImportState.Success(article.id)
+                _importState.value = ImportState.Success(article.id, article.language)
             } catch (e: Exception) {
                 FirebaseAnalyticsHelper.logImportFailed("clipboard", e.message)
                 _importState.value = ImportState.Error(e.message ?: "Failed to import from clipboard")

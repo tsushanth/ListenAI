@@ -151,18 +151,27 @@ object FirebaseAnalyticsHelper {
     fun logContentImported(importMode: String, language: String? = null) {
         val params = Bundle().apply {
             putString("import_mode", importMode) // url, document, text, clipboard, email
-            putString("content_language", language ?: "unknown") // demand signal; "unknown" = too short or low confidence
+            putString("content_language", LanguageAnalytics.code(language)) // demand signal; "unknown" = too short or low confidence
         }
         logEvent("content_imported", params)
     }
 
-    /** A non-English article had to be read with a voice that is not native to its language. */
+    /** A read ended with no usable voice for its language; [reason] is no_voice, no_engine, offline or engine_error. */
     fun logVoiceFallback(language: String, reason: String) {
-        logEvent("voice_fallback", Bundle().apply {
-            putString("content_language", language)
-            putString("reason", reason) // no_voice, engine_error
-        })
+        logEvent("voice_fallback", LanguageAnalytics.voiceFallback(language, reason).toBundle())
     }
+
+    /** An import finished and the phone has no working system voice for its language. See [LanguageAnalytics.noVoice]. */
+    fun logLangNoVoice(language: String, voiceExists: Boolean, deviceLanguage: String) {
+        logEvent("lang_no_voice", LanguageAnalytics.noVoice(language, voiceExists, deviceLanguage).toBundle())
+    }
+
+    /** The user chose a reading language for a document ([to] null = back to automatic). */
+    fun logLangOverride(from: String?, to: String?) {
+        logEvent("lang_override", LanguageAnalytics.override(from, to).toBundle())
+    }
+
+    private fun Map<String, String>.toBundle(): Bundle = Bundle().also { b -> forEach { (k, v) -> b.putString(k, v) } }
 
     /**
      * One read through the speech source chain. Source names, reasons and timings only; never any text.
@@ -179,6 +188,7 @@ object FirebaseAnalyticsHelper {
             putLong("cache_hits", r.cacheHits.toLong())
             putLong("chars", r.chars.toLong())
             putString("content_language", r.language)
+            putString("voice_source", LanguageAnalytics.voiceSource(r.firstSource, r.language)) // cloud_es, cloud_en, system, on_device, none
             putString("succeeded", r.succeeded.toString())
         })
         if (firstFallback != null) {
@@ -215,16 +225,19 @@ object FirebaseAnalyticsHelper {
         logEvent("first_listen")
     }
 
-    fun logPlaybackStarted(contentType: String? = null) {
+    /** [voiceSource] is "system" or "cloud" (see [LanguageAnalytics.playbackParams]); [language] a language code. Neither carries text or ids. */
+    fun logPlaybackStarted(contentType: String? = null, voiceSource: String? = null, language: String? = null) {
         val params = Bundle().apply {
             contentType?.let { putString("content_type", it) }
+            LanguageAnalytics.playbackParams(voiceSource, language).forEach { (k, v) -> putString(k, v) }
         }
         logEvent("playback_started", params)
     }
 
-    fun logPlaybackCompleted(durationSeconds: Long? = null) {
+    fun logPlaybackCompleted(durationSeconds: Long? = null, voiceSource: String? = null, language: String? = null) {
         val params = Bundle().apply {
             durationSeconds?.let { putLong("duration_seconds", it) }
+            LanguageAnalytics.playbackParams(voiceSource, language).forEach { (k, v) -> putString(k, v) }
         }
         logEvent("playback_completed", params)
     }

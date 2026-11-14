@@ -24,6 +24,8 @@ object TtsChainProvider {
         val api: ReadAloudApiSource,
         val system: SystemTtsSource,
         val onDevice: OnDeviceModelSource,
+        /** The cloud voices the ReadAloud API lists (non-English languages only; see CloudVoicePolicy). */
+        val catalog: CloudVoiceCatalog,
     )
 
     @Volatile private var holder: Holder? = null
@@ -40,11 +42,13 @@ object TtsChainProvider {
             .writeTimeout(10, TimeUnit.SECONDS)
             .build()
         val online = { ConnectivityCheck.isOnline(app) }
+        val catalog = HttpCloudVoiceCatalog(http, ListenAIApplication.BACKEND_URL)
         val api = ReadAloudApiSource(
             http = http,
             backendBaseUrl = ListenAIApplication.BACKEND_URL,
             isOnline = online,
             voiceFor = ::voiceFor,
+            catalog = catalog,
         )
         val system = SystemTtsSource(app, online)
         val onDevice = OnDeviceModelSource(app)
@@ -53,7 +57,7 @@ object TtsChainProvider {
         val sources = mapOf(SourceId.API to api, SourceId.SYSTEM to system, SourceId.ON_DEVICE to onDevice)
         val inApp = TtsSourceChain(
             sources = sources,
-            order = { req -> TtsFlagLogic.inAppOrder(TtsSourceFlags.apiEnabled(app), req.language) },
+            order = { req -> TtsFlagLogic.inAppOrder(TtsSourceFlags.apiEnabled(app), req.language, req.preferSystem) },
             cache = cache,
             telemetry = telemetry,
         )
@@ -65,7 +69,7 @@ object TtsChainProvider {
             config = ChainConfig(prefetch = 2, firstChunkBaseTimeoutMs = 3_500, retries = 1),
             telemetry = telemetry,
         )
-        return Holder(inApp, engine, api, system, onDevice)
+        return Holder(inApp, engine, api, system, onDevice, catalog)
     }
 
     /** Logs one line per read to logcat (tag TTS_CHAIN; no text) and sends a funnel event when analytics is allowed. */

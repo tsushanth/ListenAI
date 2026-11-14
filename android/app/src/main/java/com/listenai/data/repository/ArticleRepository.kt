@@ -10,7 +10,9 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 
 class ArticleRepository(
-    private val articleDao: ArticleDao
+    private val articleDao: ArticleDao,
+    /** Called with the id of a document after it was deleted, so per-document settings kept elsewhere can be dropped. */
+    private val onRemoved: (String) -> Unit = {},
 ) {
     val allArticles: Flow<List<Article>> = articleDao.getAllArticles()
     val favoriteArticles: Flow<List<Article>> = articleDao.getFavoriteArticles()
@@ -43,10 +45,12 @@ class ArticleRepository(
 
     suspend fun deleteArticle(article: Article) {
         articleDao.deleteArticle(article)
+        runCatching { onRemoved(article.id) }
     }
 
     suspend fun deleteArticleById(id: String) {
         articleDao.deleteArticleById(id)
+        runCatching { onRemoved(id) }
     }
 
     suspend fun toggleFavorite(article: Article) {

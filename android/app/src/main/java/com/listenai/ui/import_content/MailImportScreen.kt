@@ -338,6 +338,7 @@ fun MailImportScreen(
                         )
                         articleRepository.saveArticle(article)
                         previewEmail = null
+                        com.listenai.service.tts.LanguageVoiceCheck.afterImport(context, article.language)
                         onImportComplete(article.id)
                     }
                 }

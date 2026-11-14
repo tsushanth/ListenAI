@@ -15,9 +15,14 @@ object TtsFlagLogic {
         return Remote(inner("apiEnabled"), inner("engineApiEnabled"))
     }
 
-    /** The order of sources for the app's own reader. */
-    fun inAppOrder(apiEnabled: Boolean, language: String): List<SourceId> {
+    /**
+     * The order of sources for the app's own reader. A language other than English goes to the cloud first only when the
+     * cloud source accepts it (it declines languages the API does not list a voice for, see CloudVoicePolicy), then the
+     * phone's engine. [preferSystem] (the user chose a phone voice) puts the phone's engine first.
+     */
+    fun inAppOrder(apiEnabled: Boolean, language: String, preferSystem: Boolean = false): List<SourceId> {
         val english = language.substringBefore('-').lowercase() == "en"
+        if (preferSystem && !english) return if (apiEnabled) listOf(SourceId.SYSTEM, SourceId.API) else listOf(SourceId.SYSTEM)
         val list = ArrayList<SourceId>(3)
         if (apiEnabled) list += SourceId.API
         if (!apiEnabled && english) list += SourceId.ON_DEVICE

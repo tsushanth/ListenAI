@@ -85,6 +85,7 @@
     <string name="settings_privacy_subtitle">Xem chính sách quyền riêng tư</string>
     <string name="settings_terms">Điều khoản dịch vụ</string>
     <string name="settings_terms_subtitle">Xem điều khoản và điều kiện</string>
+    <string name="settings_credits">Ghi công mã nguồn mở</string>
 
     <!-- Playback -->
     <string name="now_playing">Đang phát</string>
@@ -373,6 +374,25 @@
     <string name="player_synthesis_failed">Tổng hợp thất bại</string>
     <string name="player_regeneration_failed">Tạo lại thất bại</string>
     <string name="player_something_went_wrong">Đã xảy ra lỗi</string>
+    <string name="lang_no_voice_message">Điện thoại này chưa cài giọng đọc tiếng %1$s. Hãy cài dữ liệu giọng nói trong phần cài đặt chuyển văn bản thành giọng nói, rồi thử lại.</string>
+    <string name="lang_chip_label">Ngôn ngữ: %1$s</string>
+    <string name="lang_chip_auto">Tự động (%1$s)</string>
+    <string name="lang_voice_row">Giọng đọc: %1$s</string>
+    <string name="lang_voice_dialog_title">Giọng đọc cho tiếng %1$s</string>
+    <string name="lang_voice_auto">Tự động (tốt nhất hiện có)</string>
+    <string name="lang_voice_cloud_beta">Giọng ReadAloud (thử nghiệm, cần internet)</string>
+    <string name="lang_voice_numbered">Giọng %1$d</string>
+    <string name="lang_voice_quality_high">chất lượng cao</string>
+    <string name="lang_voice_quality_standard">chất lượng tiêu chuẩn</string>
+    <string name="lang_voice_needs_internet">cần internet</string>
+    <string name="lang_no_voice_import_notice">Điện thoại này chưa có giọng đọc tiếng %1$s. Hãy mở bài viết để cài đặt.</string>
+    <string name="speech_no_engine_message">Điện thoại này chưa cài công cụ chuyển văn bản thành giọng nói. Hãy cài Dịch vụ giọng nói của Google để nghe khi không có mạng.</string>
+    <string name="speech_offline_message">Bạn đang ngoại tuyến và điện thoại này chưa có giọng đọc ngoại tuyến. Hãy kết nối internet rồi thử lại.</string>
+    <string name="speech_busy_message">Dịch vụ giọng nói hiện đang bận. Vui lòng thử lại sau giây lát.</string>
+    <string name="player_install_voice_data">Cài dữ liệu giọng nói</string>
+    <string name="player_install_tts_engine">Cài công cụ giọng nói</string>
+    <string name="voice_request_cta">Bạn muốn giọng đọc tiếng %1$s tự nhiên? Hãy cho chúng tôi biết</string>
+    <string name="voice_request_thanks">Cảm ơn, chúng tôi đã ghi nhận bạn muốn có giọng đọc tiếng %1$s tự nhiên.</string>
     <string name="player_go_back">Quay lại</string>
     <string name="player_try_again">Thử lại</string>
     <string name="player_preparing_audio">Đang chuẩn bị âm thanh…</string>

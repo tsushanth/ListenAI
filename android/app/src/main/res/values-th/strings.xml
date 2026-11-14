@@ -85,6 +85,7 @@
     <string name="settings_privacy_subtitle">ดูนโยบายความเป็นส่วนตัว</string>
     <string name="settings_terms">ข้อกำหนดในการให้บริการ</string>
     <string name="settings_terms_subtitle">ดูข้อกำหนดและเงื่อนไข</string>
+    <string name="settings_credits">เครดิตโอเพนซอร์ส</string>
 
     <!-- Playback -->
     <string name="now_playing">กำลังเล่น</string>
@@ -373,6 +374,25 @@
     <string name="player_synthesis_failed">การสังเคราะห์ล้มเหลว</string>
     <string name="player_regeneration_failed">การสร้างใหม่ล้มเหลว</string>
     <string name="player_something_went_wrong">เกิดข้อผิดพลาด</string>
+    <string name="lang_no_voice_message">โทรศัพท์เครื่องนี้ยังไม่ได้ติดตั้งเสียงภาษา%1$s ติดตั้งข้อมูลเสียงในการตั้งค่าการแปลงข้อความเป็นเสียงพูด แล้วลองอีกครั้ง</string>
+    <string name="lang_chip_label">ภาษา: %1$s</string>
+    <string name="lang_chip_auto">อัตโนมัติ (%1$s)</string>
+    <string name="lang_voice_row">เสียง: %1$s</string>
+    <string name="lang_voice_dialog_title">เสียงสำหรับภาษา%1$s</string>
+    <string name="lang_voice_auto">อัตโนมัติ (ดีที่สุดที่มี)</string>
+    <string name="lang_voice_cloud_beta">เสียง ReadAloud (เบต้า ต้องใช้อินเทอร์เน็ต)</string>
+    <string name="lang_voice_numbered">เสียง %1$d</string>
+    <string name="lang_voice_quality_high">คุณภาพสูง</string>
+    <string name="lang_voice_quality_standard">คุณภาพมาตรฐาน</string>
+    <string name="lang_voice_needs_internet">ต้องใช้อินเทอร์เน็ต</string>
+    <string name="lang_no_voice_import_notice">โทรศัพท์เครื่องนี้ยังไม่มีเสียงภาษา%1$s เปิดบทความเพื่อติดตั้ง</string>
+    <string name="speech_no_engine_message">ยังไม่ได้ติดตั้งเอนจินแปลงข้อความเป็นเสียงพูดในโทรศัพท์เครื่องนี้ ติดตั้งบริการเสียงพูดของ Google เพื่อฟังแบบออฟไลน์</string>
+    <string name="speech_offline_message">คุณออฟไลน์อยู่ และโทรศัพท์เครื่องนี้ไม่มีเสียงออฟไลน์ที่พร้อมใช้ เชื่อมต่ออินเทอร์เน็ตแล้วลองอีกครั้ง</string>
+    <string name="speech_busy_message">บริการเสียงกำลังไม่ว่างในขณะนี้ โปรดลองอีกครั้งในอีกสักครู่</string>
+    <string name="player_install_voice_data">ติดตั้งข้อมูลเสียง</string>
+    <string name="player_install_tts_engine">ติดตั้งเอนจินเสียงพูด</string>
+    <string name="voice_request_cta">ต้องการเสียงภาษา%1$sที่เป็นธรรมชาติไหม บอกเรา</string>
+    <string name="voice_request_thanks">ขอบคุณ เราบันทึกไว้แล้วว่าคุณต้องการเสียงภาษา%1$sที่เป็นธรรมชาติ</string>
     <string name="player_go_back">กลับ</string>
     <string name="player_try_again">ลองอีกครั้ง</string>
     <string name="player_preparing_audio">กำลังเตรียมเสียง…</string>

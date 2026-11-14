@@ -85,6 +85,7 @@
     <string name="settings_privacy_subtitle">Gizlilik politikamızı görüntüleyin</string>
     <string name="settings_terms">Hizmet Şartları</string>
     <string name="settings_terms_subtitle">Şartlar ve koşulları görüntüleyin</string>
+    <string name="settings_credits">Açık kaynak katkıları</string>
 
     <!-- Playback -->
     <string name="now_playing">Şimdi Çalıyor</string>
@@ -373,6 +374,25 @@
     <string name="player_synthesis_failed">Sentez başarısız</string>
     <string name="player_regeneration_failed">Yeniden oluşturma başarısız</string>
     <string name="player_something_went_wrong">Bir şeyler yanlış gitti</string>
+    <string name="lang_no_voice_message">Bu telefonda henüz %1$s sesi yüklü değil. Metin okuma ayarlarından ses verilerini yükleyin ve tekrar deneyin.</string>
+    <string name="lang_chip_label">Dil: %1$s</string>
+    <string name="lang_chip_auto">Otomatik (%1$s)</string>
+    <string name="lang_voice_row">Ses: %1$s</string>
+    <string name="lang_voice_dialog_title">%1$s için ses</string>
+    <string name="lang_voice_auto">Otomatik (mevcut en iyisi)</string>
+    <string name="lang_voice_cloud_beta">ReadAloud sesi (beta, internet gerekir)</string>
+    <string name="lang_voice_numbered">Ses %1$d</string>
+    <string name="lang_voice_quality_high">yüksek kalite</string>
+    <string name="lang_voice_quality_standard">standart kalite</string>
+    <string name="lang_voice_needs_internet">internet gerekir</string>
+    <string name="lang_no_voice_import_notice">Bu telefonda henüz %1$s sesi yok. Yüklemek için makaleyi açın.</string>
+    <string name="speech_no_engine_message">Bu telefonda yüklü bir metin okuma motoru yok. Çevrimdışı dinlemek için Google Konuşma Hizmetleri\'ni yükleyin.</string>
+    <string name="speech_offline_message">Çevrimdışısınız ve bu telefonda hazır bir çevrimdışı ses yok. İnternete bağlanın ve tekrar deneyin.</string>
+    <string name="speech_busy_message">Ses hizmeti şu anda meşgul. Lütfen biraz sonra tekrar deneyin.</string>
+    <string name="player_install_voice_data">Ses verilerini yükle</string>
+    <string name="player_install_tts_engine">Bir konuşma motoru yükle</string>
+    <string name="voice_request_cta">Doğal bir %1$s sesi ister misiniz? Bize söyleyin</string>
+    <string name="voice_request_thanks">Teşekkürler, doğal bir %1$s sesi istediğinizi not ettik.</string>
     <string name="player_go_back">Geri Dön</string>
     <string name="player_try_again">Tekrar Dene</string>
     <string name="player_preparing_audio">Ses hazırlanıyor…</string>

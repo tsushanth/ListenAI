@@ -16,7 +16,7 @@ One chain, `com.listenai.service.tts.chain.TtsSourceChain`, with three sources:
 2. **System TTS**: Android `TextToSpeech` bound to an explicit engine (Google, then Samsung, never `com.listenai*`), after `isLanguageAvailable`, an installed-voice check, and (offline) a "voice needs the network" check.
 3. **On-device model**: only if downloaded and its measured real-time factor is <= 0.7 (measured once, stored per app version).
 
-Order: online and the flag on: API, system, on-device (English only). Flag off: on-device, system. Audio chunks from the API are cached on disk (hash of voice + speed + text, 150 MB, least recently used removed), so re-reading is free and works offline.
+Order: online and the flag on: API, system, on-device (English only). Flag off: on-device, system. Audio chunks from the API are cached on disk (hash of the resolved cloud voice + language + speed + text; for English the hash is of the app voice id as before; 150 MB, least recently used removed), so re-reading is free and works offline. The cache is used only when the cloud is the first source of the read: a phone voice picked by the user, the cloud switched off, or a catalog that no longer lists the voice means no cached cloud audio is replayed.
 When nothing can speak, the player shows an actionable message with an **Install voice data** (or **Install a speech engine**) button.
 
 The ReadAloud system engine can try the API first for English text of 100+ characters from other apps, but **this is OFF by default** (see "Privacy: engine API route" below). With it off, the engine uses its own on-device path only, as before. If the route is enabled and the API cannot start, the engine continues on its own on-device path; if the API fails after audio has started, the engine reports an error (the voice cannot change mid-sentence). The in-app reader's API-first behaviour is unaffected.
@@ -32,7 +32,9 @@ The ReadAloud system engine can try the API first for English text of 100+ chara
 | API timeout (first chunk 4.5 s, later chunks 6 s + 25 ms/char) | one retry, then system; skipped 30 s | `TIMEOUT` |
 | 429 | no retry, system; API skipped for `Retry-After` (default 60 s) | `RATE_LIMITED` |
 | 402 | system; API skipped 10 min | `QUOTA` |
-| Non-English text | system (API voices in the app are English) | `UNSUPPORTED_LANGUAGE` |
+| Non-English text, the catalog lists the vetted cloud voice (today `es`) | cloud voice, then system; picking a phone voice puts system first | none |
+| Non-English text, no vetted cloud voice listed (or the catalog is unreachable) | system | `UNSUPPORTED_LANGUAGE` |
+| A cloud failure while reading Spanish (timeout, 5xx, bad voice id) | system for that read; the cloud is skipped for 30 s for Spanish only, English cloud reading is not affected | `SERVER_ERROR` / `TIMEOUT` |
 | Google/Samsung missing | on-device model if fast enough | `ENGINE_MISSING` |
 | Engine has no voice data for the language, or the voice needs the network and we are offline | on-device model (English) else message + **Install voice data** | `LANGUAGE_MISSING` |
 | Nothing works | message; install-engine / install-voice-data / check connection / try later | all of the above |
@@ -43,7 +45,32 @@ The ReadAloud system engine can try the API first for English text of 100+ chara
 
 ### Events (no text)
 
-`tts_session` (first_source, ttfa_ms, total_ms, audio_ms, chunks, cache_hits, chars, content_language, succeeded) and `tts_fallback` (from_source, reason). Sent only when the user allowed analytics; every read also logs one `TTS_CHAIN` line to logcat.
+`tts_session` (first_source, ttfa_ms, total_ms, audio_ms, chunks, cache_hits, chars, content_language, voice_source, succeeded; `voice_source` is `cloud_es`, `cloud_en`, `system`, `on_device` or `none`, added 2026-11-13) and `tts_fallback` (from_source, reason). Sent only when the user allowed analytics; every read also logs one `TTS_CHAIN` line to logcat.
+
+`playback_started` and `playback_completed` also carry `voice_source` (`system`, `cloud`, or `unknown` for audio made before it was recorded) and `content_language` (a language code); `content_imported` for an EPUB carries the language detected in its first chapter.
+
+Language and voice events (added 2026-11-13). All sent only when the user allowed analytics; parameters are built in `LanguageAnalytics` and are limited to ISO language codes, a fixed set of reasons and true/false flags, never text, titles, document ids or voice names:
+
+| Event | Parameters | When |
+|---|---|---|
+| `content_imported` | import_mode, content_language | an import finished (unchanged) |
+| `voice_request` | content_language | the user tapped "Want a natural X voice?" (unchanged) |
+| `voice_fallback` | content_language, reason (`no_voice`, `no_engine`, `offline`, `engine_error`) | a read ended with no usable voice (was declared but never sent before) |
+| `lang_no_voice` | content_language, voice_exists (`true` = the engine lists a voice that is not downloaded, or is network-only while offline; `false` = it lists none), device_language | an import finished in a language other than English and the phone cannot speak it now |
+| `lang_override` | from_language, to_language (`auto` = back to detection) | the user picked the reading language of a document |
+
+Play Data safety: no change. These are app-interaction events through the Firebase Analytics SDK that is already declared, with no new data type, no identifier and no content.
+
+## Languages other than English (added 2026-11-13)
+
+- The reading language of a document is detected on the phone (ML Kit). The reader shows a language chip: **Auto (detected language)** or the user's choice, with the languages the phone can speak. The choice is stored per document on the device (`LanguagePrefs`) and beats re-detection when playback starts; changing it drops the audio already made.
+- Non-English text is read by the phone's engine (the API voices are English). `VoiceSelection` ranks the engine's voices: one that works now, on-device over network-only, higher engine quality rating, the phone's region, then name. The reader lists the working voices for the language; the pick is stored per language; if that voice later stops working (offline network voice) the best voice reads that time, and if the engine no longer lists it at all the pick is cleared, so the phone-first order and the picker's selection do not outlive it. The phone's own default voice for Locale.US still reads English (no ranking across regions) unless the user picked an English voice.
+- No voice for the language: the error and the button are translated, the button opens the engine's voice-data installer, else the text-to-speech settings, else Settings, and the reader or Read Text re-checks when the user comes back. An import in a language the phone cannot speak shows a one-line notice.
+- Spanish cloud voice (added 2026-11-13). The cloud source used to refuse every language but English. It now accepts a language only when the app backend's voice catalog (`GET /api/realtime-tts/voices`, the gateway's `/v1/voices` filtered to Piper voices) lists the vetted voice for it; `CloudVoicePolicy.PREFERRED` maps `es` to `custom:es-pilot-f` (tier A, CC BY 4.0, CML-TTS Oliveira et al. 2023 and LibriTTS-R) and nothing else, so a listed but unvetted voice (es-pilot-m, the French, German, Italian and Portuguese beta voices, any tier B voice) is never used. No catalog, an unreachable one, or a backend without the route means Spanish is read by the phone's voices exactly as before. Order: cloud voice, then the phone's engine, then the install-voice-data error. Picking one of the phone's voices in the voice picker puts the phone first. Word timings are not requested for non-English text (the alignment worker is only known to work for English), so Spanish highlights by paragraph.
+  - Status of the server side on 2026-11-13 (read only): `es-pilot-f` is in `PIPER_PRELOAD_VOICES` of `worker-piper-fly/fly.toml` and the live `piper-tts-sjc` machine has `/voices/es-pilot-f/model.onnx` (77 MB) on disk. The gateway lists it in `GET /v1/voices` (`custom:es-pilot-f`, language `es`) but that route needs an API key; the backend router `backend/src/routes/realtimeTts.ts` only has `POST /authorize`, so the app has no catalog to read yet. The route is the one piece to add on the server (see the PR description for the diff); until it ships the Spanish cloud voice stays off.
+  - Known, unrated: only the news passage of the 2026-11-13 blind test was rated (es-pilot-f 4/5, es-pilot-m 3/5); names, loanwords and literary text were not. The repo's own notes record an ASR word error rate of about 0.21 and an unlabelled accent for es-pilot (the gateway describes the voice as Latin American; the catalog says unverified). The gateway notes the pilot is weak on very short sentences.
+- Read Text (gallery photo): the recognised text goes through the same language detection and is spoken with that language's locale. Text recognition there is the Latin-script model, so Cyrillic, Arabic, CJK and similar scripts are not recognised yet.
+
 
 ## Privacy: engine API route (added 2026-11-04)
 

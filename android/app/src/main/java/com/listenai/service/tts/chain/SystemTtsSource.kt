@@ -11,6 +11,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withTimeoutOrNull
+import com.listenai.service.tts.LanguagePrefs
 import java.io.File
 import java.util.Locale
 import java.util.UUID
@@ -73,14 +74,8 @@ class SystemTtsSource(
         val avail = tts.isLanguageAvailable(locale)
         if (avail < TextToSpeech.LANG_AVAILABLE) return FallbackReason.LANGUAGE_MISSING
         // The language can be "available" yet its voice not installed, or installed only as a network voice.
-        val voices = try { tts.voices } catch (e: Exception) { null }
-        val forLang = voices?.filter { it.locale.language == locale.language }
-        if (forLang != null && forLang.isNotEmpty()) {
-            val usable = forLang.any { v ->
-                !v.features.contains(TextToSpeech.Engine.KEY_FEATURE_NOT_INSTALLED) &&
-                    (!v.isNetworkConnectionRequired || isOnline())
-            }
-            if (!usable) return FallbackReason.LANGUAGE_MISSING
+        if (VoiceSelection.status(voiceInfosOf(tts), request.language, isOnline()) == VoiceSelection.Status.NOT_USABLE) {
+            return FallbackReason.LANGUAGE_MISSING
         }
         null
     }
@@ -89,6 +84,7 @@ class SystemTtsSource(
         val tts = ensureEngine() ?: throw SourceFailure(FallbackReason.ENGINE_MISSING)
         val locale = localeFor(request.language)
         tts.language = locale
+        chooseVoice(tts, request.language)
         tts.setSpeechRate(request.speed.coerceIn(0.25f, 4f))
         val file = File.createTempFile("sys_tts_", ".wav", app.cacheDir)
         val utt = UUID.randomUUID().toString()
@@ -113,14 +109,86 @@ class SystemTtsSource(
         }
     }
 
-    fun release() {
-        engine?.shutdown(); engine = null; enginePackage = null
+    /** The engine's voices as plain data; empty when it lists none or throws. */
+    private fun voiceInfosOf(tts: TextToSpeech): List<SystemVoiceInfo> = voiceInfosOf(rawVoices(tts))
+
+    private fun rawVoices(tts: TextToSpeech): Set<android.speech.tts.Voice> =
+        try { tts.voices } catch (e: Exception) { null } ?: emptySet()
+
+    private fun voiceInfosOf(voices: Set<android.speech.tts.Voice>): List<SystemVoiceInfo> =
+        voices.mapNotNull { v ->
+            val loc = v.locale ?: return@mapNotNull null
+            SystemVoiceInfo(
+                name = v.name,
+                language = loc.language.lowercase(),
+                region = loc.country.orEmpty(),
+                quality = v.quality,
+                networkRequired = v.isNetworkConnectionRequired,
+                installed = v.features?.contains(TextToSpeech.Engine.KEY_FEATURE_NOT_INSTALLED) != true,
+            )
+        }
+
+    /**
+     * Sets the voice for one synthesis. English keeps the behaviour it had before other languages were supported: the
+     * engine's default voice for Locale.US, unless the user picked an English voice. Other languages use the user's pick,
+     * else the best voice (see [VoiceSelection]); the engine's default if none. The engine's voice list is read once.
+     */
+    private fun chooseVoice(tts: TextToSpeech, language: String) {
+        try {
+            val preferred = LanguagePrefs.get(app).preferredVoice(language)
+            if (LanguageKey.of(language) == "en" && preferred == null) return
+            val raw = rawVoices(tts)
+            val pick = VoiceSelection.choose(
+                voices = voiceInfosOf(raw),
+                language = language,
+                preferredName = preferred,
+                online = isOnline(),
+                deviceRegion = Locale.getDefault().country,
+            ) ?: return
+            raw.firstOrNull { it.name == pick.name }?.let { tts.voice = it }
+        } catch (e: Exception) {
+            Log.w(TAG, "could not select a voice for $language: ${e.message}")
+        }
     }
 
-    /** Intent that asks the chosen engine to download voice data for [language]; null if there is no engine. */
-    fun installVoiceDataIntent(): Intent? {
-        val pkg = chosenEngine() ?: return null
-        return Intent(TextToSpeech.Engine.ACTION_INSTALL_TTS_DATA).setPackage(pkg).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    /**
+     * What became of the user's stored voice pick for [language]: see [VoiceSelection.PickState]. The ReadAloud
+     * synthesizer uses it so a voice that was uninstalled stops steering the order of sources.
+     */
+    suspend fun pickState(language: String, preferredName: String?): VoiceSelection.PickState = lock.withLock {
+        val tts = ensureEngine() ?: return VoiceSelection.PickState.UNUSABLE_NOW
+        VoiceSelection.pickState(voiceInfosOf(tts), language, preferredName, isOnline())
+    }
+
+    /** Voices that work now for [language], best first, for the voice picker. */
+    suspend fun voicesFor(language: String): List<SystemVoiceInfo> = lock.withLock {
+        val tts = ensureEngine() ?: return emptyList()
+        VoiceSelection.usable(voiceInfosOf(tts), language, isOnline(), Locale.getDefault().country)
+    }
+
+    /**
+     * 2-letter codes of the languages this phone can speak now: those with a working voice, or, when the engine lists
+     * no voices at all, the languages it says it supports. Empty when there is no engine.
+     */
+    suspend fun supportedLanguages(): Set<String> = lock.withLock {
+        val tts = ensureEngine() ?: return emptySet()
+        val infos = voiceInfosOf(tts)
+        if (infos.isNotEmpty()) return VoiceSelection.speakableLanguages(infos, isOnline())
+        try { tts.availableLanguages?.map { it.language }?.filter { it.isNotBlank() }?.toSet() ?: emptySet() } catch (e: Exception) { emptySet() }
+    }
+
+    /** Whether this phone can speak [language] now (see [LanguageVoiceState]). Used at import and when the user comes back from installing voices. */
+    suspend fun voiceState(language: String): LanguageVoiceState = lock.withLock {
+        val tts = ensureEngine() ?: return LanguageVoiceState.NO_ENGINE
+        val available = try { tts.isLanguageAvailable(localeFor(language)) >= TextToSpeech.LANG_AVAILABLE } catch (e: Exception) { false }
+        LanguageVoiceState.from(true, available, VoiceSelection.status(voiceInfosOf(tts), language, isOnline()))
+    }
+
+    /** Drops the engine connection so the next call sees voice data installed in the meantime. */
+    suspend fun refresh() = lock.withLock { release() }
+
+    fun release() {
+        engine?.shutdown(); engine = null; enginePackage = null
     }
 
     companion object {

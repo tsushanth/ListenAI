@@ -81,7 +81,11 @@ val dataModule = module {
     single { get<ListenAIDatabase>().bookmarkDao() }
 
     // Repositories
-    single { ArticleRepository(get()) }
+    // A deleted document also loses its reading-language choice (kept in LanguagePrefs, keyed by the document id).
+    single {
+        val app = androidContext()
+        ArticleRepository(get(), onRemoved = { id -> com.listenai.service.tts.LanguagePrefs.get(app).setOverride(id, null) })
+    }
     single { UsageRepository(get()) }
 
     // ViewModels
