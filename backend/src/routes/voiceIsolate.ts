@@ -2,6 +2,7 @@
 // The backend deploys a Modal Demucs app on behalf of each user (with their own GPU container)
 // and tears it down when requested.  This keeps audio off our servers and gives users cost control.
 // Mirrors voiceConvert.ts's pattern exactly - see that file for the fuller rationale comments.
+import { publicWorkerStatus } from '../lib/publicText.js';
 import { signalMediaJobFailed } from '../lib/failureSignals.js';
 import express, { Router, Request, Response, NextFunction } from 'express';
 import rateLimit from 'express-rate-limit';
@@ -438,7 +439,7 @@ export const voiceIsolateRouter: Router = (() => {
         }
       }
 
-      res.json(st);
+      res.json(publicWorkerStatus(st, 'Isolation failed. Try different audio.'));
     } catch (e) { next(e); }
   });
 

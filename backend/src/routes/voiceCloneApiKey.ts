@@ -22,6 +22,7 @@
 // Own-voice only: there is no endpoint that clones without the consent recording from the same speaker
 // (strict mode), and every voice is bound to the account behind the key. A key with no bound account cannot
 // clone (403 account_required). Audio and keys are never logged.
+import { PUBLIC_CLONE_MODEL, PUBLIC_WATERMARK } from '../lib/publicText.js';
 import express, { Router, type NextFunction, type Request, type Response } from 'express';
 import rateLimit from 'express-rate-limit';
 import { z } from 'zod';
@@ -104,8 +105,8 @@ export function createVoiceCloneApiRouter(d: VoiceCloneApiDeps): Router {
       const { voice, synth, ms } = await synthesizeWithClone(d.getDeps()!, { eligibility: e, voiceId: id.data, text: body.data.text, speed: body.data.speed });
       log.info({ event: 'voice_clone_speech', channel: 'api', userId: e.userId, voiceId: voice.id, chars: body.data.text.length, ms }, 'cloned voice synthesis');
       res.set({
-        'Content-Type': 'audio/wav', 'Cache-Control': 'no-store', 'X-Voice-ID': voice.id, 'X-Model': synth.modelId,
-        'X-Watermark': synth.watermarkScheme, 'X-Characters-Used': String(body.data.text.length), 'X-Synthesis-Time-Ms': String(ms),
+        'Content-Type': 'audio/wav', 'Cache-Control': 'no-store', 'X-Voice-ID': voice.id, 'X-Model': PUBLIC_CLONE_MODEL,
+        'X-Watermark': PUBLIC_WATERMARK, 'X-Characters-Used': String(body.data.text.length), 'X-Synthesis-Time-Ms': String(ms),
       }).send(synth.audio);
     })().catch((err) => sendError(res, err));
   });

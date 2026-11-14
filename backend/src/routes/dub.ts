@@ -22,6 +22,7 @@
 // STT NOTE: transcribeSourceAudio()/authorizeStt() duplicate stt.ts's gateway-authorize logic locally rather
 // than importing it, to keep this file's dependency surface small. Worth consolidating as a follow-up.
 
+import { publicMessage } from '../lib/publicText.js';
 import { signalMediaJobFailed } from '../lib/failureSignals.js';
 import { Router, Request, Response, NextFunction, RequestHandler } from 'express';
 import { randomUUID } from 'crypto';
@@ -373,7 +374,7 @@ async function runDubJob(
       warnings.push(`voice_id "${assignment.ignoredRequestedVoice}" is not a ${lang.name} voice and was ignored; using the default ${lang.name} voice.`);
     }
     if (assignment.collapsed) warnings.push(`More speakers than ${lang.name} stock voices: some speakers share a voice.`);
-    if (lang.note) warnings.push(lang.note);
+    if (lang.note) warnings.push(publicMessage(lang.note, 'This language is a pilot; quality is still being evaluated.'));
     job.diarization = speakers.some((sp) => sp !== undefined) ? 'stt_speaker_labels' : 'unavailable_single_voice';
     job.voices = speakers.map((sp) => ({ speaker: sp ?? null, voice_id: assignment.voiceBySpeaker.get(sp)! }));
     job.warnings = warnings;
@@ -458,7 +459,8 @@ async function runDubJob(
     );
   } catch (error) {
     job.status = 'failed';
-    job.error = error instanceof Error ? error.message : 'Unknown error';
+    // Internal failures (worker URLs, backend names, config hints) are logged below; the client sees a neutral message.
+    job.error = error instanceof Error ? publicMessage(error.message, 'Dubbing failed. Please try again.') : 'Unknown error';
     touchJob(job);
     dubLogger.error({ jobId: job.id, error }, 'Dubbing job failed');
     signalMediaJobFailed('dub');

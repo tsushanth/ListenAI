@@ -161,7 +161,7 @@ test('strict flow: consent-phrase -> create -> list -> speech -> delete; respons
     const sp = await fetch(`${ctx.base}/${v.id}/speech`, { method: 'POST', headers: { ...as(U1), 'Content-Type': 'application/json' }, body: JSON.stringify({ text: 'Hello there', speed: 1.1 }) });
     assert.equal(sp.status, 200);
     assert.equal(sp.headers.get('content-type'), 'audio/wav');
-    assert.equal(sp.headers.get('x-watermark'), 'perth');
+    assert.equal(sp.headers.get('x-watermark'), 'applied');
     assert.equal(sp.headers.get('x-voice-id'), v.id);
     assert.equal(ctx.store.outputs.length, 1, 'output hash retained like /api/tts/cloned');
 

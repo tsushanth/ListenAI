@@ -1,3 +1,4 @@
+import { publicMessage } from '../lib/publicText.js';
 import { Router, Request, Response, NextFunction, RequestHandler } from 'express';
 import { z } from 'zod';
 import { voicesLogger } from '../lib/logger.js';
@@ -37,6 +38,9 @@ function publicAsyncHandler(
 // ============================================================================
 // Router
 // ============================================================================
+
+/** DB descriptions are free text; one that names a model or dataset is not shown. */
+const publicDescription = <T extends string | null | undefined>(d: T): T | string => (typeof d === 'string' ? publicMessage(d, '') : d);
 
 export const voicesRouter = Router();
 
@@ -106,7 +110,7 @@ voicesRouter.get('/full', requireAuth, asyncHandler(async (req: AuthenticatedReq
   const voiceInfos: VoiceInfo[] = voices.map((voice) => ({
     id: voice.id,
     name: voice.name,
-    description: voice.description,
+    description: publicDescription(voice.description),
     provider: voice.provider,
     category: voice.category,
     style: voice.style,
@@ -189,10 +193,10 @@ voicesRouter.get('/:id', requireAuth, asyncHandler(async (req: AuthenticatedRequ
   const response: VoiceDetailResponse = {
     id: voice.id,
     name: voice.name,
-    description: voice.description,
+    description: publicDescription(voice.description),
     provider: voice.provider,
     provider_voice_id: voice.provider_voice_id,
-    provider_model_id: voice.provider_model_id,
+    provider_model_id: publicMessage(voice.provider_model_id, '') || null,
     category: voice.category,
     style: voice.style,
     language: voice.language,
@@ -238,7 +242,7 @@ voicesRouter.get('/recommended', requireAuth, asyncHandler(async (req: Authentic
       recommended.push({
         id: voice.id,
         name: voice.name,
-        description: voice.description,
+        description: publicDescription(voice.description),
         provider: voice.provider,
         category: voice.category,
         style: voice.style,

@@ -1,3 +1,4 @@
+import { publicMessage } from '../lib/publicText.js';
 import { Router, Request, Response, NextFunction, RequestHandler } from 'express';
 import { usageLogger } from '../lib/logger.js';
 import {
@@ -173,7 +174,7 @@ usageRouter.get('/history', asyncHandler(async (req: AuthenticatedRequest, res: 
       duration_ms: record.audio_duration_ms,
       article_title: record.article_title,
       success: record.success,
-      error_message: record.error_message,
+      error_message: record.error_message ? publicMessage(record.error_message, 'Request failed') : record.error_message,
       created_at: record.created_at,
     })),
   });

@@ -51,7 +51,8 @@ test('/cloned synthesises an owned active voice in its language, returns waterma
     await ctx.mkVoice(VID, 'user-1');
     const r = await post(ctx.base, '/cloned', { text: 'Hola mundo', voice_id: VID });
     assert.equal(r.status, 200);
-    assert.equal(r.headers.get('x-watermark'), 'perth');
+    assert.equal(r.headers.get('x-watermark'), 'applied'); // the scheme name is not public; the stored record below keeps it
+    assert.equal(r.headers.get('x-model'), 'studio');
     assert.equal(r.headers.get('content-type'), 'audio/wav');
     assert.ok(ctx.service.calls.includes('synthesize'));
     assert.equal(ctx.store.outputs.length, 1);

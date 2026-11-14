@@ -33,6 +33,7 @@
 // and optional keyterms are forwarded to the worker as repeated `keyterm` query params (worker contract:
 // research/W20/REPORT.md section "Upstream worker contract").
 
+import { publicMessage, scrubPublic, PUBLIC_STT_MODEL } from '../lib/publicText.js';
 import { signalMediaJobFailed, signalSttWorkerFailure } from '../lib/failureSignals.js';
 import { Router, Request, Response, NextFunction } from 'express';
 import multer from 'multer';
@@ -129,7 +130,8 @@ function defaultOptions(): SttOptions {
 
 const STT_GATEWAY_URL = config.STT_GATEWAY_URL || 'https://api.readaloudai.org';
 const STT_API_KEY = config.STT_API_KEY;
-const MODEL_ID = 'whisper-large-v3-turbo';
+// Public model label (the serving model is never named to clients).
+const MODEL_ID = PUBLIC_STT_MODEL;
 
 interface AuthorizeResult { token: string; url: string }
 
@@ -293,8 +295,9 @@ function cleanStr(v: unknown, max: number): string {
 }
 
 /** Error body in the shape each surface's clients expect. `rid` is only used by the Deepgram shape. */
-function sendErr(res: Response, kind: Kind, status: number, code: string, message: string, rid?: string, headers: Record<string, string> = {}): void {
+function sendErr(res: Response, kind: Kind, status: number, code: string, rawMessage: string, rid?: string, headers: Record<string, string> = {}): void {
   if (res.headersSent) return;
+  const message = publicMessage(rawMessage, 'The request could not be completed.');
   for (const [k, v] of Object.entries(headers)) res.setHeader(k, v);
   if (kind === 'deepgram') {
     res.status(status).json({ err_code: code.toUpperCase(), err_msg: message, request_id: rid ?? randomUUID() });
@@ -424,7 +427,7 @@ function deepgramBody(id: string, r: TranscribeResult, punctuate: boolean) {
   const results: Record<string, unknown> = {
     channels: [{ detected_language: r.language, alternatives: [alt] }],
   };
-  if (r.quality) results.quality = r.quality;
+  if (r.quality) results.quality = scrubPublic(r.quality);
   if (r.speakers && Array.isArray(r.speakers.utterances)) {
     // Deepgram `utterances` shape. confidence = mean ASR word probability (the worker produces no speaker confidence and none is invented).
     results.utterances = (r.speakers.utterances as Array<Record<string, unknown>>).map((u, i) => ({
@@ -439,7 +442,7 @@ function deepgramBody(id: string, r: TranscribeResult, punctuate: boolean) {
       duration: r.duration,
       channels: 1,
       models: [MODEL_ID],
-      ...(r.speakers ? { stt_ext: { speakers: { count: r.speakers.count, warnings: r.speakers.warnings, engine: r.speakers.engine } } } : {}),
+      ...(r.speakers ? { stt_ext: { speakers: { count: r.speakers.count, warnings: r.speakers.warnings } } } : {}),
     },
     results,
   };
@@ -459,9 +462,9 @@ function openaiVerbose(r: TranscribeResult, withWords: boolean) {
     })),
   };
   if (withWords) out.words = (r.words ?? []).map((w) => ({ word: bareWord(w.word), start: w.start, end: w.end }));
-  if (r.dictionary) out.x_dictionary = r.dictionary;
-  if (r.quality) out.x_quality = r.quality;
-  if (r.speakers) out.x_speakers = r.speakers;
+  if (r.dictionary) out.x_dictionary = scrubPublic(r.dictionary);
+  if (r.quality) out.x_quality = scrubPublic(r.quality);
+  if (r.speakers) out.x_speakers = scrubPublic(r.speakers);
   return out;
 }
 
@@ -877,7 +880,7 @@ export function createSttRouters(overrides: Partial<SttOptions> = {}): { sttRout
       const out = await runTranscription(ctx, { surface: 'api', language, wordTimestamps, keyterms, smartFormat: false, diarize, maxSpeakers, dictShortlist: dict.shortlist, keytermsJson: dict.json, mimeSniffed: ctx.file!.mime, size: ctx.file!.size });
       await ctx.done();
       if (out.worker) res.setHeader('X-STT-Worker', out.worker);
-      if (!out.ok) { res.status(out.status).json({ id: out.id, status: 'failed', error: out.message }); return; }
+      if (!out.ok) { res.status(out.status).json({ id: out.id, status: 'failed', error: publicMessage(out.message, 'Transcription failed.') }); return; }
       const r = out.result;
       res.status(201).json({
         id: out.id,
@@ -888,9 +891,9 @@ export function createSttRouters(overrides: Partial<SttOptions> = {}): { sttRout
         duration: r.duration,
         words: r.words ?? undefined,
         segments: r.segments ?? undefined,
-        quality: r.quality,
-        dictionary: r.dictionary,
-        speakers: r.speakers,
+        quality: r.quality ? scrubPublic(r.quality) : r.quality,
+        dictionary: r.dictionary ? scrubPublic(r.dictionary) : r.dictionary,
+        speakers: r.speakers ? scrubPublic(r.speakers) : r.speakers,
       });
     } catch (e) { next(e); }
   });
@@ -916,7 +919,7 @@ export function createSttRouters(overrides: Partial<SttOptions> = {}): { sttRout
       const { data, error } = await supabase.from('stt_transcriptions').select('*').eq('id', req.params.id).eq('user_id', userId).maybeSingle();
       if (error) throw error;
       if (!data) { res.status(404).json({ error: 'Transcription not found.' }); return; }
-      res.json(data);
+      res.json({ ...data, error: data.error ? publicMessage(data.error, 'Transcription failed.') : data.error });
     } catch (e) { next(e); }
   });
 

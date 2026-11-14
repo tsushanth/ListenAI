@@ -14,6 +14,7 @@
 //   POST   /api/admin/voice-clones/purge-expired x-admin-key; retention sweep
 //
 // Synthesis with a cloned voice goes through /api/tts/cloned and /api/tts/job-cloned (routes/tts.ts).
+import { PUBLIC_CLONE_MODEL } from '../lib/publicText.js';
 import { Router, type Request, type RequestHandler, type Response, type NextFunction } from 'express';
 import express from 'express';
 import multer from 'multer';
@@ -173,7 +174,7 @@ export function createVoiceClonesRouter(rd: VoiceClonesRouterDeps): Router {
         reference: { audio: reference.buffer, mime: reference.mimetype, filename: reference.originalname || 'reference' },
       });
       log.info({ event: 'voice_clone_created', channel, mode: 'attested', userId: voice.userId, voiceId: voice.id, language: voice.language }, 'voice clone created (attestation mode)');
-      res.status(201).json({ id: voice.id, name: voice.name, language: voice.language, status: voice.status, reference_seconds: voice.referenceSec, model: voice.modelId, created_at: voice.createdAt });
+      res.status(201).json({ id: voice.id, name: voice.name, language: voice.language, status: voice.status, reference_seconds: voice.referenceSec, model: PUBLIC_CLONE_MODEL, created_at: voice.createdAt });
       return;
     }
     if (!consent || !reference || consent.size < 1024 || reference.size < 1024) {
@@ -193,7 +194,7 @@ export function createVoiceClonesRouter(rd: VoiceClonesRouterDeps): Router {
     // `borderline` is for the operator (stored with the consent record); not exposed to the caller.
     if (borderline) log.info({ voiceId: voice.id, userId: voice.userId }, 'voice clone accepted within the borderline similarity margin');
     log.info({ event: 'voice_clone_created', channel, mode: 'verified', userId: voice.userId, voiceId: voice.id, language: voice.language, borderline }, 'voice clone created (consent verified)');
-    res.status(201).json({ id: voice.id, name: voice.name, language: voice.language, status: voice.status, reference_seconds: voice.referenceSec, model: voice.modelId, created_at: voice.createdAt });
+    res.status(201).json({ id: voice.id, name: voice.name, language: voice.language, status: voice.status, reference_seconds: voice.referenceSec, model: PUBLIC_CLONE_MODEL, created_at: voice.createdAt });
   }));
 
   r.get('/', h(async (req, res) => {

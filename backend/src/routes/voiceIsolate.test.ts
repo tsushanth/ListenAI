@@ -120,7 +120,7 @@ function installFetchMock() {
         modalRequests.push({ method: 'GET', path: `/isolate/${id}` });
         const j = modalJobs.get(id);
         if (!j) return new Response(JSON.stringify({ error: 'not found' }), { status: 404, headers: { 'Content-Type': 'application/json' } });
-        return new Response(JSON.stringify({ job_id: id, status: j.status }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+        return new Response(JSON.stringify({ job_id: id, status: j.status, ...(j.status === 'failed' ? { stderr_tail: 'demucs htdemucs: CUDA out of memory', stdout_tail: 'Selected model is htdemucs' } : {}) }), { status: 200, headers: { 'Content-Type': 'application/json' } });
       }
 
       const audioMatch = path.match(/^\/isolate\/([^\/]+)\/result$/);
@@ -478,3 +478,25 @@ test('GET /deploy returns deployment info, never the secret', async () => {
 // POST /deploy and DELETE /deploy shell out to the modal CLI (child_process.exec) and are impractical to
 // unit-test here without extensive exec mocking — same call as voiceConvert.test.ts makes for its own
 // deploy/destroy endpoints. Covered by integration tests instead.
+
+test('poll of a failed isolation never relays the worker log (model names) to the client', async () => {
+  installFetchMock();
+  resetState();
+  userConfigs.set(resolvedUserId, { modal_url: MODAL_BASE, modal_secret: 'my-secret' });
+  const s = await boot();
+  try {
+    // No POST here: the submit route is rate limited per user and this file already uses most of the hourly allowance.
+    const job_id = 'job-failed-1';
+    modalJobs.set(job_id, { status: 'failed' });
+    const poll = await s.call({ Authorization: 'Bearer valid-token' }, 'GET', `/isolations/${job_id}`);
+    const raw = await poll.text();
+    const body = JSON.parse(raw);
+    assert.equal(body.status, 'failed');
+    assert.equal(body.error, 'Isolation failed. Try different audio.');
+    assert.equal(body.stdout_tail, undefined);
+    assert.doesNotMatch(raw, /demucs|htdemucs|CUDA/i);
+  } finally {
+    s.close();
+    uninstallFetchMock();
+  }
+});

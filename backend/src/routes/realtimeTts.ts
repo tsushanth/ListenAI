@@ -34,6 +34,8 @@ const GATEWAY_URL = process.env.REALTIME_TTS_GATEWAY_URL || 'https://api.readalo
 
 // Per-install quota, per-minute limit and global circuit breaker: see lib/ttsQuota.ts (in-memory, per instance;
 // the backend never sees the text, so characters are charged as a per-authorize estimate).
+const TIER_TO_GATEWAY_ENGINE: Record<string, string> = { live: 'piper', studio: 'kokoro' };
+
 export function createRealtimeTtsRouter(quota: TtsQuota = defaultQuota): Router {
 const router = Router();
 
@@ -54,7 +56,10 @@ const router = Router();
       return;
     }
 
-    const engine = typeof req.body?.engine === 'string' ? req.body.engine : 'piper';
+    // Clients may name the tier (`live` / `studio`, the only public engine names) or send the legacy engine id (still accepted
+    // unchanged). The tier names are translated to the gateway's engine ids here, so no engine id has to be public.
+    const requested = typeof req.body?.engine === 'string' ? req.body.engine : 'live';
+    const engine = TIER_TO_GATEWAY_ENGINE[requested] ?? requested;
     // Optional: the app asks for word timings. Forwarded only when literally true; the gateway answers {alignment: true|false}
     // and, when true, returns the alignment worker's WebSocket URL (which adds `words` to each chunk_meta message).
     const wantAlignment = req.body?.alignment === true;

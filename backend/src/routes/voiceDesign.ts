@@ -1,6 +1,7 @@
 // Voice Design: proxy to the Modal voice-design-dev Parler-TTS app.
 // Authenticated users with an active TTS billing subscription can generate
 // voices from text descriptions. Usage is tracked per generation.
+import { publicWorkerStatus } from '../lib/publicText.js';
 import express, { Router, Request, Response, NextFunction } from 'express';
 import rateLimit from 'express-rate-limit';
 import { config } from '../lib/config.js';
@@ -197,7 +198,7 @@ export const voiceDesignRouter: Router = (() => {
         }
       }
 
-      res.json(status);
+      res.json(publicWorkerStatus(status, 'Voice design failed. Try a different description.'));
     } catch (e) { next(e); }
   });
 

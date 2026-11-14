@@ -8,6 +8,7 @@
 // with, so this is a plain, direct Express router (no createVoiceStudioRouter factory abstraction) that
 // simply proxies to the Modal training/serving service using its own bearer secret (ORPHEUS_CLONE_SECRET,
 // distinct from GATEWAY_FORWARD_SECRET, which is only the gateway<->backend hop's secret).
+import { publicRelayBody } from '../lib/publicText.js';
 import express, { Router, Request, Response } from 'express';
 
 const router = Router();
@@ -73,7 +74,7 @@ function serviceSecret(): string {
 async function relayResponse(res: Response, upstream: globalThis.Response) {
   const buf = Buffer.from(await upstream.arrayBuffer());
   const contentType = upstream.headers.get('content-type') || 'application/json';
-  res.status(upstream.status).set('content-type', contentType).send(buf);
+  res.status(upstream.status).set('content-type', contentType).send(publicRelayBody(buf, contentType));
 }
 
 function validateVid(req: Request, res: Response): string | null {
@@ -99,7 +100,7 @@ router.post('/', requireGatewayAuth, async (req: Request, res: Response) => {
     });
     await relayResponse(res, upstream);
   } catch {
-    res.status(502).json({ error: 'orpheus clone service unavailable' });
+    res.status(502).json({ error: 'voice studio service unavailable' });
   }
 });
 
@@ -119,7 +120,7 @@ router.put('/:vid/dataset', requireGatewayAuth, express.raw({ type: '*/*', limit
     });
     await relayResponse(res, upstream);
   } catch {
-    res.status(502).json({ error: 'orpheus clone service unavailable' });
+    res.status(502).json({ error: 'voice studio service unavailable' });
   }
 });
 
@@ -139,7 +140,7 @@ router.post('/:vid/dataset/commit', requireGatewayAuth, async (req: Request, res
     });
     await relayResponse(res, upstream);
   } catch {
-    res.status(502).json({ error: 'orpheus clone service unavailable' });
+    res.status(502).json({ error: 'voice studio service unavailable' });
   }
 });
 
@@ -157,7 +158,7 @@ router.get('/:vid', requireGatewayAuth, async (req: Request, res: Response) => {
     });
     await relayResponse(res, upstream);
   } catch {
-    res.status(502).json({ error: 'orpheus clone service unavailable' });
+    res.status(502).json({ error: 'voice studio service unavailable' });
   }
 });
 
@@ -175,7 +176,7 @@ router.delete('/:vid', requireGatewayAuth, async (req: Request, res: Response) =
     });
     await relayResponse(res, upstream);
   } catch {
-    res.status(502).json({ error: 'orpheus clone service unavailable' });
+    res.status(502).json({ error: 'voice studio service unavailable' });
   }
 });
 
@@ -193,7 +194,7 @@ router.post('/tts', requireGatewayAuth, async (req: Request, res: Response) => {
     });
     await relayResponse(res, upstream);
   } catch {
-    res.status(502).json({ error: 'orpheus clone service unavailable' });
+    res.status(502).json({ error: 'voice studio service unavailable' });
   }
 });
 
