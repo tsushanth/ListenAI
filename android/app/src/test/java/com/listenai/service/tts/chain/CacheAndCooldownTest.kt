@@ -1,6 +1,10 @@
 package com.listenai.service.tts.chain
 
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.test.TestScope
@@ -157,8 +161,8 @@ class CacheAndCooldownTest {
                     .setBody("""{"voices":[{"voice_id":"custom:es-pilot-f","language":"es","engine":"piper"}]}""")
             )
             val cat = HttpCloudVoiceCatalog(OkHttpClient(), server.url("/").toString().trimEnd('/'))
-            val results = kotlinx.coroutines.coroutineScope {
-                (1..4).map { kotlinx.coroutines.async(kotlinx.coroutines.Dispatchers.Default) { cat.voices() } }.map { it.await() }
+            val results = coroutineScope {
+                (1..4).map { async(Dispatchers.Default) { cat.voices() } }.awaitAll()
             }
             assertTrue(results.all { it.map { v -> v.id } == listOf("custom:es-pilot-f") })
             assertEquals(1, server.requestCount)
