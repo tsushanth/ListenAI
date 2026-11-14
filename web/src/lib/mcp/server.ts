@@ -77,7 +77,7 @@ export function createMcpServer(ctx: RequestContext): McpServer {
     description:
       `Convert text to spoken audio and return it as an inline WAV clip (24 kHz, mono, 16-bit). ` +
       `Limits: ${MAX_TEXT_CHARS} characters per call and about ${MAX_AUDIO_SECONDS} seconds of audio; longer audio is cut off, so split long text into several calls. ` +
-      `Engines: "live" (ReadAloud Live) is fast and cheap (a default English voice, plus ${TTS_REGISTRY.counts.liveListedNonDefault} beta voices in other languages, each passed by its voice_id from list_voices); "studio" (ReadAloud Studio) sounds more natural and has ${TTS_REGISTRY.counts.studio} ${TTS_REGISTRY.phrase.studioLanguages} voices. ` +
+      `Engines: "live" (ReadAloud Live) is fast and cheap (${TTS_REGISTRY.phrase.liveVoicesTail}, each passed by its voice_id from list_voices); "studio" (ReadAloud Studio) sounds more natural and has ${TTS_REGISTRY.counts.studio} ${TTS_REGISTRY.phrase.studioLanguages} voices. ` +
       `The result also has a text block with duration and time to first audio. Uses the caller's free characters or billing, so avoid calling it repeatedly for the same text. ` +
       `Cloned voices: pass voice "clone:<id>" (an id from readaloud_create_voice_clone or readaloud_list_voices) to speak in a voice you cloned; it works only for the account that owns it and returns the same WAV format. ` +
       `Errors are returned with a code: capacity (temporary, retry), payment_required (free characters used up, or no paid plan for a cloned voice), invalid_voice (call list_voices), rate_limited (wait).`,

@@ -39,10 +39,22 @@ const LANGUAGES = {
   fr: { name: 'French', label: 'French' },
   it: { name: 'Italian', label: 'Italian' },
   pt: { name: 'Portuguese', label: 'Portuguese' },
-  'pt-BR': { name: 'Brazilian Portuguese', label: 'Portuguese (Brazil)' },
-  ja: { name: 'Japanese', label: 'Japanese' },
-  zh: { name: 'Chinese', label: 'Chinese' },
+  cs: { name: 'Czech', label: 'Czech' },
+  nl: { name: 'Dutch', label: 'Dutch' },
+  fi: { name: 'Finnish', label: 'Finnish' },
   el: { name: 'Greek', label: 'Greek' },
+  hi: { name: 'Hindi', label: 'Hindi' },
+  hu: { name: 'Hungarian', label: 'Hungarian' },
+  id: { name: 'Indonesian', label: 'Indonesian' },
+  ja: { name: 'Japanese', label: 'Japanese' },
+  pl: { name: 'Polish', label: 'Polish' },
+  ro: { name: 'Romanian', label: 'Romanian' },
+  ru: { name: 'Russian', label: 'Russian' },
+  sv: { name: 'Swedish', label: 'Swedish' },
+  tr: { name: 'Turkish', label: 'Turkish' },
+  uk: { name: 'Ukrainian', label: 'Ukrainian' },
+  'pt-BR': { name: 'Brazilian Portuguese', label: 'Portuguese (Brazil)' },
+  zh: { name: 'Chinese', label: 'Chinese' },
 }
 
 export const joinList = (xs) => (xs.length <= 1 ? xs.join('') : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`)
@@ -75,12 +87,13 @@ export function build(registryDir) {
       lang(v.language, v.voice_id)
       const o = { id: v.voice_id, name: v.name, language: v.language, gender: v.gender }
       if (v.dialect) o.dialect = v.dialect
+      if (v.languages) { for (const c of v.languages) lang(c, v.voice_id); o.languages = [...v.languages] }
       o.beta = tier === 'live' && LIVE_LISTED_VOICES_ARE_BETA
       return o
     })
     const voicesByLanguage = {}
     for (const code of t.languages) {
-      const ids = voices.filter((v) => v.language === code).map((v) => v.id)
+      const ids = voices.filter((v) => (v.languages ?? [v.language]).includes(code)).map((v) => v.id)
       if (ids.length) voicesByLanguage[code] = ids
     }
     // A tier language with no listed voice is reached through the Live tier's implicit default voice (English).
@@ -88,7 +101,7 @@ export function build(registryDir) {
     if (implicit.length > 1 || (implicit.length === 1 && tier !== 'live')) fail(`tier ${tier}: languages ${implicit.join(', ')} have no listed voice`)
     const defaultVoice = implicit.length ? { ...LIVE_DEFAULT_VOICE, language: implicit[0] } : null
     if (voices.length === 0) fail(`tier ${tier} lists no voices in public-catalog.json`)
-    const betaLanguages = Object.keys(voicesByLanguage).filter((c) => voices.filter((v) => v.language === c).every((v) => v.beta))
+    const betaLanguages = Object.keys(voicesByLanguage).filter((c) => voices.filter((v) => (v.languages ?? [v.language]).includes(c)).every((v) => v.beta))
     tiers[tier] = { label: tier[0].toUpperCase() + tier.slice(1), publicAlias: tier, languages: [...t.languages], defaultVoice, voices, voicesByLanguage, betaLanguages }
   }
 
@@ -98,17 +111,21 @@ export function build(registryDir) {
   const liveListedLangs = Object.keys(live.voicesByLanguage)
   const liveBeta = live.betaLanguages.length > 0 && live.betaLanguages.length === liveListedLangs.length
   const defaultName = live.defaultVoice ? lang(live.defaultVoice.language, 'default voice').name : null
-  const liveListed = live.voices.filter((v) => !(live.defaultVoice && v.language === live.defaultVoice.language))
-  const liveExtraLangs = [...new Set(liveListed.map((v) => v.language))]
+  // Every listed voice counts (the implicit default voice only exists for a language with no listed voice). A voice may speak several
+  // languages (`languages`), so the language list is every tier language some listed voice speaks, in tier order.
+  const liveListed = live.voices
+  const liveExtraLangs = live.languages.filter((c) => live.voices.some((v) => (v.languages ?? [v.language]).includes(c)))
   const phrase = {
     liveLanguages: joinList(names(live.languages)),
     liveExtraLanguages: joinList(names(liveExtraLangs)),
     studioLanguages: joinList(names(studio.languages)),
     liveBetaPrefix: liveBeta ? 'beta ' : '',
   }
-  const liveSentence = defaultName
-    ? `ReadAloud Live has a default ${defaultName} voice${liveListed.length ? ` and ${liveListed.length} ${phrase.liveBetaPrefix}voices in ${phrase.liveExtraLanguages}` : ''}`
-    : `ReadAloud Live has ${live.voices.length} voices in ${phrase.liveLanguages}`
+  const liveTail = defaultName
+    ? `a default ${defaultName} voice${liveListed.length ? ` and ${liveListed.length} ${phrase.liveBetaPrefix}voices in ${phrase.liveExtraLanguages}` : ''}`
+    : `${live.voices.length} voices in ${phrase.liveLanguages}`
+  const liveSentence = `ReadAloud Live has ${liveTail}`
+  phrase.liveVoicesTail = liveTail
   const studioSentence = studio.languages.length === 1
     ? `ReadAloud Studio has ${studio.voices.length} ${phrase.studioLanguages} voices`
     : `ReadAloud Studio has ${studio.voices.length} voices in ${phrase.studioLanguages}`

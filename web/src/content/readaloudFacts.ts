@@ -52,13 +52,33 @@ export const RA_LIVE_ENGINE = TTS_REGISTRY.engines.live
 export const RA_STUDIO_ENGINE = TTS_REGISTRY.engines.studio
 export const RA_VOICE_COUNTS = TTS_REGISTRY.counts
 export type RaVoiceRow = { language: string; label: string; voices: readonly string[]; details: readonly { id: string; name: string; dialect?: string }[]; note: string }
-/** One row per listed non-default Live language, in registry order, for the Languages table. `note` is "(both female)" style when the voices share a gender. */
-export const RA_LIVE_LANGUAGE_ROWS: readonly RaVoiceRow[] = Object.entries(RA_LIVE_ENGINE.voicesByLanguage).map(([code, ids]) => {
-  const genders = new Set(RA_LIVE_ENGINE.voices.filter((v) => v.language === code).map((v) => v.gender))
-  const note = ids.length > 1 && genders.size === 1 ? `(${ids.length === 2 ? 'both' : 'all'} ${Array.from(genders)[0]})` : ''
-  const details = RA_LIVE_ENGINE.voices.filter((v) => v.language === code).map((v) => ({ id: v.id, name: v.name, dialect: (v as { dialect?: string }).dialect }))
-  return { language: code, label: (TTS_REGISTRY.languageLabels as Record<string, string>)[code] ?? code, voices: ids, details, note }
-})
+type RaLiveVoice = { id: string; name: string; language: string; gender: string; dialect?: string; languages?: readonly string[] }
+const liveVoices = RA_LIVE_ENGINE.voices as readonly RaLiveVoice[]
+const isMultilingual = (v: RaLiveVoice) => Array.isArray(v.languages) && v.languages.length > 1
+const labelOf = (code: string) => (TTS_REGISTRY.languageLabels as Record<string, string>)[code] ?? code
+const bothNote = (vs: readonly RaLiveVoice[]) => {
+  const genders = new Set(vs.map((v) => v.gender))
+  return vs.length > 1 && genders.size === 1 ? `(${vs.length === 2 ? 'both' : 'all'} ${Array.from(genders)[0]})` : ''
+}
+const rowOf = (language: string, label: string, vs: readonly RaLiveVoice[]): RaVoiceRow =>
+  ({ language, label, voices: vs.map((v) => v.id), details: vs.map((v) => ({ id: v.id, name: v.name, dialect: v.dialect })), note: bothNote(vs) })
+/**
+ * One row per Live language that has voices of its own, in registry order, for the Languages table, then one row for the voices that
+ * speak several languages (their `languages` list is the row label), so no voice is listed twice. `note` is "(both female)" style
+ * when the voices share a gender. Every listed voice is in exactly one row.
+ */
+export const RA_LIVE_LANGUAGE_ROWS: readonly RaVoiceRow[] = [
+  ...Object.keys(RA_LIVE_ENGINE.voicesByLanguage).flatMap((code) => {
+    const vs = liveVoices.filter((v) => !isMultilingual(v) && v.language === code)
+    return vs.length ? [rowOf(code, labelOf(code), vs)] : []
+  }),
+  ...((): RaVoiceRow[] => {
+    const vs = liveVoices.filter(isMultilingual)
+    if (!vs.length) return []
+    const codes = RA_LIVE_ENGINE.languages.filter((c) => vs.some((v) => v.languages!.includes(c)))
+    return [rowOf('multilingual', `${codes.length} languages: ${codes.map(labelOf).join(', ')}`, vs)]
+  })(),
+]
 const P = TTS_REGISTRY.phrase
 
 export type RaTier = {
@@ -80,7 +100,7 @@ export const RA_TIERS: readonly RaTier[] = [
     per1kUsd: 0.004,
     per1MUsd: 4,
     role: 'the low-latency tier, built for live calls and voice agents',
-    voices: `a default ${TTS_REGISTRY.languageNames.en} voice, readaloud-default, and ${RA_VOICE_COUNTS.liveListedNonDefault} ${P.liveBetaPrefix}voices in ${P.liveExtraLanguages}`,
+    voices: RA_LIVE_ENGINE.defaultVoice ? `a default ${TTS_REGISTRY.languageNames.en} voice, readaloud-default, and ${RA_VOICE_COUNTS.liveListedNonDefault} ${P.liveBetaPrefix}voices in ${P.liveExtraLanguages}` : P.liveVoicesTail,
   },
   {
     id: 'studio',
@@ -188,12 +208,14 @@ export const RA_SPEECH_TO_TEXT = {
 export const RA_VOICES = {
   defaultId: 'readaloud-default',
   defaultVoice: `a default ${TTS_REGISTRY.languageNames.en} voice`,
+  /** What follows "ReadAloud Live has " (from the registry): the default-voice form while the registry has an implicit default voice, else "N voices in <languages>". */
+  liveTail: P.liveVoicesTail,
   studioVoices: `${RA_VOICE_COUNTS.studio} ${P.studioLanguages} voices, listed by GET /v1/voices`,
   noSsml: 'No SSML and no audio tags.',
   /** From the registry: "ReadAloud Live has ... ; ReadAloud Studio has ...". */
-  short: `Live: a default ${TTS_REGISTRY.languageNames.en} voice and ${RA_VOICE_COUNTS.liveListedNonDefault} ${P.liveBetaPrefix}voices in ${P.liveExtraLanguages}. Studio: ${RA_VOICE_COUNTS.studio} ${P.studioLanguages} voices.`,
+  short: `Live: ${P.liveVoicesTail}. Studio: ${RA_VOICE_COUNTS.studio} ${P.studioLanguages} voices.`,
   /** Table-cell forms (home page comparison table). */
-  liveCell: `A default ${TTS_REGISTRY.languageNames.en} voice and ${RA_VOICE_COUNTS.liveListedNonDefault} ${P.liveBetaPrefix}voices in ${P.liveExtraLanguages}`,
+  liveCell: P.liveVoicesTail.charAt(0).toUpperCase() + P.liveVoicesTail.slice(1),
   studioCell: `${RA_VOICE_COUNTS.studio} ${P.studioLanguages} voices`,
   noVoiceMapping: 'There is no table that maps another vendor\'s voices to ReadAloud voices.',
 } as const
@@ -225,7 +247,7 @@ export const RA_MIGRATION_MAP = {
 } as const
 
 /** "English and, in beta, German, ..." when every non-default Live language is beta; the plain list otherwise. */
-const liveLanguagesText = P.liveBetaPrefix ? `${TTS_REGISTRY.languageNames.en} and, in beta, ${P.liveExtraLanguages}` : P.liveLanguages
+const liveLanguagesText = P.liveBetaPrefix && RA_LIVE_ENGINE.defaultVoice ? `${TTS_REGISTRY.languageNames.en} and, in beta, ${P.liveExtraLanguages}` : P.liveLanguages
 
 export const RA_LANGUAGES = {
   headline: TTS_REGISTRY.languageNames.en,

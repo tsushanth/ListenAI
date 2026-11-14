@@ -6,12 +6,16 @@ import { TTS_LEGACY_VOICE_IDS } from '../../generated/tts-legacy-voice-ids.ts'
 // Old voice ids (src/generated/tts-legacy-voice-ids.ts) are still understood on input and mapped to the public id; they are never listed.
 const STUDIO = TTS_REGISTRY.engines.studio
 const LIVE = TTS_REGISTRY.engines.live
+// The generated data is `as const`, so a null default voice would narrow to `never`; read it through this widened view.
+const LIVE_DEFAULT = LIVE.defaultVoice as { id: string; name: string; language: string } | null
+const LIVE_VOICE_LIST = LIVE.voices as readonly { id: string; name: string; language: string; languages?: readonly string[]; gender: string; dialect?: string }[]
 
 export type Engine = 'live' | 'studio'
-export type PublicVoice = { voice_id: string; name: string; language: string; dialect?: string; gender: string }
+export type PublicVoice = { voice_id: string; name: string; language: string; languages?: string[]; dialect?: string; gender: string }
 
-const toPublic = (v: { id: string; name: string; language: string; gender: string; dialect?: string }): PublicVoice => {
+const toPublic = (v: { id: string; name: string; language: string; languages?: readonly string[]; gender: string; dialect?: string }): PublicVoice => {
   const o: PublicVoice = { voice_id: v.id, name: v.name, language: v.language, gender: v.gender }
+  if (v.languages && v.languages.length > 1) o.languages = [...v.languages] // a voice that speaks several languages lists them all
   if (v.dialect) o.dialect = v.dialect
   return o
 }
@@ -19,16 +23,17 @@ const toPublic = (v: { id: string; name: string; language: string; gender: strin
 /** Studio voices the docs and list_voices advertise (public ids). The public catalog already leaves out voices the worker cannot speak. */
 export const KOKORO_VOICES: readonly string[] = STUDIO.voices.map((v) => v.id)
 /** Every Live voice the docs advertise: the default English voice, then the beta voices in other languages (public ids). */
-export const LIVE_VOICES: readonly string[] = [...(LIVE.defaultVoice ? [LIVE.defaultVoice.id] : []), ...LIVE.voices.map((v) => v.id)]
+export const LIVE_VOICES: readonly string[] = [...(LIVE_DEFAULT ? [LIVE_DEFAULT.id] : []), ...LIVE_VOICE_LIST.map((v) => v.id)]
 /** What list_voices returns per tier: public ids with name, language, dialect and gender, nothing else. */
 export const PUBLIC_VOICES: Readonly<Record<Engine, readonly PublicVoice[]>> = {
   live: [
-    ...(LIVE.defaultVoice ? [{ voice_id: LIVE.defaultVoice.id, name: LIVE.defaultVoice.name, language: LIVE.defaultVoice.language, gender: 'female' }] : []),
-    ...LIVE.voices.map(toPublic),
+    ...(LIVE_DEFAULT ? [{ voice_id: LIVE_DEFAULT.id, name: LIVE_DEFAULT.name, language: LIVE_DEFAULT.language, gender: 'female' }] : []),
+    ...LIVE_VOICE_LIST.map(toPublic),
   ],
   studio: STUDIO.voices.map(toPublic),
 }
-export const DEFAULT_LIVE_VOICE = LIVE.defaultVoice ? LIVE.defaultVoice.id : LIVE.voices[0].id
+// With an implicit default voice the registry names it; without one (every Live language has listed voices) the default is the first English voice.
+export const DEFAULT_LIVE_VOICE = LIVE_DEFAULT ? LIVE_DEFAULT.id : (LIVE_VOICE_LIST.find((v) => v.language === 'en') ?? LIVE_VOICE_LIST[0]).id
 export const DEFAULT_STUDIO_VOICE = KOKORO_VOICES.includes('en-heart') ? 'en-heart' : KOKORO_VOICES[0]
 export const DEFAULT_KOKORO_VOICE = DEFAULT_STUDIO_VOICE
 /** Old voice ids of live voices the catalog does not advertise (the worker cannot speak them). They are not listed, and a caller that sends one is still passed through. */
@@ -52,6 +57,8 @@ export function resolveVoice(engine: Engine, voice: string | undefined): { voice
   const v = voice?.trim() || (engine === 'live' ? DEFAULT_LIVE_VOICE : DEFAULT_STUDIO_VOICE)
   const known: readonly string[] = engine === 'live' ? LIVE_VOICES : KOKORO_VOICES
   if (known.includes(v)) return { voice: v }
+  // The Live default voice id keeps working when the registry no longer lists it (callers and docs still send it); it is passed through unchanged.
+  if (engine === 'live' && v === 'default') return { voice: v }
   // An old id (for example one an existing client still sends) maps to its public id, in its own tier only.
   const old = Object.prototype.hasOwnProperty.call(TTS_LEGACY_VOICE_IDS, v) ? TTS_LEGACY_VOICE_IDS[v] : undefined
   if (old && old.tier === engine) return { voice: old.id }

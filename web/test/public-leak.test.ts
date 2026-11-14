@@ -165,7 +165,7 @@ test('public-leak: the matcher is the registry\'s (word boundaries, case-insensi
 
 test('public-leak: generated public data carries only the public voice fields', () => {
   const reg = JSON.parse(readFileSync(join(WEB, 'src/generated/tts-registry.json'), 'utf8'))
-  const allowedVoiceKeys = new Set(['id', 'name', 'language', 'dialect', 'gender', 'beta'])
+  const allowedVoiceKeys = new Set(['id', 'name', 'language', 'languages', 'dialect', 'gender', 'beta'])
   for (const t of ['live', 'studio']) {
     for (const v of reg.engines[t].voices) for (const k of Object.keys(v)) assert.ok(allowedVoiceKeys.has(k), `${t}/${v.id}: unexpected field ${k}`)
     for (const k of Object.keys(reg.engines[t])) assert.ok(['label', 'publicAlias', 'languages', 'defaultVoice', 'voices', 'voicesByLanguage', 'betaLanguages'].includes(k), `${t}: unexpected field ${k}`)

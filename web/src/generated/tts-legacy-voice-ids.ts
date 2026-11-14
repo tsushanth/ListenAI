@@ -256,5 +256,45 @@ export const TTS_LEGACY_VOICE_IDS: Readonly<Record<string, { id: string; tier: '
   "custom:pt-br-cadu": {
     "id": "pt-br-m2",
     "tier": "live"
+  },
+  "supertonic:F1": {
+    "id": "aria",
+    "tier": "live"
+  },
+  "supertonic:F2": {
+    "id": "cora",
+    "tier": "live"
+  },
+  "supertonic:F3": {
+    "id": "dana",
+    "tier": "live"
+  },
+  "supertonic:F4": {
+    "id": "elise",
+    "tier": "live"
+  },
+  "supertonic:F5": {
+    "id": "faye",
+    "tier": "live"
+  },
+  "supertonic:M1": {
+    "id": "gabe",
+    "tier": "live"
+  },
+  "supertonic:M2": {
+    "id": "hugo",
+    "tier": "live"
+  },
+  "supertonic:M3": {
+    "id": "ivan",
+    "tier": "live"
+  },
+  "supertonic:M4": {
+    "id": "jonas",
+    "tier": "live"
+  },
+  "supertonic:M5": {
+    "id": "kai",
+    "tier": "live"
   }
 }

@@ -6,7 +6,7 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { spawnSync } from 'node:child_process'
 import { TTS_REGISTRY } from '../src/generated/tts-registry.ts'
-import { KOKORO_VOICES, LIVE_VOICES, PUBLIC_VOICES, DEFAULT_STUDIO_VOICE, STUDIO_UNSUPPORTED_VOICES, backendVoiceId, resolveVoice } from '../src/lib/mcp/voices.ts'
+import { KOKORO_VOICES, LIVE_VOICES, PUBLIC_VOICES, DEFAULT_LIVE_VOICE, DEFAULT_STUDIO_VOICE, STUDIO_UNSUPPORTED_VOICES, backendVoiceId, resolveVoice } from '../src/lib/mcp/voices.ts'
 import { RA_LANGUAGES, RA_VOICES, RA_TIERS, RA_LIVE_LANGUAGE_ROWS } from '../src/content/readaloudFacts.ts'
 // @ts-ignore plain .mjs script
 import { build, llmsWith } from '../scripts/sync-tts-registry.mjs'
@@ -27,9 +27,10 @@ test('counts add up and every language and voice list is consistent', () => {
   assert.equal(r.counts.studio, r.engines.studio.voices.length)
   assert.equal(r.counts.total, Object.values(r.engines).reduce((n, e) => n + e.voices.length, 0))
   for (const e of [r.engines.live, r.engines.studio]) {
-    const listed = Object.values(e.voicesByLanguage).flat()
-    assert.equal(listed.length, e.voices.length)
-    for (const v of e.voices) assert.ok((e.languages as readonly string[]).includes(v.language), `${v.id} language ${v.language}`)
+    // A voice that speaks several languages (`languages`) is listed under each of them, so count distinct ids.
+    const listed = new Set(Object.values(e.voicesByLanguage).flat())
+    assert.equal(listed.size, e.voices.length)
+    for (const v of e.voices) for (const c of (v as { languages?: readonly string[] }).languages ?? [v.language]) assert.ok((e.languages as readonly string[]).includes(c), `${v.id} language ${c}`)
   }
   assert.equal(RA_LIVE_LANGUAGE_ROWS.reduce((n, row) => n + row.voices.length, 0), r.counts.liveListedNonDefault)
 })
@@ -49,7 +50,8 @@ test('voice resolution: public ids pass, old ids map to the public id, a hidden 
   assert.deepEqual(resolveVoice('studio', 'af_heart'), { voice: 'en-heart' }) // old id, mapped
   assert.deepEqual(resolveVoice('studio', 'bf_emma'), { voice: 'en-emma' }) // not advertised, not newly refused
   assert.ok('error' in resolveVoice('studio', 'nope'))
-  assert.deepEqual(resolveVoice('live', undefined), { voice: 'default' })
+  assert.deepEqual(resolveVoice('live', undefined), { voice: DEFAULT_LIVE_VOICE })
+  assert.deepEqual(resolveVoice('live', 'default'), { voice: 'default' }) // the old default id still passes through, unlisted
   assert.deepEqual(resolveVoice('studio', undefined), { voice: 'en-heart' })
   assert.deepEqual(resolveVoice('live', 'de-f1'), { voice: 'de-f1' })
   assert.deepEqual(resolveVoice('live', 'custom:de-de-mls-f'), { voice: 'de-f1' }) // old id, mapped
@@ -57,7 +59,7 @@ test('voice resolution: public ids pass, old ids map to the public id, a hidden 
   assert.deepEqual(resolveVoice('live', 'custom:my_trained_voice'), { voice: 'custom:my_trained_voice' })
   assert.ok('error' in resolveVoice('live', 'af_heart'), 'a Studio voice is not a Live voice')
   assert.ok('error' in resolveVoice('studio', 'de-f1'))
-  assert.ok(LIVE_VOICES.includes('default') && LIVE_VOICES.includes('pt-br-m2'))
+  assert.ok(LIVE_VOICES.includes('pt-br-m2'))
   assert.equal(backendVoiceId('en-heart'), 'af_heart') // the audiobook route still takes the old ids
   assert.equal(backendVoiceId('something-else'), 'something-else')
 })
@@ -66,11 +68,11 @@ test('list_voices data: public ids with name, language, dialect and gender only'
   for (const t of ['live', 'studio'] as const) {
     assert.ok(PUBLIC_VOICES[t].length > 0)
     for (const v of PUBLIC_VOICES[t]) {
-      assert.ok(Object.keys(v).every((k) => ['voice_id', 'name', 'language', 'dialect', 'gender'].includes(k)), JSON.stringify(v))
+      assert.ok(Object.keys(v).every((k) => ['voice_id', 'name', 'language', 'languages', 'dialect', 'gender'].includes(k)), JSON.stringify(v))
       assert.match(v.voice_id, /^[a-z0-9][a-z0-9-]{1,40}$/)
     }
   }
-  assert.equal(PUBLIC_VOICES.live[0].voice_id, 'default')
+  assert.equal(PUBLIC_VOICES.live[0].voice_id, TTS_REGISTRY.engines.live.defaultVoice?.id ?? TTS_REGISTRY.engines.live.voices[0].id)
 })
 
 test('facts: Live is not "one voice" and not "English today"', () => {

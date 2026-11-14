@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { parseWav, pcm16ToWav, pcmDurationSeconds } from '../src/lib/mcp/wav.ts'
 import { SlidingWindowLimiter } from '../src/lib/mcp/ratelimit.ts'
 import { textToSpeechSchema, MAX_TEXT_CHARS } from '../src/lib/mcp/schemas.ts'
-import { resolveVoice, upstreamEngine } from '../src/lib/mcp/voices.ts'
+import { resolveVoice, upstreamEngine, DEFAULT_LIVE_VOICE } from '../src/lib/mcp/voices.ts'
 
 test('WAV header wraps PCM at 24 kHz mono 16-bit', () => {
   const pcm = Buffer.alloc(48000) // 1 s
@@ -46,7 +46,8 @@ test('text_to_speech schema: defaults, limits, engine enum', () => {
 })
 
 test('voice resolution', () => {
-  assert.deepEqual(resolveVoice('live', undefined), { voice: 'default' })
+  assert.deepEqual(resolveVoice('live', undefined), { voice: DEFAULT_LIVE_VOICE }) // no implicit default voice in the registry: the first English voice
+  assert.deepEqual(resolveVoice('live', 'default'), { voice: 'default' }) // the old default id still passes through
   assert.deepEqual(resolveVoice('studio', undefined), { voice: 'en-heart' })
   assert.deepEqual(resolveVoice('studio', 'bf_emma'), { voice: 'en-emma' })
   assert.deepEqual(resolveVoice('live', 'custom:abc_123'), { voice: 'custom:abc_123' })
