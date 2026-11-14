@@ -19,6 +19,7 @@ import { config } from './config.js';
 import { drainGatewayUsage, normalizeGatewayDrain } from './ttsGatewayClient.js';
 import { recordUsageDaily, safeRecord, type UsageRecorder } from './usageDaily.js';
 import { safeEvent, recordEvent, type EventRecorder } from './eventLog.js';
+import ttsRegistry from '../generated/ttsRegistry.json';
 
 const billingLogger = logger.child({ module: 'realtimeTtsBilling' });
 
@@ -70,15 +71,23 @@ export const ENGINE_PRICE_CLASS: Readonly<Record<string, PriceClass>> = {
   studio: 'studio', kokoro: 'studio',
 };
 
-// What the TTS registry (registry/engines.json in the realtime-tts repo) says about each engine's
-// hardware. Only used for an engine id that is NOT in ENGINE_PRICE_CLASS. Keep in step with the registry;
-// when the gateway starts sending usage_by_engine, replace this with a generated copy of the registry.
+// What the TTS registry (registry/engines.json in the realtime-tts repo) says about each engine's hardware, from the GENERATED copy
+// src/generated/ttsRegistry.json (written by scripts/sync-tts-registry.mjs; `node scripts/sync-tts-registry.mjs --registry <dir> --check`
+// fails when it is stale, run that in CI). Used only for an engine id that is NOT in ENGINE_PRICE_CLASS. Entries exist under both the
+// registry id and the public alias.
+//
+// A new engine must not be enabled on the gateway before (1) this generated copy has been re-synced and deployed and (2) the gateway
+// sends usage_by_engine. Until then its characters arrive inside `chars` with no engine attribution and bill at the studio rate; and an
+// engine this copy has never heard of is billed at studio too, even if it runs on a CPU.
 export type EngineHardware = 'cpu' | 'gpu';
 export type EngineRegistryView = Readonly<Record<string, { hardware?: string } | undefined>>;
-export const ENGINE_REGISTRY: EngineRegistryView = {
-  piper: { hardware: 'cpu' },
-  kokoro: { hardware: 'gpu' },
-};
+export const REGISTRY_HASH: string = ttsRegistry.registry.hash;
+export const ENGINE_REGISTRY: EngineRegistryView = Object.fromEntries(
+  Object.entries(ttsRegistry.engines).flatMap(([id, e]) => [
+    [id, { hardware: e.hardware }],
+    ...(e.public_alias ? [[e.public_alias, { hardware: e.hardware }]] : []),
+  ]),
+);
 
 /**
  * Price class for an engine id. Known ids use ENGINE_PRICE_CLASS. Any other id is classed by the

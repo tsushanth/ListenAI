@@ -111,3 +111,80 @@ test('end to end through reportUsageToStripe: a drained entry with usage_by_engi
   await reportUsageToStripe(mk([{ id: 'k', chars: 1000, piperChars: 400, usage_by_engine: { piper: 400, kokoro: 600 } }]));
   assert.deepEqual(events.map((e) => e.payload.value), ['760', '760']);
 });
+
+// --- the generated registry copy (src/generated/ttsRegistry.json) ---
+import { readFileSync, existsSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+
+const generatedPath = fileURLToPath(new URL('../generated/ttsRegistry.json', import.meta.url));
+const scriptPath = fileURLToPath(new URL('../../scripts/sync-tts-registry.mjs', import.meta.url));
+
+test('the default registry view is the generated copy, under registry ids and public aliases, and it agrees with the price-class table', async () => {
+  const { ENGINE_REGISTRY, REGISTRY_HASH, ENGINE_PRICE_CLASS, priceClassForEngine } = await modP;
+  const gen = JSON.parse(readFileSync(generatedPath, 'utf8'));
+  assert.equal(REGISTRY_HASH, gen.registry.hash);
+  assert.match(REGISTRY_HASH, /^[0-9a-f]{16}$/);
+  for (const [id, e] of Object.entries<any>(gen.engines)) {
+    assert.equal(ENGINE_REGISTRY[id]?.hardware, e.hardware, id);
+    if (e.public_alias) assert.equal(ENGINE_REGISTRY[e.public_alias]?.hardware, e.hardware, e.public_alias);
+    // The registry's price class and what billing computes for that engine must be the same, or the table and the registry have drifted.
+    assert.equal(priceClassForEngine(id), e.price_class, id);
+    if (e.public_alias) assert.equal(priceClassForEngine(e.public_alias), e.price_class, e.public_alias);
+    // Known names in the table must also agree with the registry's hardware rule.
+    for (const name of [id, e.public_alias]) if (name && ENGINE_PRICE_CLASS[name]) assert.equal(ENGINE_PRICE_CLASS[name], e.hardware === 'cpu' ? 'live' : 'studio', name);
+  }
+});
+
+test('WHY a new engine must not be enabled before the backend has the generated copy and the gateway sends usage_by_engine', async () => {
+  const { billableChars } = await modP;
+  // The registry the backend shipped with does not know "newcpu" (it was added to the registry after the last sync).
+  const shipped = { piper: { hardware: 'cpu' }, kokoro: { hardware: 'gpu' } };
+  // (1) Gateway reports its characters per engine, but the backend copy is stale: billed at the studio rate, 2.5x what a CPU engine should cost.
+  assert.equal(billableChars({ chars: 1000, usage_by_engine: { newcpu: 1000 } }, shipped), 1000);
+  // (2) Backend copy is current but the gateway has no usage_by_engine yet: the characters sit in `chars` with no attribution (piperChars
+  //     only covers Piper), so they also bill at the studio rate.
+  assert.equal(billableChars({ chars: 1000, piperChars: 0 }, { ...shipped, newcpu: { hardware: 'cpu' } }), 1000);
+  // Only both together bill it at the live rate.
+  assert.equal(billableChars({ chars: 1000, usage_by_engine: { newcpu: 1000 } }, { ...shipped, newcpu: { hardware: 'cpu' } }), 400);
+});
+
+test('an engine missing from the (shipped, generated) registry bills as studio', async () => {
+  const { billableChars, priceClassForEngine } = await modP;
+  assert.equal(priceClassForEngine('definitely-not-registered'), 'studio');
+  assert.equal(billableChars({ chars: 500, usage_by_engine: { 'definitely-not-registered': 500 } }), 500);
+});
+
+test('sync --check passes against the registry in TTS_REGISTRY_DIR when it is available (run this in CI before enabling an engine)',
+  { skip: !process.env.TTS_REGISTRY_DIR || !existsSync(process.env.TTS_REGISTRY_DIR || '') }, () => {
+    const r = spawnSync(process.execPath, [scriptPath, '--check'], { env: process.env, encoding: 'utf8' });
+    assert.equal(r.status, 0, r.stderr);
+  });
+
+test('the sync script refuses a price class it has no ratio for and one that contradicts the hardware', async () => {
+  const { mkdtempSync, mkdirSync, writeFileSync, rmSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const { join } = await import('node:path');
+  const mod: any = await import(scriptPath);
+  const mk = (engines: Record<string, unknown>) => {
+    const dir = mkdtempSync(join(tmpdir(), 'ttsreg-'));
+    mkdirSync(join(dir, 'dist'));
+    writeFileSync(join(dir, 'dist/registry.json'), JSON.stringify({ version: 1, hash: 'abcdef0123456789', engines }));
+    return dir;
+  };
+  const cases: Array<[RegExp, Record<string, unknown>]> = [
+    [/no ratio/, { x: { hardware: 'cpu', price_class: 'premium', public_alias: 'x' } }],
+    [/disagrees with hardware/, { x: { hardware: 'gpu', price_class: 'live', public_alias: 'x' } }],
+    [/hardware must be cpu or gpu/, { x: { hardware: 'tpu', price_class: 'live' } }],
+  ];
+  for (const [re, engines] of cases) {
+    const dir = mk(engines);
+    try { assert.throws(() => mod.build(dir), re); } finally { rmSync(dir, { recursive: true, force: true }); }
+  }
+  const ok = mk({ a: { hardware: 'cpu', price_class: 'live', public_alias: 'al' }, b: { hardware: 'gpu', price_class: 'studio' } });
+  try {
+    const out = mod.build(ok);
+    assert.deepEqual(out.engines, { a: { public_alias: 'al', hardware: 'cpu', price_class: 'live' }, b: { public_alias: null, hardware: 'gpu', price_class: 'studio' } });
+    assert.equal(out.registry.hash, 'abcdef0123456789');
+  } finally { rmSync(ok, { recursive: true, force: true }); }
+});

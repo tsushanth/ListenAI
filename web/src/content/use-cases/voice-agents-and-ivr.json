@@ -22,11 +22,11 @@
     "Your agent talks over a phone line and you want 8 kHz G.711 audio straight from the API.",
     "You prefer to pay per character of speech rather than per minute of call time.",
     "You use Pipecat or LiveKit Agents and want a maintained, MIT-licensed plugin rather than custom socket code.",
-    "One American English voice is acceptable, and you control the wording so the script stays short."
+    "A default English voice is acceptable, and you control the wording so the script stays short."
   ],
   "whenToChooseSomethingElse": [
-    "You need several distinct voices or personas in one product; Live has one voice, and Studio's English voice list is the only broader option here.",
-    "Callers speak languages other than English; look for a vendor that documents each language and voice you need.",
+    "You need several distinct voices or personas in one product; Live has a default English voice plus a small set of beta voices in other languages, and Studio's English voice list is the broader English option here.",
+    "Callers speak languages that need more than the beta voices ReadAloud Live offers; look for a vendor that documents each language and voice you need.",
     "You want laughter, whispers or controlled emotion; ReadAloud ignores style instructions and does not interpret SSML or audio tags.",
     "You need a platform that already bundles telephony, recognition and the model into one hosted product with a support contract."
   ],
@@ -73,7 +73,7 @@
     },
     {
       "q": "Is there more than one voice for agents?",
-      "a": "ReadAloud Live has one American English voice, readaloud-default. ReadAloud Studio offers a broader list of English voices but is positioned for read-aloud content rather than live calls."
+      "a": "ReadAloud Live has a default English voice, readaloud-default, plus a small set of beta voices in other languages (listed on the Voice API page). ReadAloud Studio offers a broader list of English voices but is positioned for read-aloud content rather than live calls."
     },
     {
       "q": "How do I test without paying?",

@@ -11,6 +11,7 @@ import {
 } from './schemas.ts'
 import { piperNormalizeFields } from '../piperNormalize.ts'
 import { KOKORO_VOICES, PIPER_VOICES, resolveVoice, upstreamEngine } from './voices.ts'
+import { TTS_REGISTRY } from '../../generated/tts-registry.ts'
 import {
   UpstreamError, authorize, authorizeStt, fetchPiperHealth, synthesize, transcribe, type ErrorCode,
   submitDub, getDubStatus,
@@ -76,7 +77,7 @@ export function createMcpServer(ctx: RequestContext): McpServer {
     description:
       `Convert text to spoken audio and return it as an inline WAV clip (24 kHz, mono, 16-bit). ` +
       `Limits: ${MAX_TEXT_CHARS} characters per call and about ${MAX_AUDIO_SECONDS} seconds of audio; longer audio is cut off, so split long text into several calls. ` +
-      `Engines: "live" (ReadAloud Live) is fast and cheap (one voice); "studio" (ReadAloud Studio) sounds more natural and has many voices. ` +
+      `Engines: "live" (ReadAloud Live) is fast and cheap (a default English voice, plus ${TTS_REGISTRY.counts.liveListedNonDefault} beta voices in other languages passed as custom:<id>); "studio" (ReadAloud Studio) sounds more natural and has ${TTS_REGISTRY.counts.studio} ${TTS_REGISTRY.phrase.studioLanguages} voices. ` +
       `The result also has a text block with duration and time to first audio. Uses the caller's free characters or billing, so avoid calling it repeatedly for the same text. ` +
       `Cloned voices: pass voice "clone:<id>" (an id from readaloud_create_voice_clone or readaloud_list_voices) to speak in a voice you cloned; it works only for the account that owns it and returns the same WAV format. ` +
       `Errors are returned with a code: capacity (temporary, retry), payment_required (free characters used up, or no paid plan for a cloned voice), invalid_voice (call list_voices), rate_limited (wait).`,
@@ -184,7 +185,7 @@ export function createMcpServer(ctx: RequestContext): McpServer {
 
   server.registerTool('list_voices', {
     title: 'List voices',
-    description: 'List the voices you can pass to text_to_speech, per engine. Custom trained voices are not listed; use "custom:<id>" if you have one. Studio voice names: af_/am_ = American female/male, bf_/bm_ = British female/male.',
+    description: 'List the voices you can pass to text_to_speech, per engine. Custom trained voices are not listed; use "custom:<id>" if you have one. Studio voice names: af_ = American female, am_ = American male. ReadAloud Live lists its default voice here; its beta voices in other languages are passed as custom:<id> (the ids are in the Languages table on the Voice API page).',
     inputSchema: listVoicesInput,
     annotations: { title: 'List voices', readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
   }, async ({ engine }): Promise<CallToolResult> => {

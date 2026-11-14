@@ -73,7 +73,7 @@
     },
     {
       "q": "How many voices do I get?",
-      "a": "Live has one. Studio has a broader English list; the MCP page mentions 28 English voices."
+      "a": "Live has a default English voice plus a few beta voices in other languages. Studio has a broader English list; the MCP page lists them."
     },
     {
       "q": "Do I need a server?",

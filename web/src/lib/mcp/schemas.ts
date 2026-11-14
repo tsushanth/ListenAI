@@ -16,9 +16,9 @@ export const textToSpeechInput = {
   text: z.string().trim().min(1, 'text must not be empty').max(MAX_TEXT_CHARS, `text must be at most ${MAX_TEXT_CHARS} characters`)
     .describe(`The exact words to speak, plain text, 1-${MAX_TEXT_CHARS} characters (about 20 s of audio at most; longer audio is cut off). Split longer content into several calls. Do not include markup.`),
   engine: engineSchema.default('live')
-    .describe('"live" (default): ReadAloud Live, the low-latency engine, one voice ("default"), cheapest. "studio": ReadAloud Studio, more natural, many voices, may be slower to start.'),
+    .describe('"live" (default): ReadAloud Live, the low-latency engine, a default English voice plus beta voices in other languages (pass those as "custom:<id>"), cheapest. "studio": ReadAloud Studio, more natural, many voices, may be slower to start.'),
   voice: z.string().max(80).optional()
-    .describe('Voice name. Live: "default". Studio: e.g. "af_heart" (default), "am_adam", "bf_emma". Custom trained voices: "custom:<id>". Your own consent-verified cloned voices: "clone:<id>" (see readaloud_list_voices). Call list_voices for the full list.'),
+    .describe('Voice name. Live: "default". Studio: e.g. "af_heart" (default), "am_adam". Custom trained voices: "custom:<id>". Your own consent-verified cloned voices: "clone:<id>" (see readaloud_list_voices). Call list_voices for the full list.'),
   speed: z.number().min(0.5).max(2).default(1)
     .describe('Speaking rate multiplier, 0.5 (slow) to 2.0 (fast). Default 1.0.'),
   normalize: z.enum(['auto', 'basic', 'off']).optional()

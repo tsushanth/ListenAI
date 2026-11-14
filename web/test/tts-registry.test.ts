@@ -82,6 +82,16 @@ test('pages carry no hand-typed voice or language claim that the registry contra
   assert.doesNotMatch(dev, /<td>(German|Spanish|French|Italian|Portuguese \(Brazil\))<\/td>/, 'the Languages table rows come from the registry')
 })
 
+test('MCP page, MCP server text and the two edited use cases make no stale voice claim', () => {
+  const stale = /has one voice|28 English voices|bf_emma|bf_\/bm_|one American English voice|English today|Live has one voice/i
+  for (const f of ['../src/app/developers/mcp/page.tsx', '../src/lib/mcp/server.ts', '../src/content/use-cases/voice-agents-and-ivr.json',
+    '../src/content/use-cases/article-and-newsletter-to-audio.json', '../test/fixtures/seo-library/use-cases/voice-agents.json']) {
+    assert.doesNotMatch(read(f), stale, f)
+  }
+  assert.match(read('../src/app/developers/mcp/page.tsx'), /RA_VOICE_COUNTS\.studio/)
+  assert.match(read('../src/lib/mcp/server.ts'), /TTS_REGISTRY\.counts\.studio/)
+})
+
 // --- the sync script itself, against a synthetic registry ---
 function fakeRegistry(patch?: (d: { reg: any; cat: any }) => void) {
   const dir = mkdtempSync(join(tmpdir(), 'tts-registry-'))
