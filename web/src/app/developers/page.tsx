@@ -259,6 +259,7 @@ export READALOUD_API_KEY=rtts_...`}</code></pre>
                 <VoiceCloningDocs />
 
                 <h3 id="voice-cloning-api">Instant voice cloning with consent (your own voice only)</h3>
+                <p>Coming from ElevenLabs? The same cloning is also available at the ElevenLabs path <code className="inl">POST https://api.readaloudai.org/v1/voices/add</code>, so <code className="inl">voices.ivc.create</code> in the official SDKs works with a consent step added; see <Link href="/developers/migrate-from-elevenlabs#voice-cloning" style={{ textDecoration: 'underline' }}>Migrate from ElevenLabs</Link>.</p>
                 <ConsentVoiceCloningDocs />
 
                 <h3 id="speech-to-text">Speech to text (batch)</h3>
