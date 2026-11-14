@@ -1,4 +1,4 @@
-import { FREE_CREDIT_UNITS, FREE_CREDIT_USD } from '../lib/pricing.ts'
+import { FREE_CREDIT_UNITS, FREE_CREDIT_USD, PRICING } from '../lib/pricing.ts'
 import { TTS_REGISTRY } from '../generated/tts-registry.ts'
 
 // Single source of truth for every statement the programmatic library (src/lib/seoLibrary) makes about ReadAloud.
@@ -173,8 +173,16 @@ export const RA_ELEVENLABS_ROUTES = {
   summary: 'The API serves the ElevenLabs text-to-speech HTTP and WebSocket routes, so ElevenLabs SDK code runs against https://api.readaloudai.org after you change the base URL, the key and the voice id.',
   testedOn: '2026-10-10',
   testedWith: 'elevenlabs (Python) 2.71.0 and @elevenlabs/elevenlabs-js 2.71.0',
-  notSupported: 'ElevenLabs speech to text, dubbing, the Agents platform, voice cloning with ElevenLabs semantics, speech to speech, voice design, audio isolation, sound generation, history, pronunciation dictionaries and projects',
+  notSupported: 'ElevenLabs dubbing, the Agents platform, speech to speech, voice design, audio isolation, sound generation, music, history, pronunciation dictionaries, text to dialogue and projects on their ElevenLabs paths',
+  comingSoon: 'the Scribe-shaped speech-to-text route (diarize accepted without effect, keyterms and entity detection rejected) and ElevenLabs-path instant voice cloning (English only, with a consent step); both are built and switched off until verified live',
   voiceNote: 'ElevenLabs voice ids, including your own clones, do not exist here; use readaloud-default.',
+} as const
+
+/** Speech to text, for the compare pages' speech-to-text row. Batch only; there is no realtime speech to text. */
+export const RA_SPEECH_TO_TEXT = {
+  batchPerHourUsd: PRICING.speechToText.usd,
+  cell: `Batch transcription of uploaded files at $${PRICING.speechToText.usd.toFixed(2)} per hour of audio; no realtime transcription; up to 8 speaker labels on the ReadAloud route`,
+  realtime: 'not offered',
 } as const
 
 export const RA_VOICES = {

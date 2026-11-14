@@ -1,6 +1,6 @@
 import {
   RA_API_BASE, RA_CLONING, RA_COMPLIANCE_STATEMENT, RA_CERTIFICATION_ALLOW_LIST, RA_FORMATS, RA_FREE_CREDITS, RA_LANGUAGES, RA_LATENCY, RA_LIMITS, RA_LIVE, RA_NAME, RA_OPENAI_ROUTE, RA_PATHS,
-  RA_STREAMING, RA_STUDIO, RA_SUPPORT_EMAIL, RA_VOICES,
+  RA_SPEECH_TO_TEXT, RA_STREAMING, RA_STUDIO, RA_SUPPORT_EMAIL, RA_VOICES,
 } from '../../content/readaloudFacts.ts'
 import type { Vendor } from './schema.ts'
 import type { Block, Cell } from './model.ts'
@@ -47,6 +47,18 @@ export function vendorLatencyCell(v: Vendor): Cell {
   return { text: NOT_STATED_CAP }
 }
 
+/** The vendor's speech-to-text prices as its pages print them, or null when the vendor file has none. */
+export function vendorSttCell(v: Vendor): Cell | null {
+  const s = v.speechToText
+  if (!s) return null
+  const bits: string[] = []
+  if (s.batchUsdPerHour !== null) bits.push(`batch ${usd(s.batchUsdPerHour)} per hour of audio`)
+  if (s.realtimeUsdPerHour !== null) bits.push(`realtime ${usd(s.realtimeUsdPerHour)} per hour`)
+  if (!bits.length) return null
+  const lead = hasText(s.models) ? `${s.models}: ` : ''
+  return { text: `${lead}${joinList(bits)}${hasText(s.notes) ? `. ${sentence(s.notes)}` : ''}`, sourceUrl: s.sourceUrl }
+}
+
 export const raLatencyCell = `${RA_LIVE.name}: ${RA_LATENCY.liveWarmLabel} (${RA_LATENCY.methodShort}; ${longDate(RA_LATENCY.measuredOn)}; ${RA_LATENCY.methodPath})`
 
 export function streamingText(v: Vendor): string {
@@ -76,6 +88,12 @@ export function compareRows(v: Vendor): Cell[][] {
   rows.push([{ text: 'Custom voices or cloning' }, { text: RA_CLONING.short }, hasText(v.voices.customVoiceOrCloning) ? { text: v.voices.customVoiceOrCloning, sourceUrl: vs } : { text: NOT_STATED_CAP }])
   rows.push([{ text: 'Streaming' }, { text: RA_STREAMING.short }, { text: streamingText(v), sourceUrl: v.streaming.sourceUrl }])
   rows.push([{ text: 'Time to first audio' }, { text: raLatencyCell }, vendorLatencyCell(v)])
+  if (v.ourMeasurement) {
+    const m = v.ourMeasurement
+    rows.push([{ text: 'Time to first audio, side by side in our own runs' }, { text: `${RA_LIVE.name}: ${RA_LATENCY.liveWarmLabel}. ${RA_LATENCY.caveat}` }, { text: `${sentence(m.summary)} Measured ${longDate(m.measuredOn)}${m.methodPath ? `; method at ${m.methodPath}` : ''}.` }])
+  }
+  const stt = vendorSttCell(v)
+  if (stt) rows.push([{ text: 'Speech to text' }, { text: RA_SPEECH_TO_TEXT.cell }, stt])
   rows.push([{ text: 'Output formats' }, { text: RA_FORMATS.short }, v.formats.length ? { text: v.formats.join(', ') } : { text: NOT_STATED_CAP }])
   rows.push([{ text: 'SSML' }, { text: RA_VOICES.noSsml }, { text: ynuCell(v.ssml) }])
   rows.push([{ text: 'OpenAI-compatible speech endpoint' }, { text: `Yes, ${RA_OPENAI_ROUTE.path}` }, { text: ynuCell(v.compatibility.openaiSpeechCompatible, v.compatibility.note) }])

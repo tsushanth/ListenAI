@@ -177,7 +177,8 @@ export default function Home() {
                   <thead><tr><th>Batch speech to text</th><th>Price per hour of audio</th></tr></thead>
                   <tbody>
                     <tr><td className="hl">ReadAloud</td><td className="hl">$0.11</td></tr>
-                    <tr><td>ElevenLabs Scribe (API list price, as of 2026-10)</td><td>$0.22</td></tr>
+                    <tr><td>ElevenLabs Scribe v3 batch (API list price, read 2026-11-14)</td><td>$0.20</td></tr>
+                    <tr><td>ElevenLabs Scribe v3 Live, realtime (same page; ReadAloud has no realtime)</td><td>$0.22</td></tr>
                   </tbody>
                 </table>
               </div>
@@ -190,7 +191,7 @@ export default function Home() {
             <div className="ra-ref" style={{ marginTop: 0 }}>
               <ul>
                 {/* Price: research/elevenlabs_pricing_2026-10-04.md and W11 (price only; no vendor accuracy or latency claims on this page, W31 vendor-terms caveat). */}
-                <li>That is half of ElevenLabs Scribe&rsquo;s batch API list price (its realtime price is $0.39 per hour). This page makes no accuracy or speed comparison with other vendors.</li>
+                <li>That is about 45% below ElevenLabs Scribe v3&rsquo;s batch API list price of $0.20 per hour (its pricing page, read 2026-11-14; plans and promotions can be lower). This page makes no accuracy or speed comparison with other vendors.</li>
                 {/* Accuracy: research/W32/data/results_w32gpu.md (the live guard; W31 test split, real 8 kHz 296 items, noisy 10 dB 578 items, no dictionary). */}
                 <li>On 296 real 8 kHz phone-style recordings (English, role-played calls) the word error rate was 9.8% and 90.2% of spoken digit sequences came out exactly right. With 10 dB background noise added it was 17.8% and 84.6%, so noisy lines are our weaker case. One test set, so test on your own audio. <Link href="/developers#stt-how-we-measured" style={{ textDecoration: 'underline' }}>How we measured</Link>.</li>
                 {/* Speaker labels: research/W43/REALCALL_VALIDATION.md; limits documented at /developers#speech-to-text. */}

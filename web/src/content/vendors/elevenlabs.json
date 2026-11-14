@@ -3,12 +3,12 @@
   "name": "ElevenLabs",
   "url": "https://elevenlabs.io/text-to-speech",
   "status": "active",
-  "retrievedAt": "2026-10-10",
+  "retrievedAt": "2026-11-14",
   "category": "api-platform",
   "positioning": "A voice-AI platform whose text-to-speech API offers expressive, multi-language models, a large voice library and voice cloning, alongside speech-to-text, agents and audio tools.",
   "pricing": {
     "model": "Per-character API list prices quoted per 1K characters on the ElevenAPI pricing page, also available through monthly subscription plans that include a shared credit pool (1 credit per character on most models; Flash/Turbo models cost 0.5 to 1 credit per character).",
-    "headline": "$0.04 per 1K characters ($40 per 1M) for Flash / Turbo; flagship v4 and v3 models list at $0.08 per 1K ($80 per 1M).",
+    "headline": "$0.04 per 1K characters ($40 per 1M) for Flash / Turbo, v4 Turbo and v3 Conversational; v4, v3 and Multilingual v2 list at $0.08 per 1K ($80 per 1M). Speech to text lists per hour: Scribe v3 batch $0.20, Scribe v3 Live realtime $0.22.",
     "pricePer1MCharsUsd": 40,
     "headlineTier": "Flash / Turbo (Flash v2.5)",
     "tiers": [
@@ -22,7 +22,7 @@
         "name": "Eleven v4 Turbo",
         "pricePer1MCharsUsd": 40,
         "unit": "USD per 1M characters (list)",
-        "notes": "Vendor-stated median inference latency ~100ms."
+        "notes": "Vendor-stated median inference latency ~100ms (excluding application and network latency)."
       },
       {
         "name": "Eleven v3",
@@ -34,7 +34,7 @@
         "name": "Eleven v3 Conversational",
         "pricePer1MCharsUsd": 40,
         "unit": "USD per 1M characters",
-        "notes": "Low-latency v3 tuned for realtime conversation; vendor-stated ~280ms."
+        "notes": "Low-latency v3 tuned for realtime conversation; vendor-stated ~165ms (median, excluding application and network latency)."
       },
       {
         "name": "Eleven Multilingual v2",
@@ -46,7 +46,7 @@
         "name": "Flash / Turbo (Flash v2.5)",
         "pricePer1MCharsUsd": 40,
         "unit": "USD per 1M characters",
-        "notes": "40,000 character limit per request; 32 languages; the models page describes it as 50% lower price per character for API generations. Shown at API list price; time-limited promotions are not included."
+        "notes": "40,000 character limit per request; 32 languages. Shown at API list price; time-limited promotions are not included."
       },
       {
         "name": "Subscription plans (credits)",
@@ -72,7 +72,7 @@
   "streaming": {
     "websocket": "yes",
     "http": "yes",
-    "vendorStatedLatency": "Vendor-stated: 'Ultra-low latency (~75ms)' for Flash v2.5; footnote 'Excluding application & network latency' (https://elevenlabs.io/docs/overview/models). Not measured by us.",
+    "vendorStatedLatency": "Vendor-stated: 'Ultra-low latency (~100ms)' for Flash v2.5 and a median of ~100ms for v4 Turbo; footnote 'Median, excluding application & network latency' (https://elevenlabs.io/docs/overview/models). Not measured by us in this row; see the side-by-side row for our own runs.",
     "sourceUrl": "https://elevenlabs.io/docs/overview/models"
   },
   "formats": [
@@ -164,17 +164,17 @@
     {
       "url": "https://elevenlabs.io/pricing/api",
       "title": "ElevenAPI pricing",
-      "retrievedAt": "2026-10-10"
+      "retrievedAt": "2026-11-14"
     },
     {
       "url": "https://elevenlabs.io/pricing",
       "title": "ElevenLabs pricing",
-      "retrievedAt": "2026-10-10"
+      "retrievedAt": "2026-11-14"
     },
     {
       "url": "https://elevenlabs.io/docs/overview/models",
       "title": "Models",
-      "retrievedAt": "2026-10-10"
+      "retrievedAt": "2026-11-14"
     },
     {
       "url": "https://elevenlabs.io/docs/overview/capabilities/text-to-speech",
@@ -228,6 +228,19 @@
     "Whether HIPAA eligibility covers the text-to-speech API specifically",
     "Whether an OpenAI-compatible speech route exists (none found in pages read)",
     "Price per 1M characters under subscription plans (depends on credits per character; list prices are what is recorded here)",
-    "Time-limited promotions were shown on the pricing pages when we reviewed them; they are left out, so the prices on this page are list prices; check the pricing page for current offers."
-  ]
+    "Time-limited promotions were shown on the pricing pages when we reviewed them on 2026-11-14; they are left out, so the prices on this page are list prices; check the pricing page for current offers.",
+    "The pricing, plans and models pages were re-read on 2026-11-14; the capabilities, voices, API reference, HIPAA and cloning pages were last read on 2026-10-10 and may have changed since."
+  ],
+  "speechToText": {
+    "models": "Scribe v3, Scribe v2 and Scribe v2 Medical (batch), Scribe v3 Live and Scribe v2 Realtime (realtime)",
+    "batchUsdPerHour": 0.2,
+    "realtimeUsdPerHour": 0.22,
+    "notes": "List prices per hour of audio on the ElevenAPI pricing page; the models page lists 90+ languages for the Scribe models",
+    "sourceUrl": "https://elevenlabs.io/pricing/api"
+  },
+  "ourMeasurement": {
+    "measuredOn": "2026-10-10",
+    "summary": "ElevenLabs Flash v2.5 returned first audio sooner than ReadAloud Live: a median of about 166 to 174 ms on a warm connection, against about 250 ms for ReadAloud Live",
+    "methodPath": "/developers#vs-elevenlabs"
+  }
 }

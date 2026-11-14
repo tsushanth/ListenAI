@@ -9,6 +9,13 @@ import ConsentVoiceCloningDocs from '@/components/ra/ConsentVoiceCloningDocs'
 import publish from '../../content/publish.json'
 import { isPublished } from '@/lib/seoLibrary/publish'
 import { RA_REGISTRY, RA_LIVE_LANGUAGE_ROWS, RA_VOICE_COUNTS } from '@/content/readaloudFacts'
+import { LAUNCH_FLAGS } from '@/content/launchFlags'
+import { ELEVENLABS_PRICES, READALOUD_PRICES } from '@/content/migrationPrices'
+import { formatUsd } from '@/lib/migrationCalc'
+
+// Wording that depends on a switch that is off by default in the service (see src/content/launchFlags.ts).
+const ONE_KEY = LAUNCH_FLAGS.oneKeyEverywhere
+const CLONE_EL = LAUNCH_FLAGS.elevenLabsInstantClone
 
 // An /integrations page is linked from here only once it is listed in src/content/publish.json (the same list that decides what is indexed).
 const integrationHref = (slug: string): string | null => (isPublished(publish as { published: string[] }, 'integration', slug) ? `/integrations/${slug}` : null)
@@ -259,7 +266,7 @@ export READALOUD_API_KEY=rtts_...`}</code></pre>
                 <VoiceCloningDocs />
 
                 <h3 id="voice-cloning-api">Instant voice cloning with consent (your own voice only)</h3>
-                <p>Coming from ElevenLabs? The same cloning is also available at the ElevenLabs path <code className="inl">POST https://api.readaloudai.org/v1/voices/add</code>, so <code className="inl">voices.ivc.create</code> in the official SDKs works with a consent step added; see <Link href="/developers/migrate-from-elevenlabs#voice-cloning" style={{ textDecoration: 'underline' }}>Migrate from ElevenLabs</Link>.</p>
+                {CLONE_EL ? <p>Coming from ElevenLabs? The same cloning is also available at the ElevenLabs path <code className="inl">POST https://api.readaloudai.org/v1/voices/add</code>, so <code className="inl">voices.ivc.create</code> in the official SDKs works with a consent step added; see <Link href="/developers/migrate-from-elevenlabs#voice-cloning" style={{ textDecoration: 'underline' }}>Migrate from ElevenLabs</Link>.</p> : <p>Coming from ElevenLabs? Cloning at the ElevenLabs path (<code className="inl">voices.ivc.create</code> in the official SDKs, with a consent step added) is coming soon; see <Link href="/developers/migrate-from-elevenlabs#voice-cloning" style={{ textDecoration: 'underline' }}>Migrate from ElevenLabs</Link>.</p>}
                 <ConsentVoiceCloningDocs />
 
                 <h3 id="speech-to-text">Speech to text (batch)</h3>
@@ -292,7 +299,7 @@ curl -L -X POST "<url>/v1/stt?language=auto" \\
                   <li><code>502</code> speaker labelling failed with <code>diarize=true</code>. Retry, or retry without <code>diarize</code>. Not billed.</li>
                   <li><code>504</code> the request took longer than 15 minutes in total. Split the file and retry.</li>
                 </ul>
-                <p><b>Price:</b> $0.11 per hour of audio, billed by the second on the audio&rsquo;s full length (silence included) once the transcript is returned, with a 10 second minimum per request (so a 3 second clip is billed as 10 seconds, $0.0003). The minimum is billing only: the transcript and the returned duration are unchanged. Failed requests, and requests with no audio, are not billed. That is half of ElevenLabs Scribe&rsquo;s batch list price of $0.22 per hour (as of 2026-10; its realtime price is $0.39 per hour). It uses the same free allowance as the voice API: 10,000 free characters is about 54 minutes of audio. On your invoice it appears as character equivalents on the same meter (about 3 per second of audio).</p>
+                <p><b>Price:</b> $0.11 per hour of audio, billed by the second on the audio&rsquo;s full length (silence included) once the transcript is returned, with a 10 second minimum per request (so a 3 second clip is billed as 10 seconds, $0.0003). The minimum is billing only: the transcript and the returned duration are unchanged. Failed requests, and requests with no audio, are not billed. ElevenLabs lists Scribe v3 batch at {formatUsd(ELEVENLABS_PRICES.stt.batch.perHourUsd)} per hour and Scribe v3 Live (realtime) at {formatUsd(ELEVENLABS_PRICES.stt.realtime.perHourUsd)} per hour (its API pricing page, read {ELEVENLABS_PRICES.retrievedOn}), so ReadAloud batch is about {Math.round((1 - READALOUD_PRICES.sttBatchPerHourUsd / ELEVENLABS_PRICES.stt.batch.perHourUsd) * 100)}% lower; ReadAloud has no realtime speech to text. It uses the same free allowance as the voice API: 10,000 free characters is about 54 minutes of audio. On your invoice it appears as character equivalents on the same meter (about 3 per second of audio).</p>
                 <p id="stt-how-we-measured"><b>What we measured.</b> All of these are English, on test sets we assembled, with no vendor comparison. They are not a guarantee for your audio: record a few of your own calls and score them before you commit.{/* source: research/W32/data/results_w32gpu.md (live guard, held-out W31 test split, no dictionary unless stated); research/W31/REPORT.md (noise-only probes); research/W44/REPORT.md; LibriTTS-R run in the 2026-10 STT launch notes */}</p>
                 <ul>
                   <li><b>Real narrowband phone-style audio.</b> 296 clips of role-played customer calls recorded as real 8 kHz telephone-bandwidth audio. Word error rate 9.8% (10.4% with a 40-term dictionary), and 90.2% of spoken digit sequences were exactly right (89.7% with the dictionary). Scoring ignores filler words and number formatting. The files are stored at 16 kHz and we do not know the original phone codec, the calls are role-played rather than live customer calls, and this is a single test set.</li>
@@ -312,6 +319,7 @@ curl -L -X POST "<url>/v1/stt?language=auto" \\
                   so it fits the original segment&rsquo;s timing. Try it in the browser at{' '}
                   <Link href="/dub" style={{ textDecoration: 'underline' }}>/dub</Link>.
                 </p>
+                {ONE_KEY ? (
                 <p><b>Credentials.</b> One key works everywhere. The REST endpoints below (dubbing, voice
                   conversion, voice design, audio isolation and audiobooks) accept your <code>rtts_</code> key
                   directly, the same key you use for text to speech and speech to text. Send it as{' '}
@@ -329,8 +337,24 @@ curl -L -X POST "<url>/v1/stt?language=auto" \\
                   keys stays in the console and needs a session token, never a key. Instant voice cloning is at{' '}
                   <code>https://readaloudai.org/api/v1/voice-clones</code>.
                 </p>
+                ) : (
+                <p><b>Credentials.</b> The REST endpoints below (dubbing, voice
+                  conversion, voice design, audio isolation and audiobooks) accept either a signed-in{' '}
+                  <b>session token</b> (<code>Authorization: Bearer &lt;session token&gt;</code>) or an
+                  API key that our own <Link href="/developers/mcp" style={{ textDecoration: 'underline' }}>MCP server</Link>{' '}
+                  passes on for you. They do <b>not</b> accept your <code>rtts_</code> key
+                  directly yet: using it straight on these paths is coming soon. To
+                  use an API key today, call the matching MCP tool (<code>dub_audio</code>,{' '}
+                  <code>convert_voice</code>, <code>design_voice</code>, the audiobook tools).
+                  Through MCP, the work is billed to the account the key belongs to. Keys you create
+                  in the console above belong to your account; a key that is not tied to an account
+                  gets <code>402</code> from dubbing, voice design and voice conversion. Free credits are per account, so they follow the account, not the key.
+                  Speech to text and voice cloning have their own key-based routes, described in their
+                  sections (instant voice cloning is at <code>https://readaloudai.org/api/v1/voice-clones</code>).
+                </p>
+                )}
                 <p><b>1. Submit.</b> <code>POST https://api.readaloudai.org/api/dub</code>,
-                  <code>Authorization: Bearer &lt;your key&gt;</code> (or <code>xi-api-key</code>, or a session token; the MCP tool <code>dub_audio</code> takes clips up to 25&nbsp;MB),
+                  {ONE_KEY ? <><code>Authorization: Bearer &lt;your key&gt;</code> (or <code>xi-api-key</code>, or a session token; the MCP tool <code>dub_audio</code> takes clips up to 25&nbsp;MB),</> : <><code>Authorization: Bearer &lt;your session token&gt;</code> (or use the MCP tool <code>dub_audio</code> with an API key; the tool takes clips up to 25&nbsp;MB),</>}
                   <code>multipart/form-data</code> with an <code>audio</code> file (wav, flac, ogg,
                   mp3, mp4, m4a or webm, up to 50&nbsp;MB) and body fields <code>target_language</code>{' '}
                   (required), <code>source_language</code> (optional, auto-detected otherwise) and{' '}
@@ -364,12 +388,12 @@ curl -L -X POST "<url>/v1/stt?language=auto" \\
                   minutes, and it returns a temporary error until it is ready, so call it again).
                 </p>
                 <p><b>Voice design.</b> <code>POST /api/voice-design</code> generates a synthetic voice from a
-                  text description and a sample sentence (your <code>rtts_</code> key or a session token, or the MCP tools{' '}
+                  text description and a sample sentence ({ONE_KEY ? <>your <code>rtts_</code> key or a session token, or</> : <>session token, or</>} the MCP tools{' '}
                   <code>design_voice</code> and <code>get_voice_design</code>). Try it at{' '}
                   <Link href="/design-voice" style={{ textDecoration: 'underline' }}>/design-voice</Link>. It uses your free
                   credits, then needs a payment method.
                 </p>
-                <p><b>1. Deploy your container.</b> <code>POST /api/voice-convert/deploy</code> (same key or session-token auth).
+                <p><b>1. Deploy your container.</b> <code>POST /api/voice-convert/deploy</code> ({ONE_KEY ? 'same key or session-token auth' : 'same session-token auth'}).
                   Check status with <code>GET .../deploy</code>, tear down with <code>DELETE .../deploy</code> when you&rsquo;re done
                   &mdash; you aren&rsquo;t billed for idle deploy time, only completed jobs (see pricing below).
                 </p>
@@ -394,8 +418,8 @@ curl -L -X POST "<url>/v1/stt?language=auto" \\
                   Turn a block of text or an EPUB into a chaptered audiobook: each chapter is
                   synthesized as its own long-form job, then all chapters can be exported as one
                   MP3 with embedded chapter markers. Try it in the browser at{' '}
-                  <Link href="/audiobooks" style={{ textDecoration: 'underline' }}>/audiobooks</Link>. Accepts your <code>rtts_</code> key or a session token, and the
-                  same key through the MCP tools <code>create_audiobook</code>,{' '}
+                  <Link href="/audiobooks" style={{ textDecoration: 'underline' }}>/audiobooks</Link>. Accepts {ONE_KEY ? <>your <code>rtts_</code> key or a session token, and the
+                  same key</> : <>a session token, or an API key</>} through the MCP tools <code>create_audiobook</code>,{' '}
                   <code>get_audiobook_status</code> and <code>export_audiobook</code>.
                 </p>
                 <p><b>1. Create.</b> <code>POST /api/audiobooks</code> with{' '}
@@ -423,8 +447,8 @@ curl -L -X POST "<url>/v1/stt?language=auto" \\
 
                 <h3>Pricing and benchmarks</h3>
                 <p>ReadAloud Live $0.004 and ReadAloud Studio $0.01 per 1,000 characters; speech to text $0.11 per hour of audio; dubbing $0.15 per audio minute and voice conversion $0.10 per audio minute, each billed by the second rounded up (with the minimums above); audiobooks bill per character like regular text-to-speech. Cloning a voice through the API costs $2.50 per voice when you commit the dataset. Audio-based usage appears on your invoice as character equivalents on the text-to-speech meter ($0.01 per 1,000). See <Link href="/#engines" style={{ textDecoration: 'underline' }}>engines and benchmarks</Link> for how we measured latency against ElevenLabs.</p>
-                <h4 id="vs-elevenlabs">ReadAloud and ElevenLabs, as of 2026-10-10</h4>
-                <p>Prices are ElevenLabs&rsquo; published pay-as-you-go API list prices for text to speech, read from its pricing page on 2026-10-10. Time to first audio is the median (p50) and 95th percentile (p95) in milliseconds, measured in San Jose with short call-centre sentences.</p>
+                <h4 id="vs-elevenlabs">ReadAloud and ElevenLabs: prices read {ELEVENLABS_PRICES.retrievedOn}, latency measured 2026-10-10</h4>
+                <p>Prices are ElevenLabs&rsquo; published pay-as-you-go API list prices for text to speech, read from its pricing page on {ELEVENLABS_PRICES.retrievedOn} (unchanged from our 2026-10-10 reading). Time to first audio is the median (p50) and 95th percentile (p95) in milliseconds, measured in San Jose with short call-centre sentences.</p>
                 <div className="ra-table-wrap" style={{ marginTop: 8 }}>
                   <table className="ra-table">
                     <thead><tr><th>Service</th><th>Per 1,000 characters</th><th>Per 1M characters</th><th>Warm connection, p50 / p95</th><th>New connection, p50 / p95</th></tr></thead>

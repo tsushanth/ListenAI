@@ -71,7 +71,7 @@ export function compareModel(lib: Library, v: Vendor): LibraryPageModel {
     { kind: 'p', text: `How ${v.name} positions itself: ${sentence(v.positioning)}` },
     ...priceBlocks(v),
     { kind: 'h2', text: 'Side by side' },
-    { kind: 'p', text: `"${NOT_STATED_CAP}" marks what ${poss(v.name)} pages did not say. We print no head-to-head latency number.` },
+    { kind: 'p', text: `"${NOT_STATED_CAP}" marks what ${poss(v.name)} pages did not say. ${v.ourMeasurement ? 'Where we ran both side by side, the dated row says so and links to the method.' : 'We print no head-to-head latency number.'}` },
     { kind: 'table', caption: `${RA_NAME} and ${v.name} compared`, columns: ['', RA_NAME, v.name], rows: compareRows(v) },
   ]
   if (hasText(v.compliance.note)) blocks.push({ kind: 'p', text: `About ${poss(v.name)} compliance wording: ${sentence(v.compliance.note)}`, })
