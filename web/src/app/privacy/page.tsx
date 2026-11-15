@@ -11,7 +11,7 @@ export default function PrivacyPage() {
         <h1 className="text-4xl font-bold text-white mb-8">Privacy Policy</h1>
 
         <div className="prose prose-invert max-w-none">
-          <p className="text-gray-400 mb-6">Last updated: November 14, 2026</p>
+          <p className="text-gray-400 mb-6">Last updated: November 15, 2026</p>
 
           <section className="mb-8">
             <h2 className="text-2xl font-semibold text-white mb-4">1. Information We Collect</h2>
@@ -85,11 +85,13 @@ export default function PrivacyPage() {
             </p>
             <p className="text-gray-300 mb-3">
               For a language that has no ReadAloud voice, the app reads with the speech engine already on your phone (for example
-              Google or Samsung text-to-speech), and that text is not sent to the ReadAloud speech service. The same happens
-              if you choose one of the phone&apos;s voices for a language in the voice menu: the app tries that voice first and
-              uses a ReadAloud voice only if the phone&apos;s voice cannot read the text. It also reads with the phone&apos;s engine
-              when the ReadAloud speech service cannot be reached or is too slow. The phone&apos;s speech engine is provided by its
-              maker, and its own privacy terms apply to what it does.
+              Google or Samsung text-to-speech), and that text is not sent to the ReadAloud speech service. If you choose one of
+              the phone&apos;s voices for a language in the voice menu, the app tries that voice first: text read by a phone voice
+              stays on your phone, and a ReadAloud voice is used, with the text sent in pieces to the ReadAloud speech service as
+              described above, only if the phone&apos;s voice cannot read it. When you choose a ReadAloud voice, or leave the menu
+              on automatic for a language that has one, the text goes to the ReadAloud speech service. The app also reads with the
+              phone&apos;s engine when the ReadAloud speech service cannot be reached or is too slow. The phone&apos;s speech engine
+              is provided by its maker, and its own privacy terms apply to what it does.
             </p>
             <p className="text-gray-300 mb-3">
               Older app versions and some other voices may use a second open-source speech model that we operate on cloud servers.
