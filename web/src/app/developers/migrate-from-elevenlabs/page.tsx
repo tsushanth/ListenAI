@@ -466,7 +466,7 @@ export default function MigrateFromElevenLabsPage() {
           <div className="ra-wrap ra-narrow ra-ref" style={{ maxWidth: 820 }}>
             <h2>What we tested</h2>
             <p className="ra-lede" style={{ marginBottom: 16 }}>
-              On 10 October 2026 we ran each item below against the live API at <code>api.readaloudai.org</code>, with the official SDKs and with plain HTTP and WebSocket clients, using a temporary key that has since been revoked. This table is that dated run and is not re-run for the items marked coming soon above. Only items that worked are in it. Differences are listed in the next section.
+              On 10 October 2026 we ran each item below against the live API at <code>api.readaloudai.org</code>, with the official SDKs and with plain HTTP and WebSocket clients, using a temporary key that has since been revoked. This table is that dated run. The speech-to-text route, instant clone and one-key access were each checked with one real call on 14 November 2026 after they were switched on, and are not part of the 10 October run. Only items that worked are in it. Differences are listed in the next section.
             </p>
             <p className="ra-small" style={{ marginBottom: 12 }}>
               SDKs: <code>elevenlabs</code> (Python) 2.71.0 on Python 3.14, and <code>@elevenlabs/elevenlabs-js</code> 2.71.0 on Node 26. Only the base URL, the key and the voice id were changed from the ElevenLabs code.
@@ -580,7 +580,7 @@ export default function MigrateFromElevenLabsPage() {
             <h3>Does streaming work?</h3>
             <p>Yes: the <code>/stream</code> endpoint and the <code>stream-input</code> WebSocket both worked in our run.</p>
             <h3>Can I use ElevenLabs speech to text, dubbing or agents through this API?</h3>
-            <p>Text to speech and the voice routes work today. The Scribe-shaped speech-to-text route and the ElevenLabs-path instant clone are <b>coming soon</b> (see their sections). Dubbing and agents are not offered on ElevenLabs paths.</p>
+            <p>Text to speech and the voice routes work today, and so do the Scribe-shaped speech-to-text route (batch only) and the ElevenLabs-path instant clone (with a consent step); see their sections for the limits. Dubbing and agents are not offered on ElevenLabs paths.</p>
             <h3>What does it cost?</h3>
             <p>At list price {RA_LIVE.name} is {formatUsd(RA_LIVE.per1MUsd)} and {RA_STUDIO.name} {formatUsd(RA_STUDIO.per1MUsd)} per million characters, against {formatUsd(ELEVENLABS_PRICES.tts[0].per1MUsd)} and {formatUsd(ELEVENLABS_PRICES.tts[3].per1MUsd)} on the ElevenLabs API list read on {ELEVENLABS_PRICES.retrievedOn}. See the <a href="#price" style={ul}>price table and calculator</a>. New accounts get a one-time grant of free credits; after that you pay as you go.</p>
             <h3>Something here does not match what I see.</h3>
