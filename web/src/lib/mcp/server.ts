@@ -10,7 +10,8 @@ import {
   SOUND_EFFECT_POLL_TIMEOUT_MS, SOUND_EFFECT_POLL_INTERVAL_MS,
 } from './schemas.ts'
 import { piperNormalizeFields } from '../piperNormalize.ts'
-import { KOKORO_VOICES, PIPER_VOICES, resolveVoice, upstreamEngine } from './voices.ts'
+import { PUBLIC_VOICES, DEFAULT_LIVE_VOICE, DEFAULT_STUDIO_VOICE, backendVoiceId, resolveVoice, upstreamEngine } from './voices.ts'
+import { TTS_REGISTRY } from '../../generated/tts-registry.ts'
 import {
   UpstreamError, authorize, authorizeStt, fetchPiperHealth, synthesize, transcribe, type ErrorCode,
   submitDub, getDubStatus,
@@ -76,7 +77,7 @@ export function createMcpServer(ctx: RequestContext): McpServer {
     description:
       `Convert text to spoken audio and return it as an inline WAV clip (24 kHz, mono, 16-bit). ` +
       `Limits: ${MAX_TEXT_CHARS} characters per call and about ${MAX_AUDIO_SECONDS} seconds of audio; longer audio is cut off, so split long text into several calls. ` +
-      `Engines: "live" (ReadAloud Live) is fast and cheap (one voice); "studio" (ReadAloud Studio) sounds more natural and has many voices. ` +
+      `Engines: "live" (ReadAloud Live) is fast and cheap (${TTS_REGISTRY.phrase.liveVoicesTail}, each passed by its voice_id from list_voices); "studio" (ReadAloud Studio) sounds more natural and has ${TTS_REGISTRY.counts.studio} ${TTS_REGISTRY.phrase.studioLanguages} voices. ` +
       `The result also has a text block with duration and time to first audio. Uses the caller's free characters or billing, so avoid calling it repeatedly for the same text. ` +
       `Cloned voices: pass voice "clone:<id>" (an id from readaloud_create_voice_clone or readaloud_list_voices) to speak in a voice you cloned; it works only for the account that owns it and returns the same WAV format. ` +
       `Errors are returned with a code: capacity (temporary, retry), payment_required (free characters used up, or no paid plan for a cloned voice), invalid_voice (call list_voices), rate_limited (wait).`,
@@ -184,13 +185,13 @@ export function createMcpServer(ctx: RequestContext): McpServer {
 
   server.registerTool('list_voices', {
     title: 'List voices',
-    description: 'List the voices you can pass to text_to_speech, per engine. Custom trained voices are not listed; use "custom:<id>" if you have one. Studio voice names: af_/am_ = American female/male, bf_/bm_ = British female/male.',
+    description: 'List the voices you can pass to text_to_speech, per engine. Each voice has a voice_id (what you pass as voice), a name, a language, a dialect and a gender. Custom trained voices are not listed; use "custom:<id>" if you have one.',
     inputSchema: listVoicesInput,
     annotations: { title: 'List voices', readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
   }, async ({ engine }): Promise<CallToolResult> => {
     const out: Record<string, unknown> = {}
-    if (!engine || engine === 'live') out.live = { voices: PIPER_VOICES, default: 'default' }
-    if (!engine || engine === 'studio') out.studio = { voices: KOKORO_VOICES, default: 'af_heart' }
+    if (!engine || engine === 'live') out.live = { voices: PUBLIC_VOICES.live, default: DEFAULT_LIVE_VOICE }
+    if (!engine || engine === 'studio') out.studio = { voices: PUBLIC_VOICES.studio, default: DEFAULT_STUDIO_VOICE }
     out.custom = 'custom:<id>'
     return { content: [{ type: 'text', text: JSON.stringify(out, null, 2) }], structuredContent: out }
   })
@@ -224,7 +225,8 @@ export function createMcpServer(ctx: RequestContext): McpServer {
   }, async (args): Promise<CallToolResult> => {
     const parsed = createAudiobookSchema.parse(args)
     try {
-      const result = await createAudiobook(ctx.apiKey, ctx.keyId, parsed)
+      // The audiobook route still takes the old voice ids; a public id is mapped to it here.
+      const result = await createAudiobook(ctx.apiKey, ctx.keyId, { ...parsed, voice_id: backendVoiceId(parsed.voice_id) })
       return {
         content: [{ type: 'text', text: `Created audiobook ${result.audiobook_id} with ${result.chapter_count} chapter(s), status: ${result.status}. Poll get_audiobook_status with this id.` }],
         structuredContent: result as unknown as Record<string, unknown>,
@@ -478,7 +480,7 @@ export function createMcpServer(ctx: RequestContext): McpServer {
   server.registerTool('convert_voice', {
     title: 'Convert voice',
     description:
-      `Speech-to-speech voice conversion (Seed-VC): re-speak the source audio in the voice of a target reference clip, keeping the words and timing. ` +
+      `Speech-to-speech voice conversion (ReadAloud voice conversion): re-speak the source audio in the voice of a target reference clip, keeping the words and timing. ` +
       `Send both clips base64-encoded (WAV, FLAC, OGG, MP3, or M4A), up to ${MAX_CONVERT_AUDIO_MB} MB decoded each. Requires confirms_rights: true. ` +
       `Returns a job_id right away; poll get_voice_conversion. First use on an account provisions a private GPU converter automatically (about 3 minutes): ` +
       `in that case this returns a temporary "capacity" error, and you should call convert_voice again after a few minutes. ` +
@@ -754,8 +756,8 @@ export function createMcpServer(ctx: RequestContext): McpServer {
     annotations: { title: 'List voices', readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
   }, async ({ engine }): Promise<CallToolResult> => {
     const out: Record<string, unknown> = {}
-    if (!engine || engine === 'live') out.live = { voices: PIPER_VOICES, default: 'default' }
-    if (!engine || engine === 'studio') out.studio = { voices: KOKORO_VOICES, default: 'af_heart' }
+    if (!engine || engine === 'live') out.live = { voices: PUBLIC_VOICES.live, default: DEFAULT_LIVE_VOICE }
+    if (!engine || engine === 'studio') out.studio = { voices: PUBLIC_VOICES.studio, default: DEFAULT_STUDIO_VOICE }
     out.custom = 'custom:<id>'
     try {
       const cloned = await listClonedVoices({ apiKey: ctx.apiKey, keyId: ctx.keyId })

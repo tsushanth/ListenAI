@@ -40,7 +40,7 @@ export default function PrivacyPage() {
               transcribe it to check that the phrase was read. A voice recording is personal data and may be biometric data under some laws.
             </p>
             <ul className="list-disc pl-6 text-gray-300 space-y-2">
-              <li><strong>Reference recording:</strong> processed by Chatterbox (an open-source voice model) running on Modal&apos;s cloud GPU infrastructure under our account, and kept on that service&apos;s encrypted storage only while the voice exists. It is not stored in Supabase Storage.</li>
+              <li><strong>Reference recording:</strong> processed by our voice-cloning model (an open-source model) running on Modal&apos;s cloud GPU infrastructure under our account, and kept on that service&apos;s encrypted storage only while the voice exists. It is not stored in Supabase Storage.</li>
               <li><strong>Consent record:</strong> we keep a record of your confirmation (the date and what you agreed to). When we ask for a consent phrase, the consent recording is also stored in a private Supabase Storage bucket together with its transcript and the similarity score. These are kept for as long as the voice exists and for 12 months after you delete it, so that we can answer abuse and legal claims.</li>
               <li><strong>Deleting a voice</strong> (in the app or by emailing support) removes the reference recording, the voice model data derived from it, and any cached copies on the cloning service. Audio generated with your voice and the consent record are handled as described in Section 5.</li>
               <li>We do not use your recordings, or audio generated from them, to train any model.</li>
@@ -63,7 +63,7 @@ export default function PrivacyPage() {
             </p>
             <ul className="list-disc pl-6 text-gray-300 space-y-2">
               <li>The app first asks our backend (listenai-backend.fly.dev) for a short-lived session token. That request does not contain your text, your account or your name.</li>
-              <li>The app then sends the text, in sentence-sized pieces, together with the voice and speed you picked, directly to the ReadAloud speech service (api.readaloudai.org) over an encrypted connection, and plays the audio that comes back. The speech service runs Piper, an open-source speech model that we operate on cloud servers (Fly.io and Modal).</li>
+              <li>The app then sends the text, in sentence-sized pieces, together with the voice and speed you picked, directly to the ReadAloud speech service (api.readaloudai.org) over an encrypted connection, and plays the audio that comes back. The speech service runs an open-source speech model that we operate on cloud servers (Fly.io and Modal).</li>
               <li>Like any internet connection, this shows your IP address to those servers. We do not attach your account to these requests.</li>
               <li>This covers everything the app reads aloud: text you paste, documents and web pages you import, and, if you connect Gmail, the emails you open.</li>
               <li>Audio that comes back is also kept on your phone (up to about 150 MB, oldest removed first) so that re-reading the same text does not need the network.</li>
@@ -80,7 +80,7 @@ export default function PrivacyPage() {
               maker, and its own privacy terms apply to what it does.
             </p>
             <p className="text-gray-300 mb-3">
-              Older app versions and some other voices may use Kokoro, an open-source speech model that we operate on cloud servers.
+              Older app versions and some other voices may use a second open-source speech model that we operate on cloud servers.
               The ReadAloud text-to-speech engine app (ReadAloud Voice), which other apps can call, processes text on your device and, in its
               current configuration, does not send text read by other apps to our servers.
             </p>
@@ -109,7 +109,7 @@ export default function PrivacyPage() {
               When you create a voice clone, your voice recording and synthesis text are sent to:
             </p>
             <ul className="list-disc pl-6 text-gray-300 space-y-2">
-              <li><strong>Chatterbox</strong> (open-source model, run by us on Modal, modal.com) &mdash; processes your reference recording (and the consent recording, when we ask for one) and your text to create and speak with your voice clone</li>
+              <li><strong>Voice cloning</strong> (open-source model, run by us on Modal, modal.com) &mdash; processes your reference recording (and the consent recording, when we ask for one) and your text to create and speak with your voice clone</li>
               <li><strong>Speech-to-text service</strong> (our own transcription service) &mdash; transcribes the consent recording to check the phrase, when we ask for one</li>
             </ul>
 
@@ -157,7 +157,7 @@ export default function PrivacyPage() {
           <section className="mb-8">
             <h2 className="text-2xl font-semibold text-white mb-4">6. Service Providers</h2>
             <p className="text-gray-300">
-              The speech models we operate (Piper, Kokoro and Chatterbox) run on cloud infrastructure under our own accounts, and
+              The speech models we operate run on cloud infrastructure under our own accounts, and
               the app connects to them over encrypted connections (TLS). Services run by others (Supabase, Anthropic, Google,
               RevenueCat, Hugging Face, Cloudflare, PostHog) handle data under their own terms and privacy policies, and we do not
               control how they operate. Apart from the points stated in this policy, we have not verified how long those providers

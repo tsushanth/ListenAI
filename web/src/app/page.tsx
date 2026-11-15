@@ -3,6 +3,7 @@ import RaHeader from '@/components/ra/RaHeader'
 import RaFooter from '@/components/ra/RaFooter'
 import LiveDemo from '@/components/ra/LiveDemo'
 import CodeTabs from '@/components/ra/CodeTabs'
+import { RA_LANGUAGES, RA_VOICES } from '@/content/readaloudFacts'
 
 export default function Home() {
   return (
@@ -52,7 +53,7 @@ export default function Home() {
                 <tbody>
                   <tr><td>Built for</td><td className="hl">Live calls and voice agents</td><td>The most natural read-aloud</td></tr>
                   <tr><td>Price</td><td className="hl">$0.004 per 1,000 characters</td><td>$0.01 per 1,000 characters</td></tr>
-                  <tr><td>Voices</td><td className="hl">One American English voice</td><td>Multiple English voices</td></tr>
+                  <tr><td>Voices</td><td className="hl">{RA_VOICES.liveCell}</td><td>{RA_VOICES.studioCell}</td></tr>
                   <tr><td>Limits</td><td className="hl">5,000 characters per request. Limited capacity, so retry when you get an &ldquo;at capacity&rdquo; error.</td><td>See the docs</td></tr>
                 </tbody>
               </table>
@@ -176,7 +177,8 @@ export default function Home() {
                   <thead><tr><th>Batch speech to text</th><th>Price per hour of audio</th></tr></thead>
                   <tbody>
                     <tr><td className="hl">ReadAloud</td><td className="hl">$0.11</td></tr>
-                    <tr><td>ElevenLabs Scribe (API list price, as of 2026-10)</td><td>$0.22</td></tr>
+                    <tr><td>ElevenLabs Scribe v3 batch (API list price, read 2026-11-14)</td><td>$0.20</td></tr>
+                    <tr><td>ElevenLabs Scribe v3 Live, realtime (same page; ReadAloud has no realtime)</td><td>$0.22</td></tr>
                   </tbody>
                 </table>
               </div>
@@ -189,7 +191,7 @@ export default function Home() {
             <div className="ra-ref" style={{ marginTop: 0 }}>
               <ul>
                 {/* Price: research/elevenlabs_pricing_2026-10-04.md and W11 (price only; no vendor accuracy or latency claims on this page, W31 vendor-terms caveat). */}
-                <li>That is half of ElevenLabs Scribe&rsquo;s batch API list price (its realtime price is $0.39 per hour). This page makes no accuracy or speed comparison with other vendors.</li>
+                <li>That is about 45% below ElevenLabs Scribe v3&rsquo;s batch API list price of $0.20 per hour (its pricing page, read 2026-11-14; plans and promotions can be lower). This page makes no accuracy or speed comparison with other vendors.</li>
                 {/* Accuracy: research/W32/data/results_w32gpu.md (the live guard; W31 test split, real 8 kHz 296 items, noisy 10 dB 578 items, no dictionary). */}
                 <li>On 296 real 8 kHz phone-style recordings (English, role-played calls) the word error rate was 9.8% and 90.2% of spoken digit sequences came out exactly right. With 10 dB background noise added it was 17.8% and 84.6%, so noisy lines are our weaker case. One test set, so test on your own audio. <Link href="/developers#stt-how-we-measured" style={{ textDecoration: 'underline' }}>How we measured</Link>.</li>
                 {/* Speaker labels: research/W43/REALCALL_VALIDATION.md; limits documented at /developers#speech-to-text. */}
@@ -204,7 +206,7 @@ export default function Home() {
           <div className="ra-wrap ra-two">
             <div><h2>Questions</h2></div>
             <div className="ra-faq">
-              <details><summary>Which languages does it speak?</summary><p>English today. More languages are on the roadmap, and we would rather say so plainly than list languages we cannot yet do well.</p></details>
+              <details><summary>Which languages does it speak?</summary><p>{RA_LANGUAGES.faq}</p></details>
               <details><summary>How many calls can it handle at once?</summary><p>Each ReadAloud Live server handles up to 12 simultaneous streams, and a second server starts automatically under load. Beyond that, new connections get an &ldquo;at capacity&rdquo; error and should retry shortly. If you need guaranteed capacity, email us.</p></details>
               <details><summary>Why is it so much cheaper than ElevenLabs?</summary><p>ReadAloud Live is a small model that runs on ordinary CPUs, so we do not pay for an always-on GPU. The trade-off is fewer voices and a less expressive read than the largest models.</p></details>
               <details><summary>Can I hear how it compares before I commit?</summary><p>Yes. Type your own text into the demo above, then use your free 10,000 characters to test it in your own app.</p></details>

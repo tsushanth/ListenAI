@@ -25,12 +25,26 @@ Pro is subscribed to in the Android app (Google Play); web checkout for Pro is n
 ## Developer API — realtime streaming text-to-speech
 Two engines, ReadAloud Live and ReadAloud Studio, stream natural-sounding speech over WebSocket as it's generated.
 - Docs and signup: https://readaloudai.org/developers
+- Voices and languages: ReadAloud Live has 20 voices in English, German, Spanish, French, Italian, Brazilian Portuguese, Czech, Dutch, Finnish, Greek, Hindi, Hungarian, Indonesian, Japanese, Polish, Portuguese, Romanian, Russian, Swedish, Turkish and Ukrainian; ReadAloud Studio has 20 English voices. GET /v1/voices lists them.
 - Free tier: 10,000 characters, no credit card required
-- Pay-as-you-go: $0.01 per 1,000 characters (no plan to manage, scales with usage)
-- Typical warm latency: well under a second to first audio
+- Pay-as-you-go: ReadAloud Live $0.004 per 1,000 characters ($4 per 1M), ReadAloud Studio $0.01 per 1,000 characters ($10 per 1M); batch speech to text $0.11 per hour of audio; no plan to manage, no minimums
+- Typical warm latency: about 250 ms to first audio on ReadAloud Live in our own runs (2026-10-10, one machine in San Jose); ElevenLabs Flash was faster to first audio in the same runs (about 166 to 174 ms)
+- Limits: 5,000 characters per request; up to 12 Live streams per server (more servers start under load); beyond capacity the API returns 429 or WebSocket close code 1013
 - Hosted MCP server (Streamable HTTP, API key as Bearer token): https://readaloudai.org/mcp — setup: https://readaloudai.org/developers/mcp
 - Local MCP server (for AI agents/coding assistants): `npx realtime-tts-mcp` — https://github.com/tsushanth/realtime-tts-mcp
 - Protocol: WebSocket, JSON control messages + binary PCM16LE audio frames
+
+## Switching from ElevenLabs
+- Migration guide with a dated price comparison, a cost calculator, a works / partial / not yet table and what we tested: https://readaloudai.org/developers/migrate-from-elevenlabs
+- The API serves the ElevenLabs text-to-speech routes at https://api.readaloudai.org. Change three values: the base URL, the API key (starts with rtts_; send as xi-api-key or Authorization: Bearer) and the voice id (ElevenLabs voice ids return 404; use readaloud-default or an id from GET /v1/voices). model_id, output_format and voice_settings.speed need no change.
+- Works today (run with the official Python and JavaScript SDKs on 2026-10-10): POST /v1/text-to-speech/{voice_id} and /stream; WebSocket /v1/text-to-speech/{voice_id}/stream-input and /multi-stream-input (the JavaScript SDK has no text-to-speech WebSocket client); GET /v1/voices, /v2/voices, /v1/models, /v1/user, /v1/user/subscription; OpenAI-compatible POST /v1/audio/speech; Vapi custom voice endpoint; hosted MCP.
+- Speech to text, Scribe-shaped route POST /v1/speech-to-text: available. Batch only; diarize is accepted without effect; keyterms, entity detection, webhooks and multichannel are rejected with a 400.
+- Instant voice cloning at the ElevenLabs path POST /v1/voices/add: available. English only, with a consent step, on keys with billing enabled.
+- One rtts_ key on every REST family (dubbing, voice conversion, voice design, audio isolation, audiobooks, sound effects): available. The key is accepted on those routes as well as a session token or the MCP tools.
+- Prices: ElevenLabs API list prices read on 2026-11-14 from elevenlabs.io/pricing/api: $40 per 1M characters for Flash / Turbo, v4 Turbo and v3 Conversational; $80 per 1M for v4, v3 and v2 Multilingual; Scribe v3 batch $0.20 per hour and Scribe v3 Live (realtime) $0.22 per hour. ElevenLabs plans, discounts and promotions can be lower than list.
+- Partial: voice settings other than speed are accepted and ignored (named in the x-compat-ignored response header); with-timestamps returns null alignment; sample rates above 24 kHz are upsampled; English plus a small set of other languages (ElevenLabs lists 32, 70+ and 90+ by model).
+- Not supported yet: expressive v3-style markup and emotion control, pronunciation dictionaries, text to dialogue, realtime speech to text, entity detection, agents platform, speech to speech on ElevenLabs paths, history, workspaces and SSO, data residency, a community voice library. ElevenLabs is ahead of ReadAloud on voices, languages, expressive control and speech-to-text options.
+- Honest summary: ReadAloud is much cheaper per character at list price and serves the same routes, but it is a smaller product; choose it when price per minute is what matters, and keep ElevenLabs when you need its expressive models, its languages or its agents platform.
 
 ## Who it's for
 - Consumer app: people who want to listen to written content rather than read it — accessibility, multitasking, commuting.

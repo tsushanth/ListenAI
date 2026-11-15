@@ -2,6 +2,8 @@ import Link from 'next/link'
 import RaHeader from '@/components/ra/RaHeader'
 import RaFooter from '@/components/ra/RaFooter'
 import McpInstallTabs from '@/components/ra/McpInstallTabs'
+import { RA_REGISTRY, RA_VOICE_COUNTS } from '@/content/readaloudFacts'
+import { KOKORO_VOICES } from '@/lib/mcp/voices'
 
 export const metadata = {
   title: 'Connect the MCP server - ReadAloud AI',
@@ -77,7 +79,7 @@ export default function McpDocsPage() {
             <h2>Try it</h2>
             <p>Ask your assistant something like:</p>
             <ul>
-              <li>&ldquo;Say &lsquo;Your order has shipped&rsquo; using the ReadAloud Studio voice af_heart.&rdquo;</li>
+              <li>&ldquo;Say &lsquo;Your order has shipped&rsquo; using the ReadAloud Studio voice en-heart.&rdquo;</li>
               <li>&ldquo;What voices are available? Read each one a short greeting so I can compare.&rdquo;</li>
               <li>&ldquo;Turn this paragraph into audio at 1.2x speed.&rdquo;</li>
             </ul>
@@ -90,7 +92,7 @@ export default function McpDocsPage() {
                 <tbody>{tools.map(([n, d]) => <tr key={n}><td><code>{n}</code></td><td>{d}</td></tr>)}</tbody>
               </table>
             </div>
-            <p style={{ marginTop: 16 }}>Voices: ReadAloud Live has one voice, <code>default</code>. ReadAloud Studio has 28 English voices such as <code>af_heart</code>, <code>am_adam</code> and <code>bf_emma</code>; ask for <code>list_voices</code> for all of them. Custom trained voices use <code>custom:&lt;id&gt;</code>; voices you cloned instantly use <code>clone:&lt;id&gt;</code> (see <Link href="/developers#voice-cloning-api" style={{ textDecoration: 'underline' }}>instant voice cloning</Link>, three steps: <code>readaloud_issue_consent_phrase</code>, <code>readaloud_create_voice_clone</code>, then <code>text_to_speech</code>). <b>Only clone your own voice, or one you have the speaker&rsquo;s recorded consent for.</b></p>
+            <p style={{ marginTop: 16 }}>Voices: ReadAloud Live has {RA_REGISTRY.phrase.liveVoicesTail}, each with a name, a language and a dialect (the voice ids are in the <Link href="/developers#languages" style={{ textDecoration: 'underline' }}>Languages table</Link>). ReadAloud Studio has {RA_VOICE_COUNTS.studio} {RA_REGISTRY.phrase.studioLanguages} voices such as <code>{KOKORO_VOICES[0]}</code>, <code>{KOKORO_VOICES[1]}</code> and <code>{KOKORO_VOICES[2]}</code>; call <code>list_voices</code> for all of them, with each voice&rsquo;s name, language, dialect and gender. Custom trained voices use <code>custom:&lt;id&gt;</code>; voices you cloned instantly use <code>clone:&lt;id&gt;</code> (see <Link href="/developers#voice-cloning-api" style={{ textDecoration: 'underline' }}>instant voice cloning</Link>, three steps: <code>readaloud_issue_consent_phrase</code>, <code>readaloud_create_voice_clone</code>, then <code>text_to_speech</code>). <b>Only clone your own voice, or one you have the speaker&rsquo;s recorded consent for.</b></p>
             <p style={{ marginTop: 12 }}>Most tools return a job id or a URL rather than inline audio, and the longer ones (dubbing, conversion, audiobooks, cloning) are polled with a matching <code>get_…</code> tool. The tools that need an account (dubbing, sound effects, conversion, voice design, audiobooks) bill the account your key belongs to; a key that is not tied to an account gets a payment-required error. The REST endpoints behind them do not take your key directly. This server is the only place an API key works for them. Web versions: <Link href="/transcribe" style={{ textDecoration: 'underline' }}>transcribe</Link>, <Link href="/dub" style={{ textDecoration: 'underline' }}>dub</Link>, <Link href="/sound-effects" style={{ textDecoration: 'underline' }}>sound effects</Link>, <Link href="/audiobooks" style={{ textDecoration: 'underline' }}>audiobooks</Link>, <Link href="/design-voice" style={{ textDecoration: 'underline' }}>design voice</Link> and <Link href="/convert-voice" style={{ textDecoration: 'underline' }}>convert voice</Link>. Prices are on the <Link href="/developers#reference" style={{ textDecoration: 'underline' }}>Voice API page</Link>; audio-based usage shows on your invoice as character equivalents.</p>
 
             <h2 style={{ marginTop: 48 }}>Limits</h2>

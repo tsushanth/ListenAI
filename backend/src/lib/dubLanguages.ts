@@ -71,14 +71,14 @@ const ES: DubLanguage = {
   code: 'es', variant: 'es', name: 'Spanish', bcp47: 'es-ES', engine: 'piper', offered: true, kokoroLangCode: 'e', speedRange: PIPER_SPEED,
   voices: { female: ['es-pilot-f'], male: ['es-pilot-m'] },
   charsPerSec: PIPER_CPS_ES, cpsMeasured: true,
-  note: 'Spanish uses a PILOT Piper voice (CML-TTS, 15.4k training steps, accent unlabelled): quality is unverified by ear and the speakers are LibriVox readers.',
+  note: 'Spanish is a pilot voice: quality is still being evaluated and the accent is not labelled.',
 };
 const FR: DubLanguage = {
   code: 'fr', variant: 'fr', name: 'French', bcp47: 'fr-FR', engine: 'piper', offered: false, // Spanish-only pilot (owner 2026-10-06); French code path stays, flip to re-enable
   kokoroLangCode: 'f', speedRange: PIPER_SPEED,
   voices: { female: ['fr-fr-mls-f'], male: ['fr-fr-mls-m'] },
   charsPerSec: PIPER_CPS_FR, cpsMeasured: true,
-  note: 'French voices are audiobook-paced Multilingual LibriSpeech readers; expect a slow, read-aloud delivery.',
+  note: 'French voices are audiobook-paced; expect a slow, read-aloud delivery.',
 };
 // Not offered (see header). Kokoro-only, unlistened; kept so re-enabling is a one-line flip once a clean engine exists.
 const HI: DubLanguage = {

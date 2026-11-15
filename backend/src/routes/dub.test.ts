@@ -490,7 +490,7 @@ test('default backend modal-cpu: Spanish goes to the dedicated Piper function wi
   }
 });
 
-test('default backend modal-cpu without its URL/secret fails the job with an actionable error', async (t) => {
+test('default backend modal-cpu without its URL/secret fails the job; the client sees a neutral message (the config hint goes to the log only)', async (t) => {
   installFetchMock(SHARED_STUB.url);
   resetMocks();
   process.env.DUB_TTS_BACKEND = 'modal-cpu';
@@ -502,7 +502,8 @@ test('default backend modal-cpu without its URL/secret fails the job with an act
     const { job_id } = await submit.json();
     const result = await waitForJob(s.call, job_id, jwtHeaders);
     assert.equal(result.status, 'failed');
-    assert.match(result.error, /DUB_PIPER_MODAL_URL/);
+    assert.equal(result.error, 'Dubbing failed. Please try again.');
+    assert.doesNotMatch(result.error, /DUB_PIPER_MODAL_URL/);
   } finally {
     process.env.DUB_TTS_BACKEND = 'gpu';
     s.close();
@@ -920,4 +921,39 @@ test('TTS that returns undecodable audio for every segment fails the job clearly
     s.close();
     uninstallFetchMock();
   }
+});
+
+// ===========================================================================
+// Public text hygiene: a client never reads a model/engine/dataset name in the job status (see lib/publicLeak.test.ts)
+// ===========================================================================
+test('public status: a failed dub hides the internal TTS error, a ready Spanish dub shows no model or dataset name', async (t) => {
+  const { publicLeakTerm } = await import('../lib/publicText.js');
+  installFetchMock(SHARED_STUB.url);
+  resetMocks();
+  sttSegments = [{ start: 0, end: 4, text: 'This is a reasonably long sentence to translate.' }];
+  currentTranslationReply = JSON.stringify(['Esta es una frase bastante larga para traducir.']);
+  const s = await boot(SHARED_STUB.url);
+  const calls: SynthCall[] = [];
+  installFakeTts(t, s.ttsProvider, calls);
+  try {
+    const ok = await (await s.call(jwtHeaders, 'POST', '/', buildForm({ target_language: 'Spanish' }))).json();
+    const ready = await waitForJob(s.call, ok.job_id, jwtHeaders);
+    assert.equal(ready.status, 'ready', ready.error);
+    assert.ok(ready.warnings.some((w: string) => /pilot/i.test(w)), 'the pilot caveat is still shown');
+    assert.equal(publicLeakTerm(JSON.stringify(ready)), null, `ready status leaks ${publicLeakTerm(JSON.stringify(ready))}`);
+  } finally { s.close(); uninstallFetchMock(); }
+
+  installFetchMock(SHARED_STUB.url);
+  resetMocks();
+  sttSegments = [{ start: 0, end: 4, text: 'This is a reasonably long sentence to translate.' }];
+  currentTranslationReply = JSON.stringify(['Esta es una frase bastante larga para traducir.']);
+  const s2 = await boot(SHARED_STUB.url);
+  t.mock.method(s2.ttsProvider, 'synthesize', async () => { throw new Error('Piper worker at capacity (503) after 3 attempts; DUB_PIPER_MODAL_URL unreachable'); });
+  try {
+    const sub = await (await s2.call(jwtHeaders, 'POST', '/', buildForm({ target_language: 'Spanish' }))).json();
+    const failed = await waitForJob(s2.call, sub.job_id, jwtHeaders);
+    assert.equal(failed.status, 'failed');
+    assert.equal(failed.error, 'Dubbing failed. Please try again.');
+    assert.equal(publicLeakTerm(JSON.stringify(failed)), null);
+  } finally { s2.close(); uninstallFetchMock(); }
 });

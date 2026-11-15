@@ -82,7 +82,7 @@ test('full flow: challenge -> create -> list -> delete; no audio or consent data
     assert.equal(created.status, 201);
     const body = await created.json() as Record<string, unknown>;
     assert.equal(body.status, 'active');
-    assert.equal(body.model, 'chatterbox-mtl-v3');
+    assert.equal(body.model, 'studio'); // public tier name, not the model id
     assert.deepEqual(Object.keys(body).sort(), ['created_at', 'id', 'language', 'model', 'name', 'reference_seconds', 'status']);
 
     const list = await (await fetch(`${ctx.base}/api/voice-clones`, { headers: AUTH })).json() as { voices: Array<{ id: string }> };

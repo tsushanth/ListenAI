@@ -324,7 +324,8 @@ test('list_voices marks cloned voices and still lists built-ins when cloning is 
   try {
     const r = await m.call('readaloud_list_voices', { engine: 'live' })
     const s = r.structuredContent!
-    assert.deepEqual(s.live.voices, ['default'])
+    assert.deepEqual(s.live.voices.map((v: any) => v.voice_id).slice(0, 2), ['de-f1', 'de-m1'])
+    assert.deepEqual(Object.keys(s.live.voices[1]).sort(), ['dialect', 'gender', 'language', 'name', 'voice_id'])
     assert.equal(s.studio, undefined)
     assert.equal(s.cloned_voices.length, 2)
     assert.deepEqual(s.cloned_voices[0], { voice: `clone:${VOICE}`, id: VOICE, name: 'Narrator', language: 'en', status: 'active', created_at: 'x', cloned: true, usable: true })
@@ -339,7 +340,7 @@ test('list_voices marks cloned voices and still lists built-ins when cloning is 
     assert.ok(!r.isError)
     assert.deepEqual(r.structuredContent!.cloned_voices, [])
     assert.match(r.structuredContent!.cloned_voices_note, /paid plan/)
-    assert.deepEqual(r.structuredContent!.studio.default, 'af_heart')
+    assert.deepEqual(r.structuredContent!.studio.default, 'en-heart')
   } finally { restore(); await m2.close() }
 })
 

@@ -16,12 +16,13 @@
 // resolved uid — see voiceStudioRouter.ts's featureFlagId. A key must be individually allowlisted (or "*")
 // even if its owning uid is separately allowlisted for the web flow; the two flags are independent on
 // purpose so turning on API access for a customer is a deliberate, separate decision from the web flag.
-import { Request } from 'express';
+import { Request, Router } from 'express';
 import { config } from '../lib/config.js';
 import { logger } from '../lib/logger.js';
 import { createIntakeClient } from '../lib/voiceIntakeClient.js';
 import { chargeForVoiceClone } from '../lib/realtimeTtsBilling.js';
 import { createVoiceStudioRouter } from './voiceStudioRouter.js';
+import { orpheusVoiceStudioApiKeyRouter } from './orpheusVoiceStudioApiKey.js';
 
 const log = logger.child({ module: 'voiceStudioApiKey' });
 
@@ -34,7 +35,7 @@ function timingSafeEqual(a: string, b: string): boolean {
   return diff === 0;
 }
 
-export const voiceStudioApiKeyRouter = createVoiceStudioRouter({
+const baseVoiceStudioApiKeyRouter = createVoiceStudioRouter({
   // Trusts the gateway, not the raw API key (we never see it, and never store gateway key material here).
   // A missing/wrong shared secret, or missing identity headers, is treated as unauthenticated.
   authenticate: async (req: GatewayReq) => {
@@ -80,3 +81,9 @@ export const voiceStudioApiKeyRouter = createVoiceStudioRouter({
   // than a human clicking through a UI, and training is the expensive one to let someone hammer.
   rateLimits: { create: 5, preview: 30, parts: 400 },
 });
+
+// Neutral alias for the gateway-trusted streaming-clone router that index.ts mounts at /internal/orpheus-clone-api:
+// /internal/voice-studio-api/streaming/... behaves identically (its own shared-secret auth). Old path stays mounted.
+export const voiceStudioApiKeyRouter = Router();
+voiceStudioApiKeyRouter.use('/streaming', orpheusVoiceStudioApiKeyRouter);
+voiceStudioApiKeyRouter.use(baseVoiceStudioApiKeyRouter);

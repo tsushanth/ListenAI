@@ -8,6 +8,14 @@ import VoiceCloningDocs from '@/components/ra/VoiceCloningDocs'
 import ConsentVoiceCloningDocs from '@/components/ra/ConsentVoiceCloningDocs'
 import publish from '../../content/publish.json'
 import { isPublished } from '@/lib/seoLibrary/publish'
+import { RA_REGISTRY, RA_LIVE_LANGUAGE_ROWS, RA_VOICE_COUNTS } from '@/content/readaloudFacts'
+import { LAUNCH_FLAGS } from '@/content/launchFlags'
+import { ELEVENLABS_PRICES, READALOUD_PRICES } from '@/content/migrationPrices'
+import { formatUsd } from '@/lib/migrationCalc'
+
+// Wording that depends on a switch that is off by default in the service (see src/content/launchFlags.ts).
+const ONE_KEY = LAUNCH_FLAGS.oneKeyEverywhere
+const CLONE_EL = LAUNCH_FLAGS.elevenLabsInstantClone
 
 // An /integrations page is linked from here only once it is listed in src/content/publish.json (the same list that decides what is indexed).
 const integrationHref = (slug: string): string | null => (isPublished(publish as { published: string[] }, 'integration', slug) ? `/integrations/${slug}` : null)
@@ -55,7 +63,7 @@ export default function DevelopersPage() {
               <code>POST https://api.readaloudai.org/v1/audio/speech</code> accepts the OpenAI <code>audio.speech.create</code> request. OpenAI SDKs, Open WebUI, LiteLLM and other tools that take an OpenAI base URL work by changing only the base URL and the key. Auth is <code>Authorization: Bearer &lt;your key&gt;</code>, the same <code>rtts_</code> key as the rest of this page.
             </p>
 
-            <p className="ra-small" style={{ marginBottom: 16 }}>The earlier names piper-default, piper and kokoro keep working as aliases.</p>
+            <p className="ra-small" style={{ marginBottom: 16 }}>Earlier voice and engine names keep working as aliases.</p>
 
             <h3>Python (openai)</h3>
             <pre style={{ overflowX: 'auto' }}><code>{`# pip install openai
@@ -106,7 +114,7 @@ fs.writeFileSync('hello.mp3', Buffer.from(await res.arrayBuffer()))`}</code></pr
                 <thead><tr><th>Field</th><th>Behaviour</th></tr></thead>
                 <tbody>
                   <tr><td><code>input</code></td><td>Required, up to 5,000 characters.</td></tr>
-                  <tr><td><code>voice</code></td><td>Use <code>readaloud-default</code>. The OpenAI stock names (<code>alloy</code>, <code>ash</code>, <code>ballad</code>, <code>coral</code>, <code>echo</code>, <code>fable</code>, <code>nova</code>, <code>onyx</code>, <code>sage</code>, <code>shimmer</code>, <code>verse</code>, <code>marin</code>, <code>cedar</code>) all map to <code>readaloud-default</code>, so they sound the same. Any other value is a ReadAloud voice id from <code>GET /v1/voices</code>, or <code>custom:&lt;id&gt;</code> for a voice you cloned (the German, Spanish, French, Italian and Brazilian Portuguese beta voices use this form too; see Languages below). An unknown voice returns <code>404</code>.</td></tr>
+                  <tr><td><code>voice</code></td><td>Use <code>readaloud-default</code>. The OpenAI stock names (<code>alloy</code>, <code>ash</code>, <code>ballad</code>, <code>coral</code>, <code>echo</code>, <code>fable</code>, <code>nova</code>, <code>onyx</code>, <code>sage</code>, <code>shimmer</code>, <code>verse</code>, <code>marin</code>, <code>cedar</code>) all map to <code>readaloud-default</code>, so they sound the same. Any other value is a ReadAloud voice id from <code>GET /v1/voices</code>, or <code>custom:&lt;id&gt;</code> for a voice you cloned (the {RA_REGISTRY.phrase.liveExtraLanguages} {RA_REGISTRY.phrase.liveBetaPrefix}voices are ordinary voice ids too; see Languages below). An unknown voice returns <code>404</code>.</td></tr>
                   <tr><td><code>model</code></td><td>Accepted and ignored. The voice decides how the audio is made.</td></tr>
                   <tr><td><code>response_format</code></td><td><code>mp3</code> (default, 24 kHz), <code>opus</code> (48 kHz, Ogg), <code>wav</code> (24 kHz) or <code>pcm</code> (24 kHz, 16-bit, mono). <code>aac</code> and <code>flac</code> return <code>400</code>.</td></tr>
                   <tr><td><code>speed</code></td><td>0.25 to 4.0.</td></tr>
@@ -237,22 +245,20 @@ export READALOUD_API_KEY=rtts_...`}</code></pre>
                 <p>Each ReadAloud Live server handles up to 12 simultaneous streams, and a second server starts automatically under load. Beyond that you get <code>{'{ "type": "error", "message": "at capacity, retry shortly" }'}</code> and the socket closes with code <code>1013</code>. Retry with a short backoff.</p>
 
                 <h3 id="languages">Languages (beta)</h3>
-                <p>Besides English, ReadAloud Live has ten beta voices in German, Spanish, French, Italian and Brazilian Portuguese. They are ordinary voice ids: pass one as <code className="inl">voice</code> (OpenAI route) or in the path of <code className="inl">POST /v1/text-to-speech/&#123;voice_id&#125;</code>, and write the text in that language. <code className="inl">GET /v1/voices</code> lists them with <code>language</code> and <code>gender</code>.</p>
+                <p>ReadAloud Live has {RA_REGISTRY.phrase.liveVoicesTail}. ReadAloud Studio has {RA_VOICE_COUNTS.studio} {RA_REGISTRY.phrase.studioLanguages} voices. Every voice has a name, a language and a dialect, and is selected by its voice id: pass it as <code className="inl">voice</code> (OpenAI route) or in the path of <code className="inl">POST /v1/text-to-speech/&#123;voice_id&#125;</code>, and write the text in that language. <code className="inl">GET /v1/voices</code> lists them with <code>name</code>, <code>language</code>, <code>dialect</code> and <code>gender</code>.</p>
                 <table className="ra-table">
-                  <thead><tr><th>Language</th><th>Voices</th></tr></thead>
+                  <thead><tr><th>Language</th><th>Voices (name, dialect, voice id)</th></tr></thead>
                   <tbody>
-                    <tr><td>German</td><td><code>custom:de-de-mls-f</code>, <code>custom:de-de-mls-m</code></td></tr>
-                    <tr><td>Spanish</td><td><code>custom:es-pilot-f</code>, <code>custom:es-pilot-m</code></td></tr>
-                    <tr><td>French</td><td><code>custom:fr-fr-mls-f</code>, <code>custom:fr-fr-mls-m</code></td></tr>
-                    <tr><td>Italian</td><td><code>custom:it-it-serena</code>, <code>custom:it-it-paola</code> (both female)</td></tr>
-                    <tr><td>Portuguese (Brazil)</td><td><code>custom:pt-br-faber</code>, <code>custom:pt-br-cadu</code> (both male)</td></tr>
+                    {RA_LIVE_LANGUAGE_ROWS.map((r) => (
+                      <tr key={r.language}><td>{r.label}</td><td>{r.details.map((v, i) => <span key={v.id}>{i > 0 ? '; ' : ''}{v.name}{v.dialect ? `, ${v.dialect}` : ''}, <code>{v.id}</code></span>)}{r.note ? ` ${r.note}` : ''}</td></tr>
+                    ))}
                   </tbody>
                 </table>
                 <ul>
                   <li><b>Beta quality.</b> Spanish is a pilot and can sound weak on very short sentences. German and French read at a slow, audiobook pace. Portuguese starts with a short lead-in silence on some voices.</li>
                   <li><b>First use.</b> Voices that are not kept warm can take 2 to 3 seconds on the first request, then run at normal speed.</li>
                   <li><b>Model ids.</b> <code>eleven_flash_v2_5</code> and <code>eleven_turbo_v2_5</code> still list English only; a language voice is selected by its voice id.</li>
-                  <li><b>Attribution.</b> The German, French, Spanish and Italian (Serena) voices are trained on CC BY 4.0 data. If you publish audio, credit the data sets named in each voice's <code>description</code> from <code>GET /v1/voices</code>.</li>
+                  <li><b>Attribution.</b> The German, French, Spanish, Italian and Portuguese voices are trained on openly licensed (CC BY 4.0) data. If you publish audio, credit the dataset authors listed on the <a href="/credits" style={{ textDecoration: 'underline' }}>credits page</a>.</li>
                 </ul>
 
                 <h3 id="voice-cloning">Voice cloning</h3>
@@ -260,6 +266,7 @@ export READALOUD_API_KEY=rtts_...`}</code></pre>
                 <VoiceCloningDocs />
 
                 <h3 id="voice-cloning-api">Instant voice cloning with consent (your own voice only)</h3>
+                {CLONE_EL ? <p>Coming from ElevenLabs? The same cloning is also available at the ElevenLabs path <code className="inl">POST https://api.readaloudai.org/v1/voices/add</code>, so <code className="inl">voices.ivc.create</code> in the official SDKs works with a consent step added; see <Link href="/developers/migrate-from-elevenlabs#voice-cloning" style={{ textDecoration: 'underline' }}>Migrate from ElevenLabs</Link>.</p> : <p>Coming from ElevenLabs? Cloning at the ElevenLabs path (<code className="inl">voices.ivc.create</code> in the official SDKs, with a consent step added) is coming soon; see <Link href="/developers/migrate-from-elevenlabs#voice-cloning" style={{ textDecoration: 'underline' }}>Migrate from ElevenLabs</Link>.</p>}
                 <ConsentVoiceCloningDocs />
 
                 <h3 id="speech-to-text">Speech to text (batch)</h3>
@@ -292,12 +299,12 @@ curl -L -X POST "<url>/v1/stt?language=auto" \\
                   <li><code>502</code> speaker labelling failed with <code>diarize=true</code>. Retry, or retry without <code>diarize</code>. Not billed.</li>
                   <li><code>504</code> the request took longer than 15 minutes in total. Split the file and retry.</li>
                 </ul>
-                <p><b>Price:</b> $0.11 per hour of audio, billed by the second on the audio&rsquo;s full length (silence included) once the transcript is returned, with a 10 second minimum per request (so a 3 second clip is billed as 10 seconds, $0.0003). The minimum is billing only: the transcript and the returned duration are unchanged. Failed requests, and requests with no audio, are not billed. That is half of ElevenLabs Scribe&rsquo;s batch list price of $0.22 per hour (as of 2026-10; its realtime price is $0.39 per hour). It uses the same free allowance as the voice API: 10,000 free characters is about 54 minutes of audio. On your invoice it appears as character equivalents on the same meter (about 3 per second of audio).</p>
+                <p><b>Price:</b> $0.11 per hour of audio, billed by the second on the audio&rsquo;s full length (silence included) once the transcript is returned, with a 10 second minimum per request (so a 3 second clip is billed as 10 seconds, $0.0003). The minimum is billing only: the transcript and the returned duration are unchanged. Failed requests, and requests with no audio, are not billed. ElevenLabs lists Scribe v3 batch at {formatUsd(ELEVENLABS_PRICES.stt.batch.perHourUsd)} per hour and Scribe v3 Live (realtime) at {formatUsd(ELEVENLABS_PRICES.stt.realtime.perHourUsd)} per hour (its API pricing page, read {ELEVENLABS_PRICES.retrievedOn}), so ReadAloud batch is about {Math.round((1 - READALOUD_PRICES.sttBatchPerHourUsd / ELEVENLABS_PRICES.stt.batch.perHourUsd) * 100)}% lower; ReadAloud has no realtime speech to text. It uses the same free allowance as the voice API: 10,000 free characters is about 54 minutes of audio. On your invoice it appears as character equivalents on the same meter (about 3 per second of audio).</p>
                 <p id="stt-how-we-measured"><b>What we measured.</b> All of these are English, on test sets we assembled, with no vendor comparison. They are not a guarantee for your audio: record a few of your own calls and score them before you commit.{/* source: research/W32/data/results_w32gpu.md (live guard, held-out W31 test split, no dictionary unless stated); research/W31/REPORT.md (noise-only probes); research/W44/REPORT.md; LibriTTS-R run in the 2026-10 STT launch notes */}</p>
                 <ul>
                   <li><b>Real narrowband phone-style audio.</b> 296 clips of role-played customer calls recorded as real 8 kHz telephone-bandwidth audio. Word error rate 9.8% (10.4% with a 40-term dictionary), and 90.2% of spoken digit sequences were exactly right (89.7% with the dictionary). Scoring ignores filler words and number formatting. The files are stored at 16 kHz and we do not know the original phone codec, the calls are role-played rather than live customer calls, and this is a single test set.</li>
                   <li><b>Noise is our weaker case.</b> With background noise mixed in at 10 dB (578 clips, noise recordings from a public sound library mixed in by us) the word error rate was 17.8% and digit sequences were 84.6% right (17.0% and 86.2% with a dictionary). The same test set mixes clean, simulated-telephone, real-telephone and noisy clips; over all 1,156 items the word error rate was 13.8%.</li>
-                  <li><b>Clean read speech.</b> On 100 short clips of read English speech (LibriTTS-R, about 9 minutes, roughly 1,500 words) word error rate was 2.6% on clean audio and 2.8% on the same clips simulated as 8 kHz telephone audio. That is studio-quality read speech with no background noise or real codec damage, so it is the best case, not what to expect on calls.</li>
+                  <li><b>Clean read speech.</b> On 100 short clips of read English speech (a public read-speech test set, about 9 minutes, roughly 1,500 words) word error rate was 2.6% on clean audio and 2.8% on the same clips simulated as 8 kHz telephone audio. That is studio-quality read speech with no background noise or real codec damage, so it is the best case, not what to expect on calls.</li>
                   <li><b>Known failure modes.</b> In the test set above 0.3% of clips (4 of 1,156) came back with no text at all. On recordings with no speech, text was invented on about 6% of 184 English noise, music and call-line-gap clips (2026-10-05; a later change to the filter did not alter this within noise), and on 3 to 11% of non-speech clips across the language check. Check the output when the audio may be silent.</li>
                 </ul>
                 <p>We have not measured live customer calls, accents, far-field microphones or real background noise, and we measured other languages only on clean read speech (see the language list above). The first request after a quiet period can take about ten extra seconds while a GPU starts.</p>
@@ -312,14 +319,32 @@ curl -L -X POST "<url>/v1/stt?language=auto" \\
                   so it fits the original segment&rsquo;s timing. Try it in the browser at{' '}
                   <Link href="/dub" style={{ textDecoration: 'underline' }}>/dub</Link>.
                 </p>
+                {ONE_KEY ? (
+                <p><b>Credentials.</b> One key works everywhere. The REST endpoints below (dubbing, voice
+                  conversion, voice design, audio isolation and audiobooks) accept your <code>rtts_</code> key
+                  directly, the same key you use for text to speech and speech to text. Send it as{' '}
+                  <code>Authorization: Bearer rtts_...</code> or as the <code>xi-api-key</code> header
+                  (the header name ElevenLabs SDKs and scripts already use). They also still accept a
+                  signed-in <b>session token</b> (<code>Authorization: Bearer &lt;session token&gt;</code>),
+                  and the <Link href="/developers/mcp" style={{ textDecoration: 'underline' }}>MCP server</Link> tools
+                  work with the same key (<code>dub_audio</code>, <code>convert_voice</code>,{' '}
+                  <code>design_voice</code>, the audiobook tools). The work is billed to the account the key
+                  belongs to. Keys you create in the console above belong to your account; a key that is not
+                  tied to an account gets <code>403</code>, and a revoked or unknown key gets <code>401</code>.
+                  A key whose account has used up its free credits and has no payment method gets <code>402</code>.
+                  Free credits are per account, so they follow the account, not the key. Requests are rate limited
+                  per account; a <code>429</code> carries a <code>Retry-After</code> header. Creating and revoking
+                  keys stays in the console and needs a session token, never a key. Instant voice cloning is at{' '}
+                  <code>https://readaloudai.org/api/v1/voice-clones</code>.
+                </p>
+                ) : (
                 <p><b>Credentials.</b> The REST endpoints below (dubbing, voice
-                  conversion, voice design and audiobooks) accept either a signed-in{' '}
+                  conversion, voice design, audio isolation and audiobooks) accept either a signed-in{' '}
                   <b>session token</b> (<code>Authorization: Bearer &lt;session token&gt;</code>) or an
                   API key that our own <Link href="/developers/mcp" style={{ textDecoration: 'underline' }}>MCP server</Link>{' '}
                   passes on for you. They do <b>not</b> accept your <code>rtts_</code> key
-                  directly: the <code>key</code>/<code>authorize</code> flow used elsewhere on this page
-                  does not apply here, and there is no way to send the key straight to these paths. To
-                  use an API key, call the matching MCP tool (<code>dub_audio</code>,{' '}
+                  directly yet: using it straight on these paths is coming soon. To
+                  use an API key today, call the matching MCP tool (<code>dub_audio</code>,{' '}
                   <code>convert_voice</code>, <code>design_voice</code>, the audiobook tools).
                   Through MCP, the work is billed to the account the key belongs to. Keys you create
                   in the console above belong to your account; a key that is not tied to an account
@@ -327,8 +352,9 @@ curl -L -X POST "<url>/v1/stt?language=auto" \\
                   Speech to text and voice cloning have their own key-based routes, described in their
                   sections (instant voice cloning is at <code>https://readaloudai.org/api/v1/voice-clones</code>).
                 </p>
+                )}
                 <p><b>1. Submit.</b> <code>POST https://api.readaloudai.org/api/dub</code>,
-                  <code>Authorization: Bearer &lt;your session token&gt;</code> (or use the MCP tool <code>dub_audio</code> with an API key; the tool takes clips up to 25&nbsp;MB),
+                  {ONE_KEY ? <><code>Authorization: Bearer &lt;your key&gt;</code> (or <code>xi-api-key</code>, or a session token; the MCP tool <code>dub_audio</code> takes clips up to 25&nbsp;MB),</> : <><code>Authorization: Bearer &lt;your session token&gt;</code> (or use the MCP tool <code>dub_audio</code> with an API key; the tool takes clips up to 25&nbsp;MB),</>}
                   <code>multipart/form-data</code> with an <code>audio</code> file (wav, flac, ogg,
                   mp3, mp4, m4a or webm, up to 50&nbsp;MB) and body fields <code>target_language</code>{' '}
                   (required), <code>source_language</code> (optional, auto-detected otherwise) and{' '}
@@ -362,12 +388,12 @@ curl -L -X POST "<url>/v1/stt?language=auto" \\
                   minutes, and it returns a temporary error until it is ready, so call it again).
                 </p>
                 <p><b>Voice design.</b> <code>POST /api/voice-design</code> generates a synthetic voice from a
-                  text description and a sample sentence (session token, or the MCP tools{' '}
+                  text description and a sample sentence ({ONE_KEY ? <>your <code>rtts_</code> key or a session token, or</> : <>session token, or</>} the MCP tools{' '}
                   <code>design_voice</code> and <code>get_voice_design</code>). Try it at{' '}
                   <Link href="/design-voice" style={{ textDecoration: 'underline' }}>/design-voice</Link>. It uses your free
                   credits, then needs a payment method.
                 </p>
-                <p><b>1. Deploy your container.</b> <code>POST /api/voice-convert/deploy</code> (same session-token auth).
+                <p><b>1. Deploy your container.</b> <code>POST /api/voice-convert/deploy</code> ({ONE_KEY ? 'same key or session-token auth' : 'same session-token auth'}).
                   Check status with <code>GET .../deploy</code>, tear down with <code>DELETE .../deploy</code> when you&rsquo;re done
                   &mdash; you aren&rsquo;t billed for idle deploy time, only completed jobs (see pricing below).
                 </p>
@@ -392,8 +418,8 @@ curl -L -X POST "<url>/v1/stt?language=auto" \\
                   Turn a block of text or an EPUB into a chaptered audiobook: each chapter is
                   synthesized as its own long-form job, then all chapters can be exported as one
                   MP3 with embedded chapter markers. Try it in the browser at{' '}
-                  <Link href="/audiobooks" style={{ textDecoration: 'underline' }}>/audiobooks</Link>. Accepts a session token, or an
-                  API key through the MCP tools <code>create_audiobook</code>,{' '}
+                  <Link href="/audiobooks" style={{ textDecoration: 'underline' }}>/audiobooks</Link>. Accepts {ONE_KEY ? <>your <code>rtts_</code> key or a session token, and the
+                  same key</> : <>a session token, or an API key</>} through the MCP tools <code>create_audiobook</code>,{' '}
                   <code>get_audiobook_status</code> and <code>export_audiobook</code>.
                 </p>
                 <p><b>1. Create.</b> <code>POST /api/audiobooks</code> with{' '}
@@ -421,8 +447,8 @@ curl -L -X POST "<url>/v1/stt?language=auto" \\
 
                 <h3>Pricing and benchmarks</h3>
                 <p>ReadAloud Live $0.004 and ReadAloud Studio $0.01 per 1,000 characters; speech to text $0.11 per hour of audio; dubbing $0.15 per audio minute and voice conversion $0.10 per audio minute, each billed by the second rounded up (with the minimums above); audiobooks bill per character like regular text-to-speech. Cloning a voice through the API costs $2.50 per voice when you commit the dataset. Audio-based usage appears on your invoice as character equivalents on the text-to-speech meter ($0.01 per 1,000). See <Link href="/#engines" style={{ textDecoration: 'underline' }}>engines and benchmarks</Link> for how we measured latency against ElevenLabs.</p>
-                <h4 id="vs-elevenlabs">ReadAloud and ElevenLabs, as of 2026-10-10</h4>
-                <p>Prices are ElevenLabs&rsquo; published pay-as-you-go API list prices for text to speech, read from its pricing page on 2026-10-10. Time to first audio is the median (p50) and 95th percentile (p95) in milliseconds, measured in San Jose with short call-centre sentences.</p>
+                <h4 id="vs-elevenlabs">ReadAloud and ElevenLabs: prices read {ELEVENLABS_PRICES.retrievedOn}, latency measured 2026-10-10</h4>
+                <p>Prices are ElevenLabs&rsquo; published pay-as-you-go API list prices for text to speech, read from its pricing page on {ELEVENLABS_PRICES.retrievedOn} (unchanged from our 2026-10-10 reading). Time to first audio is the median (p50) and 95th percentile (p95) in milliseconds, measured in San Jose with short call-centre sentences.</p>
                 <div className="ra-table-wrap" style={{ marginTop: 8 }}>
                   <table className="ra-table">
                     <thead><tr><th>Service</th><th>Per 1,000 characters</th><th>Per 1M characters</th><th>Warm connection, p50 / p95</th><th>New connection, p50 / p95</th></tr></thead>
@@ -440,7 +466,7 @@ curl -L -X POST "<url>/v1/stt?language=auto" \\
                 <ul>
                   <li><b>Price:</b> at list prices ReadAloud is one tenth of ElevenLabs Flash and v4 Turbo ($4 against $40 per million characters) and one twentieth of v2 Multilingual, v3 and v4 ($4 against $80). ElevenLabs runs time-limited promotions that lower some of these prices; the figures here are list prices. ElevenLabs conversational agents list at $0.08 per call minute with the language model billed separately; ReadAloud bills text to speech by character only.</li>
                   <li><b>Speed:</b> ElevenLabs Flash was faster than ReadAloud in our runs, by roughly 80 ms at the median on a warm connection. We do not claim ReadAloud is faster than Flash. It was about four times faster than v2 Multilingual, the model most often chosen for quality.</li>
-                  <li><b>Quality:</b> we do not claim the same voice quality as ElevenLabs, which has far more voices and languages. ReadAloud has one English voice for most uses, plus ten beta voices in German, Spanish, French, Italian and Brazilian Portuguese. We do not publish side-by-side audio; try the default voice on your own text.</li>
+                  <li><b>Quality:</b> we do not claim the same voice quality as ElevenLabs, which has far more voices and languages. ReadAloud Live has {RA_REGISTRY.phrase.liveVoicesTail}; ReadAloud Studio has {RA_VOICE_COUNTS.studio} {RA_REGISTRY.phrase.studioLanguages} voices. We do not publish side-by-side audio; try the default voice on your own text.</li>
                   <li><b>Capacity:</b> each server accepts a limited number of simultaneous streams and more servers start under load. Past capacity you get the <code>at capacity</code> error described above; retry with backoff.</li>
                 </ul>
                 <p className="ra-small">Method: two runs on 2026-10-10, 08:11 to 08:16 UTC (about 1 a.m. in San Jose, a quiet hour), from a throwaway machine in the Fly.io San Jose region, requests interleaved between services. Each run had 40 requests per service on a reused connection and 20 on a new connection, rotating through six sentences of 35 to 60 characters. Time is from sending the request to the first audio byte. ReadAloud was reached the way a customer reaches it: authorize (about 15 ms), then a direct WebSocket; the new-connection figure includes the connection handshake but not the authorize call. ElevenLabs was reached over its streaming HTTP API, <code>pcm_24000</code> output, default settings, with our own account; its new-connection figure includes TCP and TLS setup. v2 Multilingual was measured in one run only. With 20 to 40 samples the 95th percentile is rough, and results change with the hour, the sentence and the connection. Prices exclude taxes and ElevenLabs plan allowances. Re-check ElevenLabs&rsquo; pricing page before you rely on these figures; ElevenLabs advertises lower model latency than the end-to-end figures here, which include the network.</p>

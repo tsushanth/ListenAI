@@ -19,6 +19,7 @@ import { config } from './config.js';
 import { drainGatewayUsage, normalizeGatewayDrain } from './ttsGatewayClient.js';
 import { recordUsageDaily, safeRecord, type UsageRecorder } from './usageDaily.js';
 import { safeEvent, recordEvent, type EventRecorder } from './eventLog.js';
+import ttsRegistry from '../generated/ttsRegistry.json';
 
 const billingLogger = logger.child({ module: 'realtimeTtsBilling' });
 
@@ -55,7 +56,53 @@ const MUSIC_GENERATION_PRICE_ID = process.env.MUSIC_GENERATION_PRICE_ID || '';
 // reported to the existing meter pre-weighted: 1 Piper char = 0.4 billed chars. Trade-off:
 // the invoice's "characters" quantity is Kokoro-equivalent, not raw characters — move to a
 // dedicated Stripe price if invoice transparency matters.
-const PIPER_PRICE_RATIO = 0.4;
+//
+// Price classes. The ratio is per PRICE CLASS, not per engine, so a new engine never needs a code
+// change to be billed sensibly. `live` ($0.004/1k) bills at 0.4 of the meter's $0.01/1k, `studio`
+// ($0.01/1k) at 1.0. These are the same numbers the single Piper ratio had before; changing one is a
+// price change and needs the owner's sign-off.
+export type PriceClass = 'live' | 'studio';
+export const PRICE_CLASS_RATIO: Readonly<Record<PriceClass, number>> = { live: 0.4, studio: 1.0 };
+
+// Engine id -> price class for engines this module knows by name (the registry's ids and the public
+// aliases the gateway accepts for them).
+export const ENGINE_PRICE_CLASS: Readonly<Record<string, PriceClass>> = {
+  live: 'live', piper: 'live',
+  studio: 'studio', kokoro: 'studio',
+};
+
+// What the TTS registry (registry/engines.json in the realtime-tts repo) says about each engine's hardware, from the GENERATED copy
+// src/generated/ttsRegistry.json (written by scripts/sync-tts-registry.mjs; `node scripts/sync-tts-registry.mjs --registry <dir> --check`
+// fails when it is stale, run that in CI). Used only for an engine id that is NOT in ENGINE_PRICE_CLASS. Entries exist under both the
+// registry id and the public alias.
+//
+// A new engine must not be enabled on the gateway before (1) this generated copy has been re-synced and deployed and (2) the gateway
+// sends usage_by_engine. Until then its characters arrive inside `chars` with no engine attribution and bill at the studio rate; and an
+// engine this copy has never heard of is billed at studio too, even if it runs on a CPU.
+export type EngineHardware = 'cpu' | 'gpu';
+export type EngineRegistryView = Readonly<Record<string, { hardware?: string } | undefined>>;
+export const REGISTRY_HASH: string = ttsRegistry.registry.hash;
+export const ENGINE_REGISTRY: EngineRegistryView = Object.fromEntries(
+  Object.entries(ttsRegistry.engines).flatMap(([id, e]) => [
+    [id, { hardware: e.hardware }],
+    ...(e.public_alias ? [[e.public_alias, { hardware: e.hardware }]] : []),
+  ]),
+);
+
+/**
+ * Price class for an engine id. Known ids use ENGINE_PRICE_CLASS. Any other id is classed by the
+ * registry's hardware for it: cpu -> `live`, anything else (gpu, or an id the registry does not know)
+ * -> `studio`. That default is deliberate: a new CPU engine is billed at the cheap Live rate only when
+ * the registry says it runs on a CPU, and a new GPU engine, or one nobody registered, is billed at the
+ * Studio rate (the rate the old code billed every non-Piper character at). Nothing is ever free or
+ * priced by omission.
+ */
+export function priceClassForEngine(engineId: string, registry: EngineRegistryView = ENGINE_REGISTRY): PriceClass {
+  const known = Object.prototype.hasOwnProperty.call(ENGINE_PRICE_CLASS, engineId) ? ENGINE_PRICE_CLASS[engineId] : undefined;
+  if (known) return known;
+  const hw = Object.prototype.hasOwnProperty.call(registry, engineId) ? registry[engineId]?.hardware : undefined;
+  return hw === 'cpu' ? 'live' : 'studio';
+}
 // Batch speech-to-text (worker-stt-prod) is metered in audio seconds and billed through the SAME character
 // meter, no new Stripe objects: $0.11 per audio hour at the meter's $0.01 per 1,000 chars
 //   $0.11/h / ($0.01 / 1000 chars) = 11,000 char-equivalents per hour = 11,000 / 3,600 = 3.0556 per second.
@@ -539,11 +586,42 @@ const defaultUsageDeps: UsageReportDeps = {
 };
 
 // Billed value for one drained gateway entry, in Kokoro-equivalent characters:
-// Kokoro chars at 1.0, Piper chars at PIPER_PRICE_RATIO, STT audio seconds at STT_CHARS_PER_SECOND.
-export function billableChars(u: { chars: number; piperChars?: number; audioSeconds?: number }): number {
+// Studio-class chars at PRICE_CLASS_RATIO.studio (1.0), Live-class chars at PRICE_CLASS_RATIO.live (0.4),
+// STT audio seconds at STT_CHARS_PER_SECOND.
+//
+// Gateway input today: `chars` is the total across engines and `piperChars` its Piper (Live-class) subset.
+// A later gateway also sends `usage_by_engine` (engine id -> characters). It is additive: when it holds at
+// least one usable count it is the authority (piperChars is then ignored, it would double count) and each
+// engine is weighted by its price class; characters in `chars` that no engine claims are billed at the
+// studio rate. When it is absent, empty or unusable, the piperChars arithmetic below is used, unchanged.
+export function billableChars(
+  u: { chars: number; piperChars?: number; audioSeconds?: number; usage_by_engine?: Record<string, number> | null },
+  registry: EngineRegistryView = ENGINE_REGISTRY,
+): number {
   const { chars, piperChars = 0, audioSeconds = 0 } = u;
+  const stt = Math.round(audioSeconds * STT_CHARS_PER_SECOND);
+  const byEngine = usableUsageByEngine(u.usage_by_engine);
+  if (byEngine) {
+    let claimed = 0;
+    let weighted = 0;
+    for (const [engineId, n] of byEngine) {
+      claimed += n;
+      weighted += n * PRICE_CLASS_RATIO[priceClassForEngine(engineId, registry)];
+    }
+    const unclaimed = Math.max(0, chars - claimed);
+    return Math.round(weighted + unclaimed * PRICE_CLASS_RATIO.studio) + stt;
+  }
   // `chars` from the gateway is the total across engines; piperChars is the cheaper subset.
-  return Math.round((chars - piperChars) + piperChars * PIPER_PRICE_RATIO) + Math.round(audioSeconds * STT_CHARS_PER_SECOND);
+  return Math.round((chars - piperChars) * PRICE_CLASS_RATIO.studio + piperChars * PRICE_CLASS_RATIO.live) + stt;
+}
+
+function usableUsageByEngine(raw: unknown): Array<[string, number]> | null {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  const out: Array<[string, number]> = [];
+  for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+    if (typeof v === 'number' && Number.isFinite(v) && v > 0) out.push([k, v]);
+  }
+  return out.length > 0 ? out : null;
 }
 
 // Pulls accumulated usage (characters, Piper characters, STT audio seconds) off the gateway (per gateway

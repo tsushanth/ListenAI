@@ -19,6 +19,7 @@ import express, { Router, Request, Response, NextFunction } from 'express';
 import { verifyAuthTokenRemote, extractBearerToken } from '../lib/auth.js';
 import { isBillingActiveForUser, chargeForVoiceClone, reportTtsUsage } from '../lib/realtimeTtsBilling.js';
 import { logger } from '../lib/logger.js';
+import { publicRelayBody } from '../lib/publicText.js';
 
 const log = logger.child({ module: 'orpheusVoiceStudio' });
 
@@ -46,7 +47,7 @@ function serviceSecret(): string {
 async function relayResponse(res: Response, upstream: globalThis.Response) {
   const buf = Buffer.from(await upstream.arrayBuffer());
   const contentType = upstream.headers.get('content-type') || 'application/json';
-  res.status(upstream.status).set('content-type', contentType).send(buf);
+  res.status(upstream.status).set('content-type', contentType).send(publicRelayBody(buf, contentType));
 }
 
 function validateVid(req: Request, res: Response): string | null {
@@ -115,7 +116,7 @@ router.post('/', requireSupabaseAuth, requireActiveBilling, express.json({ limit
     });
     await relayResponse(res, upstream);
   } catch {
-    res.status(502).json({ error: 'orpheus clone service unavailable' });
+    res.status(502).json({ error: 'voice studio service unavailable' });
   }
 });
 
@@ -135,7 +136,7 @@ router.put('/:vid/dataset', requireSupabaseAuth, requireActiveBilling, express.r
     });
     await relayResponse(res, upstream);
   } catch {
-    res.status(502).json({ error: 'orpheus clone service unavailable' });
+    res.status(502).json({ error: 'voice studio service unavailable' });
   }
 });
 
@@ -164,7 +165,7 @@ router.post('/:vid/dataset/commit', requireSupabaseAuth, requireActiveBilling, e
       );
     }
   } catch {
-    res.status(502).json({ error: 'orpheus clone service unavailable' });
+    res.status(502).json({ error: 'voice studio service unavailable' });
   }
 });
 
@@ -182,7 +183,7 @@ router.get('/:vid', requireSupabaseAuth, async (req: Request, res: Response) => 
     });
     await relayResponse(res, upstream);
   } catch {
-    res.status(502).json({ error: 'orpheus clone service unavailable' });
+    res.status(502).json({ error: 'voice studio service unavailable' });
   }
 });
 
@@ -200,7 +201,7 @@ router.delete('/:vid', requireSupabaseAuth, async (req: Request, res: Response) 
     });
     await relayResponse(res, upstream);
   } catch {
-    res.status(502).json({ error: 'orpheus clone service unavailable' });
+    res.status(502).json({ error: 'voice studio service unavailable' });
   }
 });
 
@@ -232,7 +233,7 @@ router.post('/tts', requireSupabaseAuth, requireActiveBilling, express.json({ li
       );
     }
   } catch {
-    res.status(502).json({ error: 'orpheus clone service unavailable' });
+    res.status(502).json({ error: 'voice studio service unavailable' });
   }
 });
 

@@ -42,7 +42,7 @@
     { "q": "Which tier should a voice agent use?", "a": "ReadAloud Live is the tier built for live calls. ReadAloud Studio is the higher-priced tier with several English voices." },
     { "q": "Does it support phone audio formats?", "a": "The WebSocket route can return 8 kHz mu-law and A-law audio for phone lines." },
     { "q": "What does it cost to test?", "a": "Every account gets a one-time grant of free credits worth about 10,000 characters of speech." },
-    { "q": "Which languages are supported?", "a": "English today." }
+    { "q": "Which languages are supported?", "a": "English, with beta voices in other languages on ReadAloud Live." }
   ],
   "relatedSlugs": ["audio-articles", "pipecat", "openai-sdk", "voice-agents"]
 }

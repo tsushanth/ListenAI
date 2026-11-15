@@ -13,6 +13,7 @@
 // backend (nothing buffered on local disk, any instance can take any part) and resumable.
 import express, { Router, Request, Response, NextFunction } from 'express';
 import rateLimit from 'express-rate-limit';
+import { publicMessage, scrubPublic } from '../lib/publicText.js';
 import { IntakeClient, IntakeError, IntakeVoiceStatus } from '../lib/voiceIntakeClient.js';
 
 export const CONSENT_TEXT_VERSION = '2026-09-v1';
@@ -87,9 +88,9 @@ function publicVoice(v: IntakeVoiceStatus | Record<string, unknown>) {
     status: s.status,
     speaker_name: s.speaker_name ?? null,
     created_at: s.created_at ?? null,
-    warnings: (m.warnings as unknown[]) ?? [],
+    warnings: ((m.warnings as unknown[]) ?? []).filter((w) => typeof w !== 'string' || publicMessage(w, '') !== ''),
     stats: s.manifest ? { minutes: m.minutes, clips: m.clips } : undefined,
-    error: s.error ? { code: s.error.code ?? 'rejected', reason: s.error.reason ?? 'The recordings could not be used.' } : undefined,
+    error: s.error ? { code: s.error.code ?? 'rejected', reason: publicMessage(s.error.reason, 'The recordings could not be used.') } : undefined,
     voice: s.voice,
   };
 }
@@ -264,7 +265,7 @@ export function createVoiceStudioRouter(deps: VoiceStudioDeps): Router {
     if (v.status !== 'ready' && v.status !== 'deployed') { res.status(409).json({ error: 'The voice is not ready to go live yet.' }); return; }
     await deps.backfillKeyOwners(req.studioUserId!).catch((e) => deps.log?.warn({ e }, 'key owner backfill failed'));
     const out = await deps.intake.deploy(req.params.id!);
-    res.json({ id: out.voice_id, voice: out.voice });
+    res.json(scrubPublic({ id: out.voice_id, voice: out.voice }));
   }));
 
   r.delete('/:id', wrap(async (req, res) => {
@@ -276,7 +277,7 @@ export function createVoiceStudioRouter(deps: VoiceStudioDeps): Router {
   // Errors: never leak intake internals; pass through the few that are user-actionable.
   r.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
     if (err instanceof IntakeError) {
-      if ([400, 409, 413].includes(err.status)) { res.status(err.status).json({ error: err.detail }); return; }
+      if ([400, 409, 413].includes(err.status)) { res.status(err.status).json({ error: publicMessage(err.detail, 'The request could not be completed.') }); return; }
       deps.log?.error({ status: err.status, detail: err.detail }, 'voice intake error');
       res.status(502).json({ error: 'The voice service is temporarily unavailable. Please try again.' });
       return;

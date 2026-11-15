@@ -1,4 +1,5 @@
-import { FREE_CREDIT_UNITS, FREE_CREDIT_USD } from '../lib/pricing.ts'
+import { FREE_CREDIT_UNITS, FREE_CREDIT_USD, PRICING } from '../lib/pricing.ts'
+import { TTS_REGISTRY } from '../generated/tts-registry.ts'
 
 // Single source of truth for every statement the programmatic library (src/lib/seoLibrary) makes about ReadAloud.
 // No template types a ReadAloud price, limit, format, latency figure or capability: they all come from here, and
@@ -7,7 +8,8 @@ import { FREE_CREDIT_UNITS, FREE_CREDIT_USD } from '../lib/pricing.ts'
 // Where each fact comes from (re-read on 2026-10-10 when this file was written):
 //   web/src/app/developers/page.tsx                       prices, limits, formats, streaming, free credits, latency table and method
 //   web/src/app/developers/migrate-from-elevenlabs/page.tsx   ElevenLabs-compatible routes: what was tested and what is not supported
-//   web/src/app/page.tsx                                  tiers, "English today"
+//   web/src/app/page.tsx                                  tiers
+//   web/src/generated/tts-registry.json                   voices, languages and their counts (the TTS registry, via scripts/sync-tts-registry.mjs)
 //   web/src/lib/pricing.ts                                free credit grant
 //   realtime-tts repo, docs/OPENAI_COMPAT.md              OpenAI speech route fields and formats
 // If a fact cannot be checked against one of those, it is not in this file; it is listed in UNVERIFIED instead and kept off pages.
@@ -40,6 +42,45 @@ export const RA_PATHS = {
   engines: '/#engines',
 } as const
 
+/**
+ * Voices and languages, from the TTS registry (src/generated/tts-registry.json): what GET /v1/voices lists, with voices the worker
+ * cannot speak left out. No page types a voice count or a language list; they come from here. Regenerate with
+ * `node scripts/sync-tts-registry.mjs --registry <registry dir>`.
+ */
+export const RA_REGISTRY = TTS_REGISTRY
+export const RA_LIVE_ENGINE = TTS_REGISTRY.engines.live
+export const RA_STUDIO_ENGINE = TTS_REGISTRY.engines.studio
+export const RA_VOICE_COUNTS = TTS_REGISTRY.counts
+export type RaVoiceRow = { language: string; label: string; voices: readonly string[]; details: readonly { id: string; name: string; dialect?: string }[]; note: string }
+type RaLiveVoice = { id: string; name: string; language: string; gender: string; dialect?: string; languages?: readonly string[] }
+const liveVoices = RA_LIVE_ENGINE.voices as readonly RaLiveVoice[]
+const isMultilingual = (v: RaLiveVoice) => Array.isArray(v.languages) && v.languages.length > 1
+const labelOf = (code: string) => (TTS_REGISTRY.languageLabels as Record<string, string>)[code] ?? code
+const bothNote = (vs: readonly RaLiveVoice[]) => {
+  const genders = new Set(vs.map((v) => v.gender))
+  return vs.length > 1 && genders.size === 1 ? `(${vs.length === 2 ? 'both' : 'all'} ${Array.from(genders)[0]})` : ''
+}
+const rowOf = (language: string, label: string, vs: readonly RaLiveVoice[]): RaVoiceRow =>
+  ({ language, label, voices: vs.map((v) => v.id), details: vs.map((v) => ({ id: v.id, name: v.name, dialect: v.dialect })), note: bothNote(vs) })
+/**
+ * One row per Live language that has voices of its own, in registry order, for the Languages table, then one row for the voices that
+ * speak several languages (their `languages` list is the row label), so no voice is listed twice. `note` is "(both female)" style
+ * when the voices share a gender. Every listed voice is in exactly one row.
+ */
+export const RA_LIVE_LANGUAGE_ROWS: readonly RaVoiceRow[] = [
+  ...Object.keys(RA_LIVE_ENGINE.voicesByLanguage).flatMap((code) => {
+    const vs = liveVoices.filter((v) => !isMultilingual(v) && v.language === code)
+    return vs.length ? [rowOf(code, labelOf(code), vs)] : []
+  }),
+  ...((): RaVoiceRow[] => {
+    const vs = liveVoices.filter(isMultilingual)
+    if (!vs.length) return []
+    const codes = RA_LIVE_ENGINE.languages.filter((c) => vs.some((v) => v.languages!.includes(c)))
+    return [rowOf('multilingual', `${codes.length} languages: ${codes.map(labelOf).join(', ')}`, vs)]
+  })(),
+]
+const P = TTS_REGISTRY.phrase
+
 export type RaTier = {
   id: 'live' | 'studio'
   name: string
@@ -59,15 +100,15 @@ export const RA_TIERS: readonly RaTier[] = [
     per1kUsd: 0.004,
     per1MUsd: 4,
     role: 'the low-latency tier, built for live calls and voice agents',
-    voices: 'one American English voice, readaloud-default',
+    voices: RA_LIVE_ENGINE.defaultVoice ? `a default ${TTS_REGISTRY.languageNames.en} voice, readaloud-default, and ${RA_VOICE_COUNTS.liveListedNonDefault} ${P.liveBetaPrefix}voices in ${P.liveExtraLanguages}` : P.liveVoicesTail,
   },
   {
     id: 'studio',
     name: 'ReadAloud Studio',
     per1kUsd: 0.01,
     per1MUsd: 10,
-    role: 'the higher-priced tier for read-aloud and narration, with several English voices',
-    voices: 'several English voices, listed by GET /v1/voices',
+    role: `the higher-priced tier for read-aloud and narration, with several ${P.studioLanguages} voices`,
+    voices: `${RA_VOICE_COUNTS.studio} ${P.studioLanguages} voices, listed by GET /v1/voices`,
   },
 ]
 
@@ -152,16 +193,30 @@ export const RA_ELEVENLABS_ROUTES = {
   summary: 'The API serves the ElevenLabs text-to-speech HTTP and WebSocket routes, so ElevenLabs SDK code runs against https://api.readaloudai.org after you change the base URL, the key and the voice id.',
   testedOn: '2026-10-10',
   testedWith: 'elevenlabs (Python) 2.71.0 and @elevenlabs/elevenlabs-js 2.71.0',
-  notSupported: 'ElevenLabs speech to text, dubbing, the Agents platform, voice cloning with ElevenLabs semantics, speech to speech, voice design, audio isolation, sound generation, history, pronunciation dictionaries and projects',
+  notSupported: 'ElevenLabs dubbing, the Agents platform, speech to speech, voice design, audio isolation, sound generation, music, history, pronunciation dictionaries, text to dialogue and projects on their ElevenLabs paths',
+  comingSoon: 'the Scribe-shaped speech-to-text route (diarize accepted without effect, keyterms and entity detection rejected) and ElevenLabs-path instant voice cloning (English only, with a consent step); both are built and switched off until verified live',
   voiceNote: 'ElevenLabs voice ids, including your own clones, do not exist here; use readaloud-default.',
+} as const
+
+/** Speech to text, for the compare pages' speech-to-text row. Batch only; there is no realtime speech to text. */
+export const RA_SPEECH_TO_TEXT = {
+  batchPerHourUsd: PRICING.speechToText.usd,
+  cell: `Batch transcription of uploaded files at $${PRICING.speechToText.usd.toFixed(2)} per hour of audio; no realtime transcription; up to 8 speaker labels on the ReadAloud route`,
+  realtime: 'not offered',
 } as const
 
 export const RA_VOICES = {
   defaultId: 'readaloud-default',
-  defaultVoice: 'a single American English voice',
-  studioVoices: 'several English voices, listed by GET /v1/voices',
+  defaultVoice: `a default ${TTS_REGISTRY.languageNames.en} voice`,
+  /** What follows "ReadAloud Live has " (from the registry): the default-voice form while the registry has an implicit default voice, else "N voices in <languages>". */
+  liveTail: P.liveVoicesTail,
+  studioVoices: `${RA_VOICE_COUNTS.studio} ${P.studioLanguages} voices, listed by GET /v1/voices`,
   noSsml: 'No SSML and no audio tags.',
-  short: 'Live: one American English voice. Studio: several English voices.',
+  /** From the registry: "ReadAloud Live has ... ; ReadAloud Studio has ...". */
+  short: `Live: ${P.liveVoicesTail}. Studio: ${RA_VOICE_COUNTS.studio} ${P.studioLanguages} voices.`,
+  /** Table-cell forms (home page comparison table). */
+  liveCell: P.liveVoicesTail.charAt(0).toUpperCase() + P.liveVoicesTail.slice(1),
+  studioCell: `${RA_VOICE_COUNTS.studio} ${P.studioLanguages} voices`,
   noVoiceMapping: 'There is no table that maps another vendor\'s voices to ReadAloud voices.',
 } as const
 
@@ -191,10 +246,16 @@ export const RA_MIGRATION_MAP = {
   'endpoint-websocket': 'WebSocket streaming: call the authorize route for a 60-second token, then connect and send synthesize messages (see the Voice API page)',
 } as const
 
+/** "English and, in beta, German, ..." when every non-default Live language is beta; the plain list otherwise. */
+const liveLanguagesText = P.liveBetaPrefix && RA_LIVE_ENGINE.defaultVoice ? `${TTS_REGISTRY.languageNames.en} and, in beta, ${P.liveExtraLanguages}` : P.liveLanguages
+
 export const RA_LANGUAGES = {
-  headline: 'English',
-  short: 'English today',
-  statement: 'ReadAloud speaks English today. More languages are on the roadmap, and the site says so rather than list languages it cannot yet do well.',
+  headline: TTS_REGISTRY.languageNames.en,
+  /** Short form for table cells. From the registry's engine languages. */
+  short: `${P.studioLanguages} on ReadAloud Studio; ${liveLanguagesText} on ReadAloud Live`,
+  statement: `ReadAloud Studio speaks ${P.studioLanguages}. ReadAloud Live speaks ${liveLanguagesText}. More languages are on the roadmap, and the site says so rather than list languages it cannot yet do well.`,
+  /** The answer to "Which languages does it speak?" on the home page. */
+  faq: `ReadAloud Live speaks ${liveLanguagesText}. ReadAloud Studio speaks ${P.studioLanguages}. More languages are on the roadmap, and we would rather say so plainly than list languages we cannot yet do well.`,
 } as const
 
 export const RA_CLONING = {
@@ -286,13 +347,13 @@ export const RA_FORBIDDEN_ENGINE_NAMES: readonly string[] = ['piper', 'kokoro', 
  * Reported to the owner in the hand-off.
  */
 export const UNVERIFIED: readonly string[] = [
-  'How many Studio voices exist and which languages they cover: the site says "multiple English voices" only, so no count is printed.',
+  'Voice counts and languages are printed from the TTS registry (src/generated/tts-registry.json), not re-checked against the live GET /v1/voices; until the gateway hides the voices the worker cannot speak, that endpoint can list more voices than the site does.',
   'Vapi beyond one real assistant call on 2026-10-10 (inline secret, 24 seconds, two Vapi-reported custom-voice latencies): the Custom Credential flow, the sample rate Vapi requested, 429 and timeout handling and audio quality by ear are untested and stay off pages as claims.',
   'Latency for ReadAloud Studio: no measurement is published, so none is printed.',
   'Latency on the OpenAI-compatible route: a 150-170 ms warm figure sits in the gateway docs but not on the site, so it is not printed.',
   'A head-to-head latency figure against any vendor other than the one on the developers page; library pages print vendor latency only as vendor-stated.',
   'Concurrency limits for paying accounts beyond "up to 12 streams per ReadAloud Live server, more servers start under load".',
-  'Non-English output: only English is stated. The dubbing tool translates to other languages, but that is not a text-to-speech language claim and is not made.',
+  'Non-English output beyond the registry\'s own label: the non-English ReadAloud Live voices are called beta and nothing stronger is said. The dubbing tool translates to other languages, but that is not a text-to-speech language claim and is not made.',
   'Cloning details beyond the consent step and the payment-method requirement.',
   'SSML tag support beyond "none": the migration page says no SSML; pages say that and nothing more.',
 ]

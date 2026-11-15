@@ -7,11 +7,13 @@ import { createIntakeClient } from '../lib/voiceIntakeClient.js';
 import { listApiKeysForUser } from '../lib/ttsApiKeys.js';
 import { setGatewayKeyOwner } from '../lib/ttsGatewayClient.js';
 import { isBillingActiveForUser, chargeForVoiceClone, reportTtsUsage } from '../lib/realtimeTtsBilling.js';
+import { Router } from 'express';
 import { createVoiceStudioRouter } from './voiceStudioRouter.js';
+import { orpheusVoiceStudioRouter } from './orpheusVoiceStudio.js';
 
 const log = logger.child({ module: 'voiceStudio' });
 
-export const voiceStudioRouter = createVoiceStudioRouter({
+const baseVoiceStudioRouter = createVoiceStudioRouter({
   // Real Supabase JWT only (same as ttsApiKeys.ts): requireAuth's default-user fallback must not apply here.
   authenticate: async (req) => {
     const token = extractBearerToken(req.headers.authorization);
@@ -42,3 +44,10 @@ export const voiceStudioRouter = createVoiceStudioRouter({
   reportTtsUsage,
   log,
 });
+
+// Neutral alias for the streaming-clone front door that index.ts mounts at /api/orpheus-voice-studio (a path that names the
+// model): the same router also answers /api/voice-studio/streaming/... with identical behaviour. Mounted ahead of the
+// base router so `streaming` is never read as a voice id. The old path stays mounted in index.ts, unchanged.
+export const voiceStudioRouter = Router();
+voiceStudioRouter.use('/streaming', orpheusVoiceStudioRouter);
+voiceStudioRouter.use(baseVoiceStudioRouter);

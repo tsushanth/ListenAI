@@ -24,6 +24,7 @@ import {
 } from '../lib/cacheKey.js';
 import { ttsProvider, estimateCost, estimateDurationMs } from '../lib/ttsProviderClient.js';
 import { hasRequiredTier } from '../lib/auth.js';
+import { publicMessage, PUBLIC_CLONE_MODEL, PUBLIC_WATERMARK } from '../lib/publicText.js';
 import { MAX_TEXT_LENGTH, TIER_LIMITS, CHARS_PER_SECOND } from '../lib/config.js';
 
 /**
@@ -534,7 +535,7 @@ ttsRouter.post('/stream', asyncHandler(async (req: AuthenticatedRequest, res: Re
     res.write(JSON.stringify({
       index: totalChunks,
       total: totalChunks,
-      error: error instanceof Error ? error.message : 'Streaming failed',
+      error: error instanceof Error ? publicMessage(error.message, 'Streaming failed') : 'Streaming failed',
       final: true,
     }) + '\n');
   }
@@ -1015,7 +1016,7 @@ ttsRouter.get('/job/:jobId', asyncHandler(async (req: AuthenticatedRequest, res:
     preview_duration_sec: previewDurationSec,
     error: job.error_code ? {
       code: job.error_code,
-      message: job.error_message ?? 'Unknown error',
+      message: publicMessage(job.error_message, 'Unknown error'),
     } : undefined,
     created_at: job.created_at,
     updated_at: job.updated_at,
@@ -1088,11 +1089,19 @@ ttsRouter.post('/job/:jobId/cancel', asyncHandler(async (req: AuthenticatedReque
 
 const SYNC_CLONED_MAX_CHARS = 1500;
 
+// `model` is optional and only ever selects the one cloning tier. The legacy value that older clients send is still accepted;
+// the new public name is 'studio'. Validation errors never list the accepted internal names.
+const cloneModelSchema = z
+  .string()
+  .default('studio')
+  .refine((v) => v === 'studio' || v === 'chatterbox', { message: 'Unsupported model' })
+  .transform((): 'chatterbox' => 'chatterbox');
+
 const clonedVoiceSynthSchema = z.object({
   text: z.string().min(1).max(SYNC_CLONED_MAX_CHARS),
   voice_id: z.string().uuid().describe('Cloned voice id from POST /api/voice-clones'),
   speed: z.number().min(0.5).max(3.0).default(1.0),  // Allow up to 3x speed to match iOS playback options
-  model: z.enum(['chatterbox']).default('chatterbox').describe('Voice cloning model'),
+  model: cloneModelSchema,
 });
 
 ttsRouter.post('/cloned', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
@@ -1114,8 +1123,8 @@ ttsRouter.post('/cloned', asyncHandler(async (req: AuthenticatedRequest, res: Re
 
   res.setHeader('Content-Type', 'audio/wav');
   res.setHeader('X-Voice-ID', voiceId);
-  res.setHeader('X-Model', synth.modelId);
-  res.setHeader('X-Watermark', synth.watermarkScheme);
+  res.setHeader('X-Model', PUBLIC_CLONE_MODEL);
+  res.setHeader('X-Watermark', PUBLIC_WATERMARK);
   res.setHeader('X-Characters-Used', characterCount.toString());
   res.setHeader('X-Synthesis-Time-Ms', String(ms));
   res.send(synth.audio);
@@ -1131,7 +1140,7 @@ const clonedJobRequestSchema = z.object({
   text: z.string().min(1).max(MAX_TEXT_LENGTH),
   voice_id: z.string().uuid().describe('Cloned voice id from POST /api/voice-clones'),
   speed: z.number().min(0.5).max(3.0).default(1.0),
-  model: z.enum(['chatterbox']).default('chatterbox').describe('Voice cloning model'),
+  model: cloneModelSchema,
   article_id: z.string().uuid().optional(),
   article_title: z.string().max(500).optional(),
 });

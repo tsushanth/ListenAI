@@ -89,6 +89,10 @@ export const VendorSchema = z.object({
     mapping: list(z.object({ kind: z.enum(MAPPING_KINDS), vendorItem: text, note: loose })).default([]),
   }),
   bestFor: loose,
+  /** Optional. The vendor's own speech-to-text prices as its pages print them (USD per hour of audio), for the compare page's speech-to-text row. */
+  speechToText: z.union([z.object({ models: loose.default(''), batchUsdPerHour: nullableNumber, realtimeUsdPerHour: nullableNumber, notes: loose.default(''), sourceUrl: optUrl }), z.null(), z.undefined()]).transform((v) => v ?? undefined).optional(),
+  /** Optional. A side-by-side timing ReadAloud ran itself, with its date and a link to the method. Only a vendor we actually measured has one; a vendor's own latency claim stays in streaming.vendorStatedLatency. */
+  ourMeasurement: z.union([z.object({ measuredOn: isoDate, summary: text, methodPath: loose.default('') }), z.null(), z.undefined()]).transform((v) => v ?? undefined).optional(),
   sources: z.array(z.object({ url: httpUrl, title: text, retrievedAt: isoDate })).min(1),
   unknowns: list(text),
 })
