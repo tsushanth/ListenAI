@@ -166,13 +166,18 @@ fun PlayerScreen(
         }
     }
     var systemVoices by remember { mutableStateOf<List<com.listenai.service.tts.chain.SystemVoiceInfo>>(emptyList()) }
-    // The ReadAloud cloud voice for this language, if the API lists one (shown next to the phone's voices).
-    var cloudVoiceAvailable by remember { mutableStateOf(false) }
+    // The ReadAloud voices for this language, if the API lists any (shown next to the phone's voices), and the one the user picked.
+    var cloudVoices by remember { mutableStateOf<List<com.listenai.service.tts.chain.CloudVoice>>(emptyList()) }
+    var preferredCloudVoice by remember(readingLanguage) { mutableStateOf(languagePrefs.preferredCloudVoice(readingLanguage)) }
     LaunchedEffect(readingLanguage) {
-        cloudVoiceAvailable = readingLanguage != "en" && withContext(Dispatchers.IO) {
+        cloudVoices = if (readingLanguage == "en") emptyList() else withContext(Dispatchers.IO) {
             val chain = com.listenai.service.tts.chain.TtsChainProvider.get(context)
-            com.listenai.service.tts.chain.CloudVoicePolicy.voiceFor(readingLanguage, runCatching { chain.catalog.voices() }.getOrDefault(emptyList())) != null
+            com.listenai.service.tts.chain.CloudVoicePolicy.voicesFor(readingLanguage, runCatching { chain.catalog.voices() }.getOrDefault(emptyList()))
         }
+        // A stored pick the API no longer lists for this language stops steering the read and the picker.
+        val pick = languagePrefs.preferredCloudVoice(readingLanguage)
+        if (pick != null && cloudVoices.isNotEmpty() && cloudVoices.none { it.id == pick }) languagePrefs.setPreferredCloudVoice(readingLanguage, null)
+        preferredCloudVoice = languagePrefs.preferredCloudVoice(readingLanguage)
     }
     LaunchedEffect(readingLanguage, speakableLanguages) {
         systemVoices = if (readingLanguage == "en") emptyList() else withContext(Dispatchers.IO) {
@@ -705,6 +710,27 @@ fun PlayerScreen(
             playbackService.stop()
             languagePrefs.setPreferredVoice(readingLanguage, voiceName)
             preferredSystemVoice = voiceName
+            // "Automatic" (null) clears a ReadAloud pick too; a phone voice replaces it (the prefs hold one choice per language).
+            if (voiceName == null) languagePrefs.setPreferredCloudVoice(readingLanguage, null)
+            preferredCloudVoice = languagePrefs.preferredCloudVoice(readingLanguage)
+            articleRepository.updateSynthesisStatus(article.id, "pending", null, 0L, article.selectedVoiceId)
+            article.audioFileUrl?.let { com.listenai.service.tts.SynthesizedAudioFiles.deleteIfOurs(it, context.cacheDir) }
+            val updated = article.copy(audioFileUrl = null)
+            val voice = selectedVoice
+            if (wasActive && voice != null) regenerateWithVoice(voice, updated) else playerState = PlayerState.Ready(updated)
+        }
+    }
+
+    // The user picked one of the ReadAloud voices for this language. Same effect as picking a phone voice: audio made with the old
+    // voice is dropped, and playback restarts if the user was listening.
+    fun onCloudVoicePicked(article: Article, voiceId: String) {
+        val wasActive = playerState is PlayerState.Playing || playerState is PlayerState.Synthesizing
+        synthesisJob.cancel()
+        selectionJob.launch(scope) { _ ->
+            playbackService.stop()
+            languagePrefs.setPreferredCloudVoice(readingLanguage, voiceId)
+            preferredCloudVoice = voiceId
+            preferredSystemVoice = languagePrefs.preferredVoice(readingLanguage)
             articleRepository.updateSynthesisStatus(article.id, "pending", null, 0L, article.selectedVoiceId)
             article.audioFileUrl?.let { com.listenai.service.tts.SynthesizedAudioFiles.deleteIfOurs(it, context.cacheDir) }
             val updated = article.copy(audioFileUrl = null)
@@ -1140,13 +1166,15 @@ fun PlayerScreen(
                             onSelect = { code -> onLanguageSelected(article, code) },
                         )
 
-                        if (readingLanguage != "en" && (systemVoices.isNotEmpty() || cloudVoiceAvailable)) {
+                        if (readingLanguage != "en" && (systemVoices.isNotEmpty() || cloudVoices.isNotEmpty())) {
                             SystemVoiceRow(
                                 language = readingLanguage,
                                 voices = systemVoices,
-                                cloudAvailable = cloudVoiceAvailable,
+                                cloudVoices = cloudVoices,
+                                selectedCloudId = cloudVoices.firstOrNull { it.id == preferredCloudVoice }?.id,
                                 selectedName = systemVoices.firstOrNull { it.name == preferredSystemVoice }?.name,
                                 onPick = { name -> onSystemVoicePicked(article, name) },
+                                onPickCloud = { id -> onCloudVoicePicked(article, id) },
                             )
                         }
 
@@ -1253,11 +1281,14 @@ private fun currentArticleForLanguage(state: PlayerState): Article? = when (stat
 private fun SystemVoiceRow(
     language: String,
     voices: List<com.listenai.service.tts.chain.SystemVoiceInfo>,
-    /** The ReadAloud API has a voice for this language: it is the automatic choice, and the phone's voices are the fallback. */
-    cloudAvailable: Boolean,
+    /** The ReadAloud voices the API lists for this language (empty = none): the first is the automatic choice, and the phone's voices are the fallback. */
+    cloudVoices: List<com.listenai.service.tts.chain.CloudVoice>,
+    selectedCloudId: String?,
     selectedName: String?,
     onPick: (String?) -> Unit,
+    onPickCloud: (String) -> Unit,
 ) {
+    val cloudAvailable = cloudVoices.isNotEmpty()
     var open by remember { mutableStateOf(false) }
     val languageName = com.listenai.service.LanguageDetector.displayName(language) ?: language
     @Composable
@@ -1277,7 +1308,14 @@ private fun SystemVoiceRow(
     }
     val current = voices.firstOrNull { it.name == selectedName } ?: voices.firstOrNull()
     val automaticLabel = stringResource(if (cloudAvailable) R.string.lang_voice_cloud_beta else R.string.lang_voice_auto)
-    val currentLabel = if (selectedName == null && cloudAvailable || current == null) automaticLabel else label(current)
+    @Composable
+    fun cloudLabel(v: com.listenai.service.tts.chain.CloudVoice): String = stringResource(R.string.lang_voice_cloud_named, v.name ?: v.id)
+    val pickedCloud = cloudVoices.firstOrNull { it.id == selectedCloudId }
+    val currentLabel = when {
+        pickedCloud != null -> cloudLabel(pickedCloud)
+        selectedName == null && cloudAvailable || current == null -> automaticLabel
+        else -> label(current)
+    }
     androidx.compose.material3.TextButton(
         onClick = { open = true },
         contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp),
@@ -1301,9 +1339,12 @@ private fun SystemVoiceRow(
                             Text(text)
                         }
                     }
-                    option(automaticLabel, selectedName == null) { if (selectedName != null) onPick(null) }
+                    option(automaticLabel, selectedName == null && pickedCloud == null) { if (selectedName != null || pickedCloud != null) onPick(null) }
+                    cloudVoices.forEach { v ->
+                        option(cloudLabel(v), v.id == pickedCloud?.id) { if (v.id != pickedCloud?.id) onPickCloud(v.id) }
+                    }
                     voices.forEach { v ->
-                        option(label(v), v.name == selectedName) { if (v.name != selectedName) onPick(v.name) }
+                        option(label(v), pickedCloud == null && v.name == selectedName) { if (v.name != selectedName) onPick(v.name) }
                     }
                 }
             },

@@ -23,7 +23,7 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
 /**
- * Speech from the ReadAloud API: Piper on CPU (api.readaloudai.org gateway, `piper-tts-sjc`).
+ * Speech from the ReadAloud API (api.readaloudai.org gateway, CPU voices).
  *
  * Same wire protocol the app already used (RealtimeTTSService): POST /api/realtime-tts/authorize on the app's
  * backend (which holds the platform key) returns a 60 s token and the worker URL, then a WebSocket takes
@@ -40,9 +40,9 @@ class ReadAloudApiSource(
     private val http: OkHttpClient,
     private val backendBaseUrl: String,
     private val isOnline: () -> Boolean,
-    /** App voice id -> Piper voice id on the platform. */
+    /** App voice id -> the API's voice id for English. */
     private val voiceFor: (String) -> String,
-    /** The voices the API lists; non-English languages are accepted only when it lists a vetted voice for them (see [CloudVoicePolicy]). */
+    /** The voices the API lists; non-English languages are accepted only when it lists a voice that speaks them (see [CloudVoicePolicy]). */
     private val catalog: CloudVoiceCatalog = CloudVoiceCatalog.Empty,
     private val nowMs: () -> Long = System::currentTimeMillis,
 ) : TtsSource {
@@ -80,19 +80,25 @@ class ReadAloudApiSource(
         Executors.newSingleThreadScheduledExecutor { r -> Thread(r, "tts-api-watchdog").apply { isDaemon = true } }
 
     override suspend fun unavailableReason(request: TtsRequest): FallbackReason? = when {
-        !isEnglish(request.language) && cloudVoiceFor(request.language) == null -> FallbackReason.UNSUPPORTED_LANGUAGE
+        !isEnglish(request.language) && cloudVoiceFor(request) == null -> FallbackReason.UNSUPPORTED_LANGUAGE
         !isOnline() -> FallbackReason.OFFLINE
         else -> null
     }
 
     /** The app voice id for English (what the cache has always been keyed by); the catalog's voice id for other languages, or null when it is not listed now. */
     override suspend fun cacheVoice(request: TtsRequest): String? =
-        if (isEnglish(request.language)) request.voiceId else cloudVoiceFor(request.language)?.id
+        if (isEnglish(request.language)) request.voiceId else cloudVoiceFor(request)?.id
 
     private fun isEnglish(language: String) = language.substringBefore('-').lowercase() == "en"
 
-    /** The vetted catalog voice for a non-English language, or null. Asks the catalog only for non-English text. */
-    private suspend fun cloudVoiceFor(language: String): CloudVoice? = CloudVoicePolicy.voiceFor(language, catalog.voices())
+    /** The catalog voice for a non-English language (the user's pick when still offered, else the default), or null. Asks the catalog only for non-English text. */
+    private suspend fun cloudVoiceFor(request: TtsRequest): CloudVoice? =
+        request.cloudVoice ?: CloudVoicePolicy.voiceFor(request.language, catalog.voices(), request.cloudVoiceId)
+
+    /** Fixes the voice for the whole read: later catalog changes (a reorder, a removal) do not move a read to another voice. */
+    override suspend fun pin(request: TtsRequest): TtsRequest =
+        if (isEnglish(request.language) || request.cloudVoice != null) request
+        else cloudVoiceFor(request)?.let { request.copy(cloudVoice = it) } ?: request
 
     /** Opens a socket ahead of the first chunk (authorize + connect), so the first synthesize pays neither. */
     suspend fun prewarm() {
@@ -105,36 +111,45 @@ class ReadAloudApiSource(
     }
 
     override suspend fun synthesize(text: String, request: TtsRequest): PcmChunk {
-        // Resolved once per chunk: the English app voice, or the catalog's Spanish voice. A request that got past
+        // Resolved once per chunk: the English app voice, or the catalog's voice for the language. A request that got past
         // unavailableReason always has one; the check keeps a catalog change mid-read from sending an unknown voice.
-        val voice = if (isEnglish(request.language)) voiceFor(request.voiceId)
-        else cloudVoiceFor(request.language)?.id ?: throw SourceFailure(FallbackReason.UNSUPPORTED_LANGUAGE)
+        val english = isEnglish(request.language)
+        val cloud = if (english) null else cloudVoiceFor(request) ?: throw SourceFailure(FallbackReason.UNSUPPORTED_LANGUAGE)
+        val voice = if (english) voiceFor(request.voiceId) else cloud!!.id
         val resolved = request.copy(voiceId = voice)
+        // Every non-English chunk names its language: a multilingual voice told nothing speaks English phonemes.
+        val languageCode = cloud?.let { CloudVoicePolicy.languageCode(it, request.language) }
         // Word timings come from an alignment worker that is only known to work for English text.
         val useWords = request.wantWords && isEnglish(request.language) && nowMs() >= alignmentBlockedUntil
         return try {
-            attempt(text, resolved, useWords)
-        } catch (e: AlignmentSlow) {
-            alignmentBlockedUntil = nowMs() + ALIGNMENT_BACKOFF_MS
-            Log.i(TAG, "alignment worker slow; plain Piper for the next ${ALIGNMENT_BACKOFF_MS / 60000} min")
-            attempt(text, resolved, false)
+            try {
+                attempt(text, resolved, useWords, languageCode)
+            } catch (e: AlignmentSlow) {
+                alignmentBlockedUntil = nowMs() + ALIGNMENT_BACKOFF_MS
+                Log.i(TAG, "alignment worker slow; plain voice for the next ${ALIGNMENT_BACKOFF_MS / 60000} min")
+                attempt(text, resolved, false, languageCode)
+            }
+        } catch (e: SourceFailure) {
+            // "Language or voice not supported" is a per-language answer. English never has one: a refusal on an English read is an ordinary server error.
+            if (english && e.reason == FallbackReason.UNSUPPORTED_LANGUAGE) throw SourceFailure(FallbackReason.SERVER_ERROR, null, e.message, e)
+            throw e
         }
     }
 
     private class AlignmentSlow : Exception()
 
-    private suspend fun attempt(text: String, request: TtsRequest, alignment: Boolean): PcmChunk {
+    private suspend fun attempt(text: String, request: TtsRequest, alignment: Boolean, languageCode: String?): PcmChunk {
         // A reused socket may have been closed by the server while idle; if it fails before sending anything, redo once on a fresh one.
         val reused = takeIdle(alignment)
         if (reused != null) {
             try {
-                return run(reused, text, request)
+                return run(reused, text, request, languageCode)
             } catch (e: SourceFailure) {
                 if (!(reused.closed && !reused.gotAnyFrame)) throw e
                 Log.i(TAG, "reused socket was dead; reconnecting")
             }
         }
-        return run(connect(alignment), text, request)
+        return run(connect(alignment), text, request, languageCode)
     }
 
     private fun takeIdle(alignment: Boolean): Conn? {
@@ -212,7 +227,7 @@ class ReadAloudApiSource(
         }
     }
 
-    private suspend fun run(conn: Conn, text: String, request: TtsRequest): PcmChunk {
+    private suspend fun run(conn: Conn, text: String, request: TtsRequest, languageCode: String?): PcmChunk {
         val chunk = try {
             suspendCancellableCoroutine<PcmChunk> { cont ->
                 val p = Pending(cont)
@@ -222,6 +237,7 @@ class ReadAloudApiSource(
                     .put("text", text)
                     .put("voice", request.voiceId)
                     .put("speed", request.speed.toDouble())
+                languageCode?.let { msg.put("language_code", it).put("format", "pcm_24000").put("normalize", "numbers") }
                 if (conn.alignment) msg.put("alignment", true)
                 if (!conn.ws.send(msg.toString())) {
                     conn.closed = true
@@ -243,6 +259,8 @@ class ReadAloudApiSource(
             // Failed, timed out or cancelled: the server may still be streaming into this socket, so it is not reusable.
             conn.closed = true
             conn.ws.cancel()
+            // The API refused the voice or language its own list offered: look at the list again soon.
+            if (languageCode != null && e is SourceFailure && e.reason == FallbackReason.UNSUPPORTED_LANGUAGE) catalog.invalidate()
             throw e
         } finally {
             conn.pending = null

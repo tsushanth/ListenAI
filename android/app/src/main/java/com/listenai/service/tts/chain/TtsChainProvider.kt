@@ -15,6 +15,8 @@ object TtsChainProvider {
     private const val TAG = "TTS_CHAIN"
     /** 150 MB is about 52 minutes of 24 kHz audio. */
     private const val CACHE_BYTES = 150L * 1024 * 1024
+    /** The ReadAloud API's public voice and language list (no key, no text; the same host the speech itself goes to). */
+    internal const val CATALOG_URL = "https://api.readaloudai.org/v1/catalog"
 
     class Holder(
         /** The app's own reader: API, then the phone's engine, then the on-device model. */
@@ -24,7 +26,7 @@ object TtsChainProvider {
         val api: ReadAloudApiSource,
         val system: SystemTtsSource,
         val onDevice: OnDeviceModelSource,
-        /** The cloud voices the ReadAloud API lists (non-English languages only; see CloudVoicePolicy). */
+        /** The cloud voices the ReadAloud API lists; the app reads a non-English language in the cloud only if this list has a voice for it (see CloudVoicePolicy). */
         val catalog: CloudVoiceCatalog,
     )
 
@@ -42,7 +44,7 @@ object TtsChainProvider {
             .writeTimeout(10, TimeUnit.SECONDS)
             .build()
         val online = { ConnectivityCheck.isOnline(app) }
-        val catalog = HttpCloudVoiceCatalog(http, ListenAIApplication.BACKEND_URL)
+        val catalog = HttpCloudVoiceCatalog(http, CATALOG_URL)
         val api = ReadAloudApiSource(
             http = http,
             backendBaseUrl = ListenAIApplication.BACKEND_URL,

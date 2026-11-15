@@ -36,7 +36,8 @@ object ChainSynthesizer {
         val chain = TtsChainProvider.get(context).inApp
         // A phone voice the user picked for this language means: try the phone's engine first.
         val preferSystem = phoneVoicePicked(context, language)
-        val request = TtsRequest(voiceId = voice.id, language = language, speed = speed, wantWords = true, preferSystem = preferSystem)
+        val cloudVoiceId = cloudVoiceFor(context, language, preferSystem)
+        val request = TtsRequest(voiceId = voice.id, language = language, speed = speed, wantWords = true, preferSystem = preferSystem, cloudVoiceId = cloudVoiceId)
         val file = File(context.cacheDir, "tts_${UUID.randomUUID()}.wav")
 
         var rate = 0
@@ -50,13 +51,11 @@ object ChainSynthesizer {
         try {
             RandomAccessFile(file, "rw").use { raf ->
                 raf.write(ByteArray(44)) // header, patched at the end
-                // Chunk text is not kept by the chain, so rebuild the spoken text from the same splitter for word offsets.
-                val pieces = com.listenai.service.tts.chain.TextChunker.split(text, 280, 140)
                 chain.speak(text, request).flowOn(Dispatchers.IO).collect { c ->
                     if (rate == 0) rate = c.audio.sampleRate
                     raf.write(c.audio.pcm)
                     c.audio.words?.let { ws -> addWords(words, ws, spoken.length + (if (spoken.isEmpty()) 0 else 1), pcmBytes, rate) }
-                    val piece = pieces.getOrNull(c.index).orEmpty()
+                    val piece = c.text
                     if (spoken.isNotEmpty()) spoken.append(' ')
                     spoken.append(piece)
                     pcmBytes += c.audio.pcm.size
@@ -106,6 +105,18 @@ object ChainSynthesizer {
                 startedAt = started, completedAt = ended, inputCharacterCount = text.length, outputSampleRate = rate,
             ),
         )
+    }
+
+    /**
+     * The ReadAloud voice id this read prefers for [language]: the user's pick, else the default first seen on this phone
+     * (see [LanguagePrefs.resolveCloudVoice]). Null for English, and for a phone-voice read, which does not need the list.
+     */
+    private suspend fun cloudVoiceFor(context: Context, language: String, preferSystem: Boolean): String? {
+        if (LanguageChoice.normalize(language) == "en") return null
+        val prefs = LanguagePrefs.get(context)
+        if (preferSystem) return prefs.preferredCloudVoice(language)
+        val listed = runCatching { TtsChainProvider.get(context).catalog.voices() }.getOrDefault(emptyList())
+        return prefs.resolveCloudVoice(language, listed)?.id ?: prefs.preferredCloudVoice(language)
     }
 
     /**

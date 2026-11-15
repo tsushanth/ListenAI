@@ -57,6 +57,8 @@ class TtsSourceChain(
         @Volatile var cacheHits = 0
         // Availability of a source does not change within a session; ask once.
         val checked = ConcurrentHashMap<SourceId, CompletableDeferred<FallbackReason?>>()
+        // Per source, the request as fixed once for this read (see TtsSource.pin).
+        val pins = ConcurrentHashMap<SourceId, CompletableDeferred<TtsRequest>>()
         fun note(id: SourceId, r: FallbackReason) { reasons += id to r; lastReason[id] = r }
         fun demote(id: SourceId) {
             val i = order.indexOf(id)
@@ -64,9 +66,46 @@ class TtsSourceChain(
         }
     }
 
+    /**
+     * The pieces [text] is cut into for [request]: sentence groups, shorter when the cloud voice of another language will read
+     * it ([cloudWillRead]: it does not stream inside a chunk, so a long chunk delays the first sound). A language the cloud
+     * has no voice for (or while offline, or while the cloud is cooling down) keeps the usual sizes.
+     */
+    internal fun chunkPlan(text: String, request: TtsRequest, cloudWillRead: Boolean): List<String> {
+        val lang = request.language.substringBefore('-').lowercase()
+        if (cloudWillRead && lang != "en") {
+            val (first, max) = config.nonEnglishChunkSizes[lang] ?: (config.nonEnglishFirstChunkChars to config.nonEnglishMaxChunkChars)
+            return TextChunker.split(text, max, first)
+        }
+        return TextChunker.split(text, config.maxChunkChars, config.firstChunkChars)
+    }
+
+    /** True when the first source this read would try is the cloud and it can read the language now. */
+    private suspend fun cloudWillRead(s: Session): Boolean {
+        if (s.lang == "en") return false
+        val firstId = s.order.firstOrNull { sources[it] != null } ?: return false
+        if (firstId != SourceId.API || activeCooldown(firstId, s.lang) != null) return false
+        val api = sources.getValue(firstId)
+        return checkOnce(s, api, requestFor(s, api)) == null
+    }
+
+    /** The request as fixed for [src] at the start of this read; later calls (and every chunk) get the same one. */
+    private suspend fun requestFor(s: Session, src: TtsSource): TtsRequest {
+        val mine = CompletableDeferred<TtsRequest>()
+        val existing = s.pins.putIfAbsent(src.id, mine)
+        if (existing != null) return existing.await()
+        return try {
+            src.pin(s.request).also { mine.complete(it) }
+        } catch (e: CancellationException) {
+            mine.cancel(); throw e
+        } catch (e: Exception) {
+            s.request.also { mine.complete(it) }
+        }
+    }
+
     fun speak(text: String, request: TtsRequest): Flow<SpokenChunk> = flow {
-        val chunks = TextChunker.split(text, config.maxChunkChars, config.firstChunkChars)
         val session = Session(order(request), request)
+        val chunks = chunkPlan(text, request, cloudWillRead(session))
         session.cacheVoice = resolveCacheVoice(session)
         val started = nowMs()
         var firstAudioAt: Long? = null
@@ -140,7 +179,8 @@ class TtsSourceChain(
                 s.demote(id)
                 i++; continue
             }
-            val unavailable = checkOnce(s, src)
+            val pinned = requestFor(s, src)
+            val unavailable = checkOnce(s, src, pinned)
             if (unavailable != null) {
                 failures[id] = unavailable
                 s.note(id, unavailable)
@@ -154,9 +194,11 @@ class TtsSourceChain(
                 attempt++
                 val t0 = nowMs()
                 try {
-                    val deadline = (if (index == 0) config.firstChunkBaseTimeoutMs else config.chunkBaseTimeoutMs) +
+                    // The first chunk of a non-English cloud read gets a longer deadline (see ChainConfig.nonEnglishFirstChunkBaseTimeoutMs).
+                    val firstBase = if (id == SourceId.API && s.lang != "en") config.nonEnglishFirstChunkBaseTimeoutMs else config.firstChunkBaseTimeoutMs
+                    val deadline = (if (index == 0) firstBase else config.chunkBaseTimeoutMs) +
                         config.perCharTimeoutMs * text.length
-                    val pcm = withTimeout(deadline) { src.synthesize(text, s.request) }
+                    val pcm = withTimeout(deadline) { src.synthesize(text, pinned) }
                     if (pcm.pcm.isEmpty()) throw SourceFailure(FallbackReason.SERVER_ERROR, message = "empty audio")
                     src.onChunkMeasured(nowMs() - t0, pcm.durationMs)
                     if (key != null && id in config.cacheableSources && pcm.words == null) cache?.put(key, pcm)
@@ -172,7 +214,7 @@ class TtsSourceChain(
                     failures[id] = e.reason
                     val transient = e.reason == FallbackReason.TIMEOUT || e.reason == FallbackReason.SERVER_ERROR
                     if (transient && attempt < attempts) { delay(config.retryBackoffMs); continue }
-                    s.note(id, e.reason); coolDown(id, s.lang, e)
+                    s.note(id, e.reason); coolDown(id, s.lang, e, refused = true)
                 } catch (e: Exception) {
                     failures[id] = FallbackReason.UNKNOWN
                     s.note(id, FallbackReason.UNKNOWN); coolDown(id, s.lang, SourceFailure(FallbackReason.UNKNOWN))
@@ -203,17 +245,17 @@ class TtsSourceChain(
         if (cache == null) return null
         val first = s.order.firstOrNull { sources[it] != null } ?: return null
         if (first !in config.cacheableSources) return null
-        val voice = try { sources.getValue(first).cacheVoice(s.request) } catch (e: CancellationException) { throw e } catch (e: Exception) { null }
+        val voice = try { sources.getValue(first).let { it.cacheVoice(requestFor(s, it)) } } catch (e: CancellationException) { throw e } catch (e: Exception) { null }
             ?: return null
         return if (s.lang == "en") voice else "${s.lang}:$voice"
     }
 
-    private suspend fun checkOnce(s: Session, src: TtsSource): FallbackReason? {
+    private suspend fun checkOnce(s: Session, src: TtsSource, req: TtsRequest = s.request): FallbackReason? {
         val mine = CompletableDeferred<FallbackReason?>()
         val existing = s.checked.putIfAbsent(src.id, mine)
         if (existing != null) return existing.await()
         return try {
-            src.unavailableReason(s.request).also { mine.complete(it) }
+            src.unavailableReason(req).also { mine.complete(it) }
         } catch (e: CancellationException) {
             mine.cancel(); throw e
         } catch (e: Exception) {
@@ -221,8 +263,10 @@ class TtsSourceChain(
         }
     }
 
-    private fun coolDown(id: SourceId, lang: String, f: SourceFailure) {
+    /** [refused]: the source itself answered "not this language" (as opposed to the pre-check saying so), which is remembered for this language only. */
+    private fun coolDown(id: SourceId, lang: String, f: SourceFailure, refused: Boolean = false) {
         val ms = when (f.reason) {
+            FallbackReason.UNSUPPORTED_LANGUAGE -> if (refused && lang != "en") config.cooldownUnsupportedMs else 0L
             FallbackReason.OFFLINE -> config.cooldownOfflineMs
             FallbackReason.QUOTA -> f.retryAfterMs ?: config.cooldownQuotaMs
             FallbackReason.RATE_LIMITED -> f.retryAfterMs ?: config.cooldownRateLimitMs
