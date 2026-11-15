@@ -51,7 +51,36 @@ class LanguagePrefs(private val store: KeyValueStore) {
         if (voiceId != null) store.put(VOICE_PREFIX + LanguageChoice.normalize(language), null)
     }
 
+    /**
+     * The default ReadAloud voice of [language] as first seen on this phone, so a server-side reorder of the voice list does not
+     * silently give the language another voice from one read to the next. Not a user pick (the picker keeps showing "Automatic").
+     */
+    fun defaultCloudVoice(language: String): String? =
+        store.get(CLOUD_DEFAULT_PREFIX + LanguageChoice.normalize(language))?.takeIf { it.isNotBlank() }
+
+    fun setDefaultCloudVoice(language: String, voiceId: String?) {
+        store.put(CLOUD_DEFAULT_PREFIX + LanguageChoice.normalize(language), voiceId)
+    }
+
+    /**
+     * The ReadAloud voice that reads [language] for the voices [listed]: the user's pick, else the stored default, else the
+     * first offered one (see CloudVoicePolicy). A pick or default that the list no longer offers for the language is dropped. The first-seen default (and a replacement when the stored one is no longer offered) is stored. Null when the
+     * cloud has no voice for the language.
+     */
+    fun resolveCloudVoice(language: String, listed: List<com.listenai.service.tts.chain.CloudVoice>): com.listenai.service.tts.chain.CloudVoice? {
+        val offered = com.listenai.service.tts.chain.CloudVoicePolicy.voicesFor(language, listed)
+        if (offered.isEmpty()) return null
+        // A voice id the list does not offer for this language is never sent: the worker answers an unknown id with audio from a default voice.
+        var pick = preferredCloudVoice(language)
+        if (pick != null && offered.none { it.id == pick }) { setPreferredCloudVoice(language, null); pick = null }
+        val stored = defaultCloudVoice(language)?.takeIf { id -> offered.any { it.id == id } }
+        val chosen = offered.firstOrNull { it.id == pick } ?: offered.firstOrNull { it.id == stored } ?: offered.first()
+        if (pick == null && stored != chosen.id) setDefaultCloudVoice(language, chosen.id)
+        return chosen
+    }
+
     companion object {
+        private const val CLOUD_DEFAULT_PREFIX = "clouddefault_"
         private const val FILE = "language_prefs"
         private const val OVERRIDE_PREFIX = "override_"
         private const val VOICE_PREFIX = "voice_"

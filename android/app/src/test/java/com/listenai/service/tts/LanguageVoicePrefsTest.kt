@@ -63,4 +63,57 @@ class LanguageVoicePrefsTest {
         p.setPreferredCloudVoice("es", "kai")
         assertEquals("de-voice", p.preferredVoice("de"))
     }
+
+    private val langs = setOf("en", "es", "de")
+    private fun mv(id: String) = com.listenai.service.tts.chain.CloudVoice(id, "en", "female", id, langs, "live")
+    private val es1 = com.listenai.service.tts.chain.CloudVoice("es-f1", "es", "female", "Spanish female", setOf("es"), "live")
+
+    @Test fun `the first default voice seen for a language is kept when the API reorders its list`() {
+        val p = LanguagePrefs(MapStore())
+        assertEquals("aria", p.resolveCloudVoice("de", listOf(mv("aria"), mv("kai")))?.id)
+        assertEquals("aria", p.defaultCloudVoice("de"))
+        assertEquals("a reorder does not change the voice", "aria", p.resolveCloudVoice("de", listOf(mv("kai"), mv("aria")))?.id)
+    }
+
+    @Test fun `the stored default is replaced when the list no longer offers it`() {
+        val p = LanguagePrefs(MapStore())
+        p.resolveCloudVoice("de", listOf(mv("aria"), mv("kai")))
+        assertEquals("kai", p.resolveCloudVoice("de", listOf(mv("kai"), mv("cora")))?.id)
+        assertEquals("kai", p.defaultCloudVoice("de"))
+    }
+
+    @Test fun `a native voice of the language is the first default`() {
+        val p = LanguagePrefs(MapStore())
+        assertEquals("es-f1", p.resolveCloudVoice("es", listOf(mv("aria"), es1))?.id)
+    }
+
+    @Test fun `a pick wins over the default and does not overwrite it`() {
+        val p = LanguagePrefs(MapStore())
+        p.resolveCloudVoice("es", listOf(mv("aria"), mv("kai")))
+        p.setPreferredCloudVoice("es", "kai")
+        assertEquals("kai", p.resolveCloudVoice("es", listOf(mv("aria"), mv("kai")))?.id)
+        assertEquals("aria", p.defaultCloudVoice("es"))
+    }
+
+    @Test fun `a pick the fresh list does not offer is cleared and the default reads`() {
+        val p = LanguagePrefs(MapStore())
+        p.setPreferredCloudVoice("es", "gone")
+        assertEquals("aria", p.resolveCloudVoice("es", listOf(mv("aria"), mv("kai")))?.id)
+        assertNull(p.preferredCloudVoice("es"))
+    }
+
+    @Test fun `a pick that no longer speaks the language is cleared`() {
+        val p = LanguagePrefs(MapStore())
+        val kaiEs = com.listenai.service.tts.chain.CloudVoice("kai", "en", "male", "kai", setOf("en", "de"), "live")
+        p.setPreferredCloudVoice("es", "kai")
+        assertEquals("aria", p.resolveCloudVoice("es", listOf(mv("aria"), kaiEs))?.id)
+        assertNull(p.preferredCloudVoice("es"))
+    }
+
+    @Test fun `an empty list changes nothing stored`() {
+        val p = LanguagePrefs(MapStore())
+        p.setPreferredCloudVoice("es", "kai")
+        assertNull(p.resolveCloudVoice("es", emptyList()))
+        assertEquals("kai", p.preferredCloudVoice("es"))
+    }
 }

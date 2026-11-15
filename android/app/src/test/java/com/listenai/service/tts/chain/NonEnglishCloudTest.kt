@@ -39,10 +39,14 @@ private val AR = CloudVoice("aria", "en", "female", "Aria", MULTI_LANGS, "live")
 private val KA = CloudVoice("kai", "en", "male", "Kai", MULTI_LANGS, "live")
 
 /** A fake worker over a real local socket: authorize on the app's backend path, then the synthesize WebSocket. */
-private class FakeWorker : AutoCloseable {
+internal class FakeWorker : AutoCloseable {
     val server = MockWebServer()
     val received = LinkedBlockingQueue<String>()
     val authorizeCalls = AtomicInteger()
+    /** Called with every synthesize message, before the reply (a test uses it to change the catalog mid-read). */
+    @Volatile var onFirst: () -> Unit = {}
+    /** Answer every synthesize message with the worker's "language not supported" error. */
+    @Volatile var refuse = false
     @Volatile var reply: (WebSocket) -> Unit = { ws ->
         ws.send(ByteArray(9_600).toByteString())
         ws.send("""{"type":"chunk_meta","sample_rate":24000}""")
@@ -50,7 +54,10 @@ private class FakeWorker : AutoCloseable {
     }
 
     private val listener = object : WebSocketListener() {
-        override fun onMessage(webSocket: WebSocket, text: String) { received.add(text); reply(webSocket) }
+        override fun onMessage(webSocket: WebSocket, text: String) {
+            received.add(text); onFirst()
+            if (refuse) webSocket.send("""{"type":"error","message":"language not supported"}""") else reply(webSocket)
+        }
         override fun onMessage(webSocket: WebSocket, bytes: ByteString) {}
         override fun onClosing(webSocket: WebSocket, code: Int, reason: String) { webSocket.close(code, null) }
         override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {}
@@ -222,6 +229,13 @@ private class ScriptedApi(
     }
 }
 
+private class PhoneRecorder : TtsSource {
+    override val id = SourceId.SYSTEM
+    val texts = java.util.Collections.synchronizedList(ArrayList<String>())
+    override suspend fun unavailableReason(request: TtsRequest): FallbackReason? = null
+    override suspend fun synthesize(text: String, request: TtsRequest): PcmChunk { texts += text; return pcm() }
+}
+
 private class Phone : TtsSource {
     override val id = SourceId.SYSTEM
     val calls = AtomicInteger()
@@ -245,18 +259,69 @@ class NonEnglishChainTest {
 
     @Test fun `non-English cloud reads use short chunks, English keeps the usual size`() = runTest {
         val c = chain(ScriptedApi(), Phone())
-        val es = c.chunkPlan(ES_LONG, TtsRequest("bella", "es"), listOf(SourceId.API, SourceId.SYSTEM))
+        val es = c.chunkPlan(ES_LONG, TtsRequest("bella", "es"), cloudWillRead = true)
         assertTrue("first chunk quick: ${es.first().length}", es.first().length <= 90)
         assertTrue(es.all { it.length <= 170 })
-        val en = c.chunkPlan(ES_LONG, TtsRequest("bella", "en"), listOf(SourceId.API, SourceId.SYSTEM))
+        val en = c.chunkPlan(ES_LONG, TtsRequest("bella", "en"), cloudWillRead = true)
         assertEquals(TextChunker.split(ES_LONG, 280, 140), en)
         assertTrue(en.any { it.length > 170 })
     }
 
-    @Test fun `a phone-first read keeps the usual chunk size`() = runTest {
+    // The 2026-11-15 production check: a 170 character Japanese chunk made 42 s of audio and took 9.9 s against a 10.25 s deadline.
+    private val JA_SENTENCE = "今日は天気がとても良いので、午後は公園まで散歩に行きます。"
+    private val JA_LONG = JA_SENTENCE.repeat(12)
+
+    @Test fun `Japanese and Chinese cloud reads use much smaller chunks`() = runTest {
         val c = chain(ScriptedApi(), Phone())
-        val plan = c.chunkPlan(ES_LONG, TtsRequest("bella", "es", preferSystem = true), listOf(SourceId.SYSTEM, SourceId.API))
-        assertEquals(TextChunker.split(ES_LONG, 280, 140), plan)
+        val ja = c.chunkPlan(JA_LONG, TtsRequest("bella", "ja"), cloudWillRead = true)
+        assertTrue("first <= 60: ${ja.first().length}", ja.first().length <= 60)
+        assertTrue(ja.all { it.length <= 90 })
+        assertTrue(ja.size > 4)
+        val zh = c.chunkPlan("今天天气很好，我们下午去公园散步。".repeat(15), TtsRequest("bella", "zh-CN"), cloudWillRead = true)
+        assertTrue(zh.first().length <= 60 && zh.all { it.length <= 90 })
+        // Hindi and Russian keep the general sizes
+        val ru = c.chunkPlan(ES_LONG, TtsRequest("bella", "ru"), cloudWillRead = true)
+        assertEquals(TextChunker.split(ES_LONG, 170, 90), ru)
+    }
+
+    @Test fun `the first-chunk deadline for another language is 14 s plus the per-character allowance`() = runTest {
+        val api = ScriptedApi(behave = { _, _ -> delay(13_000) })
+        val out = chain(api, Phone(), ChainConfig(retries = 0)).speak("こんにちは。", TtsRequest("bella", "ja")).toList()
+        assertTrue("a 13 s answer is still waited for", out.all { it.source == SourceId.API })
+        val slow = ScriptedApi(behave = { _, _ -> delay(15_500) })
+        val out2 = chain(slow, Phone(), ChainConfig(retries = 0)).speak("こんにちは。", TtsRequest("bella", "ja")).toList()
+        assertTrue("a 15.5 s answer is not", out2.all { it.source == SourceId.SYSTEM })
+    }
+
+    @Test fun `a phone-first read keeps the usual chunk size`() = runTest {
+        val api = ScriptedApi()
+        val phone = PhoneRecorder()
+        val c = chain(api, phone)
+        c.speak(ES_LONG, TtsRequest("bella", "es", preferSystem = true)).toList()
+        assertEquals(TextChunker.split(ES_LONG, 280, 140).sorted(), phone.texts.sorted())
+        assertEquals(0, api.calls.get())
+    }
+
+    @Test fun `a language the cloud has no voice for keeps the phone chunk sizes`() = runTest {
+        val phone = PhoneRecorder()
+        val c = chain(ScriptedApi(unavailable = FallbackReason.UNSUPPORTED_LANGUAGE), phone)
+        c.speak(ES_LONG, TtsRequest("bella", "ko")).toList()
+        assertEquals(TextChunker.split(ES_LONG, 280, 140).sorted(), phone.texts.sorted())
+        assertTrue(phone.texts.any { it.length > 170 })
+    }
+
+    @Test fun `offline, the phone chunk sizes too`() = runTest {
+        val phone = PhoneRecorder()
+        val c = chain(ScriptedApi(unavailable = FallbackReason.OFFLINE), phone)
+        c.speak(ES_LONG, TtsRequest("bella", "es")).toList()
+        assertEquals(TextChunker.split(ES_LONG, 280, 140).sorted(), phone.texts.sorted())
+    }
+
+    @Test fun `a cloud read of another language uses the short chunk sizes`() = runTest {
+        val api = ScriptedApi()
+        val c = chain(api, Phone())
+        val out = c.speak(ES_LONG, TtsRequest("bella", "es")).toList()
+        assertEquals(TextChunker.split(ES_LONG, 170, 90), out.map { it.text })
     }
 
     @Test fun `chunks never cut a word`() {
@@ -302,7 +367,7 @@ class NonEnglishChainTest {
         val out = c.speak("Namaste.", TtsRequest("bella", "hi")).toList()
         assertTrue(out.all { it.source == SourceId.SYSTEM })
         assertEquals(2, api.calls.get())
-        assertTrue("gave up after about two deadlines, not more: $currentTime", currentTime < 2 * 13_000 + 2_000)
+        assertTrue("gave up after about two deadlines, not more: $currentTime", currentTime < 2 * 14_500 + 2_000)
     }
 
     // ---- cooldown per (source, language) ----

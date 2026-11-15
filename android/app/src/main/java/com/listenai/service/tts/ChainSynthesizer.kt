@@ -36,7 +36,7 @@ object ChainSynthesizer {
         val chain = TtsChainProvider.get(context).inApp
         // A phone voice the user picked for this language means: try the phone's engine first.
         val preferSystem = phoneVoicePicked(context, language)
-        val cloudVoiceId = if (LanguageChoice.normalize(language) == "en") null else LanguagePrefs.get(context).preferredCloudVoice(language)
+        val cloudVoiceId = cloudVoiceFor(context, language, preferSystem)
         val request = TtsRequest(voiceId = voice.id, language = language, speed = speed, wantWords = true, preferSystem = preferSystem, cloudVoiceId = cloudVoiceId)
         val file = File(context.cacheDir, "tts_${UUID.randomUUID()}.wav")
 
@@ -105,6 +105,18 @@ object ChainSynthesizer {
                 startedAt = started, completedAt = ended, inputCharacterCount = text.length, outputSampleRate = rate,
             ),
         )
+    }
+
+    /**
+     * The ReadAloud voice id this read prefers for [language]: the user's pick, else the default first seen on this phone
+     * (see [LanguagePrefs.resolveCloudVoice]). Null for English, and for a phone-voice read, which does not need the list.
+     */
+    private suspend fun cloudVoiceFor(context: Context, language: String, preferSystem: Boolean): String? {
+        if (LanguageChoice.normalize(language) == "en") return null
+        val prefs = LanguagePrefs.get(context)
+        if (preferSystem) return prefs.preferredCloudVoice(language)
+        val listed = runCatching { TtsChainProvider.get(context).catalog.voices() }.getOrDefault(emptyList())
+        return prefs.resolveCloudVoice(language, listed)?.id ?: prefs.preferredCloudVoice(language)
     }
 
     /**

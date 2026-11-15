@@ -93,7 +93,12 @@ class ReadAloudApiSource(
 
     /** The catalog voice for a non-English language (the user's pick when still offered, else the default), or null. Asks the catalog only for non-English text. */
     private suspend fun cloudVoiceFor(request: TtsRequest): CloudVoice? =
-        CloudVoicePolicy.voiceFor(request.language, catalog.voices(), request.cloudVoiceId)
+        request.cloudVoice ?: CloudVoicePolicy.voiceFor(request.language, catalog.voices(), request.cloudVoiceId)
+
+    /** Fixes the voice for the whole read: later catalog changes (a reorder, a removal) do not move a read to another voice. */
+    override suspend fun pin(request: TtsRequest): TtsRequest =
+        if (isEnglish(request.language) || request.cloudVoice != null) request
+        else cloudVoiceFor(request)?.let { request.copy(cloudVoice = it) } ?: request
 
     /** Opens a socket ahead of the first chunk (authorize + connect), so the first synthesize pays neither. */
     suspend fun prewarm() {

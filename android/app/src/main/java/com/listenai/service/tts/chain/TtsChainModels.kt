@@ -73,6 +73,11 @@ data class TtsRequest(
     val preferSystem: Boolean = false,
     /** The ReadAloud voice the user picked for this (non-English) language; used when the API still lists it for the language, else the default voice. */
     val cloudVoiceId: String? = null,
+    /**
+     * The ReadAloud voice this read is fixed to. The chain sets it once per read (see [TtsSource.pin]) so the voice that reads
+     * chunk 1 is the voice that reads the last chunk and the one the chunk cache key names, even if the catalog changes mid-read.
+     */
+    val cloudVoice: CloudVoice? = null,
 )
 
 interface TtsSource {
@@ -93,6 +98,13 @@ interface TtsSource {
      * The default is the app voice id, which is all an English-only source needs.
      */
     suspend fun cacheVoice(request: TtsRequest): String? = request.voiceId
+
+    /**
+     * Fixes the choices that must not change within one read (for the cloud: which voice speaks the language). Called once per
+     * read and source, before the cache key is made and before any chunk is synthesized; the result replaces [request] for
+     * this source for the rest of the read. The default changes nothing.
+     */
+    suspend fun pin(request: TtsRequest): TtsRequest = request
 
     /** Called once per chunk with the real-time factor (synth seconds / audio seconds), for sources that measure it. */
     fun onChunkMeasured(synthMs: Long, audioMs: Long) {}
@@ -163,7 +175,12 @@ data class ChainConfig(
      */
     val nonEnglishMaxChunkChars: Int = 170,
     val nonEnglishFirstChunkChars: Int = 90,
-    val nonEnglishFirstChunkBaseTimeoutMs: Long = 12_000,
+    /**
+     * Languages whose characters carry a lot of speech each (a 170 character Japanese chunk made 42 s of audio and took about 10 s)
+     * get smaller chunks: language -> (first chunk, later chunks) in characters.
+     */
+    val nonEnglishChunkSizes: Map<String, Pair<Int, Int>> = mapOf("ja" to (60 to 90), "zh" to (60 to 90), "ko" to (60 to 90)),
+    val nonEnglishFirstChunkBaseTimeoutMs: Long = 14_000,
     /** How long the cloud is skipped for ONE language after the API refused it (not listed any more, unknown voice). English is not affected. */
     val cooldownUnsupportedMs: Long = 10 * 60_000,
     /** Sources whose output is stored in the chunk cache. */

@@ -50,11 +50,29 @@ class CloudVoiceTest {
         assertTrue(v.none { it.id.startsWith("custom:") })
     }
 
-    @Test fun `every language the live catalog lists besides English gets the default multilingual voice`() {
+    @Test fun `every language the live catalog lists besides English gets a voice, native single-language ones first`() {
         val v = live()
         val expected = setOf("de", "es", "fr", "it", "pt", "cs", "nl", "fi", "el", "hi", "hu", "id", "ja", "pl", "ro", "ru", "sv", "tr", "uk")
         assertEquals(expected, CloudVoicePolicy.languages(v))
-        for (l in expected) assertEquals("aria for $l", "aria", CloudVoicePolicy.voiceFor(l, v)?.id)
+        // a language with a listed voice of its own: that voice is the default (first listed)
+        assertEquals("de-f1", CloudVoicePolicy.voiceFor("de", v)?.id)
+        assertEquals("es-f1", CloudVoicePolicy.voiceFor("es", v)?.id)
+        assertEquals("fr-f1", CloudVoicePolicy.voiceFor("fr", v)?.id)
+        assertEquals("it-f1", CloudVoicePolicy.voiceFor("it", v)?.id)
+        assertEquals("pt-br-m1", CloudVoicePolicy.voiceFor("pt", v)?.id)
+        assertEquals("pt-br-m1", CloudVoicePolicy.voiceFor("pt-BR", v)?.id)
+        // every other language: the first multilingual voice the list gives
+        for (l in listOf("cs", "nl", "fi", "el", "hi", "hu", "id", "ja", "pl", "ro", "ru", "sv", "tr", "uk")) assertEquals("aria for $l", "aria", CloudVoicePolicy.voiceFor(l, v)?.id)
+    }
+
+    @Test fun `each voice is sent with its own listed code, a multilingual voice with the plain language code`() {
+        val v = live()
+        fun code(l: String) = CloudVoicePolicy.voiceFor(l, v)!!.let { CloudVoicePolicy.languageCode(it, l) }
+        assertEquals("es", code("es"))
+        assertEquals("de", code("de"))
+        assertEquals("pt-BR", code("pt"))
+        assertEquals("hi", code("hi"))
+        assertEquals("ja", code("ja"))
     }
 
     @Test fun `languages the API holds back or hides are never read in the cloud`() {
@@ -71,13 +89,12 @@ class CloudVoiceTest {
         assertFalse("en" in CloudVoicePolicy.languages(live()))
     }
 
-    @Test fun `the picker offers the multilingual voices first, then the single-language voices of that language`() {
+    @Test fun `the picker offers the voices of the language first, then the multilingual voices`() {
         val offered = CloudVoicePolicy.voicesFor("de", live()).map { it.id }
-        assertEquals(listOf("aria", "cora", "dana", "elise", "faye", "gabe", "hugo", "ivan", "jonas", "kai", "de-f1", "de-m1"), offered)
-        // Brazilian Portuguese voices count for Portuguese, after the multilingual ones
+        assertEquals(listOf("de-f1", "de-m1", "aria", "cora", "dana", "elise", "faye", "gabe", "hugo", "ivan", "jonas", "kai"), offered)
         val pt = CloudVoicePolicy.voicesFor("pt-BR", live()).map { it.id }
-        assertEquals("aria", pt.first())
-        assertTrue("pt-br-m1" in pt && "pt-br-m2" in pt)
+        assertEquals(listOf("pt-br-m1", "pt-br-m2", "aria"), pt.take(3))
+        assertEquals(10, CloudVoicePolicy.voicesFor("ja", live()).size)
     }
 
     // ---- policy rules on hand-made lists ----
@@ -88,6 +105,12 @@ class CloudVoiceTest {
         assertNull(CloudVoicePolicy.voiceFor("ja", listed))
         assertEquals("aria", CloudVoicePolicy.voiceFor("es", listed)?.id)
         assertFalse("ja" in CloudVoicePolicy.languages(listed))
+    }
+
+    @Test fun `a single-language voice listed after the multilingual ones is still the default`() {
+        val listed = listOf(ARIA, CORA, DE_F1)
+        assertEquals("de-f1", CloudVoicePolicy.voiceFor("de", listed)?.id)
+        assertEquals("aria", CloudVoicePolicy.voiceFor("es", listed)?.id)
     }
 
     @Test fun `a language with only a single-language voice uses that voice`() {
@@ -201,7 +224,8 @@ class CloudVoiceTest {
 
     @Test fun `the cache voice is the catalog voice for the language, the user's pick when offered, and null when not listed`() = runTest {
         val s = source(FakeCatalog(live()))
-        assertEquals("aria", s.cacheVoice(TtsRequest("bella", "es")))
+        assertEquals("es-f1", s.cacheVoice(TtsRequest("bella", "es")))
+        assertEquals("aria", s.cacheVoice(TtsRequest("bella", "hi")))
         assertEquals("kai", s.cacheVoice(TtsRequest("bella", "es", cloudVoiceId = "kai")))
         assertEquals("bella", s.cacheVoice(TtsRequest("bella", "en")))
         assertNull(s.cacheVoice(TtsRequest("bella", "ko")))

@@ -57,12 +57,14 @@ object ApiLanguageCode {
 /**
  * Which cloud voice, if any, reads a language other than English, decided from what the API lists and nothing else:
  * a language is read in the cloud only when a listed voice speaks it, so the API's list is the switch for adding or hiding a
- * language (the worker itself does not refuse a language the list leaves out, so the app must). A missing or unreachable
- * catalog leaves the phone's own voices to read it.
+ * language (the worker itself does not refuse an unlisted language, and answers an unknown voice id with audio from a default
+ * voice, so the app checks both against the list). A missing or unreachable catalog leaves the phone's own voices to read it.
  *
- * Voices offered for a language L, in the order the API lists them: first the live-tier voices whose `languages` contain L (the
- * multilingual voices; the first of them is the default), then live-tier single-language voices whose own language is L. The
- * studio tier is English only and never offered here.
+ * Voices offered for a language L, in this order: live-tier single-language voices whose own language is L (native voices of
+ * that language), in the API's order; then live-tier voices whose `languages` contain L (the multilingual voices), in the API's
+ * order. The first one is the default. The studio tier is English only and never offered here.
+ * Portuguese: the app knows only "pt" (the language detector does not tell Brazilian from European text), so "pt" is read by a
+ * voice the API lists for Portuguese, which today is a Brazilian one.
  */
 object CloudVoicePolicy {
     private fun usableTier(v: CloudVoice) = v.tier == null || v.tier.equals("live", ignoreCase = true)
@@ -73,7 +75,7 @@ object CloudVoicePolicy {
         if (lang == "en") return emptyList()
         val speaking = listed.filter { usableTier(it) && lang in it.languages }
         val (multi, single) = speaking.partition { it.multilingual }
-        return multi + single
+        return single + multi
     }
 
     /**
@@ -110,35 +112,46 @@ object CloudVoicePolicy {
      * dropped, as are entries that name an engine other than Piper (an older listing shape). Ids are kept exactly as listed.
      * Anything unparseable gives an empty list.
      */
-    fun parse(json: String): List<CloudVoice> = try {
+    fun parse(json: String): List<CloudVoice> = parseStrict(json).orEmpty()
+
+    /**
+     * Like [parse], but tells "the API sent a voice list" apart from "something else came back": null when the body is not a JSON
+     * object with a `voices` array (a captive-portal page, a truncated body, `{}`), or when the array has entries but none is a
+     * usable voice. A well-formed `{"voices":[]}` is an empty list: the API saying it offers nothing.
+     */
+    fun parseStrict(json: String): List<CloudVoice>? = try {
         val arr = JSONObject(json).optJSONArray("voices")
-        buildList {
-            if (arr != null) for (i in 0 until arr.length()) {
-                val v = arr.optJSONObject(i) ?: continue
-                val engine = v.optString("engine", "").trim()
-                val id = v.optString("voice_id", "").trim()
-                val lang = v.optString("language", "").trim()
-                if ((engine.isNotEmpty() && engine != "piper") || id.isEmpty()) continue
-                val codes = LinkedHashSet<String>()
-                ApiLanguageCode.of(lang)?.let { codes += it }
-                v.optJSONArray("languages")?.let { a ->
-                    for (j in 0 until a.length()) ApiLanguageCode.of(a.optString(j, ""))?.let { codes += it }
-                }
-                if (codes.isEmpty()) continue
-                add(
-                    CloudVoice(
-                        id = id,
-                        language = lang.ifEmpty { codes.first() },
-                        gender = v.optString("gender").takeIf { it.isNotBlank() },
-                        name = v.optString("name").takeIf { it.isNotBlank() },
-                        languages = codes,
-                        tier = v.optString("tier").takeIf { it.isNotBlank() },
+        if (arr == null) null
+        else {
+            val voices = buildList {
+                for (i in 0 until arr.length()) {
+                    val v = arr.optJSONObject(i) ?: continue
+                    val engine = v.optString("engine", "").trim()
+                    val id = v.optString("voice_id", "").trim()
+                    val lang = v.optString("language", "").trim()
+                    if ((engine.isNotEmpty() && engine != "piper") || id.isEmpty()) continue
+                    val codes = LinkedHashSet<String>()
+                    ApiLanguageCode.of(lang)?.let { codes += it }
+                    v.optJSONArray("languages")?.let { a ->
+                        for (j in 0 until a.length()) ApiLanguageCode.of(a.optString(j, ""))?.let { codes += it }
+                    }
+                    if (codes.isEmpty()) continue
+                    add(
+                        CloudVoice(
+                            id = id,
+                            language = lang.ifEmpty { codes.first() },
+                            gender = v.optString("gender").takeIf { it.isNotBlank() },
+                            name = v.optString("name").takeIf { it.isNotBlank() },
+                            languages = codes,
+                            tier = v.optString("tier").takeIf { it.isNotBlank() },
+                        )
                     )
-                )
+                }
             }
+            if (voices.isEmpty() && arr.length() > 0) null else voices
         }
     } catch (e: Exception) {
-        emptyList()
+        null
     }
 }
 
@@ -189,8 +202,12 @@ class HttpCloudVoiceCatalog(
     }
 
     private fun fetch(): List<CloudVoice>? = try {
-        client.newCall(Request.Builder().url(catalogUrl).build())
-            .execute().use { r -> if (r.isSuccessful) CloudVoicePolicy.parse(r.body?.string().orEmpty()) else null }
+        client.newCall(Request.Builder().url(catalogUrl).build()).execute().use { r ->
+            // Only a 200 JSON voice list counts. A captive portal's HTML page, a truncated body or `{}` is a failed read, so the last good list stays.
+            val type = r.header("Content-Type").orEmpty()
+            if (!r.isSuccessful || (type.isNotEmpty() && !type.contains("json", ignoreCase = true))) null
+            else CloudVoicePolicy.parseStrict(r.body?.string().orEmpty())
+        }
     } catch (e: Exception) {
         null
     }
