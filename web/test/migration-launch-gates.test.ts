@@ -125,11 +125,11 @@ test('calculator component: client only, no network, storage or analytics, fed b
 
 // ---------------------------------------------------------------- availability flags
 
-test('launch flags: everything is "coming soon" until a person verifies it live', () => {
+test('launch flags: each feature is "Available" only after a person verified it live (verified 2026-11-14)', () => {
   for (const f of Object.keys(LAUNCH_FLAGS) as LaunchFlag[]) {
-    assert.equal(LAUNCH_FLAGS[f], false, f)
-    assert.equal(availability(f), 'coming-soon')
-    assert.equal(availabilityLabel(f), 'Coming soon')
+    assert.equal(LAUNCH_FLAGS[f], true, f)
+    assert.equal(availability(f), 'available')
+    assert.equal(availabilityLabel(f), 'Available')
   }
 })
 

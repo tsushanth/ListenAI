@@ -10,15 +10,15 @@
 //   elevenLabsInstantClone  gateway env ELEVENLABS_COMPAT_VOICE_CLONE=1 plus the backend clone route
 //                                                                   (POST /v1/voices/add with a consent step)
 //
-// Honest default: everything false until a person has verified it live. llms.txt is a static file; test/launch-flags.test.ts fails when its
+// Verified live on 2026-11-14 (one real production call each); a flag stays false until a person has verified it live. llms.txt is a static file; test/launch-flags.test.ts fails when its
 // wording and these values disagree.
 
 export type Availability = 'available' | 'coming-soon'
 
 export const LAUNCH_FLAGS = {
-  oneKeyEverywhere: false,
-  elevenLabsSpeechToText: false,
-  elevenLabsInstantClone: false,
+  oneKeyEverywhere: true,
+  elevenLabsSpeechToText: true,
+  elevenLabsInstantClone: true,
 } as const
 
 export type LaunchFlag = keyof typeof LAUNCH_FLAGS
@@ -27,4 +27,4 @@ export const availability = (flag: LaunchFlag): Availability => (LAUNCH_FLAGS[fl
 export const availabilityLabel = (flag: LaunchFlag): string => (LAUNCH_FLAGS[flag] ? 'Available' : 'Coming soon')
 
 /** The date these flags were last set from a real check (empty while everything is off). */
-export const LAUNCH_FLAGS_VERIFIED_ON = ''
+export const LAUNCH_FLAGS_VERIFIED_ON = '2026-11-14'
