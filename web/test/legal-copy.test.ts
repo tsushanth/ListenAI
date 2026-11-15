@@ -49,6 +49,6 @@ test('terms do not promise a trial or money-back guarantee that checkout does no
 })
 
 test('last-updated dates are current', () => {
-  assert.match(privacy, /Last updated: November 10, 2026/)
+  assert.match(privacy, /Last updated: November 15, 2026/)
   assert.match(terms, /Last updated: November 10, 2026/)
 })

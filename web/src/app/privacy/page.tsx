@@ -11,7 +11,7 @@ export default function PrivacyPage() {
         <h1 className="text-4xl font-bold text-white mb-8">Privacy Policy</h1>
 
         <div className="prose prose-invert max-w-none">
-          <p className="text-gray-400 mb-6">Last updated: November 10, 2026</p>
+          <p className="text-gray-400 mb-6">Last updated: November 15, 2026</p>
 
           <section className="mb-8">
             <h2 className="text-2xl font-semibold text-white mb-4">1. Information We Collect</h2>
@@ -59,7 +59,7 @@ export default function PrivacyPage() {
 
             <h3 className="text-xl font-semibold text-white mb-3 mt-6">Text-to-Speech: the ReadAloud speech service</h3>
             <p className="text-gray-300 mb-3">
-              When the Android app reads English text with one of its standard voices, it works like this:
+              When the Android app reads text with one of its ReadAloud voices (English, and the other languages described below), it works like this:
             </p>
             <ul className="list-disc pl-6 text-gray-300 space-y-2">
               <li>The app first asks our backend (listenai-backend.fly.dev) for a short-lived session token. That request does not contain your text, your account or your name.</li>
@@ -75,9 +75,23 @@ export default function PrivacyPage() {
               not willing to have processed on these servers.
             </p>
             <p className="text-gray-300 mb-3">
-              Text in languages other than English is not sent to the ReadAloud speech service. The app reads it with the
-              speech engine already on your phone (for example Google or Samsung text-to-speech). That engine is provided by its
-              maker, and its own privacy terms apply to what it does.
+              <strong>Languages other than English.</strong> For a document in another language, the app first asks the ReadAloud
+              speech service for its public list of voices and languages. That request contains no text and no account. If the
+              list has a ReadAloud voice for the language of the document, the app reads the document with that voice and the
+              steps above apply: the text is sent to the ReadAloud speech service in sentence-sized pieces, together with the
+              voice, the speed and the language of the document (a language code such as &quot;es&quot;), and the audio
+              comes back. The languages with a ReadAloud voice can change without an app update; the reader&apos;s language and
+              voice menus show what is offered for the current document.
+            </p>
+            <p className="text-gray-300 mb-3">
+              For a language that has no ReadAloud voice, the app reads with the speech engine already on your phone (for example
+              Google or Samsung text-to-speech), and that text is not sent to the ReadAloud speech service. If you choose one of
+              the phone&apos;s voices for a language in the voice menu, the app tries that voice first: text read by a phone voice
+              stays on your phone, and a ReadAloud voice is used, with the text sent in pieces to the ReadAloud speech service as
+              described above, only if the phone&apos;s voice cannot read it. When you choose a ReadAloud voice, or leave the menu
+              on automatic for a language that has one, the text goes to the ReadAloud speech service. The app also reads with the
+              phone&apos;s engine when the ReadAloud speech service cannot be reached or is too slow. The phone&apos;s speech engine
+              is provided by its maker, and its own privacy terms apply to what it does.
             </p>
             <p className="text-gray-300 mb-3">
               Older app versions and some other voices may use a second open-source speech model that we operate on cloud servers.

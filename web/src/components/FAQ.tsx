@@ -27,7 +27,7 @@ const faqs = [
   },
   {
     question: 'What languages are supported?',
-    answer: 'The AI voices speak English. For an article in another language, the Android app detects the language and reads it with your phone\'s own text-to-speech voice for that language, if your phone has one installed.',
+    answer: 'English, and in the Android app many other languages. The app detects the language of an article and reads it with a ReadAloud voice when one is offered for that language (the reader\'s language and voice menus show which; this needs an internet connection and is in beta), and otherwise with your phone\'s own text-to-speech voice for that language, if your phone has one installed. You can choose a phone voice for a language in the voice menu.',
   },
   {
     question: 'How do I cancel my subscription?',
