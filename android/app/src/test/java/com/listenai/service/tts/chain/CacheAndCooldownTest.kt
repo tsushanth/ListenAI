@@ -160,7 +160,7 @@ class CacheAndCooldownTest {
                 MockResponse().setBodyDelay(300, java.util.concurrent.TimeUnit.MILLISECONDS)
                     .setBody("""{"voices":[{"voice_id":"custom:es-pilot-f","language":"es","engine":"piper"}]}""")
             )
-            val cat = HttpCloudVoiceCatalog(OkHttpClient(), server.url("/").toString().trimEnd('/'))
+            val cat = HttpCloudVoiceCatalog(OkHttpClient(), server.url("/v1/catalog").toString())
             val results = coroutineScope {
                 (1..4).map { async(Dispatchers.Default) { cat.voices() } }.awaitAll()
             }
