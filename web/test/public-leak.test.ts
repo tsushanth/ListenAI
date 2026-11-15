@@ -52,7 +52,7 @@ const ALLOW: Allow[] = [
   },
   {
     file: 'src/generated/tts-legacy-voice-ids.ts',
-    terms: ['mls', 'serena', 'paola', 'faber', 'cadu'],
+    terms: ['mls', 'serena', 'paola', 'faber', 'cadu', 'supertonic'],
     reason: 'Input-only map from old voice ids to public ids, so a client that still sends an old id is understood. It is never rendered and never returned in a response or tool output; list_voices and the docs use the public ids only.',
   },
   {
