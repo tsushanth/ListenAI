@@ -5,7 +5,7 @@ One row per deployed component. Update it in the same change as every deploy. A 
 | Component | Fly app | Release | Image | Built from | Main commit with the same tree | Date |
 |---|---|---|---|---|---|---|
 | Backend (`backend/`) | `listenai-backend` | v119 (code), v120 (setting `RTTS_KEY_AUTH_ENABLED=true`) | `deployment-01M7E7N3CXE5KDWE9GW28DF5J9` (sha256:8c0839b9ff3b...) | branch `deploy/p0-2026-11-14` at `eb3d57c8` | `cb69dc31` (`backend/` identical) | 14 Nov 2026 |
-| Web (`web/`) | `readaloud-web` | v95 | `deployment-01M7E9TY0D0GYEYDEP1XFE1W46` (sha256:b5fae67ab9db...) | branch `deploy/p0-2026-11-14` at `eb3d57c8` | `cb69dc31` (`web/` identical) | 14 Nov 2026 |
+| Web (`web/`) | `readaloud-web` | v96 | `deployment-01M7EM1P878FC94YBBNWC1CJX5` (sha256:fa3c60c919a6...) | `origin/main` at `c514f5c4` | `c514f5c4` (`web/` identical) | 15 Nov 2026 (03:31 UTC) |
 
 ## Switches that are on in production
 
