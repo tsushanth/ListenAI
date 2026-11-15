@@ -64,9 +64,21 @@ class TtsSourceChain(
         }
     }
 
+    /**
+     * The pieces [text] is cut into for [request]: sentence groups, shorter for the cloud voices of other languages (they
+     * do not stream inside a chunk, so a long chunk delays the first sound). [order] is the session's source order.
+     */
+    internal fun chunkPlan(text: String, request: TtsRequest, order: List<SourceId>): List<String> {
+        val lang = request.language.substringBefore('-').lowercase()
+        val cloudFirst = lang != "en" && order.firstOrNull { sources[it] != null } == SourceId.API
+        return if (cloudFirst) TextChunker.split(text, config.nonEnglishMaxChunkChars, config.nonEnglishFirstChunkChars)
+        else TextChunker.split(text, config.maxChunkChars, config.firstChunkChars)
+    }
+
     fun speak(text: String, request: TtsRequest): Flow<SpokenChunk> = flow {
-        val chunks = TextChunker.split(text, config.maxChunkChars, config.firstChunkChars)
-        val session = Session(order(request), request)
+        val sessionOrder = order(request)
+        val chunks = chunkPlan(text, request, sessionOrder)
+        val session = Session(sessionOrder, request)
         session.cacheVoice = resolveCacheVoice(session)
         val started = nowMs()
         var firstAudioAt: Long? = null
@@ -154,7 +166,9 @@ class TtsSourceChain(
                 attempt++
                 val t0 = nowMs()
                 try {
-                    val deadline = (if (index == 0) config.firstChunkBaseTimeoutMs else config.chunkBaseTimeoutMs) +
+                    // The first chunk of a non-English cloud read gets a longer deadline (see ChainConfig.nonEnglishFirstChunkBaseTimeoutMs).
+                    val firstBase = if (id == SourceId.API && s.lang != "en") config.nonEnglishFirstChunkBaseTimeoutMs else config.firstChunkBaseTimeoutMs
+                    val deadline = (if (index == 0) firstBase else config.chunkBaseTimeoutMs) +
                         config.perCharTimeoutMs * text.length
                     val pcm = withTimeout(deadline) { src.synthesize(text, s.request) }
                     if (pcm.pcm.isEmpty()) throw SourceFailure(FallbackReason.SERVER_ERROR, message = "empty audio")
@@ -172,7 +186,7 @@ class TtsSourceChain(
                     failures[id] = e.reason
                     val transient = e.reason == FallbackReason.TIMEOUT || e.reason == FallbackReason.SERVER_ERROR
                     if (transient && attempt < attempts) { delay(config.retryBackoffMs); continue }
-                    s.note(id, e.reason); coolDown(id, s.lang, e)
+                    s.note(id, e.reason); coolDown(id, s.lang, e, refused = true)
                 } catch (e: Exception) {
                     failures[id] = FallbackReason.UNKNOWN
                     s.note(id, FallbackReason.UNKNOWN); coolDown(id, s.lang, SourceFailure(FallbackReason.UNKNOWN))
@@ -221,8 +235,10 @@ class TtsSourceChain(
         }
     }
 
-    private fun coolDown(id: SourceId, lang: String, f: SourceFailure) {
+    /** [refused]: the source itself answered "not this language" (as opposed to the pre-check saying so), which is remembered for this language only. */
+    private fun coolDown(id: SourceId, lang: String, f: SourceFailure, refused: Boolean = false) {
         val ms = when (f.reason) {
+            FallbackReason.UNSUPPORTED_LANGUAGE -> if (refused && lang != "en") config.cooldownUnsupportedMs else 0L
             FallbackReason.OFFLINE -> config.cooldownOfflineMs
             FallbackReason.QUOTA -> f.retryAfterMs ?: config.cooldownQuotaMs
             FallbackReason.RATE_LIMITED -> f.retryAfterMs ?: config.cooldownRateLimitMs

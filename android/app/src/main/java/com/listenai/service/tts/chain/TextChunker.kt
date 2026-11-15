@@ -3,8 +3,9 @@ package com.listenai.service.tts.chain
 /** Splits text into sentence-aligned pieces: a short first piece (fast first audio), then pieces up to a maximum. */
 object TextChunker {
 
-    private val SENTENCE_END = Regex("(?<=[.!?。！？।])\\s+|\\n+")
-    private val CLAUSE_END = Regex("(?<=[,;:—、，])\\s+")
+    // Full stops of Japanese and Chinese text are not followed by a space, so they split without needing one.
+    private val SENTENCE_END = Regex("(?<=[.!?।؟])\\s+|(?<=[。！？])\\s*|\\n+")
+    private val CLAUSE_END = Regex("(?<=[,;:—])\\s+|(?<=[、，；：])\\s*")
 
     fun split(text: String, maxChars: Int, firstChars: Int = maxChars): List<String> {
         val sentences = text.split(SENTENCE_END).map { it.trim() }.filter { it.isNotEmpty() }

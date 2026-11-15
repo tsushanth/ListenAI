@@ -35,14 +35,27 @@ class LanguagePrefs(private val store: KeyValueStore) {
     /** The voice name the user picked for [language], or null for "best available". */
     fun preferredVoice(language: String): String? = store.get(VOICE_PREFIX + LanguageChoice.normalize(language))?.takeIf { it.isNotBlank() }
 
+    /** Picking a phone voice replaces a ReadAloud voice pick for the language: the picker holds one choice per language. */
     fun setPreferredVoice(language: String, voiceName: String?) {
         store.put(VOICE_PREFIX + LanguageChoice.normalize(language), voiceName)
+        if (voiceName != null) store.put(CLOUD_VOICE_PREFIX + LanguageChoice.normalize(language), null)
+    }
+
+    /** The ReadAloud voice id the user picked for [language] (a non-English language), or null for the default. */
+    fun preferredCloudVoice(language: String): String? =
+        store.get(CLOUD_VOICE_PREFIX + LanguageChoice.normalize(language))?.takeIf { it.isNotBlank() }
+
+    /** Picking a ReadAloud voice replaces a phone voice pick for the language. A null [voiceId] clears the ReadAloud pick only. */
+    fun setPreferredCloudVoice(language: String, voiceId: String?) {
+        store.put(CLOUD_VOICE_PREFIX + LanguageChoice.normalize(language), voiceId)
+        if (voiceId != null) store.put(VOICE_PREFIX + LanguageChoice.normalize(language), null)
     }
 
     companion object {
         private const val FILE = "language_prefs"
         private const val OVERRIDE_PREFIX = "override_"
         private const val VOICE_PREFIX = "voice_"
+        private const val CLOUD_VOICE_PREFIX = "cloudvoice_"
 
         fun get(context: Context): LanguagePrefs =
             LanguagePrefs(SharedPrefsStore(context.applicationContext.getSharedPreferences(FILE, Context.MODE_PRIVATE)))

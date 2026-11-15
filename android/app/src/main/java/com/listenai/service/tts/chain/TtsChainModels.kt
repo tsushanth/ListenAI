@@ -25,7 +25,7 @@ enum class FallbackReason {
     LANGUAGE_MISSING,
     MODEL_ABSENT,
     MODEL_TOO_SLOW,
-    /** The source has no voice for this language (the API's app voices are English). */
+    /** The source has no voice for this language (not in the API's list, or the API refused it). */
     UNSUPPORTED_LANGUAGE,
     UNKNOWN,
 }
@@ -71,6 +71,8 @@ data class TtsRequest(
     val wantWords: Boolean = false,
     /** The user picked one of the phone's own voices for this language: try the phone's engine before the cloud. */
     val preferSystem: Boolean = false,
+    /** The ReadAloud voice the user picked for this (non-English) language; used when the API still lists it for the language, else the default voice. */
+    val cloudVoiceId: String? = null,
 )
 
 interface TtsSource {
@@ -154,6 +156,16 @@ data class ChainConfig(
     val cooldownTransientMs: Long = 30_000,
     val cooldownRateLimitMs: Long = 60_000,
     val cooldownQuotaMs: Long = 10 * 60_000,
+    /**
+     * The cloud voices for languages other than English do not stream inside a sentence: the first audio is the whole chunk, and
+     * a long sentence takes seconds. So those reads use shorter chunks, and the first chunk gets a longer deadline (a speech
+     * machine that has just restarted needs about 5-6 s for its first call; the retry then finds it warm).
+     */
+    val nonEnglishMaxChunkChars: Int = 170,
+    val nonEnglishFirstChunkChars: Int = 90,
+    val nonEnglishFirstChunkBaseTimeoutMs: Long = 12_000,
+    /** How long the cloud is skipped for ONE language after the API refused it (not listed any more, unknown voice). English is not affected. */
+    val cooldownUnsupportedMs: Long = 10 * 60_000,
     /** Sources whose output is stored in the chunk cache. */
     val cacheableSources: Set<SourceId> = setOf(SourceId.API),
 )

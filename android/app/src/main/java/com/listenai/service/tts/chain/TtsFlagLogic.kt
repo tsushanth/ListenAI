@@ -17,7 +17,7 @@ object TtsFlagLogic {
 
     /**
      * The order of sources for the app's own reader. A language other than English goes to the cloud first only when the
-     * cloud source accepts it (it declines languages the API does not list a voice for, see CloudVoicePolicy), then the
+     * cloud source accepts it (it declines languages the API's list has no voice for, see CloudVoicePolicy), then the
      * phone's engine. [preferSystem] (the user chose a phone voice) puts the phone's engine first.
      */
     fun inAppOrder(apiEnabled: Boolean, language: String, preferSystem: Boolean = false): List<SourceId> {

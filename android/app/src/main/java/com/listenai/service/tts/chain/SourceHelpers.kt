@@ -22,6 +22,9 @@ object ApiFailureMapping {
     fun fromWsError(message: String): SourceFailure {
         val m = message.lowercase()
         return when {
+            // The worker does not speak that language (or no longer has that voice): per language, never a reason to leave English.
+            ("language" in m && ("support" in m || "not listed" in m || "unknown" in m)) || "unknown voice" in m ->
+                SourceFailure(FallbackReason.UNSUPPORTED_LANGUAGE, null, message)
             "capacity" in m || "busy" in m || "overload" in m -> SourceFailure(FallbackReason.SERVER_ERROR, null, message)
             "quota" in m || "credit" in m || "402" in m -> SourceFailure(FallbackReason.QUOTA, null, message)
             "rate" in m && "limit" in m -> SourceFailure(FallbackReason.RATE_LIMITED, null, message)
