@@ -23,9 +23,9 @@ export interface CloneServiceClient {
   createVoice(params: { voiceId: string; audio: Buffer; filename: string; language: string }): Promise<{ referenceSec: number }>;
   synthesize(params: { voiceId: string; text: string; language: string; speed?: number }): Promise<SynthesisResult>;
   /** Removes reference audio, embeddings and cached conditionals for the voice. Idempotent. */
-  deleteVoice(voiceId: string): Promise<void>;
+  deleteVoice(voiceId: string, language?: string): Promise<void>;
   /** Marks the voice unusable on the serving side without deleting (takedown, evidence preserved). */
-  disableVoice(voiceId: string): Promise<void>;
+  disableVoice(voiceId: string, language?: string): Promise<void>;
 }
 
 export interface SynthesisResult {

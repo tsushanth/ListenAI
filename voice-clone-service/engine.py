@@ -133,7 +133,7 @@ class ChatterboxEngine:
     def conds_path(self, vdir: str) -> str:
         return os.path.join(vdir, f"conds-{self.model}.pt")
 
-    def prepare_voice(self, vdir: str) -> float:
+    def prepare_voice(self, vdir: str, language=None) -> float:
         """Compute and cache the conditionals for vdir/ref.wav. Returns seconds spent. Raises AssertionError/ValueError on a bad clip."""
         t0 = time.time()
         with self.lock:
@@ -163,7 +163,7 @@ class ChatterboxEngine:
         return c
 
     # ---- synthesis ------------------------------------------------------------------------------
-    def synthesize(self, vdir: str, text: str, speed: float, chunk_chars: int, deadline_s: float) -> dict:
+    def synthesize(self, vdir: str, text: str, speed: float, chunk_chars: int, deadline_s: float, language=None) -> dict:
         import soundfile as sf
 
         sr, t0, cpu0 = self.tts.sr, time.time(), time.process_time()

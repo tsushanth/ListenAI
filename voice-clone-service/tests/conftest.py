@@ -38,7 +38,8 @@ class FakeEngine:
     def similarity(self, a, b):
         return 0.8
 
-    def prepare_voice(self, vdir):
+    def prepare_voice(self, vdir, language=None):
+        self.prepared_lang = language
         if self.fail_prepare:
             raise AssertionError("Audio prompt must be longer than 5 seconds!")
         open(os.path.join(vdir, "conds-fake.pt"), "w").write("c")
@@ -47,8 +48,9 @@ class FakeEngine:
     def forget_voice(self, vdir):
         self.forgotten.append(vdir)
 
-    def synthesize(self, vdir, text, speed, chunk_chars, deadline_s):
+    def synthesize(self, vdir, text, speed, chunk_chars, deadline_s, language=None):
         self.calls.append(text)
+        self.synth_lang = language
         if self.gate is not None:
             self.gate.wait(10)
         if self.synth_delay:
