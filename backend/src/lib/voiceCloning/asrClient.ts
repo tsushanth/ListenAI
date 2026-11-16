@@ -8,24 +8,43 @@ export function createGatewayAsr(opts: { gatewayUrl: string; apiKey: string; fet
   const f = opts.fetchImpl ?? fetch;
   return {
     async transcribe(audio, mimeType, language) {
-      const auth = await f(`${opts.gatewayUrl}/stt/authorize`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ key: opts.apiKey, mode: 'batch' }), signal: AbortSignal.timeout(10_000),
-      });
-      if (!auth.ok) throw new Error(`STT authorize failed: HTTP ${auth.status}`);
-      const { token, url } = (await auth.json()) as { token?: string; url?: string };
-      if (!token || !url) throw new Error('STT authorize returned an unexpected response');
-      const qs = new URLSearchParams();
-      if (language) qs.set('language', language);
-      const res = await f(`${url}/v1/stt?${qs.toString()}`, {
-        method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': mimeType || 'application/octet-stream' },
-        body: new Uint8Array(audio), signal: AbortSignal.timeout(120_000),
-      });
+      // The gateway's token lives 60 s and a cold worker can take longer than that to start, so the first try
+      // can come back 401 (expired while waiting). A fresh token against the now-warm worker then succeeds.
+      const attempt = async () => {
+        const auth = await f(`${opts.gatewayUrl}/stt/authorize`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ key: opts.apiKey, mode: 'batch' }), signal: AbortSignal.timeout(10_000),
+        });
+        if (!auth.ok) throw new Error(`STT authorize failed: HTTP ${auth.status}`);
+        const { token, url } = (await auth.json()) as { token?: string; url?: string };
+        if (!token || !url) throw new Error('STT authorize returned an unexpected response');
+        const qs = new URLSearchParams();
+        if (language) qs.set('language', language);
+        return f(`${url}/v1/stt?${qs.toString()}`, {
+          method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': mimeType || 'application/octet-stream' },
+          body: new Uint8Array(audio), signal: AbortSignal.timeout(240_000), // a cold worker has measured about 120 s
+        });
+      };
+      let res = await attempt();
+      if (res.status === 401) res = await attempt();
       if (!res.ok) throw new Error(`STT worker returned HTTP ${res.status}`);
       const body = (await res.json()) as { text?: string; segments?: Array<{ text: string }> };
       if (typeof body.text === 'string') return body.text;
       if (Array.isArray(body.segments)) return body.segments.map((s) => s.text).join(' ');
       throw new Error('STT worker returned an unexpected response shape');
+    },
+    async warm() {
+      try {
+        const auth = await f(`${opts.gatewayUrl}/stt/authorize`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ key: opts.apiKey, mode: 'batch' }), signal: AbortSignal.timeout(10_000),
+        });
+        if (!auth.ok) return;
+        const { token, url } = (await auth.json()) as { token?: string; url?: string };
+        if (!token || !url) return;
+        // Held open for the whole cold start so the container is not abandoned half-started.
+        await f(`${url}/health`, { headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(240_000) });
+      } catch { /* best effort */ }
     },
   };
 }
