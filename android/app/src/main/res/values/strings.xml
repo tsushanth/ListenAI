@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:tools="http://schemas.android.com/tools">
     <string name="app_name">ReadAloud AI</string>
-    <string name="system_tts_engine_name">ReadAloud AI Voices</string>
+    <string name="system_tts_engine_name" tools:ignore="MissingTranslation">ReadAloud AI Voices</string>
     <string name="system_tts_back_content_description">Back</string>
 
     <!-- Analytics consent (Firebase Analytics, opt-in). English only for now; other locales fall back to English. -->

@@ -53,7 +53,11 @@ object TextChunker {
             if (cut < units / 3) cut = window.lastIndexOf(' ')
             if (cut < units / 3) cut = wordBoundary(rest, units) - 1
             if (cut < units / 3) cut = units - 1
-            val end = safeEnd(rest, cut + 1)
+            var end = safeEnd(rest, cut + 1)
+            // A mark that ends a clause belongs to the text before it, not at the start of the next piece.
+            while (end < rest.length && (rest[end] in TRAILING_MARKS || rest[end] in CLOSERS)) end++
+            // What would be left is only closing marks (the sentence's last mark): keep it with this piece, a chunk of only "？" is not speakable.
+            if (rest.substring(end).all { it in TRAILING_MARKS || it in CLOSERS || it.isWhitespace() }) end = rest.length
             pieces += rest.substring(0, end).trim()
             rest = rest.substring(end).trim()
             lim = maxChars
@@ -76,6 +80,18 @@ object TextChunker {
     }
 
     private const val LOOKAHEAD = 16
+
+    /** True when [s] from [from] on has a letter or digit; by code point, so supplementary-plane ideographs count. */
+    private fun hasLetterOrDigit(s: String, from: Int): Boolean {
+        var i = from
+        while (i < s.length) {
+            val cp = s.codePointAt(i)
+            if (Character.isLetterOrDigit(cp)) return true
+            i += Character.charCount(cp)
+        }
+        return false
+    }
+    private const val TRAILING_MARKS = "、，。！？；：｡､,.!?;:"
 
     /** The word iterator is language specific for scripts written without spaces; pick it from the characters (kana mean Japanese even when kanji come first). */
     private fun localeOf(text: String): Locale {
@@ -120,7 +136,7 @@ object TextChunker {
                 if (lead.isNotEmpty()) { out[out.size - 1] = prev + lead; s = s.substring(lead.length).trim() }
             }
             if (s.isEmpty()) continue
-            if (s.none { it.isLetterOrDigit() }) {
+            if (!hasLetterOrDigit(s, 0)) {
                 // only punctuation or symbols: attach to the sentence before, else to the next one
                 if (out.isNotEmpty()) out[out.size - 1] = out.last() + " " + s else pending += s
                 continue
