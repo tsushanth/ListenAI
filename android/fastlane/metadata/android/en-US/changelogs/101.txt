@@ -1,0 +1,1 @@
+More languages in the app: the interface is now also available in Czech, Greek, Finnish, Hungarian, Romanian, Swedish and Ukrainian, the language you pick is remembered, and more of the app is translated. Long Chinese, Japanese, Korean and Thai text is now split at natural points for reading. Reading in English is unchanged.
