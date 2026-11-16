@@ -562,4 +562,20 @@
     <string name="delete_account_done_body">Dein Konto und deine Cloud-Daten wurden gelöscht und du wurdest auf diesem Gerät abgemeldet.</string>
     <string name="delete_account_done_play">Dein Google-Play-Abo ist weiterhin aktiv. Kündige es in Google Play, damit keine Zahlungen mehr anfallen.</string>
     <string name="delete_account_done_stripe">Dein Web-Abo ist weiterhin aktiv. Schreibe an support@kreativekoala.llc, um es kündigen zu lassen und keine Zahlungen mehr zu leisten.</string>
+
+    <!-- Machine translated, needs native review: c2 -->
+    <string name="read_text_reading_image">Bild wird gelesen…</string>
+    <string name="read_text_starting_playback">Sprachwiedergabe wird gestartet…</string>
+    <string name="read_text_speaking">Wird vorgelesen</string>
+    <string name="read_text_done">Fertig.</string>
+    <string name="read_text_read_again">Erneut vorlesen</string>
+    <string name="read_text_no_text">In diesem Bild wurde kein Text gefunden. Versuche es mit einem schärferen Foto.</string>
+    <string name="read_text_playback_failed">Wiedergabe fehlgeschlagen. Tippe auf Erneut vorlesen, um es noch einmal zu versuchen.</string>
+    <string name="read_text_playback_failed_code">Wiedergabe fehlgeschlagen (Code %1$d). Tippe auf Erneut vorlesen, um es noch einmal zu versuchen.</string>
+    <string name="read_text_error_generic">Etwas ist schiefgelaufen.</string>
+    <string name="read_text_cd_take_photo">Fotografiere Text, der vorgelesen werden soll. Kommt mit einem späteren Update.</string>
+    <string name="read_text_cd_pick_gallery">Wähle ein vorhandenes Foto aus deiner Galerie zum Vorlesen</string>
+    <string name="read_text_ocr_failed">Texterkennung fehlgeschlagen: %1$s</string>
+    <string name="read_text_image_load_failed">Das Bild konnte nicht geladen werden: %1$s</string>
+    <string name="player_generating_audio">Audio wird erzeugt…</string>
 </resources>

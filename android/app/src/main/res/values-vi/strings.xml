@@ -562,4 +562,20 @@
     <string name="delete_account_done_body">Tài khoản và dữ liệu đám mây của bạn đã bị xóa, và bạn đã đăng xuất trên thiết bị này.</string>
     <string name="delete_account_done_play">Gói đăng ký Google Play của bạn vẫn đang hoạt động. Hãy hủy trong Google Play để không bị tính phí.</string>
     <string name="delete_account_done_stripe">Gói đăng ký trên web của bạn vẫn đang hoạt động. Hãy gửi email tới support@kreativekoala.llc để hủy và không bị tính phí.</string>
+
+    <!-- Machine translated, needs native review: c2 -->
+    <string name="read_text_reading_image">Đang đọc hình ảnh…</string>
+    <string name="read_text_starting_playback">Đang bắt đầu phát giọng đọc…</string>
+    <string name="read_text_speaking">Đang đọc</string>
+    <string name="read_text_done">Xong.</string>
+    <string name="read_text_read_again">Đọc lại</string>
+    <string name="read_text_no_text">Không tìm thấy văn bản trong hình ảnh đó. Hãy thử ảnh rõ nét hơn.</string>
+    <string name="read_text_playback_failed">Phát không thành công. Chạm vào Đọc lại để thử lại.</string>
+    <string name="read_text_playback_failed_code">Phát không thành công (mã %1$d). Chạm vào Đọc lại để thử lại.</string>
+    <string name="read_text_error_generic">Đã xảy ra lỗi.</string>
+    <string name="read_text_cd_take_photo">Chụp ảnh văn bản để đọc to. Sẽ có trong một bản cập nhật sau.</string>
+    <string name="read_text_cd_pick_gallery">Chọn một ảnh có sẵn trong thư viện ảnh để đọc to</string>
+    <string name="read_text_ocr_failed">Nhận dạng văn bản không thành công: %1$s</string>
+    <string name="read_text_image_load_failed">Không thể tải hình ảnh: %1$s</string>
+    <string name="player_generating_audio">Đang tạo âm thanh…</string>
 </resources>

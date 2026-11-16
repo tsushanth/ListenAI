@@ -562,4 +562,20 @@
     <string name="delete_account_done_body">Natanggal ang iyong account at cloud data at nag-sign out ka sa device na ito.</string>
     <string name="delete_account_done_play">Aktibo pa rin ang iyong subscription sa Google Play. Kanselahin ito sa Google Play para hindi ka na masingil.</string>
     <string name="delete_account_done_stripe">Aktibo pa rin ang iyong web subscription. Mag-email sa support@kreativekoala.llc para makansela ito at hindi ka na masingil.</string>
+
+    <!-- Machine translated, needs native review: c2 -->
+    <string name="read_text_reading_image">Binabasa ang larawan…</string>
+    <string name="read_text_starting_playback">Sinisimulan ang pag-play ng boses…</string>
+    <string name="read_text_speaking">Binabasa ngayon</string>
+    <string name="read_text_done">Tapos na.</string>
+    <string name="read_text_read_again">Basahin muli</string>
+    <string name="read_text_no_text">Walang nakitang teksto sa larawang iyon. Subukan ang mas malinaw na larawan.</string>
+    <string name="read_text_playback_failed">Nabigo ang pag-play. I-tap ang Basahin muli para subukan ulit.</string>
+    <string name="read_text_playback_failed_code">Nabigo ang pag-play (code %1$d). I-tap ang Basahin muli para subukan ulit.</string>
+    <string name="read_text_error_generic">May nangyaring mali.</string>
+    <string name="read_text_cd_take_photo">Kumuha ng larawan ng teksto para mabasa nang malakas. Darating sa susunod na update.</string>
+    <string name="read_text_cd_pick_gallery">Pumili ng umiiral na larawan mula sa iyong gallery para mabasa nang malakas</string>
+    <string name="read_text_ocr_failed">Nabigo ang pagkilala ng teksto: %1$s</string>
+    <string name="read_text_image_load_failed">Hindi ma-load ang larawan: %1$s</string>
+    <string name="player_generating_audio">Gumagawa ng audio…</string>
 </resources>

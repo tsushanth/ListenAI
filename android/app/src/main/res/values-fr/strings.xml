@@ -562,4 +562,20 @@
     <string name="delete_account_done_body">Votre compte et vos données dans le cloud ont été supprimés et vous avez été déconnecté sur cet appareil.</string>
     <string name="delete_account_done_play">Votre abonnement Google Play est toujours actif. Annulez-le dans Google Play pour ne plus être facturé.</string>
     <string name="delete_account_done_stripe">Votre abonnement web est toujours actif. Écrivez à support@kreativekoala.llc pour le faire annuler et ne plus être facturé.</string>
+
+    <!-- Machine translated, needs native review: c2 -->
+    <string name="read_text_reading_image">Lecture de l\'image…</string>
+    <string name="read_text_starting_playback">Démarrage de la lecture vocale…</string>
+    <string name="read_text_speaking">Lecture en cours</string>
+    <string name="read_text_done">Terminé.</string>
+    <string name="read_text_read_again">Lire à nouveau</string>
+    <string name="read_text_no_text">Aucun texte trouvé dans cette image. Essayez une photo plus nette.</string>
+    <string name="read_text_playback_failed">Échec de la lecture. Touchez Lire à nouveau pour réessayer.</string>
+    <string name="read_text_playback_failed_code">Échec de la lecture (code %1$d). Touchez Lire à nouveau pour réessayer.</string>
+    <string name="read_text_error_generic">Un problème est survenu.</string>
+    <string name="read_text_cd_take_photo">Prenez en photo un texte à lire à voix haute. Disponible dans une prochaine mise à jour.</string>
+    <string name="read_text_cd_pick_gallery">Choisissez une photo de votre galerie à lire à voix haute</string>
+    <string name="read_text_ocr_failed">Échec de la reconnaissance du texte : %1$s</string>
+    <string name="read_text_image_load_failed">Impossible de charger l\'image : %1$s</string>
+    <string name="player_generating_audio">Génération de l\'audio…</string>
 </resources>

@@ -562,4 +562,20 @@
     <string name="delete_account_done_body">Je account en cloudgegevens zijn verwijderd en je bent op dit apparaat uitgelogd.</string>
     <string name="delete_account_done_play">Je Google Play-abonnement is nog actief. Zeg het op in Google Play om geen kosten meer te betalen.</string>
     <string name="delete_account_done_stripe">Je webabonnement is nog actief. Mail naar support@kreativekoala.llc om het te laten opzeggen en geen kosten meer te betalen.</string>
+
+    <!-- Machine translated, needs native review: c2 -->
+    <string name="read_text_reading_image">Afbeelding wordt gelezen…</string>
+    <string name="read_text_starting_playback">Spraakweergave wordt gestart…</string>
+    <string name="read_text_speaking">Nu aan het voorlezen</string>
+    <string name="read_text_done">Klaar.</string>
+    <string name="read_text_read_again">Opnieuw voorlezen</string>
+    <string name="read_text_no_text">Geen tekst gevonden in die afbeelding. Probeer een scherpere foto.</string>
+    <string name="read_text_playback_failed">Afspelen mislukt. Tik op Opnieuw voorlezen om het opnieuw te proberen.</string>
+    <string name="read_text_playback_failed_code">Afspelen mislukt (code %1$d). Tik op Opnieuw voorlezen om het opnieuw te proberen.</string>
+    <string name="read_text_error_generic">Er ging iets mis.</string>
+    <string name="read_text_cd_take_photo">Maak een foto van tekst om voor te lezen. Komt in een latere update.</string>
+    <string name="read_text_cd_pick_gallery">Kies een bestaande foto uit je galerij om voor te lezen</string>
+    <string name="read_text_ocr_failed">Tekstherkenning mislukt: %1$s</string>
+    <string name="read_text_image_load_failed">De afbeelding kon niet worden geladen: %1$s</string>
+    <string name="player_generating_audio">Audio wordt gegenereerd…</string>
 </resources>

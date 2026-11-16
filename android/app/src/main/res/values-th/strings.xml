@@ -562,4 +562,20 @@
     <string name="delete_account_done_body">บัญชีและข้อมูลบนคลาวด์ของคุณถูกลบแล้ว และคุณถูกออกจากระบบบนอุปกรณ์นี้</string>
     <string name="delete_account_done_play">การสมัครสมาชิก Google Play ของคุณยังใช้งานอยู่ ให้ยกเลิกใน Google Play เพื่อไม่ให้ถูกเรียกเก็บเงิน</string>
     <string name="delete_account_done_stripe">การสมัครสมาชิกผ่านเว็บของคุณยังใช้งานอยู่ อีเมลไปที่ support@kreativekoala.llc เพื่อให้ยกเลิกและไม่ถูกเรียกเก็บเงิน</string>
+
+    <!-- Machine translated, needs native review: c2 -->
+    <string name="read_text_reading_image">กำลังอ่านรูปภาพ…</string>
+    <string name="read_text_starting_playback">กำลังเริ่มเล่นเสียงอ่าน…</string>
+    <string name="read_text_speaking">กำลังอ่านออกเสียง</string>
+    <string name="read_text_done">เสร็จแล้ว</string>
+    <string name="read_text_read_again">อ่านอีกครั้ง</string>
+    <string name="read_text_no_text">ไม่พบข้อความในรูปภาพนั้น ลองใช้รูปที่ชัดกว่านี้</string>
+    <string name="read_text_playback_failed">เล่นไม่สำเร็จ แตะอ่านอีกครั้งเพื่อลองใหม่</string>
+    <string name="read_text_playback_failed_code">เล่นไม่สำเร็จ (รหัส %1$d) แตะอ่านอีกครั้งเพื่อลองใหม่</string>
+    <string name="read_text_error_generic">เกิดข้อผิดพลาด</string>
+    <string name="read_text_cd_take_photo">ถ่ายรูปข้อความเพื่ออ่านออกเสียง จะมาในการอัปเดตครั้งถัดไป</string>
+    <string name="read_text_cd_pick_gallery">เลือกรูปที่มีอยู่จากแกลเลอรีของคุณเพื่ออ่านออกเสียง</string>
+    <string name="read_text_ocr_failed">การจดจำข้อความล้มเหลว: %1$s</string>
+    <string name="read_text_image_load_failed">โหลดรูปภาพไม่ได้: %1$s</string>
+    <string name="player_generating_audio">กำลังสร้างเสียง…</string>
 </resources>

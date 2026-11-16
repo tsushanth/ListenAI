@@ -562,4 +562,20 @@
     <string name="delete_account_done_body">Akaun dan data awan anda telah dipadam dan anda telah dilog keluar pada peranti ini.</string>
     <string name="delete_account_done_play">Langganan Google Play anda masih aktif. Batalkannya dalam Google Play supaya tidak dicaj lagi.</string>
     <string name="delete_account_done_stripe">Langganan web anda masih aktif. E-mel support@kreativekoala.llc untuk membatalkannya dan berhenti dicaj.</string>
+
+    <!-- Machine translated, needs native review: c2 -->
+    <string name="read_text_reading_image">Membaca imej…</string>
+    <string name="read_text_starting_playback">Memulakan main balik suara…</string>
+    <string name="read_text_speaking">Sedang membaca</string>
+    <string name="read_text_done">Selesai.</string>
+    <string name="read_text_read_again">Baca semula</string>
+    <string name="read_text_no_text">Tiada teks ditemui dalam imej itu. Cuba foto yang lebih jelas.</string>
+    <string name="read_text_playback_failed">Main balik gagal. Ketik Baca semula untuk mencuba lagi.</string>
+    <string name="read_text_playback_failed_code">Main balik gagal (kod %1$d). Ketik Baca semula untuk mencuba lagi.</string>
+    <string name="read_text_error_generic">Sesuatu tidak kena.</string>
+    <string name="read_text_cd_take_photo">Ambil foto teks untuk dibacakan. Akan hadir dalam kemas kini kemudian.</string>
+    <string name="read_text_cd_pick_gallery">Pilih foto sedia ada daripada galeri anda untuk dibacakan</string>
+    <string name="read_text_ocr_failed">Pengecaman teks gagal: %1$s</string>
+    <string name="read_text_image_load_failed">Imej tidak dapat dimuatkan: %1$s</string>
+    <string name="player_generating_audio">Menjana audio…</string>
 </resources>

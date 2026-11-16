@@ -1,5 +1,7 @@
 package com.listenai.ui.usage
 
+import androidx.compose.ui.res.stringResource
+import com.listenai.R
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -53,7 +55,7 @@ fun UsageQuotaScreen(
                 title = { Text("Usage & Quota", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.Default.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                 }
             )

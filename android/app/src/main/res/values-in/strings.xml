@@ -562,4 +562,20 @@
     <string name="delete_account_done_body">Akun dan data cloud Anda telah dihapus dan Anda telah keluar di perangkat ini.</string>
     <string name="delete_account_done_play">Langganan Google Play Anda masih aktif. Batalkan di Google Play agar tidak ditagih lagi.</string>
     <string name="delete_account_done_stripe">Langganan web Anda masih aktif. Kirim email ke support@kreativekoala.llc untuk membatalkannya dan berhenti ditagih.</string>
+
+    <!-- Machine translated, needs native review: c2 -->
+    <string name="read_text_reading_image">Membaca gambar…</string>
+    <string name="read_text_starting_playback">Memulai pemutaran suara…</string>
+    <string name="read_text_speaking">Sedang membacakan</string>
+    <string name="read_text_done">Selesai.</string>
+    <string name="read_text_read_again">Baca lagi</string>
+    <string name="read_text_no_text">Tidak ada teks yang ditemukan pada gambar itu. Coba foto yang lebih jelas.</string>
+    <string name="read_text_playback_failed">Pemutaran gagal. Ketuk Baca lagi untuk mencoba lagi.</string>
+    <string name="read_text_playback_failed_code">Pemutaran gagal (kode %1$d). Ketuk Baca lagi untuk mencoba lagi.</string>
+    <string name="read_text_error_generic">Terjadi kesalahan.</string>
+    <string name="read_text_cd_take_photo">Ambil foto teks untuk dibacakan. Hadir di pembaruan berikutnya.</string>
+    <string name="read_text_cd_pick_gallery">Pilih foto yang ada dari galeri Anda untuk dibacakan</string>
+    <string name="read_text_ocr_failed">Pengenalan teks gagal: %1$s</string>
+    <string name="read_text_image_load_failed">Tidak dapat memuat gambar: %1$s</string>
+    <string name="player_generating_audio">Menghasilkan audio…</string>
 </resources>

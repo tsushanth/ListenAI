@@ -562,4 +562,20 @@
     <string name="delete_account_done_body">您的账号和云端数据已被删除，并已在此设备上退出登录。</string>
     <string name="delete_account_done_play">您的 Google Play 订阅仍然有效。请在 Google Play 中取消订阅，以免继续扣费。</string>
     <string name="delete_account_done_stripe">您的网页订阅仍然有效。请发送邮件至 support@kreativekoala.llc 以取消订阅并停止扣费。</string>
+
+    <!-- Machine translated, needs native review: c2 -->
+    <string name="read_text_reading_image">正在读取图片…</string>
+    <string name="read_text_starting_playback">正在开始语音播放…</string>
+    <string name="read_text_speaking">正在朗读</string>
+    <string name="read_text_done">完成。</string>
+    <string name="read_text_read_again">再读一遍</string>
+    <string name="read_text_no_text">在该图片中未找到文字。请尝试更清晰的照片。</string>
+    <string name="read_text_playback_failed">播放失败。点按“再读一遍”重试。</string>
+    <string name="read_text_playback_failed_code">播放失败（错误代码 %1$d）。点按“再读一遍”重试。</string>
+    <string name="read_text_error_generic">出了点问题。</string>
+    <string name="read_text_cd_take_photo">拍摄文字照片以便朗读。将在后续更新中推出。</string>
+    <string name="read_text_cd_pick_gallery">从相册中选择一张照片进行朗读</string>
+    <string name="read_text_ocr_failed">文字识别失败：%1$s</string>
+    <string name="read_text_image_load_failed">无法加载图片：%1$s</string>
+    <string name="player_generating_audio">正在生成音频…</string>
 </resources>

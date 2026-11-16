@@ -562,4 +562,20 @@
     <string name="delete_account_done_body">アカウントとクラウド上のデータを削除し、このデバイスではログアウトしました。</string>
     <string name="delete_account_done_play">Google Play のサブスクリプションは引き続き有効です。課金を止めるには Google Play で解約してください。</string>
     <string name="delete_account_done_stripe">ウェブのサブスクリプションは引き続き有効です。解約して課金を止めるには support@kreativekoala.llc までメールしてください。</string>
+
+    <!-- Machine translated, needs native review: c2 -->
+    <string name="read_text_reading_image">画像を読み取っています…</string>
+    <string name="read_text_starting_playback">音声の再生を開始しています…</string>
+    <string name="read_text_speaking">読み上げ中</string>
+    <string name="read_text_done">完了しました。</string>
+    <string name="read_text_read_again">もう一度読む</string>
+    <string name="read_text_no_text">この画像にはテキストが見つかりませんでした。もっと鮮明な写真をお試しください。</string>
+    <string name="read_text_playback_failed">再生に失敗しました。「もう一度読む」をタップして再試行してください。</string>
+    <string name="read_text_playback_failed_code">再生に失敗しました（コード %1$d）。「もう一度読む」をタップして再試行してください。</string>
+    <string name="read_text_error_generic">問題が発生しました。</string>
+    <string name="read_text_cd_take_photo">読み上げたい文章の写真を撮ります。今後のアップデートで対応予定です。</string>
+    <string name="read_text_cd_pick_gallery">読み上げたい写真をギャラリーから選びます</string>
+    <string name="read_text_ocr_failed">テキスト認識に失敗しました：%1$s</string>
+    <string name="read_text_image_load_failed">画像を読み込めませんでした：%1$s</string>
+    <string name="player_generating_audio">音声を生成しています…</string>
 </resources>

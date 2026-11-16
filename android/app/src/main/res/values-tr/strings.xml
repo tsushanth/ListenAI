@@ -562,4 +562,20 @@
     <string name="delete_account_done_body">Hesabınız ve bulut verileriniz silindi ve bu cihazdaki oturumunuz kapatıldı.</string>
     <string name="delete_account_done_play">Google Play aboneliğiniz hâlâ etkin. Ücretlendirilmemek için aboneliği Google Play\'den iptal edin.</string>
     <string name="delete_account_done_stripe">Web aboneliğiniz hâlâ etkin. İptal ettirmek ve ücretlendirilmemek için support@kreativekoala.llc adresine e-posta gönderin.</string>
+
+    <!-- Machine translated, needs native review: c2 -->
+    <string name="read_text_reading_image">Görüntü okunuyor…</string>
+    <string name="read_text_starting_playback">Sesli oynatma başlatılıyor…</string>
+    <string name="read_text_speaking">Şimdi okunuyor</string>
+    <string name="read_text_done">Bitti.</string>
+    <string name="read_text_read_again">Tekrar oku</string>
+    <string name="read_text_no_text">Bu görüntüde metin bulunamadı. Daha net bir fotoğraf deneyin.</string>
+    <string name="read_text_playback_failed">Oynatma başarısız oldu. Yeniden denemek için Tekrar oku\'ya dokunun.</string>
+    <string name="read_text_playback_failed_code">Oynatma başarısız oldu (kod %1$d). Yeniden denemek için Tekrar oku\'ya dokunun.</string>
+    <string name="read_text_error_generic">Bir sorun oluştu.</string>
+    <string name="read_text_cd_take_photo">Sesli okunacak metnin fotoğrafını çekin. Sonraki bir güncellemede gelecek.</string>
+    <string name="read_text_cd_pick_gallery">Sesli okumak için galerinizden mevcut bir fotoğraf seçin</string>
+    <string name="read_text_ocr_failed">Metin tanıma başarısız oldu: %1$s</string>
+    <string name="read_text_image_load_failed">Görüntü yüklenemedi: %1$s</string>
+    <string name="player_generating_audio">Ses oluşturuluyor…</string>
 </resources>

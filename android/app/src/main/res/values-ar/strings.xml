@@ -562,4 +562,20 @@
     <string name="delete_account_done_body">تم حذف حسابك وبياناتك السحابية وتم تسجيل خروجك على هذا الجهاز.</string>
     <string name="delete_account_done_play">لا يزال اشتراكك في Google Play نشطًا. ألغِه في Google Play لتتوقف عن الخصم.</string>
     <string name="delete_account_done_stripe">لا يزال اشتراكك على الويب نشطًا. راسل support@kreativekoala.llc لإلغائه ووقف الخصم.</string>
+
+    <!-- Machine translated, needs native review: c2 -->
+    <string name="read_text_reading_image">جارٍ قراءة الصورة…</string>
+    <string name="read_text_starting_playback">جارٍ بدء تشغيل الصوت…</string>
+    <string name="read_text_speaking">جارٍ القراءة الآن</string>
+    <string name="read_text_done">تم.</string>
+    <string name="read_text_read_again">اقرأ مرة أخرى</string>
+    <string name="read_text_no_text">لم يُعثر على نص في تلك الصورة. جرّب صورة أوضح.</string>
+    <string name="read_text_playback_failed">فشل التشغيل. اضغط على اقرأ مرة أخرى لإعادة المحاولة.</string>
+    <string name="read_text_playback_failed_code">فشل التشغيل (الرمز %1$d). اضغط على اقرأ مرة أخرى لإعادة المحاولة.</string>
+    <string name="read_text_error_generic">حدث خطأ.</string>
+    <string name="read_text_cd_take_photo">التقط صورة لنص ليُقرأ بصوت عالٍ. سيتوفر في تحديث لاحق.</string>
+    <string name="read_text_cd_pick_gallery">اختر صورة موجودة من معرضك لتُقرأ بصوت عالٍ</string>
+    <string name="read_text_ocr_failed">فشل التعرّف على النص: %1$s</string>
+    <string name="read_text_image_load_failed">تعذّر تحميل الصورة: %1$s</string>
+    <string name="player_generating_audio">جارٍ إنشاء الصوت…</string>
 </resources>

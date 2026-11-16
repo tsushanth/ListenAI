@@ -562,4 +562,20 @@
     <string name="delete_account_done_body">आपका खाता और क्लाउड डेटा हटा दिया गया है और आप इस डिवाइस पर साइन आउट हो गए हैं।</string>
     <string name="delete_account_done_play">आपकी Google Play सदस्यता अब भी सक्रिय है। शुल्क रोकने के लिए उसे Google Play में रद्द करें।</string>
     <string name="delete_account_done_stripe">आपकी वेब सदस्यता अब भी सक्रिय है। उसे रद्द कराने और शुल्क रोकने के लिए support@kreativekoala.llc पर ईमेल करें।</string>
+
+    <!-- Machine translated, needs native review: c2 -->
+    <string name="read_text_reading_image">छवि पढ़ी जा रही है…</string>
+    <string name="read_text_starting_playback">आवाज़ में सुनाना शुरू हो रहा है…</string>
+    <string name="read_text_speaking">अभी पढ़ रहा है</string>
+    <string name="read_text_done">हो गया।</string>
+    <string name="read_text_read_again">फिर से पढ़ें</string>
+    <string name="read_text_no_text">उस छवि में कोई टेक्स्ट नहीं मिला। ज़्यादा साफ़ फ़ोटो आज़माएँ।</string>
+    <string name="read_text_playback_failed">प्लेबैक विफल रहा। दोबारा कोशिश करने के लिए फिर से पढ़ें पर टैप करें।</string>
+    <string name="read_text_playback_failed_code">प्लेबैक विफल रहा (कोड %1$d)। दोबारा कोशिश करने के लिए फिर से पढ़ें पर टैप करें।</string>
+    <string name="read_text_error_generic">कुछ गड़बड़ हो गई।</string>
+    <string name="read_text_cd_take_photo">पढ़कर सुनाने के लिए टेक्स्ट की फ़ोटो लें। आगे के अपडेट में आएगा।</string>
+    <string name="read_text_cd_pick_gallery">पढ़कर सुनाने के लिए अपनी गैलरी से कोई मौजूदा फ़ोटो चुनें</string>
+    <string name="read_text_ocr_failed">टेक्स्ट पहचान विफल रही: %1$s</string>
+    <string name="read_text_image_load_failed">छवि लोड नहीं हो सकी: %1$s</string>
+    <string name="player_generating_audio">ऑडियो बनाया जा रहा है…</string>
 </resources>

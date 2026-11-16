@@ -562,4 +562,20 @@
     <string name="delete_account_done_body">Twoje konto i dane w chmurze zostały usunięte, a Ty zostałeś wylogowany na tym urządzeniu.</string>
     <string name="delete_account_done_play">Twoja subskrypcja Google Play jest nadal aktywna. Anuluj ją w Google Play, aby przestać być obciążanym opłatami.</string>
     <string name="delete_account_done_stripe">Twoja subskrypcja internetowa jest nadal aktywna. Napisz na adres support@kreativekoala.llc, aby ją anulować i przestać być obciążanym opłatami.</string>
+
+    <!-- Machine translated, needs native review: c2 -->
+    <string name="read_text_reading_image">Odczytywanie obrazu…</string>
+    <string name="read_text_starting_playback">Uruchamianie odtwarzania głosu…</string>
+    <string name="read_text_speaking">Czytam teraz</string>
+    <string name="read_text_done">Gotowe.</string>
+    <string name="read_text_read_again">Czytaj ponownie</string>
+    <string name="read_text_no_text">Nie znaleziono tekstu na tym obrazie. Spróbuj wyraźniejszego zdjęcia.</string>
+    <string name="read_text_playback_failed">Odtwarzanie nie powiodło się. Kliknij Czytaj ponownie, aby spróbować jeszcze raz.</string>
+    <string name="read_text_playback_failed_code">Odtwarzanie nie powiodło się (kod %1$d). Kliknij Czytaj ponownie, aby spróbować jeszcze raz.</string>
+    <string name="read_text_error_generic">Coś poszło nie tak.</string>
+    <string name="read_text_cd_take_photo">Zrób zdjęcie tekstu do przeczytania na głos. Pojawi się w jednej z następnych aktualizacji.</string>
+    <string name="read_text_cd_pick_gallery">Wybierz zdjęcie z galerii, aby je przeczytać na głos</string>
+    <string name="read_text_ocr_failed">Rozpoznawanie tekstu nie powiodło się: %1$s</string>
+    <string name="read_text_image_load_failed">Nie udało się wczytać obrazu: %1$s</string>
+    <string name="player_generating_audio">Generowanie dźwięku…</string>
 </resources>

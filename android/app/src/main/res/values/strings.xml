@@ -24,6 +24,20 @@
     <string name="read_text_take_photo">Take a photo</string>
     <string name="read_text_pick_gallery">Pick from gallery</string>
     <string name="read_text_coming_soon">Taking a photo with the camera is coming in a later update. For now, pick a photo from your gallery.</string>
+    <string name="read_text_reading_image">Reading the image…</string>
+    <string name="read_text_starting_playback">Starting voice playback…</string>
+    <string name="read_text_speaking">Speaking now</string>
+    <string name="read_text_done">Done.</string>
+    <string name="read_text_read_again">Read again</string>
+    <string name="read_text_no_text">No text found in that image. Try a clearer photo.</string>
+    <string name="read_text_playback_failed">Playback failed. Tap Read again to retry.</string>
+    <string name="read_text_playback_failed_code">Playback failed (code %1$d). Tap Read again to retry.</string>
+    <string name="read_text_error_generic">Something went wrong.</string>
+    <string name="read_text_cd_take_photo">Take a photo of text to read aloud. Coming in a later update.</string>
+    <string name="read_text_cd_pick_gallery">Pick an existing photo from your gallery to read aloud</string>
+    <string name="read_text_ocr_failed">Text recognition failed: %1$s</string>
+    <string name="read_text_image_load_failed">Could not load the image: %1$s</string>
+    <string name="player_generating_audio">Generating audio…</string>
 
     <!-- Home Screen -->
     <string name="promo_title">Download and listen anytime, anywhere</string>

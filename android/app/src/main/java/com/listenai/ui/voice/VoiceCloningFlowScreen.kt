@@ -1,5 +1,7 @@
 package com.listenai.ui.voice
 
+import androidx.compose.ui.res.stringResource
+import com.listenai.R
 import android.Manifest
 import android.app.Activity
 import android.content.ContextWrapper
@@ -195,7 +197,7 @@ fun VoiceCloningFlowScreen(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     IconButton(onClick = { if (!vm.back()) onCancel() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                     IconButton(onClick = onCancel) {
                         Icon(Icons.Default.Close, contentDescription = "Cancel")

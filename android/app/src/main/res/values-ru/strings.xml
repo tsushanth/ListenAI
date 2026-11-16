@@ -562,4 +562,20 @@
     <string name="delete_account_done_body">Ваш аккаунт и данные в облаке удалены, а на этом устройстве вы вышли из аккаунта.</string>
     <string name="delete_account_done_play">Ваша подписка Google Play всё ещё активна. Отмените её в Google Play, чтобы с вас больше не списывали деньги.</string>
     <string name="delete_account_done_stripe">Ваша подписка на сайте всё ещё активна. Напишите на support@kreativekoala.llc, чтобы её отменили и с вас больше не списывали деньги.</string>
+
+    <!-- Machine translated, needs native review: c2 -->
+    <string name="read_text_reading_image">Чтение изображения…</string>
+    <string name="read_text_starting_playback">Запуск озвучивания…</string>
+    <string name="read_text_speaking">Читаю сейчас</string>
+    <string name="read_text_done">Готово.</string>
+    <string name="read_text_read_again">Прочитать ещё раз</string>
+    <string name="read_text_no_text">В этом изображении не найден текст. Попробуйте более чёткое фото.</string>
+    <string name="read_text_playback_failed">Не удалось воспроизвести. Нажмите «Прочитать ещё раз», чтобы повторить.</string>
+    <string name="read_text_playback_failed_code">Не удалось воспроизвести (код %1$d). Нажмите «Прочитать ещё раз», чтобы повторить.</string>
+    <string name="read_text_error_generic">Что-то пошло не так.</string>
+    <string name="read_text_cd_take_photo">Сфотографируйте текст, чтобы его прочитали вслух. Появится в одном из следующих обновлений.</string>
+    <string name="read_text_cd_pick_gallery">Выберите фото из галереи, чтобы прочитать его вслух</string>
+    <string name="read_text_ocr_failed">Не удалось распознать текст: %1$s</string>
+    <string name="read_text_image_load_failed">Не удалось загрузить изображение: %1$s</string>
+    <string name="player_generating_audio">Создание аудио…</string>
 </resources>
