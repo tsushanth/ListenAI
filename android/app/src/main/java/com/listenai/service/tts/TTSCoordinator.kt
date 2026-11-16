@@ -61,13 +61,14 @@ class TTSCoordinator(
         // Cloned voices keep their own path (the user chose that voice on purpose). Two cases keep the older routing:
         //  - the user turned on offline Kokoro in settings and the model is on disk (they asked for on-device), and
         //  - forceOnDevice (the "queue is busy, use offline AI" button).
-        if (!isCloned && !forceOnDevice && !userChoseOnDeviceKokoro()) {
+        if (com.listenai.service.tts.chain.TtsRouting.useChain(isCloned, forceOnDevice, userChoseOnDeviceKokoro(), language)) {
             val result = ChainSynthesizer.synthesize(
                 context = context,
                 text = text,
                 voice = voice,
                 language = language ?: "en",
                 speed = adjustedOptions.speed,
+                forcePhoneVoice = com.listenai.service.tts.chain.TtsRouting.preferPhoneVoice(forceOnDevice, language),
                 onProgress = onProgress,
             )
             usageTracker.trackStandardUsage(

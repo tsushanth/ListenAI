@@ -50,11 +50,9 @@ import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.google.mlkit.vision.common.InputImage
-import com.google.mlkit.vision.text.TextRecognition
-import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import com.listenai.R
 import com.listenai.service.LanguageDetector
+import com.listenai.service.ocr.OcrEngine
 import com.listenai.service.tts.ReadTextLanguage
 import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.CompletableDeferred
@@ -124,7 +122,7 @@ fun ReadTextScreen() {
                 status = Status.Error
                 return@launch
             }
-            val language = ReadTextLanguage.languageOrDefault(LanguageDetector.detectOrNull(text))
+            val language = ReadTextLanguage.languageFor(LanguageDetector.detectOrNull(text), text)
             when (val plan = ReadTextLanguage.plan(language, tts.isLanguageAvailable(ReadTextLanguage.localeFor(language)))) {
                 is ReadTextLanguage.Plan.Speak -> {
                     noVoiceLanguage = null
@@ -215,6 +213,7 @@ fun ReadTextScreen() {
         errorMessage = null
         recognizedText = ""
         runOcr(
+            scope = scope,
             context = context,
             uri = uri,
             onResult = { text ->
@@ -456,24 +455,29 @@ private fun ReadTextContent(
 }
 
 /**
- * Run ML Kit Text Recognition on the picked URI and hand the text to [onResult]; the caller detects its language and
- * speaks it. Errors surface via [onError] so the composable can re-render its status liveRegion.
+ * Run on-device text recognition on the picked URI (Latin, Chinese, Japanese, Korean and Devanagari models, see [OcrEngine])
+ * and hand the text to [onResult]; the caller detects its language and speaks it. Errors surface via [onError] so the
+ * composable can re-render its status liveRegion.
  */
 private fun runOcr(
+    scope: kotlinx.coroutines.CoroutineScope,
     context: android.content.Context,
     uri: Uri,
     onResult: (String) -> Unit,
     onError: (String) -> Unit,
 ) {
-    try {
-        val image = InputImage.fromFilePath(context, uri)
-        val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
-        recognizer.process(image)
-            .addOnSuccessListener { visionText -> onResult(visionText.text) }
-            .addOnFailureListener { e ->
-                onError(context.getString(R.string.read_text_ocr_failed, e.message ?: ""))
-            }
-    } catch (e: Exception) {
-        onError(context.getString(R.string.read_text_image_load_failed, e.message ?: ""))
+    scope.launch {
+        val text = try {
+            OcrEngine.recognize(context, uri, Locale.getDefault().language)
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (e: java.io.IOException) {
+            onError(context.getString(R.string.read_text_image_load_failed, e.message ?: ""))
+            return@launch
+        } catch (e: Exception) {
+            onError(context.getString(R.string.read_text_ocr_failed, e.message ?: ""))
+            return@launch
+        }
+        onResult(text)
     }
 }

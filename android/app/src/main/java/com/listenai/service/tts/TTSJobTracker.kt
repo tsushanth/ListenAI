@@ -58,7 +58,7 @@ class TTSJobTracker(
     /**
      * Start synthesis for an article. Runs in background, survives navigation.
      */
-    fun startSynthesis(articleId: String, text: String, voice: VoicePreset, articleTitle: String?) {
+    fun startSynthesis(articleId: String, text: String, voice: VoicePreset, articleTitle: String?, language: String? = null) {
         // Cancel any existing job for this article
         cancelJob(articleId)
 
@@ -81,6 +81,7 @@ class TTSJobTracker(
                 val result = ttsCoordinator.synthesize(
                     text = text,
                     voice = voice,
+                    language = language,
                     onProgress = { progress ->
                         val currentJob = _jobs.value[articleId] ?: return@synthesize
                         val updatedJob = currentJob.copy(

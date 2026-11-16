@@ -598,7 +598,8 @@ fun PlayerScreen(
                     text = article.rawText,
                     voice = voice,
                     forceOnDevice = forceOnDevice,
-                    language = if (forceOnDevice) null else article.language,
+                    // The reading language of this document (the user's pick first), also for the forced offline read: it keeps a non-English read off the English-only model.
+                    language = com.listenai.service.tts.LanguageChoice.resolve(languagePrefs.override(article.id), null, article.language),
                     onProgress = { progress ->
                       if (isCurrent()) {
                         // Update UI state (called from IO dispatcher, but Compose state is thread-safe)
