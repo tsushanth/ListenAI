@@ -79,23 +79,57 @@ export function createServiceClient(opts: ServiceClientOptions): CloneServiceCli
       };
       return out;
     },
-    async deleteVoice(voiceId) {
+    async deleteVoice(voiceId, _language) {
       // 404 = already gone: deletion is idempotent.
       const res = await f(`${base}/voices/${encodeURIComponent(voiceId)}`, { method: 'DELETE', headers, signal: AbortSignal.timeout(60_000) }).catch((err) => {
         throw new ServiceUnavailableError(`voice clone service unreachable: ${(err as Error).message}`);
       });
       if (!res.ok && res.status !== 404) throw new ServiceUnavailableError(`voice clone service delete returned HTTP ${res.status}`);
     },
-    async disableVoice(voiceId) {
+    async disableVoice(voiceId, _language) {
       await call(`/voices/${encodeURIComponent(voiceId)}/disable`, { method: 'POST' });
     },
   };
 }
 
+/**
+ * Two serving apps behind one client: voices in `mlLanguages` live on the multilingual app, everything else stays on the primary app.
+ * Reference analysis and speaker similarity always go to the primary app (same metrics and thresholds as today). A voice's language
+ * is known at creation, synthesis, deletion and takedown, so each call goes to exactly one app; when the language is unknown the
+ * call goes to both and any failure is reported (a deletion must never be silently half done).
+ */
+export function createRoutingServiceClient(opts: { primary: CloneServiceClient; ml: CloneServiceClient; mlLanguages: ReadonlySet<string> }): CloneServiceClient {
+  const { primary, ml, mlLanguages } = opts;
+  const pick = (language?: string) => (language && mlLanguages.has(language) ? ml : primary);
+  const both = async (fn: (c: CloneServiceClient) => Promise<void>) => { await Promise.all([fn(primary), fn(ml)]); };
+  return {
+    analyze: (audio, filename) => primary.analyze(audio, filename),
+    similarity: (a, b) => primary.similarity(a, b),
+    createVoice: (p) => pick(p.language).createVoice(p),
+    synthesize: (p) => pick(p.language).synthesize(p),
+    deleteVoice: (voiceId, language) => (language ? pick(language).deleteVoice(voiceId, language) : both((c) => c.deleteVoice(voiceId))),
+    disableVoice: async (voiceId, language) => {
+      if (language) return pick(language).disableVoice(voiceId, language);
+      // unknown language: the app that does not hold the voice answers 404, which is not a failure as long as one app took the takedown
+      const r = await Promise.allSettled([primary.disableVoice(voiceId), ml.disableVoice(voiceId)]);
+      if (r.every((x) => x.status === 'rejected')) throw (r[0] as PromiseRejectedResult).reason;
+    },
+  };
+}
+
+const DEFAULT_ML_LANGUAGES = 'de,fr,es,pt,it,ja,pl,ru';
+
 /** Real client from env, or null when the service is not configured (feature stays dark). */
 export function serviceClientFromEnv(env: Record<string, string | undefined> = process.env): CloneServiceClient | null {
   const baseUrl = env.VOICE_CLONE_SERVICE_URL;
   const secret = env.VOICE_CLONE_SERVICE_SECRET;
-  if (!baseUrl || !secret) return null;
-  return createServiceClient({ baseUrl, secret });
+  const mlUrl = env.VOICE_CLONE_ML_SERVICE_URL;
+  const mlSecret = env.VOICE_CLONE_ML_SERVICE_SECRET;
+  const primary = baseUrl && secret ? createServiceClient({ baseUrl, secret }) : null;
+  const ml = mlUrl && mlSecret ? createServiceClient({ baseUrl: mlUrl, secret: mlSecret }) : null;
+  if (primary && ml) {
+    const mlLanguages = new Set((env.VOICE_CLONE_ML_LANGUAGES ?? DEFAULT_ML_LANGUAGES).split(',').map((x) => x.trim()).filter(Boolean));
+    return createRoutingServiceClient({ primary, ml, mlLanguages });
+  }
+  return primary ?? ml;
 }

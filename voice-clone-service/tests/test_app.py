@@ -269,3 +269,23 @@ def test_warming_up_503_when_model_never_loads(make):
     c, *_ = make(engine=eng, load_wait_sec=0.3, ip_rpm=1000)
     r = create_voice(c)
     assert r.status_code == 503 and r.json()["detail"]["code"] == "warming_up" and r.headers["Retry-After"] == "15"
+
+
+def test_language_reaches_the_engine_at_creation_and_synthesis(make):
+    from conftest import AUTH, VID, create_voice
+
+    client, eng, s, _ = make(langs=frozenset({"en", "de"}))
+    r = create_voice(client, VID, language="de")
+    assert r.status_code in (200, 201)
+    assert eng.prepared_lang == "de"
+    r = client.post(f"/voices/{VID}/synthesize", headers=AUTH, json={"text": "Guten Tag, wie geht es Ihnen?", "language": "de", "speed": 1.0})
+    assert r.status_code == 200
+    assert eng.synth_lang == "de"
+
+
+def test_language_outside_the_enabled_list_is_refused(make):
+    from conftest import VID, create_voice
+
+    client, eng, s, _ = make(langs=frozenset({"en"}))
+    r = create_voice(client, VID, language="de")
+    assert r.status_code == 400

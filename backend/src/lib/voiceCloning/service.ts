@@ -172,7 +172,7 @@ export async function createVoiceClone(deps: CloneDeps, input: CreateVoiceInput)
       await store.consumeChallenge(ch.id, createdAt);
       return { voice, similarity: ev.speakerSimilarity!, borderline: ev.borderline };
     } catch (err) {
-      await service.deleteVoice(voiceId).catch(() => undefined);
+      await service.deleteVoice(voiceId, input.language).catch(() => undefined);
       throw err;
     }
   } finally {
@@ -213,7 +213,7 @@ async function createAttested(deps: CloneDeps, input: CreateVoiceInput, now: Dat
     await store.insertVoice(voice);
     return { voice, similarity: 0, borderline: false };
   } catch (err) {
-    await service.deleteVoice(voiceId).catch(() => undefined);
+    await service.deleteVoice(voiceId, input.language).catch(() => undefined);
     throw err;
   }
 }
@@ -254,7 +254,7 @@ export async function deleteVoiceClone(deps: CloneDeps, userId: string, voiceId:
   if (v.status === 'deleted') return { deleted: true, alreadyDeleted: true };
   await store.setVoiceStatus(voiceId, { status: 'deleting' });
   try {
-    await service.deleteVoice(voiceId);
+    await service.deleteVoice(voiceId, v.language);
   } catch {
     throw new CloneError(502, 'deletion_pending', 'The voice is disabled and queued for deletion but the audio store did not confirm. Retry this request.');
   }
@@ -271,7 +271,7 @@ export async function disableVoiceClone(deps: CloneDeps, voiceId: string, reason
   if (!v) throw new CloneError(404, 'voice_not_found', 'Cloned voice not found.');
   await store.setVoiceStatus(voiceId, { status: 'disabled', disabledReason: reason, disabledAt: now.toISOString() });
   let serviceDisabled = true;
-  try { await service.disableVoice(voiceId); } catch { serviceDisabled = false; }
+  try { await service.disableVoice(voiceId, v.language); } catch { serviceDisabled = false; }
   const purged = await store.purgeVoiceOutputs(voiceId);
   return { voiceId, status: 'disabled' as const, outputsPurged: purged, serviceDisabled };
 }
