@@ -56,8 +56,8 @@ object TextChunker {
             var end = safeEnd(rest, cut + 1)
             // A mark that ends a clause belongs to the text before it, not at the start of the next piece.
             while (end < rest.length && (rest[end] in TRAILING_MARKS || rest[end] in CLOSERS)) end++
-            // What would be left is only punctuation (the sentence's last mark): keep it with this piece, a chunk of only "？" is not speakable.
-            if (!hasLetterOrDigit(rest, end)) end = rest.length
+            // What would be left is only closing marks (the sentence's last mark): keep it with this piece, a chunk of only "？" is not speakable.
+            if (rest.substring(end).all { it in TRAILING_MARKS || it in CLOSERS || it.isWhitespace() }) end = rest.length
             pieces += rest.substring(0, end).trim()
             rest = rest.substring(end).trim()
             lim = maxChars
