@@ -77,14 +77,14 @@ test('gateway ASR authorizes, posts audio, returns text (and joins segments if n
   assert.equal(asrFromEnv({}), null);
 });
 
-test('routing client: ML languages go to the multilingual app, the rest and the reference gate stay on the primary', async () => {
+test('routing client: ML languages go to the multilingual app, the rest stay on the primary (reference gate pinned to the primary here)', async () => {
   const wav = Buffer.alloc(100);
   const a = mockFetch((url) => (url.endsWith('/voices') ? json({ reference_sec: 9 }) : url.endsWith('/analyze') ? json({ duration_sec: 9, speech_sec: 8, snr_db: 30, clipping_ratio: 0, min_window_similarity: 0.9, music_prob: 0 }) : new Response(wav, { status: 200, headers: { 'X-Sample-Rate': '24000' } })));
   const b = mockFetch((url) => (url.endsWith('/voices') ? json({ reference_sec: 11 }) : new Response(wav, { status: 200, headers: { 'X-Sample-Rate': '24000', 'X-Model-Id': 'ml' } })));
   const env = { VOICE_CLONE_SERVICE_URL: 'https://primary.test', VOICE_CLONE_SERVICE_SECRET: 'p', VOICE_CLONE_ML_SERVICE_URL: 'https://ml.test', VOICE_CLONE_ML_SERVICE_SECRET: 'm' };
   const primary = createServiceClient({ baseUrl: env.VOICE_CLONE_SERVICE_URL, secret: 'p', fetchImpl: a.impl });
   const ml = createServiceClient({ baseUrl: env.VOICE_CLONE_ML_SERVICE_URL, secret: 'm', fetchImpl: b.impl });
-  const c = createRoutingServiceClient({ primary, ml, mlLanguages: new Set(['de', 'fr']) });
+  const c = createRoutingServiceClient({ primary, ml, mlLanguages: new Set(['de', 'fr']), analyzeOn: 'primary' });
   await c.analyze(Buffer.from('x'), 'r.wav');
   assert.equal(a.calls.length, 1); assert.equal(b.calls.length, 0);
   assert.equal((await c.createVoice({ voiceId: 'v1', audio: Buffer.from('x'), filename: 'r.wav', language: 'de' })).referenceSec, 11);
@@ -115,4 +115,59 @@ test('serviceClientFromEnv: only the multilingual app configured is used for eve
   assert.ok(serviceClientFromEnv({ VOICE_CLONE_ML_SERVICE_URL: 'https://m', VOICE_CLONE_ML_SERVICE_SECRET: 's' }));
   assert.ok(serviceClientFromEnv({ VOICE_CLONE_SERVICE_URL: 'https://p', VOICE_CLONE_SERVICE_SECRET: 's', VOICE_CLONE_ML_SERVICE_URL: 'https://m', VOICE_CLONE_ML_SERVICE_SECRET: 's' }));
   assert.equal(serviceClientFromEnv({ VOICE_CLONE_ML_SERVICE_URL: 'https://m' }), null);
+});
+
+const GATE_JSON = { duration_sec: 9, speech_sec: 8, snr_db: 30, clipping_ratio: 0, min_window_similarity: 0.9, music_prob: 0.01 };
+const mkRouting = (p: ReturnType<typeof mockFetch>, m: ReturnType<typeof mockFetch>, extra: Record<string, unknown> = {}) => createRoutingServiceClient({
+  primary: createServiceClient({ baseUrl: 'https://p.test', secret: 's', fetchImpl: p.impl }),
+  ml: createServiceClient({ baseUrl: 'https://m.test', secret: 's', fetchImpl: m.impl }), mlLanguages: new Set(['de']), ...extra });
+
+test('routing client: the reference gate and speaker similarity run on the multilingual app by default and never touch the primary', async () => {
+  const p = mockFetch(() => new Response('x', { status: 500 }));
+  const m = mockFetch((url) => (url.endsWith('/analyze') ? json(GATE_JSON) : json({ similarity: 0.71 })));
+  const c = mkRouting(p, m);
+  assert.equal((await c.analyze(Buffer.from('x'), 'r.wav')).durationSec, 9);
+  assert.equal(await c.similarity(Buffer.from('a'), Buffer.from('b')), 0.71);
+  assert.equal(p.calls.length, 0); assert.equal(m.calls.length, 2);
+});
+
+test('routing client: if the multilingual app is down the gate falls back to the primary; a plain error that is not "unavailable" is not swallowed', async () => {
+  const p = mockFetch((url) => (url.endsWith('/analyze') ? json(GATE_JSON) : json({ similarity: 0.5 })));
+  const down = mockFetch(() => new Response('x', { status: 503 }));
+  const c = mkRouting(p, down);
+  assert.equal((await c.analyze(Buffer.from('x'), 'r.wav')).speechSec, 8);
+  assert.equal(await c.similarity(Buffer.from('a'), Buffer.from('b')), 0.5);
+  assert.equal(down.calls.length, 2); assert.equal(p.calls.length, 2);
+  const bad = mockFetch(() => json({ duration_sec: 'nope' })); // malformed answer is a ServiceUnavailableError too: falls back, the primary decides
+  assert.equal((await mkRouting(p, bad).analyze(Buffer.from('x'), 'r.wav')).durationSec, 9);
+});
+
+test('routing client: analyzeOn primary keeps the gate on the primary (kill switch), and the env flag selects it', async () => {
+  const p = mockFetch(() => json(GATE_JSON)); const m = mockFetch(() => json(GATE_JSON));
+  await mkRouting(p, m, { analyzeOn: 'primary' }).analyze(Buffer.from('x'), 'r.wav');
+  assert.equal(p.calls.length, 1); assert.equal(m.calls.length, 0);
+  const env = { VOICE_CLONE_SERVICE_URL: 'https://p', VOICE_CLONE_SERVICE_SECRET: 's', VOICE_CLONE_ML_SERVICE_URL: 'https://m', VOICE_CLONE_ML_SERVICE_SECRET: 's' };
+  assert.ok(serviceClientFromEnv({ ...env, VOICE_CLONE_ANALYZE_ON_PRIMARY: 'true' }));
+});
+
+test('routing client warm: wakes the app that will hold the voice (both when the language is unknown), at most once per 90 s and 20 times an hour', async () => {
+  let t = 1_000_000;
+  const p = mockFetch(() => new Response('', { status: 200 })); const m = mockFetch(() => new Response('', { status: 200 }));
+  const c = mkRouting(p, m, { now: () => t });
+  await c.warm!('de');
+  assert.deepEqual(m.calls.map((x) => x.url), ['https://m.test/health']); assert.equal(p.calls.length, 0);
+  await c.warm!('en');
+  assert.deepEqual(p.calls.map((x) => x.url), ['https://p.test/health']);
+  await c.warm!('de'); await c.warm!(); // inside the 90 s gap: nothing new
+  assert.equal(m.calls.length, 1); assert.equal(p.calls.length, 1);
+  t += 91_000; await c.warm!(); // unknown language wakes both
+  assert.equal(m.calls.length, 2); assert.equal(p.calls.length, 2);
+  for (let i = 0; i < 30; i++) { t += 91_000; await c.warm!('de'); } // 30 attempts spread over 45 minutes
+  assert.equal(m.calls.length, 20, `ml warm calls ${m.calls.length}`); // hour cap per app
+});
+
+test('warm never throws or blocks even when the app is unreachable', async () => {
+  const dead = mockFetch(() => { throw new Error('boom'); });
+  const c = createServiceClient({ baseUrl: 'https://x.test', secret: 's', fetchImpl: dead.impl });
+  await c.warm!();
 });

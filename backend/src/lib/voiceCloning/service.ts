@@ -65,6 +65,7 @@ export function dailyLimitFor(e: Eligibility, p: ClonePolicy): number {
 export async function issueConsentChallenge(deps: CloneDeps, e: Eligibility) {
   assertEligible(e);
   if (!isConsentRequired(deps)) throw new CloneError(409, 'consent_not_required', 'Consent phrase is not required; send attested=true instead.');
+  void deps.service.warm?.()?.catch(() => undefined); // the speaker records the phrase next: wake the GPU apps meanwhile
   const now = (deps.now ?? (() => new Date()))();
   const { phrase, codeWords } = issuePhrase();
   const expiresAt = new Date(now.getTime() + deps.policy.challengeTtlSec * 1000).toISOString();
@@ -106,6 +107,7 @@ export async function createVoiceClone(deps: CloneDeps, input: CreateVoiceInput)
     throw new CloneError(429, 'creation_in_progress', 'A voice creation is already in progress for this account.');
   }
   inFlight.add(e.userId);
+  void service.warm?.(input.language)?.catch(() => undefined); // start the app that will hold the voice while the gate runs
   try {
     // 1. Daily limit (counts deleted voices too).
     const limit = dailyLimitFor(e, policy);

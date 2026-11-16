@@ -26,6 +26,8 @@ export interface CloneServiceClient {
   deleteVoice(voiceId: string, language?: string): Promise<void>;
   /** Marks the voice unusable on the serving side without deleting (takedown, evidence preserved). */
   disableVoice(voiceId: string, language?: string): Promise<void>;
+  /** Best-effort wake-up of the app that will serve `language` (all apps when omitted). Never throws and never blocks the caller. */
+  warm?(language?: string): Promise<void>;
 }
 
 export interface SynthesisResult {
