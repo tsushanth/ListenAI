@@ -91,6 +91,23 @@ export function detectChaptersFromEpub(epubBuffer: Buffer): DetectedChapter[] {
     if (ncxXml) titleByHref = parseNcxToc(ncxXml, ncxPath);
   }
 
+  // Preferred path: split the spine text at the TOC anchors and keep only the
+  // real chapters (see detectChaptersByTocAnchors). Falls through to the
+  // per-spine-item path below when the book has no usable TOC or nothing
+  // qualifies (e.g. very short books).
+  const tocEntries = readTocEntries(zip, opfDir, navHref, ncxHref);
+  if (tocEntries.length > 0) {
+    const spinePaths: string[] = [];
+    for (const spineId of spineIds) {
+      const item = idToPath.get(spineId);
+      if (!item) continue;
+      if (!/x?html?$/i.test(item.mediaType) && !/\.x?html?$/i.test(item.fullPath)) continue;
+      spinePaths.push(item.fullPath);
+    }
+    const byToc = detectChaptersByTocAnchors(zip, spinePaths, tocEntries);
+    if (byToc.length > 0) return byToc;
+  }
+
   const chapters: DetectedChapter[] = [];
 
   for (const spineId of spineIds) {
@@ -245,6 +262,301 @@ function parseNcxToc(ncxXml: string, ncxPath: string): Map<string, string> {
   });
 
   return result;
+}
+
+// ----------------------------------------------------------------------------
+// TOC-anchor chapter splitting
+// ----------------------------------------------------------------------------
+// The spine-item path above treats every spine document as a chapter. That
+// over-splits books whose spine has front matter, licence pages, part
+// dividers or per-section files, and it cannot split a book that keeps all
+// chapters in a single XHTML file. This path instead:
+//  1. flattens the TOC (nav.xhtml or NCX) in order, resolving each entry to a
+//     character offset in the concatenated spine text (document offset +
+//     offset of the #fragment anchor),
+//  2. takes an entry's segment as the text up to the next TOC entry,
+//  3. keeps numbered chapters (plus long unnumbered sections between the
+//     first and last numbered one, and audible front/back sections such as a
+//     prologue or epilogue) and drops front matter, licence text and short
+//     part dividers.
+
+const TOC_MIN_SEGMENT_CHARS = 1500;
+const TOC_FRONT_MATTER_RE =
+  /^\W*(table of )?contents|^\W*the full project gutenberg|^\W*project gutenberg|^\W*licen[cs]e|^\W*copyright|^\W*colophon|^\W*title page|^\W*cover\b|^\W*acknowledg|^\W*transcriber|^\W*(note to the )?(first|second|third|fourth|new|this) edition|^\W*illustrations?\b|^\W*list of (illustrations|characters)/i;
+const TOC_AUDIBLE_SECTION_RE = /^\W*(epilogue|preface|prologue|introduction|foreword|afterword|conclusion)\b/i;
+const TOC_PART_RE = /^\W*(part|book|volume|vol\.)\b/i;
+// "Chapter 7", "Chapter XII", a leading roman numeral ("XII. The Storm") or a
+// leading number ("7. The Storm"). The roman numeral must be a well-formed one
+// so that ordinary words made of numeral letters ("Civil", "Mix") do not count.
+const TOC_CHAPTER_NUMBER_RES = [
+  /chapter\s*([ivxlc]+|\d+)\b/i,
+  /^\s*(?=[ivxlc])(c{0,3})(xc|xl|l?x{0,3})(ix|iv|v?i{0,3})\.?(\s|$)/i,
+  /^\s*\d+\.?\s/,
+];
+
+interface TocEntry {
+  title: string;
+  /** Zip path of the target document, without the fragment. */
+  path: string;
+  fragment: string;
+  /** False for an entry that has nested entries under it (a part/section heading). */
+  leaf: boolean;
+}
+
+interface SpineTextDoc {
+  /** Whitespace-collapsed text, used for offsets and length thresholds. */
+  norm: string;
+  /** Original text (CRLF normalised), kept so chapter text keeps its line breaks. */
+  raw: string;
+  /** Anchor id/name -> offset in `norm` and in `raw`. */
+  anchors: Map<string, { n: number; r: number }>;
+  offN: number;
+  offR: number;
+}
+
+interface TocSegment {
+  title: string;
+  href: string;
+  startN: number;
+  endN: number;
+  startR: number;
+  endR: number;
+  len: number;
+  numbered: boolean;
+  leaf: boolean;
+}
+
+function tocTitle(raw: string | null | undefined): string {
+  return (raw ?? '').replace(/\s+/g, ' ').trim();
+}
+
+function splitHref(href: string, baseDir: string): { path: string; fragment: string } | null {
+  const hashAt = href.indexOf('#');
+  const file = hashAt === -1 ? href : href.slice(0, hashAt);
+  let fragment = hashAt === -1 ? '' : href.slice(hashAt + 1);
+  if (!file) return null;
+  try {
+    fragment = decodeURIComponent(fragment);
+  } catch {
+    // keep the raw fragment
+  }
+  return { path: joinZipPath(baseDir, file), fragment };
+}
+
+function parseNavEntries(navXml: string, navPath: string): TocEntry[] {
+  const doc = new JSDOM(navXml).window.document;
+  const navEl =
+    Array.from(doc.querySelectorAll('nav')).find((n) => (n.getAttribute('epub:type') ?? '').includes('toc')) ??
+    doc.querySelector('nav');
+  const anchors = navEl ? navEl.querySelectorAll('a') : doc.querySelectorAll('a');
+  const entries: TocEntry[] = [];
+  anchors.forEach((a) => {
+    const href = a.getAttribute('href');
+    const title = tocTitle(a.textContent);
+    if (!href || !title) return;
+    const target = splitHref(href, dirname(navPath));
+    if (!target) return;
+    const li = a.closest('li');
+    entries.push({ title, ...target, leaf: !li || !li.querySelector('li') });
+  });
+  return entries;
+}
+
+function parseNcxEntries(ncxXml: string, ncxPath: string): TocEntry[] {
+  const doc = new JSDOM(ncxXml, { contentType: 'application/xml' }).window.document;
+  const entries: TocEntry[] = [];
+  doc.querySelectorAll('navPoint').forEach((navPoint) => {
+    const title = tocTitle(navPoint.querySelector('navLabel text')?.textContent);
+    const src = navPoint.querySelector('content')?.getAttribute('src');
+    if (!title || !src) return;
+    const target = splitHref(src, dirname(ncxPath));
+    if (!target) return;
+    entries.push({ title, ...target, leaf: !navPoint.querySelector('navPoint') });
+  });
+  return entries;
+}
+
+/** Ordered TOC entries from nav.xhtml, else NCX; empty when neither yields any. */
+function readTocEntries(zip: AdmZip, opfDir: string, navHref: string | null, ncxHref: string | null): TocEntry[] {
+  if (navHref) {
+    const navPath = joinZipPath(opfDir, navHref);
+    const navXml = readZipEntryText(zip, navPath);
+    if (navXml) {
+      const entries = parseNavEntries(navXml, navPath);
+      if (entries.length > 0) return entries;
+    }
+  }
+  if (ncxHref) {
+    const ncxPath = joinZipPath(opfDir, ncxHref);
+    const ncxXml = readZipEntryText(zip, ncxPath);
+    if (ncxXml) return parseNcxEntries(ncxXml, ncxPath);
+  }
+  return [];
+}
+
+function hasChapterNumber(title: string): boolean {
+  return TOC_CHAPTER_NUMBER_RES.some((re) => re.test(title));
+}
+
+/** Text of one document plus the offset of every id/name anchor in it. */
+function readSpineTextDoc(html: string): Pick<SpineTextDoc, 'norm' | 'raw' | 'anchors'> {
+  const dom = new JSDOM(html);
+  const document = dom.window.document;
+  const body = document.body;
+  const anchors = new Map<string, { n: number; r: number }>();
+  if (!body) return { norm: '', raw: '', anchors };
+
+  const norm: string[] = [];
+  const raw: string[] = [];
+  let n = 0;
+  let r = 0;
+  const SHOW_ELEMENT = 0x1;
+  const SHOW_TEXT = 0x4;
+  const walker = document.createTreeWalker(body, SHOW_ELEMENT | SHOW_TEXT);
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+    if (node.nodeType === 3) {
+      const parent = node.parentNode as Element | null;
+      const tag = parent?.nodeName?.toLowerCase();
+      if (tag === 'script' || tag === 'style') continue;
+      const original = (node.nodeValue ?? '').replace(/\r\n?/g, '\n');
+      const collapsed = original.replace(/\s+/g, ' ');
+      if (collapsed.trim() === '' && norm.length === 0) continue;
+      norm.push(collapsed);
+      raw.push(original);
+      n += collapsed.length;
+      r += original.length;
+    } else {
+      const el = node as Element;
+      for (const attr of ['id', 'name']) {
+        const v = el.getAttribute(attr);
+        if (v && !anchors.has(v)) anchors.set(v, { n, r });
+      }
+    }
+  }
+  return { norm: norm.join(''), raw: raw.join(''), anchors };
+}
+
+function selectTocSegments(entries: TocSegment[]): TocSegment[] {
+  const numberedCount = entries.filter((e) => e.numbered).length;
+  const kept: TocSegment[] = [];
+
+  if (numberedCount >= 5) {
+    let lo = -1;
+    let hi = -1;
+    entries.forEach((e, i) => {
+      if (!e.numbered) return;
+      if (lo === -1) lo = i;
+      hi = i;
+    });
+    const keptIndexByHref = new Map<string, number>();
+    entries.forEach((e, i) => {
+      if (TOC_FRONT_MATTER_RE.test(e.title) && !e.numbered) return;
+      const longUnnumberedBetween =
+        i > lo && i < hi && e.len >= TOC_MIN_SEGMENT_CHARS && !TOC_PART_RE.test(e.title);
+      const audible = TOC_AUDIBLE_SECTION_RE.test(e.title) && e.len >= TOC_MIN_SEGMENT_CHARS;
+      if (!(e.numbered || longUnnumberedBetween || audible)) return;
+
+      // Two numbered entries pointing at the same place: keep the longer title.
+      const prevIdx = keptIndexByHref.get(e.href);
+      if (prevIdx !== undefined && e.numbered && kept[prevIdx]!.numbered) {
+        if (e.title.length > kept[prevIdx]!.title.length) kept[prevIdx] = e;
+        return;
+      }
+      keptIndexByHref.set(e.href, kept.length);
+      kept.push(e);
+    });
+    return kept;
+  }
+
+  for (const e of entries) {
+    if (TOC_FRONT_MATTER_RE.test(e.title) || e.len < TOC_MIN_SEGMENT_CHARS) continue;
+    kept.push(e);
+  }
+  return kept;
+}
+
+/**
+ * Split the book at its TOC anchors. Returns [] when no TOC entry resolves to
+ * a spine document or no entry qualifies as a chapter, so the caller can fall
+ * back to the per-spine-item behaviour.
+ */
+function detectChaptersByTocAnchors(zip: AdmZip, spinePaths: string[], toc: TocEntry[]): DetectedChapter[] {
+  const docs = new Map<string, SpineTextDoc>();
+  let offN = 0;
+  let offR = 0;
+  const normalizeKey = (p: string): string => {
+    try {
+      return decodeURIComponent(p);
+    } catch {
+      return p;
+    }
+  };
+
+  for (const path of spinePaths) {
+    const key = normalizeKey(path);
+    if (docs.has(key)) continue;
+    const html = readZipEntryText(zip, path);
+    if (!html) continue;
+    const parsed = readSpineTextDoc(html);
+    docs.set(key, { ...parsed, offN, offR });
+    offN += parsed.norm.length;
+    offR += parsed.raw.length;
+  }
+  if (docs.size === 0) return [];
+
+  const docList = Array.from(docs.values());
+  const fullRaw = docList.map((d) => d.raw).join('');
+
+  const resolved = toc.flatMap((t) => {
+    const doc = docs.get(normalizeKey(t.path));
+    if (!doc) return [];
+    const anchor = t.fragment ? doc.anchors.get(t.fragment) : undefined;
+    return [
+      {
+        t,
+        doc,
+        startN: doc.offN + (anchor?.n ?? 0),
+        startR: doc.offR + (anchor?.r ?? 0),
+      },
+    ];
+  });
+  if (resolved.length === 0) return [];
+
+  // Every entry (including section headings that are not candidates
+  // themselves) bounds the segment before it.
+  const startsN = Array.from(new Set(resolved.map((e) => e.startN))).sort((a, b) => a - b);
+  const rawAtN = new Map<number, number>();
+  for (const e of resolved) if (!rawAtN.has(e.startN)) rawAtN.set(e.startN, e.startR);
+
+  const segments: TocSegment[] = [];
+  for (const e of resolved) {
+    if (!e.t.leaf) continue;
+    const next = startsN.find((s) => s > e.startN);
+    const endN = next ?? e.doc.offN + e.doc.norm.length;
+    const endR = next !== undefined ? (rawAtN.get(next) ?? fullRaw.length) : e.doc.offR + e.doc.raw.length;
+    segments.push({
+      title: e.t.title,
+      href: e.t.fragment ? `${e.t.path}#${e.t.fragment}` : e.t.path,
+      startN: e.startN,
+      endN,
+      startR: e.startR,
+      endR,
+      len: endN - e.startN,
+      numbered: hasChapterNumber(e.t.title),
+      leaf: true,
+    });
+  }
+
+  const chapters: DetectedChapter[] = [];
+  for (const seg of selectTocSegments(segments)) {
+    const text = fullRaw
+      .slice(seg.startR, seg.endR)
+      .replace(/[ \t]+/g, ' ')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+    if (text) chapters.push({ title: seg.title, text });
+  }
+  return chapters;
 }
 
 function htmlToPlainText(html: string): string {
