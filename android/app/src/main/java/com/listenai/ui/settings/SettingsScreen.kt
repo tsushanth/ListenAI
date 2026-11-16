@@ -113,7 +113,14 @@ fun SettingsScreen(
             "th" to R.string.language_thai,
             "fil" to R.string.language_filipino,
             "tr" to R.string.language_turkish,
-            "vi" to R.string.language_vietnamese
+            "vi" to R.string.language_vietnamese,
+            "cs" to R.string.language_czech,
+            "el" to R.string.language_greek,
+            "fi" to R.string.language_finnish,
+            "hu" to R.string.language_hungarian,
+            "ro" to R.string.language_romanian,
+            "sv" to R.string.language_swedish,
+            "uk" to R.string.language_ukrainian
         )
     }
     val currentLocaleTag = AppCompatDelegate.getApplicationLocales().toLanguageTags().ifEmpty { "en" }

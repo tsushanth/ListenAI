@@ -52,12 +52,15 @@ class StringParityTest {
         "ar" to setOf("zero", "one", "two", "few", "many", "other"),
         "pl" to setOf("one", "few", "many", "other"),
         "ru" to setOf("one", "few", "many", "other"),
+        "cs" to setOf("one", "few", "many", "other"),
+        "uk" to setOf("one", "few", "many", "other"),
+        "ro" to setOf("one", "few", "other"),
         "ja" to setOf("other"), "ko" to setOf("other"), "zh-rCN" to setOf("other"), "th" to setOf("other"),
         "vi" to setOf("other"), "in" to setOf("other"), "ms" to setOf("other"),
     ).withDefault { setOf("one", "other") }
 
     @Test fun `there are locales to check`() {
-        assertTrue("found ${locales.keys}", locales.size >= 19)
+        assertTrue("found ${locales.keys}", locales.size >= 26)
     }
 
     @Test fun `every locale has every translatable key`() {
