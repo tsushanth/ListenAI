@@ -6,6 +6,7 @@ import type { AsrClient } from './types.js';
 
 export function createGatewayAsr(opts: { gatewayUrl: string; apiKey: string; fetchImpl?: typeof fetch }): AsrClient {
   const f = opts.fetchImpl ?? fetch;
+  let warming: Promise<void> | null = null; // the start-up ping in flight, if any
   return {
     async transcribe(audio, mimeType, language) {
       // The gateway's token lives 60 s and a cold worker can take longer than that to start, so the first try
@@ -25,6 +26,13 @@ export function createGatewayAsr(opts: { gatewayUrl: string; apiKey: string; fet
           body: new Uint8Array(audio), signal: AbortSignal.timeout(240_000), // a cold worker has measured about 120 s
         });
       };
+      // A start-up ping is already waiting for the container: let it finish first, so the token below is fresh and
+      // the worker is up (a request sent into a cold or draining container has been seen to hang for minutes).
+      if (warming) {
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        await Promise.race([warming, new Promise<void>((r) => { timer = setTimeout(r, 200_000); })]);
+        clearTimeout(timer);
+      }
       let res = await attempt();
       if (res.status === 401) res = await attempt();
       if (!res.ok) throw new Error(`STT worker returned HTTP ${res.status}`);
@@ -33,7 +41,9 @@ export function createGatewayAsr(opts: { gatewayUrl: string; apiKey: string; fet
       if (Array.isArray(body.segments)) return body.segments.map((s) => s.text).join(' ');
       throw new Error('STT worker returned an unexpected response shape');
     },
-    async warm() {
+    warm() {
+      if (warming) return warming;
+      const run = (async () => {
       try {
         const auth = await f(`${opts.gatewayUrl}/stt/authorize`, {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -45,6 +55,9 @@ export function createGatewayAsr(opts: { gatewayUrl: string; apiKey: string; fet
         // Held open for the whole cold start so the container is not abandoned half-started.
         await f(`${url}/health`, { headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(240_000) });
       } catch { /* best effort */ }
+      })();
+      warming = run.finally(() => { warming = null; });
+      return warming;
     },
   };
 }

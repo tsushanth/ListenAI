@@ -97,6 +97,27 @@ test('gateway ASR: a token that expired during a cold start (401) is replaced an
   assert.ok(w.calls.some((c) => c.url === 'https://stt.test/health'));
 });
 
+test('gateway ASR: transcribe waits for a start-up ping that is in flight, then uses a freshly minted token; concurrent warm calls share one ping', async () => {
+  const order: string[] = [];
+  let release!: () => void; const gate = new Promise<void>((r) => { release = r; });
+  let auth = 0;
+  const m = mockFetch(async (url) => {
+    if (url.endsWith('/stt/authorize')) { auth++; order.push('authorize' + auth); return json({ token: 'tok' + auth, url: 'https://stt.test' }); }
+    if (url.endsWith('/health')) { order.push('health-start'); await gate; order.push('health-done'); return json({ ok: true }); }
+    order.push('stt'); return json({ text: 'hi' });
+  });
+  const asr = createGatewayAsr({ gatewayUrl: 'https://gw.test', apiKey: 'k', fetchImpl: m.impl });
+  const w1 = asr.warm!(); const w2 = asr.warm!();
+  assert.equal(w1, w2);
+  await new Promise((r) => setTimeout(r, 10));
+  const t = asr.transcribe(Buffer.from('x'), 'audio/wav', 'en');
+  await new Promise((r) => setTimeout(r, 10));
+  assert.ok(!order.includes('stt'), 'must not send audio while the container is still starting');
+  release();
+  assert.equal(await t, 'hi');
+  assert.deepEqual(order, ['authorize1', 'health-start', 'health-done', 'authorize2', 'stt']);
+});
+
 test('routing client: ML languages go to the multilingual app, the rest stay on the primary (reference gate pinned to the primary here)', async () => {
   const wav = Buffer.alloc(100);
   const a = mockFetch((url) => (url.endsWith('/voices') ? json({ reference_sec: 9 }) : url.endsWith('/analyze') ? json({ duration_sec: 9, speech_sec: 8, snr_db: 30, clipping_ratio: 0, min_window_similarity: 0.9, music_prob: 0 }) : new Response(wav, { status: 200, headers: { 'X-Sample-Rate': '24000' } })));
