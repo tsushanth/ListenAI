@@ -20,10 +20,10 @@
 
     <!-- Read Text screen (Feature: OCR + Read Aloud) -->
     <string name="read_text_title">Read Text</string>
-    <string name="read_text_subtitle">Point your camera at printed text or pick a photo — ReadAloud will speak it.</string>
+    <string name="read_text_subtitle">Pick a photo of printed text and ReadAloud will speak it.</string>
     <string name="read_text_take_photo">Take a photo</string>
     <string name="read_text_pick_gallery">Pick from gallery</string>
-    <string name="read_text_coming_soon">Camera and on-device text recognition land in the next update — this is the scaffolding.</string>
+    <string name="read_text_coming_soon">Taking a photo with the camera is coming in a later update. For now, pick a photo from your gallery.</string>
 
     <!-- Home Screen -->
     <string name="promo_title">Download and listen anytime, anywhere</string>
