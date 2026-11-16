@@ -23,7 +23,8 @@ class TextChunkerEdgeTest {
             val text = "a".repeat(offset) + "𣀀".repeat(120)
             val chunks = TextChunker.split(text, 90, 60)
             assertTrue(chunks.size > 1)
-            assertTrue(chunks.all { it.length <= 91 })
+            // the limit is in code points: a supplementary-plane character counts as one
+            assertTrue(chunks.all { it.codePointCount(0, it.length) <= 91 })
             assertWhole(text, chunks)
         }
     }
