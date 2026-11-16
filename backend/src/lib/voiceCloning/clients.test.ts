@@ -77,6 +77,26 @@ test('gateway ASR authorizes, posts audio, returns text (and joins segments if n
   assert.equal(asrFromEnv({}), null);
 });
 
+test('gateway ASR: a token that expired during a cold start (401) is replaced and the call retried once; other errors are not retried; warm never throws', async () => {
+  let stt = 0, auth = 0;
+  const m = mockFetch((url) => {
+    if (url.endsWith('/stt/authorize')) { auth++; return json({ token: 'tok' + auth, url: 'https://stt.test' }); }
+    if (url.includes('/v1/stt')) { stt++; return stt === 1 ? new Response('{}', { status: 401 }) : json({ text: 'hello' }); }
+    return json({});
+  });
+  const asr = createGatewayAsr({ gatewayUrl: 'https://gw.test', apiKey: 'k', fetchImpl: m.impl });
+  assert.equal(await asr.transcribe(Buffer.from('x'), 'audio/wav', 'en'), 'hello');
+  assert.equal(auth, 2); assert.equal(stt, 2);
+  assert.equal((m.calls.filter((c) => c.url.includes('/v1/stt')).at(-1)!.init.headers as Record<string, string>).Authorization, 'Bearer tok2');
+  const bad = createGatewayAsr({ gatewayUrl: 'https://gw.test', apiKey: 'k', fetchImpl: mockFetch((url) => (url.endsWith('/stt/authorize') ? json({ token: 't', url: 'https://stt.test' }) : new Response('', { status: 500 }))).impl });
+  await assert.rejects(bad.transcribe(Buffer.from('x'), 'audio/wav', 'en'));
+  const down = createGatewayAsr({ gatewayUrl: 'https://gw.test', apiKey: 'k', fetchImpl: (async () => { throw new Error('offline'); }) as typeof fetch });
+  await down.warm!(); // swallowed
+  const w = mockFetch((url) => (url.endsWith('/stt/authorize') ? json({ token: 't', url: 'https://stt.test' }) : json({ ok: true })));
+  await createGatewayAsr({ gatewayUrl: 'https://gw.test', apiKey: 'k', fetchImpl: w.impl }).warm!();
+  assert.ok(w.calls.some((c) => c.url === 'https://stt.test/health'));
+});
+
 test('routing client: ML languages go to the multilingual app, the rest stay on the primary (reference gate pinned to the primary here)', async () => {
   const wav = Buffer.alloc(100);
   const a = mockFetch((url) => (url.endsWith('/voices') ? json({ reference_sec: 9 }) : url.endsWith('/analyze') ? json({ duration_sec: 9, speech_sec: 8, snr_db: 30, clipping_ratio: 0, min_window_similarity: 0.9, music_prob: 0 }) : new Response(wav, { status: 200, headers: { 'X-Sample-Rate': '24000' } })));
