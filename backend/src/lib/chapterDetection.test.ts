@@ -173,6 +173,217 @@ test('detectChaptersFromEpub: throws on an invalid ePub (missing container.xml)'
 });
 
 // ---------------------------------------------------------------------------
+// ePub TOC-anchor splitting (synthetic fixtures only)
+// ---------------------------------------------------------------------------
+
+interface TocNode {
+  title: string;
+  href: string;
+  children?: TocNode[];
+}
+
+/** An ePub with free-form documents and a (possibly nested) nav.xhtml or NCX TOC. */
+function buildAnchoredEpub(opts: { docs: Array<{ href: string; html: string }>; toc: TocNode[]; kind?: 'nav' | 'ncx' }): Buffer {
+  const zip = new AdmZip();
+  const kind = opts.kind ?? 'nav';
+  zip.addFile(
+    'META-INF/container.xml',
+    Buffer.from(
+      `<?xml version="1.0"?><container><rootfiles><rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/></rootfiles></container>`,
+      'utf8'
+    )
+  );
+  const manifest = opts.docs
+    .map((d, i) => `<item id="d${i}" href="${d.href}" media-type="application/xhtml+xml"/>`)
+    .join('');
+  const tocManifest =
+    kind === 'nav'
+      ? `<item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/>`
+      : `<item id="ncx" href="toc.ncx" media-type="application/x-dtbncx+xml"/>`;
+  const spine = opts.docs.map((_, i) => `<itemref idref="d${i}"/>`).join('');
+  zip.addFile(
+    'OEBPS/content.opf',
+    Buffer.from(
+      `<?xml version="1.0"?><package><manifest>${manifest}${tocManifest}</manifest><spine${kind === 'ncx' ? ' toc="ncx"' : ''}>${spine}</spine></package>`,
+      'utf8'
+    )
+  );
+
+  const navList = (nodes: TocNode[]): string =>
+    `<ol>${nodes
+      .map((n) => `<li><a href="${n.href}">${n.title}</a>${n.children ? navList(n.children) : ''}</li>`)
+      .join('')}</ol>`;
+  const ncxPoints = (nodes: TocNode[]): string =>
+    nodes
+      .map(
+        (n) =>
+          `<navPoint><navLabel><text>${n.title}</text></navLabel><content src="${n.href}"/>${n.children ? ncxPoints(n.children) : ''}</navPoint>`
+      )
+      .join('');
+  if (kind === 'nav') {
+    zip.addFile(
+      'OEBPS/nav.xhtml',
+      Buffer.from(
+        `<?xml version="1.0"?><html xmlns:epub="http://www.idpf.org/2007/ops"><body><nav epub:type="toc">${navList(opts.toc)}</nav></body></html>`,
+        'utf8'
+      )
+    );
+  } else {
+    zip.addFile(
+      'OEBPS/toc.ncx',
+      Buffer.from(`<?xml version="1.0"?><ncx><navMap>${ncxPoints(opts.toc)}</navMap></ncx>`, 'utf8')
+    );
+  }
+  for (const d of opts.docs) zip.addFile(`OEBPS/${d.href}`, Buffer.from(d.html, 'utf8'));
+  return zip.toBuffer();
+}
+
+/** Deterministic filler prose: `n` sentences tagged with `tag`. */
+function prose(tag: string, n: number): string {
+  return Array.from({ length: n }, (_, i) => `${tag} sentence ${i + 1} walks along the quiet harbour road.`).join(' ');
+}
+
+const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII'];
+
+/** One XHTML file holding every chapter, each under an id anchor, with front matter first. */
+function singleFileBook(extra: { afterChapters?: string } = {}): { html: string; toc: TocNode[] } {
+  const chapterHtml = ROMAN.slice(0, 6)
+    .map((r, i) => `<h2 id="c${i + 1}">Chapter ${r}</h2>\n<p>${prose(`ch${i + 1}`, 6)}</p>\n<p>${prose(`ch${i + 1}b`, 3)}</p>`)
+    .join('\n');
+  const html = `<html><body>
+<h1 id="toc">Contents</h1><p>Chapter I Chapter II Chapter III</p>
+<h1 id="lic">The Full Project Gutenberg License</h1><p>${prose('license', 8)}</p>
+${chapterHtml}
+${extra.afterChapters ?? ''}
+</body></html>`;
+  const toc: TocNode[] = [
+    { title: 'Contents', href: 'book.xhtml#toc' },
+    { title: 'The Full Project Gutenberg License', href: 'book.xhtml#lic' },
+    ...ROMAN.slice(0, 6).map((r, i) => ({ title: `Chapter ${r}`, href: `book.xhtml#c${i + 1}` })),
+  ];
+  return { html, toc };
+}
+
+test('detectChaptersFromEpub: splits a single-file book at TOC anchors and drops front matter', async () => {
+  const { detectChaptersFromEpub } = await import('./chapterDetection.js');
+  const { html, toc } = singleFileBook();
+  const chapters = detectChaptersFromEpub(buildAnchoredEpub({ docs: [{ href: 'book.xhtml', html }], toc }));
+
+  assert.deepEqual(
+    chapters.map((c) => c.title),
+    ['Chapter I', 'Chapter II', 'Chapter III', 'Chapter IV', 'Chapter V', 'Chapter VI']
+  );
+  // Each chapter holds its own text and nothing from its neighbours or the licence.
+  assert.match(chapters[0]!.text, /^Chapter I\b/);
+  assert.match(chapters[0]!.text, /ch1 sentence 6/);
+  assert.doesNotMatch(chapters[0]!.text, /ch2 sentence|license sentence|Contents/);
+  assert.doesNotMatch(chapters[3]!.text, /ch3 sentence|ch5 sentence/);
+  assert.match(chapters[5]!.text, /ch6b sentence 3/);
+});
+
+test('detectChaptersFromEpub: chapter text keeps paragraph line breaks', async () => {
+  const { detectChaptersFromEpub } = await import('./chapterDetection.js');
+  const { html, toc } = singleFileBook();
+  const chapters = detectChaptersFromEpub(buildAnchoredEpub({ docs: [{ href: 'book.xhtml', html }], toc }));
+  assert.match(chapters[1]!.text, /\n/);
+  assert.doesNotMatch(chapters[1]!.text, /\n{3,}/);
+});
+
+test('detectChaptersFromEpub: drops part dividers and front-matter documents; keeps prologue and epilogue', async () => {
+  const { detectChaptersFromEpub } = await import('./chapterDetection.js');
+  const docs = [
+    { href: 'cover.xhtml', html: `<html><body><p>${prose('cover', 2)}</p></body></html>` },
+    { href: 'prologue.xhtml', html: `<html><body><h2>Prologue</h2><p>${prose('prologue', 40)}</p></body></html>` },
+    { href: 'part1.xhtml', html: `<html><body><h1>Part One</h1><p>The first part.</p></body></html>` },
+    ...[1, 2, 3, 4, 5].map((n) => ({
+      href: `c${n}.xhtml`,
+      html: `<html><body><h2>Chapter ${n}</h2><p>${prose(`body${n}`, 8)}</p></body></html>`,
+    })),
+    { href: 'epilogue.xhtml', html: `<html><body><h2>Epilogue</h2><p>${prose('epilogue', 40)}</p></body></html>` },
+    { href: 'dedication.xhtml', html: `<html><body><p>For everyone.</p></body></html>` },
+  ];
+  const toc: TocNode[] = [
+    { title: 'Cover', href: 'cover.xhtml' },
+    { title: 'Prologue', href: 'prologue.xhtml' },
+    { title: 'Part One', href: 'part1.xhtml' },
+    ...[1, 2, 3, 4, 5].map((n) => ({ title: `Chapter ${n}`, href: `c${n}.xhtml` })),
+    { title: 'Epilogue', href: 'epilogue.xhtml' },
+    { title: 'Dedication', href: 'dedication.xhtml' },
+  ];
+  const chapters = detectChaptersFromEpub(buildAnchoredEpub({ docs, toc }));
+  assert.deepEqual(
+    chapters.map((c) => c.title),
+    ['Prologue', 'Chapter 1', 'Chapter 2', 'Chapter 3', 'Chapter 4', 'Chapter 5', 'Epilogue']
+  );
+});
+
+test('detectChaptersFromEpub: words made of numeral letters are not chapter numbers', async () => {
+  const { detectChaptersFromEpub } = await import('./chapterDetection.js');
+  const { html, toc } = singleFileBook({
+    afterChapters: `<h2 id="civil">Civil Disobedience</h2><p>${prose('civil', 60)}</p>`,
+  });
+  toc.push({ title: 'Civil Disobedience', href: 'book.xhtml#civil' });
+  const chapters = detectChaptersFromEpub(buildAnchoredEpub({ docs: [{ href: 'book.xhtml', html }], toc }));
+  assert.equal(chapters.length, 6);
+  assert.ok(!chapters.some((c) => c.title === 'Civil Disobedience'));
+  // The last chapter must not swallow the trailing section's text as its own heading target.
+  assert.match(chapters[5]!.text, /ch6b sentence 3/);
+});
+
+test('detectChaptersFromEpub: leading roman numerals and numbers count as chapter numbers (NCX TOC)', async () => {
+  const { detectChaptersFromEpub } = await import('./chapterDetection.js');
+  const titles = ['I. The Arrival', 'II. The Letter', 'III. The Storm', '4. The Harbour', '5. The Return', 'Unnumbered Short'];
+  const html = `<html><body>${titles
+    .map((t, i) => `<h2 id="s${i}">${t}</h2><p>${prose(`part${i}`, 5)}</p>`)
+    .join('')}</body></html>`;
+  const toc = titles.map((t, i) => ({ title: t, href: `book.xhtml#s${i}` }));
+  const chapters = detectChaptersFromEpub(buildAnchoredEpub({ docs: [{ href: 'book.xhtml', html }], toc, kind: 'ncx' }));
+  assert.deepEqual(
+    chapters.map((c) => c.title),
+    titles.slice(0, 5)
+  );
+});
+
+test('detectChaptersFromEpub: nested TOC keeps leaf chapters; the section heading bounds the previous chapter', async () => {
+  const { detectChaptersFromEpub } = await import('./chapterDetection.js');
+  const chapterDocHtml = (n: number) => `<h2 id="c${n}">Chapter ${n}</h2><p>${prose(`nest${n}`, 8)}</p>`;
+  const html = `<html><body>
+${chapterDocHtml(1)}${chapterDocHtml(2)}${chapterDocHtml(3)}
+<h1 id="p2">Part Two</h1><p>PART-TWO-EPIGRAPH</p>
+${chapterDocHtml(4)}${chapterDocHtml(5)}${chapterDocHtml(6)}
+</body></html>`;
+  const toc: TocNode[] = [
+    {
+      title: 'Part One',
+      href: 'book.xhtml#c1',
+      children: [1, 2, 3].map((n) => ({ title: `Chapter ${n}`, href: `book.xhtml#c${n}` })),
+    },
+    {
+      title: 'Part Two',
+      href: 'book.xhtml#p2',
+      children: [4, 5, 6].map((n) => ({ title: `Chapter ${n}`, href: `book.xhtml#c${n}` })),
+    },
+  ];
+  const chapters = detectChaptersFromEpub(buildAnchoredEpub({ docs: [{ href: 'book.xhtml', html }], toc }));
+  assert.equal(chapters.length, 6);
+  assert.deepEqual(
+    chapters.map((c) => c.title),
+    ['Chapter 1', 'Chapter 2', 'Chapter 3', 'Chapter 4', 'Chapter 5', 'Chapter 6']
+  );
+  assert.doesNotMatch(chapters[2]!.text, /PART-TWO-EPIGRAPH/);
+  assert.match(chapters[2]!.text, /nest3 sentence 8/);
+});
+
+test('detectChaptersFromEpub: a numbered entry listed twice for the same target keeps the longer title', async () => {
+  const { detectChaptersFromEpub } = await import('./chapterDetection.js');
+  const { html, toc } = singleFileBook();
+  toc.splice(3, 0, { title: 'Chapter II. The Long Descriptive Title', href: 'book.xhtml#c2' });
+  const chapters = detectChaptersFromEpub(buildAnchoredEpub({ docs: [{ href: 'book.xhtml', html }], toc }));
+  assert.equal(chapters.length, 6);
+  assert.equal(chapters[1]!.title, 'Chapter II. The Long Descriptive Title');
+});
+
+// ---------------------------------------------------------------------------
 // LLM-based text splitting (node-fetch mocked at the top of this file)
 // ---------------------------------------------------------------------------
 
