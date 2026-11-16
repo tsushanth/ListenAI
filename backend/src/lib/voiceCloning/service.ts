@@ -53,6 +53,20 @@ const addMonths = (d: Date, m: number) => { const x = new Date(d); x.setUTCMonth
 // deployment would need a DB-level constraint; see docs/VOICE_CLONING_CONSENT.md (known limitation).
 const inFlight = new Set<string>();
 
+// Wake the transcription worker that checks the spoken consent phrase. Throttled so a burst of requests
+// costs at most one start per 90 s and 20 per hour; never throws, never waits.
+const ASR_WARM_GAP_MS = 90_000, ASR_WARM_PER_HOUR = 20;
+let asrWarmLast = 0; let asrWarmTimes: number[] = [];
+export function warmAsr(asr: AsrClient, now: () => number = Date.now): Promise<void> {
+  const t = now();
+  asrWarmTimes = asrWarmTimes.filter((x) => t - x < 3_600_000);
+  if (!asr.warm || t - asrWarmLast < ASR_WARM_GAP_MS || asrWarmTimes.length >= ASR_WARM_PER_HOUR) return Promise.resolve();
+  asrWarmLast = t; asrWarmTimes.push(t);
+  return asr.warm().catch(() => undefined);
+}
+/** Test hook: forget throttle state. */
+export function resetAsrWarmForTests() { asrWarmLast = 0; asrWarmTimes = []; }
+
 export function assertEligible(e: Eligibility): void {
   if (!e.emailVerified) throw new CloneError(403, 'email_unverified', 'Verify your email address before creating a cloned voice.');
   if (!e.plan) throw new CloneError(402, 'payment_required', 'Voice cloning requires an active paid plan with a payment method on file.');
@@ -65,6 +79,7 @@ export function dailyLimitFor(e: Eligibility, p: ClonePolicy): number {
 export async function issueConsentChallenge(deps: CloneDeps, e: Eligibility) {
   assertEligible(e);
   if (!isConsentRequired(deps)) throw new CloneError(409, 'consent_not_required', 'Consent phrase is not required; send attested=true instead.');
+  void warmAsr(deps.asr);
   void deps.service.warm?.()?.catch(() => undefined); // the speaker records the phrase next: wake the GPU apps meanwhile
   const now = (deps.now ?? (() => new Date()))();
   const { phrase, codeWords } = issuePhrase();
@@ -107,6 +122,7 @@ export async function createVoiceClone(deps: CloneDeps, input: CreateVoiceInput)
     throw new CloneError(429, 'creation_in_progress', 'A voice creation is already in progress for this account.');
   }
   inFlight.add(e.userId);
+  void warmAsr(asr);
   void service.warm?.(input.language)?.catch(() => undefined); // start the app that will hold the voice while the gate runs
   try {
     // 1. Daily limit (counts deleted voices too).

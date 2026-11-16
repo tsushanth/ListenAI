@@ -19,13 +19,26 @@ export function createGatewayAsr(opts: { gatewayUrl: string; apiKey: string; fet
       if (language) qs.set('language', language);
       const res = await f(`${url}/v1/stt?${qs.toString()}`, {
         method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': mimeType || 'application/octet-stream' },
-        body: new Uint8Array(audio), signal: AbortSignal.timeout(120_000),
+        body: new Uint8Array(audio), signal: AbortSignal.timeout(240_000), // a cold worker has measured over 120 s
       });
       if (!res.ok) throw new Error(`STT worker returned HTTP ${res.status}`);
       const body = (await res.json()) as { text?: string; segments?: Array<{ text: string }> };
       if (typeof body.text === 'string') return body.text;
       if (Array.isArray(body.segments)) return body.segments.map((s) => s.text).join(' ');
       throw new Error('STT worker returned an unexpected response shape');
+    },
+    async warm() {
+      try {
+        const auth = await f(`${opts.gatewayUrl}/stt/authorize`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ key: opts.apiKey, mode: 'batch' }), signal: AbortSignal.timeout(10_000),
+        });
+        if (!auth.ok) return;
+        const { token, url } = (await auth.json()) as { token?: string; url?: string };
+        if (!token || !url) return;
+        // Held open for the whole cold start so the container is not abandoned half-started.
+        await f(`${url}/health`, { headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(240_000) });
+      } catch { /* best effort */ }
     },
   };
 }

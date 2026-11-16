@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { DEFAULT_POLICY } from './policy.js';
 import {
   CloneError, assertEligible, createVoiceClone, deleteVoiceClone, disableVoiceClone, getUsableVoice, issueConsentChallenge,
-  purgeExpired, recordOutput, type CloneDeps,
+  purgeExpired, recordOutput, warmAsr, resetAsrWarmForTests, type CloneDeps,
 } from './service.js';
 import { FakeAsr, FakeService, GOOD_METRICS, MemoryBlobs, MemoryStore } from './testDoubles.js';
 import type { Eligibility } from './types.js';
@@ -319,4 +319,27 @@ test('warm-up is not fired for an account that is not eligible', async () => {
   let n = 0; s.service.warm = async () => { n++; };
   await rejects(issueConsentChallenge(s.deps, { ...paid, plan: null }), 'payment_required', 402);
   assert.equal(n, 0);
+});
+
+test('transcription warm-up: fired at consent time and at create, throttled to one per 90 s and 20 per hour, never fails the request', async () => {
+  resetAsrWarmForTests();
+  const s = setup();
+  let n = 0; (s.asr as FakeAsr).warm = async () => { n++; };
+  const c = await challengeFor(s);
+  assert.equal(n, 1);
+  await createVoiceClone(s.deps, body(c.challengeId)); // inside the 90 s gap: no second start
+  assert.equal(n, 1);
+  resetAsrWarmForTests();
+  const s2 = setup();
+  s2.asr.warm = async () => { throw new Error('unreachable'); };
+  const c2 = await challengeFor(s2);
+  const r = await createVoiceClone(s2.deps, body(c2.challengeId));
+  assert.equal(r.voice.status, 'active');
+  // cap: with a fake clock, 20 warm-ups in an hour then none
+  resetAsrWarmForTests();
+  let m = 0; const asr = { transcribe: async () => '', warm: async () => { m++; } };
+  let t = 1_000_000;
+  for (let i = 0; i < 30; i++) { await warmAsr(asr, () => (t += 100_000)); }
+  assert.equal(m, 20);
+  resetAsrWarmForTests();
 });

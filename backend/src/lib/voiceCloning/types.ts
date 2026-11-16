@@ -41,6 +41,8 @@ export interface SynthesisResult {
 
 export interface AsrClient {
   transcribe(audio: Buffer, mimeType: string, language?: string): Promise<string>;
+  /** Best-effort wake-up of a scale-to-zero transcription worker. Never throws. */
+  warm?(): Promise<void>;
 }
 
 export type VoiceStatus = 'active' | 'disabled' | 'deleting' | 'deleted';
