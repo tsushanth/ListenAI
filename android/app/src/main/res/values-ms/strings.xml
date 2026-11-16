@@ -127,7 +127,9 @@
     <string name="clipboard_url_detected">URL dikesan</string>
     <string name="clipboard_text_content">Kandungan teks</string>
     <string name="clipboard_empty">Papan klip kosong</string>
-    <string name="word_count_format">%d perkataan</string>
+    <plurals name="word_count_format">
+        <item quantity="other">%d perkataan</item>
+    </plurals>
     <string name="pdf_selected">PDF dipilih</string>
     <string name="epub_selected">EPUB</string>    <string name="remove">Buang</string>
 
@@ -415,7 +417,9 @@
     <string name="player_sleep_timer_set">Pemasa tidur ditetapkan %d minit</string>
     <string name="player_sleep_timer_cancelled">Pemasa tidur dibatalkan</string>
     <string name="player_by_author">oleh %s</string>
-    <string name="player_words_count">%d perkataan</string>
+    <plurals name="player_words_count">
+        <item quantity="other">%d perkataan</item>
+    </plurals>
     <string name="player_untitled">Tanpa Tajuk</string>
     <string name="player_article_fallback">Artikel</string>
     <string name="player_from_label">Dari:</string>
@@ -487,4 +491,98 @@
     <string name="language_portuguese">Português</string>
     <string name="language_italian">Italiano</string>
     <string name="language_hindi">हिन्दी</string>
+
+    <!-- Machine translated, needs native review: account deletion, bookmarks, widget, share sheet, Read Text, analytics consent, offline AI -->
+    <string name="system_tts_back_content_description">Kembali</string>
+    <string name="analytics_consent_title">Kongsi statistik penggunaan?</string>
+    <string name="analytics_consent_body">Benarkan Google Firebase mengira ciri yang digunakan, dikaitkan dengan ID apl rawak dan bukan dengan nama atau e-mel anda. Kami tidak pernah menghantar teks yang anda baca atau import, dan kami tidak memaparkan iklan. Anda boleh menukarnya dalam Tetapan pada bila-bila masa.</string>
+    <string name="analytics_consent_allow">Benarkan</string>
+    <string name="analytics_consent_decline">Tidak, terima kasih</string>
+    <string name="settings_analytics_title">Statistik penggunaan</string>
+    <string name="settings_analytics_subtitle">Kongsi statistik penggunaan tanpa nama dengan Google Firebase</string>
+    <string name="tab_read_text">Baca Teks</string>
+    <string name="read_text_title">Baca Teks</string>
+    <string name="read_text_subtitle">Pilih foto teks bercetak dan ReadAloud akan membacakannya.</string>
+    <string name="read_text_take_photo">Ambil foto</string>
+    <string name="read_text_pick_gallery">Pilih daripada galeri</string>
+    <string name="read_text_coming_soon">Mengambil foto dengan kamera akan hadir dalam kemas kini kemudian. Buat masa ini, pilih foto daripada galeri anda.</string>
+    <string name="onboarding_get_started">Mulakan</string>
+    <string name="settings_offline_ai">AI luar talian</string>
+    <string name="settings_offline_ai_subtitle_ready">Model pada peranti sedia · berfungsi tanpa internet</string>
+    <string name="settings_offline_ai_subtitle_not_ready">Jana audio pada peranti, tanpa internet</string>
+    <string name="settings_offline_ai_subtitle_ineligible">Tidak disokong pada peranti ini (memerlukan Android 8+ dan RAM 3 GB)</string>
+    <string name="settings_offline_ai_downloading">Memuat turun model pada peranti…</string>
+    <string name="settings_offline_ai_waiting_wifi">Menunggu Wi-Fi…</string>
+    <string name="settings_offline_ai_allow_cellular">Benarkan muat turun melalui data selular</string>
+    <string name="source_epub">Buku</string>
+    <string name="process_text_label">Bacakan</string>
+    <string name="incoming_title">Bacakan ini</string>
+    <string name="incoming_read_now">Baca sekarang</string>
+    <string name="incoming_try_again">Cuba lagi</string>
+    <string name="incoming_preparing">Menyediakan…</string>
+    <string name="incoming_save_to_library">Simpan ke pustaka</string>
+    <string name="incoming_file_unreadable">Fail itu tidak dapat dibaca. Cuba buka daripada Fail atau kongsikan ke ReadAloud.</string>
+    <string name="incoming_cancel">Batal</string>
+    <string name="incoming_source_link">Halaman web</string>
+    <string name="incoming_source_pdf">PDF</string>
+    <string name="incoming_source_epub">Buku EPUB</string>
+    <string name="incoming_source_txt">Fail teks</string>
+    <string name="bookmarks_title">Penanda halaman</string>
+    <string name="bookmarks_add_here">Tandakan tempat ini</string>
+    <string name="bookmarks_added">Ditandakan pada %1$s</string>
+    <string name="bookmarks_empty">Belum ada penanda halaman. Semasa mendengar, buka Pilihan lain dan pilih Tandakan tempat ini.</string>
+    <string name="bookmarks_delete">Padam penanda halaman</string>
+    <string name="widget_description">Buka artikel terbaharu anda atau baca teks yang anda salin</string>
+    <string name="widget_resume">Teruskan mendengar</string>
+    <string name="widget_continue">Terbaharu dalam pustaka anda</string>
+    <string name="widget_open">Buka ReadAloud</string>
+    <string name="widget_percent_done">%1$d%% didengar</string>
+    <string name="widget_clipboard_empty">Tiada apa untuk dibaca. Salin teks atau pautan dahulu.</string>
+    <string name="widget_paste_and_read">Baca papan keratan</string>
+    <string name="follow_along">Ikut teks</string>
+    <string name="follow_along_subtitle">Tatal teks supaya mengikut suara</string>
+    <string name="on">Hidup</string>
+    <string name="off">Mati</string>
+    <string name="settings_account">Akaun</string>
+    <string name="settings_delete_account">Padam akaun</string>
+    <string name="settings_delete_account_subtitle">Padam akaun dan data awan anda secara kekal</string>
+    <string name="delete_account_title">Padam akaun anda?</string>
+    <string name="delete_account_body">Ini memadam secara kekal akaun anda, suara klon anda serta data audio dan penggunaan yang disimpan untuk anda di awan. Ini tidak boleh dibuat asal. Artikel yang anda import kekal pada peranti ini.</string>
+    <string name="delete_account_play_note">Memadam akaun anda tidak membatalkan langganan Google Play anda. Batalkannya dalam Google Play supaya tidak dicaj lagi.</string>
+    <string name="delete_account_confirm">Padam akaun</string>
+    <string name="delete_account_deleting">Memadam akaun anda…</string>
+    <string name="delete_account_subscription_title">Anda mempunyai langganan aktif</string>
+    <string name="delete_account_subscription_body">Memadam akaun anda tidak membatalkan langganan anda, jadi anda mungkin masih dicaj.</string>
+    <string name="delete_account_subscription_play">Langganan Google Play: batalkannya dalam Google Play (Langganan).</string>
+    <string name="delete_account_subscription_stripe">Langganan web: batalkannya dahulu daripada portal pengebilan di tapak web ReadAloud, atau e-mel support@kreativekoala.llc.</string>
+    <string name="delete_account_open_play">Buka Google Play</string>
+    <string name="delete_account_anyway">Padam juga</string>
+    <string name="delete_account_error_title">Akaun anda tidak dapat dipadam</string>
+    <string name="delete_account_error_network">Tiada sambungan. Semak internet anda dan cuba lagi.</string>
+    <string name="delete_account_error_server">Sesuatu tidak kena di pihak kami. Akaun anda masih aktif. Sila cuba lagi sebentar lagi.</string>
+    <string name="delete_account_error_unknown">Sesuatu tidak kena. Sila cuba lagi.</string>
+    <string name="delete_account_error_signin">Sesi anda telah tamat, jadi anda telah dilog keluar pada peranti ini. Jika akaun anda masih wujud, log masuk semula dan cuba lagi daripada Tetapan.</string>
+    <string name="delete_account_done_title">Akaun dipadam</string>
+    <string name="delete_account_done_body">Akaun dan data awan anda telah dipadam dan anda telah dilog keluar pada peranti ini.</string>
+    <string name="delete_account_done_play">Langganan Google Play anda masih aktif. Batalkannya dalam Google Play supaya tidak dicaj lagi.</string>
+    <string name="delete_account_done_stripe">Langganan web anda masih aktif. E-mel support@kreativekoala.llc untuk membatalkannya dan berhenti dicaj.</string>
+
+    <!-- Machine translated, needs native review: c2 -->
+    <string name="read_text_reading_image">Membaca imej…</string>
+    <string name="read_text_starting_playback">Memulakan main balik suara…</string>
+    <string name="read_text_speaking">Sedang membaca</string>
+    <string name="read_text_done">Selesai.</string>
+    <string name="read_text_read_again">Baca semula</string>
+    <string name="read_text_no_text">Tiada teks ditemui dalam imej itu. Cuba foto yang lebih jelas.</string>
+    <string name="read_text_playback_failed">Main balik gagal. Ketik Baca semula untuk mencuba lagi.</string>
+    <string name="read_text_playback_failed_code">Main balik gagal (kod %1$d). Ketik Baca semula untuk mencuba lagi.</string>
+    <string name="read_text_error_generic">Sesuatu tidak kena.</string>
+    <string name="read_text_cd_take_photo">Ambil foto teks untuk dibacakan. Akan hadir dalam kemas kini kemudian.</string>
+    <string name="read_text_cd_pick_gallery">Pilih foto sedia ada daripada galeri anda untuk dibacakan</string>
+    <string name="read_text_ocr_failed">Pengecaman teks gagal: %1$s</string>
+    <string name="read_text_image_load_failed">Imej tidak dapat dimuatkan: %1$s</string>
+    <string name="player_generating_audio">Menjana audio…</string>
+    <plurals name="incoming_source_text">
+        <item quantity="other">Teks, %1$d perkataan</item>
+    </plurals>
 </resources>

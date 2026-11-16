@@ -1,5 +1,7 @@
 package com.listenai.ui.voice
 
+import androidx.compose.ui.res.stringResource
+import com.listenai.R
 import android.media.MediaPlayer
 import android.widget.Toast
 import androidx.compose.animation.core.*
@@ -384,7 +386,7 @@ fun VoiceCloningListScreen(
                 title = { Text("Voice Cloning", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                 },
                 actions = {

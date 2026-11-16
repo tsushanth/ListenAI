@@ -127,7 +127,14 @@
     <string name="clipboard_url_detected">تم اكتشاف رابط</string>
     <string name="clipboard_text_content">محتوى نصي</string>
     <string name="clipboard_empty">الحافظة فارغة</string>
-    <string name="word_count_format">%d كلمة</string>
+    <plurals name="word_count_format">
+        <item quantity="zero">%d كلمة</item>
+        <item quantity="one">كلمة واحدة</item>
+        <item quantity="two">كلمتان</item>
+        <item quantity="few">%d كلمات</item>
+        <item quantity="many">%d كلمة</item>
+        <item quantity="other">%d كلمة</item>
+    </plurals>
     <string name="pdf_selected">تم اختيار PDF</string>
     <string name="epub_selected">EPUB</string>    <string name="remove">إزالة</string>
 
@@ -415,7 +422,14 @@
     <string name="player_sleep_timer_set">تم ضبط مؤقت النوم لمدة %d دقيقة</string>
     <string name="player_sleep_timer_cancelled">تم إلغاء مؤقت النوم</string>
     <string name="player_by_author">بواسطة %s</string>
-    <string name="player_words_count">%d كلمة</string>
+    <plurals name="player_words_count">
+        <item quantity="zero">%d كلمة</item>
+        <item quantity="one">كلمة واحدة</item>
+        <item quantity="two">كلمتان</item>
+        <item quantity="few">%d كلمات</item>
+        <item quantity="many">%d كلمة</item>
+        <item quantity="other">%d كلمة</item>
+    </plurals>
     <string name="player_untitled">بدون عنوان</string>
     <string name="player_article_fallback">مقال</string>
     <string name="player_from_label">من:</string>
@@ -487,4 +501,103 @@
     <string name="language_portuguese">Português</string>
     <string name="language_italian">Italiano</string>
     <string name="language_hindi">हिन्दी</string>
+
+    <!-- Machine translated, needs native review: account deletion, bookmarks, widget, share sheet, Read Text, analytics consent, offline AI -->
+    <string name="system_tts_back_content_description">رجوع</string>
+    <string name="analytics_consent_title">مشاركة إحصاءات الاستخدام؟</string>
+    <string name="analytics_consent_body">اسمح لـ Google Firebase بإحصاء الميزات المستخدمة، مرتبطةً بمعرّف تطبيق عشوائي وليس باسمك أو بريدك الإلكتروني. لا نرسل أبدًا النص الذي تقرؤه أو تستورده، ولا نعرض إعلانات. يمكنك تغيير هذا في الإعدادات في أي وقت.</string>
+    <string name="analytics_consent_allow">السماح</string>
+    <string name="analytics_consent_decline">لا، شكرًا</string>
+    <string name="settings_analytics_title">إحصاءات الاستخدام</string>
+    <string name="settings_analytics_subtitle">شارك إحصاءات استخدام مجهولة الهوية مع Google Firebase</string>
+    <string name="tab_read_text">قراءة النص</string>
+    <string name="read_text_title">قراءة النص</string>
+    <string name="read_text_subtitle">اختر صورة لنص مطبوع وسيقرؤه ReadAloud بصوت عالٍ.</string>
+    <string name="read_text_take_photo">التقاط صورة</string>
+    <string name="read_text_pick_gallery">اختيار من المعرض</string>
+    <string name="read_text_coming_soon">سيتوفر التقاط الصور بالكاميرا في تحديث لاحق. في الوقت الحالي، اختر صورة من معرضك.</string>
+    <string name="onboarding_get_started">ابدأ</string>
+    <string name="settings_offline_ai">الذكاء الاصطناعي دون اتصال</string>
+    <string name="settings_offline_ai_subtitle_ready">النموذج على الجهاز جاهز · يعمل دون إنترنت</string>
+    <string name="settings_offline_ai_subtitle_not_ready">أنشئ الصوت على الجهاز دون الحاجة إلى إنترنت</string>
+    <string name="settings_offline_ai_subtitle_ineligible">غير مدعوم على هذا الجهاز (يتطلب Android 8+ و3 غيغابايت من الذاكرة)</string>
+    <string name="settings_offline_ai_downloading">جارٍ تنزيل النموذج على الجهاز…</string>
+    <string name="settings_offline_ai_waiting_wifi">في انتظار Wi-Fi…</string>
+    <string name="settings_offline_ai_allow_cellular">السماح بالتنزيل عبر بيانات الجوال</string>
+    <string name="source_epub">كتاب</string>
+    <string name="process_text_label">قراءة بصوت عالٍ</string>
+    <string name="incoming_title">اقرأ هذا بصوت عالٍ</string>
+    <string name="incoming_read_now">اقرأ الآن</string>
+    <string name="incoming_try_again">حاول مرة أخرى</string>
+    <string name="incoming_preparing">جارٍ التحضير…</string>
+    <string name="incoming_save_to_library">حفظ في المكتبة</string>
+    <string name="incoming_file_unreadable">تعذّرت قراءة هذا الملف. جرّب فتحه من تطبيق الملفات أو شاركه مع ReadAloud.</string>
+    <string name="incoming_cancel">إلغاء</string>
+    <string name="incoming_source_link">صفحة ويب</string>
+    <string name="incoming_source_pdf">PDF</string>
+    <string name="incoming_source_epub">كتاب EPUB</string>
+    <string name="incoming_source_txt">ملف نصي</string>
+    <string name="bookmarks_title">الإشارات المرجعية</string>
+    <string name="bookmarks_add_here">إضافة إشارة مرجعية هنا</string>
+    <string name="bookmarks_added">تمت إضافة إشارة مرجعية عند %1$s</string>
+    <string name="bookmarks_empty">لا توجد إشارات مرجعية بعد. افتح مزيدًا من الخيارات أثناء الاستماع واختر إضافة إشارة مرجعية هنا.</string>
+    <string name="bookmarks_delete">حذف الإشارة المرجعية</string>
+    <string name="widget_description">افتح أحدث مقالاتك أو اقرأ ما نسخته</string>
+    <string name="widget_resume">متابعة الاستماع</string>
+    <string name="widget_continue">الأحدث في مكتبتك</string>
+    <string name="widget_open">فتح ReadAloud</string>
+    <string name="widget_percent_done">تم الاستماع إلى %1$d%%</string>
+    <string name="widget_clipboard_empty">لا يوجد ما يُقرأ. انسخ نصًا أو رابطًا أولًا.</string>
+    <string name="widget_paste_and_read">قراءة الحافظة</string>
+    <string name="follow_along">تتبّع النص</string>
+    <string name="follow_along_subtitle">مرّر النص لمواكبة الصوت</string>
+    <string name="on">تشغيل</string>
+    <string name="off">إيقاف</string>
+    <string name="settings_account">الحساب</string>
+    <string name="settings_delete_account">حذف الحساب</string>
+    <string name="settings_delete_account_subtitle">احذف حسابك وبياناتك السحابية نهائيًا</string>
+    <string name="delete_account_title">حذف حسابك؟</string>
+    <string name="delete_account_body">سيؤدي هذا إلى حذف حسابك وأصواتك المستنسخة وبيانات الصوت والاستخدام المخزّنة لك في السحابة نهائيًا. لا يمكن التراجع عن ذلك. تبقى المقالات التي استوردتها على هذا الجهاز.</string>
+    <string name="delete_account_play_note">حذف حسابك لا يلغي اشتراكك في Google Play. ألغِه في Google Play لتتوقف عن الخصم.</string>
+    <string name="delete_account_confirm">حذف الحساب</string>
+    <string name="delete_account_deleting">جارٍ حذف حسابك…</string>
+    <string name="delete_account_subscription_title">لديك اشتراك نشط</string>
+    <string name="delete_account_subscription_body">حذف حسابك لا يلغي اشتراكك، لذا قد يستمر الخصم منك.</string>
+    <string name="delete_account_subscription_play">اشتراك Google Play: ألغِه في Google Play (الاشتراكات).</string>
+    <string name="delete_account_subscription_stripe">اشتراك الويب: ألغِه أولًا من بوابة الفوترة على موقع ReadAloud، أو راسل support@kreativekoala.llc.</string>
+    <string name="delete_account_open_play">فتح Google Play</string>
+    <string name="delete_account_anyway">احذف على أي حال</string>
+    <string name="delete_account_error_title">تعذّر حذف حسابك</string>
+    <string name="delete_account_error_network">لا يوجد اتصال. تحقق من الإنترنت وحاول مرة أخرى.</string>
+    <string name="delete_account_error_server">حدث خطأ من جانبنا. لا يزال حسابك نشطًا. يُرجى المحاولة مرة أخرى بعد قليل.</string>
+    <string name="delete_account_error_unknown">حدث خطأ. يُرجى المحاولة مرة أخرى.</string>
+    <string name="delete_account_error_signin">انتهت جلستك، لذا تم تسجيل خروجك على هذا الجهاز. إذا كان حسابك لا يزال موجودًا، فسجّل الدخول مرة أخرى وأعد المحاولة من الإعدادات.</string>
+    <string name="delete_account_done_title">تم حذف الحساب</string>
+    <string name="delete_account_done_body">تم حذف حسابك وبياناتك السحابية وتم تسجيل خروجك على هذا الجهاز.</string>
+    <string name="delete_account_done_play">لا يزال اشتراكك في Google Play نشطًا. ألغِه في Google Play لتتوقف عن الخصم.</string>
+    <string name="delete_account_done_stripe">لا يزال اشتراكك على الويب نشطًا. راسل support@kreativekoala.llc لإلغائه ووقف الخصم.</string>
+
+    <!-- Machine translated, needs native review: c2 -->
+    <string name="read_text_reading_image">جارٍ قراءة الصورة…</string>
+    <string name="read_text_starting_playback">جارٍ بدء تشغيل الصوت…</string>
+    <string name="read_text_speaking">جارٍ القراءة الآن</string>
+    <string name="read_text_done">تم.</string>
+    <string name="read_text_read_again">اقرأ مرة أخرى</string>
+    <string name="read_text_no_text">لم يُعثر على نص في تلك الصورة. جرّب صورة أوضح.</string>
+    <string name="read_text_playback_failed">فشل التشغيل. اضغط على اقرأ مرة أخرى لإعادة المحاولة.</string>
+    <string name="read_text_playback_failed_code">فشل التشغيل (الرمز %1$d). اضغط على اقرأ مرة أخرى لإعادة المحاولة.</string>
+    <string name="read_text_error_generic">حدث خطأ.</string>
+    <string name="read_text_cd_take_photo">التقط صورة لنص ليُقرأ بصوت عالٍ. سيتوفر في تحديث لاحق.</string>
+    <string name="read_text_cd_pick_gallery">اختر صورة موجودة من معرضك لتُقرأ بصوت عالٍ</string>
+    <string name="read_text_ocr_failed">فشل التعرّف على النص: %1$s</string>
+    <string name="read_text_image_load_failed">تعذّر تحميل الصورة: %1$s</string>
+    <string name="player_generating_audio">جارٍ إنشاء الصوت…</string>
+    <plurals name="incoming_source_text">
+        <item quantity="zero">نص،%1$d كلمة</item>
+        <item quantity="one">نص،كلمة واحدة</item>
+        <item quantity="two">نص،كلمتان</item>
+        <item quantity="few">نص،%1$d كلمات</item>
+        <item quantity="many">نص،%1$d كلمة</item>
+        <item quantity="other">نص،%1$d كلمة</item>
+    </plurals>
 </resources>

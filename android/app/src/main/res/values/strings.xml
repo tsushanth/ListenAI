@@ -20,10 +20,24 @@
 
     <!-- Read Text screen (Feature: OCR + Read Aloud) -->
     <string name="read_text_title">Read Text</string>
-    <string name="read_text_subtitle">Point your camera at printed text or pick a photo — ReadAloud will speak it.</string>
+    <string name="read_text_subtitle">Pick a photo of printed text and ReadAloud will speak it.</string>
     <string name="read_text_take_photo">Take a photo</string>
     <string name="read_text_pick_gallery">Pick from gallery</string>
-    <string name="read_text_coming_soon">Camera and on-device text recognition land in the next update — this is the scaffolding.</string>
+    <string name="read_text_coming_soon">Taking a photo with the camera is coming in a later update. For now, pick a photo from your gallery.</string>
+    <string name="read_text_reading_image">Reading the image…</string>
+    <string name="read_text_starting_playback">Starting voice playback…</string>
+    <string name="read_text_speaking">Speaking now</string>
+    <string name="read_text_done">Done.</string>
+    <string name="read_text_read_again">Read again</string>
+    <string name="read_text_no_text">No text found in that image. Try a clearer photo.</string>
+    <string name="read_text_playback_failed">Playback failed. Tap Read again to retry.</string>
+    <string name="read_text_playback_failed_code">Playback failed (code %1$d). Tap Read again to retry.</string>
+    <string name="read_text_error_generic">Something went wrong.</string>
+    <string name="read_text_cd_take_photo">Take a photo of text to read aloud. Coming in a later update.</string>
+    <string name="read_text_cd_pick_gallery">Pick an existing photo from your gallery to read aloud</string>
+    <string name="read_text_ocr_failed">Text recognition failed: %1$s</string>
+    <string name="read_text_image_load_failed">Could not load the image: %1$s</string>
+    <string name="player_generating_audio">Generating audio…</string>
 
     <!-- Home Screen -->
     <string name="promo_title">Download and listen anytime, anywhere</string>
@@ -146,7 +160,10 @@
     <string name="clipboard_url_detected">URL detected</string>
     <string name="clipboard_text_content">Text content</string>
     <string name="clipboard_empty">Clipboard is empty</string>
-    <string name="word_count_format">%d words</string>
+    <plurals name="word_count_format">
+        <item quantity="one">%d word</item>
+        <item quantity="other">%d words</item>
+    </plurals>
     <string name="pdf_selected">PDF selected</string>
     <string name="epub_selected">EPUB selected</string>
     <string name="remove">Remove</string>
@@ -443,7 +460,10 @@
     <string name="player_by_author">by %s</string>
     <string name="voice_request_cta">Want a natural %1$s voice? Tell us</string>
     <string name="voice_request_thanks">Thanks, we have noted that you want a natural %1$s voice.</string>
-    <string name="player_words_count">%d words</string>
+    <plurals name="player_words_count">
+        <item quantity="one">%d word</item>
+        <item quantity="other">%d words</item>
+    </plurals>
     <string name="player_untitled">Untitled</string>
     <string name="player_article_fallback">Article</string>
     <string name="player_from_label">From:</string>
@@ -516,6 +536,23 @@
     <string name="language_portuguese">Português</string>
     <string name="language_italian">Italiano</string>
     <string name="language_hindi">हिन्दी</string>
+    <string name="language_arabic" translatable="false">العربية</string>
+    <string name="language_indonesian" translatable="false">Bahasa Indonesia</string>
+    <string name="language_malay" translatable="false">Bahasa Melayu</string>
+    <string name="language_dutch" translatable="false">Nederlands</string>
+    <string name="language_polish" translatable="false">Polski</string>
+    <string name="language_russian" translatable="false">Русский</string>
+    <string name="language_thai" translatable="false">ไทย</string>
+    <string name="language_filipino" translatable="false">Filipino</string>
+    <string name="language_turkish" translatable="false">Türkçe</string>
+    <string name="language_vietnamese" translatable="false">Tiếng Việt</string>
+    <string name="language_czech" translatable="false">Čeština</string>
+    <string name="language_greek" translatable="false">Ελληνικά</string>
+    <string name="language_finnish" translatable="false">Suomi</string>
+    <string name="language_hungarian" translatable="false">Magyar</string>
+    <string name="language_romanian" translatable="false">Română</string>
+    <string name="language_swedish" translatable="false">Svenska</string>
+    <string name="language_ukrainian" translatable="false">Українська</string>
     <!-- Content received from other apps (Share / Read aloud / Open with) -->
     <string name="process_text_label">Read aloud</string>
     <string name="incoming_title">Read this aloud</string>
@@ -525,7 +562,10 @@
     <string name="incoming_save_to_library">Save to library</string>
     <string name="incoming_file_unreadable">Couldn\'t read that file. Try opening it from Files or share it to ReadAloud instead.</string>
     <string name="incoming_cancel">Cancel</string>
-    <string name="incoming_source_text">Text, %1$d words</string>
+    <plurals name="incoming_source_text">
+        <item quantity="one">Text, %1$d word</item>
+        <item quantity="other">Text, %1$d words</item>
+    </plurals>
     <string name="incoming_source_link">Web page</string>
     <string name="incoming_source_pdf">PDF</string>
     <string name="incoming_source_epub">EPUB book</string>

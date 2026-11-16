@@ -1445,7 +1445,7 @@ private fun ArticleHeader(article: Article) {
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
-                    text = stringResource(R.string.player_words_count, article.wordCount),
+                    text = androidx.compose.ui.res.pluralStringResource(R.plurals.player_words_count, article.wordCount, article.wordCount),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -1682,7 +1682,10 @@ private fun SynthesisBanner(
 
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
+                        // The synthesizers report English progress text ("Generating audio...", "Generating audio (2/9)");
+                        // show the localized label instead. Other messages pass through unchanged.
                         text = detail?.statusMessage?.takeIf { it.isNotBlank() }
+                            ?.let { if (it.startsWith("Generating audio")) stringResource(R.string.player_generating_audio) else it }
                             ?: stringResource(R.string.player_preparing_audio),
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Medium

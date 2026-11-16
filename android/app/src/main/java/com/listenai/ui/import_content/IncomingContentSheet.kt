@@ -200,7 +200,7 @@ fun IncomingContentSheet(
 
 @Composable
 private fun sourceLabel(content: IncomingContent): String = when (content) {
-    is IncomingContent.Text -> stringResource(R.string.incoming_source_text, content.text.trim().split(Regex("\\s+")).size)
+    is IncomingContent.Text -> content.text.trim().split(Regex("\\s+")).size.let { androidx.compose.ui.res.pluralStringResource(R.plurals.incoming_source_text, it, it) }
     is IncomingContent.Link -> stringResource(R.string.incoming_source_link)
     is IncomingContent.Document -> when (content.kind) {
         IncomingContent.Kind.PDF -> stringResource(R.string.incoming_source_pdf)
