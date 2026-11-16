@@ -16,7 +16,14 @@ Ajoutez tout ce que vous voulez entendre
 • Collez ou saisissez du texte, ou importez ce que vous venez de copier
 • Sélectionnez du texte dans une autre appli et choisissez Lire à voix haute, ou partagez un lien ou un fichier vers ReadAloud
 
+Écoutez en 20 langues
+• ReadAloud détecte la langue de votre document et l'affiche dans le lecteur, où vous pouvez la changer
+• L'anglais, ainsi que l'allemand, l'espagnol, le français, l'italien, le portugais, le tchèque, le grec, le finnois, l'hindi, le hongrois, l'indonésien, le japonais, le néerlandais, le polonais, le roumain, le russe, le suédois, le turc et l'ukrainien, sont lus avec une voix ReadAloud lorsque vous êtes en ligne
+• Toute autre langue, ou sans connexion : ReadAloud utilise une voix installée sur votre téléphone et vous prévient s'il en manque une
+• Choisissez une voix pour chaque langue dans le lecteur
+
 Voix
+• Dix voix anglaises
 • Voix hors ligne facultative pour l'anglais (téléchargement unique ; nécessite Android 8 ou plus et 3 Go de RAM)
 • Suivi : le texte défile avec la voix pendant la lecture
 
@@ -31,7 +38,8 @@ Lecture intelligente
 
 Comment ça marche :
 1. Ajoutez du contenu par lien, fichier, e-mail, texte collé ou menu de partage
-2. Appuyez sur lecture et écoutez où vous voulez
+2. Vérifiez la langue et choisissez une voix
+3. Appuyez sur lecture et écoutez où vous voulez
 
 Que vous contourniez la dyslexie, viviez avec un TDAH ou une déficience visuelle, ReadAloud AI transforme votre liste de lecture en liste d'écoute.
 

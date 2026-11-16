@@ -16,7 +16,14 @@ Adicione o que você quer ouvir
 • Cole ou digite texto, ou importe o que acabou de copiar
 • Selecione texto em outro app e escolha Ler em voz alta, ou compartilhe um link ou arquivo com o ReadAloud
 
+Ouça em 20 idiomas
+• O ReadAloud detecta o idioma do documento e o mostra no player, onde você pode mudá-lo
+• Inglês, além de alemão, espanhol, francês, italiano, português, tcheco, grego, finlandês, hindi, húngaro, indonésio, japonês, holandês, polonês, romeno, russo, sueco, turco e ucraniano, lidos com uma voz do ReadAloud quando você está online
+• Qualquer outro idioma, ou sem conexão: o ReadAloud usa uma voz instalada no celular e avisa se faltar uma
+• Escolha uma voz para cada idioma no player
+
 Vozes
+• Dez vozes em inglês
 • Voz offline opcional para inglês (download único; requer Android 8 ou superior e 3 GB de RAM)
 • Acompanhe: o texto rola junto com a voz durante a leitura
 
@@ -31,7 +38,8 @@ Reprodução inteligente
 
 Como funciona:
 1. Adicione conteúdo por link, arquivo, e-mail, texto colado ou menu de compartilhamento
-2. Toque em reproduzir e ouça onde quiser
+2. Confira o idioma e escolha uma voz
+3. Toque em reproduzir e ouça onde quiser
 
 Seja para contornar a dislexia, conviver com o TDAH ou com limitações de visão, o ReadAloud AI transforma sua lista de leitura em lista de escuta.
 

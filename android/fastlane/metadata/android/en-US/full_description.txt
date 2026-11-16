@@ -16,7 +16,14 @@ Add Anything You Want to Hear
 • Paste or type text, or import what you just copied
 • Select text in another app and choose Read aloud, or share a link or file to ReadAloud
 
+Listen in 20 Languages
+• ReadAloud detects the language of your document and shows it in the player, where you can change it
+• English, plus German, Spanish, French, Italian, Portuguese, Czech, Greek, Finnish, Hindi, Hungarian, Indonesian, Japanese, Dutch, Polish, Romanian, Russian, Swedish, Turkish and Ukrainian, read with a ReadAloud voice when you are online
+• Any other language, or no connection: ReadAloud uses a voice installed on your phone, and tells you if one is missing
+• Pick a voice for each language in the player
+
 Voices
+• Ten English voices
 • Optional offline voice for English (one-time download; needs Android 8 or newer and 3 GB of RAM)
 • Follow along: the text scrolls with the voice as it reads
 
@@ -31,7 +38,8 @@ Smart Playback
 
 How It Works:
 1. Add content by link, file, email, pasted text or the share menu
-2. Tap play and listen anywhere
+2. Check the language and pick a voice
+3. Tap play and listen anywhere
 
 Whether you're working around dyslexia, working with ADHD, or working around vision limitations, ReadAloud AI turns your reading list into a listening list.
 

@@ -16,7 +16,14 @@ Alles hinzufügen, was du hören willst
 • Text einfügen oder eintippen, oder gerade Kopiertes importieren
 • In einer anderen App Text markieren und "Vorlesen" wählen oder einen Link oder eine Datei mit ReadAloud teilen
 
+Hören in 20 Sprachen
+• ReadAloud erkennt die Sprache deines Dokuments und zeigt sie im Player an; dort kannst du sie ändern
+• Englisch sowie Deutsch, Spanisch, Französisch, Italienisch, Portugiesisch, Tschechisch, Griechisch, Finnisch, Hindi, Ungarisch, Indonesisch, Japanisch, Niederländisch, Polnisch, Rumänisch, Russisch, Schwedisch, Türkisch und Ukrainisch werden online mit einer ReadAloud-Stimme gelesen
+• Jede andere Sprache, oder ohne Verbindung: ReadAloud nutzt eine auf deinem Handy installierte Stimme und sagt dir, wenn eine fehlt
+• Wähle im Player für jede Sprache eine Stimme
+
 Stimmen
+• Zehn englische Stimmen
 • Optionale Offline-Stimme für Englisch (einmaliger Download; benötigt Android 8 oder neuer und 3 GB RAM)
 • Mitlesen: Der Text scrollt mit der Stimme mit
 
@@ -31,7 +38,8 @@ Intelligente Wiedergabe
 
 So funktioniert's:
 1. Inhalt per Link, Datei, E-Mail, eingefügtem Text oder Teilen-Menü hinzufügen
-2. Auf Play tippen und überall zuhören
+2. Sprache prüfen und eine Stimme wählen
+3. Auf Play tippen und überall zuhören
 
 Ob du mit Legasthenie, mit ADHS oder mit einer Sehbehinderung liest: ReadAloud AI macht aus deiner Leseliste eine Hörliste.
 
