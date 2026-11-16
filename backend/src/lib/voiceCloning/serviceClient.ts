@@ -89,22 +89,54 @@ export function createServiceClient(opts: ServiceClientOptions): CloneServiceCli
     async disableVoice(voiceId, _language) {
       await call(`/voices/${encodeURIComponent(voiceId)}/disable`, { method: 'POST' });
     },
+    /** Starts a cold container early (a GPU app takes a while to come up); the answer is ignored. */
+    async warm() {
+      try { await f(`${base}/health`, { headers, signal: AbortSignal.timeout(timeout) }); } catch { /* best effort */ }
+    },
   };
 }
 
 /**
  * Two serving apps behind one client: voices in `mlLanguages` live on the multilingual app, everything else stays on the primary app.
- * Reference analysis and speaker similarity always go to the primary app (same metrics and thresholds as today). A voice's language
+ * Reference analysis and speaker similarity run on the multilingual app by default (same metrics and thresholds, far shorter cold start;
+ * VOICE_CLONE_ANALYZE_ON_PRIMARY=true puts them back on the primary). A voice's language
  * is known at creation, synthesis, deletion and takedown, so each call goes to exactly one app; when the language is unknown the
  * call goes to both and any failure is reported (a deletion must never be silently half done).
  */
-export function createRoutingServiceClient(opts: { primary: CloneServiceClient; ml: CloneServiceClient; mlLanguages: ReadonlySet<string> }): CloneServiceClient {
+export function createRoutingServiceClient(opts: {
+  primary: CloneServiceClient; ml: CloneServiceClient; mlLanguages: ReadonlySet<string>;
+  /** Where the reference gate and speaker similarity run. 'ml' (default): the multilingual app, falling back to the primary if it is down. */
+  analyzeOn?: 'ml' | 'primary';
+  now?: () => number;
+}): CloneServiceClient {
   const { primary, ml, mlLanguages } = opts;
+  const analyzeOn = opts.analyzeOn ?? 'ml';
+  const now = opts.now ?? Date.now;
   const pick = (language?: string) => (language && mlLanguages.has(language) ? ml : primary);
   const both = async (fn: (c: CloneServiceClient) => Promise<void>) => { await Promise.all([fn(primary), fn(ml)]); };
+  // The multilingual app measures with the same code and the same speaker embedding as the primary (identical numbers on the same
+  // clips, checked 2026-11-16), and it starts in about 20 s where the primary can take minutes when GPUs are busy.
+  const gate = async <T>(fn: (c: CloneServiceClient) => Promise<T>): Promise<T> => {
+    if (analyzeOn === 'primary') return fn(primary);
+    try { return await fn(ml); } catch (err) {
+      if (err instanceof ServiceUnavailableError) return fn(primary);
+      throw err;
+    }
+  };
+  const lastWarm = new Map<CloneServiceClient, number>();
+  const warmLog = new Map<CloneServiceClient, number[]>();
+  const WARM_GAP_MS = 90_000, WARM_PER_HOUR = 20;
+  const warmOne = (c: CloneServiceClient): Promise<void> => {
+    const t = now();
+    if (t - (lastWarm.get(c) ?? -Infinity) < WARM_GAP_MS || !c.warm) return Promise.resolve();
+    const recent = (warmLog.get(c) ?? []).filter((x) => t - x < 3_600_000);
+    if (recent.length >= WARM_PER_HOUR) return Promise.resolve(); // a GPU wake-up costs money: bounded per hour per app
+    recent.push(t); warmLog.set(c, recent); lastWarm.set(c, t);
+    return c.warm().catch(() => undefined);
+  };
   return {
-    analyze: (audio, filename) => primary.analyze(audio, filename),
-    similarity: (a, b) => primary.similarity(a, b),
+    analyze: (audio, filename) => gate((c) => c.analyze(audio, filename)),
+    similarity: (a, b) => gate((c) => c.similarity(a, b)),
     createVoice: (p) => pick(p.language).createVoice(p),
     synthesize: (p) => pick(p.language).synthesize(p),
     deleteVoice: (voiceId, language) => (language ? pick(language).deleteVoice(voiceId, language) : both((c) => c.deleteVoice(voiceId))),
@@ -114,6 +146,8 @@ export function createRoutingServiceClient(opts: { primary: CloneServiceClient; 
       const r = await Promise.allSettled([primary.disableVoice(voiceId), ml.disableVoice(voiceId)]);
       if (r.every((x) => x.status === 'rejected')) throw (r[0] as PromiseRejectedResult).reason;
     },
+    // At most once per 90 s and 20 times an hour per app, so repeated calls cannot keep GPUs running.
+    warm: async (language) => { await (language ? warmOne(pick(language)) : Promise.all([warmOne(primary), warmOne(ml)]).then(() => undefined)); },
   };
 }
 
@@ -129,7 +163,7 @@ export function serviceClientFromEnv(env: Record<string, string | undefined> = p
   const ml = mlUrl && mlSecret ? createServiceClient({ baseUrl: mlUrl, secret: mlSecret }) : null;
   if (primary && ml) {
     const mlLanguages = new Set((env.VOICE_CLONE_ML_LANGUAGES ?? DEFAULT_ML_LANGUAGES).split(',').map((x) => x.trim()).filter(Boolean));
-    return createRoutingServiceClient({ primary, ml, mlLanguages });
+    return createRoutingServiceClient({ primary, ml, mlLanguages, analyzeOn: env.VOICE_CLONE_ANALYZE_ON_PRIMARY === 'true' ? 'primary' : 'ml' });
   }
   return primary ?? ml;
 }

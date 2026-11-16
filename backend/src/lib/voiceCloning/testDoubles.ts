@@ -77,6 +77,8 @@ export class FakeService implements CloneServiceClient {
   failDisable = false;
   voices = new Set<string>();
   disabled = new Set<string>();
+  /** Tests assign this to observe the best-effort wake-up; unset by default so existing call lists are unchanged. */
+  warm?: (language?: string) => Promise<void>;
   async analyze(audio: Buffer, filename: string) { this.calls.push('analyze'); return this.analyzeResult(audio, filename); }
   async similarity() { this.calls.push('similarity'); return this.similarityValue; }
   async createVoice(p: { voiceId: string }) {

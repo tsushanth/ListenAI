@@ -298,3 +298,25 @@ test('a live (never deleted) voice keeps its consent evidence indefinitely', asy
   const r = await purgeExpired({ store: s.store, blobs: s.blobs, now: () => new Date('2040-01-01T00:00:00Z') });
   assert.equal(r.consents, 0);
 });
+
+test('warm-up: the consent challenge wakes all serving apps, create wakes the one for its language; a failing warm never fails the request', async () => {
+  const s = setup();
+  const warmed: Array<string | undefined> = [];
+  s.service.warm = async (language?: string) => { warmed.push(language); };
+  const c = await challengeFor(s);
+  assert.deepEqual(warmed, [undefined]); // unknown language yet: every app
+  await createVoiceClone(s.deps, { ...body(c.challengeId), language: 'de' });
+  assert.deepEqual(warmed, [undefined, 'de']);
+  const s2 = setup();
+  s2.service.warm = async () => { throw new Error('unreachable'); };
+  const c2 = await challengeFor(s2);
+  const r = await createVoiceClone(s2.deps, body(c2.challengeId)); // rejected promise from warm is swallowed
+  assert.equal(r.voice.status, 'active');
+});
+
+test('warm-up is not fired for an account that is not eligible', async () => {
+  const s = setup();
+  let n = 0; s.service.warm = async () => { n++; };
+  await rejects(issueConsentChallenge(s.deps, { ...paid, plan: null }), 'payment_required', 402);
+  assert.equal(n, 0);
+});
