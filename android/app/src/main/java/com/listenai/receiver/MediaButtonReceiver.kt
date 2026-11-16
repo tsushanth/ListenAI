@@ -8,5 +8,5 @@ import androidx.media3.session.MediaButtonReceiver
  * Extends Media3's MediaButtonReceiver to handle media button intents
  * and forward them to the active MediaSession.
  */
-@OptIn(UnstableApi::class)
+@androidx.annotation.OptIn(markerClass = [UnstableApi::class])
 class MediaButtonReceiver : MediaButtonReceiver()
