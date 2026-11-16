@@ -127,7 +127,12 @@
     <string name="clipboard_url_detected">Обнаружен URL</string>
     <string name="clipboard_text_content">Текстовое содержимое</string>
     <string name="clipboard_empty">Буфер обмена пуст</string>
-    <string name="word_count_format">%d слов</string>
+    <plurals name="word_count_format">
+        <item quantity="one">%d слово</item>
+        <item quantity="few">%d слова</item>
+        <item quantity="many">%d слов</item>
+        <item quantity="other">%d слова</item>
+    </plurals>
     <string name="pdf_selected">PDF выбран</string>
     <string name="epub_selected">EPUB</string>    <string name="remove">Удалить</string>
 
@@ -415,7 +420,12 @@
     <string name="player_sleep_timer_set">Таймер сна установлен на %d минут</string>
     <string name="player_sleep_timer_cancelled">Таймер сна отменён</string>
     <string name="player_by_author">автор: %s</string>
-    <string name="player_words_count">%d слов</string>
+    <plurals name="player_words_count">
+        <item quantity="one">%d слово</item>
+        <item quantity="few">%d слова</item>
+        <item quantity="many">%d слов</item>
+        <item quantity="other">%d слова</item>
+    </plurals>
     <string name="player_untitled">Без названия</string>
     <string name="player_article_fallback">Статья</string>
     <string name="player_from_label">От:</string>
@@ -578,4 +588,10 @@
     <string name="read_text_ocr_failed">Не удалось распознать текст: %1$s</string>
     <string name="read_text_image_load_failed">Не удалось загрузить изображение: %1$s</string>
     <string name="player_generating_audio">Создание аудио…</string>
+    <plurals name="incoming_source_text">
+        <item quantity="one">Текст, %1$d слово</item>
+        <item quantity="few">Текст, %1$d слова</item>
+        <item quantity="many">Текст, %1$d слов</item>
+        <item quantity="other">Текст, %1$d слова</item>
+    </plurals>
 </resources>

@@ -127,7 +127,10 @@
     <string name="clipboard_url_detected">URL erkannt</string>
     <string name="clipboard_text_content">Textinhalt</string>
     <string name="clipboard_empty">Die Zwischenablage ist leer</string>
-    <string name="word_count_format">%d W\u00f6rter</string>
+    <plurals name="word_count_format">
+        <item quantity="one">%d Wort</item>
+        <item quantity="other">%d Wörter</item>
+    </plurals>
     <string name="pdf_selected">PDF ausgew\u00e4hlt</string>
     <string name="epub_selected">EPUB</string>    <string name="remove">Entfernen</string>
 
@@ -415,7 +418,10 @@
     <string name="player_sleep_timer_set">Schlaf-Timer auf %d Minuten eingestellt</string>
     <string name="player_sleep_timer_cancelled">Schlaf-Timer abgebrochen</string>
     <string name="player_by_author">von %s</string>
-    <string name="player_words_count">%d W\u00f6rter</string>
+    <plurals name="player_words_count">
+        <item quantity="one">%d Wort</item>
+        <item quantity="other">%d Wörter</item>
+    </plurals>
     <string name="player_untitled">Ohne Titel</string>
     <string name="player_article_fallback">Artikel</string>
     <string name="player_from_label">Von:</string>
@@ -578,4 +584,8 @@
     <string name="read_text_ocr_failed">Texterkennung fehlgeschlagen: %1$s</string>
     <string name="read_text_image_load_failed">Das Bild konnte nicht geladen werden: %1$s</string>
     <string name="player_generating_audio">Audio wird erzeugt…</string>
+    <plurals name="incoming_source_text">
+        <item quantity="one">Text, %1$d Wort</item>
+        <item quantity="other">Text, %1$d Wörter</item>
+    </plurals>
 </resources>

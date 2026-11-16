@@ -127,7 +127,10 @@
     <string name="clipboard_url_detected">URL पता चला</string>
     <string name="clipboard_text_content">टेक्स्ट सामग्री</string>
     <string name="clipboard_empty">क्लिपबोर्ड खाली है</string>
-    <string name="word_count_format">%d शब्द</string>
+    <plurals name="word_count_format">
+        <item quantity="one">%d शब्द</item>
+        <item quantity="other">%d शब्द</item>
+    </plurals>
     <string name="pdf_selected">PDF चुना गया</string>
     <string name="epub_selected">EPUB</string>    <string name="remove">हटाएँ</string>
 
@@ -415,7 +418,10 @@
     <string name="player_sleep_timer_set">स्लीप टाइमर %d मिनट के लिए सेट किया गया</string>
     <string name="player_sleep_timer_cancelled">स्लीप टाइमर रद्द किया गया</string>
     <string name="player_by_author">%s द्वारा</string>
-    <string name="player_words_count">%d शब्द</string>
+    <plurals name="player_words_count">
+        <item quantity="one">%d शब्द</item>
+        <item quantity="other">%d शब्द</item>
+    </plurals>
     <string name="player_untitled">शीर्षकहीन</string>
     <string name="player_article_fallback">लेख</string>
     <string name="player_from_label">से:</string>
@@ -578,4 +584,8 @@
     <string name="read_text_ocr_failed">टेक्स्ट पहचान विफल रही: %1$s</string>
     <string name="read_text_image_load_failed">छवि लोड नहीं हो सकी: %1$s</string>
     <string name="player_generating_audio">ऑडियो बनाया जा रहा है…</string>
+    <plurals name="incoming_source_text">
+        <item quantity="one">टेक्स्ट, %1$d शब्द</item>
+        <item quantity="other">टेक्स्ट, %1$d शब्द</item>
+    </plurals>
 </resources>

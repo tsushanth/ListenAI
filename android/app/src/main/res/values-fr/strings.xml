@@ -127,7 +127,10 @@
     <string name="clipboard_url_detected">URL d\u00e9tect\u00e9e</string>
     <string name="clipboard_text_content">Contenu textuel</string>
     <string name="clipboard_empty">Le presse-papiers est vide</string>
-    <string name="word_count_format">%d mots</string>
+    <plurals name="word_count_format">
+        <item quantity="one">%d mot</item>
+        <item quantity="other">%d mots</item>
+    </plurals>
     <string name="pdf_selected">PDF s\u00e9lectionn\u00e9</string>
     <string name="epub_selected">EPUB</string>    <string name="remove">Supprimer</string>
 
@@ -415,7 +418,10 @@
     <string name="player_sleep_timer_set">Minuterie de sommeil r\u00e9gl\u00e9e sur %d minutes</string>
     <string name="player_sleep_timer_cancelled">Minuterie de sommeil annul\u00e9e</string>
     <string name="player_by_author">par %s</string>
-    <string name="player_words_count">%d mots</string>
+    <plurals name="player_words_count">
+        <item quantity="one">%d mot</item>
+        <item quantity="other">%d mots</item>
+    </plurals>
     <string name="player_untitled">Sans titre</string>
     <string name="player_article_fallback">Article</string>
     <string name="player_from_label">De\u00a0:</string>
@@ -578,4 +584,8 @@
     <string name="read_text_ocr_failed">Échec de la reconnaissance du texte : %1$s</string>
     <string name="read_text_image_load_failed">Impossible de charger l\'image : %1$s</string>
     <string name="player_generating_audio">Génération de l\'audio…</string>
+    <plurals name="incoming_source_text">
+        <item quantity="one">Texte, %1$d mot</item>
+        <item quantity="other">Texte, %1$d mots</item>
+    </plurals>
 </resources>

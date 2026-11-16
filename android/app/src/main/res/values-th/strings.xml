@@ -127,7 +127,9 @@
     <string name="clipboard_url_detected">ตรวจพบ URL</string>
     <string name="clipboard_text_content">เนื้อหาข้อความ</string>
     <string name="clipboard_empty">คลิปบอร์ดว่างเปล่า</string>
-    <string name="word_count_format">%d คำ</string>
+    <plurals name="word_count_format">
+        <item quantity="other">%d คำ</item>
+    </plurals>
     <string name="pdf_selected">เลือก PDF แล้ว</string>
     <string name="epub_selected">EPUB</string>    <string name="remove">ลบ</string>
 
@@ -415,7 +417,9 @@
     <string name="player_sleep_timer_set">ตั้งเวลานอน %d นาที</string>
     <string name="player_sleep_timer_cancelled">ยกเลิกตั้งเวลานอนแล้ว</string>
     <string name="player_by_author">โดย %s</string>
-    <string name="player_words_count">%d คำ</string>
+    <plurals name="player_words_count">
+        <item quantity="other">%d คำ</item>
+    </plurals>
     <string name="player_untitled">ไม่มีชื่อ</string>
     <string name="player_article_fallback">บทความ</string>
     <string name="player_from_label">จาก:</string>
@@ -578,4 +582,7 @@
     <string name="read_text_ocr_failed">การจดจำข้อความล้มเหลว: %1$s</string>
     <string name="read_text_image_load_failed">โหลดรูปภาพไม่ได้: %1$s</string>
     <string name="player_generating_audio">กำลังสร้างเสียง…</string>
+    <plurals name="incoming_source_text">
+        <item quantity="other">ข้อความ, %1$d คำ</item>
+    </plurals>
 </resources>

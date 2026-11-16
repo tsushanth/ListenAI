@@ -127,7 +127,9 @@
     <string name="clipboard_url_detected">检测到URL</string>
     <string name="clipboard_text_content">文本内容</string>
     <string name="clipboard_empty">剪贴板为空</string>
-    <string name="word_count_format">%d个字</string>
+    <plurals name="word_count_format">
+        <item quantity="other">%d个字</item>
+    </plurals>
     <string name="pdf_selected">已选择PDF</string>
     <string name="epub_selected">EPUB</string>    <string name="remove">移除</string>
 
@@ -415,7 +417,9 @@
     <string name="player_sleep_timer_set">睡眠定时器已设置为%d分钟</string>
     <string name="player_sleep_timer_cancelled">睡眠定时器已取消</string>
     <string name="player_by_author">作者 %s</string>
-    <string name="player_words_count">%d个字</string>
+    <plurals name="player_words_count">
+        <item quantity="other">%d个字</item>
+    </plurals>
     <string name="player_untitled">无标题</string>
     <string name="player_article_fallback">文章</string>
     <string name="player_from_label">发件人:</string>
@@ -578,4 +582,7 @@
     <string name="read_text_ocr_failed">文字识别失败：%1$s</string>
     <string name="read_text_image_load_failed">无法加载图片：%1$s</string>
     <string name="player_generating_audio">正在生成音频…</string>
+    <plurals name="incoming_source_text">
+        <item quantity="other">文本，%1$d个字</item>
+    </plurals>
 </resources>

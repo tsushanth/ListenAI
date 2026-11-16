@@ -160,7 +160,10 @@
     <string name="clipboard_url_detected">URL detected</string>
     <string name="clipboard_text_content">Text content</string>
     <string name="clipboard_empty">Clipboard is empty</string>
-    <string name="word_count_format">%d words</string>
+    <plurals name="word_count_format">
+        <item quantity="one">%d word</item>
+        <item quantity="other">%d words</item>
+    </plurals>
     <string name="pdf_selected">PDF selected</string>
     <string name="epub_selected">EPUB selected</string>
     <string name="remove">Remove</string>
@@ -457,7 +460,10 @@
     <string name="player_by_author">by %s</string>
     <string name="voice_request_cta">Want a natural %1$s voice? Tell us</string>
     <string name="voice_request_thanks">Thanks, we have noted that you want a natural %1$s voice.</string>
-    <string name="player_words_count">%d words</string>
+    <plurals name="player_words_count">
+        <item quantity="one">%d word</item>
+        <item quantity="other">%d words</item>
+    </plurals>
     <string name="player_untitled">Untitled</string>
     <string name="player_article_fallback">Article</string>
     <string name="player_from_label">From:</string>
@@ -539,7 +545,10 @@
     <string name="incoming_save_to_library">Save to library</string>
     <string name="incoming_file_unreadable">Couldn\'t read that file. Try opening it from Files or share it to ReadAloud instead.</string>
     <string name="incoming_cancel">Cancel</string>
-    <string name="incoming_source_text">Text, %1$d words</string>
+    <plurals name="incoming_source_text">
+        <item quantity="one">Text, %1$d word</item>
+        <item quantity="other">Text, %1$d words</item>
+    </plurals>
     <string name="incoming_source_link">Web page</string>
     <string name="incoming_source_pdf">PDF</string>
     <string name="incoming_source_epub">EPUB book</string>

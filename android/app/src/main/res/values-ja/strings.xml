@@ -127,7 +127,9 @@
     <string name="clipboard_url_detected">URLが検出されました</string>
     <string name="clipboard_text_content">テキストコンテンツ</string>
     <string name="clipboard_empty">クリップボードは空です</string>
-    <string name="word_count_format">%d語</string>
+    <plurals name="word_count_format">
+        <item quantity="other">%d語</item>
+    </plurals>
     <string name="pdf_selected">PDFが選択されました</string>
     <string name="epub_selected">EPUB</string>    <string name="remove">削除</string>
 
@@ -415,7 +417,9 @@
     <string name="player_sleep_timer_set">スリープタイマーを%d分に設定しました</string>
     <string name="player_sleep_timer_cancelled">スリープタイマーをキャンセルしました</string>
     <string name="player_by_author">%s 著</string>
-    <string name="player_words_count">%d語</string>
+    <plurals name="player_words_count">
+        <item quantity="other">%d語</item>
+    </plurals>
     <string name="player_untitled">無題</string>
     <string name="player_article_fallback">記事</string>
     <string name="player_from_label">差出人:</string>
@@ -578,4 +582,7 @@
     <string name="read_text_ocr_failed">テキスト認識に失敗しました：%1$s</string>
     <string name="read_text_image_load_failed">画像を読み込めませんでした：%1$s</string>
     <string name="player_generating_audio">音声を生成しています…</string>
+    <plurals name="incoming_source_text">
+        <item quantity="other">テキスト、%1$d語</item>
+    </plurals>
 </resources>

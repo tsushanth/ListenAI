@@ -127,7 +127,9 @@
     <string name="clipboard_url_detected">URL dikesan</string>
     <string name="clipboard_text_content">Kandungan teks</string>
     <string name="clipboard_empty">Papan klip kosong</string>
-    <string name="word_count_format">%d perkataan</string>
+    <plurals name="word_count_format">
+        <item quantity="other">%d perkataan</item>
+    </plurals>
     <string name="pdf_selected">PDF dipilih</string>
     <string name="epub_selected">EPUB</string>    <string name="remove">Buang</string>
 
@@ -415,7 +417,9 @@
     <string name="player_sleep_timer_set">Pemasa tidur ditetapkan %d minit</string>
     <string name="player_sleep_timer_cancelled">Pemasa tidur dibatalkan</string>
     <string name="player_by_author">oleh %s</string>
-    <string name="player_words_count">%d perkataan</string>
+    <plurals name="player_words_count">
+        <item quantity="other">%d perkataan</item>
+    </plurals>
     <string name="player_untitled">Tanpa Tajuk</string>
     <string name="player_article_fallback">Artikel</string>
     <string name="player_from_label">Dari:</string>
@@ -578,4 +582,7 @@
     <string name="read_text_ocr_failed">Pengecaman teks gagal: %1$s</string>
     <string name="read_text_image_load_failed">Imej tidak dapat dimuatkan: %1$s</string>
     <string name="player_generating_audio">Menjana audio…</string>
+    <plurals name="incoming_source_text">
+        <item quantity="other">Teks, %1$d perkataan</item>
+    </plurals>
 </resources>

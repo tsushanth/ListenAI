@@ -127,7 +127,10 @@
     <string name="clipboard_url_detected">URL gedetecteerd</string>
     <string name="clipboard_text_content">Tekstinhoud</string>
     <string name="clipboard_empty">Klembord is leeg</string>
-    <string name="word_count_format">%d woorden</string>
+    <plurals name="word_count_format">
+        <item quantity="one">%d woord</item>
+        <item quantity="other">%d woorden</item>
+    </plurals>
     <string name="pdf_selected">PDF geselecteerd</string>
     <string name="epub_selected">EPUB</string>    <string name="remove">Verwijderen</string>
 
@@ -415,7 +418,10 @@
     <string name="player_sleep_timer_set">Slaaptimer ingesteld op %d minuten</string>
     <string name="player_sleep_timer_cancelled">Slaaptimer geannuleerd</string>
     <string name="player_by_author">door %s</string>
-    <string name="player_words_count">%d woorden</string>
+    <plurals name="player_words_count">
+        <item quantity="one">%d woord</item>
+        <item quantity="other">%d woorden</item>
+    </plurals>
     <string name="player_untitled">Naamloos</string>
     <string name="player_article_fallback">Artikel</string>
     <string name="player_from_label">Van:</string>
@@ -578,4 +584,8 @@
     <string name="read_text_ocr_failed">Tekstherkenning mislukt: %1$s</string>
     <string name="read_text_image_load_failed">De afbeelding kon niet worden geladen: %1$s</string>
     <string name="player_generating_audio">Audio wordt gegenereerd…</string>
+    <plurals name="incoming_source_text">
+        <item quantity="one">Tekst, %1$d woord</item>
+        <item quantity="other">Tekst, %1$d woorden</item>
+    </plurals>
 </resources>

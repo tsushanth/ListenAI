@@ -127,7 +127,12 @@
     <string name="clipboard_url_detected">Wykryto URL</string>
     <string name="clipboard_text_content">Treść tekstowa</string>
     <string name="clipboard_empty">Schowek jest pusty</string>
-    <string name="word_count_format">%d słów</string>
+    <plurals name="word_count_format">
+        <item quantity="one">%d słowo</item>
+        <item quantity="few">%d słowa</item>
+        <item quantity="many">%d słów</item>
+        <item quantity="other">%d słowa</item>
+    </plurals>
     <string name="pdf_selected">Wybrano PDF</string>
     <string name="epub_selected">EPUB</string>    <string name="remove">Usuń</string>
 
@@ -415,7 +420,12 @@
     <string name="player_sleep_timer_set">Timer snu ustawiony na %d minut</string>
     <string name="player_sleep_timer_cancelled">Timer snu anulowany</string>
     <string name="player_by_author">autor: %s</string>
-    <string name="player_words_count">%d słów</string>
+    <plurals name="player_words_count">
+        <item quantity="one">%d słowo</item>
+        <item quantity="few">%d słowa</item>
+        <item quantity="many">%d słów</item>
+        <item quantity="other">%d słowa</item>
+    </plurals>
     <string name="player_untitled">Bez tytułu</string>
     <string name="player_article_fallback">Artykuł</string>
     <string name="player_from_label">Od:</string>
@@ -578,4 +588,10 @@
     <string name="read_text_ocr_failed">Rozpoznawanie tekstu nie powiodło się: %1$s</string>
     <string name="read_text_image_load_failed">Nie udało się wczytać obrazu: %1$s</string>
     <string name="player_generating_audio">Generowanie dźwięku…</string>
+    <plurals name="incoming_source_text">
+        <item quantity="one">Tekst, %1$d słowo</item>
+        <item quantity="few">Tekst, %1$d słowa</item>
+        <item quantity="many">Tekst, %1$d słów</item>
+        <item quantity="other">Tekst, %1$d słowa</item>
+    </plurals>
 </resources>

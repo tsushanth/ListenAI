@@ -1445,7 +1445,7 @@ private fun ArticleHeader(article: Article) {
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
-                    text = stringResource(R.string.player_words_count, article.wordCount),
+                    text = androidx.compose.ui.res.pluralStringResource(R.plurals.player_words_count, article.wordCount, article.wordCount),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

@@ -127,7 +127,10 @@
     <string name="clipboard_url_detected">URL algılandı</string>
     <string name="clipboard_text_content">Metin içeriği</string>
     <string name="clipboard_empty">Pano boş</string>
-    <string name="word_count_format">%d kelime</string>
+    <plurals name="word_count_format">
+        <item quantity="one">%d kelime</item>
+        <item quantity="other">%d kelime</item>
+    </plurals>
     <string name="pdf_selected">PDF seçildi</string>
     <string name="epub_selected">EPUB</string>    <string name="remove">Kaldır</string>
 
@@ -415,7 +418,10 @@
     <string name="player_sleep_timer_set">Uyku zamanlayıcı %d dakika olarak ayarlandı</string>
     <string name="player_sleep_timer_cancelled">Uyku zamanlayıcı iptal edildi</string>
     <string name="player_by_author">yazan: %s</string>
-    <string name="player_words_count">%d kelime</string>
+    <plurals name="player_words_count">
+        <item quantity="one">%d kelime</item>
+        <item quantity="other">%d kelime</item>
+    </plurals>
     <string name="player_untitled">Başlıksız</string>
     <string name="player_article_fallback">Makale</string>
     <string name="player_from_label">Kimden:</string>
@@ -578,4 +584,8 @@
     <string name="read_text_ocr_failed">Metin tanıma başarısız oldu: %1$s</string>
     <string name="read_text_image_load_failed">Görüntü yüklenemedi: %1$s</string>
     <string name="player_generating_audio">Ses oluşturuluyor…</string>
+    <plurals name="incoming_source_text">
+        <item quantity="one">Metin, %1$d kelime</item>
+        <item quantity="other">Metin, %1$d kelime</item>
+    </plurals>
 </resources>

@@ -594,7 +594,7 @@ private fun TextImportCard(
             if (content.isNotBlank()) {
                 val wordCount = content.split(Regex("\\s+")).size
                 Text(
-                    text = stringResource(R.string.word_count_format, wordCount),
+                    text = androidx.compose.ui.res.pluralStringResource(R.plurals.word_count_format, wordCount, wordCount),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

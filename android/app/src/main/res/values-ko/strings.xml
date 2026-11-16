@@ -127,7 +127,9 @@
     <string name="clipboard_url_detected">URL 감지됨</string>
     <string name="clipboard_text_content">텍스트 콘텐츠</string>
     <string name="clipboard_empty">클립보드가 비어 있습니다</string>
-    <string name="word_count_format">%d단어</string>
+    <plurals name="word_count_format">
+        <item quantity="other">%d단어</item>
+    </plurals>
     <string name="pdf_selected">PDF 선택됨</string>
     <string name="epub_selected">EPUB</string>    <string name="remove">제거</string>
 
@@ -415,7 +417,9 @@
     <string name="player_sleep_timer_set">수면 타이머 %d분 설정됨</string>
     <string name="player_sleep_timer_cancelled">수면 타이머 취소됨</string>
     <string name="player_by_author">%s 저</string>
-    <string name="player_words_count">%d단어</string>
+    <plurals name="player_words_count">
+        <item quantity="other">%d단어</item>
+    </plurals>
     <string name="player_untitled">제목 없음</string>
     <string name="player_article_fallback">기사</string>
     <string name="player_from_label">보낸 사람:</string>
@@ -578,4 +582,7 @@
     <string name="read_text_ocr_failed">텍스트 인식에 실패했습니다: %1$s</string>
     <string name="read_text_image_load_failed">이미지를 불러올 수 없습니다: %1$s</string>
     <string name="player_generating_audio">오디오를 생성하는 중…</string>
+    <plurals name="incoming_source_text">
+        <item quantity="other">텍스트, %1$d단어</item>
+    </plurals>
 </resources>

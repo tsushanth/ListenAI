@@ -127,7 +127,10 @@
     <string name="clipboard_url_detected">Na-detect ang URL</string>
     <string name="clipboard_text_content">Nilalaman ng teksto</string>
     <string name="clipboard_empty">Walang laman ang clipboard</string>
-    <string name="word_count_format">%d salita</string>
+    <plurals name="word_count_format">
+        <item quantity="one">%d salita</item>
+        <item quantity="other">%d salita</item>
+    </plurals>
     <string name="pdf_selected">Napili ang PDF</string>
     <string name="epub_selected">EPUB</string>    <string name="remove">Alisin</string>
 
@@ -415,7 +418,10 @@
     <string name="player_sleep_timer_set">Na-set ang sleep timer sa %d minuto</string>
     <string name="player_sleep_timer_cancelled">Na-cancel ang sleep timer</string>
     <string name="player_by_author">ni %s</string>
-    <string name="player_words_count">%d salita</string>
+    <plurals name="player_words_count">
+        <item quantity="one">%d salita</item>
+        <item quantity="other">%d salita</item>
+    </plurals>
     <string name="player_untitled">Walang Pamagat</string>
     <string name="player_article_fallback">Artikulo</string>
     <string name="player_from_label">Mula sa:</string>
@@ -578,4 +584,8 @@
     <string name="read_text_ocr_failed">Nabigo ang pagkilala ng teksto: %1$s</string>
     <string name="read_text_image_load_failed">Hindi ma-load ang larawan: %1$s</string>
     <string name="player_generating_audio">Gumagawa ng audio…</string>
+    <plurals name="incoming_source_text">
+        <item quantity="one">Teksto, %1$d salita</item>
+        <item quantity="other">Teksto, %1$d salita</item>
+    </plurals>
 </resources>

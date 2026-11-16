@@ -127,7 +127,14 @@
     <string name="clipboard_url_detected">تم اكتشاف رابط</string>
     <string name="clipboard_text_content">محتوى نصي</string>
     <string name="clipboard_empty">الحافظة فارغة</string>
-    <string name="word_count_format">%d كلمة</string>
+    <plurals name="word_count_format">
+        <item quantity="zero">%d كلمة</item>
+        <item quantity="one">كلمة واحدة</item>
+        <item quantity="two">كلمتان</item>
+        <item quantity="few">%d كلمات</item>
+        <item quantity="many">%d كلمة</item>
+        <item quantity="other">%d كلمة</item>
+    </plurals>
     <string name="pdf_selected">تم اختيار PDF</string>
     <string name="epub_selected">EPUB</string>    <string name="remove">إزالة</string>
 
@@ -415,7 +422,14 @@
     <string name="player_sleep_timer_set">تم ضبط مؤقت النوم لمدة %d دقيقة</string>
     <string name="player_sleep_timer_cancelled">تم إلغاء مؤقت النوم</string>
     <string name="player_by_author">بواسطة %s</string>
-    <string name="player_words_count">%d كلمة</string>
+    <plurals name="player_words_count">
+        <item quantity="zero">%d كلمة</item>
+        <item quantity="one">كلمة واحدة</item>
+        <item quantity="two">كلمتان</item>
+        <item quantity="few">%d كلمات</item>
+        <item quantity="many">%d كلمة</item>
+        <item quantity="other">%d كلمة</item>
+    </plurals>
     <string name="player_untitled">بدون عنوان</string>
     <string name="player_article_fallback">مقال</string>
     <string name="player_from_label">من:</string>
@@ -578,4 +592,12 @@
     <string name="read_text_ocr_failed">فشل التعرّف على النص: %1$s</string>
     <string name="read_text_image_load_failed">تعذّر تحميل الصورة: %1$s</string>
     <string name="player_generating_audio">جارٍ إنشاء الصوت…</string>
+    <plurals name="incoming_source_text">
+        <item quantity="zero">نص،%1$d كلمة</item>
+        <item quantity="one">نص،كلمة واحدة</item>
+        <item quantity="two">نص،كلمتان</item>
+        <item quantity="few">نص،%1$d كلمات</item>
+        <item quantity="many">نص،%1$d كلمة</item>
+        <item quantity="other">نص،%1$d كلمة</item>
+    </plurals>
 </resources>
