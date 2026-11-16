@@ -30,12 +30,14 @@ object ChainSynthesizer {
         voice: VoicePreset,
         language: String,
         speed: Float,
+        /** A forced offline read of a non-English language: the phone's voice goes first (see TtsRouting). */
+        forcePhoneVoice: Boolean = false,
         onProgress: (SynthesisProgress) -> Unit,
     ): SynthesisResult {
         val started = System.currentTimeMillis()
         val chain = TtsChainProvider.get(context).inApp
         // A phone voice the user picked for this language means: try the phone's engine first.
-        val preferSystem = phoneVoicePicked(context, language)
+        val preferSystem = forcePhoneVoice || phoneVoicePicked(context, language)
         val cloudVoiceId = cloudVoiceFor(context, language, preferSystem)
         val request = TtsRequest(voiceId = voice.id, language = language, speed = speed, wantWords = true, preferSystem = preferSystem, cloudVoiceId = cloudVoiceId)
         val file = File(context.cacheDir, "tts_${UUID.randomUUID()}.wav")
