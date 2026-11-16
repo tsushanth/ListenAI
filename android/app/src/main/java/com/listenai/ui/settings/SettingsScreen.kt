@@ -102,7 +102,17 @@ fun SettingsScreen(
             "ko" to R.string.language_korean,
             "pt-BR" to R.string.language_portuguese,
             "it" to R.string.language_italian,
-            "hi" to R.string.language_hindi
+            "hi" to R.string.language_hindi,
+            "ar" to R.string.language_arabic,
+            "id" to R.string.language_indonesian,
+            "ms" to R.string.language_malay,
+            "nl" to R.string.language_dutch,
+            "pl" to R.string.language_polish,
+            "ru" to R.string.language_russian,
+            "th" to R.string.language_thai,
+            "fil" to R.string.language_filipino,
+            "tr" to R.string.language_turkish,
+            "vi" to R.string.language_vietnamese
         )
     }
     val currentLocaleTag = AppCompatDelegate.getApplicationLocales().toLanguageTags().ifEmpty { "en" }
@@ -509,7 +519,8 @@ fun SettingsScreen(
                 onDismissRequest = { showLanguageDialog = false },
                 title = { Text(stringResource(R.string.language_picker_title)) },
                 text = {
-                    Column {
+                    // 20 languages no longer fit a small screen: let the list scroll.
+                    Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                         languages.forEach { (code, nameRes) ->
                             Row(
                                 modifier = Modifier

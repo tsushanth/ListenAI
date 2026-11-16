@@ -536,6 +536,16 @@
     <string name="language_portuguese">Português</string>
     <string name="language_italian">Italiano</string>
     <string name="language_hindi">हिन्दी</string>
+    <string name="language_arabic" translatable="false">العربية</string>
+    <string name="language_indonesian" translatable="false">Bahasa Indonesia</string>
+    <string name="language_malay" translatable="false">Bahasa Melayu</string>
+    <string name="language_dutch" translatable="false">Nederlands</string>
+    <string name="language_polish" translatable="false">Polski</string>
+    <string name="language_russian" translatable="false">Русский</string>
+    <string name="language_thai" translatable="false">ไทย</string>
+    <string name="language_filipino" translatable="false">Filipino</string>
+    <string name="language_turkish" translatable="false">Türkçe</string>
+    <string name="language_vietnamese" translatable="false">Tiếng Việt</string>
     <!-- Content received from other apps (Share / Read aloud / Open with) -->
     <string name="process_text_label">Read aloud</string>
     <string name="incoming_title">Read this aloud</string>
