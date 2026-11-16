@@ -4,7 +4,7 @@ One row per deployed component. Update it in the same change as every deploy. A 
 
 | Component | Fly app | Release | Image | Built from | Main commit with the same tree | Date |
 |---|---|---|---|---|---|---|
-| Backend (`backend/`) | `listenai-backend` | v124 (v122: reference checks on the fast multilingual app plus warm-up pings; v123: transcription worker warm-up and fresh token with one retry; v124: transcription waits for the warm-up ping). Rollback: v121 (`flyctl deploy -a listenai-backend --image registry.fly.io/listenai-backend:deployment-01M7HDTP5WG5VMYC5TVMQ0VKHE`), which is the multilingual routing without the cold-start changes; v120 before that (`deployment-01M7E7N3CXE5KDWE9GW28DF5J9`). | `deployment-01M7HKKA61EF4KDEZ21VKGVKKP` (sha256:80f0b65b5088...); v122 `deployment-01M7HHQ6TFBPT14KFBRT1TFF14`, v123 `deployment-01M7HK4JN8D3E0WM4ZC5WV5R88` | `origin/main` at `830cb6f7` (clean detached worktree) | `830cb6f7` (`backend/` tree `8dae88baaeae` identical, verified 16 Nov 2026) | 16 Nov 2026 (v122, v123, v124 the same day) |
+| Backend (`backend/`) | `listenai-backend` | v125 (audiobook ePub chapter detection splits at TOC anchors, #83). Rollback: v124 (`flyctl deploy -a listenai-backend --image registry.fly.io/listenai-backend:deployment-01M7HKKA61EF4KDEZ21VKGVKKP`), the cold-start changes without the new detector; v121 before that (`deployment-01M7HDTP5WG5VMYC5TVMQ0VKHE`). | `deployment-01M7K3B2WGFHJ7RQWPJ0GXGJ96` (sha256:1038031762ad...) | `origin/main` at `df573a09` (clean detached worktree) | `df573a09` (`backend/` tree `55b26d05ef95` identical, verified 16 Nov 2026) | 16 Nov 2026 |
 | Web (`web/`) | `readaloud-web` | v96 | `deployment-01M7EM1P878FC94YBBNWC1CJX5` (sha256:fa3c60c919a6...) | `origin/main` at `c514f5c4` | `c514f5c4` (`web/` identical) | 15 Nov 2026 (03:31 UTC) |
 
 ## Switches that are on in production
@@ -34,6 +34,14 @@ Measured through the public gateway with synthetic reference clips (all test voi
 | de | v124, apps warm | 14 s | 200, synthesis 2.7 s, watermark header present |
 
 Not verified: a completely cold German create on v124 (the run was stopped). What remains slow: with every app cold and the create sent right after the consent phrase, expect roughly one to two minutes until the transcription app is up; a person recording the phrase hides part of it. An English create with a cold English app can still take about 6 to 7 minutes (GPU capacity wait on that app), which the 420 s gateway limit only just covers.
+
+## Verification of v125: audiobook chapter detection (2026-11-16)
+
+Measured offline on 12 public-domain ePubs against the numbered chapter counts of their plain-text editions: strict precision 0.854 to 0.997, recall 0.966 to 1.000, books with every chapter found 2/12 to 12/12 (the one remaining extra is a dedicatory epistle kept as a long unnumbered section).
+
+Checked inside the running v125 container with a small synthetic ePub (one XHTML file, front matter plus six chapters under anchors): six chapters returned, contents and licence entries dropped, no text from one chapter in its neighbour. The temporary script was removed afterwards; no audiobook rows or synthesis jobs were created. The HTTP route `POST /api/audiobooks` was not called, because it needs a signed-in user and creates rows and synthesis jobs.
+
+Not done: a default pronunciation dictionary for the audiobook voice. The measurement so far is a phoneme-error proxy on 7 terms with one engine and has no word-error or speaker-similarity regression check, so it stays a follow-up.
 
 ## How to check parity
 
