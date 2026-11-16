@@ -244,12 +244,18 @@ dependencies {
     // Google Sign-In / Auth
     implementation("com.google.android.gms:play-services-auth:21.0.0")
 
-    // ML Kit Text Recognition — used by the Read Text screen for on-device
-    // OCR. Play-Services-hosted variant (model shared across apps via Play
-    // Services, ~0 APK overhead) rather than the bundled variant which
-    // would add ~3 MB. Latin script only for v0; can layer Chinese /
-    // Devanagari / Japanese / Korean modules later if Warren / BAU asks.
-    implementation("com.google.android.gms:play-services-mlkit-text-recognition:19.0.1")
+    // ML Kit Text Recognition — used by the Read Text screen for on-device OCR. All five script models are the
+    // Play-services-hosted variants: the model is downloaded by Play Services the first time a script is used and
+    // shared across apps, so the APK grows by about 260 KB per script and architecture (the bundled variants would
+    // add about 4 MB each; "Text recognition v2", developers.google.com/ml-kit/vision/text-recognition/v2/android).
+    // These are the only scripts ML Kit offers: Latin (also Czech, Hungarian, Romanian, Turkish, Vietnamese,
+    // Indonesian, Malay, Filipino, ...), Chinese, Japanese, Korean and Devanagari (Hindi). There is no Cyrillic, Greek,
+    // Arabic or Thai model. No install-time download entry in the manifest: the models are fetched on first use.
+    implementation("com.google.android.gms:play-services-mlkit-text-recognition:19.0.2")
+    implementation("com.google.android.gms:play-services-mlkit-text-recognition-chinese:16.0.2")
+    implementation("com.google.android.gms:play-services-mlkit-text-recognition-japanese:16.0.2")
+    implementation("com.google.android.gms:play-services-mlkit-text-recognition-korean:16.0.2")
+    implementation("com.google.android.gms:play-services-mlkit-text-recognition-devanagari:16.0.2")
     // On-device language id for imported content (bundled model, ~1 MB, no network).
     implementation("com.google.mlkit:language-id:17.0.6")
     implementation("androidx.credentials:credentials:1.3.0")

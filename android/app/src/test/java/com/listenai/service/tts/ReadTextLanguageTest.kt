@@ -40,4 +40,12 @@ class ReadTextLanguageTest {
         assertEquals("MX", ReadTextLanguage.localeFor("es-MX").country)
         assertEquals("BR", ReadTextLanguage.localeFor("pt_BR").country)
     }
+
+    @Test fun `a detected language wins, a short label falls back to its script, then English`() {
+        assertEquals("fr", ReadTextLanguage.languageFor("fr", "Sortie"))
+        assertEquals("zh", ReadTextLanguage.languageFor(null, "出口"))
+        assertEquals("ko", ReadTextLanguage.languageFor("", "출구"))
+        assertEquals("en", ReadTextLanguage.languageFor(null, "Exit"))
+        assertEquals("en", ReadTextLanguage.languageFor(null, ""))
+    }
 }
