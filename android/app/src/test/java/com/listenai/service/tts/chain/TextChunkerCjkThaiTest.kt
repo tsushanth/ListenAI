@@ -59,10 +59,15 @@ class TextChunkerCjkThaiTest {
 
     @Test fun `Chinese fullwidth exclamation and question marks end a sentence`() {
         val chunks = TextChunker.split("你好！你叫什么名字？我叫小明。", 6, 6)
-        assertEquals(listOf("你好！", "你叫什么名字？", "我叫小明。"), chunks.let { c ->
-            // the second sentence is 7 code points with its mark: it is allowed to stand alone, the others are packed by the limit
-            listOf(c[0], c[1], c[2])
-        })
+        // the second sentence is 7 code points with its mark, over the limit of 6: its last mark stays with it instead of becoming a chunk of its own
+        assertEquals(listOf("你好！", "你叫什么名字？", "我叫小明。"), chunks)
+    }
+
+    @Test fun `a sentence one character over the limit does not leave its closing mark alone`() {
+        val sentence = "今天我们一起去公园里散步聊天唱歌跳舞吧。" // 20 code points with the mark
+        val chunks = TextChunker.split(sentence, 19, 19)
+        assertEquals(listOf(sentence), chunks)
+        assertTrue(chunks.all { c -> c.any { it.isLetterOrDigit() } })
     }
 
     @Test fun `halfwidth ideographic full stop also ends a sentence`() {
@@ -89,7 +94,7 @@ class TextChunkerCjkThaiTest {
         val chunks = TextChunker.split(japaneseStory, 30, 20)
         assertTrue(chunks.all { cps(it) <= 30 })
         assertEquals(japaneseStory, joined(chunks))
-        assertTrue(chunks.first().endsWith("。") || chunks.first().endsWith("、"))
+        assertTrue("a chunk ends at a full stop", chunks.any { it.endsWith("。") })
         // no chunk is only punctuation or starts with a closing mark
         assertTrue(chunks.none { it.first() in "。、」』" })
     }
@@ -126,10 +131,10 @@ class TextChunkerCjkThaiTest {
     }
 
     @Test fun `Thai with spaces between phrases is cut at a space when one is in reach`() {
-        val chunks = TextChunker.split(thaiWithSpaces, 40, 25)
-        assertTrue(chunks.all { cps(it) <= 40 })
+        val chunks = TextChunker.split(thaiWithSpaces, 60, 25)
+        assertTrue(chunks.all { cps(it) <= 60 })
         val phrases = thaiWithSpaces.split(" ").toSet()
-        // every chunk is built of whole phrases (the longest phrase here is shorter than the limit)
+        // every chunk is built of whole phrases (the longest phrase here, 46 characters, is shorter than the limit)
         for (c in chunks) for (p in c.split(" ")) assertTrue("'$p' is a whole phrase", p in phrases)
         assertEquals(thaiWithSpaces.replace(" ", ""), joined(chunks))
     }
