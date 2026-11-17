@@ -39,6 +39,20 @@ export interface CloneDeps {
   newId?: () => string;
   /** Evaluated per request. Omitted = true (strict). false = attestation mode (VOICE_CLONE_REQUIRE_CONSENT_PHRASE="false"). */
   consentRequired?: () => boolean;
+  /** Called when the consent phrase did not match (and only then). The runtime logs it; tests can observe it. */
+  onPhraseMismatch?: (info: PhraseMismatchInfo) => void;
+}
+
+export interface PhraseMismatchInfo {
+  language: string;
+  attempt: number;
+  wer: number;
+  codeWordsInOrder: boolean;
+  /** The server-issued random words (no account data). */
+  expectedCodeWords: string[];
+  /** What the transcriber heard, truncated. */
+  heard: string;
+  consentSec: number;
 }
 
 export const isConsentRequired = (deps: Pick<CloneDeps, 'consentRequired'>): boolean => (deps.consentRequired ? deps.consentRequired() : true);
@@ -158,6 +172,14 @@ export async function createVoiceClone(deps: CloneDeps, input: CreateVoiceInput)
     );
     if (!ev.ok) {
       if (attempts >= policy.maxConsentAttempts) await store.consumeChallenge(ch.id, now.toISOString());
+      if (ev.failure === 'phrase_mismatch') {
+        // What the transcriber heard against what was issued, so a failing language or voice shows up as data
+        // instead of a bare 422. Failures only; the transcript is cut to 200 characters.
+        deps.onPhraseMismatch?.({
+          language: input.language, attempt: attempts, wer: Number(ev.phraseWer.toFixed(2)), codeWordsInOrder: ev.codeWordsInOrder,
+          expectedCodeWords: ch.codeWords, heard: ev.transcript.slice(0, 200), consentSec: consentMetrics.durationSec,
+        });
+      }
       const status = ev.failure === 'asr_unavailable' ? 503 : 422;
       throw new CloneError(status, ev.failure!, ev.failure === 'phrase_mismatch'
         ? 'We could not match what you said to the phrase. Read it exactly as shown.'

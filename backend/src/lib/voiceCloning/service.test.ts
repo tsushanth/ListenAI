@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { DEFAULT_POLICY } from './policy.js';
 import {
   CloneError, assertEligible, createVoiceClone, deleteVoiceClone, disableVoiceClone, getUsableVoice, issueConsentChallenge,
-  purgeExpired, recordOutput, warmAsr, resetAsrWarmForTests, type CloneDeps,
+  purgeExpired, recordOutput, warmAsr, resetAsrWarmForTests, type CloneDeps, type PhraseMismatchInfo,
 } from './service.js';
 import { FakeAsr, FakeService, GOOD_METRICS, MemoryBlobs, MemoryStore } from './testDoubles.js';
 import type { Eligibility } from './types.js';
@@ -342,4 +342,24 @@ test('transcription warm-up: fired at consent time and at create, throttled to o
   for (let i = 0; i < 30; i++) { await warmAsr(asr, () => (t += 100_000)); }
   assert.equal(m, 20);
   resetAsrWarmForTests();
+});
+
+test('a transcriber spelling slip on one code word does not block a German create; a different word still does', async () => {
+  const s = setup();
+  const c = await challengeFor(s);
+  // "sesame" heard as "sessame" and the brand written as two words: both are transcriber spelling, not a wrong phrase.
+  s.asr.heard = c.phrase.replace('ReadAloud', 'read aloud').replace(/\b(\w{5,})\b(?=\.$)/, (w) => w + w.slice(-1));
+  const r = await createVoiceClone(s.deps, { ...body(c.challengeId), language: 'de' });
+  assert.equal(r.voice.language, 'de');
+  const c2 = await challengeFor(s);
+  const words2 = s.store.challenges.get(c2.challengeId)!.codeWords;
+  s.asr.heard = c2.phrase.replace(words2[3]!, 'zebra' === words2[3] ? 'tiger' : 'zebra');
+  const seen: PhraseMismatchInfo[] = [];
+  s.deps.onPhraseMismatch = (i) => seen.push(i);
+  await rejects(createVoiceClone(s.deps, { ...body(c2.challengeId), language: 'de' }), 'phrase_mismatch', 422);
+  assert.equal(seen.length, 1);
+  assert.equal(seen[0]!.language, 'de');
+  assert.equal(seen[0]!.codeWordsInOrder, false);
+  assert.deepEqual(seen[0]!.expectedCodeWords, words2);
+  assert.ok(seen[0]!.heard.length <= 200);
 });

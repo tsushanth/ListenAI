@@ -5,6 +5,7 @@ import { serviceClientFromEnv } from './serviceClient.js';
 import { asrFromEnv } from './asrClient.js';
 import { supabaseCloneStore, supabaseConsentBlobs } from './supabaseStore.js';
 import { getBillingForUser } from '../realtimeTtsBilling.js';
+import { logger } from '../logger.js';
 import type { CloneDeps } from './service.js';
 import type { BillingPlan, Eligibility } from './types.js';
 
@@ -15,7 +16,8 @@ export function getCloneDeps(env: Record<string, string | undefined> = process.e
   const service = serviceClientFromEnv(env);
   const asr = asrFromEnv(env);
   const deps: CloneDeps | null = service && asr
-    ? { store: supabaseCloneStore, blobs: supabaseConsentBlobs, service, asr, policy: loadClonePolicy(env), consentRequired: () => consentPhraseRequired(env) }
+    ? { store: supabaseCloneStore, blobs: supabaseConsentBlobs, service, asr, policy: loadClonePolicy(env), consentRequired: () => consentPhraseRequired(env),
+        onPhraseMismatch: (info) => logger.warn({ event: 'voice_clone_phrase_mismatch', ...info }, 'consent phrase did not match') }
     : null;
   if (env === process.env) cached = deps;
   return deps;
