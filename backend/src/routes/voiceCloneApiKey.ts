@@ -12,6 +12,7 @@
 // only adds what an API caller needs on top:
 //
 //   POST   /consent-phrase     issue the single-use phrase to read aloud (alias of /consent-challenges)
+//   POST   /warm               start the cloning workers early (fire and forget); 202, throttled like the other wake-ups
 //   GET    /config             { consent_required }
 //   POST   /                   multipart: challenge_id, name, language, consent (audio), reference (audio)
 //                              attestation mode: name, language, reference, attested="true"
@@ -29,7 +30,7 @@ import { z } from 'zod';
 import { config } from '../lib/config.js';
 import { logger } from '../lib/logger.js';
 import { supabase } from '../lib/supabaseClient.js';
-import { synthesizeWithClone, type CloneDeps } from '../lib/voiceCloning/service.js';
+import { assertEligible, synthesizeWithClone, warmAsr, type CloneDeps } from '../lib/voiceCloning/service.js';
 import { getCloneDeps, planForUser } from '../lib/voiceCloning/runtime.js';
 import { resolveApiKeyIdentity, type ApiKeyIdentityDeps } from '../lib/voiceCloning/apiKeyIdentity.js';
 import type { Eligibility } from '../lib/voiceCloning/types.js';
@@ -89,6 +90,19 @@ export function createVoiceCloneApiRouter(d: VoiceCloneApiDeps): Router {
 
   // 3. Public name for "issue a consent phrase"; the shared router calls it /consent-challenges.
   r.post('/consent-phrase', (req, _res, next) => { req.url = '/consent-challenges'; next(); });
+
+  // Early wake-up for a caller who is about to clone (the gateway calls this when a cloning-capable key lists voices).
+  // Only a verified, paying account can start a GPU: the same eligibility test as the create. The wake-ups share the
+  // throttles of the create path (once per 90 s and 20 an hour per app), so repeated calls cannot keep workers running.
+  r.post('/warm', (req: Request, res: Response) => {
+    try {
+      assertEligible((req as ApiReq).apiEligibility!);
+      const deps = d.getDeps()!;
+      void warmAsr(deps.asr);
+      void deps.service.warm?.()?.catch(() => undefined);
+      res.status(202).json({ status: 'warming' });
+    } catch (err) { sendError(res, err); }
+  });
 
   r.post('/', limiter('create', lim.create));
 

@@ -386,3 +386,53 @@ test('the abuse-report intake is not exposed on the API-key surface', async () =
     assert.notEqual(r.status, 202);
   } finally { ctx.close(); }
 });
+
+test('warm: an eligible caller gets 202 and the workers are asked to start; throttled repeats still answer 202 without a second start', async () => {
+  const svc = await import('../lib/voiceCloning/service.js');
+  svc.resetAsrWarmForTests();
+  const ctx = await boot();
+  let asrStarts = 0; let svcStarts = 0;
+  ctx.asr.warm = async () => { asrStarts++; };
+  ctx.service.warm = async () => { svcStarts++; };
+  try {
+    const r = await fetch(`${ctx.base}/warm`, { method: 'POST', headers: as(U1) });
+    assert.equal(r.status, 202);
+    assert.deepEqual(await r.json(), { status: 'warming' });
+    assert.equal(asrStarts, 1);
+    assert.equal(svcStarts, 1);
+    const again = await fetch(`${ctx.base}/warm`, { method: 'POST', headers: as(U1) });
+    assert.equal(again.status, 202);
+    assert.equal(asrStarts, 1, 'the ASR wake-up is throttled to once per 90 s');
+  } finally { ctx.close(); svc.resetAsrWarmForTests(); }
+});
+
+test('warm: a caller who could not create a voice cannot start a worker (unverified email, no plan, bad secret, dark, kill switch)', async () => {
+  const svc = await import('../lib/voiceCloning/service.js');
+  svc.resetAsrWarmForTests();
+  const ctx = await boot();
+  let starts = 0;
+  ctx.asr.warm = async () => { starts++; };
+  ctx.service.warm = async () => { starts++; };
+  try {
+    assert.equal((await fetch(`${ctx.base}/warm`, { method: 'POST', headers: as(U_UNVERIFIED) })).status, 403);
+    assert.equal((await fetch(`${ctx.base}/warm`, { method: 'POST', headers: as(U_FREE) })).status, 402);
+    assert.equal((await fetch(`${ctx.base}/warm`, { method: 'POST', headers: { 'x-gateway-uid': U1 } })).status, 401);
+    assert.equal((await fetch(`${ctx.base}/warm`, { method: 'POST', headers: { 'x-gateway-admin-secret': 'nope', 'x-gateway-uid': U1 } })).status, 401);
+    assert.equal(starts, 0);
+  } finally { ctx.close(); }
+  for (const o of [{ dark: true }, { disabled: true }]) {
+    const c2 = await boot(o);
+    try { assert.equal((await fetch(`${c2.base}/warm`, { method: 'POST', headers: as(U1) })).status, 503); } finally { c2.close(); }
+  }
+});
+
+test('warm: a worker that fails to start never fails the request', async () => {
+  const svc = await import('../lib/voiceCloning/service.js');
+  svc.resetAsrWarmForTests();
+  const ctx = await boot();
+  ctx.asr.warm = async () => { throw new Error('modal down'); };
+  ctx.service.warm = async () => { throw new Error('modal down'); };
+  try {
+    assert.equal((await fetch(`${ctx.base}/warm`, { method: 'POST', headers: as(U1) })).status, 202);
+  } finally { ctx.close(); svc.resetAsrWarmForTests(); }
+});
