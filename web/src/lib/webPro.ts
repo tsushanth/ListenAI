@@ -15,7 +15,7 @@ import { playUrl } from './playLinks.ts'
 export const WEB_PRO_CHECKOUT_ENABLED = false
 
 // Same applicationId as android/app/build.gradle.kts (guarded by test/web-pro.test.ts).
-export const PLAY_STORE_URL = playUrl('webpro_success')
+export const PLAY_STORE_URL = playUrl('pro_cta')
 
 export const SUPPORT_EMAIL = 'support@readaloudai.org'
 

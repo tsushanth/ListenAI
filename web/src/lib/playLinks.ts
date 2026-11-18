@@ -5,7 +5,7 @@
 export const PLAY_PACKAGE = 'com.listenai'
 export const PLAY_UTM_SOURCE = 'readaloud_web'
 
-export type PlayPlacement = 'hero' | 'footer' | 'nav' | 'home_reader' | 'app_settings' | 'webpro_success' | 'llms'
+export type PlayPlacement = 'hero' | 'footer' | 'nav' | 'home_reader' | 'app_settings' | 'pro_cta' | 'llms'
 
 export function playUrl(placement: PlayPlacement): string {
   const referrer = `utm_source=${PLAY_UTM_SOURCE}&utm_medium=web&utm_campaign=${placement}`
