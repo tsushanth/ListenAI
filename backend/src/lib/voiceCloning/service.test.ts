@@ -363,3 +363,55 @@ test('a transcriber spelling slip on one code word does not block a German creat
   assert.deepEqual(seen[0]!.expectedCodeWords, words2);
   assert.ok(seen[0]!.heard.length <= 200);
 });
+
+// ---- consent phrase language ------------------------------------------------------------------------------------
+
+test('default challenge is English and the recording is transcribed as English (unchanged behaviour)', async () => {
+  const s = setup();
+  const c = await challengeFor(s);
+  assert.match(c.phrase, /^I agree that ReadAloud may create a synthetic copy of my voice\./);
+  assert.equal(c.language, 'en');
+  await createVoiceClone(s.deps, body(c.challengeId));
+  assert.deepEqual(s.asr.languages, ['en']);
+});
+
+test('a German challenge issues a German phrase, stores it, and is transcribed and scored as German', async () => {
+  const s = setup();
+  const c = await issueConsentChallenge(s.deps, paid, 'de');
+  assert.equal(c.language, 'de');
+  assert.match(c.phrase, /^Ich bin einverstanden, dass ReadAloud eine synthetische Kopie meiner Stimme erstellt\. Meine vier Wörter lauten /);
+  assert.equal(s.store.challenges.get(c.challengeId)!.phrase, c.phrase);
+  // the speaker reads it; the transcriber writes it without umlauts and splits the brand name
+  s.asr.heard = c.phrase.replace('ReadAloud', 'Read Aloud').replace('Wörter', 'Worter').replace('einverstanden,', 'einverstanden');
+  const r = await createVoiceClone(s.deps, { ...body(c.challengeId), language: 'de' });
+  assert.equal(r.voice.status, 'active');
+  assert.deepEqual(s.asr.languages, ['de']);
+});
+
+test('the language follows the challenge, not the voice language: a Spanish phrase for a German voice is checked in Spanish', async () => {
+  const s = setup();
+  const c = await issueConsentChallenge(s.deps, paid, 'es');
+  s.asr.heard = c.phrase;
+  const r = await createVoiceClone(s.deps, { ...body(c.challengeId), language: 'de' });
+  assert.equal(r.voice.status, 'active');
+  assert.deepEqual(s.asr.languages, ['es']);
+});
+
+test('an English reading cannot pass a German challenge, and the mismatch log names the consent language', async () => {
+  const s = setup();
+  const seen: PhraseMismatchInfo[] = [];
+  s.deps.onPhraseMismatch = (i) => seen.push(i);
+  const c = await issueConsentChallenge(s.deps, paid, 'de');
+  s.asr.heard = `I agree that ReadAloud may create a synthetic copy of my voice. My code words are ${c.phrase.slice(c.phrase.lastIndexOf('lauten') + 7)}`;
+  await rejects(createVoiceClone(s.deps, { ...body(c.challengeId), language: 'de' }), 'phrase_mismatch', 422);
+  assert.equal(seen[0]!.consentLanguage, 'de');
+  assert.equal(s.store.voices.size, 0);
+});
+
+test('a German challenge still needs all four code words, in order', async () => {
+  const s = setup();
+  const c = await issueConsentChallenge(s.deps, paid, 'de');
+  const words = c.phrase.slice(c.phrase.lastIndexOf('lauten') + 7).replace('.', '').split(', ');
+  s.asr.heard = `${c.phrase.slice(0, c.phrase.lastIndexOf('lauten') + 6)} ${[words[1], words[0], words[2], words[3]].join(', ')}.`;
+  await rejects(createVoiceClone(s.deps, { ...body(c.challengeId), language: 'de' }), 'phrase_mismatch', 422);
+});

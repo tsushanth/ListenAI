@@ -101,8 +101,11 @@ export class FakeAsr implements AsrClient {
   /** Overrides `heard` per call, e.g. to read a different phrase for each concurrent request. */
   heardFor?: (audio: Buffer) => string;
   fail = false;
+  /** The language each transcribe() call asked for, in order. */
+  languages: Array<string | undefined> = [];
   warm?: () => Promise<void>;
-  async transcribe(audio: Buffer) {
+  async transcribe(audio: Buffer, _mime?: string, language?: string) {
+    this.languages.push(language);
     if (this.fail) throw new Error('asr down');
     return this.heardFor ? this.heardFor(audio) : (this.heard ?? '');
   }

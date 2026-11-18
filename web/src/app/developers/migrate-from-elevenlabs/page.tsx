@@ -128,7 +128,7 @@ const audio = await client.textToSpeech.convert(voice.voiceId, { text: "Hello fr
 
 const CLONE_CURL = `API=https://api.readaloudai.org
 
-# 1. the phrase to read aloud (record it as consent.wav)
+# 1. the phrase to read aloud (record it as consent.wav). Optional: add ?language=de or ?language=es to the URL to read it in that language
 curl -s -X POST $API/v1/voices/add/consent-phrase -H "xi-api-key: $READALOUD_API_KEY"
 
 # 2. create the voice
@@ -444,7 +444,7 @@ export default function MigrateFromElevenLabsPage() {
               <code>voices.ivc.create</code> (<code>POST /v1/voices/add</code>), <code>voices.get</code> and <code>voices.delete</code> work for cloned voices, and the returned <code>voice_id</code> works in the text-to-speech routes above. It needs an API key with billing enabled that belongs to your ReadAloud account. Cloned voices speak <b>English only</b> for now: another language returns a <code>422</code> that lists the supported ones.
             </p>
             <p>
-              ElevenLabs has no consent step, so we add one. A plain <code>voices.ivc.create</code> call is answered with a <code>400</code> whose <code>detail.consent</code> object tells you what to send; the SDKs surface it as an API error. Clone your own voice, or one you have the speaker&rsquo;s recorded consent for.
+              ElevenLabs has no consent step, so we add one. A plain <code>voices.ivc.create</code> call is answered with a <code>400</code> whose <code>detail.consent</code> object tells you what to send; the SDKs surface it as an API error. Clone your own voice, or one you have the speaker&rsquo;s recorded consent for. The phrase is in English by default. Add <code>?language=es</code> or <code>?language=de</code> to the <code>/v1/voices/add/consent-phrase</code> URL (or send <code>language</code> in a JSON body) to get it in Spanish or German; the recording is then checked in the same language.
             </p>
             <h3>JavaScript</h3>
             <pre style={pre} tabIndex={0}><code>{CLONE_JS}</code></pre>

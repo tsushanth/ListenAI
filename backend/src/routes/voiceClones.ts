@@ -15,6 +15,7 @@
 //
 // Synthesis with a cloned voice goes through /api/tts/cloned and /api/tts/job-cloned (routes/tts.ts).
 import { PUBLIC_CLONE_MODEL } from '../lib/publicText.js';
+import { CONSENT_LANGUAGES, normalizeConsentLanguage } from '../lib/voiceCloning/consentPhrase.js';
 import { Router, type Request, type RequestHandler, type Response, type NextFunction } from 'express';
 import express from 'express';
 import multer from 'multer';
@@ -145,11 +146,22 @@ export function createVoiceClonesRouter(rd: VoiceClonesRouterDeps): Router {
     res.json({ consent_required: isConsentRequired(rd.getDeps()!) });
   }));
 
-  r.post('/consent-challenges', burst, h(async (req, res) => {
+  r.post('/consent-challenges', burst, express.json({ limit: '4kb' }), h(async (req, res) => {
     if (!isConsentRequired(rd.getDeps()!)) { res.status(200).json({ consent_required: false }); return; }
-    const c = await issueConsentChallenge(rd.getDeps()!, req.eligibility!);
-    log.info({ event: 'voice_clone_consent_phrase_issued', channel, userId: req.eligibility!.userId, challengeId: c.challengeId }, 'consent phrase issued');
-    res.status(201).json({ challenge_id: c.challengeId, phrase: c.phrase, expires_at: c.expiresAt });
+    // Optional: the language the speaker will read the phrase in (JSON body or ?language=). Left out = English, exactly as before.
+    const body = req.body as { language?: unknown } | undefined;
+    const requested = body?.language ?? (typeof req.query.language === 'string' ? req.query.language : undefined);
+    let language;
+    if (requested !== undefined && requested !== null && requested !== '') {
+      language = normalizeConsentLanguage(requested) ?? undefined;
+      if (!language) {
+        res.status(400).json({ error: `The consent phrase is available in: ${CONSENT_LANGUAGES.join(', ')}.`, code: 'unsupported_consent_language', details: { supported: [...CONSENT_LANGUAGES] } });
+        return;
+      }
+    }
+    const c = await issueConsentChallenge(rd.getDeps()!, req.eligibility!, language);
+    log.info({ event: 'voice_clone_consent_phrase_issued', channel, userId: req.eligibility!.userId, challengeId: c.challengeId, consentLanguage: c.language }, 'consent phrase issued');
+    res.status(201).json({ challenge_id: c.challengeId, phrase: c.phrase, expires_at: c.expiresAt, ...(language ? { language: c.language } : {}) });
   }));
 
   r.post('/', burst, upload.fields([{ name: 'consent', maxCount: 1 }, { name: 'reference', maxCount: 1 }]), h(async (req, res) => {
