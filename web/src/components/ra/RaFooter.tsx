@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import publish from '../../content/publish.json'
+import { playUrl } from '@/lib/playLinks'
 
 // The library hubs (compare, alternatives, integrations, use cases, migrate) are linked from the footer once the first wave is published in
 // src/content/publish.json. The JSON is bundled at build time, so the footer never reads the filesystem at request time.
@@ -39,7 +40,7 @@ export default function RaFooter() {
           <h4>Reader app</h4>
           <ul>
             <li><Link href="/reader">About the reader</Link></li>
-            <li><Link href="https://play.google.com/store/apps/details?id=com.listenai" target="_blank">Android app</Link></li>
+            <li><Link href={playUrl('footer')} target="_blank">Android app</Link></li>
             <li><Link href="/app">Web app</Link></li>
           </ul>
         </div>

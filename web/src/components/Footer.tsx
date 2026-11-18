@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { Mail } from 'lucide-react'
+import { playUrl } from '@/lib/playLinks'
 
 export default function Footer() {
   return (
@@ -33,7 +34,7 @@ export default function Footer() {
 
             {/* Play Store Button */}
             <Link
-              href="https://play.google.com/store/apps/details?id=com.listenai"
+              href={playUrl('footer')}
               target="_blank"
               className="inline-flex items-center justify-center space-x-3 bg-white text-dark px-6 py-3 rounded-xl hover:bg-gray-100 transition-colors"
             >

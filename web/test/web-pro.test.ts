@@ -15,7 +15,8 @@ test('the Play link is the real applicationId from the Android build', () => {
   const gradle = read('../../android/app/build.gradle.kts')
   const id = /applicationId = "([^"]+)"/.exec(gradle)?.[1]
   assert.equal(id, 'com.listenai')
-  assert.equal(PLAY_STORE_URL, `https://play.google.com/store/apps/details?id=${id}`)
+  assert.ok(PLAY_STORE_URL.startsWith(`https://play.google.com/store/apps/details?id=${id}&referrer=`))
+  assert.equal(decodeURIComponent(PLAY_STORE_URL.split('&referrer=')[1]), 'utm_source=readaloud_web&utm_medium=web&utm_campaign=webpro_success')
 })
 
 test('while checkout is off, the Pro CTA is a Play link and never a checkout', () => {
