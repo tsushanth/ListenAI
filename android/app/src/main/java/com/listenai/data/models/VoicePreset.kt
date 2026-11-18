@@ -18,7 +18,7 @@ enum class VoiceProvider {
             APPLE -> "Apple"
             ANDROID -> "Android"
             SELF_HOSTED -> "ReadAloud AI"
-            KOKORO_ON_DEVICE -> "Kokoro (on-device)"
+            KOKORO_ON_DEVICE -> "On-device voice"
         }
 
     val isCloud: Boolean
