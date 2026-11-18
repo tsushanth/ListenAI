@@ -136,6 +136,7 @@ class SupabaseGoTrueClient(
         const val MSG_ALREADY_EXISTS = "An account with this email already exists. Sign in instead, or reset your password."
         const val MSG_RATE_LIMITED = "Too many attempts. Please wait a few minutes and try again."
         const val MSG_WEAK_PASSWORD = "That password is too weak. Choose a longer or less common one."
+        const val MSG_INVALID_INPUT = "Enter a valid email address and password."
         const val SERVER_MESSAGE = "Sign-in is temporarily unavailable. Please try again."
 
         /** Maps a GoTrue error response (new `error_code`/`msg` and legacy `error`/`error_description` shapes). */
@@ -159,7 +160,7 @@ class SupabaseGoTrueClient(
                 httpStatus == 429 || code == "over_request_rate_limit" || code == "over_email_send_rate_limit" ->
                     GoTrueException(GoTrueErrorKind.RATE_LIMITED, MSG_RATE_LIMITED)
                 code == "validation_failed" || code == "email_address_invalid" || httpStatus == 422 ->
-                    GoTrueException(GoTrueErrorKind.INVALID_INPUT, detail.ifBlank { "Enter a valid email address and password." })
+                    GoTrueException(GoTrueErrorKind.INVALID_INPUT, detail.ifBlank { MSG_INVALID_INPUT })
                 else -> GoTrueException(GoTrueErrorKind.SERVER, SERVER_MESSAGE)
             }
         }

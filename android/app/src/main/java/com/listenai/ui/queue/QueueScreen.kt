@@ -41,7 +41,7 @@ fun QueueScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Up Next", fontWeight = FontWeight.Bold) },
+                title = { Text(stringResource(R.string.up_next), fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
@@ -50,7 +50,7 @@ fun QueueScreen(
                 actions = {
                     if (queue.isNotEmpty()) {
                         IconButton(onClick = { queueManager.clearQueue() }) {
-                            Icon(Icons.Default.ClearAll, contentDescription = "Clear queue")
+                            Icon(Icons.Default.ClearAll, contentDescription = stringResource(R.string.queue_clear))
                         }
                     }
                 }
@@ -125,7 +125,7 @@ private fun EmptyQueueState(modifier: Modifier = Modifier) {
         Spacer(modifier = Modifier.height(24.dp))
 
         Text(
-            text = "Your queue is empty",
+            text = stringResource(R.string.queue_empty_title),
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold
         )
@@ -133,7 +133,7 @@ private fun EmptyQueueState(modifier: Modifier = Modifier) {
         Spacer(modifier = Modifier.height(8.dp))
 
         Text(
-            text = "Add articles to listen to them in order",
+            text = stringResource(R.string.queue_empty_description),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -168,7 +168,7 @@ private fun QueueControls(
             // Queue info
             Column {
                 Text(
-                    text = "$totalItems ${if (totalItems == 1) "item" else "items"}",
+                    text = androidx.compose.ui.res.pluralStringResource(R.plurals.queue_item_count, totalItems, totalItems),
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.SemiBold
                 )
@@ -190,7 +190,7 @@ private fun QueueControls(
                 ) {
                     Icon(
                         Icons.Default.Shuffle,
-                        contentDescription = "Shuffle",
+                        contentDescription = stringResource(R.string.queue_shuffle),
                         tint = if (isShuffleEnabled) Blue else MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
@@ -207,7 +207,7 @@ private fun QueueControls(
                             QueueManager.RepeatMode.ONE -> Icons.Default.RepeatOne
                             else -> Icons.Default.Repeat
                         },
-                        contentDescription = "Repeat",
+                        contentDescription = stringResource(R.string.queue_repeat),
                         tint = if (repeatMode != QueueManager.RepeatMode.OFF) Blue else MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
@@ -259,14 +259,14 @@ private fun QueueItemCard(
                 if (isCurrentlyPlaying) {
                     Icon(
                         Icons.Default.GraphicEq,
-                        contentDescription = "Now playing",
+                        contentDescription = stringResource(R.string.now_playing),
                         tint = Blue,
                         modifier = Modifier.size(24.dp)
                     )
                 } else {
                     Icon(
                         Icons.Default.DragHandle,
-                        contentDescription = "Drag to reorder",
+                        contentDescription = stringResource(R.string.queue_drag_to_reorder),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(24.dp)
                     )
@@ -300,7 +300,7 @@ private fun QueueItemCard(
                     }
 
                     Text(
-                        text = "~${item.article.estimatedDuration / 60000} min",
+                        text = stringResource(R.string.queue_item_duration, (item.article.estimatedDuration / 60000).toInt()),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -314,7 +314,7 @@ private fun QueueItemCard(
             ) {
                 Icon(
                     Icons.Default.Close,
-                    contentDescription = "Remove from queue",
+                    contentDescription = stringResource(R.string.queue_remove_item),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(20.dp)
                 )
@@ -323,14 +323,16 @@ private fun QueueItemCard(
     }
 }
 
+@Composable
 private fun formatDuration(millis: Long): String {
-    val minutes = millis / 60000
+    val minutes = (millis / 60000).toInt()
     val hours = minutes / 60
     val remainingMinutes = minutes % 60
 
     return when {
-        hours > 0 -> "${hours}h ${remainingMinutes}m"
-        minutes > 0 -> "${minutes} min"
-        else -> "< 1 min"
+        hours > 0 && remainingMinutes > 0 -> stringResource(R.string.duration_hr_min, hours, remainingMinutes)
+        hours > 0 -> stringResource(R.string.duration_hr, hours)
+        minutes > 0 -> stringResource(R.string.duration_min, minutes)
+        else -> stringResource(R.string.duration_less_than_min)
     }
 }

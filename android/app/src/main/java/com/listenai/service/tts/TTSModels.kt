@@ -193,7 +193,7 @@ data class SynthesisProgress(
             sectionsCompleted = 0,
             totalSections = 0,
             estimatedTimeRemaining = null,
-            statusMessage = "Preparing...",
+            statusMessage = "", // the UI shows its own localized "preparing" text while this is blank
             charactersProcessed = 0,
             totalCharacters = 0
         )

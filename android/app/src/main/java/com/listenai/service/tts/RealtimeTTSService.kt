@@ -1,5 +1,6 @@
 package com.listenai.service.tts
 
+import com.listenai.R
 import android.content.Context
 import com.listenai.ListenAIApplication
 import com.listenai.data.models.VoicePreset
@@ -163,7 +164,7 @@ class RealtimeTTSService(
         try {
             onProgress(
                 SynthesisProgress.INITIAL.copy(
-                    statusMessage = "Authorizing...",
+                    statusMessage = context.getString(R.string.tts_status_authorizing),
                     totalSections = sections.size,
                     totalCharacters = totalText.length
                 )
@@ -175,7 +176,7 @@ class RealtimeTTSService(
             onProgress(
                 SynthesisProgress.INITIAL.copy(
                     overallProgress = 0.1f,
-                    statusMessage = "Generating audio...",
+                    statusMessage = context.getString(R.string.player_generating_audio),
                     totalSections = sections.size,
                     totalCharacters = totalText.length
                 )
@@ -200,7 +201,7 @@ class RealtimeTTSService(
                     sectionsCompleted = sections.size,
                     totalSections = sections.size,
                     estimatedTimeRemaining = 0.0,
-                    statusMessage = "Complete",
+                    statusMessage = context.getString(R.string.tts_status_complete),
                     charactersProcessed = totalText.length,
                     totalCharacters = totalText.length
                 )

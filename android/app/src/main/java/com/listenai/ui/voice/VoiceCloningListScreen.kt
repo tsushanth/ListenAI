@@ -2,6 +2,7 @@ package com.listenai.ui.voice
 
 import androidx.compose.ui.res.stringResource
 import com.listenai.R
+import com.listenai.service.tts.TTSErrorText
 import android.media.MediaPlayer
 import android.widget.Toast
 import androidx.compose.animation.core.*
@@ -109,9 +110,9 @@ fun VoiceCloningListScreen(
         try {
             clonedVoices = voiceCloningService.listClonedVoices(forceRefresh = true)
         } catch (e: VoiceCloneException) {
-            errorMessage = VoiceCloneErrors.map(e).message
+            errorMessage = VoiceCloneErrors.map(e).text.resolve(context)
         } catch (e: Exception) {
-            errorMessage = "Couldn't load your voices."
+            errorMessage = context.getString(R.string.vcl_load_failed)
         } finally {
             isLoading = false
         }
@@ -136,7 +137,7 @@ fun VoiceCloningListScreen(
                     try {
                         val result = selfHostedTTSService.resumeClonedJobTracking(voice.id) { progress ->
                             previewProgress = progress.overallProgress
-                            previewStatusMessage = progress.statusMessage ?: "Synthesizing..."
+                            previewStatusMessage = progress.statusMessage
                         }
 
                         if (result != null) {
@@ -160,7 +161,7 @@ fun VoiceCloningListScreen(
                                 }
                                 setOnErrorListener { _, _, _ ->
                                     playingVoiceId = null
-                                    Toast.makeText(context, "Failed to play preview", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(context, context.getString(R.string.voice_preview_failed), Toast.LENGTH_SHORT).show()
                                     true
                                 }
                                 prepareAsync()
@@ -178,7 +179,7 @@ fun VoiceCloningListScreen(
                         playingVoiceId = null
                         previewProgress = 0f
                         previewStatusMessage = ""
-                        Toast.makeText(context, "Preview synthesis failed: ${e.message}", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, context.getString(R.string.vcl_preview_synthesis_failed, (TTSErrorText.resolve(context, e) ?: "")), Toast.LENGTH_SHORT).show()
                     }
                 }
 
@@ -209,7 +210,7 @@ fun VoiceCloningListScreen(
 
             playingVoiceId = voice.id
             previewProgress = 0f
-            previewStatusMessage = "Starting..."
+            previewStatusMessage = context.getString(R.string.vcl_preview_starting)
 
             // Check for cached preview first (try both .wav and .mp3)
             val cachedWavFile = File(previewCacheDir, "preview_${voice.id}.wav")
@@ -233,7 +234,7 @@ fun VoiceCloningListScreen(
                             playingVoiceId = null
                             // Cache might be corrupted, delete and retry
                             cachedFile.delete()
-                            Toast.makeText(context, "Failed to play preview", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, context.getString(R.string.voice_preview_failed), Toast.LENGTH_SHORT).show()
                             true
                         }
                         prepareAsync()
@@ -269,7 +270,7 @@ fun VoiceCloningListScreen(
                     ) { progress ->
                         // Update progress on main thread
                         previewProgress = progress.overallProgress
-                        previewStatusMessage = progress.statusMessage ?: "Synthesizing..."
+                        previewStatusMessage = progress.statusMessage
                     }
                 }
 
@@ -283,7 +284,7 @@ fun VoiceCloningListScreen(
 
                 isPreviewLoading = false
                 previewProgress = 1f
-                previewStatusMessage = "Complete"
+                previewStatusMessage = context.getString(R.string.tts_status_complete)
 
                 // Show notification if user opted in
                 if (notifyWhenReadyVoiceId == voice.id) {
@@ -304,7 +305,7 @@ fun VoiceCloningListScreen(
                     }
                     setOnErrorListener { _, _, _ ->
                         playingVoiceId = null
-                        Toast.makeText(context, "Failed to play preview", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, context.getString(R.string.voice_preview_failed), Toast.LENGTH_SHORT).show()
                         true
                     }
                     prepareAsync()
@@ -318,7 +319,7 @@ fun VoiceCloningListScreen(
                 previewProgress = 0f
                 previewStatusMessage = ""
                 android.util.Log.e("VoiceCloningList", "Failed to synthesize preview", e)
-                Toast.makeText(context, "Failed to generate preview: ${e.message}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, context.getString(R.string.vcl_preview_generate_failed, (TTSErrorText.resolve(context, e) ?: "")), Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -327,7 +328,7 @@ fun VoiceCloningListScreen(
     fun enableNotifyWhenReady(voice: ClonedVoice) {
         notifyWhenReadyVoiceId = voice.id
         showNotifyWhenReady = false
-        Toast.makeText(context, "We'll notify you when the preview is ready", Toast.LENGTH_SHORT).show()
+        Toast.makeText(context, context.getString(R.string.vcl_preview_notify_toast), Toast.LENGTH_SHORT).show()
     }
 
     // Delete voice function
@@ -337,11 +338,11 @@ fun VoiceCloningListScreen(
             try {
                 voiceCloningService.deleteClonedVoice(voice.id)
                 clonedVoices = clonedVoices.filter { it.id != voice.id }
-                Toast.makeText(context, "Voice deleted", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, context.getString(R.string.vcl_voice_deleted), Toast.LENGTH_SHORT).show()
             } catch (e: VoiceCloneException) {
                 Toast.makeText(context, VoiceCloneErrors.map(e).message, Toast.LENGTH_LONG).show()
             } catch (e: Exception) {
-                Toast.makeText(context, "Failed to delete voice", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, context.getString(R.string.vcl_delete_failed), Toast.LENGTH_SHORT).show()
             } finally {
                 isDeleting = false
                 voiceToDelete = null
@@ -353,9 +354,9 @@ fun VoiceCloningListScreen(
     voiceToDelete?.let { voice ->
         AlertDialog(
             onDismissRequest = { voiceToDelete = null },
-            title = { Text("Delete Voice Clone?") },
+            title = { Text(stringResource(R.string.vcl_delete_title)) },
             text = {
-                Text("This will permanently delete '${voice.name}'. This action cannot be undone.")
+                Text(stringResource(R.string.vcl_delete_body, voice.name))
             },
             confirmButton = {
                 TextButton(
@@ -368,13 +369,13 @@ fun VoiceCloningListScreen(
                             strokeWidth = 2.dp
                         )
                     } else {
-                        Text("Delete", color = Red)
+                        Text(stringResource(R.string.delete), color = Red)
                     }
                 }
             },
             dismissButton = {
                 TextButton(onClick = { voiceToDelete = null }) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.cancel))
                 }
             }
         )
@@ -383,7 +384,7 @@ fun VoiceCloningListScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Voice Cloning", fontWeight = FontWeight.Bold) },
+                title = { Text(stringResource(R.string.settings_voice_cloning), fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
@@ -393,7 +394,7 @@ fun VoiceCloningListScreen(
                     if (clonedVoices.isNotEmpty()) {
                         TextButton(onClick = { isEditing = !isEditing }) {
                             Text(
-                                text = if (isEditing) "Done" else "Edit",
+                                text = stringResource(if (isEditing) R.string.done else R.string.vcl_edit),
                                 color = MaterialTheme.colorScheme.primary
                             )
                         }
@@ -472,7 +473,7 @@ fun VoiceCloningListScreen(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "Clone Voice",
+                    text = stringResource(R.string.vcl_clone_voice),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold
                 )
@@ -511,7 +512,7 @@ private fun EmptyVoiceState(errorMessage: String? = null) {
         Spacer(modifier = Modifier.height(24.dp))
 
         Text(
-            text = "No cloned voice here",
+            text = stringResource(R.string.vcl_empty_title),
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold
         )
@@ -519,7 +520,7 @@ private fun EmptyVoiceState(errorMessage: String? = null) {
         Spacer(modifier = Modifier.height(8.dp))
 
         Text(
-            text = errorMessage ?: "You haven't created any voice clones yet. Cloning a voice needs a short recorded consent check.",
+            text = errorMessage ?: stringResource(R.string.vcl_empty_body),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = androidx.compose.ui.text.style.TextAlign.Center
@@ -593,7 +594,7 @@ private fun ClonedVoiceCard(
 
                     // Show status text
                     Text(
-                        text = "Cloned Voice • ${java.util.Locale(voice.language).displayLanguage}",
+                        text = stringResource(R.string.vcl_cloned_voice_language, java.util.Locale(voice.language).displayLanguage),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -629,7 +630,7 @@ private fun ClonedVoiceCard(
                         IconButton(onClick = onDelete) {
                             Icon(
                                 Icons.Default.Delete,
-                                contentDescription = "Delete",
+                                contentDescription = stringResource(R.string.delete),
                                 tint = Red,
                                 modifier = Modifier.size(24.dp)
                             )
@@ -652,7 +653,7 @@ private fun ClonedVoiceCard(
                         } else {
                             Icon(
                                 imageVector = if (isPlaying) Icons.Default.Stop else Icons.Default.PlayArrow,
-                                contentDescription = if (isPlaying) "Stop" else "Play",
+                                contentDescription = stringResource(if (isPlaying) R.string.vcl_stop else R.string.play),
                                 tint = Color.Black,
                                 modifier = Modifier.size(20.dp)
                             )
@@ -683,7 +684,7 @@ private fun ClonedVoiceCard(
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = "Notify me when ready",
+                            text = stringResource(R.string.vcl_notify_me),
                             style = MaterialTheme.typography.labelMedium
                         )
                     }

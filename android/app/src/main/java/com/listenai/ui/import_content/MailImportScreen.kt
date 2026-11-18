@@ -154,7 +154,7 @@ fun MailImportScreen(
                         Icon(Icons.Default.Error, contentDescription = null, tint = Red)
                         Text(error, color = Red, modifier = Modifier.weight(1f))
                         IconButton(onClick = { importError = null }) {
-                            Icon(Icons.Default.Close, contentDescription = "Dismiss")
+                            Icon(Icons.Default.Close, contentDescription = stringResource(R.string.dismiss))
                         }
                     }
                 }
@@ -172,12 +172,12 @@ fun MailImportScreen(
                                 val result = authService.startGmailOAuthFlow(currentActivity)
                                 if (result.isFailure) {
                                     isConnecting = false
-                                    importError = result.exceptionOrNull()?.message ?: "Failed to start Gmail sign-in"
+                                    importError = result.exceptionOrNull()?.message ?: context.getString(R.string.mail_err_start_signin)
                                 }
                             }
                         } else {
                             isConnecting = false
-                            importError = "Unable to start sign-in flow"
+                            importError = context.getString(R.string.mail_err_signin_flow)
                         }
                     }
                 )
@@ -251,7 +251,7 @@ fun MailImportScreen(
                                                     previewEmail = fullEmail
                                                 } catch (e: Exception) {
                                                     isImporting = false
-                                                    importError = e.message ?: "Failed to fetch email"
+                                                    importError = e.message ?: context.getString(R.string.mail_err_fetch_email)
                                                 }
                                             }
                                         }

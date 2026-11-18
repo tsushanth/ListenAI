@@ -1,5 +1,7 @@
 package com.listenai.data.models
 
+import androidx.annotation.StringRes
+import com.listenai.R
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import java.util.Date
@@ -39,12 +41,13 @@ enum class UsageTier {
             UNLIMITED -> Int.MAX_VALUE
         }
 
-    val displayName: String
+    @get:StringRes
+    val labelRes: Int
         get() = when (this) {
-            FREE -> "Free"
-            BASIC -> "Basic"
-            PRO -> "Pro"
-            UNLIMITED -> "Unlimited"
+            FREE -> R.string.usage_tier_free
+            BASIC -> R.string.usage_tier_basic
+            PRO -> R.string.usage_tier_pro
+            UNLIMITED -> R.string.usage_tier_unlimited
         }
 
     val badgeColor: String

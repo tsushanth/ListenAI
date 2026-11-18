@@ -1,5 +1,6 @@
 package com.listenai.service.tts
 
+import com.listenai.R
 import android.content.Context
 import com.listenai.data.models.VoiceGender
 import com.listenai.data.models.VoicePreset
@@ -170,7 +171,7 @@ class SelfHostedTTSService(private val context: Context) : TTSService {
 
         try {
             onProgress(SynthesisProgress.INITIAL.copy(
-                statusMessage = "Connecting to TTS service...",
+                statusMessage = context.getString(R.string.tts_status_connecting_service),
                 totalSections = sections.size,
                 totalCharacters = totalText.length
             ))
@@ -205,7 +206,7 @@ class SelfHostedTTSService(private val context: Context) : TTSService {
 
             onProgress(SynthesisProgress.INITIAL.copy(
                 overallProgress = 0.05f,
-                statusMessage = "Starting synthesis...",
+                statusMessage = context.getString(R.string.tts_status_starting_synthesis),
                 totalSections = sections.size,
                 totalCharacters = totalText.length
             ))
@@ -289,10 +290,10 @@ class SelfHostedTTSService(private val context: Context) : TTSService {
                     totalSections = sections.size,
                     estimatedTimeRemaining = estimatedRemainingSec?.toDouble() ?: 0.0,
                     statusMessage = when (status) {
-                        "queued" -> "In queue..."
-                        "processing" -> "Synthesizing... $percentage%"
-                        "partial_ready" -> "Almost ready... $percentage%"
-                        else -> "Processing..."
+                        "queued" -> context.getString(R.string.tts_status_in_queue)
+                        "processing" -> context.getString(R.string.tts_status_synthesizing_pct, percentage)
+                        "partial_ready" -> context.getString(R.string.tts_status_almost_ready, percentage)
+                        else -> context.getString(R.string.tts_status_processing)
                     },
                     charactersProcessed = (totalText.length * percentage / 100),
                     totalCharacters = totalText.length
@@ -319,7 +320,7 @@ class SelfHostedTTSService(private val context: Context) : TTSService {
                                 sectionsCompleted = 0,
                                 totalSections = sections.size,
                                 estimatedTimeRemaining = estimatedRemainingSec?.toDouble() ?: 0.0,
-                                statusMessage = "Preview ready",
+                                statusMessage = context.getString(R.string.tts_status_preview_ready),
                                 charactersProcessed = (totalText.length * percentage / 100),
                                 totalCharacters = totalText.length,
                                 previewUrl = previewUrl,
@@ -434,7 +435,7 @@ class SelfHostedTTSService(private val context: Context) : TTSService {
             sectionsCompleted = sections.size,
             totalSections = sections.size,
             estimatedTimeRemaining = 0.0,
-            statusMessage = "Downloading audio...",
+            statusMessage = context.getString(R.string.tts_status_downloading),
             charactersProcessed = totalText.length,
             totalCharacters = totalText.length
         ))
@@ -473,7 +474,7 @@ class SelfHostedTTSService(private val context: Context) : TTSService {
             sectionsCompleted = sections.size,
             totalSections = sections.size,
             estimatedTimeRemaining = 0.0,
-            statusMessage = "Complete",
+            statusMessage = context.getString(R.string.tts_status_complete),
             charactersProcessed = totalText.length,
             totalCharacters = totalText.length
         ))
@@ -530,7 +531,7 @@ class SelfHostedTTSService(private val context: Context) : TTSService {
 
         try {
             onProgress(SynthesisProgress.INITIAL.copy(
-                statusMessage = "Starting cloned voice synthesis...",
+                statusMessage = context.getString(R.string.tts_status_cloned_starting),
                 totalCharacters = text.length
             ))
 
@@ -540,7 +541,7 @@ class SelfHostedTTSService(private val context: Context) : TTSService {
 
             onProgress(SynthesisProgress.INITIAL.copy(
                 overallProgress = 0.05f,
-                statusMessage = "Connecting to cloned voice service...",
+                statusMessage = context.getString(R.string.tts_status_cloned_connecting),
                 totalCharacters = text.length
             ))
 
@@ -619,17 +620,17 @@ class SelfHostedTTSService(private val context: Context) : TTSService {
                 val displayPercentage = (displayProgress * 100).toInt()
 
                 val statusMsg = when {
-                    status == "queued" -> "In queue..."
-                    status == "partial_ready" -> "Almost ready... $displayPercentage%"
-                    chunksCompleted > 0 -> "Synthesizing... $displayPercentage% (chunk $chunksCompleted/$chunksTotal)"
+                    status == "queued" -> context.getString(R.string.tts_status_in_queue)
+                    status == "partial_ready" -> context.getString(R.string.tts_status_almost_ready, displayPercentage)
+                    chunksCompleted > 0 -> context.getString(R.string.tts_status_synthesizing_chunks, displayPercentage, chunksCompleted, chunksTotal)
                     estimatedRemainingSec != null && estimatedRemainingSec > 0 -> {
                         val mins = estimatedRemainingSec / 60
                         val secs = estimatedRemainingSec % 60
-                        if (mins > 0) "Synthesizing... ~${mins}m ${secs}s remaining"
-                        else "Synthesizing... ~${secs}s remaining"
+                        if (mins > 0) context.getString(R.string.tts_status_synthesizing_remaining_min, mins, secs)
+                        else context.getString(R.string.tts_status_synthesizing_remaining_sec, secs)
                     }
-                    chunksTotal > 1 -> "Synthesizing chunk 1/$chunksTotal..."
-                    else -> "Synthesizing... $displayPercentage%"
+                    chunksTotal > 1 -> context.getString(R.string.tts_status_synthesizing_chunk_one, chunksTotal)
+                    else -> context.getString(R.string.tts_status_synthesizing_pct, displayPercentage)
                 }
 
                 // Update cached progress for resume
@@ -696,7 +697,7 @@ class SelfHostedTTSService(private val context: Context) : TTSService {
             sectionsCompleted = 0,
             totalSections = 1,
             estimatedTimeRemaining = 0.0,
-            statusMessage = "Downloading audio...",
+            statusMessage = context.getString(R.string.tts_status_downloading),
             charactersProcessed = text.length,
             totalCharacters = text.length
         ))
@@ -731,7 +732,7 @@ class SelfHostedTTSService(private val context: Context) : TTSService {
             currentSectionIndex = 0,
             sectionsCompleted = 1,
             totalSections = 1,
-            statusMessage = "Complete",
+            statusMessage = context.getString(R.string.tts_status_complete),
             totalCharacters = text.length,
             charactersProcessed = text.length
         ))
@@ -987,17 +988,17 @@ class SelfHostedTTSService(private val context: Context) : TTSService {
                 val displayPercentage = (displayProgress * 100).toInt()
 
                 val statusMsg = when {
-                    status == "queued" -> "In queue..."
-                    status == "partial_ready" -> "Almost ready... $displayPercentage%"
-                    chunksCompleted > 0 -> "Synthesizing... $displayPercentage% (chunk $chunksCompleted/$chunksTotal)"
+                    status == "queued" -> context.getString(R.string.tts_status_in_queue)
+                    status == "partial_ready" -> context.getString(R.string.tts_status_almost_ready, displayPercentage)
+                    chunksCompleted > 0 -> context.getString(R.string.tts_status_synthesizing_chunks, displayPercentage, chunksCompleted, chunksTotal)
                     estimatedRemainingSec != null && estimatedRemainingSec > 0 -> {
                         val mins = estimatedRemainingSec / 60
                         val secs = estimatedRemainingSec % 60
-                        if (mins > 0) "Synthesizing... ~${mins}m ${secs}s remaining"
-                        else "Synthesizing... ~${secs}s remaining"
+                        if (mins > 0) context.getString(R.string.tts_status_synthesizing_remaining_min, mins, secs)
+                        else context.getString(R.string.tts_status_synthesizing_remaining_sec, secs)
                     }
-                    chunksTotal > 1 -> "Synthesizing chunk 1/$chunksTotal..."
-                    else -> "Synthesizing... $displayPercentage%"
+                    chunksTotal > 1 -> context.getString(R.string.tts_status_synthesizing_chunk_one, chunksTotal)
+                    else -> context.getString(R.string.tts_status_synthesizing_pct, displayPercentage)
                 }
 
                 // Update cached progress

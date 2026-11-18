@@ -1,5 +1,6 @@
 package com.listenai.service.tts
 
+import com.listenai.R
 import android.content.Context
 import android.util.Log
 import com.listenai.data.models.VoicePreset
@@ -115,7 +116,7 @@ class CloudTTSService(private val context: Context) : TTSService {
         SynthesisForegroundGuard.acquire(context)
         try {
             onProgress(SynthesisProgress.INITIAL.copy(
-                statusMessage = "Submitting request...",
+                statusMessage = context.getString(R.string.tts_status_submitting),
                 totalSections = sections.size,
                 totalCharacters = totalText.length
             ))
@@ -257,13 +258,17 @@ class CloudTTSService(private val context: Context) : TTSService {
 
         val statusMessage = when (status) {
             "queued" -> if (queuePosition != null) {
-                "Waiting in queue — ${ordinal(queuePosition)} in line" +
-                    (queueDepth?.takeIf { it > queuePosition }?.let { " • $it jobs queued" } ?: "")
+                val depth = queueDepth?.takeIf { it > queuePosition }
+                if (depth != null) {
+                    context.resources.getQuantityString(R.plurals.tts_status_queue_position_depth, depth, queuePosition, depth)
+                } else {
+                    context.getString(R.string.tts_status_queue_position, queuePosition)
+                }
             } else {
-                "Waiting in queue..."
+                context.getString(R.string.tts_status_waiting_queue)
             }
-            "partial_ready" -> "Streaming preview..."
-            else -> "Generating audio..."
+            "partial_ready" -> context.getString(R.string.tts_status_streaming_preview)
+            else -> context.getString(R.string.player_generating_audio)
         }
 
         return SynthesisProgress(
@@ -281,16 +286,6 @@ class CloudTTSService(private val context: Context) : TTSService {
             queueDepth = queueDepth,
             queuePosition = queuePosition,
         )
-    }
-
-    private fun ordinal(n: Int): String {
-        if (n % 100 in 11..13) return "${n}th"
-        return when (n % 10) {
-            1 -> "${n}st"
-            2 -> "${n}nd"
-            3 -> "${n}rd"
-            else -> "${n}th"
-        }
     }
 
     private fun cancelJob(jobId: String) {
@@ -316,7 +311,7 @@ class CloudTTSService(private val context: Context) : TTSService {
     ): SynthesisResult {
         onProgress(SynthesisProgress.INITIAL.copy(
             overallProgress = 0.95f,
-            statusMessage = "Downloading audio...",
+            statusMessage = context.getString(R.string.tts_status_downloading),
             totalSections = sections.size,
             totalCharacters = totalText.length,
         ))
@@ -340,7 +335,7 @@ class CloudTTSService(private val context: Context) : TTSService {
             sectionsCompleted = sections.size,
             totalSections = sections.size,
             estimatedTimeRemaining = 0.0,
-            statusMessage = "Complete",
+            statusMessage = context.getString(R.string.tts_status_complete),
             charactersProcessed = totalText.length,
             totalCharacters = totalText.length,
         ))

@@ -3,6 +3,7 @@ package com.listenai.service.voice
 import android.content.Context
 import android.media.MediaMetadataRetriever
 import android.net.Uri
+import com.listenai.R
 import java.io.File
 import java.io.IOException
 
@@ -54,15 +55,15 @@ object AudioClips {
             null
         } ?: uri.lastPathSegment ?: "reference"
         val mime = normalizeMime(resolver.getType(uri), name)
-            ?: return Picked(null, "That file type isn't supported. Use WAV, FLAC, OGG, MP3 or M4A.")
+            ?: return Picked(null, context.getString(R.string.vc_clip_unsupported_type))
         val size = try {
             resolver.openAssetFileDescriptor(uri, "r")?.use { it.length } ?: -1L
         } catch (e: Exception) {
             -1L
         }
-        if (size > MAX_BYTES) return Picked(null, "That file is too large (25 MB maximum).")
+        if (size > MAX_BYTES) return Picked(null, context.getString(R.string.vc_clip_too_large))
         val durationSec = durationSeconds(context, uri)
-            ?: return Picked(null, "Couldn't read that audio file. Try a different file.")
+            ?: return Picked(null, context.getString(R.string.vc_clip_unreadable))
         return Picked(AudioClip(name, mime, durationSec) {
             resolver.openInputStream(uri)?.use { it.readBytes() } ?: throw IOException("Cannot read $name")
         })
