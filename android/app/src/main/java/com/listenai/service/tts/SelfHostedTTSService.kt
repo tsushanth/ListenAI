@@ -489,7 +489,7 @@ class SelfHostedTTSService(private val context: Context) : TTSService {
                 charactersUsed = totalText.length,
                 costUSD = 0.0,  // Self-hosted is free
                 quotaUsed = 0,  // No quota for self-hosted
-                provider = "ListenAI (Kokoro)"
+                provider = "ListenAI (on-device voice)"
             ),
             metadata = SynthesisMetadata(
                 voiceId = voice.id,
@@ -747,7 +747,7 @@ class SelfHostedTTSService(private val context: Context) : TTSService {
                 charactersUsed = text.length,
                 costUSD = 0.0,
                 quotaUsed = 0,
-                provider = "ListenAI (Chatterbox)"
+                provider = "ListenAI (cloned voice)"
             ),
             metadata = SynthesisMetadata(
                 voiceId = voiceId,
