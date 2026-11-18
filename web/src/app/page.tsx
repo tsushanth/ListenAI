@@ -177,7 +177,7 @@ export default function Home() {
             </div>
             <div className="ra-ref" style={{ marginTop: 0 }}>
               <ul>
-                <li>Billed by the second of audio, so a short clip costs a fraction of a cent. Batch only for now: no realtime transcription.</li>
+                <li>Billed by the second of audio, so a short clip costs a fraction of a cent. Batch transcription is the priced product; realtime transcription is early and has no published price yet.</li>
                 {/* Accuracy: research/W32/data/results_w32gpu.md (the live guard; W31 test split, real 8 kHz 296 items, noisy 10 dB 578 items, no dictionary). */}
                 <li>On 296 real 8 kHz phone-style recordings (English, role-played calls) the word error rate was 9.8% and 90.2% of spoken digit sequences came out exactly right. With 10 dB background noise added it was 17.8% and 84.6%, so noisy lines are our weaker case. One test set, so test on your own audio. <Link href="/developers#stt-how-we-measured" style={{ textDecoration: 'underline' }}>How we measured</Link>.</li>
                 {/* Speaker labels: research/W43/REALCALL_VALIDATION.md; limits documented at /developers#speech-to-text. */}
