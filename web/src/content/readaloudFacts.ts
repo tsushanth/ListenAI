@@ -198,11 +198,11 @@ export const RA_ELEVENLABS_ROUTES = {
   voiceNote: 'ElevenLabs voice ids, including your own clones, do not exist here; use readaloud-default.',
 } as const
 
-/** Speech to text, for the compare pages' speech-to-text row. Batch only; there is no realtime speech to text. */
+/** Speech to text, for the compare pages' speech-to-text row. Batch is the priced product; realtime is early (English, Spanish, German) with no published price. */
 export const RA_SPEECH_TO_TEXT = {
   batchPerHourUsd: PRICING.speechToText.usd,
-  cell: `Batch transcription of uploaded files at $${PRICING.speechToText.usd.toFixed(2)} per hour of audio; no realtime transcription; up to 8 speaker labels on the ReadAloud route`,
-  realtime: 'not offered',
+  cell: `Batch transcription of uploaded files at $${PRICING.speechToText.usd.toFixed(2)} per hour of audio; realtime transcription is early (English, Spanish and German) with no published price; up to 8 speaker labels on the ReadAloud route`,
+  realtime: 'early, no price published yet',
 } as const
 
 export const RA_VOICES = {
