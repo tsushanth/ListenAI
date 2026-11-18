@@ -5,7 +5,7 @@
 // or a real-time TTS clone of the victim could pass. It raises the cost of casual abuse (REPORT.md).
 import type { AsrClient, CloneServiceClient } from './types.js';
 import type { ClonePolicy } from './policy.js';
-import { scoreTranscript } from './consentPhrase.js';
+import { languageOfPhrase, scoreTranscript, type ConsentLanguage } from './consentPhrase.js';
 
 export type ConsentFailureCode = 'phrase_mismatch' | 'speaker_mismatch' | 'asr_unavailable';
 
@@ -26,6 +26,8 @@ export interface ConsentInputs {
   consentAudio: Buffer;
   consentMime: string;
   referenceAudio: Buffer;
+  /** Language the phrase was issued in. Defaults to the language of the phrase text (English for older challenges). */
+  language?: ConsentLanguage;
 }
 
 export async function evaluateConsent(
@@ -34,12 +36,13 @@ export async function evaluateConsent(
 ): Promise<ConsentEvaluation> {
   const { asr, service, policy } = deps;
   let transcript: string;
+  const language = inp.language ?? languageOfPhrase(inp.phrase);
   try {
-    transcript = await asr.transcribe(inp.consentAudio, inp.consentMime, 'en');
+    transcript = await asr.transcribe(inp.consentAudio, inp.consentMime, language);
   } catch {
     return { ok: false, failure: 'asr_unavailable', transcript: '', phraseWer: 1, codeWordsInOrder: false, speakerSimilarity: null, borderline: false };
   }
-  const { wer, codeWordsInOrder } = scoreTranscript(inp.phrase, inp.codeWords, transcript);
+  const { wer, codeWordsInOrder } = scoreTranscript(inp.phrase, inp.codeWords, transcript, language);
   if (!codeWordsInOrder || wer > policy.maxPhraseWer) {
     return { ok: false, failure: 'phrase_mismatch', transcript, phraseWer: wer, codeWordsInOrder, speakerSimilarity: null, borderline: false };
   }

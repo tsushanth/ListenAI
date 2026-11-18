@@ -2,6 +2,7 @@
 // recorded earlier (or scraped from somewhere) cannot be replayed: the speaker has to say words they
 // could not have known before this request.
 import { randomInt } from 'node:crypto';
+import { CODE_WORDS_DE, CODE_WORDS_ES } from './consentWords.js';
 
 // Short, common English words. 4 drawn per phrase from ~250 words (~31 bits). Freshness + single use + expiry are what matter; this is not a secret.
 export const CODE_WORDS = [
@@ -29,27 +30,77 @@ export const CODE_WORDS = [
 export const PHRASE_TEMPLATE = 'I agree that ReadAloud may create a synthetic copy of my voice. My code words are';
 const CODE_WORD_COUNT = 4;
 
+/** Languages the consent phrase can be read in. English is the default and its phrase has not changed. */
+export const CONSENT_LANGUAGES = ['en', 'es', 'de'] as const;
+export type ConsentLanguage = (typeof CONSENT_LANGUAGES)[number];
+export const DEFAULT_CONSENT_LANGUAGE: ConsentLanguage = 'en';
+
+interface PhraseSpec { template: string; words: readonly string[] }
+const SPECS: Record<ConsentLanguage, PhraseSpec> = {
+  en: { template: PHRASE_TEMPLATE, words: CODE_WORDS },
+  es: { template: 'Acepto que ReadAloud cree una copia sintética de mi voz. Mis cuatro palabras son', words: CODE_WORDS_ES },
+  de: { template: 'Ich bin einverstanden, dass ReadAloud eine synthetische Kopie meiner Stimme erstellt. Meine vier Wörter lauten', words: CODE_WORDS_DE },
+};
+
+export const phraseTemplateFor = (language: ConsentLanguage): string => SPECS[language].template;
+export const codeWordsFor = (language: ConsentLanguage): readonly string[] => SPECS[language].words;
+
+/** "de", "DE", "de-AT" and "de_CH" all mean German. Returns null for a language the consent phrase is not offered in. */
+export function normalizeConsentLanguage(raw: unknown): ConsentLanguage | null {
+  if (typeof raw !== 'string') return null;
+  const base = raw.trim().toLowerCase().split(/[-_]/)[0] ?? '';
+  return (CONSENT_LANGUAGES as readonly string[]).includes(base) ? (base as ConsentLanguage) : null;
+}
+
+/**
+ * The language a stored phrase was issued in. The challenge row keeps the phrase text, which starts with the language's
+ * template, so the language travels with the challenge without a schema change and the recording is always checked in
+ * the language it was issued in. A phrase that matches no template (older rows) is English.
+ */
+export function languageOfPhrase(phrase: string): ConsentLanguage {
+  for (const lang of CONSENT_LANGUAGES) if (lang !== 'en' && phrase.startsWith(SPECS[lang].template)) return lang;
+  return 'en';
+}
+
 export interface IssuedPhrase {
   phrase: string;
   codeWords: string[];
+  language: ConsentLanguage;
 }
 
-export function issuePhrase(pick: (maxExclusive: number) => number = (n) => randomInt(n)): IssuedPhrase {
+export function issuePhrase(pick: (maxExclusive: number) => number = (n) => randomInt(n), language: ConsentLanguage = DEFAULT_CONSENT_LANGUAGE): IssuedPhrase {
+  const { template, words } = SPECS[language];
   const used = new Set<string>();
   const codeWords: string[] = [];
   while (codeWords.length < CODE_WORD_COUNT) {
-    const w = CODE_WORDS[pick(CODE_WORDS.length)]!;
+    const w = words[pick(words.length)]!;
     if (!used.has(w)) {
       used.add(w);
       codeWords.push(w);
     }
   }
-  return { phrase: `${PHRASE_TEMPLATE} ${codeWords.join(', ')}.`, codeWords };
+  return { phrase: `${template} ${codeWords.join(', ')}.`, codeWords, language };
 }
 
 export function normalizeWords(text: string): string[] {
   return text
     .toLowerCase()
+    .replace(/[^a-z0-9'\s]/g, ' ')
+    .split(/\s+/)
+    .filter(Boolean);
+}
+
+/**
+ * Words for a language. English is unchanged (a-z, digits, apostrophes). Spanish and German drop accents and write the
+ * sharp s as "ss" on both sides, so "Wörter" and "worter", or "Straße" and "Strasse", compare equal.
+ */
+export function normalizeWordsFor(text: string, language: ConsentLanguage = DEFAULT_CONSENT_LANGUAGE): string[] {
+  if (language === 'en') return normalizeWords(text);
+  return text
+    .toLowerCase()
+    .replace(/ß/g, 'ss')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
     .replace(/[^a-z0-9'\s]/g, ' ')
     .split(/\s+/)
     .filter(Boolean);
@@ -109,17 +160,18 @@ function joinBrandName(transcript: string): string {
   return transcript.replace(/\bread[\s-]+aloud\b/gi, 'ReadAloud');
 }
 
-export function scoreTranscript(phrase: string, codeWords: string[], transcript: string): TranscriptScore {
-  const hyp = normalizeWords(joinBrandName(transcript));
+export function scoreTranscript(phrase: string, codeWords: string[], transcript: string, language: ConsentLanguage = DEFAULT_CONSENT_LANGUAGE): TranscriptScore {
+  const hyp = normalizeWordsFor(joinBrandName(transcript), language);
   let cursor = 0;
   let inOrder = true;
   for (const w of codeWords) {
-    const idx = hyp.findIndex((h, i) => i >= cursor && codeWordHeard(h, w));
+    const target = language === 'en' ? w : (normalizeWordsFor(w, language)[0] ?? w);
+    const idx = hyp.findIndex((h, i) => i >= cursor && codeWordHeard(h, target));
     if (idx === -1) {
       inOrder = false;
       break;
     }
     cursor = idx + 1;
   }
-  return { wer: wordErrorRate(normalizeWords(phrase), hyp), codeWordsInOrder: inOrder };
+  return { wer: wordErrorRate(normalizeWordsFor(phrase, language), hyp), codeWordsInOrder: inOrder };
 }

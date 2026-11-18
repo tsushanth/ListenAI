@@ -8,7 +8,7 @@ import type {
   AsrClient, BlobStore, CloneServiceClient, CloneStore, Eligibility, OutputHashRecord, SynthesisResult, VoiceCloneRow,
 } from './types.js';
 import type { ClonePolicy } from './policy.js';
-import { issuePhrase } from './consentPhrase.js';
+import { issuePhrase, languageOfPhrase, type ConsentLanguage } from './consentPhrase.js';
 import { evaluateConsentClip, evaluateReference } from './referenceGate.js';
 import { evaluateConsent } from './consent.js';
 
@@ -45,6 +45,8 @@ export interface CloneDeps {
 
 export interface PhraseMismatchInfo {
   language: string;
+  /** Language the consent phrase was issued and checked in (the voice language above can differ). */
+  consentLanguage: ConsentLanguage;
   attempt: number;
   wer: number;
   codeWordsInOrder: boolean;
@@ -90,16 +92,18 @@ export function dailyLimitFor(e: Eligibility, p: ClonePolicy): number {
   return e.plan === 'comped' ? p.dailyLimitTrial : p.dailyLimitPaid;
 }
 
-export async function issueConsentChallenge(deps: CloneDeps, e: Eligibility) {
+export async function issueConsentChallenge(deps: CloneDeps, e: Eligibility, language?: ConsentLanguage) {
   assertEligible(e);
   if (!isConsentRequired(deps)) throw new CloneError(409, 'consent_not_required', 'Consent phrase is not required; send attested=true instead.');
   void warmAsr(deps.asr);
   void deps.service.warm?.()?.catch(() => undefined); // the speaker records the phrase next: wake the GPU apps meanwhile
   const now = (deps.now ?? (() => new Date()))();
-  const { phrase, codeWords } = issuePhrase();
+  // The phrase text starts with its language's template, so the language is stored with the challenge and the create
+  // step (evaluateConsent) transcribes and scores the recording in the same language.
+  const { phrase, codeWords } = issuePhrase(undefined, language);
   const expiresAt = new Date(now.getTime() + deps.policy.challengeTtlSec * 1000).toISOString();
   const row = await deps.store.createChallenge({ userId: e.userId, phrase, codeWords, expiresAt });
-  return { challengeId: row.id, phrase: row.phrase, expiresAt: row.expiresAt };
+  return { challengeId: row.id, phrase: row.phrase, expiresAt: row.expiresAt, language: languageOfPhrase(row.phrase) };
 }
 
 export interface CreateVoiceInput {
@@ -176,7 +180,7 @@ export async function createVoiceClone(deps: CloneDeps, input: CreateVoiceInput)
         // What the transcriber heard against what was issued, so a failing language or voice shows up as data
         // instead of a bare 422. Failures only; the transcript is cut to 200 characters.
         deps.onPhraseMismatch?.({
-          language: input.language, attempt: attempts, wer: Number(ev.phraseWer.toFixed(2)), codeWordsInOrder: ev.codeWordsInOrder,
+          language: input.language, consentLanguage: languageOfPhrase(ch.phrase), attempt: attempts, wer: Number(ev.phraseWer.toFixed(2)), codeWordsInOrder: ev.codeWordsInOrder,
           expectedCodeWords: ch.codeWords, heard: ev.transcript.slice(0, 200), consentSec: consentMetrics.durationSec,
         });
       }
