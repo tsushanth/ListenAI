@@ -54,7 +54,7 @@ fun RewardsScreen(
                 summary = marketplaceService.getRewardsSummary()
                 history = marketplaceService.getRewardHistory()
             } catch (e: Exception) {
-                errorMessage = e.message ?: "Failed to load rewards"
+                errorMessage = marketplaceService.errorText(context, e, R.string.rewards_error_load)
             } finally {
                 isLoading = false
             }
@@ -70,7 +70,7 @@ fun RewardsScreen(
                 claimSuccess = credited
                 loadData() // Refresh data
             } catch (e: Exception) {
-                errorMessage = e.message ?: "Failed to claim rewards"
+                errorMessage = marketplaceService.errorText(context, e, R.string.rewards_error_claim)
             } finally {
                 isClaiming = false
             }
@@ -112,7 +112,7 @@ fun RewardsScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(errorMessage ?: "Error", color = MaterialTheme.colorScheme.error)
+                        Text(errorMessage ?: stringResource(R.string.error_generic), color = MaterialTheme.colorScheme.error)
                         Spacer(modifier = Modifier.height(16.dp))
                         Button(onClick = { loadData() }) {
                             Text(stringResource(R.string.retry))
@@ -159,7 +159,7 @@ fun RewardsScreen(
                                 )
 
                                 Text(
-                                    "${String.format("%.1f", summary?.creditedTotalMinutes ?: 0.0)} min",
+                                    stringResource(R.string.rewards_minutes_format, summary?.creditedTotalMinutes ?: 0.0),
                                     style = MaterialTheme.typography.displaySmall,
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.onPrimaryContainer
@@ -177,7 +177,7 @@ fun RewardsScreen(
                                 ) {
                                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                         Text(
-                                            "${String.format("%.1f", summary?.pendingMinutes ?: 0.0)} min",
+                                            stringResource(R.string.rewards_minutes_format, summary?.pendingMinutes ?: 0.0),
                                             style = MaterialTheme.typography.titleLarge,
                                             fontWeight = FontWeight.Bold,
                                             color = MaterialTheme.colorScheme.onPrimaryContainer
@@ -252,7 +252,7 @@ fun RewardsScreen(
                                     )
                                     Spacer(modifier = Modifier.width(12.dp))
                                     Text(
-                                        "Successfully claimed ${String.format("%.1f", amount)} minutes!",
+                                        stringResource(R.string.claim_success_format, amount),
                                         color = Color(0xFF4CAF50)
                                     )
                                 }
@@ -432,7 +432,7 @@ private fun HistoryCard(
                     fontWeight = FontWeight.Medium
                 )
                 Text(
-                    "${entry.charactersGenerated} characters",
+                    stringResource(R.string.characters_generated_format, entry.charactersGenerated),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -447,7 +447,7 @@ private fun HistoryCard(
 
             Column(horizontalAlignment = Alignment.End) {
                 Text(
-                    "+${String.format("%.2f", entry.rewardMinutes)} min",
+                    stringResource(R.string.rewards_minutes_earned_format, entry.rewardMinutes),
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold,
                     color = if (entry.credited) Color(0xFF4CAF50) else MaterialTheme.colorScheme.primary

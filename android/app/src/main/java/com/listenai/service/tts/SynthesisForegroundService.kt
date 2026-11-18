@@ -36,8 +36,8 @@ class SynthesisForegroundService : Service() {
         ensureChannel()
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle("Generating audio")
-            .setContentText("This can take a couple of minutes for longer articles.")
+            .setContentTitle(getString(R.string.synthesis_notif_title))
+            .setContentText(getString(R.string.synthesis_notif_text))
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setOngoing(true)
             .build()
@@ -59,10 +59,10 @@ class SynthesisForegroundService : Service() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val channel = NotificationChannel(
             CHANNEL_ID,
-            "Audio generation",
+            getString(R.string.synthesis_notif_channel_name),
             NotificationManager.IMPORTANCE_LOW,
         ).apply {
-            description = "Shown while an article's audio is being generated"
+            description = getString(R.string.synthesis_notif_channel_description)
         }
         getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
     }

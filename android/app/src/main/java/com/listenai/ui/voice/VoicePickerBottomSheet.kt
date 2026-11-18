@@ -1,5 +1,8 @@
 package com.listenai.ui.voice
 
+import androidx.compose.ui.res.stringResource
+import com.listenai.R
+import com.listenai.service.tts.TTSErrorText
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -145,7 +148,7 @@ fun VoicePickerBottomSheet(
                             playingVoiceId = null
                             // Cache might be corrupted, delete and retry
                             cachedFile.delete()
-                            Toast.makeText(context, "Failed to play preview", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, context.getString(R.string.voice_preview_failed), Toast.LENGTH_SHORT).show()
                             true
                         }
                         prepareAsync()
@@ -188,7 +191,7 @@ fun VoicePickerBottomSheet(
                     }
                     setOnErrorListener { _, _, _ ->
                         playingVoiceId = null
-                        Toast.makeText(context, "Failed to play preview", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, context.getString(R.string.voice_preview_failed), Toast.LENGTH_SHORT).show()
                         true
                     }
                     prepareAsync()
@@ -197,7 +200,7 @@ fun VoicePickerBottomSheet(
                 isPreviewLoading = false
                 playingVoiceId = null
                 android.util.Log.e("VoicePickerBottomSheet", "Failed to synthesize preview", e)
-                Toast.makeText(context, "Failed to generate preview: ${e.message}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, context.getString(R.string.vcl_preview_generate_failed, TTSErrorText.resolve(context, e) ?: ""), Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -209,7 +212,7 @@ fun VoicePickerBottomSheet(
             try {
                 voiceCloningService.deleteClonedVoice(voice.id)
                 clonedVoices = clonedVoices.filter { it.id != voice.id }
-                Toast.makeText(context, "Voice deleted", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, context.getString(R.string.vcl_voice_deleted), Toast.LENGTH_SHORT).show()
 
                 // Clear selection if deleted voice was selected
                 if (tempSelectedVoice?.id == "cloned_${voice.id}") {
@@ -219,7 +222,7 @@ fun VoicePickerBottomSheet(
                 Toast.makeText(context, VoiceCloneErrors.map(e).message, Toast.LENGTH_LONG).show()
             } catch (e: Exception) {
                 android.util.Log.e("VoicePickerBottomSheet", "Failed to delete voice", e)
-                Toast.makeText(context, "Failed to delete voice", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, context.getString(R.string.vcl_delete_failed), Toast.LENGTH_SHORT).show()
             } finally {
                 isDeleting = false
                 voiceToDelete = null
@@ -231,8 +234,8 @@ fun VoicePickerBottomSheet(
     voiceToDelete?.let { voice ->
         AlertDialog(
             onDismissRequest = { voiceToDelete = null },
-            title = { Text("Delete Voice?") },
-            text = { Text("Are you sure you want to delete \"${voice.name}\"? This action cannot be undone.") },
+            title = { Text(stringResource(R.string.vps_delete_title)) },
+            text = { Text(stringResource(R.string.vps_delete_body, voice.name)) },
             confirmButton = {
                 TextButton(
                     onClick = { deleteVoice(voice) },
@@ -244,13 +247,13 @@ fun VoicePickerBottomSheet(
                             strokeWidth = 2.dp
                         )
                     } else {
-                        Text("Delete", color = Red)
+                        Text(stringResource(R.string.delete), color = Red)
                     }
                 }
             },
             dismissButton = {
                 TextButton(onClick = { voiceToDelete = null }) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.cancel))
                 }
             }
         )
@@ -300,12 +303,12 @@ fun VoicePickerBottomSheet(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Select Voice",
+                        text = stringResource(R.string.select_voice),
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold
                     )
                     IconButton(onClick = onDismiss) {
-                        Icon(Icons.Default.Close, contentDescription = "Close")
+                        Icon(Icons.Default.Close, contentDescription = stringResource(R.string.close))
                     }
                 }
 
@@ -343,7 +346,7 @@ fun VoicePickerBottomSheet(
                         item {
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
-                                text = "Built-in Voices",
+                                text = stringResource(R.string.vps_builtin_voices),
                                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.SemiBold,
@@ -392,7 +395,7 @@ fun VoicePickerBottomSheet(
                         Spacer(modifier = Modifier.width(8.dp))
                     }
                     Text(
-                        text = if (showRegenerate) "Regenerate with ${tempSelectedVoice?.name}" else "Save",
+                        text = if (showRegenerate) stringResource(R.string.vps_regenerate_with, tempSelectedVoice?.name ?: "") else stringResource(R.string.vps_save),
                         modifier = Modifier.padding(vertical = 8.dp),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold
@@ -454,11 +457,7 @@ private fun VoiceItem(
             }
 
             Text(
-                text = buildString {
-                    append(voice.style.name.lowercase().replaceFirstChar { it.uppercase() })
-                    append(" • ")
-                    append(voice.gender.name.lowercase().replaceFirstChar { it.uppercase() })
-                },
+                text = stringResource(R.string.voice_style_gender_format, stringResource(voice.style.labelRes), stringResource(voice.gender.labelRes)),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -468,7 +467,7 @@ private fun VoiceItem(
         if (isSelected) {
             Icon(
                 imageVector = Icons.Default.CheckCircle,
-                contentDescription = "Selected",
+                contentDescription = stringResource(R.string.selected),
                 tint = Blue
             )
         }
@@ -547,7 +546,7 @@ private fun ClonedVoicesSection(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "My Voices",
+                text = stringResource(R.string.vps_my_voices),
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -565,7 +564,7 @@ private fun ClonedVoicesSection(
                 )
                 Spacer(modifier = Modifier.width(4.dp))
                 Text(
-                    text = "Clone Voice",
+                    text = stringResource(R.string.vcl_clone_voice),
                     style = MaterialTheme.typography.labelMedium,
                     color = Purple
                 )
@@ -619,12 +618,12 @@ private fun ClonedVoicesSection(
 
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "Clone Your Voice",
+                            text = stringResource(R.string.vps_clone_your_voice),
                             style = MaterialTheme.typography.bodyLarge,
                             fontWeight = FontWeight.SemiBold
                         )
                         Text(
-                            text = "Create a personalized voice from a recording",
+                            text = stringResource(R.string.vps_clone_subtitle),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -715,7 +714,7 @@ private fun ClonedVoiceItem(
                     color = Purple.copy(alpha = 0.15f)
                 ) {
                     Text(
-                        text = "CLONED",
+                        text = stringResource(R.string.vps_cloned_badge),
                         modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Bold,
@@ -725,7 +724,7 @@ private fun ClonedVoiceItem(
             }
 
             Text(
-                text = if (isLoadingPreview) "Generating preview..." else "Custom voice clone",
+                text = stringResource(if (isLoadingPreview) R.string.vps_generating_preview else R.string.vps_custom_voice_clone),
                 style = MaterialTheme.typography.bodySmall,
                 color = if (isLoadingPreview) Yellow else MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
@@ -748,7 +747,7 @@ private fun ClonedVoiceItem(
             } else {
                 Icon(
                     imageVector = if (isPlaying) Icons.Default.Stop else Icons.Default.PlayArrow,
-                    contentDescription = if (isPlaying) "Stop" else "Preview",
+                    contentDescription = stringResource(if (isPlaying) R.string.vcl_stop else R.string.player_mode_preview),
                     tint = Purple,
                     modifier = Modifier.size(20.dp)
                 )
@@ -762,7 +761,7 @@ private fun ClonedVoiceItem(
         ) {
             Icon(
                 imageVector = Icons.Default.Delete,
-                contentDescription = "Delete",
+                contentDescription = stringResource(R.string.delete),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(20.dp)
             )
@@ -772,7 +771,7 @@ private fun ClonedVoiceItem(
         if (isSelected) {
             Icon(
                 imageVector = Icons.Default.CheckCircle,
-                contentDescription = "Selected",
+                contentDescription = stringResource(R.string.selected),
                 tint = Purple
             )
         }

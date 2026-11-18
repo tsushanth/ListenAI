@@ -1,7 +1,9 @@
 package com.listenai.ui.voice
 
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import com.listenai.R
+import com.listenai.ui.common.UiText
 import android.Manifest
 import android.app.Activity
 import android.content.ContextWrapper
@@ -119,7 +121,7 @@ fun VoiceCloningFlowScreen(
     fun beginRecording(target: String) {
         val err = recorder.start("voiceclone_$target")
         if (err != null) {
-            vm.setClipHint(err)
+            vm.setClipHint(UiText.Raw(err))
         } else {
             recordingFor = target
             paused = false
@@ -133,7 +135,7 @@ fun VoiceCloningFlowScreen(
         val target = pendingRecordTarget
         pendingRecordTarget = null
         if (granted && target != null) beginRecording(target)
-        else if (!granted) vm.setClipHint("Microphone permission is needed to record. You can allow it in system settings.")
+        else if (!granted) vm.setClipHint(UiText.Res(R.string.vc_hint_mic_permission))
     }
 
     fun startRecording(target: String) {
@@ -150,7 +152,7 @@ fun VoiceCloningFlowScreen(
         recordingFor = null
         paused = false
         if (clip == null) {
-            vm.setClipHint("Nothing was recorded. Try again.")
+            vm.setClipHint(UiText.Res(R.string.vc_hint_nothing_recorded))
         } else if (target == "consent") vm.setConsentClip(clip) else vm.setReferenceClip(clip)
     }
 
@@ -158,7 +160,7 @@ fun VoiceCloningFlowScreen(
     val filePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
         if (uri == null) return@rememberLauncherForActivityResult
         val picked = AudioClips.fromUri(context, uri)
-        if (picked.clip != null) vm.setReferenceClip(picked.clip) else vm.setClipHint(picked.error)
+        if (picked.clip != null) vm.setReferenceClip(picked.clip) else vm.setClipHint(picked.error?.let { UiText.Raw(it) })
     }
 
     LaunchedEffect(recordingFor, paused) {
@@ -200,7 +202,7 @@ fun VoiceCloningFlowScreen(
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                     IconButton(onClick = onCancel) {
-                        Icon(Icons.Default.Close, contentDescription = "Cancel")
+                        Icon(Icons.Default.Close, contentDescription = stringResource(R.string.cancel))
                     }
                 }
             }
@@ -217,8 +219,8 @@ fun VoiceCloningFlowScreen(
                         if (auth != null && activity != null) vm.signInWithGoogle { auth.signInWithGoogleBrowser(activity) }
                     },
                     onCancelGoogle = vm::cancelGoogleSignIn,
-                    signInError = if (state.failureSource == FailureSource.SIGN_IN) state.failure?.message else null,
-                    notice = state.authNotice,
+                    signInError = if (state.failureSource == FailureSource.SIGN_IN) state.failure?.text?.resolve(context) else null,
+                    notice = state.authNotice?.resolve(context),
                     onSignInWithPassword = { email, password ->
                         if (auth != null) vm.signIn { auth.signInWithPassword(email, password) }
                     },
@@ -270,15 +272,15 @@ fun VoiceCloningFlowScreen(
                     onDone = onComplete
                 )
                 CloneStep.ERROR -> ErrorStep(
-                    title = "Couldn't create your voice",
-                    message = state.failure?.message ?: "Something went wrong.",
+                    title = stringResource(R.string.vcf_error_title),
+                    message = state.failure?.text?.resolve(context) ?: stringResource(R.string.read_text_error_generic),
                     recovery = state.failure?.recovery ?: Recovery.RETRY,
                     primaryLabel = when (state.failure?.recovery) {
-                        Recovery.SIGN_IN -> "Sign in"
-                        Recovery.RERECORD_CONSENT -> "Record the phrase again"
-                        Recovery.NEW_CHALLENGE -> "Get a new phrase"
-                        Recovery.FIX_REFERENCE -> "Choose another recording"
-                        else -> "Try again"
+                        Recovery.SIGN_IN -> stringResource(R.string.vcf_sign_in)
+                        Recovery.RERECORD_CONSENT -> stringResource(R.string.vcf_record_phrase_again)
+                        Recovery.NEW_CHALLENGE -> stringResource(R.string.vcf_get_new_phrase)
+                        Recovery.FIX_REFERENCE -> stringResource(R.string.vcf_choose_another_recording)
+                        else -> stringResource(R.string.incoming_try_again)
                     },
                     onPrimary = vm::recover,
                     onClose = onCancel
@@ -292,14 +294,9 @@ fun VoiceCloningFlowScreen(
 internal fun LegacyVoicesDialog(onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Re-create your voices") },
-        text = {
-            Text(
-                "Voices you cloned before this update can't be used any more. Cloned voices now require " +
-                    "a quick consent check (you read a short phrase aloud), so please create them again."
-            )
-        },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("OK") } }
+        title = { Text(stringResource(R.string.vcf_legacy_title)) },
+        text = { Text(stringResource(R.string.vcf_legacy_body)) },
+        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.vcf_ok)) } }
     )
 }
 
@@ -366,25 +363,25 @@ private fun IntroStep(onNext: () -> Unit) {
             modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 24.dp, vertical = 8.dp)
         ) {
             Text(
-                text = "Voice Cloning",
+                text = stringResource(R.string.settings_voice_cloning),
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold
             )
             Spacer(modifier = Modifier.height(16.dp))
-            FeatureRow(Icons.Default.Mic, "Create a voice from your own recording.")
+            FeatureRow(Icons.Default.Mic, stringResource(R.string.vcf_intro_feature_record))
             Spacer(modifier = Modifier.height(12.dp))
-            FeatureRow(Icons.Default.VerifiedUser, "You confirm the voice is yours.")
+            FeatureRow(Icons.Default.VerifiedUser, stringResource(R.string.vcf_intro_feature_confirm))
             Spacer(modifier = Modifier.height(12.dp))
-            FeatureRow(Icons.Default.Shield, "Recordings aren't kept on this device or shared. You can delete the voice any time.")
+            FeatureRow(Icons.Default.Shield, stringResource(R.string.vcf_intro_feature_privacy))
             Spacer(modifier = Modifier.height(16.dp))
             Text(
-                text = "By continuing, you confirm the voice is yours and agree to the processing of your voice recordings to create a synthetic voice. Audio made with it carries an inaudible watermark.",
+                text = stringResource(R.string.vcf_intro_terms),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
         Box(modifier = Modifier.padding(start = 24.dp, end = 24.dp, bottom = 24.dp, top = 8.dp)) {
-            PrimaryButton("Next", onNext)
+            PrimaryButton(stringResource(R.string.next), onNext)
         }
     }
 }
@@ -421,13 +418,13 @@ private fun SignInStep(
             modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 24.dp, vertical = 8.dp)
         ) {
             Text(
-                text = if (creating) "Create account" else "Sign in",
+                text = stringResource(if (creating) R.string.vcf_create_account else R.string.vcf_sign_in),
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "Your cloned voice is tied to your account, so only you can use it. Cloning needs a verified email.",
+                text = stringResource(R.string.vcf_sign_in_subtitle),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -436,20 +433,20 @@ private fun SignInStep(
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
                     Text(
-                        "Waiting for Google...",
+                        stringResource(R.string.vcf_waiting_google),
                         style = MaterialTheme.typography.bodyLarge,
                         modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }
                     )
                 }
                 Spacer(modifier = Modifier.height(8.dp))
-                OutlinedButton(onClick = onCancelGoogle, modifier = Modifier.fillMaxWidth(), shape = PrimaryShape) { Text("Cancel") }
+                OutlinedButton(onClick = onCancelGoogle, modifier = Modifier.fillMaxWidth(), shape = PrimaryShape) { Text(stringResource(R.string.cancel)) }
             } else {
-                PrimaryButton("Continue with Google", onContinueWithGoogle, enabled = !signingIn)
+                PrimaryButton(stringResource(R.string.vcf_continue_google), onContinueWithGoogle, enabled = !signingIn)
             }
             Spacer(modifier = Modifier.height(16.dp))
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 HorizontalDivider(modifier = Modifier.weight(1f))
-                Text("or", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(stringResource(R.string.vcf_or), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 HorizontalDivider(modifier = Modifier.weight(1f))
             }
             if (!showEmailForm) {
@@ -457,13 +454,13 @@ private fun SignInStep(
                     onClick = { showEmailForm = true },
                     enabled = !signingIn,
                     modifier = Modifier.align(Alignment.CenterHorizontally)
-                ) { Text("Use email and password instead") }
+                ) { Text(stringResource(R.string.vcf_use_email_password)) }
             } else {
                 Spacer(modifier = Modifier.height(12.dp))
                 OutlinedTextField(
                     value = email,
                     onValueChange = { email = it },
-                    label = { Text("Email") },
+                    label = { Text(stringResource(R.string.import_mode_email)) },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                     enabled = !signingIn,
@@ -474,7 +471,7 @@ private fun SignInStep(
                 OutlinedTextField(
                     value = password,
                     onValueChange = { password = it },
-                    label = { Text("Password") },
+                    label = { Text(stringResource(R.string.vcf_password)) },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                     enabled = !signingIn,
@@ -486,7 +483,7 @@ private fun SignInStep(
                         IconButton(onClick = { showPassword = !showPassword }) {
                             Icon(
                                 if (showPassword) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                                contentDescription = if (showPassword) "Hide password" else "Show password"
+                                contentDescription = stringResource(if (showPassword) R.string.vcf_hide_password else R.string.vcf_show_password)
                             )
                         }
                     }
@@ -496,17 +493,17 @@ private fun SignInStep(
                     TextButton(
                         onClick = { creating = !creating; onClearMessages() },
                         enabled = !signingIn
-                    ) { Text(if (creating) "Have an account? Sign in" else "Create account") }
+                    ) { Text(stringResource(if (creating) R.string.vcf_have_account else R.string.vcf_create_account)) }
                     if (!creating) {
                         TextButton(
                             onClick = { onForgotPassword(email.trim()) },
                             enabled = !signingIn && emailOk
-                        ) { Text("Forgot password?") }
+                        ) { Text(stringResource(R.string.vcf_forgot_password)) }
                     }
                 }
                 if (!creating) {
                     Text(
-                        text = "Forgot it? Enter your email above, then tap Forgot password? for a reset link.",
+                        text = stringResource(R.string.vcf_forgot_hint),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -541,9 +538,9 @@ private fun SignInStep(
         Box(modifier = Modifier.padding(start = 24.dp, end = 24.dp, bottom = 24.dp, top = 8.dp)) {
                 PrimaryButton(
                     when {
-                        signingIn -> if (creating) "Creating account..." else "Signing in..."
-                        creating -> "Create account"
-                        else -> "Sign in"
+                        signingIn -> stringResource(if (creating) R.string.vcf_creating_account else R.string.vcf_signing_in)
+                        creating -> stringResource(R.string.vcf_create_account)
+                        else -> stringResource(R.string.vcf_sign_in)
                     },
                     { submit() },
                     enabled = canSubmit
@@ -579,10 +576,10 @@ private fun ProfileStep(
         StepProgress(0.25f)
         Column(modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(24.dp)) {
             Spacer(modifier = Modifier.height(24.dp))
-            Text("Name your voice", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+            Text(stringResource(R.string.vcf_name_title), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                "Pick the language you'll speak in your recordings.",
+                stringResource(R.string.vcf_name_subtitle),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -590,8 +587,8 @@ private fun ProfileStep(
             OutlinedTextField(
                 value = name,
                 onValueChange = onNameChange,
-                label = { Text("Voice Name") },
-                placeholder = { Text("Enter a name for your voice") },
+                label = { Text(stringResource(R.string.vcf_voice_name_label)) },
+                placeholder = { Text(stringResource(R.string.vcf_voice_name_placeholder)) },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
                 shape = PrimaryShape
@@ -602,7 +599,7 @@ private fun ProfileStep(
                     value = languageName(language),
                     onValueChange = {},
                     readOnly = true,
-                    label = { Text("Language") },
+                    label = { Text(stringResource(R.string.language)) },
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
                     modifier = Modifier.fillMaxWidth().menuAnchor(),
                     shape = PrimaryShape
@@ -627,17 +624,15 @@ private fun ProfileStep(
                     Checkbox(checked = attested, onCheckedChange = null)
                     Spacer(modifier = Modifier.width(12.dp))
                     Text(
-                        ATTESTATION_TEXT,
+                        stringResource(R.string.vcf_attestation),
                         style = MaterialTheme.typography.bodyMedium
                     )
                 }
             }
         }
-        Box(modifier = Modifier.padding(24.dp)) { PrimaryButton("Continue", onContinue, enabled = canContinue) }
+        Box(modifier = Modifier.padding(24.dp)) { PrimaryButton(stringResource(R.string.onboarding_continue), onContinue, enabled = canContinue) }
     }
 }
-
-internal const val ATTESTATION_TEXT = "This is my own voice, and I agree ReadAloud may create a synthetic copy of it."
 
 private fun languageName(code: String): String =
     Locale(code).getDisplayLanguage(Locale.getDefault()).replaceFirstChar { it.titlecase() }.ifEmpty { code }
@@ -651,7 +646,7 @@ private fun RecordButton(isRecording: Boolean, onRecord: () -> Unit, onStop: () 
             shape = CircleShape,
             colors = ButtonDefaults.buttonColors(containerColor = Red),
             contentPadding = PaddingValues(0.dp)
-        ) { Icon(Icons.Default.Stop, contentDescription = "Stop recording", tint = Color.White, modifier = Modifier.size(32.dp)) }
+        ) { Icon(Icons.Default.Stop, contentDescription = stringResource(R.string.vcf_stop_recording), tint = Color.White, modifier = Modifier.size(32.dp)) }
     } else {
         Button(
             onClick = onRecord,
@@ -659,7 +654,7 @@ private fun RecordButton(isRecording: Boolean, onRecord: () -> Unit, onStop: () 
             shape = CircleShape,
             colors = ButtonDefaults.buttonColors(containerColor = Yellow),
             contentPadding = PaddingValues(0.dp)
-        ) { Icon(Icons.Default.Mic, contentDescription = "Start recording", tint = Color.Black, modifier = Modifier.size(32.dp)) }
+        ) { Icon(Icons.Default.Mic, contentDescription = stringResource(R.string.vcf_start_recording), tint = Color.Black, modifier = Modifier.size(32.dp)) }
     }
 }
 
@@ -674,6 +669,7 @@ private fun ConsentStep(
     onContinue: () -> Unit,
     onNewPhrase: () -> Unit
 ) {
+    val context = LocalContext.current
     // Live countdown to the phrase expiry.
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
     LaunchedEffect(state.challenge) {
@@ -690,10 +686,10 @@ private fun ConsentStep(
         StepProgress(0.5f)
         Column(modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(24.dp)) {
             Spacer(modifier = Modifier.height(24.dp))
-            Text("Say the phrase", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+            Text(stringResource(R.string.vcf_phrase_title), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                "Read this phrase aloud, exactly as written, in your own voice. This confirms the voice is yours.",
+                stringResource(R.string.vcf_phrase_subtitle),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -718,7 +714,7 @@ private fun ConsentStep(
                         )
                         Spacer(modifier = Modifier.height(12.dp))
                         Text(
-                            text = if (expired) "This phrase has expired." else remainingSec?.let { "Expires in ${formatDuration(it)}" } ?: "",
+                            text = if (expired) stringResource(R.string.vcf_phrase_expired) else remainingSec?.let { stringResource(R.string.vcf_phrase_expires_in, formatDuration(it)) } ?: "",
                             style = MaterialTheme.typography.bodySmall,
                             color = if (expired || (remainingSec ?: 999) < 60) Red else MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -729,25 +725,25 @@ private fun ConsentStep(
             state.attemptsLeft?.let {
                 Spacer(modifier = Modifier.height(12.dp))
                 Text(
-                    if (it == 1) "1 attempt left for this phrase." else "$it attempts left for this phrase.",
+                    pluralStringResource(R.plurals.vcf_attempts_left, it, it),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
             state.clipHint?.let {
                 Spacer(modifier = Modifier.height(12.dp))
-                Text(it, color = Red, style = MaterialTheme.typography.bodySmall)
+                Text(it.resolve(context), color = Red, style = MaterialTheme.typography.bodySmall)
             }
             Spacer(modifier = Modifier.height(16.dp))
-            InfoCard("Record it live and in a quiet room. Uploading a file isn't allowed for this step. If you use a screen reader, listen to the phrase first, then pause the screen reader before you start recording.")
+            InfoCard(stringResource(R.string.vcf_phrase_info))
         }
 
         Column(modifier = Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             if (state.consentClip != null && !isRecording) {
-                Text("Recorded ${state.consentClip.durationSec}s", style = MaterialTheme.typography.bodyMedium, color = Green)
+                Text(stringResource(R.string.vcf_recorded_seconds, state.consentClip.durationSec), style = MaterialTheme.typography.bodyMedium, color = Green)
                 Spacer(modifier = Modifier.height(12.dp))
-                PrimaryButton("Continue", onContinue, enabled = !expired)
-                TextButton(onClick = onRerecord) { Text("Record again") }
+                PrimaryButton(stringResource(R.string.onboarding_continue), onContinue, enabled = !expired)
+                TextButton(onClick = onRerecord) { Text(stringResource(R.string.vcf_record_again)) }
             } else {
                 Text(
                     formatDuration(seconds),
@@ -756,7 +752,7 @@ private fun ConsentStep(
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    if (isRecording) "Recording... tap stop when you've finished the phrase" else "Tap to start recording",
+                    stringResource(if (isRecording) R.string.vcf_recording_phrase_hint else R.string.vcf_tap_to_record),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -765,7 +761,7 @@ private fun ConsentStep(
             }
             if (expired) {
                 Spacer(modifier = Modifier.height(8.dp))
-                PrimaryButton("Get a new phrase", onNewPhrase)
+                PrimaryButton(stringResource(R.string.vcf_get_new_phrase), onNewPhrase)
             }
         }
     }
@@ -785,6 +781,7 @@ private fun ReferenceStep(
     onClear: () -> Unit,
     onSubmit: () -> Unit
 ) {
+    val context = LocalContext.current
     val clip = state.referenceClip
     val currentWordIndex = if (isRecording && !isPaused) (seconds * 1.5f).toInt() else if (clip != null) (clip.durationSec * 1.5f).toInt() else -1
 
@@ -792,12 +789,12 @@ private fun ReferenceStep(
         StepProgress(0.75f)
         Column(modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(24.dp)) {
             Spacer(modifier = Modifier.height(24.dp))
-            Text("Record your voice", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+            Text(stringResource(R.string.vcf_reference_title), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
             Spacer(modifier = Modifier.height(16.dp))
-            InfoCard("Record 30 to 60 seconds of natural speech (8 seconds minimum, 2 minutes maximum) in a quiet room, alone, with no music. Read the text below or speak freely in the language you chose. Or upload a clean recording of your voice.")
+            InfoCard(stringResource(R.string.vcf_reference_info))
             state.clipHint?.let {
                 Spacer(modifier = Modifier.height(12.dp))
-                Text(it, color = Red, style = MaterialTheme.typography.bodySmall)
+                Text(it.resolve(context), color = Red, style = MaterialTheme.typography.bodySmall)
             }
             Spacer(modifier = Modifier.height(24.dp))
             HighlightedReadingText(paragraphs = VoiceCloningService.SAMPLE_PARAGRAPHS, currentWordIndex = currentWordIndex)
@@ -808,19 +805,19 @@ private fun ReferenceStep(
                 Text("${clip.filename.take(32)} (${formatDuration(clip.durationSec)})", style = MaterialTheme.typography.bodyMedium, color = Green)
                 Spacer(modifier = Modifier.height(12.dp))
                 PrimaryButton(
-                    if (state.step == CloneStep.UPLOADING) "Uploading..." else "Create voice",
+                    stringResource(if (state.step == CloneStep.UPLOADING) R.string.vcf_uploading else R.string.vcf_create_voice),
                     onSubmit,
                     enabled = state.canSubmit
                 )
-                TextButton(onClick = onClear) { Text("Choose a different recording") }
+                TextButton(onClick = onClear) { Text(stringResource(R.string.vcf_choose_different_recording)) }
             } else {
                 Text(formatDuration(seconds), style = MaterialTheme.typography.titleLarge, color = if (isRecording && !isPaused) Red else MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     when {
-                        isRecording && !isPaused -> "Recording..."
-                        isPaused -> "Recording paused"
-                        else -> "Tap to start recording"
+                        isRecording && !isPaused -> stringResource(R.string.vcf_recording)
+                        isPaused -> stringResource(R.string.vcf_recording_paused)
+                        else -> stringResource(R.string.vcf_tap_to_record)
                     },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -837,7 +834,7 @@ private fun ReferenceStep(
                         ) {
                             Icon(
                                 if (isPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
-                                contentDescription = if (isPaused) "Resume" else "Pause",
+                                contentDescription = stringResource(if (isPaused) R.string.vcf_resume else R.string.pause),
                                 tint = if (isPaused) Color.Black else MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
@@ -849,7 +846,7 @@ private fun ReferenceStep(
                     TextButton(onClick = onPick, modifier = Modifier.fillMaxWidth()) {
                         Icon(Icons.Default.UploadFile, contentDescription = null, modifier = Modifier.size(20.dp))
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Or upload an existing audio file")
+                        Text(stringResource(R.string.vcf_upload_existing))
                     }
                 }
             }
@@ -873,10 +870,10 @@ private fun ProcessingStep() {
     ) {
         Text("∞", fontSize = 80.sp, color = Yellow, modifier = Modifier.rotate(rotation))
         Spacer(modifier = Modifier.height(24.dp))
-        Text("Verifying and creating your voice...", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Medium, textAlign = TextAlign.Center)
+        Text(stringResource(R.string.vcf_processing_title), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Medium, textAlign = TextAlign.Center)
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            "We're checking your phrase and recording. This can take a minute, so please keep this screen open.",
+            stringResource(R.string.vcf_processing_body),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center
@@ -896,16 +893,16 @@ private fun SuccessStep(voiceName: String, onDone: () -> Unit) {
             contentAlignment = Alignment.Center
         ) { Icon(Icons.Default.CheckCircle, contentDescription = null, modifier = Modifier.size(60.dp), tint = Green) }
         Spacer(modifier = Modifier.height(24.dp))
-        Text("Voice Created!", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+        Text(stringResource(R.string.vcf_success_title), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            "'$voiceName' is ready. The first time you use it, it can take a couple of minutes to start up.",
+            stringResource(R.string.vcf_success_body, voiceName),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center
         )
         Spacer(modifier = Modifier.height(48.dp))
-        PrimaryButton("Done", onDone)
+        PrimaryButton(stringResource(R.string.done), onDone)
     }
 }
 
@@ -935,9 +932,9 @@ private fun ErrorStep(
         if (recovery != Recovery.STOP) {
             PrimaryButton(primaryLabel, onPrimary)
             Spacer(modifier = Modifier.height(12.dp))
-            TextButton(onClick = onClose) { Text("Cancel", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold) }
+            TextButton(onClick = onClose) { Text(stringResource(R.string.cancel), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold) }
         } else {
-            PrimaryButton("Close", onClose)
+            PrimaryButton(stringResource(R.string.close), onClose)
         }
     }
 }

@@ -1,5 +1,7 @@
 package com.listenai.ui.onboarding
 
+import androidx.compose.ui.res.stringResource
+import com.listenai.R
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -75,14 +77,14 @@ fun OfflineDownloadPage(onContinue: () -> Unit) {
 
         Spacer(Modifier.height(20.dp))
         Text(
-            text = "Use Kokoro offline too?",
+            text = stringResource(R.string.odp_title),
             fontSize = 26.sp,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center,
         )
         Spacer(Modifier.height(10.dp))
         Text(
-            text = "Same voice — but generated entirely on your phone. Faster playback, works without internet, and your text never leaves your device.",
+            text = stringResource(R.string.odp_subtitle),
             fontSize = 14.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
@@ -94,13 +96,13 @@ fun OfflineDownloadPage(onContinue: () -> Unit) {
             modifier = Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Bullet(Icons.Filled.Bolt, Color(0xFFEAB308), "Instant — no waiting in queue")
-            Bullet(Icons.Filled.WifiOff, Color(0xFF3B82F6), "Works offline once downloaded")
-            Bullet(Icons.Filled.Lock, Color(0xFF22C55E), "Your text never leaves your phone")
+            Bullet(Icons.Filled.Bolt, Color(0xFFEAB308), stringResource(R.string.odp_bullet_instant))
+            Bullet(Icons.Filled.WifiOff, Color(0xFF3B82F6), stringResource(R.string.odp_bullet_offline))
+            Bullet(Icons.Filled.Lock, Color(0xFF22C55E), stringResource(R.string.odp_bullet_private))
             Bullet(
                 Icons.Filled.Storage,
                 Color(0xFF6B7280),
-                "One-time download, about ${KokoroModelDownloader.estimatedSizeMB} MB",
+                stringResource(R.string.odp_bullet_download_size, KokoroModelDownloader.estimatedSizeMB),
             )
         }
 
@@ -123,13 +125,13 @@ fun OfflineDownloadPage(onContinue: () -> Unit) {
             Spacer(Modifier.width(10.dp))
             Column {
                 Text(
-                    text = "Slightly less polished than cloud",
+                    text = stringResource(R.string.odp_note_title),
                     fontSize = 14.sp,
                     fontWeight = FontWeight.SemiBold,
                 )
                 Spacer(Modifier.height(2.dp))
                 Text(
-                    text = "On-device synthesis sounds close to cloud but you may hear minor differences in pronunciation of unusual words. You can switch back to cloud in Settings.",
+                    text = stringResource(R.string.odp_note_body),
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -156,12 +158,12 @@ fun OfflineDownloadPage(onContinue: () -> Unit) {
             Spacer(Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    "Allow cellular download",
+                    stringResource(R.string.settings_offline_ai_allow_cellular),
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Medium,
                 )
                 Text(
-                    "Off by default — saves data plan. We'll wait for WiFi.",
+                    stringResource(R.string.odp_cellular_hint),
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -186,7 +188,7 @@ fun OfflineDownloadPage(onContinue: () -> Unit) {
                 .height(52.dp),
             shape = RoundedCornerShape(12.dp),
         ) {
-            Text("Download now", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+            Text(stringResource(R.string.odp_download_now), fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
         }
 
         Spacer(Modifier.height(8.dp))
@@ -199,7 +201,7 @@ fun OfflineDownloadPage(onContinue: () -> Unit) {
             modifier = Modifier.fillMaxWidth(),
         ) {
             Text(
-                "Maybe later — use cloud for now",
+                stringResource(R.string.odp_maybe_later),
                 fontSize = 14.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

@@ -136,7 +136,7 @@ fun IncomingContentSheet(
                 )
             }
 
-            (readError ?: (state as? ImportState.Error)?.message)?.let { message ->
+            (readError ?: (state as? ImportState.Error)?.text?.resolve(context))?.let { message ->
                 Spacer(Modifier.height(12.dp))
                 Text(
                     text = message,

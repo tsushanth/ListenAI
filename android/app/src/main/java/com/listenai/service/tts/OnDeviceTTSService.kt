@@ -1,5 +1,6 @@
 package com.listenai.service.tts
 
+import com.listenai.R
 import android.content.Context
 import android.media.MediaMetadataRetriever
 import android.os.Bundle
@@ -108,7 +109,7 @@ class OnDeviceTTSService(private val context: Context) : TTSService {
                 currentSectionIndex = 0,
                 sectionsCompleted = 0,
                 totalSections = sections.size,
-                statusMessage = "Preparing synthesis...",
+                statusMessage = context.getString(R.string.tts_status_preparing_synthesis),
                 charactersProcessed = 0,
                 totalCharacters = totalText.length
             ))
@@ -137,7 +138,7 @@ class OnDeviceTTSService(private val context: Context) : TTSService {
                     currentSectionIndex = index,
                     sectionsCompleted = index,
                     totalSections = sections.size,
-                    statusMessage = "Synthesizing section ${index + 1} of ${sections.size}...",
+                    statusMessage = context.getString(R.string.tts_status_synthesizing_section, index + 1, sections.size),
                     charactersProcessed = charactersProcessed,
                     totalCharacters = totalText.length
                 ))
@@ -165,7 +166,7 @@ class OnDeviceTTSService(private val context: Context) : TTSService {
                 currentSectionIndex = sections.size - 1,
                 sectionsCompleted = sections.size,
                 totalSections = sections.size,
-                statusMessage = "Finalizing audio...",
+                statusMessage = context.getString(R.string.tts_status_finalizing),
                 charactersProcessed = totalText.length,
                 totalCharacters = totalText.length
             ))
@@ -184,7 +185,7 @@ class OnDeviceTTSService(private val context: Context) : TTSService {
                 sectionsCompleted = sections.size,
                 totalSections = sections.size,
                 estimatedTimeRemaining = 0.0,
-                statusMessage = "Complete",
+                statusMessage = context.getString(R.string.tts_status_complete),
                 charactersProcessed = totalText.length,
                 totalCharacters = totalText.length
             ))

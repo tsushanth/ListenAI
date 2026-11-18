@@ -1,5 +1,6 @@
 package com.listenai.ui.voice
 
+import com.listenai.R
 import com.listenai.service.auth.GoTrueErrorKind
 import com.listenai.service.auth.GoTrueException
 import com.listenai.service.auth.GoogleBrowserAuth
@@ -14,6 +15,7 @@ import com.listenai.service.voice.Recovery
 import com.listenai.service.voice.VoiceCloneClient
 import com.listenai.service.voice.VoiceCloneConfig
 import com.listenai.service.voice.VoiceCloneException
+import com.listenai.ui.common.UiText
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.TestScope
@@ -248,7 +250,7 @@ class VoiceCloneFlowViewModelTest {
         assertFalse(s.signedIn)
         assertFalse(s.signingIn)
         assertNull(s.failure)
-        assertTrue(s.authNotice!!.contains("a@b.co"))
+        assertEquals(UiText.Res(R.string.vc_notice_account_created, listOf("a@b.co")), s.authNotice)
     }
 
     @Test
@@ -265,7 +267,7 @@ class VoiceCloneFlowViewModelTest {
         val scope = TestScope(scopeDispatcher)
         val vm = scope.vm(signedIn = false)
         vm.sendPasswordReset(" a@b.co ") { Result.success(Unit) }
-        assertTrue(vm.state.value.authNotice!!.contains("a@b.co"))
+        assertEquals(UiText.Res(R.string.vc_notice_reset_sent, listOf("a@b.co")), vm.state.value.authNotice)
         assertFalse(vm.state.value.signedIn)
 
         vm.sendPasswordReset("a@b.co") { Result.failure(GoTrueException(GoTrueErrorKind.RATE_LIMITED, "Too many attempts.")) }
@@ -438,7 +440,7 @@ class VoiceCloneFlowViewModelTest {
         val vm = scope.vm()
         vm.setReferenceClip(clip("r.m4a", 5))
         assertNull(vm.state.value.referenceClip)
-        assertTrue(vm.state.value.clipHint!!.contains("at least 8"))
+        assertEquals(UiText.Plural(R.plurals.vc_hint_reference_too_short, 8), vm.state.value.clipHint)
         vm.setReferenceClip(clip("r.m4a", 121))
         assertNull(vm.state.value.referenceClip)
         vm.setReferenceClip(clip("r.m4a", 8))

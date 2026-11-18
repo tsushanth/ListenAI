@@ -80,7 +80,7 @@ fun LibraryScreen(
             ) {
                 Icon(
                     imageVector = Icons.Default.Add,
-                    contentDescription = "Add content"
+                    contentDescription = stringResource(R.string.library_add_content_button)
                 )
             }
         }
@@ -611,7 +611,7 @@ private fun ArticleCard(
                     if (article.isFavorite) {
                         Icon(
                             imageVector = Icons.Default.Favorite,
-                            contentDescription = "Favorite",
+                            contentDescription = stringResource(R.string.favorite),
                             modifier = Modifier.size(16.dp),
                             tint = Red
                         )

@@ -38,7 +38,6 @@ class PlaybackMediaService : MediaSessionService() {
     companion object {
         private const val NOTIFICATION_ID = 1001
         private const val CHANNEL_ID = "listenai_playback"
-        private const val CHANNEL_NAME = "Playback"
 
         // Custom commands
         const val ACTION_SKIP_FORWARD = "com.listenai.action.SKIP_FORWARD"
@@ -58,10 +57,10 @@ class PlaybackMediaService : MediaSessionService() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 CHANNEL_ID,
-                CHANNEL_NAME,
+                getString(R.string.playback_notif_channel_name),
                 NotificationManager.IMPORTANCE_LOW
             ).apply {
-                description = "Audio playback controls"
+                description = getString(R.string.playback_notif_channel_description)
                 setShowBadge(false)
             }
 

@@ -114,15 +114,9 @@ data class Article(
     val estimatedDuration: Long
         get() = if (totalDuration > 0) totalDuration else (wordCount / 150 * 60 * 1000L)
 
-    val estimatedDurationFormatted: String
-        get() {
-            val minutes = (estimatedDuration / 60000).toInt()
-            return when {
-                minutes < 1 -> "< 1 min"
-                minutes == 1 -> "1 min"
-                else -> "$minutes min"
-            }
-        }
+    /** Estimated listening time in whole minutes; format it with the duration_* string resources. */
+    val estimatedMinutes: Int
+        get() = (estimatedDuration / 60000).toInt()
 
     val progress: Float
         get() = if (totalDuration > 0) listenedDuration.toFloat() / totalDuration else 0f

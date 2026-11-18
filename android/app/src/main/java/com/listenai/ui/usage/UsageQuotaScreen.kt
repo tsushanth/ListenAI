@@ -53,7 +53,7 @@ fun UsageQuotaScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Usage & Quota", fontWeight = FontWeight.Bold) },
+                title = { Text(stringResource(R.string.settings_usage), fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
@@ -130,12 +130,12 @@ private fun TierCard(
             ) {
                 Column {
                     Text(
-                        text = "Current Plan",
+                        text = stringResource(R.string.usage_current_plan),
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
-                        text = tier.displayName,
+                        text = stringResource(tier.labelRes),
                         style = MaterialTheme.typography.headlineMedium,
                         fontWeight = FontWeight.Bold,
                         color = when (tier) {
@@ -152,17 +152,17 @@ private fun TierCard(
                         onClick = onUpgrade,
                         colors = ButtonDefaults.buttonColors(containerColor = Green)
                     ) {
-                        Text("Upgrade")
+                        Text(stringResource(R.string.usage_upgrade))
                     }
                 }
             }
 
             // Plan features
             val features = when (tier) {
-                UsageTier.FREE -> listOf("~30 mins/month", "All voices available", "Self-hosted TTS")
-                UsageTier.BASIC -> listOf("~6 hours/month", "Priority support", "All voices available")
-                UsageTier.PRO -> listOf("~24 hours/month", "Priority support", "All features")
-                UsageTier.UNLIMITED -> listOf("Unlimited usage", "Priority support", "All features")
+                UsageTier.FREE -> listOf(R.string.usage_feat_30_min, R.string.usage_feat_all_voices, R.string.usage_feat_self_hosted)
+                UsageTier.BASIC -> listOf(R.string.usage_feat_6_hours, R.string.usage_feat_priority_support, R.string.usage_feat_all_voices)
+                UsageTier.PRO -> listOf(R.string.usage_feat_24_hours, R.string.usage_feat_priority_support, R.string.usage_feat_all_features)
+                UsageTier.UNLIMITED -> listOf(R.string.usage_feat_unlimited, R.string.usage_feat_priority_support, R.string.usage_feat_all_features)
             }
 
             features.forEach { feature ->
@@ -177,7 +177,7 @@ private fun TierCard(
                         tint = Green
                     )
                     Text(
-                        text = feature,
+                        text = stringResource(feature),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -201,7 +201,7 @@ private fun TodayUsageCard(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Text(
-                text = "Today's Usage",
+                text = stringResource(R.string.usage_today),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold
             )
@@ -214,21 +214,21 @@ private fun TodayUsageCard(
                     icon = Icons.Default.TextFields,
                     iconColor = Blue,
                     value = formatCharacterCount(charactersUsed),
-                    label = "Characters"
+                    label = stringResource(R.string.usage_characters)
                 )
 
                 UsageMetric(
                     icon = Icons.Default.GraphicEq,
                     iconColor = Purple,
                     value = requestsUsed.toString(),
-                    label = "Requests"
+                    label = stringResource(R.string.usage_requests)
                 )
 
                 UsageMetric(
                     icon = Icons.Default.Timer,
                     iconColor = Green,
                     value = formatDuration(charactersUsed),
-                    label = "Est. Audio"
+                    label = stringResource(R.string.usage_est_audio)
                 )
             }
         }
@@ -257,7 +257,7 @@ private fun MonthlyUsageCard(summary: UsageSummary) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Monthly Usage",
+                    text = stringResource(R.string.usage_monthly),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold
                 )
@@ -294,12 +294,12 @@ private fun MonthlyUsageCard(summary: UsageSummary) {
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    text = "${formatCharacterCount(summary.totalCharacters)} used",
+                    text = stringResource(R.string.usage_chars_used, formatCharacterCount(summary.totalCharacters)),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
-                    text = "${formatCharacterCount(summary.remaining)} remaining",
+                    text = stringResource(R.string.usage_chars_remaining, formatCharacterCount(summary.remaining)),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -319,7 +319,7 @@ private fun MonthlyUsageCard(summary: UsageSummary) {
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = "Total Requests",
+                        text = stringResource(R.string.usage_total_requests),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -333,7 +333,7 @@ private fun MonthlyUsageCard(summary: UsageSummary) {
                         color = Green
                     )
                     Text(
-                        text = "Success Rate",
+                        text = stringResource(R.string.usage_success_rate),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -343,7 +343,7 @@ private fun MonthlyUsageCard(summary: UsageSummary) {
             // Period info
             val dateFormat = SimpleDateFormat("MMM d", Locale.getDefault())
             Text(
-                text = "Period: ${dateFormat.format(summary.startDate)} - ${dateFormat.format(summary.endDate)}",
+                text = stringResource(R.string.usage_period, dateFormat.format(summary.startDate), dateFormat.format(summary.endDate)),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.align(Alignment.CenterHorizontally)
@@ -367,18 +367,18 @@ private fun UsageStatisticsCard(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Text(
-                text = "Statistics",
+                text = stringResource(R.string.usage_statistics),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold
             )
 
             StatRow(
-                label = "Today's characters",
+                label = stringResource(R.string.usage_today_characters),
                 value = formatCharacterCount(dailyChars)
             )
 
             StatRow(
-                label = "Today's requests",
+                label = stringResource(R.string.usage_today_requests),
                 value = dailyRequests.toString()
             )
 
@@ -386,22 +386,22 @@ private fun UsageStatisticsCard(
 
             monthlySummary?.let { summary ->
                 StatRow(
-                    label = "Monthly characters",
+                    label = stringResource(R.string.usage_monthly_characters),
                     value = formatCharacterCount(summary.totalCharacters)
                 )
 
                 StatRow(
-                    label = "Monthly requests",
+                    label = stringResource(R.string.usage_monthly_requests),
                     value = summary.totalRequests.toString()
                 )
 
                 StatRow(
-                    label = "Successful requests",
+                    label = stringResource(R.string.usage_successful_requests),
                     value = summary.successfulRequests.toString()
                 )
 
                 StatRow(
-                    label = "Failed requests",
+                    label = stringResource(R.string.usage_failed_requests),
                     value = summary.failedRequests.toString(),
                     valueColor = if (summary.failedRequests > 0) Red else null
                 )
@@ -498,13 +498,13 @@ private fun InfoCard() {
 
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(
-                    text = "Usage Information",
+                    text = stringResource(R.string.usage_information),
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.SemiBold,
                     color = Blue
                 )
                 Text(
-                    text = "Your usage resets at the start of each month. All voices use our high-quality self-hosted TTS engine for the best listening experience.",
+                    text = stringResource(R.string.usage_information_body),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -521,12 +521,14 @@ private fun formatCharacterCount(count: Int): String {
     }
 }
 
+@Composable
 private fun formatDuration(characterCount: Int): String {
     // Approximate: 150 characters per minute of speech
     val minutes = characterCount / 150
     return when {
-        minutes >= 60 -> "${minutes / 60}h ${minutes % 60}m"
-        minutes > 0 -> "${minutes}m"
-        else -> "<1m"
+        minutes >= 60 && minutes % 60 > 0 -> stringResource(R.string.duration_hr_min, minutes / 60, minutes % 60)
+        minutes >= 60 -> stringResource(R.string.duration_hr, minutes / 60)
+        minutes > 0 -> stringResource(R.string.duration_min, minutes)
+        else -> stringResource(R.string.duration_less_than_min)
     }
 }

@@ -163,8 +163,8 @@ class KokoroDownloadWorker(
 
         val notification: Notification = NotificationCompat
             .Builder(applicationContext, CHANNEL_ID)
-            .setContentTitle("Downloading on-device voice")
-            .setContentText("$downloadedMb / $totalMb MB ($percent%)")
+            .setContentTitle(applicationContext.getString(R.string.kokoro_dl_notif_title))
+            .setContentText(applicationContext.getString(R.string.model_dl_notif_progress, downloadedMb, totalMb, percent))
             .setSmallIcon(android.R.drawable.stat_sys_download)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
@@ -190,10 +190,10 @@ class KokoroDownloadWorker(
             if (nm.getNotificationChannel(CHANNEL_ID) == null) {
                 val channel = NotificationChannel(
                     CHANNEL_ID,
-                    "On-device voice download",
+                    applicationContext.getString(R.string.kokoro_dl_channel_name),
                     NotificationManager.IMPORTANCE_LOW,
                 ).apply {
-                    description = "Progress for the on-device Kokoro voice download."
+                    description = applicationContext.getString(R.string.kokoro_dl_channel_description)
                     setShowBadge(false)
                 }
                 nm.createNotificationChannel(channel)

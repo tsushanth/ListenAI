@@ -24,8 +24,6 @@ class TTSNotificationService private constructor(private val context: Context) {
 
     companion object {
         private const val CHANNEL_ID = "listenai_tts"
-        private const val CHANNEL_NAME = "TTS Notifications"
-        private const val CHANNEL_DESCRIPTION = "Notifications when audio generation is complete"
 
         // Notification IDs
         private const val NOTIFICATION_ID_ARTICLE_TTS = 2001
@@ -57,10 +55,10 @@ class TTSNotificationService private constructor(private val context: Context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 CHANNEL_ID,
-                CHANNEL_NAME,
+                context.getString(R.string.tts_notif_channel_name),
                 NotificationManager.IMPORTANCE_DEFAULT
             ).apply {
-                description = CHANNEL_DESCRIPTION
+                description = context.getString(R.string.tts_notif_channel_description)
                 setShowBadge(true)
                 enableVibration(true)
                 vibrationPattern = longArrayOf(0, 250, 250, 250)
@@ -113,10 +111,10 @@ class TTSNotificationService private constructor(private val context: Context) {
 
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle("Audio Ready")
-            .setContentText("\"$articleTitle\" is ready to play ($durationFormatted)")
+            .setContentTitle(context.getString(R.string.tts_notif_ready_title))
+            .setContentText(context.getString(R.string.tts_notif_ready_text, articleTitle, durationFormatted))
             .setStyle(NotificationCompat.BigTextStyle()
-                .bigText("\"$articleTitle\" is ready to play.\nDuration: $durationFormatted"))
+                .bigText(context.getString(R.string.tts_notif_ready_big_text, articleTitle, durationFormatted)))
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
@@ -162,10 +160,10 @@ class TTSNotificationService private constructor(private val context: Context) {
 
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle("Audio generation failed")
-            .setContentText("\"$articleTitle\" — $reason. Tap to retry.")
+            .setContentTitle(context.getString(R.string.tts_notif_failed_title))
+            .setContentText(context.getString(R.string.tts_notif_failed_text, articleTitle, reason))
             .setStyle(NotificationCompat.BigTextStyle()
-                .bigText("\"$articleTitle\" couldn't be generated: $reason\n\nTap to retry, or switch to offline AI voice from the player."))
+                .bigText(context.getString(R.string.tts_notif_failed_big_text, articleTitle, reason)))
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
@@ -206,8 +204,8 @@ class TTSNotificationService private constructor(private val context: Context) {
 
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle("Voice Preview Ready")
-            .setContentText("Preview for \"$voiceName\" is ready to play")
+            .setContentTitle(context.getString(R.string.tts_notif_preview_title))
+            .setContentText(context.getString(R.string.tts_notif_preview_text, voiceName))
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)

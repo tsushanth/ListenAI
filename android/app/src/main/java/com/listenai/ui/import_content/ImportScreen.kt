@@ -147,7 +147,7 @@ fun ImportScreen(
                             tint = Red
                         )
                         Text(
-                            text = (importState as ImportState.Error).message,
+                            text = (importState as ImportState.Error).text.resolve(context),
                             color = Red
                         )
                     }
@@ -645,7 +645,7 @@ private fun ClipboardImportCard(
                 IconButton(onClick = onRefresh) {
                     Icon(
                         imageVector = Icons.Default.Refresh,
-                        contentDescription = "Refresh"
+                        contentDescription = stringResource(R.string.refresh)
                     )
                 }
             }

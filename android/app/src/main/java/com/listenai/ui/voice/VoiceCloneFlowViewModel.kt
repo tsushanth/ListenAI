@@ -1,6 +1,10 @@
 package com.listenai.ui.voice
 
 import androidx.lifecycle.ViewModel
+import com.listenai.R
+import com.listenai.service.auth.GoogleBrowserAuth
+import com.listenai.service.auth.SupabaseGoTrueClient
+import com.listenai.ui.common.UiText
 import androidx.lifecycle.viewModelScope
 import com.listenai.service.auth.GoTrueException
 import com.listenai.service.auth.GoogleSignInException
@@ -62,10 +66,10 @@ data class CloneFlowState(
     val attemptsLeft: Int? = null,
     val failure: VoiceCloneFailure? = null,
     /** Non-error feedback on the sign-in form (verification or reset email sent). */
-    val authNotice: String? = null,
+    val authNotice: UiText? = null,
     val failureSource: FailureSource? = null,
     /** Local, pre-upload hint about the clip the user just made or picked. */
-    val clipHint: String? = null,
+    val clipHint: UiText? = null,
     val created: ClonedVoice? = null,
     /**
      * True = strict mode (live phrase step). Default is strict: it is only switched off when the
@@ -167,7 +171,7 @@ class VoiceCloneFlowViewModel(
         runAuth(block) { result ->
             if (result is SignUpResult.ConfirmationRequired) {
                 _state.update {
-                    it.copy(authNotice = "Account created. We sent a verification link to ${result.email}. Verify your email, then sign in.")
+                    it.copy(authNotice = UiText.Res(R.string.vc_notice_account_created, listOf(result.email)))
                 }
                 false
             } else true
@@ -177,7 +181,7 @@ class VoiceCloneFlowViewModel(
     fun sendPasswordReset(email: String, block: suspend () -> Result<Unit>) {
         runAuth(block) {
             _state.update {
-                it.copy(authNotice = "If an account exists for ${email.trim()}, we sent a link to reset the password. Check your email.")
+                it.copy(authNotice = UiText.Res(R.string.vc_notice_reset_sent, listOf(email.trim())))
             }
             false
         }
@@ -223,17 +227,40 @@ class VoiceCloneFlowViewModel(
                     it.copy(
                         signingIn = false,
                         waitingForGoogle = false,
-                        failure = VoiceCloneFailure(
-                            "sign_in_failed",
-                            result.exceptionOrNull().let { (it as? GoTrueException)?.message ?: (it as? GoogleSignInException)?.message }
-                                ?: "Sign-in didn't complete. Try again.",
-                            Recovery.SIGN_IN
-                        ),
+                        failure = result.exceptionOrNull().let { err ->
+                            val english = (err as? GoTrueException)?.message ?: (err as? GoogleSignInException)?.message
+                            VoiceCloneFailure(
+                                "sign_in_failed",
+                                english ?: "Sign-in didn't complete. Try again.",
+                                Recovery.SIGN_IN,
+                                text = authText(english)
+                            )
+                        },
                         failureSource = FailureSource.SIGN_IN
                     )
                 }
             }
         }
+    }
+
+    /** The sign-in failure texts that are fixed English constants are shown in the user's language; anything else (server wording) as is. */
+    private fun authText(english: String?): UiText {
+        val res = when (english) {
+            null -> R.string.vc_auth_generic_failure
+            SupabaseGoTrueClient.MSG_NETWORK -> R.string.vc_err_network
+            SupabaseGoTrueClient.MSG_INVALID_CREDENTIALS -> R.string.vc_auth_invalid_credentials
+            SupabaseGoTrueClient.MSG_NOT_CONFIRMED -> R.string.vc_auth_not_confirmed
+            SupabaseGoTrueClient.MSG_ALREADY_EXISTS -> R.string.vc_auth_already_exists
+            SupabaseGoTrueClient.MSG_RATE_LIMITED -> R.string.vc_auth_rate_limited
+            SupabaseGoTrueClient.MSG_WEAK_PASSWORD -> R.string.vc_auth_weak_password
+            SupabaseGoTrueClient.MSG_INVALID_INPUT -> R.string.vc_auth_invalid_input
+            SupabaseGoTrueClient.SERVER_MESSAGE -> R.string.vc_auth_server_unavailable
+            GoogleBrowserAuth.MSG_CANCELLED -> R.string.vc_auth_google_cancelled
+            GoogleBrowserAuth.MSG_TIMEOUT -> R.string.vc_auth_google_timeout
+            GoogleBrowserAuth.MSG_FAILED -> R.string.vc_auth_google_failed
+            else -> return UiText.Raw(english)
+        }
+        return UiText.Res(res)
     }
 
     // ---- navigation --------------------------------------------------------------------
@@ -307,8 +334,8 @@ class VoiceCloneFlowViewModel(
 
     fun setConsentClip(clip: AudioClip) {
         val hint = when {
-            clip.durationSec < MIN_CONSENT_SEC -> "That was too short. Read the whole phrase."
-            clip.durationSec > MAX_CONSENT_SEC -> "That was too long. Read only the phrase."
+            clip.durationSec < MIN_CONSENT_SEC -> UiText.Res(R.string.vc_hint_consent_too_short)
+            clip.durationSec > MAX_CONSENT_SEC -> UiText.Res(R.string.vc_hint_consent_too_long)
             else -> null
         }
         _state.update { it.copy(consentClip = if (hint == null) clip else null, clipHint = hint) }
@@ -319,9 +346,9 @@ class VoiceCloneFlowViewModel(
     fun setReferenceClip(clip: AudioClip) {
         val hint = when {
             clip.durationSec < MIN_REFERENCE_SEC ->
-                "That's too short. Use at least $MIN_REFERENCE_SEC seconds (30 to 60 seconds works best)."
+                UiText.Plural(R.plurals.vc_hint_reference_too_short, MIN_REFERENCE_SEC)
             clip.durationSec > MAX_REFERENCE_SEC ->
-                "That's too long. Use at most ${MAX_REFERENCE_SEC / 60} minutes."
+                UiText.Plural(R.plurals.vc_hint_reference_too_long, MAX_REFERENCE_SEC / 60)
             else -> null
         }
         _state.update { it.copy(referenceClip = if (hint == null) clip else null, clipHint = hint) }
@@ -330,7 +357,7 @@ class VoiceCloneFlowViewModel(
     fun clearReferenceClip() = _state.update { it.copy(referenceClip = null, clipHint = null) }
 
     /** Surface a problem picking/recording a clip (unsupported type, unreadable file...). */
-    fun setClipHint(message: String?) = _state.update { it.copy(clipHint = message) }
+    fun setClipHint(message: UiText?) = _state.update { it.copy(clipHint = message) }
 
     // ---- submit ------------------------------------------------------------------------
 

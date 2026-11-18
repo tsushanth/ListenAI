@@ -1,5 +1,6 @@
 package com.listenai.service.tts
 
+import com.listenai.R
 import android.content.Context
 import com.listenai.data.models.VoicePreset
 import com.listenai.service.FirebaseAnalyticsHelper
@@ -68,7 +69,7 @@ object ChainSynthesizer {
                             overallProgress = (charsDone.toFloat() / total.coerceAtLeast(1)).coerceAtMost(0.99f),
                             sectionsCompleted = c.index + 1,
                             totalSections = c.total,
-                            statusMessage = "Generating audio...",
+                            statusMessage = context.getString(R.string.player_generating_audio),
                             charactersProcessed = charsDone,
                             totalCharacters = total,
                         )

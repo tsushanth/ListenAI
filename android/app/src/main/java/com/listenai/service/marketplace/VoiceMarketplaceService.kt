@@ -2,6 +2,8 @@ package com.listenai.service.marketplace
 
 import android.content.Context
 import android.provider.Settings
+import androidx.annotation.StringRes
+import com.listenai.R
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
@@ -86,22 +88,22 @@ class VoiceMarketplaceService private constructor(private val context: Context) 
     /**
      * Sort options for marketplace
      */
-    enum class SortOption(val value: String, val displayName: String) {
-        POPULAR("popular", "Most Popular"),
-        NEWEST("newest", "Newest"),
-        RATING("rating", "Top Rated")
+    enum class SortOption(val value: String, @StringRes val labelRes: Int) {
+        POPULAR("popular", R.string.marketplace_sort_popular),
+        NEWEST("newest", R.string.marketplace_sort_newest),
+        RATING("rating", R.string.marketplace_sort_rating)
     }
 
     /**
      * Report reason
      */
-    enum class ReportReason(val value: String, val displayName: String) {
-        NOT_THEIR_VOICE("not_their_voice", "Not Their Voice"),
-        CELEBRITY("celebrity", "Celebrity Impersonation"),
-        PUBLIC_FIGURE("public_figure", "Public Figure"),
-        OFFENSIVE("offensive", "Offensive Content"),
-        COPYRIGHT("copyright", "Copyright Violation"),
-        OTHER("other", "Other")
+    enum class ReportReason(val value: String, @StringRes val labelRes: Int) {
+        NOT_THEIR_VOICE("not_their_voice", R.string.marketplace_report_not_their_voice),
+        CELEBRITY("celebrity", R.string.marketplace_report_celebrity),
+        PUBLIC_FIGURE("public_figure", R.string.marketplace_report_public_figure),
+        OFFENSIVE("offensive", R.string.marketplace_report_offensive),
+        COPYRIGHT("copyright", R.string.marketplace_report_copyright),
+        OTHER("other", R.string.marketplace_report_other)
     }
 
     /**
@@ -126,6 +128,16 @@ class VoiceMarketplaceService private constructor(private val context: Context) 
         data class ValidationError(val reason: String) : MarketplaceError() {
             override val message = reason
         }
+    }
+
+    /** The text of [e] in the user's language; [fallback] when the error carries no text of its own. */
+    fun errorText(context: Context, e: Throwable, @StringRes fallback: Int): String = when (e) {
+        is MarketplaceError.NotConfigured -> context.getString(R.string.marketplace_err_not_configured)
+        is MarketplaceError.NetworkError -> context.getString(R.string.marketplace_err_network, e.reason)
+        is MarketplaceError.Unauthorized -> context.getString(R.string.marketplace_err_sign_in)
+        is MarketplaceError.NotFound -> context.getString(R.string.marketplace_err_not_found)
+        is MarketplaceError.AlreadyShared -> context.getString(R.string.marketplace_err_already_shared)
+        else -> e.message ?: context.getString(fallback)
     }
 
     // MARK: - Companion

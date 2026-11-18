@@ -4,6 +4,7 @@ import android.content.Context
 import android.media.MediaRecorder
 import android.net.Uri
 import android.os.Build
+import com.listenai.R
 import com.listenai.service.voice.AudioClip
 import com.listenai.service.voice.AudioClips
 import java.io.File
@@ -39,7 +40,7 @@ class ClipRecorder(private val context: Context) {
             null
         } catch (e: Exception) {
             stopQuietly()
-            "Couldn't start recording. Another app may be using the microphone."
+            context.getString(R.string.vc_record_start_failed)
         }
     }
 

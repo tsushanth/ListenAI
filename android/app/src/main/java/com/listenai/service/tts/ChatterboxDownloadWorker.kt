@@ -1,5 +1,6 @@
 package com.listenai.service.tts
 
+import com.listenai.R
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -214,8 +215,8 @@ class ChatterboxDownloadWorker(
         ensureNotificationChannel()
         val notification: Notification = NotificationCompat
             .Builder(applicationContext, CHANNEL_ID)
-            .setContentTitle("Downloading cloned-voice engine")
-            .setContentText("$downloadedMb / $totalMb MB ($percent%)")
+            .setContentTitle(applicationContext.getString(R.string.chatterbox_dl_notif_title))
+            .setContentText(applicationContext.getString(R.string.model_dl_notif_progress, downloadedMb, totalMb, percent))
             .setSmallIcon(android.R.drawable.stat_sys_download)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
@@ -235,10 +236,10 @@ class ChatterboxDownloadWorker(
             if (nm.getNotificationChannel(CHANNEL_ID) == null) {
                 val channel = NotificationChannel(
                     CHANNEL_ID,
-                    "Cloned-voice engine download",
+                    applicationContext.getString(R.string.chatterbox_dl_channel_name),
                     NotificationManager.IMPORTANCE_LOW,
                 ).apply {
-                    description = "Progress for the on-device Chatterbox model bundle."
+                    description = applicationContext.getString(R.string.chatterbox_dl_channel_description)
                     setShowBadge(false)
                 }
                 nm.createNotificationChannel(channel)
