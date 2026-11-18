@@ -3,6 +3,7 @@
 import { motion } from 'framer-motion'
 import { Play, Headphones, Mic } from 'lucide-react'
 import Link from 'next/link'
+import { playUrl } from '@/lib/playLinks'
 
 export default function Hero() {
   return (
@@ -57,7 +58,7 @@ export default function Hero() {
 
               {/* Play Store Button */}
               <Link
-                href="https://play.google.com/store/apps/details?id=com.listenai"
+                href={playUrl('hero')}
                 target="_blank"
                 className="inline-flex items-center justify-center space-x-3 bg-white text-dark px-6 py-3 rounded-xl hover:bg-gray-100 transition-colors"
               >

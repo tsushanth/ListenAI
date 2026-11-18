@@ -4,6 +4,7 @@ import RaFooter from '@/components/ra/RaFooter'
 import LiveDemo from '@/components/ra/LiveDemo'
 import CodeTabs from '@/components/ra/CodeTabs'
 import { RA_LANGUAGES, RA_VOICES } from '@/content/readaloudFacts'
+import { playUrl } from '@/lib/playLinks'
 
 export default function Home() {
   return (
@@ -28,11 +29,11 @@ export default function Home() {
           <div className="ra-facts">
             <div className="ra-fact">
               <b>About 250 ms</b>
-              <span>To first audio, measured from a machine in San Jose. ElevenLabs Flash measured about 170 ms the same way, at ten times the price.</span>
+              <span>To first audio on a warm streaming connection, measured end to end from a machine in San Jose.</span>
             </div>
             <div className="ra-fact">
               <b>$4 per million characters</b>
-              <span>ElevenLabs Flash lists at $40 and Multilingual v2 at $80 (list prices, as of 2026-09). You pay only for speech that finishes.</span>
+              <span>ReadAloud Live is $0.004 per 1,000 characters. You pay only for speech that finishes, with no minimums and no plan to manage.</span>
             </div>
             <div className="ra-fact">
               <b>Interrupt mid-sentence</b>
@@ -59,32 +60,20 @@ export default function Home() {
               </table>
             </div>
 
-            <h3 style={{ fontSize: '1.5rem', marginBottom: 12 }}>How we compare with ElevenLabs</h3>
-            <div className="ra-table-wrap">
-              <table className="ra-table">
-                <thead><tr><th>Service</th><th>Time to first audio (warm)</th><th>Price per 1M characters</th></tr></thead>
-                <tbody>
-                  <tr><td className="hl">ReadAloud Live</td><td className="hl">about 250 ms</td><td className="hl">$4</td></tr>
-                  <tr><td>ElevenLabs Flash v2.5</td><td>about 170 ms</td><td>$40</td></tr>
-                  <tr><td>ElevenLabs Multilingual v2</td><td>about 1.04 s</td><td>$80</td></tr>
-                </tbody>
-              </table>
-            </div>
-            <p className="ra-small" style={{ marginTop: 14 }}>
-              Measured October 2026 from one machine in San Jose, interleaved over several minutes, in the same hour, on short call-center sentences, as time to the
-              first audio byte on a warm streaming connection. ElevenLabs advertises 75 ms for Flash; that is model latency, while these figures are end to end, including the network. ElevenLabs Flash is about 80 ms faster than ReadAloud Live at the median (two runs of 40 requests each, 2026-10-10); ReadAloud Live costs a tenth as much. Results vary by location and time of day. ElevenLabs prices are its published API list prices as of 2026-09; the latency and quality figures are from our own runs. Voice quality is subjective, and
-              ElevenLabs offers far more voices and languages. We can share the benchmark scripts and raw results on request.
+            <h3 style={{ fontSize: '1.5rem', marginBottom: 12 }}>How we measure speed</h3>
+            <p className="ra-small" style={{ marginTop: 0 }}>
+              Time to first audio is about 250 ms for ReadAloud Live. We measured it in October 2026 from one machine in San Jose, over several minutes,
+              on short call-center sentences, as time to the first audio byte on a warm streaming connection, so it includes the network. Results vary by
+              location and time of day. We can share the benchmark scripts and raw results on request.
             </p>
 
-            <h3 style={{ fontSize: '1.5rem', marginBottom: 12, marginTop: 40 }}>What you get for the price</h3>
+            <h3 style={{ fontSize: '1.5rem', marginBottom: 12, marginTop: 40 }}>Quality and price by engine</h3>
             <div className="ra-table-wrap">
               <table className="ra-table">
                 <thead><tr><th>Engine</th><th>Word error rate</th><th>Naturalness (proxy)</th><th>Price per 1M characters</th></tr></thead>
                 <tbody>
                   <tr><td className="hl">ReadAloud Live</td><td className="hl">10.4%</td><td className="hl">4.44 / 5</td><td className="hl">$4</td></tr>
                   <tr><td>ReadAloud Studio</td><td>5.8% (English only)</td><td>4.25 / 5</td><td>$10</td></tr>
-                  <tr><td>ElevenLabs Flash v2.5</td><td>6.2%</td><td>4.52 / 5</td><td>$40</td></tr>
-                  <tr><td>ElevenLabs Multilingual v2</td><td>4.3%</td><td>4.46 / 5</td><td>$80</td></tr>
                 </tbody>
               </table>
             </div>
@@ -92,10 +81,10 @@ export default function Home() {
               Word error rate: 21 short call-center sentences across English, Spanish, German and French, transcribed with an
               open-source speech recognizer and compared to the known input text &mdash; lower is better. Naturalness: an automated
               MOS predictor scored against a shared reference clip per language, not a human listener &mdash; useful for comparing
-              engines to each other, not as an absolute quality score. On this sample, ReadAloud Live&rsquo;s error rate runs a bit higher than
-              ElevenLabs&rsquo; and naturalness is essentially tied. We don&rsquo;t publish side-by-side audio samples; the sample size
-              here (21 sentences) is small enough that we&rsquo;d rather you listen to ReadAloud Live on your own text and judge for yourself.
-              We re-run this evaluation after any engine change. Full methodology, the per-language breakdown and the caveats are available on request.
+              our two engines to each other, not as an absolute quality score. ReadAloud Live trades a somewhat higher error rate for speed and price.
+              We don&rsquo;t publish side-by-side audio samples; the sample size here (21 sentences) is small enough that we&rsquo;d rather you
+              listen to ReadAloud Live on your own text and judge for yourself. We re-run this evaluation after any engine change. Full methodology,
+              the per-language breakdown and the caveats are available on request.
             </p>
           </div>
         </section>
@@ -177,8 +166,6 @@ export default function Home() {
                   <thead><tr><th>Batch speech to text</th><th>Price per hour of audio</th></tr></thead>
                   <tbody>
                     <tr><td className="hl">ReadAloud</td><td className="hl">$0.11</td></tr>
-                    <tr><td>ElevenLabs Scribe v3 batch (API list price, read 2026-11-14)</td><td>$0.20</td></tr>
-                    <tr><td>ElevenLabs Scribe v3 Live, realtime (same page; ReadAloud has no realtime)</td><td>$0.22</td></tr>
                   </tbody>
                 </table>
               </div>
@@ -190,8 +177,7 @@ export default function Home() {
             </div>
             <div className="ra-ref" style={{ marginTop: 0 }}>
               <ul>
-                {/* Price: research/elevenlabs_pricing_2026-10-04.md and W11 (price only; no vendor accuracy or latency claims on this page, W31 vendor-terms caveat). */}
-                <li>That is about 45% below ElevenLabs Scribe v3&rsquo;s batch API list price of $0.20 per hour (its pricing page, read 2026-11-14; plans and promotions can be lower). This page makes no accuracy or speed comparison with other vendors.</li>
+                <li>Billed by the second of audio, so a short clip costs a fraction of a cent. Batch only for now: no realtime transcription.</li>
                 {/* Accuracy: research/W32/data/results_w32gpu.md (the live guard; W31 test split, real 8 kHz 296 items, noisy 10 dB 578 items, no dictionary). */}
                 <li>On 296 real 8 kHz phone-style recordings (English, role-played calls) the word error rate was 9.8% and 90.2% of spoken digit sequences came out exactly right. With 10 dB background noise added it was 17.8% and 84.6%, so noisy lines are our weaker case. One test set, so test on your own audio. <Link href="/developers#stt-how-we-measured" style={{ textDecoration: 'underline' }}>How we measured</Link>.</li>
                 {/* Speaker labels: research/W43/REALCALL_VALIDATION.md; limits documented at /developers#speech-to-text. */}
@@ -208,7 +194,7 @@ export default function Home() {
             <div className="ra-faq">
               <details><summary>Which languages does it speak?</summary><p>{RA_LANGUAGES.faq}</p></details>
               <details><summary>How many calls can it handle at once?</summary><p>Each ReadAloud Live server handles up to 12 simultaneous streams, and a second server starts automatically under load. Beyond that, new connections get an &ldquo;at capacity&rdquo; error and should retry shortly. If you need guaranteed capacity, email us.</p></details>
-              <details><summary>Why is it so much cheaper than ElevenLabs?</summary><p>ReadAloud Live is a small model that runs on ordinary CPUs, so we do not pay for an always-on GPU. The trade-off is fewer voices and a less expressive read than the largest models.</p></details>
+              <details><summary>Why is it priced so low?</summary><p>ReadAloud Live is a small model that runs on ordinary CPUs, so we do not pay for an always-on GPU. The trade-off is fewer voices and a less expressive read than the largest models.</p></details>
               <details><summary>Can I hear how it compares before I commit?</summary><p>Yes. Type your own text into the demo above, then use your free 10,000 characters to test it in your own app.</p></details>
             </div>
           </div>
@@ -221,7 +207,7 @@ export default function Home() {
               <p className="ra-lede" style={{ fontSize: '1rem' }}>Listen to articles, PDFs and emails on your phone or in the browser.</p>
             </div>
             <div className="ra-cta">
-              <Link href="https://play.google.com/store/apps/details?id=com.listenai" target="_blank" className="ra-btn ghost">Android app</Link>
+              <Link href={playUrl('home_reader')} target="_blank" className="ra-btn ghost">Android app</Link>
               <Link href="/app" className="ra-btn ghost">Web app</Link>
               <Link href="/reader" className="ra-btn ghost">About the reader</Link>
             </div>

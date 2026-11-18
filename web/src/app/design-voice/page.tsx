@@ -18,7 +18,7 @@ export default function DesignVoicePage() {
             <p className="ra-small" style={{ marginBottom: 8 }}>Voice API · Voice design</p>
             <h1 style={{ fontSize: 'clamp(2rem, 5vw, 3.2rem)', marginBottom: 12, maxWidth: '22ch' }}>Describe a voice, hear it speak</h1>
             <p className="ra-lede" style={{ fontSize: '1.1rem', marginBottom: 28, maxWidth: '50ch' }}>
-              Type a description — age, gender, accent, personality — and any words you want spoken. Parler-TTS generates the voice on demand, no training required.
+              Type a description — age, gender, accent, personality — and any words you want spoken. The voice is generated on demand, no training required.
             </p>
             <VoiceDesigner />
           </div>

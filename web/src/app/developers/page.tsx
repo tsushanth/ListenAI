@@ -314,7 +314,7 @@ curl -L -X POST "<url>/v1/stt?language=auto" \\
                 <p>
                   Upload a recording in one language and get back a version spoken in another,
                   with each translated segment timed to roughly match the original. Pipeline:
-                  transcribe &rarr; translate segment-by-segment (Claude) &rarr;
+                  transcribe &rarr; translate segment-by-segment &rarr;
                   resynthesize each segment, speeding up or slowing down (0.5&times;&ndash;2&times;)
                   so it fits the original segment&rsquo;s timing. Try it in the browser at{' '}
                   <Link href="/dub" style={{ textDecoration: 'underline' }}>/dub</Link>.
