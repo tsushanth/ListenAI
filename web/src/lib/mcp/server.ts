@@ -691,6 +691,7 @@ export function createMcpServer(ctx: RequestContext): McpServer {
     title: 'Issue a voice cloning consent phrase',
     description:
       `Step 1 of 3 for cloning a voice. Returns a single-use phrase with four random code words (valid about 5 minutes, at most 3 attempts) and a challenge_id. ` +
+      `The phrase is in English unless you pass language "es" or "de"; ask for the language the speaker will actually read in, because a phrase read in a second language is often misheard. ` +
       `The speaker whose voice will be cloned must read the phrase aloud and record it themselves; that recording is the proof of consent. ` +
       CONSENT_RULE +
       `Next: record the phrase and a reference clip of the same speaker (8-120 s of clean speech, one person), then call readaloud_create_voice_clone. ` +
@@ -699,11 +700,11 @@ export function createMcpServer(ctx: RequestContext): McpServer {
       `Errors are returned with a code: payment_required (no paid or complimentary plan), forbidden (unverified email, or a key not tied to an account), rate_limited (wait).`,
     inputSchema: issueConsentPhraseInput,
     annotations: { title: 'Issue consent phrase', readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
-  }, async (): Promise<CallToolResult> => {
+  }, async (args): Promise<CallToolResult> => {
     const rl = cloneCreateLimiter.check(ctx.keyId)
     if (!rl.ok) return toolError('rate_limited', `Too many voice cloning requests for this key. Try again in ${rl.retryAfterSec} s.`, true)
     try {
-      const r = await issueConsentPhrase({ apiKey: ctx.apiKey, keyId: ctx.keyId })
+      const r = await issueConsentPhrase({ apiKey: ctx.apiKey, keyId: ctx.keyId, language: args.language })
       if (!r.consent_required) {
         return {
           content: [{ type: 'text', text: 'This deployment does not require a spoken consent phrase (attestation mode). Call readaloud_create_voice_clone with a reference recording and attested: true, only if this is your own voice or you have the speaker\'s permission.' }],

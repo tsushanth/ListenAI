@@ -15,7 +15,7 @@ import { createHash } from 'node:crypto'
 import { SlidingWindowLimiter } from './ratelimit.ts'
 import { UpstreamError } from './upstream.ts'
 import {
-  AUDIO_MIME_TYPES, CLONE_MAX_AUDIO_MB, CLONE_VOICE_ID_RE, cloneCreateLimiter, cloneRequest, cloneSpeechLimiter, createCloneRaw,
+  AUDIO_MIME_TYPES, CLONE_MAX_AUDIO_MB, CLONE_VOICE_ID_RE, cloneCreateLimiter, cloneRequest, consentPhrasePath, cloneSpeechLimiter, createCloneRaw,
   createClonedVoiceSchema, makeAudio, resolveAudioInput, sniffAudioMime, speechRaw, type AudioBlob,
 } from './cloneClient.ts'
 
@@ -106,6 +106,18 @@ async function parseCreate(req: Request): Promise<{ name: string; language: stri
   return jsonError(415, 'validation', 'Send multipart/form-data or application/json.')
 }
 
+/** Optional language for the consent phrase: ?language= or a small JSON body {"language": "de"}. Anything else (or nothing) is English. */
+async function phraseLanguage(req: Request): Promise<string | undefined> {
+  const q = new URL(req.url).searchParams.get('language')
+  if (q && q.trim()) return q.trim().slice(0, 8)
+  if (!/json/i.test(req.headers.get('content-type') || '')) return undefined
+  try {
+    const text = (await req.text()).slice(0, 1024)
+    const b = text ? JSON.parse(text) : null
+    return b && typeof b.language === 'string' && b.language.trim() ? b.language.trim().slice(0, 8) : undefined
+  } catch { return undefined }
+}
+
 export async function handleVoiceCloneRest(req: Request, route: { op: VoiceCloneOp; id?: string }): Promise<Response> {
   const ip = req.headers.get('fly-client-ip') || req.headers.get('x-forwarded-for')?.split(',')[0].trim() || 'unknown'
   const ipRl = ipLimiter.check(ip)
@@ -129,7 +141,7 @@ export async function handleVoiceCloneRest(req: Request, route: { op: VoiceClone
   try {
     switch (route.op) {
       case 'config': return relay(await cloneRequest(apiKey, keyId, '/config'))
-      case 'phrase': return relay(await cloneRequest(apiKey, keyId, '/consent-phrase', { method: 'POST' }))
+      case 'phrase': return relay(await cloneRequest(apiKey, keyId, consentPhrasePath(await phraseLanguage(req)), { method: 'POST' }))
       case 'list': return relay(await cloneRequest(apiKey, keyId, '/'))
       case 'delete': return relay(await cloneRequest(apiKey, keyId, `/${encodeURIComponent(id!)}`, { method: 'DELETE' }))
       case 'create': {

@@ -13,6 +13,9 @@ export class CloneApiError extends Error {
   }
 }
 
+/** Languages the consent phrase is available in. */
+export const CONSENT_PHRASE_LANGUAGES = ['en', 'es', 'de']
+
 export interface ConsentChallenge { challenge_id: string; phrase: string; expires_at: string }
 export interface ClonedVoice { id: string; name: string; language: string; status: string; created_at: string; reference_seconds?: number }
 
@@ -35,8 +38,12 @@ async function send(path: string, init: RequestInit = {}): Promise<Response> {
 }
 
 export const voiceCloneApi = {
-  async challenge(): Promise<ConsentChallenge> {
-    return (await send('/api/voice-clones/consent-challenges', { method: 'POST' })).json()
+  /** `language` asks for the phrase in that language (en, es or de); anything else gets the English phrase, as before. */
+  async challenge(language?: string): Promise<ConsentChallenge> {
+    const l = (language || '').trim().toLowerCase()
+    return (await send('/api/voice-clones/consent-challenges', CONSENT_PHRASE_LANGUAGES.includes(l)
+      ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ language: l }) }
+      : { method: 'POST' })).json()
   },
 
   /** Which flow to run. Never throws: any failure (network, 404, bad body) yields the strict flow, the safe default. */
