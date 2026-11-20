@@ -32,7 +32,7 @@ object PlatformLanguageSynth {
             if (s.isEmpty()) continue
             if (sb.length + s.length + 1 > max) flush()
             if (s.length > max) {
-                s.chunked(max).forEach { sb.append(it); flush() }
+                SpeechTextSplitter.splitAtWords(s, max).forEach { sb.append(it); flush() }
             } else {
                 if (sb.isNotEmpty()) sb.append(' ')
                 sb.append(s)
