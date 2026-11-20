@@ -42,6 +42,9 @@ function studioAppVoices(): Set<string> {
   const raw = (process.env.STUDIO_APP_VOICES ?? 'mira,remy').split(',').map((v) => v.trim()).filter((v) => VOICE_ID_RE.test(v));
   return new Set(raw);
 }
+// The studio route wakes a scale-to-zero GPU worker, so it is OFF unless STUDIO_ROUTE=on (owner cost decision 2026-11-20: studio voices are not
+// offered in the app). Off, {"engine":"studio","voice":...} answers 400 UNKNOWN_VOICE like any voice this route cannot serve, and nothing reaches the gateway.
+const studioRouteEnabled = () => /^(1|on|true|yes)$/i.test((process.env.STUDIO_ROUTE ?? '').trim());
 const TIER_TO_GATEWAY_ENGINE: Record<string, string> = { live: 'piper', studio: 'kokoro' };
 
 export function createRealtimeTtsRouter(quota: TtsQuota = defaultQuota): Router {
@@ -83,7 +86,7 @@ const router = Router();
     // that always send {"engine":"piper"} behave exactly as before.
     const voice = typeof req.body?.voice === 'string' && VOICE_ID_RE.test(req.body.voice) ? req.body.voice : undefined;
     const studioVoice = requested === 'studio' && voice !== undefined;
-    if (studioVoice && !studioAppVoices().has(voice)) {
+    if (studioVoice && (!studioRouteEnabled() || !studioAppVoices().has(voice))) {
       refund();
       res.status(400).json({ error: 'UNKNOWN_VOICE' });
       return;
