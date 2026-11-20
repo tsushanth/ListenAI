@@ -399,6 +399,7 @@
     <string name="player_go_back">Kembali</string>
     <string name="player_try_again">Coba Lagi</string>
     <string name="player_preparing_audio">Menyiapkan audio…</string>
+    <string name="player_studio_starting">Memulai suara ini. Pembacaan pertama bisa memakan waktu hingga satu menit.</string>
     <string name="player_percent_complete">%d%% selesai</string>
     <string name="player_back">Kembali</string>
     <string name="player_change_voice">Ubah Suara</string>

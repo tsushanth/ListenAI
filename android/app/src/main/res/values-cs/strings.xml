@@ -385,6 +385,7 @@
     <string name="player_go_back">Zpět</string>
     <string name="player_try_again">Zkusit znovu</string>
     <string name="player_preparing_audio">Příprava zvuku…</string>
+    <string name="player_studio_starting">Spouštím tento hlas. První čtení může trvat až minutu.</string>
     <string name="player_percent_complete">Dokončeno: %d %%</string>
     <string name="player_back">Zpět</string>
     <string name="player_change_voice">Změnit hlas</string>

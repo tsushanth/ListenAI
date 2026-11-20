@@ -400,6 +400,7 @@
     <string name="player_go_back">Zur\u00fcck</string>
     <string name="player_try_again">Erneut versuchen</string>
     <string name="player_preparing_audio">Audio wird vorbereitet\u2026</string>
+    <string name="player_studio_starting">Diese Stimme wird gestartet. Das erste Vorlesen kann bis zu einer Minute dauern.</string>
     <string name="player_percent_complete">%d%% abgeschlossen</string>
     <string name="player_back">Zur\u00fcck</string>
     <string name="player_change_voice">Stimme \u00e4ndern</string>

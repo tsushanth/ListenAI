@@ -400,6 +400,7 @@
     <string name="player_go_back">Bumalik</string>
     <string name="player_try_again">Subukan Muli</string>
     <string name="player_preparing_audio">Inihahanda ang audio…</string>
+    <string name="player_studio_starting">Sinisimulan ang boses na ito. Maaaring abutin ng hanggang isang minuto ang unang pagbasa.</string>
     <string name="player_percent_complete">%d%% kumpleto</string>
     <string name="player_back">Bumalik</string>
     <string name="player_change_voice">Palitan ang Boses</string>

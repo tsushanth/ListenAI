@@ -385,6 +385,7 @@
     <string name="player_go_back">Повернутися</string>
     <string name="player_try_again">Спробувати ще раз</string>
     <string name="player_preparing_audio">Підготовка аудіо…</string>
+    <string name="player_studio_starting">Запуск цього голосу. Перше читання може тривати до хвилини.</string>
     <string name="player_percent_complete">Завершено: %d %%</string>
     <string name="player_back">Назад</string>
     <string name="player_change_voice">Змінити голос</string>

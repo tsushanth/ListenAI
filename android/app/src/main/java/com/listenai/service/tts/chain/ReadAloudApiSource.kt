@@ -35,6 +35,11 @@ import kotlin.coroutines.resumeWithException
  *
  * Word timings (alignment worker) are requested only when the request asks for them. That worker scales to zero, so the
  * first message gets [ALIGNMENT_FIRST_MESSAGE_MS] and after a miss alignment is skipped for [ALIGNMENT_BACKOFF_MS].
+ *
+ * Routes: a live voice is authorized with `{"engine":"piper"}`; a studio-tier voice (Beta, languages without a live voice) with
+ * `{"engine":"studio","voice":"<public id>"}`, which returns the studio worker's URL. That worker scales to zero (the first call after
+ * idle takes about 44 s), so the studio route gets [studioTimeoutMs] for authorize, connect and the WebSocket handshake, and its idle sockets
+ * are closed after [STUDIO_IDLE_MS] so they do not keep the machine awake. A socket is only ever reused for the route it was authorized for.
  */
 class ReadAloudApiSource(
     private val http: OkHttpClient,
@@ -45,13 +50,28 @@ class ReadAloudApiSource(
     /** The voices the API lists; non-English languages are accepted only when it lists a voice that speaks them (see [CloudVoicePolicy]). */
     private val catalog: CloudVoiceCatalog = CloudVoiceCatalog.Empty,
     private val nowMs: () -> Long = System::currentTimeMillis,
+    /** Debug and test builds only: sent as `X-Tts-Test-Key` with every authorize call when not empty (the backend's tester bypass of the quota). Empty in every release build. */
+    private val testKey: String = "",
+    /** Connect and handshake budget of the studio route (a cold start is about 44 s). The live route keeps the app's usual client timeouts. */
+    private val studioTimeoutMs: Long = STUDIO_TIMEOUT_MS,
+    private val studioIdleMs: Long = STUDIO_IDLE_MS,
 ) : TtsSource {
 
     override val id = SourceId.API
 
     private class Auth(val token: String, val url: String, val alignment: Boolean)
 
-    private inner class Conn(val alignment: Boolean) {
+    /** Which worker a socket is authorized for: [LIVE] (Piper), or one studio voice. Sockets are reused only within the same route. */
+    internal class Route private constructor(val key: String, val studioVoice: String?) {
+        val studio: Boolean get() = studioVoice != null
+        companion object {
+            val LIVE = Route("piper", null)
+            fun studio(voiceId: String) = Route("studio:$voiceId", voiceId)
+            fun of(voice: CloudVoice?) = if (voice?.studio == true) studio(voice.id) else LIVE
+        }
+    }
+
+    private inner class Conn(val alignment: Boolean, val route: Route) {
         // Set by onOpen (or right after newWebSocket returns, whichever is first): the listener can run before newWebSocket returns.
         @Volatile lateinit var ws: WebSocket
         @Volatile var closed = false
@@ -63,6 +83,9 @@ class ReadAloudApiSource(
 
     private inner class Pending(val cont: CancellableContinuation<PcmChunk>) {
         val pcm = ByteArrayOutputStream()
+        /** What `chunk_meta` said about the voice and language it spoke, when it says (see [AudioPlausibility.echoMismatch]). */
+        @Volatile var echoedVoice: String? = null
+        @Volatile var echoedLanguage: String? = null
         val words = ArrayList<TimedWord>()
         var sampleRate = SAMPLE_RATE
         @Volatile var firstFrame = false
@@ -75,6 +98,10 @@ class ReadAloudApiSource(
     }
 
     private val idle = ConcurrentLinkedDeque<Conn>()
+    /** The client of the studio route: the app's client with the longer budget. */
+    private val studioHttp: OkHttpClient by lazy {
+        http.newBuilder().connectTimeout(studioTimeoutMs, TimeUnit.MILLISECONDS).readTimeout(studioTimeoutMs, TimeUnit.MILLISECONDS).build()
+    }
     @Volatile private var alignmentBlockedUntil = 0L
     private val watchdog: ScheduledExecutorService =
         Executors.newSingleThreadScheduledExecutor { r -> Thread(r, "tts-api-watchdog").apply { isDaemon = true } }
@@ -103,7 +130,7 @@ class ReadAloudApiSource(
     /** Opens a socket ahead of the first chunk (authorize + connect), so the first synthesize pays neither. */
     suspend fun prewarm() {
         if (!isOnline()) return
-        runCatching { release(connect(false)) }
+        runCatching { release(connect(false, Route.LIVE)) }
     }
 
     fun close() {
@@ -117,17 +144,18 @@ class ReadAloudApiSource(
         val cloud = if (english) null else cloudVoiceFor(request) ?: throw SourceFailure(FallbackReason.UNSUPPORTED_LANGUAGE)
         val voice = if (english) voiceFor(request.voiceId) else cloud!!.id
         val resolved = request.copy(voiceId = voice)
+        val route = Route.of(cloud)
         // Every non-English chunk names its language: a multilingual voice told nothing speaks English phonemes.
         val languageCode = cloud?.let { CloudVoicePolicy.languageCode(it, request.language) }
         // Word timings come from an alignment worker that is only known to work for English text.
         val useWords = request.wantWords && isEnglish(request.language) && nowMs() >= alignmentBlockedUntil
         return try {
             try {
-                attempt(text, resolved, useWords, languageCode)
+                attempt(text, resolved, useWords, languageCode, route)
             } catch (e: AlignmentSlow) {
                 alignmentBlockedUntil = nowMs() + ALIGNMENT_BACKOFF_MS
                 Log.i(TAG, "alignment worker slow; plain voice for the next ${ALIGNMENT_BACKOFF_MS / 60000} min")
-                attempt(text, resolved, false, languageCode)
+                attempt(text, resolved, false, languageCode, route)
             }
         } catch (e: SourceFailure) {
             // "Language or voice not supported" is a per-language answer. English never has one: a refusal on an English read is an ordinary server error.
@@ -138,9 +166,9 @@ class ReadAloudApiSource(
 
     private class AlignmentSlow : Exception()
 
-    private suspend fun attempt(text: String, request: TtsRequest, alignment: Boolean, languageCode: String?): PcmChunk {
+    private suspend fun attempt(text: String, request: TtsRequest, alignment: Boolean, languageCode: String?, route: Route): PcmChunk {
         // A reused socket may have been closed by the server while idle; if it fails before sending anything, redo once on a fresh one.
-        val reused = takeIdle(alignment)
+        val reused = takeIdle(alignment, route)
         if (reused != null) {
             try {
                 return run(reused, text, request, languageCode)
@@ -149,17 +177,27 @@ class ReadAloudApiSource(
                 Log.i(TAG, "reused socket was dead; reconnecting")
             }
         }
-        return run(connect(alignment), text, request, languageCode)
+        val conn = try {
+            connect(alignment, route)
+        } catch (e: SourceFailure) {
+            // The authorize call refused the voice its own list offered (400 UNKNOWN_VOICE): look at the list again soon.
+            if (languageCode != null && e.reason == FallbackReason.UNSUPPORTED_LANGUAGE) catalog.invalidate()
+            throw e
+        }
+        return run(conn, text, request, languageCode)
     }
 
-    private fun takeIdle(alignment: Boolean): Conn? {
+    /** The idle socket for exactly this alignment mode and route, or null. Sockets for other routes stay where they are; stale or closed ones are dropped. */
+    private fun takeIdle(alignment: Boolean, route: Route): Conn? {
         val now = nowMs()
-        while (true) {
-            val c = idle.pollFirst() ?: return null
-            if (c.closed || now - c.lastUsed > IDLE_MS) { c.ws.close(1000, "idle"); continue }
-            if (c.alignment != alignment) { idle.addLast(c); return null } // keep it for a matching request
-            return c
+        for (c in idle.toList()) {
+            if (c.closed || now - c.lastUsed > (if (c.route.studio) studioIdleMs else IDLE_MS)) {
+                if (idle.remove(c)) c.ws.close(1000, "idle")
+                continue
+            }
+            if (c.alignment == alignment && c.route.key == route.key && idle.remove(c)) return c
         }
+        return null
     }
 
     private fun release(c: Conn) {
@@ -167,20 +205,28 @@ class ReadAloudApiSource(
         if (c.closed) return
         idle.addFirst(c)
         while (idle.size > MAX_IDLE) idle.pollLast()?.ws?.close(1000, "trim")
+        // A studio socket is not kept for the next read: an open socket keeps the studio machine from scaling down.
+        if (c.route.studio) watchdog.schedule({
+            if (!c.closed && nowMs() - c.lastUsed >= studioIdleMs && idle.remove(c)) c.ws.close(1000, "idle")
+        }, studioIdleMs, TimeUnit.MILLISECONDS)
     }
 
-    private fun authorize(alignment: Boolean): Auth {
-        val body = JSONObject().put("engine", "piper").apply { if (alignment) put("alignment", true) }
+    private fun authorize(alignment: Boolean, route: Route): Auth {
+        val body = JSONObject().put("engine", if (route.studio) "studio" else "piper").apply {
+            route.studioVoice?.let { put("voice", it) }
+            if (alignment) put("alignment", true)
+        }
         val req = Request.Builder()
             .url("$backendBaseUrl/api/realtime-tts/authorize")
             .post(body.toString().toRequestBody("application/json".toMediaType()))
             // Same anonymous bearer the app has always sent here; the backend holds the platform key.
             .addHeader("Authorization", "Bearer ")
+            .apply { if (testKey.isNotEmpty()) addHeader(TEST_KEY_HEADER, testKey) }
             .build()
         try {
-            http.newCall(req).execute().use { resp ->
+            (if (route.studio) studioHttp else http).newCall(req).execute().use { resp ->
                 val text = resp.body?.string().orEmpty()
-                if (!resp.isSuccessful) throw ApiFailureMapping.fromHttp(resp.code, resp.header("Retry-After"), isOnline())
+                if (!resp.isSuccessful) throw ApiFailureMapping.fromHttp(resp.code, resp.header("Retry-After"), isOnline(), text)
                 val j = JSONObject(text)
                 return Auth(j.getString("token"), j.getString("url"), alignment && j.optBoolean("alignment", false))
             }
@@ -193,11 +239,11 @@ class ReadAloudApiSource(
         }
     }
 
-    private suspend fun connect(alignment: Boolean): Conn {
+    private suspend fun connect(alignment: Boolean, route: Route): Conn {
         // authorize() is a blocking OkHttp call; the chain runs sources on its caller's dispatcher, so hop to IO.
-        val auth = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { authorize(alignment) }
+        val auth = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { authorize(alignment, route) }
         return suspendCancellableCoroutine { cont ->
-            val conn = Conn(auth.alignment)
+            val conn = Conn(auth.alignment, route)
             val listener = object : WebSocketListener() {
                 override fun onOpen(webSocket: WebSocket, response: Response) {
                     conn.ws = webSocket
@@ -209,7 +255,7 @@ class ReadAloudApiSource(
                 override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
                     conn.closed = true
                     val failure = if (response != null && response.code != 101)
-                        ApiFailureMapping.fromHttp(response.code, response.header("Retry-After"), isOnline())
+                        ApiFailureMapping.fromHttp(response.code, response.header("Retry-After"), isOnline(), runCatching { response.peekBody(2048).string() }.getOrNull())
                     else ApiFailureMapping.fromThrowable(t, isOnline())
                     if (!conn.opened.get() && cont.isActive) cont.resumeWithException(failure)
                     conn.pending?.finish(Result.failure(failure))
@@ -221,16 +267,18 @@ class ReadAloudApiSource(
                     conn.pending?.finish(Result.failure(f))
                 }
             }
-            val ws = http.newWebSocket(Request.Builder().url("${auth.url}?token=${auth.token}").build(), listener)
+            val ws = (if (route.studio) studioHttp else http).newWebSocket(Request.Builder().url("${auth.url}?token=${auth.token}").build(), listener)
             conn.ws = ws
             cont.invokeOnCancellation { ws.cancel() }
         }
     }
 
     private suspend fun run(conn: Conn, text: String, request: TtsRequest, languageCode: String?): PcmChunk {
+        var answered: Pending? = null
         val chunk = try {
             suspendCancellableCoroutine<PcmChunk> { cont ->
                 val p = Pending(cont)
+                answered = p
                 conn.pending = p
                 val msg = JSONObject()
                     .put("type", "synthesize")
@@ -268,9 +316,25 @@ class ReadAloudApiSource(
         } finally {
             conn.pending = null
         }
+        // Audio that cannot be the text read aloud (a runaway, a near-empty answer, another voice or language than asked for) is a failure of this source: the chain retries once, then the phone reads.
+        if (audioIsChecked(conn.route)) {
+            val problem = AudioPlausibility.problem(
+                chars = text.codePointCount(0, text.length), audioSeconds = chunk.durationMs / 1000.0, speed = request.speed,
+                language = languageCode ?: request.language,
+            ) ?: AudioPlausibility.echoMismatch(request.voiceId, languageCode, answered?.echoedVoice, answered?.echoedLanguage)
+            if (problem != null) {
+                conn.closed = true
+                conn.ws.cancel()
+                Log.w(TAG, "implausible audio: $problem")
+                throw SourceFailure(FallbackReason.BAD_AUDIO, null, problem)
+            }
+        }
         release(conn)
         return chunk
     }
+
+    /** Which routes have their audio checked after `done`: the studio route only (the live languages are unchanged). */
+    private fun audioIsChecked(route: Route): Boolean = route.studio
 
     private fun handleBinary(conn: Conn, bytes: ByteString) {
         val p = conn.pending ?: return
@@ -288,6 +352,8 @@ class ReadAloudApiSource(
             when (j.optString("type")) {
                 "chunk_meta" -> {
                     j.optInt("sample_rate", 0).takeIf { it > 0 }?.let { p.sampleRate = it }
+                    j.optString("voice", "").takeIf { it.isNotBlank() }?.let { p.echoedVoice = it }
+                    j.optString("language", "").takeIf { it.isNotBlank() }?.let { p.echoedLanguage = it }
                     collectWords(j, p)
                 }
                 "done" -> p.finish(Result.success(PcmChunk(p.pcm.toByteArray(), p.sampleRate, p.words.takeIf { it.isNotEmpty() })))
@@ -317,6 +383,12 @@ class ReadAloudApiSource(
         const val SAMPLE_RATE = 24_000
         private const val IDLE_MS = 25_000L
         private const val MAX_IDLE = 2
+        /** The studio worker's cold start is about 44 s: connect and handshake may take up to this long. */
+        internal const val STUDIO_TIMEOUT_MS = 75_000L
+        /** A studio socket that has no work is closed after this long, so the studio machine can scale down. */
+        internal const val STUDIO_IDLE_MS = 5_000L
+        /** Header of the tester bypass (debug and test builds only). */
+        internal const val TEST_KEY_HEADER = "X-Tts-Test-Key"
         internal const val ALIGNMENT_FIRST_MESSAGE_MS = 2_500L
         internal const val ALIGNMENT_BACKOFF_MS = 10 * 60_000L
     }

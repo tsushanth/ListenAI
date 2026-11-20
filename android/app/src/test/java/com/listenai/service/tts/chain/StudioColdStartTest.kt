@@ -81,8 +81,8 @@ class StudioColdStartTest {
         val c = chain(api, phone)
         val out = c.speak(COLD_TEXT, req).toList()
         assertTrue(out.isNotEmpty() && out.all { it.source == SourceId.SYSTEM })
-        // two attempts at about the cold-start deadline each, not more
-        assertTrue("took ${currentTime} ms", currentTime in 150_000..160_000)
+        // one wait of about the cold-start deadline, no second one for the same chunk
+        assertTrue("took ${currentTime} ms", currentTime in 75_000..85_000)
     }
 
     @Test fun `a studio voice answering quickly keeps the usual path`() = runTest {

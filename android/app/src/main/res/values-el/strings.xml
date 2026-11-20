@@ -385,6 +385,7 @@
     <string name="player_go_back">Επιστροφή</string>
     <string name="player_try_again">Δοκιμάστε ξανά</string>
     <string name="player_preparing_audio">Προετοιμασία ήχου…</string>
+    <string name="player_studio_starting">Εκκίνηση αυτής της φωνής. Η πρώτη ανάγνωση μπορεί να διαρκέσει έως και ένα λεπτό.</string>
     <string name="player_percent_complete">%d %% ολοκληρώθηκε</string>
     <string name="player_back">Πίσω</string>
     <string name="player_change_voice">Αλλαγή φωνής</string>

@@ -385,6 +385,7 @@
     <string name="player_go_back">Vissza</string>
     <string name="player_try_again">Próbáld újra</string>
     <string name="player_preparing_audio">Hang előkészítése…</string>
+    <string name="player_studio_starting">A hang indítása folyamatban. Az első felolvasás akár egy percig is tarthat.</string>
     <string name="player_percent_complete">%d %% kész</string>
     <string name="player_back">Vissza</string>
     <string name="player_change_voice">Hang módosítása</string>

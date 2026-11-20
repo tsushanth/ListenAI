@@ -404,6 +404,7 @@
     <string name="player_go_back">رجوع</string>
     <string name="player_try_again">حاول مرة أخرى</string>
     <string name="player_preparing_audio">جارٍ تحضير الصوت…</string>
+    <string name="player_studio_starting">جارٍ تشغيل هذا الصوت. قد تستغرق القراءة الأولى حتى دقيقة.</string>
     <string name="player_percent_complete">%d%% مكتمل</string>
     <string name="player_back">رجوع</string>
     <string name="player_change_voice">تغيير الصوت</string>

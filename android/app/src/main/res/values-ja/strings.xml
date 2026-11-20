@@ -399,6 +399,7 @@
     <string name="player_go_back">戻る</string>
     <string name="player_try_again">再試行</string>
     <string name="player_preparing_audio">音声を準備中…</string>
+    <string name="player_studio_starting">この音声を起動しています。最初の読み上げには最長1分ほどかかることがあります。</string>
     <string name="player_percent_complete">%d%%完了</string>
     <string name="player_back">戻る</string>
     <string name="player_change_voice">音声を変更</string>

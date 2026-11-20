@@ -440,6 +440,7 @@
     <string name="player_go_back">Go Back</string>
     <string name="player_try_again">Try Again</string>
     <string name="player_preparing_audio">Preparing audio…</string>
+    <string name="player_studio_starting">Starting this voice. The first read can take up to a minute.</string>
     <string name="player_percent_complete">%d%% complete</string>
     <string name="player_back">Back</string>
     <string name="player_change_voice">Change Voice</string>

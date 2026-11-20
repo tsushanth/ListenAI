@@ -402,6 +402,7 @@
     <string name="player_go_back">Назад</string>
     <string name="player_try_again">Попробовать снова</string>
     <string name="player_preparing_audio">Подготовка аудио…</string>
+    <string name="player_studio_starting">Запуск этого голоса. Первое чтение может занять до минуты.</string>
     <string name="player_percent_complete">%d%% завершено</string>
     <string name="player_back">Назад</string>
     <string name="player_change_voice">Сменить голос</string>

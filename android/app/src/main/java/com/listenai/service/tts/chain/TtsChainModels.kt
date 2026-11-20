@@ -27,6 +27,8 @@ enum class FallbackReason {
     MODEL_TOO_SLOW,
     /** The source has no voice for this language (not in the API's list, or the API refused it). */
     UNSUPPORTED_LANGUAGE,
+    /** The audio cannot be the text read aloud (a runaway, a near-empty answer, another voice or language than asked for). */
+    BAD_AUDIO,
     UNKNOWN,
 }
 

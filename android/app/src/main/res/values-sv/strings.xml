@@ -385,6 +385,7 @@
     <string name="player_go_back">Gå tillbaka</string>
     <string name="player_try_again">Försök igen</string>
     <string name="player_preparing_audio">Förbereder ljud…</string>
+    <string name="player_studio_starting">Startar den här rösten. Den första uppläsningen kan ta upp till en minut.</string>
     <string name="player_percent_complete">%d %% klart</string>
     <string name="player_back">Tillbaka</string>
     <string name="player_change_voice">Byt röst</string>

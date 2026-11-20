@@ -385,6 +385,7 @@
     <string name="player_go_back">Takaisin</string>
     <string name="player_try_again">Yritä uudelleen</string>
     <string name="player_preparing_audio">Valmistellaan ääntä…</string>
+    <string name="player_studio_starting">Käynnistetään tätä ääntä. Ensimmäinen lukukerta voi kestää jopa minuutin.</string>
     <string name="player_percent_complete">%d %% valmis</string>
     <string name="player_back">Takaisin</string>
     <string name="player_change_voice">Vaihda ääni</string>

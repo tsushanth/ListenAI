@@ -400,6 +400,7 @@
     <string name="player_go_back">Volver</string>
     <string name="player_try_again">Intentar de nuevo</string>
     <string name="player_preparing_audio">Preparando audio\u2026</string>
+    <string name="player_studio_starting">Iniciando esta voz. La primera lectura puede tardar hasta un minuto.</string>
     <string name="player_percent_complete">%d%% completado</string>
     <string name="player_back">Atr\u00e1s</string>
     <string name="player_change_voice">Cambiar voz</string>

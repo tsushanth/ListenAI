@@ -399,6 +399,7 @@
     <string name="player_go_back">Quay lại</string>
     <string name="player_try_again">Thử lại</string>
     <string name="player_preparing_audio">Đang chuẩn bị âm thanh…</string>
+    <string name="player_studio_starting">Đang khởi động giọng đọc này. Lần đọc đầu tiên có thể mất tới một phút.</string>
     <string name="player_percent_complete">Hoàn thành %d%%</string>
     <string name="player_back">Quay lại</string>
     <string name="player_change_voice">Đổi giọng nói</string>

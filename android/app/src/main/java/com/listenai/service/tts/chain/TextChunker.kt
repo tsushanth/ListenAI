@@ -40,6 +40,28 @@ object TextChunker {
         return out
     }
 
+    /**
+     * Chunks of fewer than 2 letters or digits (a lone character, such as the one-character sentence a text can end with) are joined to the
+     * chunk before them (to the one after, for a first chunk), so the speech service is never asked to read a single character.
+     * Text of one chunk, and chunks that are long enough, are left as they are.
+     */
+    fun mergeTiny(chunks: List<String>): List<String> {
+        fun tiny(c: String) = c.codePoints().filter { Character.isLetterOrDigit(it) }.count() < 2
+        if (chunks.size < 2) return chunks
+        val out = ArrayList<String>()
+        var carry = ""
+        for (c in chunks) {
+            if (tiny(c)) {
+                if (out.isNotEmpty()) out[out.size - 1] = out.last() + " " + c else carry += (if (carry.isEmpty()) "" else " ") + c
+            } else {
+                out += if (carry.isEmpty()) c else "$carry $c"
+                carry = ""
+            }
+        }
+        if (carry.isNotEmpty()) out += carry
+        return out
+    }
+
     /** A sentence longer than [limit] code points is cut at clause boundaries, then at spaces, then at word boundaries, then at a character. */
     private fun breakLong(s: String, limit: Int, maxChars: Int): List<String> {
         if (s.codePointCount(0, s.length) <= limit) return listOf(s)

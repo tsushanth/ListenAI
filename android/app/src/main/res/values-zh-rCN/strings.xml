@@ -399,6 +399,7 @@
     <string name="player_go_back">返回</string>
     <string name="player_try_again">重试</string>
     <string name="player_preparing_audio">正在准备音频…</string>
+    <string name="player_studio_starting">正在启动此语音。首次朗读最多可能需要一分钟。</string>
     <string name="player_percent_complete">已完成%d%%</string>
     <string name="player_back">返回</string>
     <string name="player_change_voice">更改语音</string>

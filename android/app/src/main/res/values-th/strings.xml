@@ -399,6 +399,7 @@
     <string name="player_go_back">กลับ</string>
     <string name="player_try_again">ลองอีกครั้ง</string>
     <string name="player_preparing_audio">กำลังเตรียมเสียง…</string>
+    <string name="player_studio_starting">กำลังเริ่มเสียงนี้ การอ่านครั้งแรกอาจใช้เวลาถึงหนึ่งนาที</string>
     <string name="player_percent_complete">%d%% เสร็จ</string>
     <string name="player_back">กลับ</string>
     <string name="player_change_voice">เปลี่ยนเสียง</string>

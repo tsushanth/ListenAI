@@ -2,6 +2,7 @@ package com.listenai.service.tts.chain
 
 import android.content.Context
 import android.util.Log
+import com.listenai.BuildConfig
 import com.listenai.ListenAIApplication
 import com.listenai.data.models.VoicePreset
 import com.listenai.service.FirebaseAnalyticsHelper
@@ -51,6 +52,8 @@ object TtsChainProvider {
             isOnline = online,
             voiceFor = ::voiceFor,
             catalog = catalog,
+            // Empty in every release build; only a debug build given a test key sends the quota-bypass header.
+            testKey = BuildConfig.TTS_TEST_KEY,
         )
         val system = SystemTtsSource(app, online)
         val onDevice = OnDeviceModelSource(app)

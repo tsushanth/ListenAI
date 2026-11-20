@@ -399,6 +399,7 @@
     <string name="player_go_back">Kembali</string>
     <string name="player_try_again">Cuba Lagi</string>
     <string name="player_preparing_audio">Menyediakan audio…</string>
+    <string name="player_studio_starting">Memulakan suara ini. Bacaan pertama mungkin mengambil masa sehingga seminit.</string>
     <string name="player_percent_complete">%d%% selesai</string>
     <string name="player_back">Kembali</string>
     <string name="player_change_voice">Tukar Suara</string>

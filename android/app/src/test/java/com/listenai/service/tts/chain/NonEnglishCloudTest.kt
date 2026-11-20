@@ -47,6 +47,17 @@ internal class FakeWorker : AutoCloseable {
     @Volatile var onFirst: () -> Unit = {}
     /** Answer every synthesize message with the worker's "language not supported" error. */
     @Volatile var refuse = false
+    /** The authorize request bodies and headers, in order, and the WebSocket path of every socket that was opened ("/tts" for Piper, "/studio" for the studio route). */
+    val authorizeBodies = LinkedBlockingQueue<String>()
+    val authorizeHeaders = java.util.concurrent.CopyOnWriteArrayList<okhttp3.Headers>()
+    val socketPaths = java.util.concurrent.CopyOnWriteArrayList<String>()
+    /** When set, the answer to a synthesize message holds this many seconds of audio for its text, and [metaExtra] is added to chunk_meta (e.g. `"voice":"mira"`). */
+    @Volatile var audioSeconds: ((String) -> Double)? = null
+    @Volatile var metaExtra: String = ""
+    /** The WebSocket handshake is answered this long after it is asked (a studio machine starting from zero). */
+    @Volatile var upgradeDelayMs = 0L
+    /** When set, the authorize call is answered with this status and body instead of a token. */
+    @Volatile var authorizeError: Pair<Int, String>? = null
     @Volatile var reply: (WebSocket) -> Unit = { ws ->
         ws.send(ByteArray(9_600).toByteString())
         ws.send("""{"type":"chunk_meta","sample_rate":24000}""")
@@ -56,6 +67,14 @@ internal class FakeWorker : AutoCloseable {
     private val listener = object : WebSocketListener() {
         override fun onMessage(webSocket: WebSocket, text: String) {
             received.add(text); onFirst()
+            val secs = audioSeconds
+            if (secs != null && !refuse) {
+                val seconds = secs(JSONObject(text).optString("text"))
+                webSocket.send(ByteArray((seconds * 24_000).toInt() * 2).toByteString())
+                webSocket.send("""{"type":"chunk_meta","sample_rate":24000${if (metaExtra.isEmpty()) "" else ",$metaExtra"}}""")
+                webSocket.send("""{"type":"done"}""")
+                return
+            }
             if (refuse) webSocket.send("""{"type":"error","message":"language not supported"}""") else reply(webSocket)
         }
         override fun onMessage(webSocket: WebSocket, bytes: ByteString) {}
@@ -68,17 +87,24 @@ internal class FakeWorker : AutoCloseable {
             override fun dispatch(request: RecordedRequest): MockResponse = when {
                 request.path == "/api/realtime-tts/authorize" -> {
                     authorizeCalls.incrementAndGet()
-                    MockResponse().setBody("""{"token":"tok","url":"${server.url("/tts").toString().replaceFirst("http", "ws")}"}""")
+                    val body = request.body.readUtf8()
+                    authorizeBodies.add(body); authorizeHeaders.add(request.headers)
+                    val err = authorizeError
+                    if (err != null) MockResponse().setResponseCode(err.first).setBody(err.second)
+                    else {
+                        val path = if (JSONObject(body).optString("engine") == "studio") "/studio" else "/tts"
+                        MockResponse().setBody("""{"token":"tok","url":"${server.url(path).toString().replaceFirst("http", "ws")}"}""")
+                    }
                 }
-                request.path!!.startsWith("/tts") -> MockResponse().withWebSocketUpgrade(listener)
+                request.path!!.startsWith("/tts") || request.path!!.startsWith("/studio") -> { socketPaths.add(request.path!!.substringBefore('?')); MockResponse().setHeadersDelay(upgradeDelayMs, TimeUnit.MILLISECONDS).withWebSocketUpgrade(listener) }
                 else -> MockResponse().setResponseCode(404)
             }
         }
         server.start()
     }
 
-    fun source(catalog: CloudVoiceCatalog) =
-        ReadAloudApiSource(OkHttpClient(), server.url("/").toString().trimEnd('/'), { true }, { "custom:en-us-kristin" }, catalog)
+    fun source(catalog: CloudVoiceCatalog, testKey: String = "", client: OkHttpClient = OkHttpClient(), studioTimeoutMs: Long = ReadAloudApiSource.STUDIO_TIMEOUT_MS, studioIdleMs: Long = ReadAloudApiSource.STUDIO_IDLE_MS) =
+        ReadAloudApiSource(client, server.url("/").toString().trimEnd('/'), { true }, { "custom:en-us-kristin" }, catalog, testKey = testKey, studioTimeoutMs = studioTimeoutMs, studioIdleMs = studioIdleMs)
 
     fun nextMessage(): JSONObject = JSONObject(received.poll(5, TimeUnit.SECONDS) ?: error("no synthesize message arrived"))
 

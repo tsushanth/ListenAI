@@ -400,6 +400,7 @@
     <string name="player_go_back">वापस जाएँ</string>
     <string name="player_try_again">पुनः प्रयास करें</string>
     <string name="player_preparing_audio">ऑडियो तैयार हो रहा है…</string>
+    <string name="player_studio_starting">यह आवाज़ शुरू हो रही है। पहली बार पढ़ने में एक मिनट तक लग सकता है।</string>
     <string name="player_percent_complete">%d%% पूर्ण</string>
     <string name="player_back">वापस</string>
     <string name="player_change_voice">आवाज़ बदलें</string>

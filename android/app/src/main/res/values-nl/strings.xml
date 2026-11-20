@@ -400,6 +400,7 @@
     <string name="player_go_back">Ga Terug</string>
     <string name="player_try_again">Opnieuw Proberen</string>
     <string name="player_preparing_audio">Audio voorbereiden…</string>
+    <string name="player_studio_starting">Deze stem wordt gestart. De eerste keer voorlezen kan tot een minuut duren.</string>
     <string name="player_percent_complete">%d%% voltooid</string>
     <string name="player_back">Terug</string>
     <string name="player_change_voice">Stem Wijzigen</string>

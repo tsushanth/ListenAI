@@ -4,6 +4,7 @@ import com.listenai.R
 import android.content.Context
 import com.listenai.data.models.VoicePreset
 import com.listenai.service.FirebaseAnalyticsHelper
+import com.listenai.service.tts.chain.CloudVoicePolicy
 import com.listenai.service.tts.chain.NoSourceAvailableException
 import com.listenai.service.tts.chain.Pcm
 import com.listenai.service.tts.chain.SourceId
@@ -41,6 +42,10 @@ object ChainSynthesizer {
         val preferSystem = forcePhoneVoice || phoneVoicePicked(context, language)
         val cloudVoiceId = cloudVoiceFor(context, language, preferSystem)
         val request = TtsRequest(voiceId = voice.id, language = language, speed = speed, wantWords = true, preferSystem = preferSystem, cloudVoiceId = cloudVoiceId)
+        // A studio voice (Beta) may be starting from zero (up to about a minute): say so while nothing has been heard yet.
+        if (!preferSystem && readsWithStudioVoice(context, language, cloudVoiceId)) {
+            onProgress(SynthesisProgress.INITIAL.copy(statusMessage = context.getString(R.string.player_studio_starting), totalCharacters = text.length))
+        }
         val file = File(context.cacheDir, "tts_${UUID.randomUUID()}.wav")
 
         var rate = 0
@@ -108,6 +113,13 @@ object ChainSynthesizer {
                 startedAt = started, completedAt = ended, inputCharacterCount = text.length, outputSampleRate = rate,
             ),
         )
+    }
+
+    /** True when the voice that will read [language] is a studio-tier voice (the catalog is the one the read itself will use). */
+    private suspend fun readsWithStudioVoice(context: Context, language: String, cloudVoiceId: String?): Boolean {
+        if (LanguageChoice.normalize(language) == "en") return false
+        val listed = runCatching { TtsChainProvider.get(context).catalog.voices() }.getOrDefault(emptyList())
+        return CloudVoicePolicy.voiceFor(language, listed, cloudVoiceId)?.studio == true
     }
 
     /**

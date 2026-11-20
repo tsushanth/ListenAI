@@ -385,6 +385,7 @@
     <string name="player_go_back">Înapoi</string>
     <string name="player_try_again">Încearcă din nou</string>
     <string name="player_preparing_audio">Se pregătește audio…</string>
+    <string name="player_studio_starting">Se pornește această voce. Prima citire poate dura până la un minut.</string>
     <string name="player_percent_complete">%d %% finalizat</string>
     <string name="player_back">Înapoi</string>
     <string name="player_change_voice">Schimbă vocea</string>

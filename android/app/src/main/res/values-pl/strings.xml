@@ -402,6 +402,7 @@
     <string name="player_go_back">Wróć</string>
     <string name="player_try_again">Spróbuj ponownie</string>
     <string name="player_preparing_audio">Przygotowywanie audio…</string>
+    <string name="player_studio_starting">Uruchamianie tego głosu. Pierwsze czytanie może potrwać do minuty.</string>
     <string name="player_percent_complete">%d%% ukończono</string>
     <string name="player_back">Wstecz</string>
     <string name="player_change_voice">Zmień głos</string>

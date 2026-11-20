@@ -400,6 +400,7 @@
     <string name="player_go_back">Geri Dön</string>
     <string name="player_try_again">Tekrar Dene</string>
     <string name="player_preparing_audio">Ses hazırlanıyor…</string>
+    <string name="player_studio_starting">Bu ses başlatılıyor. İlk okuma bir dakikaya kadar sürebilir.</string>
     <string name="player_percent_complete">%d%% tamamlandı</string>
     <string name="player_back">Geri</string>
     <string name="player_change_voice">Sesi Değiştir</string>

@@ -71,11 +71,12 @@ class TtsSourceChain(
      * it ([cloudWillRead]: it does not stream inside a chunk, so a long chunk delays the first sound). A language the cloud
      * has no voice for (or while offline, or while the cloud is cooling down) keeps the usual sizes.
      */
-    internal fun chunkPlan(text: String, request: TtsRequest, cloudWillRead: Boolean): List<String> {
+    internal fun chunkPlan(text: String, request: TtsRequest, cloudWillRead: Boolean, mergeTinyChunks: Boolean = false): List<String> {
         val lang = request.language.substringBefore('-').lowercase()
         if (cloudWillRead && lang != "en") {
             val (first, max) = config.nonEnglishChunkSizes[lang] ?: (config.nonEnglishFirstChunkChars to config.nonEnglishMaxChunkChars)
-            return TextChunker.split(text, max, first)
+            val chunks = TextChunker.split(text, max, first)
+            return if (mergeTinyChunks) TextChunker.mergeTiny(chunks) else chunks
         }
         return TextChunker.split(text, config.maxChunkChars, config.firstChunkChars)
     }
@@ -105,7 +106,10 @@ class TtsSourceChain(
 
     fun speak(text: String, request: TtsRequest): Flow<SpokenChunk> = flow {
         val session = Session(order(request), request)
-        val chunks = chunkPlan(text, request, cloudWillRead(session))
+        val cloud = cloudWillRead(session)
+        // A studio voice (Beta) is never sent a chunk of a single letter (a sentence of one character left over at the end): it joins the chunk before it.
+        val studioRead = cloud && session.pins[SourceId.API]?.await()?.cloudVoice?.studio == true
+        val chunks = chunkPlan(text, request, cloud, mergeTinyChunks = studioRead)
         session.cacheVoice = resolveCacheVoice(session)
         val started = nowMs()
         var firstAudioAt: Long? = null
@@ -190,6 +194,8 @@ class TtsSourceChain(
             }
             val attempts = if (id == SourceId.API) 1 + config.retries.coerceAtLeast(0) else 1
             var attempt = 0
+            // A studio voice that did not answer within the cold-start deadline is not asked again for the same chunk: a second wait of the same length would not help.
+            var waitedForColdStart = false
             while (attempt < attempts) {
                 attempt++
                 val t0 = nowMs()
@@ -199,6 +205,7 @@ class TtsSourceChain(
                     val base = if (index == 0) firstBase else config.chunkBaseTimeoutMs
                     // A studio voice may be starting from zero: the chunks asked for at the start of the read wait for it (see ChainConfig.studioColdStartTimeoutMs).
                     val coldStart = id == SourceId.API && pinned.cloudVoice?.studio == true && index < config.prefetch.coerceAtLeast(1)
+                    waitedForColdStart = coldStart
                     val deadline = (if (coldStart) maxOf(base, config.studioColdStartTimeoutMs) else base) +
                         config.perCharTimeoutMs * text.length
                     val pcm = withTimeout(deadline) { src.synthesize(text, pinned) }
@@ -209,13 +216,13 @@ class TtsSourceChain(
                     return SpokenChunk(index, total, Pcm.resample(pcm, config.outputSampleRate), id, false, text.length, text)
                 } catch (e: TimeoutCancellationException) {
                     failures[id] = FallbackReason.TIMEOUT
-                    if (attempt < attempts) { delay(config.retryBackoffMs); continue }
+                    if (attempt < attempts && !waitedForColdStart) { delay(config.retryBackoffMs); continue }
                     s.note(id, FallbackReason.TIMEOUT); coolDown(id, s.lang, SourceFailure(FallbackReason.TIMEOUT))
                 } catch (e: CancellationException) {
                     throw e
                 } catch (e: SourceFailure) {
                     failures[id] = e.reason
-                    val transient = e.reason == FallbackReason.TIMEOUT || e.reason == FallbackReason.SERVER_ERROR
+                    val transient = e.reason == FallbackReason.TIMEOUT || e.reason == FallbackReason.SERVER_ERROR || e.reason == FallbackReason.BAD_AUDIO
                     if (transient && attempt < attempts) { delay(config.retryBackoffMs); continue }
                     s.note(id, e.reason); coolDown(id, s.lang, e, refused = true)
                 } catch (e: Exception) {
@@ -273,7 +280,7 @@ class TtsSourceChain(
             FallbackReason.OFFLINE -> config.cooldownOfflineMs
             FallbackReason.QUOTA -> f.retryAfterMs ?: config.cooldownQuotaMs
             FallbackReason.RATE_LIMITED -> f.retryAfterMs ?: config.cooldownRateLimitMs
-            FallbackReason.TIMEOUT, FallbackReason.SERVER_ERROR, FallbackReason.UNKNOWN -> config.cooldownTransientMs
+            FallbackReason.TIMEOUT, FallbackReason.SERVER_ERROR, FallbackReason.UNKNOWN, FallbackReason.BAD_AUDIO -> config.cooldownTransientMs
             // Missing engine, language data or model: not time-dependent, and the user may fix them any moment, so
             // do not remember it across sessions (the per-session check is cheap).
             else -> 0L
