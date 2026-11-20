@@ -20,6 +20,15 @@ private class FakeCatalog(var list: List<CloudVoice>) : CloudVoiceCatalog {
     override fun invalidate() { invalidated++ }
 }
 
+/** [json] with `tiers.studio.ws` set to [ws] (removed when null): the server's switch for the studio route. */
+internal fun withStudioWs(json: String, ws: Any?): String {
+    val root = org.json.JSONObject(json)
+    val tiers = root.optJSONObject("tiers") ?: org.json.JSONObject().also { root.put("tiers", it) }
+    val studio = tiers.optJSONObject("studio") ?: org.json.JSONObject().also { tiers.put("studio", it) }
+    if (ws == null) studio.remove("ws") else studio.put("ws", ws)
+    return root.toString()
+}
+
 /** The real public listing, captured with a keyless GET of the API's /v1/catalog on 2026-11-15 (40 voices, 21 live languages). */
 private fun liveCatalogJson(): String =
     CloudVoiceTest::class.java.getResourceAsStream("/readaloud/catalog_live_2026-11-15.json")!!.bufferedReader().readText()
@@ -124,8 +133,9 @@ class CloudVoiceTest {
     private val STUDIO_LANGS = listOf("en", "ar", "ca", "hr", "ms", "no", "sk", "sl", "sr", "th", "vi", "zh")
     private val MIRA = multi("mira", "Mira", STUDIO_LANGS, tier = "studio")
     private val REMY = multi("remy", "Remy", STUDIO_LANGS - listOf("ms", "sl"), tier = "studio").copy(gender = "male")
+    // The studio voices count only while the catalog says tiers.studio.ws is true; the 2026-11-20 capture predates the flag, so the tests set it.
     private fun studioCatalog() = CloudVoicePolicy.parse(
-        CloudVoiceTest::class.java.getResourceAsStream("/readaloud/catalog_studio_2026-11-20.json")!!.bufferedReader().readText()
+        withStudioWs(CloudVoiceTest::class.java.getResourceAsStream("/readaloud/catalog_studio_2026-11-20.json")!!.bufferedReader().readText(), true)
     )
     private val STUDIO_ONLY = listOf("ar", "ca", "hr", "ms", "no", "sk", "sl", "sr", "th", "vi", "zh")
 
