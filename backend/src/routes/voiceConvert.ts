@@ -389,6 +389,18 @@ export const voiceConvertRouter: Router = (() => {
 
       if (!modalRes.ok) {
         const text = await modalRes.text().catch(() => '');
+        // The converter answers 400 {status:'rejected', error} for audio it will not process (too short, too long,
+        // silent, unreadable). That is the caller's input, not a server fault: pass the message on as a 400.
+        if (modalRes.status === 400) {
+          try {
+            const rej = JSON.parse(text) as { status?: string; error?: unknown };
+            if (rej && rej.status === 'rejected') {
+              const msg = typeof rej.error === 'string' && rej.error.trim() ? rej.error.trim().slice(0, 300) : 'The audio was rejected.';
+              res.status(400).json({ status: 'rejected', error: msg });
+              return;
+            }
+          } catch { /* not JSON: fall through to the generic failure */ }
+        }
         throw new Error(`Modal returned HTTP ${modalRes.status}: ${text}`);
       }
 
