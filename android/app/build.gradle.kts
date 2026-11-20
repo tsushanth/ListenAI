@@ -11,6 +11,13 @@ plugins {
     id("com.google.gms.google-services")
 }
 
+// Tester bypass of the speech quota (header X-Tts-Test-Key, see ReadAloudApiSource). Only a debug build can carry it: the value comes from
+// the environment variable TTS_TEST_KEY, else the Gradle property -PttsTestKey, else `ttsTestKey` in android/local.properties (git-ignored).
+// Never from a tracked file, and the release build type below always gets an empty value, whatever is set here.
+val localProperties = Properties().also { p -> rootProject.file("local.properties").takeIf { it.exists() }?.inputStream()?.use { p.load(it) } }
+val ttsTestKeyForDebug: String = (System.getenv("TTS_TEST_KEY") ?: (project.findProperty("ttsTestKey") as String?) ?: localProperties.getProperty("ttsTestKey") ?: "")
+    .trim().also { require(it.isEmpty() || Regex("[A-Za-z0-9._~+/=-]{8,200}").matches(it)) { "ttsTestKey has characters a key does not have" } }
+
 // Load keystore properties from local file (not committed to git)
 val keystorePropertiesFile = rootProject.file("keystore.properties")
 val keystoreProperties = Properties()
@@ -37,8 +44,8 @@ android {
         applicationId = "com.listenai"
         minSdk = 26
         targetSdk = 36
-        versionCode = 102
-        versionName = "2.14.58"
+        versionCode = 103
+        versionName = "2.14.59"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -51,6 +58,8 @@ android {
         // engine to speak (including what screen readers read aloud) must not leave the phone until there is an
         // explicit in-app opt-in. See docs/tts-sources.md. `-PttsEngineApiDefault=true` is for local benchmarks only.
         buildConfigField("boolean", "TTS_ENGINE_API_DEFAULT", (project.findProperty("ttsEngineApiDefault") as String?) ?: "false")
+        // Empty unless a debug build is given a test key (see ttsTestKeyForDebug above).
+        buildConfigField("String", "TTS_TEST_KEY", "\"\"")
         vectorDrawables {
             useSupportLibrary = true
         }
@@ -121,9 +130,12 @@ android {
         release {
             isMinifyEnabled = false
             signingConfig = signingConfigs.getByName("release")
+            // A release build never carries the tester key, whatever the environment holds.
+            buildConfigField("String", "TTS_TEST_KEY", "\"\"")
         }
         debug {
             isMinifyEnabled = false
+            buildConfigField("String", "TTS_TEST_KEY", "\"$ttsTestKeyForDebug\"")
             // `-PsideBySide` installs the debug build next to the production app (com.listenai.debug / com.listenai.voice.debug)
             // instead of over it. Voice-flavor builds only: the reader flavor's google-services.json has no client for it.
             if (project.hasProperty("sideBySide")) applicationIdSuffix = ".debug"

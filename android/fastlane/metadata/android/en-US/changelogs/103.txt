@@ -1,0 +1,1 @@
+Reads more languages with a new voice (Beta): Croatian, Malay, Norwegian, Serbian, Slovak and Slovenian. The first read after a pause can take up to a minute to start.
