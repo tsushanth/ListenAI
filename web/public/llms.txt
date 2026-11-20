@@ -25,7 +25,7 @@ Pro is subscribed to in the Android app (Google Play); web checkout for Pro is n
 ## Developer API — realtime streaming text-to-speech
 Two engines, ReadAloud Live and ReadAloud Studio, stream natural-sounding speech over WebSocket as it's generated.
 - Docs and signup: https://readaloudai.org/developers
-- Voices and languages: ReadAloud Live has 20 voices in English, German, Spanish, French, Italian, Brazilian Portuguese, Czech, Dutch, Finnish, Greek, Hindi, Hungarian, Indonesian, Japanese, Polish, Portuguese, Romanian, Russian, Swedish, Turkish and Ukrainian; ReadAloud Studio has 20 English voices. GET /v1/voices lists them.
+- Voices and languages: ReadAloud Live has 24 voices in English, German, Spanish, French, Italian, Brazilian Portuguese, Czech, Dutch, Finnish, Greek, Hindi, Hungarian, Indonesian, Japanese, Polish, Portuguese, Romanian, Russian, Swedish, Turkish, Ukrainian, Danish, Vietnamese, Catalan and Arabic; ReadAloud Studio has 22 voices in English, Arabic, Catalan, Croatian, Malay, Norwegian, Slovak, Slovenian, Serbian, Thai, Vietnamese and Chinese. GET /v1/voices lists them.
 - Free tier: 10,000 characters, no credit card required
 - Pay-as-you-go: ReadAloud Live $0.004 per 1,000 characters ($4 per 1M), ReadAloud Studio $0.01 per 1,000 characters ($10 per 1M); batch speech to text $0.11 per hour of audio; no plan to manage, no minimums
 - Typical warm latency: about 250 ms to first audio on ReadAloud Live in our own runs (2026-10-10, one machine in San Jose); ElevenLabs Flash was faster to first audio in the same runs (about 166 to 174 ms)
