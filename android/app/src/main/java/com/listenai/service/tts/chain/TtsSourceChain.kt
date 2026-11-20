@@ -196,7 +196,10 @@ class TtsSourceChain(
                 try {
                     // The first chunk of a non-English cloud read gets a longer deadline (see ChainConfig.nonEnglishFirstChunkBaseTimeoutMs).
                     val firstBase = if (id == SourceId.API && s.lang != "en") config.nonEnglishFirstChunkBaseTimeoutMs else config.firstChunkBaseTimeoutMs
-                    val deadline = (if (index == 0) firstBase else config.chunkBaseTimeoutMs) +
+                    val base = if (index == 0) firstBase else config.chunkBaseTimeoutMs
+                    // A studio voice may be starting from zero: the chunks asked for at the start of the read wait for it (see ChainConfig.studioColdStartTimeoutMs).
+                    val coldStart = id == SourceId.API && pinned.cloudVoice?.studio == true && index < config.prefetch.coerceAtLeast(1)
+                    val deadline = (if (coldStart) maxOf(base, config.studioColdStartTimeoutMs) else base) +
                         config.perCharTimeoutMs * text.length
                     val pcm = withTimeout(deadline) { src.synthesize(text, pinned) }
                     if (pcm.pcm.isEmpty()) throw SourceFailure(FallbackReason.SERVER_ERROR, message = "empty audio")

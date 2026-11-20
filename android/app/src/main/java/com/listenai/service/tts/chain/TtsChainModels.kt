@@ -181,6 +181,13 @@ data class ChainConfig(
      */
     val nonEnglishChunkSizes: Map<String, Pair<Int, Int>> = mapOf("ja" to (60 to 90), "zh" to (60 to 90), "ko" to (60 to 90)),
     val nonEnglishFirstChunkBaseTimeoutMs: Long = 14_000,
+    /**
+     * A studio-tier voice (Beta) scales to zero: the first call after idle takes about 44 s while the machine starts. For a read with a
+     * studio voice, the chunks of the first prefetch window (the ones asked for while it may still be cold) get at least this deadline, so
+     * a slow start is waited for instead of counted as a timeout (retry, cooldown, the phone's voice). Later chunks, and every
+     * other voice, keep the usual deadlines.
+     */
+    val studioColdStartTimeoutMs: Long = 75_000,
     /** How long the cloud is skipped for ONE language after the API refused it (not listed any more, unknown voice). English is not affected. */
     val cooldownUnsupportedMs: Long = 10 * 60_000,
     /** Sources whose output is stored in the chunk cache. */
