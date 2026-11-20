@@ -347,6 +347,7 @@ function bodyGateway(answer: Record<string, unknown>, bodies: Record<string, unk
     return { ok: true, status: 200, json: async () => answer, text: async () => '' } as Response;
   }) as typeof fetch);
 }
+process.env.STUDIO_ROUTE = 'on'; // the studio-route tests below run with the route enabled; the off-by-default test resets it
 const post = (base: string, body: unknown, headers: Record<string, string> = {}) =>
   REAL_FETCH(`${base}/authorize`, { method: 'POST', headers: { 'content-type': 'application/json', ...headers }, body: JSON.stringify(body) });
 
@@ -431,4 +432,26 @@ test('studio route: STUDIO_APP_VOICES overrides the list', async () => {
     assert.equal((await post(base, { engine: 'studio', voice: 'remy' })).status, 400);
     assert.equal((await post(base, { engine: 'studio', voice: 'mira' })).status, 200);
   } finally { close(); restoreFetch(); delete process.env.REALTIME_TTS_API_KEY; delete process.env.STUDIO_APP_VOICES; }
+});
+
+test('studio route is OFF by default: {engine: studio, voice} is 400 UNKNOWN_VOICE and never reaches the gateway (so it cannot wake the GPU)', async () => {
+  process.env.REALTIME_TTS_API_KEY = 'k';
+  const prev = process.env.STUDIO_ROUTE;
+  delete process.env.STUDIO_ROUTE;
+  const bodies: Record<string, unknown>[] = [];
+  bodyGateway({ token: 't', url: 'u', tier: 'studio', warm: true }, bodies);
+  const { base, close } = await boot({ env: { TTS_ANON_AUTHORIZE_PER_MIN: '100' } });
+  try {
+    for (const v of ['mira', 'remy']) {
+      const res = await post(base, { engine: 'studio', voice: v });
+      assert.equal(res.status, 400);
+      assert.deepEqual(await res.json(), { error: 'UNKNOWN_VOICE' });
+    }
+    process.env.STUDIO_ROUTE = 'off';
+    assert.equal((await post(base, { engine: 'studio', voice: 'mira' })).status, 400);
+    assert.equal(bodies.length, 0);
+    // plain legacy requests are unaffected
+    assert.equal((await post(base, { engine: 'piper' })).status, 200);
+    assert.equal((await post(base, { engine: 'studio' })).status, 200);
+  } finally { close(); restoreFetch(); delete process.env.REALTIME_TTS_API_KEY; if (prev === undefined) delete process.env.STUDIO_ROUTE; else process.env.STUDIO_ROUTE = prev; }
 });
