@@ -339,3 +339,96 @@ test('test bypass: logs only "test-bypass used", never the key', () => withBypas
   assert.ok(logged.some((l) => l.includes('test-bypass used')));
   assert.ok(!logged.join('\n').includes(BYPASS_SECRET));
 }));
+
+// ---- Studio route: {"engine":"studio","voice":"mira"} ----
+function bodyGateway(answer: Record<string, unknown>, bodies: Record<string, unknown>[]) {
+  stubFetch((async (_u: string, o: RequestInit) => {
+    bodies.push(JSON.parse(o.body as string));
+    return { ok: true, status: 200, json: async () => answer, text: async () => '' } as Response;
+  }) as typeof fetch);
+}
+const post = (base: string, body: unknown, headers: Record<string, string> = {}) =>
+  REAL_FETCH(`${base}/authorize`, { method: 'POST', headers: { 'content-type': 'application/json', ...headers }, body: JSON.stringify(body) });
+
+test('studio route: voice goes to the gateway without an engine, answer carries url and the warm hint', async () => {
+  process.env.REALTIME_TTS_API_KEY = 'k';
+  const bodies: Record<string, unknown>[] = [];
+  bodyGateway({ token: 't', url: 'wss://global.example.test/tts', tier: 'studio', warm: true }, bodies);
+  const { base, close } = await boot();
+  try {
+    const res = await post(base, { engine: 'studio', voice: 'mira' });
+    assert.equal(res.status, 200);
+    assert.deepEqual(await res.json(), { token: 't', url: 'wss://global.example.test/tts', warm: true });
+    assert.deepEqual(bodies[0], { key: 'k', voice: 'mira' });
+  } finally { close(); restoreFetch(); delete process.env.REALTIME_TTS_API_KEY; }
+});
+
+test('studio route: alignment is never asked of the studio worker and is answered false', async () => {
+  process.env.REALTIME_TTS_API_KEY = 'k';
+  const bodies: Record<string, unknown>[] = [];
+  bodyGateway({ token: 't', url: 'u', tier: 'studio', warm: false }, bodies);
+  const { base, close } = await boot();
+  try {
+    const res = await post(base, { engine: 'studio', voice: 'remy', alignment: true });
+    assert.deepEqual(await res.json(), { token: 't', url: 'u', alignment: false, warm: false });
+    assert.ok(!('alignment' in bodies[0]!));
+  } finally { close(); restoreFetch(); delete process.env.REALTIME_TTS_API_KEY; }
+});
+
+test('studio route: a voice outside the studio list or a malformed id is 400 UNKNOWN_VOICE (or ignored when malformed), and never reaches the gateway', async () => {
+  process.env.REALTIME_TTS_API_KEY = 'k';
+  const bodies: Record<string, unknown>[] = [];
+  bodyGateway({ token: 't', url: 'u', tier: 'studio' }, bodies);
+  const { base, close } = await boot();
+  try {
+    const res = await post(base, { engine: 'studio', voice: 'aria' });
+    assert.equal(res.status, 400);
+    assert.deepEqual(await res.json(), { error: 'UNKNOWN_VOICE' });
+    assert.equal(bodies.length, 0);
+    // malformed voice is ignored: plain legacy studio request
+    const bad = await post(base, { engine: 'studio', voice: 'Mira Remy!' });
+    assert.equal(bad.status, 200);
+    assert.deepEqual(bodies[0], { key: 'k', engine: 'kokoro' });
+  } finally { close(); restoreFetch(); delete process.env.REALTIME_TTS_API_KEY; }
+});
+
+test('studio route: a gateway that answers another tier (older gateway, unknown voice) is 400 UNKNOWN_VOICE, never a wrong-voice socket; quota is refunded', async () => {
+  process.env.REALTIME_TTS_API_KEY = 'k';
+  bodyGateway({ token: 't', url: 'wss://live.example.test/tts' }, []); // no `tier` field
+  const { base, close } = await boot({ env: { TTS_ANON_AUTHORIZE_PER_MIN: '100', TTS_ANON_DAILY_CHARS: '4000' } });
+  try {
+    for (let i = 0; i < 3; i++) {
+      const res = await post(base, { engine: 'studio', voice: 'mira' });
+      assert.equal(res.status, 400, `call ${i}`);
+      assert.deepEqual(await res.json(), { error: 'UNKNOWN_VOICE' });
+    }
+    // daily budget is one authorize (4000 chars): refunds mean it was never used up
+    assert.equal((await post(base, { engine: 'piper' })).status, 200);
+  } finally { close(); restoreFetch(); delete process.env.REALTIME_TTS_API_KEY; }
+});
+
+test('studio route: live and legacy requests are byte-for-byte what they were (no voice, no tier check, no warm field)', async () => {
+  process.env.REALTIME_TTS_API_KEY = 'k';
+  const bodies: Record<string, unknown>[] = [];
+  bodyGateway({ token: 't', url: 'wss://live.example.test/tts', tier: 'live' }, bodies);
+  const { base, close } = await boot();
+  try {
+    const live = await post(base, { engine: 'piper', voice: 'mira' }); // voice on a non-studio request is not forwarded
+    assert.deepEqual(await live.json(), { token: 't', url: 'wss://live.example.test/tts' });
+    assert.deepEqual(bodies[0], { key: 'k', engine: 'piper' });
+    const legacyStudio = await post(base, { engine: 'studio' });
+    assert.equal(legacyStudio.status, 200);
+    assert.deepEqual(bodies[1], { key: 'k', engine: 'kokoro' });
+  } finally { close(); restoreFetch(); delete process.env.REALTIME_TTS_API_KEY; }
+});
+
+test('studio route: STUDIO_APP_VOICES overrides the list', async () => {
+  process.env.REALTIME_TTS_API_KEY = 'k';
+  process.env.STUDIO_APP_VOICES = 'mira';
+  bodyGateway({ token: 't', url: 'u', tier: 'studio' }, []);
+  const { base, close } = await boot();
+  try {
+    assert.equal((await post(base, { engine: 'studio', voice: 'remy' })).status, 400);
+    assert.equal((await post(base, { engine: 'studio', voice: 'mira' })).status, 200);
+  } finally { close(); restoreFetch(); delete process.env.REALTIME_TTS_API_KEY; delete process.env.STUDIO_APP_VOICES; }
+});
