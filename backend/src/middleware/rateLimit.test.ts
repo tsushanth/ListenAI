@@ -86,3 +86,36 @@ test('realtimeTtsAuthorizeRateLimit: a well-formed X-Install-Id gets the looser 
     server.close();
   }
 });
+
+test('tester bypass: the express limiters (burst 3/10 s and authorize 10/5 min) skip a request with the valid X-Tts-Test-Key, and only that one', async () => {
+  const secret = 'limiter-test-secret-0123456789abcdef';
+  process.env.TTS_TEST_BYPASS_KEY = secret;
+  const [{ default: express }, { realtimeTtsAuthorizeRateLimit, burstRateLimit }] = await Promise.all([import('express'), modP]);
+  const app = express();
+  app.set('trust proxy', 1);
+  app.use('/api/realtime-tts', burstRateLimit, realtimeTtsAuthorizeRateLimit, (_req: unknown, res: { status: (n: number) => { json: (b: unknown) => void } }) => {
+    res.status(200).json({ ok: true });
+  });
+  const server = app.listen(0);
+  const base = `http://127.0.0.1:${(server.address() as { port: number }).port}/api/realtime-tts/authorize`;
+  const hit = async (ip: string, key?: string) =>
+    (await fetch(base, { method: 'POST', headers: { 'x-forwarded-for': ip, ...(key ? { 'x-tts-test-key': key } : {}) } })).status;
+  try {
+    const withKey: number[] = [];
+    for (let i = 0; i < 30; i++) withKey.push(await hit('203.0.113.1', secret));
+    assert.ok(withKey.every((s) => s === 200), `valid key should pass 30 rapid calls: ${withKey}`);
+
+    const wrong: number[] = [];
+    for (let i = 0; i < 12; i++) wrong.push(await hit('203.0.113.2', 'wrong-wrong-wrong-wrong'));
+    assert.ok(wrong.includes(429), 'a wrong key keeps the limits');
+
+    // and while the secret is unset the right value is just an ordinary header
+    delete process.env.TTS_TEST_BYPASS_KEY;
+    const off: number[] = [];
+    for (let i = 0; i < 12; i++) off.push(await hit('203.0.113.3', secret));
+    assert.ok(off.includes(429), 'feature off when the secret is unset');
+  } finally {
+    delete process.env.TTS_TEST_BYPASS_KEY;
+    server.close();
+  }
+});
