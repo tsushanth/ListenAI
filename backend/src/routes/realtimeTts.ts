@@ -35,6 +35,13 @@ const GATEWAY_URL = process.env.REALTIME_TTS_GATEWAY_URL || 'https://api.readalo
 
 // Per-install quota, per-minute limit and global circuit breaker: see lib/ttsQuota.ts (in-memory, per instance;
 // the backend never sees the text, so characters are charged as a per-authorize estimate).
+const VOICE_ID_RE = /^[a-z0-9._-]{1,64}$/;
+// Public ids of the studio-tier voices the app may ask for over this route (the multilingual GPU worker's two voices). Env STUDIO_APP_VOICES
+// (comma list) overrides; anything else sent as {"engine":"studio","voice":...} answers 400 UNKNOWN_VOICE.
+function studioAppVoices(): Set<string> {
+  const raw = (process.env.STUDIO_APP_VOICES ?? 'mira,remy').split(',').map((v) => v.trim()).filter((v) => VOICE_ID_RE.test(v));
+  return new Set(raw);
+}
 const TIER_TO_GATEWAY_ENGINE: Record<string, string> = { live: 'piper', studio: 'kokoro' };
 
 export function createRealtimeTtsRouter(quota: TtsQuota = defaultQuota): Router {
@@ -70,17 +77,31 @@ const router = Router();
     // Clients may name the tier (`live` / `studio`, the only public engine names) or send the legacy engine id (still accepted
     // unchanged). The tier names are translated to the gateway's engine ids here, so no engine id has to be public.
     const requested = typeof req.body?.engine === 'string' ? req.body.engine : 'live';
+    // STUDIO ROUTE: {"engine":"studio","voice":"<public voice id>"} (the Android app, for a studio-tier voice). The gateway picks the worker by the
+    // voice (the multilingual GPU worker for Mira and Remy, answered at a neutral host, woken here so its cold start overlaps the app's connect).
+    // Without a voice, `studio` keeps its old meaning (the English studio worker), and every other request is untouched, so shipped app builds
+    // that always send {"engine":"piper"} behave exactly as before.
+    const voice = typeof req.body?.voice === 'string' && VOICE_ID_RE.test(req.body.voice) ? req.body.voice : undefined;
+    const studioVoice = requested === 'studio' && voice !== undefined;
+    if (studioVoice && !studioAppVoices().has(voice)) {
+      refund();
+      res.status(400).json({ error: 'UNKNOWN_VOICE' });
+      return;
+    }
     const engine = TIER_TO_GATEWAY_ENGINE[requested] ?? requested;
     // Optional: the app asks for word timings. Forwarded only when literally true; the gateway answers {alignment: true|false}
     // and, when true, returns the alignment worker's WebSocket URL (which adds `words` to each chunk_meta message).
+    // The studio worker has no word timings, so alignment is never asked of it (the answer says alignment:false).
     const wantAlignment = req.body?.alignment === true;
+    const forwardAlignment = wantAlignment && !studioVoice;
 
     let upstream: Response;
     try {
       upstream = await fetch(`${GATEWAY_URL}/tts/authorize`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ key: apiKey, engine, ...(wantAlignment ? { alignment: true } : {}) }),
+        // Studio route: no explicit engine, the voice decides (gateway registry), and the answer must say it reached the studio tier.
+        body: JSON.stringify({ key: apiKey, ...(studioVoice ? { voice } : { engine }), ...(forwardAlignment ? { alignment: true } : {}) }),
       });
     } catch (err) {
       realtimeTtsLogger.error({ err }, 'realtime-tts gateway unreachable');
@@ -100,7 +121,7 @@ const router = Router();
       return;
     }
 
-    const data = (await upstream.json().catch(() => null)) as { token?: string; url?: string; alignment?: boolean } | null;
+    const data = (await upstream.json().catch(() => null)) as { token?: string; url?: string; alignment?: boolean; tier?: string; warm?: boolean } | null;
     if (!data?.token || !data.url) {
       realtimeTtsLogger.error({ data }, 'realtime-tts authorize returned an unexpected response');
       refund();
@@ -108,8 +129,23 @@ const router = Router();
       return;
     }
 
+    // The studio route must have reached the studio tier. A gateway that does not know the voice (or an older gateway that ignores `voice`) answers
+    // the default Live engine, which would read the text in the wrong voice (the loop the app saw): refuse instead, the app uses the phone voice.
+    if (studioVoice && data.tier !== 'studio') {
+      realtimeTtsLogger.error({ tier: data.tier }, 'studio voice did not reach the studio tier');
+      refund();
+      res.status(400).json({ error: 'UNKNOWN_VOICE' });
+      return;
+    }
+
     // `alignment` is only present when the app asked for it; an older gateway that ignores the field yields false.
-    res.status(200).json({ token: data.token, url: data.url, ...(wantAlignment ? { alignment: data.alignment === true } : {}) });
+    res.status(200).json({
+      token: data.token,
+      url: data.url,
+      ...(wantAlignment ? { alignment: forwardAlignment && data.alignment === true } : {}),
+      // Hint only: a GPU wake-up was requested at the gateway (the studio worker scales to zero; cold start measured in docs/studio-voice-routing.md).
+      ...(studioVoice && typeof data.warm === 'boolean' ? { warm: data.warm } : {}),
+    });
   });
 
   return router;
