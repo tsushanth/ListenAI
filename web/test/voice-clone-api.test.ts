@@ -337,8 +337,9 @@ test('list_voices marks cloned voices and still lists built-ins when cloning is 
   try {
     const r = await m.call('readaloud_list_voices', { engine: 'live' })
     const s = r.structuredContent!
-    assert.deepEqual(s.live.voices.map((v: any) => v.voice_id).slice(0, 2), ['de-f1', 'de-m1'])
-    assert.deepEqual(Object.keys(s.live.voices[1]).sort(), ['dialect', 'gender', 'language', 'name', 'voice_id'])
+    const liveIds = s.live.voices.map((v: any) => v.voice_id)
+    assert.ok(liveIds.includes('de-f1') && liveIds.includes('de-m1'), 'built-in live voices are still listed')  // not the first two: the catalog order follows the registry
+    assert.deepEqual(Object.keys(s.live.voices[liveIds.indexOf('de-m1')]).sort(), ['dialect', 'gender', 'language', 'name', 'voice_id'])
     assert.equal(s.studio, undefined)
     assert.equal(s.cloned_voices.length, 2)
     assert.deepEqual(s.cloned_voices[0], { voice: `clone:${VOICE}`, id: VOICE, name: 'Narrator', language: 'en', status: 'active', created_at: 'x', cloned: true, usable: true })

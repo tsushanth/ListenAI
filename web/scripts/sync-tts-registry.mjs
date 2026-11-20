@@ -55,6 +55,17 @@ const LANGUAGES = {
   uk: { name: 'Ukrainian', label: 'Ukrainian' },
   'pt-BR': { name: 'Brazilian Portuguese', label: 'Portuguese (Brazil)' },
   zh: { name: 'Chinese', label: 'Chinese' },
+  da: { name: 'Danish', label: 'Danish' },
+  vi: { name: 'Vietnamese', label: 'Vietnamese' },
+  ca: { name: 'Catalan', label: 'Catalan' },
+  ar: { name: 'Arabic', label: 'Arabic' },
+  hr: { name: 'Croatian', label: 'Croatian' },
+  ms: { name: 'Malay', label: 'Malay' },
+  no: { name: 'Norwegian', label: 'Norwegian' },
+  sk: { name: 'Slovak', label: 'Slovak' },
+  sl: { name: 'Slovenian', label: 'Slovenian' },
+  sr: { name: 'Serbian', label: 'Serbian' },
+  th: { name: 'Thai', label: 'Thai' },
 }
 
 export const joinList = (xs) => (xs.length <= 1 ? xs.join('') : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`)
