@@ -72,10 +72,14 @@ object AudioPlausibility {
         }
     }
 
-    /** Null when the audio is plausible, otherwise a short reason (no text in it). [chars] counts code points. */
-    fun problem(chars: Int, audioSeconds: Double, speed: Float, language: String): String? {
+    /**
+     * Null when the audio is plausible, otherwise a short reason (no text in it). [chars] counts code points, [digits] how many of them are
+     * digits: a number is read as words (with number normalization on, "1234567890" takes 5 s), so each digit counts as three characters
+     * for the upper bound (measured on a live voice: 18 characters with 10 digits made 5.1 s).
+     */
+    fun problem(chars: Int, audioSeconds: Double, speed: Float, language: String, digits: Int = 0): String? {
         val slowest = if (speed > 0f) minOf(speed, 1f).toDouble() else 1.0
-        val maxSeconds = maxOf(2.0, chars * secondsPerChar(language) / slowest)
+        val maxSeconds = maxOf(2.0, (chars + 2 * digits.coerceIn(0, chars)) * secondsPerChar(language) / slowest)
         val minSeconds = chars * 0.01
         return when {
             audioSeconds > maxSeconds -> "audio too long: %.1f s for %d chars".format(java.util.Locale.ROOT, audioSeconds, chars) // i18n-ok: log reason

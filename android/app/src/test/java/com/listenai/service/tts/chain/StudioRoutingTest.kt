@@ -332,6 +332,17 @@ class StudioRoutingTest {
         assertNotNull(AudioPlausibility.problem(100, 0.0, 1f, "sr"))
     }
 
+    @Test fun `digit-heavy text is allowed the time its number words take (measured on a live voice)`() {
+        // "Total: 1234567890." 18 chars, 10 digits: 5.1 s; es "Llamé al 600 123 456 el 15/11/2026 a las 10:45." 47 chars, 21 digits: 7.9 s
+        assertNull(AudioPlausibility.problem(18, 5.1, 1f, "es", digits = 10))
+        assertNull(AudioPlausibility.problem(47, 7.9, 1f, "es", digits = 21))
+        assertNull(AudioPlausibility.problem(43, 8.9, 1f, "de", digits = 19))
+        // without the allowance the first would have been rejected
+        assertNotNull(AudioPlausibility.problem(18, 5.1, 1f, "es"))
+        // a runaway is still caught when the text has digits
+        assertNotNull(AudioPlausibility.problem(40, 60.0, 1f, "zh", digits = 10))
+    }
+
     private fun studioWorker(w: FakeWorker, seconds: Double) { w.audioSeconds = { seconds } }
 
     @Test fun `a studio chunk with runaway audio fails as BAD_AUDIO and its socket is not reused`() = runBlocking {

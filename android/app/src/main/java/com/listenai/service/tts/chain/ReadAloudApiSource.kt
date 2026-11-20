@@ -320,7 +320,7 @@ class ReadAloudApiSource(
         if (audioIsChecked(conn.route)) {
             val problem = AudioPlausibility.problem(
                 chars = text.codePointCount(0, text.length), audioSeconds = chunk.durationMs / 1000.0, speed = request.speed,
-                language = languageCode ?: request.language,
+                language = languageCode ?: request.language, digits = text.codePoints().filter { Character.isDigit(it) }.count().toInt(),
             ) ?: AudioPlausibility.echoMismatch(request.voiceId, languageCode, answered?.echoedVoice, answered?.echoedLanguage)
             if (problem != null) {
                 conn.closed = true
