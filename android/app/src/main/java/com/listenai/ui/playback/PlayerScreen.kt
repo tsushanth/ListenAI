@@ -528,7 +528,7 @@ fun PlayerScreen(
                                 context.getString(R.string.player_timeout_error)
                             e.message?.contains("rate limit", ignoreCase = true) == true ->
                                 context.getString(R.string.player_rate_limit_error)
-                            else -> e.message ?: context.getString(R.string.player_synthesis_failed)
+                            else -> com.listenai.service.tts.TTSErrorText.resolve(context, e) ?: context.getString(R.string.player_synthesis_failed)
                         }
                         playerState = PlayerState.Error(errorMessage, article)
                         ttsNotificationService.showArticleTTSFailed(
@@ -598,7 +598,8 @@ fun PlayerScreen(
                     text = article.rawText,
                     voice = voice,
                     forceOnDevice = forceOnDevice,
-                    language = if (forceOnDevice) null else article.language,
+                    // The reading language of this document (the user's pick first), also for the forced offline read: it keeps a non-English read off the English-only model.
+                    language = com.listenai.service.tts.LanguageChoice.resolve(languagePrefs.override(article.id), null, article.language),
                     onProgress = { progress ->
                       if (isCurrent()) {
                         // Update UI state (called from IO dispatcher, but Compose state is thread-safe)
@@ -671,7 +672,7 @@ fun PlayerScreen(
                 if (!isCurrent()) return@launch
                 val unavailable = e as? TTSError.SpeechUnavailable
                 val errorMessage = unavailable?.let { com.listenai.service.tts.SpeechUnavailableText.resolve(context, it) }
-                    ?: e.message ?: context.getString(R.string.player_regeneration_failed)
+                    ?: com.listenai.service.tts.TTSErrorText.resolve(context, e) ?: context.getString(R.string.player_regeneration_failed)
                 playerState = PlayerState.Error(errorMessage, article, unavailable?.installVoiceLanguage, unavailable?.installEngine == true)
                 ttsNotificationService.showArticleTTSFailed(
                     articleId = article.id,
@@ -1445,7 +1446,7 @@ private fun ArticleHeader(article: Article) {
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
-                    text = stringResource(R.string.player_words_count, article.wordCount),
+                    text = androidx.compose.ui.res.pluralStringResource(R.plurals.player_words_count, article.wordCount, article.wordCount),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -1463,7 +1464,9 @@ private fun ArticleHeader(article: Article) {
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
-                    text = article.estimatedDurationFormatted,
+                    text = article.estimatedMinutes.let { minutes ->
+                        if (minutes < 1) stringResource(R.string.duration_less_than_min) else stringResource(R.string.duration_min, minutes)
+                    },
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -1501,7 +1504,10 @@ private fun ArticleHeader(article: Article) {
  */
 @Composable
 private fun EmailMetadataHeader(article: Article) {
-    val dateFormat = remember { java.text.SimpleDateFormat("MMM d, yyyy 'at' h:mm a", java.util.Locale.getDefault()) }
+    val dateFormat = remember { java.text.SimpleDateFormat(
+        android.text.format.DateFormat.getBestDateTimePattern(java.util.Locale.getDefault(), "yMMMdjm"),
+        java.util.Locale.getDefault(),
+    ) }
 
     Column(
         verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -1682,7 +1688,10 @@ private fun SynthesisBanner(
 
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
+                        // The synthesizers report English progress text ("Generating audio...", "Generating audio (2/9)");
+                        // show the localized label instead. Other messages pass through unchanged.
                         text = detail?.statusMessage?.takeIf { it.isNotBlank() }
+                            ?.let { if (it.startsWith("Generating audio")) stringResource(R.string.player_generating_audio) else it }
                             ?: stringResource(R.string.player_preparing_audio),
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Medium
@@ -1717,8 +1726,9 @@ private fun SynthesisBanner(
                     }
                 }
                 Text(
-                    text = "Chunk ${sectionsCompleted.coerceAtMost(totalSections)} of $totalSections" +
-                        (detail?.estimatedTimeRemaining?.let { " · ~${it.toInt()}s remaining" } ?: ""),
+                    text = detail?.estimatedTimeRemaining?.let {
+                        stringResource(R.string.synth_chunk_progress_remaining, sectionsCompleted.coerceAtMost(totalSections), totalSections, it.toInt())
+                    } ?: stringResource(R.string.synth_chunk_progress, sectionsCompleted.coerceAtMost(totalSections), totalSections),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -1727,16 +1737,10 @@ private fun SynthesisBanner(
             // Queue row — only while genuinely queued
             if ((queueDepth ?: 0) > 1 && (queuePosition != null || queueDepth != null)) {
                 Text(
-                    text = buildString {
-                        if (queuePosition != null) {
-                            append(ordinal(queuePosition))
-                            append(" in line")
-                        }
-                        if (queueDepth != null) {
-                            if (isNotEmpty()) append(" · ")
-                            append("$queueDepth jobs queued")
-                        }
-                    },
+                    text = listOfNotNull(
+                        queuePosition?.let { stringResource(R.string.synth_queue_position, it) },
+                        queueDepth?.let { androidx.compose.ui.res.pluralStringResource(R.plurals.synth_queue_depth, it, it) },
+                    ).joinToString(" · "),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -1749,22 +1753,14 @@ private fun SynthesisBanner(
             // is contending for the worker.
             if (showOfflineCta && onUseOffline != null && (queueDepth ?: 0) > 1) {
                 TextButton(onClick = onUseOffline) {
-                    Text("Use offline AI voice instead")
+                    Text(stringResource(R.string.synth_use_offline_voice))
                 }
             }
         }
     }
 }
 
-private fun ordinal(n: Int): String {
-    if (n % 100 in 11..13) return "${n}th"
-    return when (n % 10) {
-        1 -> "${n}st"
-        2 -> "${n}nd"
-        3 -> "${n}rd"
-        else -> "${n}th"
-    }
-}
+
 
 @Composable
 private fun PlayerBar(
@@ -2345,7 +2341,7 @@ private fun RateLimitedContent(
             Spacer(modifier = Modifier.height(24.dp))
 
             Text(
-                text = if (isPremium) "Hang tight!" else "You're on fire!",
+                text = stringResource(if (isPremium) R.string.rate_limited_title_premium else R.string.rate_limited_title_free),
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold
             )
@@ -2353,10 +2349,7 @@ private fun RateLimitedContent(
             Spacer(modifier = Modifier.height(12.dp))
 
             Text(
-                text = if (isPremium)
-                    "The server is briefly busy. Retrying automatically..."
-                else
-                    "Free accounts are limited to 10 requests per minute. Upgrade for unlimited listening with no wait times.",
+                text = stringResource(if (isPremium) R.string.rate_limited_body_premium else R.string.rate_limited_body_free),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(horizontal = 16.dp),
@@ -2376,16 +2369,16 @@ private fun RateLimitedContent(
                         modifier = Modifier.padding(20.dp)
                     ) {
                         Text(
-                            text = "Upgrade to Pro",
+                            text = stringResource(R.string.quota_upgrade_to_pro),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.SemiBold,
                             color = Color(0xFF8B5CF6)
                         )
                         Spacer(modifier = Modifier.height(12.dp))
-                        QuotaBenefit(text = "Unlimited requests — no rate limits")
-                        QuotaBenefit(text = "30 articles per day")
-                        QuotaBenefit(text = "Premium HD voices")
-                        QuotaBenefit(text = "Priority synthesis queue")
+                        QuotaBenefit(text = stringResource(R.string.rate_limited_benefit_unlimited))
+                        QuotaBenefit(text = stringResource(R.string.rate_limited_benefit_articles_per_day))
+                        QuotaBenefit(text = stringResource(R.string.rate_limited_benefit_hd_voices))
+                        QuotaBenefit(text = stringResource(R.string.quota_benefit_priority))
                     }
                 }
 
@@ -2409,7 +2402,7 @@ private fun RateLimitedContent(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "Upgrade to Pro",
+                        text = stringResource(R.string.quota_upgrade_to_pro),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold
                     )
@@ -2428,14 +2421,14 @@ private fun RateLimitedContent(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "Retrying in ${secondsLeft}s...",
+                        text = stringResource(R.string.rate_limited_retrying_in, secondsLeft),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 } else {
                     TextButton(onClick = {}, enabled = false) {
                         Text(
-                            text = "Try again in ${secondsLeft}s",
+                            text = stringResource(R.string.rate_limited_try_again_in, secondsLeft),
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
@@ -2443,7 +2436,7 @@ private fun RateLimitedContent(
             } else {
                 TextButton(onClick = onRetry) {
                     Text(
-                        text = "Try Again",
+                        text = stringResource(R.string.player_try_again),
                         color = Blue
                     )
                 }

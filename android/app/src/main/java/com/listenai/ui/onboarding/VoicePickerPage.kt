@@ -28,6 +28,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.stringResource
 import com.listenai.R
 import com.listenai.service.settings.SettingsManager
 
@@ -135,7 +136,7 @@ fun VoicePickerPage() {
         Spacer(modifier = Modifier.height(20.dp))
 
         Text(
-            text = "Choose your voice",
+            text = stringResource(R.string.vpp_title),
             fontSize = 26.sp,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center,
@@ -144,7 +145,7 @@ fun VoicePickerPage() {
         Spacer(modifier = Modifier.height(10.dp))
 
         Text(
-            text = "Same Kokoro voice in both options — pick where it runs. You can change this any time in Settings.",
+            text = stringResource(R.string.vpp_subtitle),
             fontSize = 14.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
@@ -158,8 +159,8 @@ fun VoicePickerPage() {
         ) {
             VoiceSampleCard(
                 modifier = Modifier.weight(1f),
-                title = "Premium voice",
-                subtitle = "Cloud · highest quality · needs internet",
+                title = stringResource(R.string.vpp_premium_title),
+                subtitle = stringResource(R.string.vpp_premium_subtitle),
                 tint = Color(0xFF7B5BFF),
                 isSelected = !useOfflineKokoro,
                 isPlaying = currentlyPlaying == "cloud",
@@ -173,8 +174,8 @@ fun VoicePickerPage() {
             )
             VoiceSampleCard(
                 modifier = Modifier.weight(1f),
-                title = "On-device",
-                subtitle = "~80 MB download · offline · private",
+                title = stringResource(R.string.vpp_ondevice_title),
+                subtitle = stringResource(R.string.vpp_ondevice_subtitle),
                 tint = Color(0xFF22C55E),
                 isSelected = useOfflineKokoro,
                 isPlaying = currentlyPlaying == "ondevice",
@@ -260,7 +261,7 @@ private fun VoiceSampleCard(
                 )
                 Spacer(modifier = Modifier.width(4.dp))
                 Text(
-                    text = if (isPlaying) "Stop" else "Play sample",
+                    text = stringResource(if (isPlaying) R.string.vcl_stop else R.string.vpp_play_sample),
                     fontSize = 12.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = Color.White,

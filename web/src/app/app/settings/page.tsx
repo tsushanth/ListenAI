@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { User, Smartphone, ExternalLink, Copy, Check } from 'lucide-react'
 import DeveloperApiSection from '@/components/DeveloperApiSection'
+import { playUrl } from '@/lib/playLinks'
 
 export default function SettingsPage() {
   const [deviceId, setDeviceId] = useState<string>('')
@@ -77,7 +78,7 @@ export default function SettingsPage() {
           </p>
 
           <a
-            href="https://play.google.com/store/apps/details?id=com.listenai"
+            href={playUrl('app_settings')}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-2 bg-white text-black font-semibold px-6 py-3 rounded-lg hover:bg-white/90 transition-colors"

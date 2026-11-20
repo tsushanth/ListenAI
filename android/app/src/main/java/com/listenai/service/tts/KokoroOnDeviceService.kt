@@ -1,5 +1,6 @@
 package com.listenai.service.tts
 
+import com.listenai.R
 import ai.onnxruntime.OnnxTensor
 import ai.onnxruntime.OrtEnvironment
 import ai.onnxruntime.OrtSession
@@ -244,7 +245,7 @@ class KokoroOnDeviceService(private val context: Context) : TTSService {
                         currentSectionIndex = i,
                         sectionsCompleted = i,
                         totalSections = totalChunks,
-                        statusMessage = "Generating audio (${i + 1}/$totalChunks)",
+                        statusMessage = context.getString(R.string.tts_status_generating_chunk, i + 1, totalChunks),
                         charactersProcessed = charsBeforeChunk,
                         totalCharacters = totalChars,
                     )
@@ -258,7 +259,7 @@ class KokoroOnDeviceService(private val context: Context) : TTSService {
                         currentSectionIndex = i,
                         sectionsCompleted = i + 1,
                         totalSections = totalChunks,
-                        statusMessage = "Generating audio (${i + 1}/$totalChunks)",
+                        statusMessage = context.getString(R.string.tts_status_generating_chunk, i + 1, totalChunks),
                         charactersProcessed = charsBeforeChunk + chunk.length,
                         totalCharacters = totalChars,
                     )

@@ -45,6 +45,14 @@ def _write_json(path: str, data: dict) -> None:
     os.replace(tmp, path)
 
 
+def _voice_language(vdir: str):
+    """The language the voice was created in (meta.json); engines that are multilingual use it, the English engine ignores it."""
+    try:
+        return _read_json(os.path.join(vdir, "meta.json")).get("language")
+    except Exception:  # noqa: BLE001
+        return None
+
+
 def sweep_expired(settings: Settings, engine=None, now: float | None = None) -> int:
     """Retention: delete voices (reference audio + cached conditionals + meta) unused for voice_ttl_days, and stale temp dirs."""
     now = now if now is not None else time.time()
@@ -247,7 +255,7 @@ def create_app(engine, settings: Settings, clock=time.time) -> FastAPI:
             t0 = time.time()
             try:
                 with work():
-                    engine.prepare_voice(tmp)  # cache the conditionals once per voice (the 15-20 s cost)
+                    engine.prepare_voice(tmp, language=language)  # cache the conditionals once per voice (the 15-20 s cost)
             except (AssertionError, ValueError, RuntimeError) as e:
                 tel.record(ok=False, gen_s=time.time() - t0, created=True)
                 log("voice_rejected", voice_id=voice_id, reason=type(e).__name__)
@@ -288,7 +296,7 @@ def create_app(engine, settings: Settings, clock=time.time) -> FastAPI:
         t0 = time.time()
         try:
             breaker.check()
-            r = engine.synthesize(vdir, text, speed, settings.chunk_chars, settings.max_gen_seconds_per_request)
+            r = engine.synthesize(vdir, text, speed, settings.chunk_chars, settings.max_gen_seconds_per_request, language=_voice_language(vdir))
         except BreakerOpen:
             raise
         except Exception:

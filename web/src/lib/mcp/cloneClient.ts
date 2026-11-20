@@ -51,7 +51,10 @@ export function parseCloneVoiceId(voice: string | undefined): string | null {
 // Input schemas (shared by the MCP tools and the REST JSON body)
 // ----------------------------------------------------------------------------
 
-export const issueConsentPhraseInput = {}
+export const issueConsentPhraseInput = {
+  language: z.string().trim().max(8).optional()
+    .describe('Optional. Language the speaker will read the phrase in: "en" (default), "es" or "de". Leave it out for English.'),
+}
 
 export const createClonedVoiceInput = {
   name: z.string().trim().min(1).max(100).default('My cloned voice')
@@ -177,8 +180,14 @@ export interface ConsentPhraseResult {
   expires_at?: string
 }
 
-export async function issueConsentPhrase(o: { apiKey: string; keyId: string }): Promise<ConsentPhraseResult> {
-  const r = await ok(await cloneRequest(o.apiKey, o.keyId, '/consent-phrase', { method: 'POST' }))
+/** Path for the consent-phrase call. No language (or a blank one) keeps the exact English-default path. */
+export function consentPhrasePath(language?: string | null): string {
+  const l = typeof language === 'string' ? language.trim().toLowerCase() : ''
+  return l ? `/consent-phrase?language=${encodeURIComponent(l)}` : '/consent-phrase'
+}
+
+export async function issueConsentPhrase(o: { apiKey: string; keyId: string; language?: string | null }): Promise<ConsentPhraseResult> {
+  const r = await ok(await cloneRequest(o.apiKey, o.keyId, consentPhrasePath(o.language), { method: 'POST' }))
   const b = (await r.json().catch(() => null)) as Partial<ConsentPhraseResult> | null
   if (b?.consent_required === false) return { consent_required: false }
   if (!b?.challenge_id || !b.phrase || !b.expires_at) throw new UpstreamError('upstream', 'Unexpected response from the voice cloning service.', true)

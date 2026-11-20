@@ -2,10 +2,13 @@ package com.listenai.ui.import_content
 
 import android.content.Context
 import android.net.Uri
+import androidx.annotation.StringRes
 import androidx.core.net.toUri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.listenai.R
 import com.listenai.data.models.Article
+import com.listenai.ui.common.UiText
 import com.listenai.service.FirebaseAnalyticsHelper
 import com.listenai.data.models.SourceType
 import com.listenai.data.repository.ArticleRepository
@@ -31,7 +34,7 @@ sealed class ImportState {
     object Loading : ImportState()
     /** [language] is the detected reading language of the new article, null when unknown; the screens use it for the missing-voice notice. */
     data class Success(val articleId: String, val language: String? = null) : ImportState()
-    data class Error(val message: String) : ImportState()
+    data class Error(val text: UiText) : ImportState()
 }
 
 class ImportViewModel(
@@ -88,12 +91,16 @@ class ImportViewModel(
                lowerUrl.contains("arxiv.org/pdf")
     }
 
+    /** The failure text: the exception's own message when it has one, else [fallback]. */
+    private fun importError(e: Throwable, @StringRes fallback: Int) =
+        ImportState.Error(e.message?.let { UiText.Raw(it) } ?: UiText.Res(fallback))
+
     /**
      * Import content from a URL (detects and handles PDF URLs)
      */
     fun importFromUrl(url: String, context: Context? = null) {
         if (url.isBlank()) {
-            _importState.value = ImportState.Error("Please enter a valid URL")
+            _importState.value = ImportState.Error(UiText.Res(R.string.import_err_invalid_url))
             return
         }
 
@@ -102,7 +109,7 @@ class ImportViewModel(
             if (context != null) {
                 importFromPdfUrl(context, url)
             } else {
-                _importState.value = ImportState.Error("Cannot import PDF URL without context")
+                _importState.value = ImportState.Error(UiText.Res(R.string.import_err_pdf_no_context))
             }
             return
         }
@@ -116,7 +123,7 @@ class ImportViewModel(
                 val extractedContent = webImportService.extractContent(url)
 
                 if (extractedContent == null) {
-                    _importState.value = ImportState.Error("Failed to extract content from URL")
+                    _importState.value = ImportState.Error(UiText.Res(R.string.import_err_extract_url))
                     return@launch
                 }
 
@@ -147,7 +154,7 @@ class ImportViewModel(
                 _importState.value = ImportState.Success(article.id, article.language)
             } catch (e: Exception) {
                 FirebaseAnalyticsHelper.logImportFailed("url", e.message)
-                _importState.value = ImportState.Error(e.message ?: "Failed to import from URL")
+                _importState.value = importError(e, R.string.import_err_import_url)
             }
         }
     }
@@ -166,7 +173,7 @@ class ImportViewModel(
                 val pdfFile = downloadPdfToCache(context, url)
 
                 if (pdfFile == null) {
-                    _importState.value = ImportState.Error("Failed to download PDF")
+                    _importState.value = ImportState.Error(UiText.Res(R.string.import_err_download_pdf))
                     return@launch
                 }
 
@@ -178,7 +185,7 @@ class ImportViewModel(
 
                 if (extractedContent == null || extractedContent.content.isBlank()) {
                     pdfFile.delete()
-                    _importState.value = ImportState.Error("Failed to extract text from PDF")
+                    _importState.value = ImportState.Error(UiText.Res(R.string.import_err_extract_pdf))
                     return@launch
                 }
 
@@ -217,7 +224,7 @@ class ImportViewModel(
             } catch (e: Exception) {
                 android.util.Log.e("ImportViewModel", "Failed to import PDF from URL", e)
                 FirebaseAnalyticsHelper.logImportFailed("pdf_url", e.message)
-                _importState.value = ImportState.Error(e.message ?: "Failed to import PDF from URL")
+                _importState.value = importError(e, R.string.import_err_import_pdf_url)
             }
         }
     }
@@ -272,7 +279,7 @@ class ImportViewModel(
                 val extractedContent = pdfImportService.extractContent(uri)
 
                 if (extractedContent == null || extractedContent.content.isBlank()) {
-                    _importState.value = ImportState.Error("Failed to extract text from PDF")
+                    _importState.value = ImportState.Error(UiText.Res(R.string.import_err_extract_pdf))
                     return@launch
                 }
 
@@ -305,7 +312,7 @@ class ImportViewModel(
                 _importState.value = ImportState.Success(article.id, article.language)
             } catch (e: Exception) {
                 FirebaseAnalyticsHelper.logImportFailed("pdf", e.message)
-                _importState.value = ImportState.Error(e.message ?: "Failed to import PDF")
+                _importState.value = importError(e, R.string.import_err_import_pdf)
             }
         }
     }
@@ -323,7 +330,7 @@ class ImportViewModel(
                 val extractedContent = epubImportService.extractContent(uri)
 
                 if (extractedContent == null || extractedContent.chapters.isEmpty()) {
-                    _importState.value = ImportState.Error("Failed to extract text from EPUB")
+                    _importState.value = ImportState.Error(UiText.Res(R.string.import_err_extract_epub))
                     return@launch
                 }
 
@@ -395,7 +402,7 @@ class ImportViewModel(
                 _importState.value = ImportState.Success(firstArticleId!!, firstArticleLanguage)
             } catch (e: Exception) {
                 FirebaseAnalyticsHelper.logImportFailed("epub", e.message)
-                _importState.value = ImportState.Error(e.message ?: "Failed to import EPUB")
+                _importState.value = importError(e, R.string.import_err_import_epub)
             }
         }
     }
@@ -405,7 +412,7 @@ class ImportViewModel(
      */
     fun importFromText(title: String, content: String) {
         if (content.isBlank()) {
-            _importState.value = ImportState.Error("Please enter some content")
+            _importState.value = ImportState.Error(UiText.Res(R.string.import_err_no_content))
             return
         }
 
@@ -439,7 +446,7 @@ class ImportViewModel(
                 _importState.value = ImportState.Success(article.id, article.language)
             } catch (e: Exception) {
                 FirebaseAnalyticsHelper.logImportFailed("text", e.message)
-                _importState.value = ImportState.Error(e.message ?: "Failed to save article")
+                _importState.value = importError(e, R.string.import_err_save_article)
             }
         }
     }
@@ -449,7 +456,7 @@ class ImportViewModel(
      */
     fun importFromClipboard(clipboardText: String) {
         if (clipboardText.isBlank()) {
-            _importState.value = ImportState.Error("Clipboard is empty")
+            _importState.value = ImportState.Error(UiText.Res(R.string.clipboard_empty))
             return
         }
 
@@ -497,7 +504,7 @@ class ImportViewModel(
                 _importState.value = ImportState.Success(article.id, article.language)
             } catch (e: Exception) {
                 FirebaseAnalyticsHelper.logImportFailed("clipboard", e.message)
-                _importState.value = ImportState.Error(e.message ?: "Failed to import from clipboard")
+                _importState.value = importError(e, R.string.import_err_import_clipboard)
             }
         }
     }

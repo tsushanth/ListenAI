@@ -105,6 +105,37 @@ class NonEnglishWireTest {
         }
     }
 
+    @Test fun `number words are asked for only where they help - es de fr it, and hi with Devanagari digits`() = runBlocking {
+        FakeWorker().use { w ->
+            val src = w.source(ListCatalog(listOf(AR)))
+            for (lang in listOf("es", "de", "fr", "it", "es-MX", "de-AT")) {
+                src.synthesize("Es 3 und 4.", TtsRequest("bella", lang))
+                assertEquals(lang, "numbers", w.nextMessage().optString("normalize"))
+            }
+            for (lang in listOf("ja", "ru", "pt", "pt-BR", "cs", "tr", "pl", "el", "fi", "hu", "id", "in", "nl", "ro", "sv", "uk")) {
+                src.synthesize("Es 3 und 4.", TtsRequest("bella", lang))
+                val m = w.nextMessage()
+                assertFalse(lang, m.has("normalize"))
+                assertTrue("language_code is still sent for $lang", m.has("language_code"))
+                assertEquals("pcm_24000", m.getString("format"))
+            }
+            src.close()
+        }
+    }
+
+    @Test fun `Hindi asks for number words only when the text has Devanagari digits`() = runBlocking {
+        FakeWorker().use { w ->
+            val src = w.source(ListCatalog(listOf(AR)))
+            src.synthesize("मेरे पास ३ बिल्लियाँ हैं।", TtsRequest("bella", "hi"))
+            assertEquals("numbers", w.nextMessage().optString("normalize"))
+            src.synthesize("मेरे पास 3 बिल्लियाँ हैं।", TtsRequest("bella", "hi"))
+            assertFalse(w.nextMessage().has("normalize"))
+            src.synthesize("मेरे पास तीन बिल्लियाँ हैं।", TtsRequest("bella", "hi"))
+            assertFalse(w.nextMessage().has("normalize"))
+            src.close()
+        }
+    }
+
     @Test fun `every listed language sends its own code`() = runBlocking {
         FakeWorker().use { w ->
             val src = w.source(ListCatalog(listOf(AR)))

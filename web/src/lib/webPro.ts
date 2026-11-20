@@ -10,10 +10,12 @@
 // on the Checkout Session, a backend webhook that writes the entitlement, GET /api/entitlement for /success,
 // and the Stripe webhook endpoint pointed at the backend. See the entitlement PR (WEB_PRO_ENTITLEMENT_ENABLED).
 
+import { playUrl } from './playLinks.ts'
+
 export const WEB_PRO_CHECKOUT_ENABLED = false
 
 // Same applicationId as android/app/build.gradle.kts (guarded by test/web-pro.test.ts).
-export const PLAY_STORE_URL = 'https://play.google.com/store/apps/details?id=com.listenai'
+export const PLAY_STORE_URL = playUrl('pro_cta')
 
 export const SUPPORT_EMAIL = 'support@readaloudai.org'
 

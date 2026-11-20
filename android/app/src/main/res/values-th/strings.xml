@@ -127,7 +127,9 @@
     <string name="clipboard_url_detected">ตรวจพบ URL</string>
     <string name="clipboard_text_content">เนื้อหาข้อความ</string>
     <string name="clipboard_empty">คลิปบอร์ดว่างเปล่า</string>
-    <string name="word_count_format">%d คำ</string>
+    <plurals name="word_count_format">
+        <item quantity="other">%d คำ</item>
+    </plurals>
     <string name="pdf_selected">เลือก PDF แล้ว</string>
     <string name="epub_selected">EPUB</string>    <string name="remove">ลบ</string>
 
@@ -415,7 +417,9 @@
     <string name="player_sleep_timer_set">ตั้งเวลานอน %d นาที</string>
     <string name="player_sleep_timer_cancelled">ยกเลิกตั้งเวลานอนแล้ว</string>
     <string name="player_by_author">โดย %s</string>
-    <string name="player_words_count">%d คำ</string>
+    <plurals name="player_words_count">
+        <item quantity="other">%d คำ</item>
+    </plurals>
     <string name="player_untitled">ไม่มีชื่อ</string>
     <string name="player_article_fallback">บทความ</string>
     <string name="player_from_label">จาก:</string>
@@ -487,4 +491,98 @@
     <string name="language_portuguese">Português</string>
     <string name="language_italian">Italiano</string>
     <string name="language_hindi">हिन्दी</string>
+
+    <!-- Machine translated, needs native review: account deletion, bookmarks, widget, share sheet, Read Text, analytics consent, offline AI -->
+    <string name="system_tts_back_content_description">ย้อนกลับ</string>
+    <string name="analytics_consent_title">แชร์สถิติการใช้งานหรือไม่</string>
+    <string name="analytics_consent_body">อนุญาตให้ Google Firebase นับว่ามีการใช้ฟีเจอร์ใดบ้าง โดยผูกกับรหัสแอปแบบสุ่ม ไม่ผูกกับชื่อหรืออีเมลของคุณ เราไม่เคยส่งข้อความที่คุณอ่านหรือนำเข้า และเราไม่แสดงโฆษณา คุณเปลี่ยนค่านี้ได้ทุกเมื่อในการตั้งค่า</string>
+    <string name="analytics_consent_allow">อนุญาต</string>
+    <string name="analytics_consent_decline">ไม่ละ ขอบคุณ</string>
+    <string name="settings_analytics_title">สถิติการใช้งาน</string>
+    <string name="settings_analytics_subtitle">แชร์สถิติการใช้งานแบบไม่ระบุตัวตนกับ Google Firebase</string>
+    <string name="tab_read_text">อ่านข้อความ</string>
+    <string name="read_text_title">อ่านข้อความ</string>
+    <string name="read_text_subtitle">เลือกรูปภาพของข้อความที่พิมพ์ แล้ว ReadAloud จะอ่านให้ฟัง</string>
+    <string name="read_text_take_photo">ถ่ายรูป</string>
+    <string name="read_text_pick_gallery">เลือกจากแกลเลอรี</string>
+    <string name="read_text_coming_soon">การถ่ายรูปด้วยกล้องจะมาในการอัปเดตครั้งถัดไป ตอนนี้ให้เลือกรูปจากแกลเลอรีของคุณ</string>
+    <string name="onboarding_get_started">เริ่มต้นใช้งาน</string>
+    <string name="settings_offline_ai">AI ออฟไลน์</string>
+    <string name="settings_offline_ai_subtitle_ready">โมเดลในอุปกรณ์พร้อมแล้ว · ใช้งานได้โดยไม่ต้องใช้อินเทอร์เน็ต</string>
+    <string name="settings_offline_ai_subtitle_not_ready">สร้างเสียงในอุปกรณ์ ไม่ต้องใช้อินเทอร์เน็ต</string>
+    <string name="settings_offline_ai_subtitle_ineligible">อุปกรณ์นี้ไม่รองรับ (ต้องใช้ Android 8+ และ RAM 3 GB)</string>
+    <string name="settings_offline_ai_downloading">กำลังดาวน์โหลดโมเดลในอุปกรณ์…</string>
+    <string name="settings_offline_ai_waiting_wifi">กำลังรอ Wi-Fi…</string>
+    <string name="settings_offline_ai_allow_cellular">อนุญาตให้ดาวน์โหลดผ่านเครือข่ายมือถือ</string>
+    <string name="source_epub">หนังสือ</string>
+    <string name="process_text_label">อ่านออกเสียง</string>
+    <string name="incoming_title">อ่านข้อความนี้ออกเสียง</string>
+    <string name="incoming_read_now">อ่านเลย</string>
+    <string name="incoming_try_again">ลองอีกครั้ง</string>
+    <string name="incoming_preparing">กำลังเตรียม…</string>
+    <string name="incoming_save_to_library">บันทึกลงคลัง</string>
+    <string name="incoming_file_unreadable">อ่านไฟล์นั้นไม่ได้ ลองเปิดจากแอปไฟล์ หรือแชร์ไปยัง ReadAloud แทน</string>
+    <string name="incoming_cancel">ยกเลิก</string>
+    <string name="incoming_source_link">หน้าเว็บ</string>
+    <string name="incoming_source_pdf">PDF</string>
+    <string name="incoming_source_epub">หนังสือ EPUB</string>
+    <string name="incoming_source_txt">ไฟล์ข้อความ</string>
+    <string name="bookmarks_title">ที่คั่นหน้า</string>
+    <string name="bookmarks_add_here">คั่นหน้าตรงนี้</string>
+    <string name="bookmarks_added">คั่นหน้าไว้ที่ %1$s</string>
+    <string name="bookmarks_empty">ยังไม่มีที่คั่นหน้า ขณะฟังให้เปิดตัวเลือกเพิ่มเติม แล้วเลือกคั่นหน้าตรงนี้</string>
+    <string name="bookmarks_delete">ลบที่คั่นหน้า</string>
+    <string name="widget_description">เปิดบทความล่าสุดของคุณ หรืออ่านสิ่งที่คุณคัดลอกไว้</string>
+    <string name="widget_resume">ฟังต่อ</string>
+    <string name="widget_continue">ล่าสุดในคลังของคุณ</string>
+    <string name="widget_open">เปิด ReadAloud</string>
+    <string name="widget_percent_done">ฟังแล้ว %1$d%%</string>
+    <string name="widget_clipboard_empty">ไม่มีอะไรให้อ่าน ให้คัดลอกข้อความหรือลิงก์ก่อน</string>
+    <string name="widget_paste_and_read">อ่านคลิปบอร์ด</string>
+    <string name="follow_along">อ่านตามเสียง</string>
+    <string name="follow_along_subtitle">เลื่อนข้อความให้ตามทันเสียงอ่าน</string>
+    <string name="on">เปิด</string>
+    <string name="off">ปิด</string>
+    <string name="settings_account">บัญชี</string>
+    <string name="settings_delete_account">ลบบัญชี</string>
+    <string name="settings_delete_account_subtitle">ลบบัญชีและข้อมูลบนคลาวด์ของคุณอย่างถาวร</string>
+    <string name="delete_account_title">ลบบัญชีของคุณหรือไม่</string>
+    <string name="delete_account_body">การดำเนินการนี้จะลบบัญชี เสียงที่โคลน และข้อมูลเสียงกับข้อมูลการใช้งานที่เก็บไว้ให้คุณบนคลาวด์อย่างถาวร ไม่สามารถยกเลิกได้ บทความที่คุณนำเข้าจะยังอยู่บนอุปกรณ์นี้</string>
+    <string name="delete_account_play_note">การลบบัญชีไม่ได้ยกเลิกการสมัครสมาชิก Google Play ของคุณ ให้ยกเลิกใน Google Play เพื่อไม่ให้ถูกเรียกเก็บเงิน</string>
+    <string name="delete_account_confirm">ลบบัญชี</string>
+    <string name="delete_account_deleting">กำลังลบบัญชีของคุณ…</string>
+    <string name="delete_account_subscription_title">คุณมีการสมัครสมาชิกที่ใช้งานอยู่</string>
+    <string name="delete_account_subscription_body">การลบบัญชีไม่ได้ยกเลิกการสมัครสมาชิกของคุณ คุณจึงอาจยังถูกเรียกเก็บเงินอยู่</string>
+    <string name="delete_account_subscription_play">การสมัครสมาชิก Google Play: ยกเลิกใน Google Play (การสมัครสมาชิก)</string>
+    <string name="delete_account_subscription_stripe">การสมัครสมาชิกผ่านเว็บ: ยกเลิกก่อนจากพอร์ทัลการเรียกเก็บเงินบนเว็บไซต์ ReadAloud หรืออีเมลไปที่ support@kreativekoala.llc</string>
+    <string name="delete_account_open_play">เปิด Google Play</string>
+    <string name="delete_account_anyway">ลบต่อไป</string>
+    <string name="delete_account_error_title">ไม่สามารถลบบัญชีของคุณได้</string>
+    <string name="delete_account_error_network">ไม่มีการเชื่อมต่อ ตรวจสอบอินเทอร์เน็ตแล้วลองอีกครั้ง</string>
+    <string name="delete_account_error_server">เกิดข้อผิดพลาดที่ฝั่งของเรา บัญชีของคุณยังใช้งานอยู่ โปรดลองอีกครั้งในอีกสักครู่</string>
+    <string name="delete_account_error_unknown">เกิดข้อผิดพลาด โปรดลองอีกครั้ง</string>
+    <string name="delete_account_error_signin">เซสชันของคุณสิ้นสุดแล้ว คุณจึงถูกออกจากระบบบนอุปกรณ์นี้ หากบัญชียังอยู่ ให้เข้าสู่ระบบอีกครั้งแล้วลองใหม่จากการตั้งค่า</string>
+    <string name="delete_account_done_title">ลบบัญชีแล้ว</string>
+    <string name="delete_account_done_body">บัญชีและข้อมูลบนคลาวด์ของคุณถูกลบแล้ว และคุณถูกออกจากระบบบนอุปกรณ์นี้</string>
+    <string name="delete_account_done_play">การสมัครสมาชิก Google Play ของคุณยังใช้งานอยู่ ให้ยกเลิกใน Google Play เพื่อไม่ให้ถูกเรียกเก็บเงิน</string>
+    <string name="delete_account_done_stripe">การสมัครสมาชิกผ่านเว็บของคุณยังใช้งานอยู่ อีเมลไปที่ support@kreativekoala.llc เพื่อให้ยกเลิกและไม่ถูกเรียกเก็บเงิน</string>
+
+    <!-- Machine translated, needs native review: c2 -->
+    <string name="read_text_reading_image">กำลังอ่านรูปภาพ…</string>
+    <string name="read_text_starting_playback">กำลังเริ่มเล่นเสียงอ่าน…</string>
+    <string name="read_text_speaking">กำลังอ่านออกเสียง</string>
+    <string name="read_text_done">เสร็จแล้ว</string>
+    <string name="read_text_read_again">อ่านอีกครั้ง</string>
+    <string name="read_text_no_text">ไม่พบข้อความในรูปภาพนั้น ลองใช้รูปที่ชัดกว่านี้</string>
+    <string name="read_text_playback_failed">เล่นไม่สำเร็จ แตะอ่านอีกครั้งเพื่อลองใหม่</string>
+    <string name="read_text_playback_failed_code">เล่นไม่สำเร็จ (รหัส %1$d) แตะอ่านอีกครั้งเพื่อลองใหม่</string>
+    <string name="read_text_error_generic">เกิดข้อผิดพลาด</string>
+    <string name="read_text_cd_take_photo">ถ่ายรูปข้อความเพื่ออ่านออกเสียง จะมาในการอัปเดตครั้งถัดไป</string>
+    <string name="read_text_cd_pick_gallery">เลือกรูปที่มีอยู่จากแกลเลอรีของคุณเพื่ออ่านออกเสียง</string>
+    <string name="read_text_ocr_failed">การจดจำข้อความล้มเหลว: %1$s</string>
+    <string name="read_text_image_load_failed">โหลดรูปภาพไม่ได้: %1$s</string>
+    <string name="player_generating_audio">กำลังสร้างเสียง…</string>
+    <plurals name="incoming_source_text">
+        <item quantity="other">ข้อความ, %1$d คำ</item>
+    </plurals>
 </resources>

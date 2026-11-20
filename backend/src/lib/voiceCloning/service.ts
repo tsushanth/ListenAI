@@ -8,7 +8,7 @@ import type {
   AsrClient, BlobStore, CloneServiceClient, CloneStore, Eligibility, OutputHashRecord, SynthesisResult, VoiceCloneRow,
 } from './types.js';
 import type { ClonePolicy } from './policy.js';
-import { issuePhrase } from './consentPhrase.js';
+import { issuePhrase, languageOfPhrase, type ConsentLanguage } from './consentPhrase.js';
 import { evaluateConsentClip, evaluateReference } from './referenceGate.js';
 import { evaluateConsent } from './consent.js';
 
@@ -39,6 +39,22 @@ export interface CloneDeps {
   newId?: () => string;
   /** Evaluated per request. Omitted = true (strict). false = attestation mode (VOICE_CLONE_REQUIRE_CONSENT_PHRASE="false"). */
   consentRequired?: () => boolean;
+  /** Called when the consent phrase did not match (and only then). The runtime logs it; tests can observe it. */
+  onPhraseMismatch?: (info: PhraseMismatchInfo) => void;
+}
+
+export interface PhraseMismatchInfo {
+  language: string;
+  /** Language the consent phrase was issued and checked in (the voice language above can differ). */
+  consentLanguage: ConsentLanguage;
+  attempt: number;
+  wer: number;
+  codeWordsInOrder: boolean;
+  /** The server-issued random words (no account data). */
+  expectedCodeWords: string[];
+  /** What the transcriber heard, truncated. */
+  heard: string;
+  consentSec: number;
 }
 
 export const isConsentRequired = (deps: Pick<CloneDeps, 'consentRequired'>): boolean => (deps.consentRequired ? deps.consentRequired() : true);
@@ -53,6 +69,20 @@ const addMonths = (d: Date, m: number) => { const x = new Date(d); x.setUTCMonth
 // deployment would need a DB-level constraint; see docs/VOICE_CLONING_CONSENT.md (known limitation).
 const inFlight = new Set<string>();
 
+// Wake the transcription worker that checks the spoken consent phrase. Throttled so a burst of requests
+// costs at most one start per 90 s and 20 per hour; never throws, never waits.
+const ASR_WARM_GAP_MS = 90_000, ASR_WARM_PER_HOUR = 20;
+let asrWarmLast = 0; let asrWarmTimes: number[] = [];
+export function warmAsr(asr: AsrClient, now: () => number = Date.now): Promise<void> {
+  const t = now();
+  asrWarmTimes = asrWarmTimes.filter((x) => t - x < 3_600_000);
+  if (!asr.warm || t - asrWarmLast < ASR_WARM_GAP_MS || asrWarmTimes.length >= ASR_WARM_PER_HOUR) return Promise.resolve();
+  asrWarmLast = t; asrWarmTimes.push(t);
+  return asr.warm().catch(() => undefined);
+}
+/** Test hook: forget throttle state. */
+export function resetAsrWarmForTests() { asrWarmLast = 0; asrWarmTimes = []; }
+
 export function assertEligible(e: Eligibility): void {
   if (!e.emailVerified) throw new CloneError(403, 'email_unverified', 'Verify your email address before creating a cloned voice.');
   if (!e.plan) throw new CloneError(402, 'payment_required', 'Voice cloning requires an active paid plan with a payment method on file.');
@@ -62,14 +92,18 @@ export function dailyLimitFor(e: Eligibility, p: ClonePolicy): number {
   return e.plan === 'comped' ? p.dailyLimitTrial : p.dailyLimitPaid;
 }
 
-export async function issueConsentChallenge(deps: CloneDeps, e: Eligibility) {
+export async function issueConsentChallenge(deps: CloneDeps, e: Eligibility, language?: ConsentLanguage) {
   assertEligible(e);
   if (!isConsentRequired(deps)) throw new CloneError(409, 'consent_not_required', 'Consent phrase is not required; send attested=true instead.');
+  void warmAsr(deps.asr);
+  void deps.service.warm?.()?.catch(() => undefined); // the speaker records the phrase next: wake the GPU apps meanwhile
   const now = (deps.now ?? (() => new Date()))();
-  const { phrase, codeWords } = issuePhrase();
+  // The phrase text starts with its language's template, so the language is stored with the challenge and the create
+  // step (evaluateConsent) transcribes and scores the recording in the same language.
+  const { phrase, codeWords } = issuePhrase(undefined, language);
   const expiresAt = new Date(now.getTime() + deps.policy.challengeTtlSec * 1000).toISOString();
   const row = await deps.store.createChallenge({ userId: e.userId, phrase, codeWords, expiresAt });
-  return { challengeId: row.id, phrase: row.phrase, expiresAt: row.expiresAt };
+  return { challengeId: row.id, phrase: row.phrase, expiresAt: row.expiresAt, language: languageOfPhrase(row.phrase) };
 }
 
 export interface CreateVoiceInput {
@@ -106,6 +140,8 @@ export async function createVoiceClone(deps: CloneDeps, input: CreateVoiceInput)
     throw new CloneError(429, 'creation_in_progress', 'A voice creation is already in progress for this account.');
   }
   inFlight.add(e.userId);
+  void warmAsr(asr);
+  void service.warm?.(input.language)?.catch(() => undefined); // start the app that will hold the voice while the gate runs
   try {
     // 1. Daily limit (counts deleted voices too).
     const limit = dailyLimitFor(e, policy);
@@ -140,6 +176,14 @@ export async function createVoiceClone(deps: CloneDeps, input: CreateVoiceInput)
     );
     if (!ev.ok) {
       if (attempts >= policy.maxConsentAttempts) await store.consumeChallenge(ch.id, now.toISOString());
+      if (ev.failure === 'phrase_mismatch') {
+        // What the transcriber heard against what was issued, so a failing language or voice shows up as data
+        // instead of a bare 422. Failures only; the transcript is cut to 200 characters.
+        deps.onPhraseMismatch?.({
+          language: input.language, consentLanguage: languageOfPhrase(ch.phrase), attempt: attempts, wer: Number(ev.phraseWer.toFixed(2)), codeWordsInOrder: ev.codeWordsInOrder,
+          expectedCodeWords: ch.codeWords, heard: ev.transcript.slice(0, 200), consentSec: consentMetrics.durationSec,
+        });
+      }
       const status = ev.failure === 'asr_unavailable' ? 503 : 422;
       throw new CloneError(status, ev.failure!, ev.failure === 'phrase_mismatch'
         ? 'We could not match what you said to the phrase. Read it exactly as shown.'
@@ -172,7 +216,7 @@ export async function createVoiceClone(deps: CloneDeps, input: CreateVoiceInput)
       await store.consumeChallenge(ch.id, createdAt);
       return { voice, similarity: ev.speakerSimilarity!, borderline: ev.borderline };
     } catch (err) {
-      await service.deleteVoice(voiceId).catch(() => undefined);
+      await service.deleteVoice(voiceId, input.language).catch(() => undefined);
       throw err;
     }
   } finally {
@@ -213,7 +257,7 @@ async function createAttested(deps: CloneDeps, input: CreateVoiceInput, now: Dat
     await store.insertVoice(voice);
     return { voice, similarity: 0, borderline: false };
   } catch (err) {
-    await service.deleteVoice(voiceId).catch(() => undefined);
+    await service.deleteVoice(voiceId, input.language).catch(() => undefined);
     throw err;
   }
 }
@@ -254,7 +298,7 @@ export async function deleteVoiceClone(deps: CloneDeps, userId: string, voiceId:
   if (v.status === 'deleted') return { deleted: true, alreadyDeleted: true };
   await store.setVoiceStatus(voiceId, { status: 'deleting' });
   try {
-    await service.deleteVoice(voiceId);
+    await service.deleteVoice(voiceId, v.language);
   } catch {
     throw new CloneError(502, 'deletion_pending', 'The voice is disabled and queued for deletion but the audio store did not confirm. Retry this request.');
   }
@@ -271,7 +315,7 @@ export async function disableVoiceClone(deps: CloneDeps, voiceId: string, reason
   if (!v) throw new CloneError(404, 'voice_not_found', 'Cloned voice not found.');
   await store.setVoiceStatus(voiceId, { status: 'disabled', disabledReason: reason, disabledAt: now.toISOString() });
   let serviceDisabled = true;
-  try { await service.disableVoice(voiceId); } catch { serviceDisabled = false; }
+  try { await service.disableVoice(voiceId, v.language); } catch { serviceDisabled = false; }
   const purged = await store.purgeVoiceOutputs(voiceId);
   return { voiceId, status: 'disabled' as const, outputsPurged: purged, serviceDisabled };
 }

@@ -6,7 +6,8 @@
 // contract) but this route only needs the token/url hand-off, not the WebSocket relay that upstream.ts also
 // does for the MCP server.
 import { Router } from 'express';
-import { ttsQuota as defaultQuota, type TtsQuota } from '../lib/ttsQuota.js';
+import { ttsQuota as defaultQuota, type TtsQuota, type Admission } from '../lib/ttsQuota.js';
+import { isTtsTestBypass, logTestBypassUsed } from '../lib/ttsTestBypass.js';
 
 // SECURITY NOTE: this router is mounted (see index.ts) behind requireAuth, but requireAuth defaults
 // any request with a missing/invalid/empty bearer token to a shared "pro user" instead of rejecting
@@ -49,12 +50,22 @@ const router = Router();
 
     // Optional X-Install-Id (random UUID from the app). Absent/malformed -> stricter anonymous bucket keyed by IP, so
     // app versions that do not send it keep working.
-    const admission = quota.admit(req.get('x-install-id'), req.ip);
-    if (!admission.ok) {
-      if (admission.retryAfterSeconds !== undefined) res.set('Retry-After', String(admission.retryAfterSeconds));
-      res.status(admission.status).json(admission.body);
-      return;
+    // Tester bypass (lib/ttsTestBypass.ts): a request with the valid X-Tts-Test-Key skips the quota entirely (nothing is
+    // reserved, so nothing is refunded); the express limiters skip it too. Off unless TTS_TEST_BYPASS_KEY is set.
+    const bypass = isTtsTestBypass(req);
+    let admission: Admission | null = null;
+    if (bypass) {
+      logTestBypassUsed();
+    } else {
+      const decision = quota.admit(req.get('x-install-id'), req.ip);
+      if (!decision.ok) {
+        if (decision.retryAfterSeconds !== undefined) res.set('Retry-After', String(decision.retryAfterSeconds));
+        res.status(decision.status).json(decision.body);
+        return;
+      }
+      admission = decision;
     }
+    const refund = () => { if (admission) quota.refund(admission); };
 
     // Clients may name the tier (`live` / `studio`, the only public engine names) or send the legacy engine id (still accepted
     // unchanged). The tier names are translated to the gateway's engine ids here, so no engine id has to be public.
@@ -73,7 +84,7 @@ const router = Router();
       });
     } catch (err) {
       realtimeTtsLogger.error({ err }, 'realtime-tts gateway unreachable');
-      quota.refund(admission);
+      refund();
       res.status(502).json({ error: 'realtime-tts gateway unreachable' });
       return;
     }
@@ -84,7 +95,7 @@ const router = Router();
       // sent it back in an error body. Log it (server-side only) and return a fixed, key-free message.
       const body = await upstream.text().catch(() => '');
       realtimeTtsLogger.error({ status: upstream.status, body }, 'realtime-tts authorize failed');
-      quota.refund(admission);
+      refund();
       res.status(502).json({ error: 'realtime-tts authorize failed' });
       return;
     }
@@ -92,7 +103,7 @@ const router = Router();
     const data = (await upstream.json().catch(() => null)) as { token?: string; url?: string; alignment?: boolean } | null;
     if (!data?.token || !data.url) {
       realtimeTtsLogger.error({ data }, 'realtime-tts authorize returned an unexpected response');
-      quota.refund(admission);
+      refund();
       res.status(502).json({ error: 'realtime-tts authorize failed' });
       return;
     }

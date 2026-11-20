@@ -9,6 +9,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -20,6 +22,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import com.listenai.R
 import com.listenai.service.marketplace.VoiceMarketplaceService
@@ -59,7 +62,7 @@ fun VoiceMarketplaceScreen(
                     sort = selectedSort
                 )
             } catch (e: Exception) {
-                errorMessage = e.message ?: "Failed to load voices"
+                errorMessage = marketplaceService.errorText(context, e, R.string.marketplace_error_load)
             } finally {
                 isLoading = false
             }
@@ -76,7 +79,7 @@ fun VoiceMarketplaceScreen(
                 title = { Text(stringResource(R.string.marketplace_title)) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = stringResource(R.string.back))
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                 },
                 actions = {
@@ -126,7 +129,7 @@ fun VoiceMarketplaceScreen(
                     FilterChip(
                         selected = selectedSort == option,
                         onClick = { selectedSort = option },
-                        label = { Text(option.displayName) }
+                        label = { Text(stringResource(option.labelRes)) }
                     )
                 }
             }
@@ -171,12 +174,12 @@ fun VoiceMarketplaceScreen(
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(
-                                text = errorMessage ?: "Error",
+                                text = errorMessage ?: stringResource(R.string.error_generic),
                                 color = MaterialTheme.colorScheme.error
                             )
                             Spacer(modifier = Modifier.height(16.dp))
                             Button(onClick = { loadVoices() }) {
-                                Text("Retry")
+                                Text(stringResource(R.string.retry))
                             }
                         }
                     }
@@ -318,7 +321,7 @@ private fun VoiceCard(
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = "${voice.usageCount} uses",
+                            text = pluralStringResource(R.plurals.marketplace_uses_count, voice.usageCount, voice.usageCount),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -347,7 +350,7 @@ private fun VoiceCard(
             }
 
             Icon(
-                Icons.Default.ChevronRight,
+                Icons.AutoMirrored.Filled.KeyboardArrowRight,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant
             )

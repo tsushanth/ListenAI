@@ -50,11 +50,9 @@ import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.google.mlkit.vision.common.InputImage
-import com.google.mlkit.vision.text.TextRecognition
-import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import com.listenai.R
 import com.listenai.service.LanguageDetector
+import com.listenai.service.ocr.OcrEngine
 import com.listenai.service.tts.ReadTextLanguage
 import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.CompletableDeferred
@@ -124,7 +122,7 @@ fun ReadTextScreen() {
                 status = Status.Error
                 return@launch
             }
-            val language = ReadTextLanguage.languageOrDefault(LanguageDetector.detectOrNull(text))
+            val language = ReadTextLanguage.languageFor(LanguageDetector.detectOrNull(text), text)
             when (val plan = ReadTextLanguage.plan(language, tts.isLanguageAvailable(ReadTextLanguage.localeFor(language)))) {
                 is ReadTextLanguage.Plan.Speak -> {
                     noVoiceLanguage = null
@@ -185,14 +183,14 @@ fun ReadTextScreen() {
             @Deprecated("Required override even though deprecated")
             override fun onError(utteranceId: String?) {
                 mainHandler.post {
-                    errorMessage = "Playback failed. Tap Read again to retry."
+                    errorMessage = context.getString(R.string.read_text_playback_failed)
                     status = Status.Error
                 }
             }
 
             override fun onError(utteranceId: String?, errorCode: Int) {
                 mainHandler.post {
-                    errorMessage = "Playback failed (code $errorCode). Tap Read again to retry."
+                    errorMessage = context.getString(R.string.read_text_playback_failed_code, errorCode)
                     status = Status.Error
                 }
             }
@@ -215,6 +213,7 @@ fun ReadTextScreen() {
         errorMessage = null
         recognizedText = ""
         runOcr(
+            scope = scope,
             context = context,
             uri = uri,
             onResult = { text ->
@@ -297,6 +296,8 @@ private fun ReadTextContent(
     onTakePhoto: () -> Unit,
     onReplay: () -> Unit,
 ) {
+    val takePhotoDescription = stringResource(R.string.read_text_cd_take_photo)
+    val pickGalleryDescription = stringResource(R.string.read_text_cd_pick_gallery)
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -319,7 +320,7 @@ private fun ReadTextContent(
                 .fillMaxWidth()
                 .height(64.dp)
                 .semantics {
-                    contentDescription = "Take a photo of text to read aloud. Coming in the next update."
+                    contentDescription = takePhotoDescription
                 },
             enabled = false, // Re-enabled when CameraX path lands in the next commit.
             colors = ButtonDefaults.buttonColors(),
@@ -339,7 +340,7 @@ private fun ReadTextContent(
                 .fillMaxWidth()
                 .height(64.dp)
                 .semantics {
-                    contentDescription = "Pick an existing photo from your gallery to read aloud"
+                    contentDescription = pickGalleryDescription
                 },
         ) {
             Icon(imageVector = Icons.Outlined.Image, contentDescription = null)
@@ -372,7 +373,7 @@ private fun ReadTextContent(
                     CircularProgressIndicator()
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "Reading the image…",
+                        text = stringResource(R.string.read_text_reading_image),
                         style = MaterialTheme.typography.bodyMedium,
                     )
                 }
@@ -380,7 +381,7 @@ private fun ReadTextContent(
                     CircularProgressIndicator()
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "Starting voice playback…",
+                        text = stringResource(R.string.read_text_starting_playback),
                         style = MaterialTheme.typography.bodyMedium,
                     )
                     if (recognizedText.isNotBlank()) {
@@ -393,7 +394,7 @@ private fun ReadTextContent(
                 }
                 Status.Speaking -> {
                     Text(
-                        text = "🔊  Speaking now",
+                        text = "🔊  " + stringResource(R.string.read_text_speaking),
                         style = MaterialTheme.typography.titleSmall,
                         modifier = Modifier
                             .fillMaxWidth()
@@ -406,7 +407,7 @@ private fun ReadTextContent(
                 }
                 Status.Spoken -> {
                     Text(
-                        text = "Done.",
+                        text = stringResource(R.string.read_text_done),
                         style = MaterialTheme.typography.titleSmall,
                         modifier = Modifier
                             .fillMaxWidth()
@@ -418,19 +419,19 @@ private fun ReadTextContent(
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                     TextButton(onClick = onReplay) {
-                        Text(text = "Read again")
+                        Text(text = stringResource(R.string.read_text_read_again))
                     }
                 }
                 Status.NoText -> {
                     Text(
-                        text = "No text found in that image. Try a clearer photo.",
+                        text = stringResource(R.string.read_text_no_text),
                         style = MaterialTheme.typography.bodyMedium,
                         textAlign = TextAlign.Center,
                     )
                 }
                 Status.Error -> {
                     Text(
-                        text = errorMessage ?: "Something went wrong.",
+                        text = errorMessage ?: stringResource(R.string.read_text_error_generic),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.error,
                         textAlign = TextAlign.Center,
@@ -444,7 +445,7 @@ private fun ReadTextContent(
                     if (recognizedText.isNotBlank()) {
                         Spacer(modifier = Modifier.height(12.dp))
                         TextButton(onClick = onReplay) {
-                            Text(text = "Read again")
+                            Text(text = stringResource(R.string.read_text_read_again))
                         }
                     }
                 }
@@ -454,24 +455,29 @@ private fun ReadTextContent(
 }
 
 /**
- * Run ML Kit Text Recognition on the picked URI and hand the text to [onResult]; the caller detects its language and
- * speaks it. Errors surface via [onError] so the composable can re-render its status liveRegion.
+ * Run on-device text recognition on the picked URI (Latin, Chinese, Japanese, Korean and Devanagari models, see [OcrEngine])
+ * and hand the text to [onResult]; the caller detects its language and speaks it. Errors surface via [onError] so the
+ * composable can re-render its status liveRegion.
  */
 private fun runOcr(
+    scope: kotlinx.coroutines.CoroutineScope,
     context: android.content.Context,
     uri: Uri,
     onResult: (String) -> Unit,
     onError: (String) -> Unit,
 ) {
-    try {
-        val image = InputImage.fromFilePath(context, uri)
-        val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
-        recognizer.process(image)
-            .addOnSuccessListener { visionText -> onResult(visionText.text) }
-            .addOnFailureListener { e ->
-                onError("Text recognition failed: ${e.message}")
-            }
-    } catch (e: Exception) {
-        onError("Could not load the image: ${e.message}")
+    scope.launch {
+        val text = try {
+            OcrEngine.recognize(context, uri, Locale.getDefault().language)
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (e: java.io.IOException) {
+            onError(context.getString(R.string.read_text_image_load_failed, e.message ?: ""))
+            return@launch
+        } catch (e: Exception) {
+            onError(context.getString(R.string.read_text_ocr_failed, e.message ?: ""))
+            return@launch
+        }
+        onResult(text)
     }
 }

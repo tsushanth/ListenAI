@@ -1,5 +1,6 @@
 package com.listenai.service.tts
 
+import com.listenai.R
 import android.content.Context
 import com.listenai.data.models.VoicePreset
 import com.listenai.service.FirebaseAnalyticsHelper
@@ -30,12 +31,14 @@ object ChainSynthesizer {
         voice: VoicePreset,
         language: String,
         speed: Float,
+        /** A forced offline read of a non-English language: the phone's voice goes first (see TtsRouting). */
+        forcePhoneVoice: Boolean = false,
         onProgress: (SynthesisProgress) -> Unit,
     ): SynthesisResult {
         val started = System.currentTimeMillis()
         val chain = TtsChainProvider.get(context).inApp
         // A phone voice the user picked for this language means: try the phone's engine first.
-        val preferSystem = phoneVoicePicked(context, language)
+        val preferSystem = forcePhoneVoice || phoneVoicePicked(context, language)
         val cloudVoiceId = cloudVoiceFor(context, language, preferSystem)
         val request = TtsRequest(voiceId = voice.id, language = language, speed = speed, wantWords = true, preferSystem = preferSystem, cloudVoiceId = cloudVoiceId)
         val file = File(context.cacheDir, "tts_${UUID.randomUUID()}.wav")
@@ -66,7 +69,7 @@ object ChainSynthesizer {
                             overallProgress = (charsDone.toFloat() / total.coerceAtLeast(1)).coerceAtMost(0.99f),
                             sectionsCompleted = c.index + 1,
                             totalSections = c.total,
-                            statusMessage = "Generating audio...",
+                            statusMessage = context.getString(R.string.player_generating_audio),
                             charactersProcessed = charsDone,
                             totalCharacters = total,
                         )

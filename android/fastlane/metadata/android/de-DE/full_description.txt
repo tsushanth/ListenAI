@@ -1,46 +1,46 @@
-ReadAloud AI – Text-to-Speech für Legasthenie, ADHS und jeden, der zuhört
+ReadAloud AI - Text-zu-Sprache für Legasthenie, ADHS und alle, die lieber zuhören
 
-Das Lesen ist schwierig, wenn Ihr Gehirn oder Ihre Augen nicht kooperieren. ReadAloud AI konvertiert Artikel, PDFs, EPUBs, Webseiten und Dokumente in natürlich klingendes Audio, sodass Sie zuhören statt lesen können. Gebaut mit barrierefreiem Design – funktioniert reibungslos mit TalkBack und unterstützt einstellbare Wiedergabegeschwindigkeit.
+Lesen ist schwer, wenn Gehirn oder Augen nicht mitspielen. ReadAloud AI wandelt Artikel, PDFs, EPUB-Bücher, Dokumente, E-Mails und eingefügten Text in natürlich klingendes Audio um, damit du zuhören statt lesen kannst. Die App funktioniert mit TalkBack und spielt mit 0,5x bis 2x Geschwindigkeit ab.
 
-Entwickelt für:
-• Leser mit Legasthenie, die Informationen durch Zuhören besser aufnehmen
-• Menschen mit ADHS, die sich durch auditive Eingaben besser konzentrieren können
-• Blinde und sehbehinderte Benutzer mit Screenreader-Workflows
-• Jeder, der lieber beim Pendeln, beim Training oder bei der Hausarbeit zuhört
-• Sprachlerner üben Hörverständnis
+Gemacht für:
+• Menschen mit Legasthenie, die Inhalte besser durch Zuhören aufnehmen
+• Menschen mit ADHS, die sich mit Audio besser konzentrieren
+• Blinde und sehbehinderte Nutzer mit Screenreader
+• Alle, die unterwegs, beim Training oder im Haushalt lieber zuhören
+• Sprachlernende, die Hörverstehen üben
 
-Mehrere Importoptionen
-• Artikel von einer beliebigen URL – fügen Sie einen Weblink ein
-• PDF-Dokumente direkt von Ihrem Gerät
-• EPUB-Bücher mit kapitelweiser Wiedergabe
-• E-Mail-Posteingangsimporte
-• Nur-Text einfügen
+Alles hinzufügen, was du hören willst
+• Weblink einfügen und den Artikel hören
+• PDF-, EPUB-, DOCX- und TXT-Dateien vom Handy öffnen
+• E-Mails aus Gmail importieren (Anmeldung mit Google)
+• Text einfügen oder eintippen, oder gerade Kopiertes importieren
+• In einer anderen App Text markieren und "Vorlesen" wählen oder einen Link oder eine Datei mit ReadAloud teilen
 
-Premium-KI-Stimmen
-• Natürlich klingende KI-Stimmen in mehreren Sprachen
-• Einstellbare Wiedergabegeschwindigkeit (0,5x bis 2x)
-• Hervorhebung auf Wortebene, die mit Audio synchronisiert wird
-• Cloudbasierte Stimmen mit optionaler Offline-KI auf dem Gerät
+Hören in 20 Sprachen
+• ReadAloud erkennt die Sprache deines Dokuments und zeigt sie im Player an; dort kannst du sie ändern
+• Englisch sowie Deutsch, Spanisch, Französisch, Italienisch, Portugiesisch, Tschechisch, Griechisch, Finnisch, Hindi, Ungarisch, Indonesisch, Japanisch, Niederländisch, Polnisch, Rumänisch, Russisch, Schwedisch, Türkisch und Ukrainisch werden online mit einer ReadAloud-Stimme gelesen
+• Jede andere Sprache, oder ohne Verbindung: ReadAloud nutzt eine auf deinem Handy installierte Stimme und sagt dir, wenn eine fehlt
+• Wähle im Player für jede Sprache eine Stimme
 
-Sprachklonen zugänglich gemacht
-Erstellen Sie einen personalisierten KI-Stimmenklon aus Ihrer eigenen Stimme oder einer beliebigen Stimme, zu deren Klonen Sie berechtigt sind. Der Klonvorgang unterstützt sowohl Live-Aufnahmen als auch das Hochladen einer vorab aufgenommenen Audiodatei – so konzipiert, dass Benutzer von Bildschirmleseprogrammen sauber und ohne Mikrofonstörungen aufnehmen können.
+Stimmen
+• Zehn englische Stimmen
+• Optionale Offline-Stimme für Englisch (einmaliger Download; benötigt Android 8 oder neuer und 3 GB RAM)
+• Mitlesen: Der Text scrollt mit der Stimme mit
+
+Stimmklonen
+Erstelle eine KI-Stimme aus deiner eigenen Stimme oder einer Stimme, die du klonen darfst, per Aufnahme oder hochgeladenem Clip.
 
 Intelligente Wiedergabe
-• Hintergrundton während der Verwendung anderer Apps
-• Sperrbildschirm und Benachrichtigungssteuerung
-• Automatischer Wechsel zwischen den Kapiteln beim Anhören importierter Bücher
-• Machen Sie sitzungsübergreifend dort weiter, wo Sie aufgehört haben
+• Hintergrundwiedergabe, Steuerung auf dem Sperrbildschirm und in der Benachrichtigung
+• Schlaf-Timer, Lesezeichen sowie Vor- und Zurückspringen
+• Automatischer Kapitelwechsel in Büchern und Fortsetzen an der letzten Stelle
+• Startbildschirm-Widget, um den letzten Artikel fortzusetzen oder Kopiertes vorzulesen
 
-Barrierefreiheit-First-Design
-• Volle TalkBack-Unterstützung auf jedem Bildschirm
-• Sinnvolle Fokusreihenfolge für die Screenreader-Navigation
-• Getestet mit echten Screenreader-Benutzern – Korrekturen werden wöchentlich basierend auf dem Feedback versendet
+So funktioniert's:
+1. Inhalt per Link, Datei, E-Mail, eingefügtem Text oder Teilen-Menü hinzufügen
+2. Sprache prüfen und eine Stimme wählen
+3. Auf Play tippen und überall zuhören
 
-So funktioniert es:
-1. Importieren Sie Inhalte per URL, PDF, EPUB, E-Mail oder Texteinfügung
-2. Wählen Sie Ihre bevorzugte KI-Stimme
-3. Tippen Sie auf „Wiedergabe“ und hören Sie überall zu
+Ob du mit Legasthenie, mit ADHS oder mit einer Sehbehinderung liest: ReadAloud AI macht aus deiner Leseliste eine Hörliste.
 
-Ganz gleich, ob Sie an Legasthenie, ADHS oder Sehbehinderungen arbeiten, ReadAloud AI verwandelt Ihre Leseliste in eine Hörliste.
-
-Laden Sie ReadAloud AI noch heute herunter.
+Lade ReadAloud AI noch heute herunter.

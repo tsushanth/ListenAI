@@ -7,6 +7,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -15,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -50,7 +52,7 @@ fun MySharedVoicesScreen(
             try {
                 shares = marketplaceService.getMyShares()
             } catch (e: Exception) {
-                errorMessage = e.message ?: "Failed to load shares"
+                errorMessage = marketplaceService.errorText(context, e, R.string.my_shares_error_load)
             } finally {
                 isLoading = false
             }
@@ -64,7 +66,7 @@ fun MySharedVoicesScreen(
                 voiceToRevoke = null
                 loadShares()
             } catch (e: Exception) {
-                errorMessage = e.message
+                errorMessage = marketplaceService.errorText(context, e, R.string.player_something_went_wrong)
             }
         }
     }
@@ -79,7 +81,7 @@ fun MySharedVoicesScreen(
                 title = { Text(stringResource(R.string.my_shared_voices_title)) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = stringResource(R.string.back))
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                 }
             )
@@ -112,7 +114,7 @@ fun MySharedVoicesScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(errorMessage ?: "Error", color = MaterialTheme.colorScheme.error)
+                        Text(errorMessage ?: stringResource(R.string.error_generic), color = MaterialTheme.colorScheme.error)
                         Spacer(modifier = Modifier.height(16.dp))
                         Button(onClick = { loadShares() }) {
                             Text(stringResource(R.string.retry))
@@ -317,7 +319,7 @@ private fun SharedVoiceCard(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "Revoked: ${share.revokedReason}",
+                            text = stringResource(R.string.revoked_reason_format, share.revokedReason),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onErrorContainer
                         )
@@ -335,13 +337,13 @@ private fun SharedVoiceCard(
                 StatColumn(
                     icon = Icons.Default.Star,
                     value = if (share.ratingCount > 0) String.format("%.1f", share.avgRating) else "—",
-                    label = if (share.ratingCount > 0) "${share.ratingCount} ratings" else "No ratings yet",
+                    label = if (share.ratingCount > 0) pluralStringResource(R.plurals.marketplace_ratings_count, share.ratingCount, share.ratingCount) else stringResource(R.string.marketplace_no_ratings),
                     iconTint = if (share.ratingCount > 0) Color(0xFFFFB800) else MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 StatColumn(
                     icon = Icons.Default.PlayArrow,
                     value = "${share.usageCount}",
-                    label = "uses"
+                    label = stringResource(R.string.uses_label)
                 )
             }
 

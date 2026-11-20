@@ -386,3 +386,103 @@ test('the abuse-report intake is not exposed on the API-key surface', async () =
     assert.notEqual(r.status, 202);
   } finally { ctx.close(); }
 });
+
+test('warm: an eligible caller gets 202 and the workers are asked to start; throttled repeats still answer 202 without a second start', async () => {
+  const svc = await import('../lib/voiceCloning/service.js');
+  svc.resetAsrWarmForTests();
+  const ctx = await boot();
+  let asrStarts = 0; let svcStarts = 0;
+  ctx.asr.warm = async () => { asrStarts++; };
+  ctx.service.warm = async () => { svcStarts++; };
+  try {
+    const r = await fetch(`${ctx.base}/warm`, { method: 'POST', headers: as(U1) });
+    assert.equal(r.status, 202);
+    assert.deepEqual(await r.json(), { status: 'warming' });
+    assert.equal(asrStarts, 1);
+    assert.equal(svcStarts, 1);
+    const again = await fetch(`${ctx.base}/warm`, { method: 'POST', headers: as(U1) });
+    assert.equal(again.status, 202);
+    assert.equal(asrStarts, 1, 'the ASR wake-up is throttled to once per 90 s');
+  } finally { ctx.close(); svc.resetAsrWarmForTests(); }
+});
+
+test('warm: a caller who could not create a voice cannot start a worker (unverified email, no plan, bad secret, dark, kill switch)', async () => {
+  const svc = await import('../lib/voiceCloning/service.js');
+  svc.resetAsrWarmForTests();
+  const ctx = await boot();
+  let starts = 0;
+  ctx.asr.warm = async () => { starts++; };
+  ctx.service.warm = async () => { starts++; };
+  try {
+    assert.equal((await fetch(`${ctx.base}/warm`, { method: 'POST', headers: as(U_UNVERIFIED) })).status, 403);
+    assert.equal((await fetch(`${ctx.base}/warm`, { method: 'POST', headers: as(U_FREE) })).status, 402);
+    assert.equal((await fetch(`${ctx.base}/warm`, { method: 'POST', headers: { 'x-gateway-uid': U1 } })).status, 401);
+    assert.equal((await fetch(`${ctx.base}/warm`, { method: 'POST', headers: { 'x-gateway-admin-secret': 'nope', 'x-gateway-uid': U1 } })).status, 401);
+    assert.equal(starts, 0);
+  } finally { ctx.close(); }
+  for (const o of [{ dark: true }, { disabled: true }]) {
+    const c2 = await boot(o);
+    try { assert.equal((await fetch(`${c2.base}/warm`, { method: 'POST', headers: as(U1) })).status, 503); } finally { c2.close(); }
+  }
+});
+
+test('warm: a worker that fails to start never fails the request', async () => {
+  const svc = await import('../lib/voiceCloning/service.js');
+  svc.resetAsrWarmForTests();
+  const ctx = await boot();
+  ctx.asr.warm = async () => { throw new Error('modal down'); };
+  ctx.service.warm = async () => { throw new Error('modal down'); };
+  try {
+    assert.equal((await fetch(`${ctx.base}/warm`, { method: 'POST', headers: as(U1) })).status, 202);
+  } finally { ctx.close(); svc.resetAsrWarmForTests(); }
+});
+
+test('consent-phrase language: optional JSON body or ?language=; default stays English with the same response keys', async () => {
+  const ctx = await boot();
+  try {
+    const de = await fetch(`${ctx.base}/consent-phrase`, { method: 'POST', headers: { ...as(U1), 'Content-Type': 'application/json' }, body: JSON.stringify({ language: 'de' }) });
+    assert.equal(de.status, 201);
+    const d = (await de.json()) as { challenge_id: string; phrase: string; language?: string };
+    assert.equal(d.language, 'de');
+    assert.match(d.phrase, /^Ich bin einverstanden, dass ReadAloud eine synthetische Kopie meiner Stimme erstellt\. Meine vier Wörter lauten \S+, \S+, \S+, \S+\.$/);
+    assert.deepEqual(Object.keys(d).sort(), ['challenge_id', 'expires_at', 'language', 'phrase']);
+
+    const es = await fetch(`${ctx.base}/consent-phrase?language=es-MX`, { method: 'POST', headers: as(U1) });
+    assert.equal(es.status, 201);
+    const e = (await es.json()) as { phrase: string; language?: string };
+    assert.equal(e.language, 'es');
+    assert.match(e.phrase, /^Acepto que ReadAloud cree una copia sintética de mi voz\. Mis cuatro palabras son /);
+
+    const en = await fetch(`${ctx.base}/consent-phrase`, { method: 'POST', headers: { ...as(U1), 'Content-Type': 'application/json' }, body: JSON.stringify({}) });
+    assert.equal(en.status, 201);
+    const n = (await en.json()) as Record<string, unknown>;
+    assert.deepEqual(Object.keys(n).sort(), ['challenge_id', 'expires_at', 'phrase']);
+    assert.match(String(n.phrase), /^I agree that ReadAloud may create a synthetic copy of my voice\. My code words are /);
+  } finally { ctx.close(); }
+});
+
+test('consent-phrase language: an unsupported language is a 400 with the supported list and issues nothing', async () => {
+  const ctx = await boot();
+  try {
+    for (const bad of ['fr', 'xx', 'german']) {
+      const r = await fetch(`${ctx.base}/consent-phrase`, { method: 'POST', headers: { ...as(U1), 'Content-Type': 'application/json' }, body: JSON.stringify({ language: bad }) });
+      assert.equal(r.status, 400, bad);
+      const j = (await r.json()) as { code: string; details: { supported: string[] } };
+      assert.equal(j.code, 'unsupported_consent_language');
+      assert.deepEqual(j.details.supported, ['en', 'es', 'de']);
+    }
+    assert.equal(ctx.store.challenges.size, 0);
+  } finally { ctx.close(); }
+});
+
+test('consent-phrase language: a German challenge is verified in German end to end through the route', async () => {
+  const ctx = await boot();
+  try {
+    const ph = await fetch(`${ctx.base}/consent-phrase?language=de`, { method: 'POST', headers: as(U1) });
+    const c = (await ph.json()) as { challenge_id: string; phrase: string };
+    ctx.asr.heard = c.phrase;
+    const created = await create(ctx, as(U1), { challengeId: c.challenge_id });
+    assert.equal(created.status, 201);
+    assert.deepEqual(ctx.asr.languages, ['de']);
+  } finally { ctx.close(); }
+});

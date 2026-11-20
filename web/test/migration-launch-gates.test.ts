@@ -176,7 +176,7 @@ test('llms.txt carries the migrate page, routes, prices, limits and what is unsu
   for (const needle of [
     'https://readaloudai.org/developers/migrate-from-elevenlabs', 'https://api.readaloudai.org', '/v1/text-to-speech/{voice_id}', 'stream-input', '/v1/voices', '/v1/models', '/v1/audio/speech',
     '$0.004 per 1,000', '$0.01 per 1,000', '$0.11 per hour', '$0.20 per hour', '$0.22 per hour', '2026-11-14', '5,000 characters per request', '429', '1013',
-    'Not supported yet', 'emotion control', 'pronunciation dictionaries', 'realtime speech to text', 'ElevenLabs Flash was faster',
+    'Not supported yet', 'emotion control', 'pronunciation dictionaries', 'Realtime transcription', 'ElevenLabs Flash was faster',
   ]) assert.ok(t.includes(needle), `llms.txt is missing: ${needle}`)
   assert.ok(!/[^\x00-\x7F]/.test(t.replace(/—/g, '-')), 'ASCII apart from the existing dashes')
 })

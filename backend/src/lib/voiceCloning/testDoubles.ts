@@ -77,6 +77,8 @@ export class FakeService implements CloneServiceClient {
   failDisable = false;
   voices = new Set<string>();
   disabled = new Set<string>();
+  /** Tests assign this to observe the best-effort wake-up; unset by default so existing call lists are unchanged. */
+  warm?: (language?: string) => Promise<void>;
   async analyze(audio: Buffer, filename: string) { this.calls.push('analyze'); return this.analyzeResult(audio, filename); }
   async similarity() { this.calls.push('similarity'); return this.similarityValue; }
   async createVoice(p: { voiceId: string }) {
@@ -99,7 +101,11 @@ export class FakeAsr implements AsrClient {
   /** Overrides `heard` per call, e.g. to read a different phrase for each concurrent request. */
   heardFor?: (audio: Buffer) => string;
   fail = false;
-  async transcribe(audio: Buffer) {
+  /** The language each transcribe() call asked for, in order. */
+  languages: Array<string | undefined> = [];
+  warm?: () => Promise<void>;
+  async transcribe(audio: Buffer, _mime?: string, language?: string) {
+    this.languages.push(language);
     if (this.fail) throw new Error('asr down');
     return this.heardFor ? this.heardFor(audio) : (this.heard ?? '');
   }

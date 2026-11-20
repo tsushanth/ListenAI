@@ -147,7 +147,7 @@ fun ImportScreen(
                             tint = Red
                         )
                         Text(
-                            text = (importState as ImportState.Error).message,
+                            text = (importState as ImportState.Error).text.resolve(context),
                             color = Red
                         )
                     }
@@ -594,7 +594,7 @@ private fun TextImportCard(
             if (content.isNotBlank()) {
                 val wordCount = content.split(Regex("\\s+")).size
                 Text(
-                    text = stringResource(R.string.word_count_format, wordCount),
+                    text = androidx.compose.ui.res.pluralStringResource(R.plurals.word_count_format, wordCount, wordCount),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -645,7 +645,7 @@ private fun ClipboardImportCard(
                 IconButton(onClick = onRefresh) {
                     Icon(
                         imageVector = Icons.Default.Refresh,
-                        contentDescription = "Refresh"
+                        contentDescription = stringResource(R.string.refresh)
                     )
                 }
             }

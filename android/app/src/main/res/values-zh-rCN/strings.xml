@@ -127,7 +127,9 @@
     <string name="clipboard_url_detected">检测到URL</string>
     <string name="clipboard_text_content">文本内容</string>
     <string name="clipboard_empty">剪贴板为空</string>
-    <string name="word_count_format">%d个字</string>
+    <plurals name="word_count_format">
+        <item quantity="other">%d个字</item>
+    </plurals>
     <string name="pdf_selected">已选择PDF</string>
     <string name="epub_selected">EPUB</string>    <string name="remove">移除</string>
 
@@ -415,7 +417,9 @@
     <string name="player_sleep_timer_set">睡眠定时器已设置为%d分钟</string>
     <string name="player_sleep_timer_cancelled">睡眠定时器已取消</string>
     <string name="player_by_author">作者 %s</string>
-    <string name="player_words_count">%d个字</string>
+    <plurals name="player_words_count">
+        <item quantity="other">%d个字</item>
+    </plurals>
     <string name="player_untitled">无标题</string>
     <string name="player_article_fallback">文章</string>
     <string name="player_from_label">发件人:</string>
@@ -487,4 +491,98 @@
     <string name="language_portuguese">Português</string>
     <string name="language_italian">Italiano</string>
     <string name="language_hindi">हिन्दी</string>
+
+    <!-- Machine translated, needs native review: account deletion, bookmarks, widget, share sheet, Read Text, analytics consent, offline AI -->
+    <string name="system_tts_back_content_description">返回</string>
+    <string name="analytics_consent_title">分享使用统计？</string>
+    <string name="analytics_consent_body">允许 Google Firebase 统计哪些功能被使用。统计数据只与随机应用 ID 关联，不与您的姓名或邮箱关联。我们绝不会发送您阅读或导入的文本，也不投放广告。您可以随时在“设置”中更改。</string>
+    <string name="analytics_consent_allow">允许</string>
+    <string name="analytics_consent_decline">不用了</string>
+    <string name="settings_analytics_title">使用统计</string>
+    <string name="settings_analytics_subtitle">与 Google Firebase 分享匿名使用统计</string>
+    <string name="tab_read_text">朗读文字</string>
+    <string name="read_text_title">朗读文字</string>
+    <string name="read_text_subtitle">选择一张印刷文字的照片，ReadAloud 会把它读出来。</string>
+    <string name="read_text_take_photo">拍照</string>
+    <string name="read_text_pick_gallery">从相册选择</string>
+    <string name="read_text_coming_soon">相机拍照功能将在后续更新中推出。目前请从相册中选择照片。</string>
+    <string name="onboarding_get_started">开始使用</string>
+    <string name="settings_offline_ai">离线 AI</string>
+    <string name="settings_offline_ai_subtitle_ready">设备端模型已就绪 · 无需联网即可使用</string>
+    <string name="settings_offline_ai_subtitle_not_ready">在设备上生成音频，无需联网</string>
+    <string name="settings_offline_ai_subtitle_ineligible">此设备不支持（需要 Android 8+ 和 3 GB 内存）</string>
+    <string name="settings_offline_ai_downloading">正在下载设备端模型…</string>
+    <string name="settings_offline_ai_waiting_wifi">正在等待 Wi-Fi…</string>
+    <string name="settings_offline_ai_allow_cellular">允许使用移动数据下载</string>
+    <string name="source_epub">图书</string>
+    <string name="process_text_label">朗读</string>
+    <string name="incoming_title">朗读这段内容</string>
+    <string name="incoming_read_now">立即朗读</string>
+    <string name="incoming_try_again">重试</string>
+    <string name="incoming_preparing">正在准备…</string>
+    <string name="incoming_save_to_library">保存到资料库</string>
+    <string name="incoming_file_unreadable">无法读取该文件。请尝试从“文件”中打开，或将其分享给 ReadAloud。</string>
+    <string name="incoming_cancel">取消</string>
+    <string name="incoming_source_link">网页</string>
+    <string name="incoming_source_pdf">PDF</string>
+    <string name="incoming_source_epub">EPUB 图书</string>
+    <string name="incoming_source_txt">文本文件</string>
+    <string name="bookmarks_title">书签</string>
+    <string name="bookmarks_add_here">在此处添加书签</string>
+    <string name="bookmarks_added">已在 %1$s 添加书签</string>
+    <string name="bookmarks_empty">还没有书签。收听时打开“更多选项”，然后选择“在此处添加书签”。</string>
+    <string name="bookmarks_delete">删除书签</string>
+    <string name="widget_description">打开最新文章，或朗读您复制的内容</string>
+    <string name="widget_resume">继续收听</string>
+    <string name="widget_continue">资料库中的最新内容</string>
+    <string name="widget_open">打开 ReadAloud</string>
+    <string name="widget_percent_done">已听 %1$d%%</string>
+    <string name="widget_clipboard_empty">没有可朗读的内容。请先复制一段文字或链接。</string>
+    <string name="widget_paste_and_read">朗读剪贴板</string>
+    <string name="follow_along">跟读</string>
+    <string name="follow_along_subtitle">滚动文字以跟上语音</string>
+    <string name="on">开</string>
+    <string name="off">关闭</string>
+    <string name="settings_account">账号</string>
+    <string name="settings_delete_account">删除账号</string>
+    <string name="settings_delete_account_subtitle">永久删除您的账号和云端数据</string>
+    <string name="delete_account_title">删除您的账号？</string>
+    <string name="delete_account_body">此操作将永久删除您的账号、克隆的声音，以及为您存储在云端的音频和使用数据，且无法撤销。您导入的文章会保留在此设备上。</string>
+    <string name="delete_account_play_note">删除账号不会取消您的 Google Play 订阅。请在 Google Play 中取消订阅，以免继续扣费。</string>
+    <string name="delete_account_confirm">删除账号</string>
+    <string name="delete_account_deleting">正在删除您的账号…</string>
+    <string name="delete_account_subscription_title">您有一个有效订阅</string>
+    <string name="delete_account_subscription_body">删除账号不会取消您的订阅，因此您仍可能被扣费。</string>
+    <string name="delete_account_subscription_play">Google Play 订阅：请在 Google Play（订阅）中取消。</string>
+    <string name="delete_account_subscription_stripe">网页订阅：请先在 ReadAloud 网站的账单门户中取消，或发送邮件至 support@kreativekoala.llc。</string>
+    <string name="delete_account_open_play">打开 Google Play</string>
+    <string name="delete_account_anyway">仍要删除</string>
+    <string name="delete_account_error_title">无法删除您的账号</string>
+    <string name="delete_account_error_network">无网络连接。请检查网络后重试。</string>
+    <string name="delete_account_error_server">我们这边出了点问题。您的账号仍然有效。请稍后重试。</string>
+    <string name="delete_account_error_unknown">出了点问题。请重试。</string>
+    <string name="delete_account_error_signin">您的会话已结束，因此已在此设备上退出登录。如果您的账号仍然存在，请重新登录，然后从“设置”中重试。</string>
+    <string name="delete_account_done_title">账号已删除</string>
+    <string name="delete_account_done_body">您的账号和云端数据已被删除，并已在此设备上退出登录。</string>
+    <string name="delete_account_done_play">您的 Google Play 订阅仍然有效。请在 Google Play 中取消订阅，以免继续扣费。</string>
+    <string name="delete_account_done_stripe">您的网页订阅仍然有效。请发送邮件至 support@kreativekoala.llc 以取消订阅并停止扣费。</string>
+
+    <!-- Machine translated, needs native review: c2 -->
+    <string name="read_text_reading_image">正在读取图片…</string>
+    <string name="read_text_starting_playback">正在开始语音播放…</string>
+    <string name="read_text_speaking">正在朗读</string>
+    <string name="read_text_done">完成。</string>
+    <string name="read_text_read_again">再读一遍</string>
+    <string name="read_text_no_text">在该图片中未找到文字。请尝试更清晰的照片。</string>
+    <string name="read_text_playback_failed">播放失败。点按“再读一遍”重试。</string>
+    <string name="read_text_playback_failed_code">播放失败（错误代码 %1$d）。点按“再读一遍”重试。</string>
+    <string name="read_text_error_generic">出了点问题。</string>
+    <string name="read_text_cd_take_photo">拍摄文字照片以便朗读。将在后续更新中推出。</string>
+    <string name="read_text_cd_pick_gallery">从相册中选择一张照片进行朗读</string>
+    <string name="read_text_ocr_failed">文字识别失败：%1$s</string>
+    <string name="read_text_image_load_failed">无法加载图片：%1$s</string>
+    <string name="player_generating_audio">正在生成音频…</string>
+    <plurals name="incoming_source_text">
+        <item quantity="other">文本，%1$d个字</item>
+    </plurals>
 </resources>

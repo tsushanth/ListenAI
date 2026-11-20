@@ -1,5 +1,7 @@
 package com.listenai.data.models
 
+import androidx.annotation.StringRes
+import com.listenai.R
 import java.util.UUID
 
 /**
@@ -16,7 +18,7 @@ enum class VoiceProvider {
             APPLE -> "Apple"
             ANDROID -> "Android"
             SELF_HOSTED -> "ReadAloud AI"
-            KOKORO_ON_DEVICE -> "Kokoro (on-device)"
+            KOKORO_ON_DEVICE -> "On-device voice"
         }
 
     val isCloud: Boolean
@@ -61,28 +63,28 @@ enum class VoiceTier {
 /**
  * Voice gender
  */
-enum class VoiceGender {
-    MALE,
-    FEMALE,
-    NEUTRAL
+enum class VoiceGender(@StringRes val labelRes: Int) {
+    MALE(R.string.voice_gender_male),
+    FEMALE(R.string.voice_gender_female),
+    NEUTRAL(R.string.voice_gender_neutral)
 }
 
 /**
  * Voice style category
  */
-enum class VoiceStyle {
-    NEUTRAL,
-    NARRATIVE,
-    NEWS,
-    CONVERSATIONAL,
-    EDUCATIONAL,
-    CHARACTER,
-    CALM,
-    EXCITED,
-    SERIOUS,
-    FRIENDLY,
-    DRAMATIC,
-    WHIMSICAL
+enum class VoiceStyle(@StringRes val labelRes: Int) {
+    NEUTRAL(R.string.voice_style_neutral),
+    NARRATIVE(R.string.voice_style_narrative),
+    NEWS(R.string.voice_style_news),
+    CONVERSATIONAL(R.string.voice_style_conversational),
+    EDUCATIONAL(R.string.voice_style_educational),
+    CHARACTER(R.string.voice_style_character),
+    CALM(R.string.voice_style_calm),
+    EXCITED(R.string.voice_style_excited),
+    SERIOUS(R.string.voice_style_serious),
+    FRIENDLY(R.string.voice_style_friendly),
+    DRAMATIC(R.string.voice_style_dramatic),
+    WHIMSICAL(R.string.voice_style_whimsical)
 }
 
 /**

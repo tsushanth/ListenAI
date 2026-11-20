@@ -271,3 +271,71 @@ test('quota: a failed gateway authorize refunds the reservation', async () => {
     assert.equal((await authorize(base, { 'x-install-id': ID_A })).status, 200); // budget was given back
   } finally { close(); restoreFetch(); delete process.env.REALTIME_TTS_API_KEY; }
 });
+
+// ---- Tester bypass (lib/ttsTestBypass.ts) ----
+const BYPASS_SECRET = 'route-test-secret-0123456789abcdef';
+
+function withBypass<T>(secret: string | undefined, fn: () => Promise<T>): Promise<T> {
+  const prev = process.env.TTS_TEST_BYPASS_KEY;
+  if (secret === undefined) delete process.env.TTS_TEST_BYPASS_KEY; else process.env.TTS_TEST_BYPASS_KEY = secret;
+  return fn().finally(() => { if (prev === undefined) delete process.env.TTS_TEST_BYPASS_KEY; else process.env.TTS_TEST_BYPASS_KEY = prev; });
+}
+
+test('test bypass: a valid X-Tts-Test-Key skips the per-minute limit, the daily budget and the breaker', () => withBypass(BYPASS_SECRET, async () => {
+  process.env.REALTIME_TTS_API_KEY = 'k';
+  okGateway();
+  // anonymous: 1 per minute, budget of a single authorize, breaker kill switch on -> a normal call would be 503
+  const { base, close } = await boot({ env: { TTS_ANON_AUTHORIZE_PER_MIN: '1', TTS_ANON_DAILY_CHARS: '1', TTS_GLOBAL_DAILY_CHARS: '0' } });
+  try {
+    assert.equal((await authorize(base)).status, 503);
+    for (let i = 0; i < 35; i++) {
+      assert.equal((await authorize(base, { 'x-tts-test-key': BYPASS_SECRET })).status, 200, `call ${i}`);
+    }
+  } finally { close(); restoreFetch(); delete process.env.REALTIME_TTS_API_KEY; }
+}));
+
+test('test bypass: a bypassed call reserves nothing, so normal callers keep their own full budget', () => withBypass(BYPASS_SECRET, async () => {
+  process.env.REALTIME_TTS_API_KEY = 'k';
+  okGateway();
+  const { base, close } = await boot({ env: { TTS_ANON_AUTHORIZE_PER_MIN: '1' } });
+  try {
+    for (let i = 0; i < 5; i++) assert.equal((await authorize(base, { 'x-tts-test-key': BYPASS_SECRET })).status, 200);
+    assert.equal((await authorize(base)).status, 200);
+    assert.equal((await authorize(base)).status, 429);
+  } finally { close(); restoreFetch(); delete process.env.REALTIME_TTS_API_KEY; }
+}));
+
+test('test bypass: wrong or missing key gets the normal limits', () => withBypass(BYPASS_SECRET, async () => {
+  process.env.REALTIME_TTS_API_KEY = 'k';
+  okGateway();
+  const { base, close } = await boot({ env: { TTS_ANON_AUTHORIZE_PER_MIN: '1' } });
+  try {
+    assert.equal((await authorize(base, { 'x-tts-test-key': 'wrong-key-wrong-key-wrong' })).status, 200);
+    assert.equal((await authorize(base, { 'x-tts-test-key': 'wrong-key-wrong-key-wrong' })).status, 429);
+    assert.equal((await authorize(base)).status, 429);
+  } finally { close(); restoreFetch(); delete process.env.REALTIME_TTS_API_KEY; }
+}));
+
+test('test bypass: feature is off when TTS_TEST_BYPASS_KEY is unset, even if the header is sent', () => withBypass(undefined, async () => {
+  process.env.REALTIME_TTS_API_KEY = 'k';
+  okGateway();
+  const { base, close } = await boot({ env: { TTS_ANON_AUTHORIZE_PER_MIN: '1' } });
+  try {
+    assert.equal((await authorize(base)).status, 200);
+    assert.equal((await authorize(base, { 'x-tts-test-key': BYPASS_SECRET })).status, 429);
+  } finally { close(); restoreFetch(); delete process.env.REALTIME_TTS_API_KEY; }
+}));
+
+test('test bypass: logs only "test-bypass used", never the key', () => withBypass(BYPASS_SECRET, async () => {
+  process.env.REALTIME_TTS_API_KEY = 'k';
+  okGateway();
+  const logged: string[] = [];
+  const realLog = console.log;
+  console.log = (...a: unknown[]) => { logged.push(a.map(String).join(' ')); };
+  const { base, close } = await boot();
+  try {
+    assert.equal((await authorize(base, { 'x-tts-test-key': BYPASS_SECRET })).status, 200);
+  } finally { console.log = realLog; close(); restoreFetch(); delete process.env.REALTIME_TTS_API_KEY; }
+  assert.ok(logged.some((l) => l.includes('test-bypass used')));
+  assert.ok(!logged.join('\n').includes(BYPASS_SECRET));
+}));

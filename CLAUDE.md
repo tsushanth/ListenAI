@@ -69,3 +69,7 @@ This writes `~/.git-hooks/pre-push` and sets git's global `core.hooksPath`. Afte
 ## When you don't know something
 
 Ask. The user's time is cheaper than a broken deploy or a leaked key. Specific questions ("what value should `STRIPE_SECRET_KEY` have for staging?") are welcome; guessing is not.
+
+## Hard-coded UI strings guard
+
+A unit test (`NoHardcodedUiStringsTest`) fails if new user-visible English is hard-coded in `app/src/main` instead of strings.xml. Pre-existing literals are recorded in `app/hardcoded-ui-strings.baseline.json`. How it works and how to update the baseline: `android/docs/hardcoded-ui-strings-guard.md`.

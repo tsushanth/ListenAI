@@ -18,6 +18,7 @@ def _float(name: str, default: float) -> float:
 class Settings:
     secret: str = ""
     data_dir: str = "/data"
+    engine: str = "chatterbox"              # "chatterbox" (CPU, English) | "omnivoice" (GPU, multilingual)
     model: str = "turbo"                    # "turbo" | "nano" (English only, MIT)
     langs: frozenset = frozenset({"en"})    # Turbo/Nano are English-only; Multilingual is a separate, off-by-default option
     max_concurrent: int = 1                 # CPU torch uses every core: more than 1 only adds contention
@@ -44,6 +45,7 @@ class Settings:
         return cls(
             secret=env.get("VC_SERVICE_SECRET", ""),
             data_dir=env.get("VC_DATA_DIR", "/data"),
+            engine=env.get("VC_ENGINE", "chatterbox"),
             model=env.get("VC_MODEL", "turbo"),
             langs=langs,
             max_concurrent=_int("VC_MAX_CONCURRENT", 1),

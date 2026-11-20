@@ -871,7 +871,7 @@ private fun VoiceOptionCard(
                     color = contentColor
                 )
                 Text(
-                    text = "${voice.style.name.lowercase().replaceFirstChar { it.uppercase() }} - ${voice.gender.name.lowercase().replaceFirstChar { it.uppercase() }}",
+                    text = stringResource(R.string.voice_style_gender_format, stringResource(voice.style.labelRes), stringResource(voice.gender.labelRes)),
                     style = MaterialTheme.typography.bodySmall,
                     color = contentColor.copy(alpha = 0.6f)
                 )

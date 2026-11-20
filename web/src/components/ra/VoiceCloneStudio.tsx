@@ -359,7 +359,7 @@ function Wizard({ onCreated, onAuthLost }: { onCreated: (v: ClonedVoice) => void
   const getChallenge = async () => {
     setErr(null); setInfo(null); setBusy('challenge')
     try {
-      const c = await voiceCloneApi.challenge()
+      const c = await voiceCloneApi.challenge(language)
       setChallenge(c); setNow(Date.now()); setConsent(null); setConsentKey((k) => k + 1)
     } catch (e) { handleError(e) } finally { setBusy(null) }
   }

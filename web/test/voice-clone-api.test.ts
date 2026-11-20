@@ -179,6 +179,19 @@ test('issue_consent_phrase forwards only the gateway identity (never the API key
   } finally { restore(); await m.close() }
 })
 
+test('issue_consent_phrase: no language keeps the English path, a language is forwarded as ?language=', async () => {
+  install()
+  handler = (c) => c.url.startsWith(`${API}/consent-phrase`) ? json(201, { challenge_id: VOICE, phrase: 'p', expires_at: '2030-01-01T00:05:00.000Z', ...(c.url.includes('language=') ? { language: 'de' } : {}) }) : undefined
+  const m = await connect()
+  try {
+    assert.ok(!(await m.call('readaloud_issue_consent_phrase')).isError)
+    assert.ok(!(await m.call('readaloud_issue_consent_phrase', { language: 'de' })).isError)
+    assert.ok(!(await m.call('readaloud_issue_consent_phrase', { language: '  ' })).isError)
+    const urls = backendCalls().map((c) => c.url)
+    assert.deepEqual(urls, [`${API}/consent-phrase`, `${API}/consent-phrase?language=de`, `${API}/consent-phrase`])
+  } finally { restore(); await m.close() }
+})
+
 test('issue_consent_phrase in attestation mode says no phrase is needed', async () => {
   install()
   handler = (c) => c.url === `${API}/consent-phrase` ? json(200, { consent_required: false }) : undefined
@@ -448,6 +461,24 @@ test('REST: consent-phrase, list and config relay the backend answer; the key ne
       assert.equal(c.headers['x-gateway-uid'], UID)
       assert.ok(!JSON.stringify(c).includes(key), 'API key must not be forwarded')
     }
+  } finally { restore() }
+})
+
+test('REST: consent-phrase forwards an optional language (query or JSON body); default and junk bodies stay English', async () => {
+  const { handleVoiceCloneRest } = await loadRest()
+  install()
+  handler = (c) => c.url.startsWith(`${API}/consent-phrase`) ? json(201, { challenge_id: VOICE, phrase: 'phrase', expires_at: '2030-01-01T00:00:00.000Z' }) : undefined
+  try {
+    const key = 'rtts_secret_value_abcdef'
+    const post = (path: string, init: RequestInit = {}) => handleVoiceCloneRest(restReq(path, { method: 'POST', key, ...init }), { op: 'phrase' })
+    assert.equal((await post('/consent-phrase')).status, 201)
+    assert.equal((await post('/consent-phrase?language=de')).status, 201)
+    assert.equal((await post('/consent-phrase', { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ language: 'ES' }) })).status, 201)
+    assert.equal((await post('/consent-phrase', { headers: { 'Content-Type': 'application/json' }, body: '{not json' })).status, 201)
+    assert.equal((await post('/consent-phrase', { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ language: 42 }) })).status, 201)
+    assert.deepEqual(backendCalls().map((c) => c.url), [
+      `${API}/consent-phrase`, `${API}/consent-phrase?language=de`, `${API}/consent-phrase?language=es`, `${API}/consent-phrase`, `${API}/consent-phrase`,
+    ])
   } finally { restore() }
 })
 

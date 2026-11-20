@@ -546,7 +546,7 @@ private fun DiagnosticsCard() {
                 fontWeight = FontWeight.SemiBold
             )
             Text(
-                text = "Per-call latency from the most recent on-device Kokoro runs. Used to find what to optimize before shipping fixes.",
+                text = "Per-call latency from the most recent on-device voice runs. Used to find what to optimize before shipping fixes.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 4.dp)

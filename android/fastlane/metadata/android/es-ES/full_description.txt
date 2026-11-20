@@ -1,46 +1,46 @@
-ReadAloud AI: texto a voz para dislexia, TDAH y cualquier persona que escuche leer
+ReadAloud AI - Texto a voz para dislexia, TDAH y quien prefiere escuchar
 
-Leer es difícil cuando tu cerebro o tus ojos no cooperan. ReadAloud AI convierte artículos, archivos PDF, EPUB, páginas web y documentos en audio con sonido natural para que pueda escuchar en lugar de leer. Creado con un diseño que prioriza la accesibilidad: funciona con fluidez con TalkBack y admite velocidad de reproducción ajustable.
+Leer es difícil cuando el cerebro o la vista no ayudan. ReadAloud AI convierte artículos, PDF, libros EPUB, documentos, correos y texto pegado en audio de sonido natural, para que escuches en lugar de leer. Funciona con TalkBack y reproduce de 0,5x a 2x de velocidad.
 
-Diseñado para:
-• Lectores con dislexia que absorben mejor la información escuchando
-• Personas con TDAH que se concentran mejor con información auditiva
-• Usuarios ciegos y con baja visión con flujos de trabajo de lectores de pantalla
-• Cualquiera que prefiera escuchar durante los desplazamientos, los entrenamientos o las tareas domésticas
-• Estudiantes de idiomas que practican la comprensión auditiva.
+Pensada para:
+• Personas con dislexia que asimilan mejor escuchando
+• Personas con TDAH que se concentran mejor con audio
+• Usuarios ciegos o con baja visión que usan lector de pantalla
+• Quien prefiere escuchar en trayectos, entrenando o haciendo tareas
+• Estudiantes de idiomas que practican la comprensión oral
 
-Múltiples opciones de importación
-• Artículos desde cualquier URL: pegue un enlace web
-• Documentos PDF directamente desde su dispositivo
-• Libros EPUB con reproducción capítulo por capítulo
-• Importaciones de bandejas de entrada de correo electrónico
-• Pegar texto sin formato
+Añade lo que quieras escuchar
+• Pega un enlace web y escucha el artículo
+• Abre archivos PDF, EPUB, DOCX y TXT de tu teléfono
+• Importa correos de Gmail (inicias sesión con Google)
+• Pega o escribe texto, o importa lo que acabas de copiar
+• Selecciona texto en otra app y elige Leer en voz alta, o comparte un enlace o archivo con ReadAloud
 
-Voces premium de IA
-• Voces de IA con sonido natural en varios idiomas
-• Velocidad de reproducción ajustable (0,5x a 2x)
-• Resaltado a nivel de palabra que se sincroniza con el audio
-• Voces basadas en la nube con IA fuera de línea opcional en el dispositivo
+Escucha en 20 idiomas
+• ReadAloud detecta el idioma de tu documento y lo muestra en el reproductor, donde puedes cambiarlo
+• Inglés, además de alemán, español, francés, italiano, portugués, checo, griego, finés, hindi, húngaro, indonesio, japonés, neerlandés, polaco, rumano, ruso, sueco, turco y ucraniano, con una voz de ReadAloud cuando tienes conexión
+• Cualquier otro idioma, o sin conexión: ReadAloud usa una voz instalada en tu teléfono y te avisa si falta
+• Elige una voz para cada idioma en el reproductor
 
-La clonación de voz es accesible
-Cree un clon de voz de IA personalizado a partir de su propia voz o de cualquier voz que tenga permiso para clonar. El flujo de clonación admite tanto la grabación en vivo como la carga de un archivo de audio pregrabado, diseñado para que los usuarios de lectores de pantalla puedan grabar limpiamente sin interferencias del micrófono.
+Voces
+• Diez voces en inglés
+• Voz sin conexión opcional para inglés (descarga única; requiere Android 8 o superior y 3 GB de RAM)
+• Seguimiento: el texto se desplaza con la voz mientras lee
+
+Clonación de voz
+Crea una voz de IA a partir de tu propia voz, o de una que tengas permiso para clonar, grabando o subiendo un clip.
 
 Reproducción inteligente
-• Audio de fondo mientras usas otras aplicaciones
-• Pantalla de bloqueo y controles de notificación
-• Avance automático entre capítulos al escuchar libros importados
-• Continuar desde donde lo dejó en todas las sesiones
-
-Diseño de accesibilidad primero
-• Compatibilidad total con TalkBack en todas las pantallas
-• Orden de enfoque sensible para la navegación del lector de pantalla
-• Probado con usuarios de lectores de pantalla reales: las correcciones se envían semanalmente según los comentarios
+• Audio en segundo plano y controles en la pantalla de bloqueo y en la notificación
+• Temporizador de sueño, marcadores y avance o retroceso
+• Paso automático entre capítulos de libros y reanudación donde lo dejaste
+• Widget de inicio para seguir con tu último artículo o leer lo que copiaste
 
 Cómo funciona:
-1. Importe contenido mediante URL, PDF, EPUB, correo electrónico o pegado de texto
-2. Elige tu voz de IA preferida
-3. Toca reproducir y escucha en cualquier lugar
+1. Añade contenido por enlace, archivo, correo, texto pegado o el menú de compartir
+2. Revisa el idioma y elige una voz
+3. Toca reproducir y escucha donde quieras
 
-Ya sea que esté trabajando con dislexia, trabajando con TDAH o solucionando limitaciones de la visión, ReadAloud AI convierte su lista de lectura en una lista de escucha.
+Trabajes con dislexia, con TDAH o con limitaciones de visión, ReadAloud AI convierte tu lista de lectura en una lista de escucha.
 
-Descargue ReadAloud AI hoy.
+Descarga ReadAloud AI hoy.

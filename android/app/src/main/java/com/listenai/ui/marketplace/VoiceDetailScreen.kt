@@ -8,6 +8,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -18,6 +19,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import com.listenai.R
 import com.listenai.service.marketplace.VoiceMarketplaceService
@@ -60,7 +62,7 @@ fun VoiceDetailScreen(
             try {
                 voice = marketplaceService.getVoice(voiceId)
             } catch (e: Exception) {
-                errorMessage = e.message ?: "Failed to load voice"
+                errorMessage = marketplaceService.errorText(context, e, R.string.voice_detail_error_load)
             } finally {
                 isLoading = false
             }
@@ -96,7 +98,7 @@ fun VoiceDetailScreen(
                         }
                     }
                 } catch (e: Exception) {
-                    errorMessage = "Failed to play preview"
+                    errorMessage = context.getString(R.string.voice_preview_failed)
                 }
             }
         }
@@ -109,7 +111,7 @@ fun VoiceDetailScreen(
                 showRatingDialog = false
                 loadVoice() // Refresh to get updated rating
             } catch (e: Exception) {
-                errorMessage = e.message
+                errorMessage = marketplaceService.errorText(context, e, R.string.player_something_went_wrong)
             }
         }
     }
@@ -121,7 +123,7 @@ fun VoiceDetailScreen(
                 showReportDialog = false
                 // Show success message
             } catch (e: Exception) {
-                errorMessage = e.message
+                errorMessage = marketplaceService.errorText(context, e, R.string.player_something_went_wrong)
             }
         }
     }
@@ -142,7 +144,7 @@ fun VoiceDetailScreen(
                 title = { Text(stringResource(R.string.voice_detail_title)) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = stringResource(R.string.back))
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                 },
                 actions = {
@@ -174,7 +176,7 @@ fun VoiceDetailScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(errorMessage ?: "Error", color = MaterialTheme.colorScheme.error)
+                        Text(errorMessage ?: stringResource(R.string.error_generic), color = MaterialTheme.colorScheme.error)
                         Spacer(modifier = Modifier.height(16.dp))
                         Button(onClick = { loadVoice() }) {
                             Text(stringResource(R.string.retry))
@@ -234,7 +236,7 @@ fun VoiceDetailScreen(
                         StatItem(
                             icon = Icons.Default.Star,
                             value = if (voice!!.ratingCount > 0) String.format("%.1f", voice!!.avgRating) else "—",
-                            label = if (voice!!.ratingCount > 0) "${voice!!.ratingCount} ratings" else "No ratings yet",
+                            label = if (voice!!.ratingCount > 0) pluralStringResource(R.plurals.marketplace_ratings_count, voice!!.ratingCount, voice!!.ratingCount) else stringResource(R.string.marketplace_no_ratings),
                             iconTint = if (voice!!.ratingCount > 0) Color(0xFFFFB800) else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         StatItem(
@@ -308,7 +310,7 @@ fun VoiceDetailScreen(
                         ) {
                             Icon(Icons.Default.Star, contentDescription = null)
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Rate this Voice")
+                            Text(stringResource(R.string.voice_detail_rate_button))
                         }
                     }
                 }
@@ -333,7 +335,7 @@ fun VoiceDetailScreen(
                             IconButton(onClick = { userRating = star }) {
                                 Icon(
                                     if (star <= userRating) Icons.Default.Star else Icons.Default.StarBorder,
-                                    contentDescription = "$star stars",
+                                    contentDescription = stringResource(R.string.star_rating_format, star),
                                     tint = if (star <= userRating) Color(0xFFFFB800) else MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.size(36.dp)
                                 )
@@ -386,7 +388,7 @@ fun VoiceDetailScreen(
                                 selected = selectedReportReason == reason,
                                 onClick = { selectedReportReason = reason }
                             )
-                            Text(reason.displayName)
+                            Text(stringResource(reason.labelRes))
                         }
                     }
                     Spacer(modifier = Modifier.height(16.dp))

@@ -128,7 +128,7 @@ const audio = await client.textToSpeech.convert(voice.voiceId, { text: "Hello fr
 
 const CLONE_CURL = `API=https://api.readaloudai.org
 
-# 1. the phrase to read aloud (record it as consent.wav)
+# 1. the phrase to read aloud (record it as consent.wav). Optional: add ?language=de or ?language=es to the URL to read it in that language
 curl -s -X POST $API/v1/voices/add/consent-phrase -H "xi-api-key: $READALOUD_API_KEY"
 
 # 2. create the voice
@@ -339,7 +339,7 @@ export default function MigrateFromElevenLabsPage() {
             <ul>
               <li><b>Speaker labels.</b> <code>diarize=true</code>, <code>num_speakers</code> and <code>detect_speaker_roles</code> are accepted and have no effect: <code>speaker_id</code> stays <code>null</code> and the <code>x-compat-ignored</code> response header names them. ReadAloud&rsquo;s own transcription route does label up to 8 speakers.</li>
               <li><b>Rejected with a 400, not silently dropped:</b> <code>keyterms</code>, <code>entity_detection</code> and <code>entity_redaction</code> with a value, <code>webhook</code>, <code>use_multi_channel</code>, <code>additional_formats</code>, <code>secondary_language_codes</code>, <code>numbers_format</code>, <code>no_verbatim</code> and <code>timestamps_granularity=character</code>. Setting them to their off or empty value is fine.</li>
-              <li><b>No realtime transcription.</b> There is nothing equivalent to Scribe v3 Live. <code>logprob</code> in <code>words[]</code> is not a measured value; do not filter on it.</li>
+              <li><b>Realtime transcription is early.</b> A WebSocket in the Scribe Live shape works for English, Spanish and German (see the status table above). <code>logprob</code> in <code>words[]</code> is not a measured value; do not filter on it.</li>
               <li><b>Price.</b> See the <a href="#price" style={ul}>price table</a>: batch speech to text is {formatUsd(READALOUD_PRICES.sttBatchPerHourUsd)} per hour of audio.</li>
             </ul>
             <pre style={pre} tabIndex={0}><code>{STT_ERR}</code></pre>
@@ -390,7 +390,7 @@ export default function MigrateFromElevenLabsPage() {
                   <tr><td className="hl">ReadAloud batch</td><td className="hl">{formatUsd(READALOUD_PRICES.sttBatchPerHourUsd)}</td></tr>
                   <tr><td>ElevenLabs {ELEVENLABS_PRICES.stt.batch.name}</td><td>{formatUsd(ELEVENLABS_PRICES.stt.batch.perHourUsd)}</td></tr>
                   <tr><td>ElevenLabs {ELEVENLABS_PRICES.stt.realtime.name}</td><td>{formatUsd(ELEVENLABS_PRICES.stt.realtime.perHourUsd)}</td></tr>
-                  <tr><td>ReadAloud realtime</td><td>not offered</td></tr>
+                  <tr><td>ReadAloud realtime</td><td>early, no price published yet</td></tr>
                 </tbody>
               </table>
             </div>
@@ -441,10 +441,10 @@ export default function MigrateFromElevenLabsPage() {
               <p><b>Coming soon.</b> The ElevenLabs-path cloning route is built but not switched on in production, so <code>POST /v1/voices/add</code> returns <code>404</code> today. ReadAloud&rsquo;s own cloning API works now (see the <Link href="/developers" style={ul}>Voice API page</Link>). The steps below are what will work.</p>
             )}
             <p>
-              <code>voices.ivc.create</code> (<code>POST /v1/voices/add</code>), <code>voices.get</code> and <code>voices.delete</code> work for cloned voices, and the returned <code>voice_id</code> works in the text-to-speech routes above. It needs an API key with billing enabled that belongs to your ReadAloud account. Cloned voices speak <b>English only</b> for now: another language returns a <code>422</code> that lists the supported ones.
+              <code>voices.ivc.create</code> (<code>POST /v1/voices/add</code>), <code>voices.get</code> and <code>voices.delete</code> work for cloned voices, and the returned <code>voice_id</code> works in the text-to-speech routes above. It needs an API key with billing enabled that belongs to your ReadAloud account. Cloned voices speak English, Spanish or German: another language returns a <code>422</code> that lists the supported ones. The first create after a long idle can take about a minute while the workers start.
             </p>
             <p>
-              ElevenLabs has no consent step, so we add one. A plain <code>voices.ivc.create</code> call is answered with a <code>400</code> whose <code>detail.consent</code> object tells you what to send; the SDKs surface it as an API error. Clone your own voice, or one you have the speaker&rsquo;s recorded consent for.
+              ElevenLabs has no consent step, so we add one. A plain <code>voices.ivc.create</code> call is answered with a <code>400</code> whose <code>detail.consent</code> object tells you what to send; the SDKs surface it as an API error. Clone your own voice, or one you have the speaker&rsquo;s recorded consent for. The phrase is in English by default. Add <code>?language=es</code> or <code>?language=de</code> to the <code>/v1/voices/add/consent-phrase</code> URL (or send <code>language</code> in a JSON body) to get it in Spanish or German; the recording is then checked in the same language.
             </p>
             <h3>JavaScript</h3>
             <pre style={pre} tabIndex={0}><code>{CLONE_JS}</code></pre>
@@ -503,13 +503,14 @@ export default function MigrateFromElevenLabsPage() {
             <ul>
               <li><b>Voices.</b> ElevenLabs voice ids return <code>404</code>. Use <code>readaloud-default</code>. Your own ElevenLabs voice clones and Voice Library voices cannot be used here.</li>
               <li><b>Sound.</b> The voice is not the same as any ElevenLabs voice and we do not claim equal quality. We publish no side-by-side audio on this page.</li>
-              <li><b><code>model_id</code> does not choose the voice.</b> Any string is accepted, including ids we do not list such as <code>eleven_v3</code>; the voice you pass decides how the audio is made. The response header <code>X-Model-Mapped</code> reports how the id was treated.</li>
+              <li><b><code>model_id</code> does not choose the voice.</b> Any string is accepted, including ids we do not list such as <code>eleven_v3</code>; the voice you pass decides how the audio is made. The exception is <code>eleven_v3</code> and <code>eleven_v4</code> on the default voice, which reach the Expressive tier (see Markup below). The response header <code>X-Model-Mapped</code> reports how the id was treated.</li>
               <li><b>Voice settings.</b> Only <code>speed</code> has an effect. <code>stability</code>, <code>similarity_boost</code>, <code>style</code> and <code>use_speaker_boost</code> are accepted and ignored, as are <code>seed</code>, <code>language_code</code>, <code>previous_text</code>, <code>next_text</code> and a few other request fields. The ones you sent are echoed in the <code>x-compat-ignored</code> response header, so nothing is dropped silently.</li>
               <li><b>Language.</b> <code>language_code</code> does not select a language. <code>readaloud-default</code> is an American English voice. For other languages pick a beta voice by id (German, Spanish, French, Italian, Brazilian Portuguese; see <code>GET /v1/voices</code> and the Languages section of the developer docs). We did not test <code>language_code</code> against them.</li>
               <li><b>Sample rates above 24 kHz are upsampled.</b> The audio is made at 24 kHz. Formats such as <code>mp3_44100_128</code> have the sample rate you asked for but no content above 12 kHz. Response headers <code>X-Sample-Rate</code>, <code>X-Audio-Format</code> and <code>X-Source-Sample-Rate</code> say so.</li>
               <li><b><code>wav_*</code> formats</b> work only on the non-streaming endpoint (the streaming endpoint returns <code>422</code>), as in ElevenLabs.</li>
-              <li><b>Timestamps.</b> <code>/with-timestamps</code> works but returns <code>null</code> alignment. We do not compute character timings.</li>
-              <li><b>Markup.</b> No SSML and no v3 audio tags. According to the gateway code, text is passed through as written, so a tag such as <code>[laughs]</code> may be read aloud. We did not test that live.</li>
+              <li><b>Timestamps.</b> The non-streaming <code>/with-timestamps</code> route returns alignment for the default voice. The streaming variant returns <code>null</code> alignment, and WebSocket streams carry no timing. Forced alignment of audio you already have is a separate route, <code>POST /v1/forced-alignment</code>.</li>
+              <li><b>Markup.</b> No SSML. Audio tags act only in the Expressive tier, which <code>model_id</code> <code>eleven_v3</code> or <code>eleven_v4</code> reaches on the default voice (voice id <code>default</code>). Delivery tags <code>[whisper]</code>, <code>[sigh]</code> and <code>[excited]</code> change how the rest of the sentence is spoken; insertion tags <code>[chuckle]</code>, <code>[cough]</code> and <code>[gasp]</code> add the sound. English only. Laughs and emotion tags such as <code>[sad]</code> are removed and listed in the <code>x-compat-ignored</code> response header, so nothing is read aloud. Mixing a delivery tag with an insertion tag in one request drops the insertion tag. Expressive requests are generated whole rather than streamed, and the first request after a long idle can take 25 to 45 seconds.</li>
+              <li><b>Speed varies by voice, and the first request after a long idle can be slow.</b> The default voice (voice id <code>default</code>) has the fastest first audio; some other voices are noticeably slower. The Expressive, clone and speech-to-text workers start on demand, so after a long idle expect tens of seconds on the first request. Past capacity the API answers <code>429</code> with a <code>Retry-After</code> header. We measured from one laptop, not from a co-located server, so treat these as a guide.</li>
               <li><b>Quota status code.</b> When free credits run out the API returns <code>402</code>, not the <code>401</code> ElevenLabs uses. We did not trigger this in the live run.</li>
             </ul>
             <h3>Not supported on the ElevenLabs paths</h3>
@@ -520,8 +521,8 @@ export default function MigrateFromElevenLabsPage() {
               <li>Dubbing, <code>/v1/dubbing</code>. ReadAloud&rsquo;s dubbing is a separate API with its own paths (the same <code>rtts_</code> key works on it once <a href="#one-key" style={ul}>one-key access</a> is on).</li>
               <li>The Agents platform (Conversational AI), <code>/v1/convai/...</code>, speech engine, realtime speech to speech and realtime translation.</li>
               <li>Professional voice cloning on the ElevenLabs path (ReadAloud&rsquo;s own trained-voice API needs a payment method).</li>
-              <li>Speech to speech, text to voice (voice design), audio isolation, sound generation, music, history, pronunciation dictionaries, text to dialogue and projects on their ElevenLabs paths.</li>
-              <li>Realtime speech to text, entity detection, keyterms and webhooks on the speech-to-text route.</li>
+              <li>Text to voice (voice design), audio isolation, sound generation, music and projects on their ElevenLabs paths. Speech to speech, history, pronunciation dictionaries and text to dialogue are available; see the status table.</li>
+              <li>Entity detection, keyterms and webhooks on the batch speech-to-text route.</li>
               <li>Not tested: the deprecated ElevenLabs npm package and the ElevenLabs plugins for voice-agent frameworks against production, see above.</li>
             </ul>
             <p>
@@ -580,7 +581,7 @@ export default function MigrateFromElevenLabsPage() {
             <h3>Does streaming work?</h3>
             <p>Yes: the <code>/stream</code> endpoint and the <code>stream-input</code> WebSocket both worked in our run.</p>
             <h3>Can I use ElevenLabs speech to text, dubbing or agents through this API?</h3>
-            <p>Text to speech and the voice routes work today, and so do the Scribe-shaped speech-to-text route (batch only) and the ElevenLabs-path instant clone (with a consent step); see their sections for the limits. Dubbing and agents are not offered on ElevenLabs paths.</p>
+            <p>Text to speech and the voice routes work today, and so do the Scribe-shaped speech-to-text route (batch, plus an early realtime WebSocket for English, Spanish and German) and the ElevenLabs-path instant clone (with a consent step); see their sections for the limits. Dubbing and agents are not offered on ElevenLabs paths.</p>
             <h3>What does it cost?</h3>
             <p>At list price {RA_LIVE.name} is {formatUsd(RA_LIVE.per1MUsd)} and {RA_STUDIO.name} {formatUsd(RA_STUDIO.per1MUsd)} per million characters, against {formatUsd(ELEVENLABS_PRICES.tts[0].per1MUsd)} and {formatUsd(ELEVENLABS_PRICES.tts[3].per1MUsd)} on the ElevenLabs API list read on {ELEVENLABS_PRICES.retrievedOn}. See the <a href="#price" style={ul}>price table and calculator</a>. New accounts get a one-time grant of free credits; after that you pay as you go.</p>
             <h3>Something here does not match what I see.</h3>

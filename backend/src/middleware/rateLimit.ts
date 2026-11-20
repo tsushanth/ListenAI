@@ -1,6 +1,7 @@
 import rateLimit from 'express-rate-limit';
 import { config, TIER_LIMITS } from '../lib/config.js';
 import { parseInstallId } from '../lib/ttsQuota.js';
+import { isTtsTestBypass } from '../lib/ttsTestBypass.js';
 import type { Request, Response, NextFunction } from 'express';
 import type { AuthenticatedRequest, SubscriptionTier } from '../types/index.js';
 
@@ -38,6 +39,8 @@ export const standardRateLimit = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   skip: (req) => {
+    // Tester bypass for POST /api/realtime-tts/authorize (lib/ttsTestBypass.ts); off unless TTS_TEST_BYPASS_KEY is set.
+    if (isTtsTestBypass(req)) return true;
     // Skip rate limiting for job polling routes - they have their own limiter
     // This prevents polling from consuming the user's standard API quota
     return req.path.match(/^\/tts\/job\/[^/]+$/) !== null && req.method === 'GET';
@@ -195,6 +198,8 @@ export function burstRateLimit(
   res: Response,
   next: NextFunction
 ): void {
+  // Tester bypass (lib/ttsTestBypass.ts): only ever true for POST /api/realtime-tts/authorize with the secret header.
+  if (isTtsTestBypass(req)) return next();
   // Skip burst rate limiting for job polling/cancel routes
   if (/^\/job\/[a-f0-9-]+(?:\/cancel)?$/.test(req.path)) {
     return next();
@@ -255,6 +260,7 @@ export const realtimeTtsAuthorizeRateLimit = rateLimit({
   max: (req) =>
     parseInstallId(req.headers['x-install-id']) ? identifiedIpMax() : 10,
   keyGenerator: (req) => `rt-tts-authorize:ip:${req.ip ?? 'unknown'}`,
+  skip: (req) => isTtsTestBypass(req), // tester bypass, see lib/ttsTestBypass.ts
   standardHeaders: true,
   legacyHeaders: false,
   message: {

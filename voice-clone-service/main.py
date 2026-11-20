@@ -8,7 +8,11 @@ from engine import ChatterboxEngine
 from settings import Settings
 
 settings = Settings.from_env()
-engine = ChatterboxEngine(settings.model)
+if settings.engine == "omnivoice":
+    from engine_omnivoice import OmniVoiceEngine
+    engine = OmniVoiceEngine(steps=int(os.environ.get("VC_OMNI_STEPS", "32")), rt_langs=os.environ.get("VC_OMNI_RT_LANGS", "de,en,it,ja,ko,pl,ru"))
+else:
+    engine = ChatterboxEngine(settings.model)
 app = create_app(engine, settings)  # listens at once; requests wait on engine.ready (cold start = added latency, not a 503)
 
 

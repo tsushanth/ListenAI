@@ -5,6 +5,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -64,11 +65,11 @@ fun ShareVoiceScreen(
     fun shareVoice() {
         val voice = selectedVoice ?: return
         if (displayName.isEmpty()) {
-            errorMessage = "Please enter a display name"
+            errorMessage = context.getString(R.string.share_voice_error_name)
             return
         }
         if (!attestationChecked || !termsChecked) {
-            errorMessage = "Please accept the attestation and terms"
+            errorMessage = context.getString(R.string.share_voice_error_terms)
             return
         }
 
@@ -85,9 +86,9 @@ fun ShareVoiceScreen(
                 )
                 onShareComplete()
             } catch (e: VoiceMarketplaceService.MarketplaceError.AlreadyShared) {
-                errorMessage = "This voice is already shared"
+                errorMessage = context.getString(R.string.marketplace_err_already_shared)
             } catch (e: Exception) {
-                errorMessage = e.message ?: "Failed to share voice"
+                errorMessage = marketplaceService.errorText(context, e, R.string.share_voice_error_failed)
             } finally {
                 isSubmitting = false
             }
@@ -112,7 +113,7 @@ fun ShareVoiceScreen(
                 title = { Text(stringResource(R.string.share_voice_title)) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = stringResource(R.string.back))
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                 }
             )
@@ -148,11 +149,11 @@ fun ShareVoiceScreen(
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
-                            "Sharing isn't available for cloned voices",
+                            stringResource(R.string.share_voice_unavailable_title),
                             style = MaterialTheme.typography.titleMedium
                         )
                         Text(
-                            "Cloned voices are created with a consent check and can only be used by their owner.",
+                            stringResource(R.string.share_voice_unavailable_body),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )

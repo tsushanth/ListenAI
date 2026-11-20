@@ -237,7 +237,10 @@ class ReadAloudApiSource(
                     .put("text", text)
                     .put("voice", request.voiceId)
                     .put("speed", request.speed.toDouble())
-                languageCode?.let { msg.put("language_code", it).put("format", "pcm_24000").put("normalize", "numbers") }
+                languageCode?.let {
+                    msg.put("language_code", it).put("format", "pcm_24000")
+                    if (NumberNormalization.send(it, text)) msg.put("normalize", "numbers")
+                }
                 if (conn.alignment) msg.put("alignment", true)
                 if (!conn.ws.send(msg.toString())) {
                     conn.closed = true
