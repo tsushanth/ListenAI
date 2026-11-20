@@ -22,6 +22,12 @@ data class CloudVoice(
 ) {
     /** One voice that speaks several languages: it must be told which one with `language_code`. */
     val multilingual: Boolean get() = languages.size > 1
+
+    /** The API's studio tier (Beta): slower to start after idle, used for another language only when no live voice speaks it. */
+    val studio: Boolean get() = tier.equals("studio", ignoreCase = true)
+
+    /** The API labels a voice it holds back as a default with "(Experimental)" in its name; the picker shows the name as it comes. */
+    val experimental: Boolean get() = name?.contains("(experimental)", ignoreCase = true) == true
 }
 
 /** What the ReadAloud API offers, as the API itself says. Empty when it cannot be reached or does not say. */
@@ -39,10 +45,10 @@ interface CloudVoiceCatalog {
 /**
  * The language code the API takes for a language the app knows by a device or detector code. Two-letter, lower case;
  * regional forms ("es-MX", "pt-BR") become the language; the codes older Android versions still report ("in", "iw", "ji", "jw")
- * become the current ones. Null for "und", blank, or anything that is not a language code, so such text is never sent as a language.
+ * become the current ones; Norwegian Bokmal and Nynorsk ("nb", "nn", what a phone or a document may say) become "no", the code the API lists. Null for "und", blank, or anything that is not a language code, so such text is never sent as a language.
  */
 object ApiLanguageCode {
-    private val ALIASES = mapOf("in" to "id", "iw" to "he", "ji" to "yi", "jw" to "jv")
+    private val ALIASES = mapOf("in" to "id", "iw" to "he", "ji" to "yi", "jw" to "jv", "nb" to "no", "nn" to "no")
     private val NOT_A_LANGUAGE = setOf("und", "zxx", "mul", "mis")
 
     fun of(raw: String?): String? {
@@ -67,15 +73,18 @@ object ApiLanguageCode {
  * voice the API lists for Portuguese, which today is a Brazilian one.
  */
 object CloudVoicePolicy {
-    private fun usableTier(v: CloudVoice) = v.tier == null || v.tier.equals("live", ignoreCase = true)
+    private fun liveTier(v: CloudVoice) = v.tier == null || v.tier.equals("live", ignoreCase = true)
 
     /** The voices the picker offers for [language], default first; empty when the cloud does not read it. English never goes through this path. */
     fun voicesFor(language: String, listed: List<CloudVoice>): List<CloudVoice> {
         val lang = ApiLanguageCode.of(language) ?: return emptyList()
         if (lang == "en") return emptyList()
-        val speaking = listed.filter { usableTier(it) && lang in it.languages }
+        val speaking = listed.filter { liveTier(it) && lang in it.languages }
         val (multi, single) = speaking.partition { it.multilingual }
-        return single + multi
+        // Then the studio tier's voices (Beta) that speak the language, in the API's order.
+        val studio = listed.filter { it.studio && lang in it.languages }
+        // A voice the API names "(Experimental)" is an opt-in pick: it goes after every other voice, whatever its tier (stable sort).
+        return (single + multi + studio).sortedBy { it.experimental }
     }
 
     /**
@@ -87,10 +96,10 @@ object CloudVoicePolicy {
         return offered.firstOrNull { preferredId != null && it.id == preferredId } ?: offered.firstOrNull()
     }
 
-    /** 2-letter codes of the non-English languages the cloud reads now. */
+    /** 2-letter codes of the non-English languages the cloud reads now (live voices, and studio voices for languages without a live one). Read from what each voice speaks, never from voice counts. */
     fun languages(listed: List<CloudVoice>): Set<String> {
         val all = LinkedHashSet<String>()
-        for (v in listed) if (usableTier(v)) all += v.languages
+        for (v in listed) if (liveTier(v) || v.studio) all += v.languages
         all.remove("en")
         return all.filter { voiceFor(it, listed) != null }.toSet()
     }
@@ -98,12 +107,12 @@ object CloudVoicePolicy {
     /**
      * The `language_code` to send with [voice] for text in [language]: a multilingual voice takes the plain language code; a
      * single-language voice takes the language as the catalog lists it ("pt-BR" for a Brazilian voice), which is what its own
-     * listing says it speaks. Never sent for English (the app's English voices need none).
+     * listing says it speaks. A studio voice always takes the plain code (its listed `language` is its home language, not the one asked for). Never sent for English (the app's English voices need none).
      */
     fun languageCode(voice: CloudVoice, language: String): String? {
         val lang = ApiLanguageCode.of(language) ?: return null
         if (lang == "en") return null
-        return if (voice.multilingual) lang else voice.language.trim().replace('_', '-').ifEmpty { lang }
+        return if (voice.multilingual || voice.studio) lang else voice.language.trim().replace('_', '-').ifEmpty { lang }
     }
 
     /**

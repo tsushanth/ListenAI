@@ -119,9 +119,135 @@ class CloudVoiceTest {
         assertEquals(setOf("de", "pt"), CloudVoicePolicy.languages(listOf(DE_F1, PT_BR)))
     }
 
-    @Test fun `the studio tier is never used for another language`() {
-        val studioMulti = multi("zed", "Zed", ALL, tier = "studio")
-        assertNull(CloudVoicePolicy.voiceFor("es", listOf(studioMulti, EN_STUDIO)))
+    // ---- studio tier (Beta): used for a non-English language only when no live voice speaks it ----
+
+    private val STUDIO_LANGS = listOf("en", "ar", "ca", "hr", "ms", "no", "sk", "sl", "sr", "th", "vi", "zh")
+    private val MIRA = multi("mira", "Mira", STUDIO_LANGS, tier = "studio")
+    private val REMY = multi("remy", "Remy", STUDIO_LANGS - listOf("ms", "sl"), tier = "studio").copy(gender = "male")
+    private fun studioCatalog() = CloudVoicePolicy.parse(
+        CloudVoiceTest::class.java.getResourceAsStream("/readaloud/catalog_studio_2026-11-20.json")!!.bufferedReader().readText()
+    )
+    private val STUDIO_ONLY = listOf("ar", "ca", "hr", "ms", "no", "sk", "sl", "sr", "th", "vi", "zh")
+
+    @Test fun `studio voices are the list for a language no live voice speaks`() {
+        val listed = listOf(ARIA, MIRA, REMY)
+        for (l in STUDIO_ONLY) assertEquals(l, "mira", CloudVoicePolicy.voiceFor(l, listed)?.id)
+        assertEquals(listOf("mira", "remy"), CloudVoicePolicy.voicesFor("zh", listed).map { it.id })
+        // remy does not speak Malay or Slovenian: only mira is offered there
+        assertEquals(listOf("mira"), CloudVoicePolicy.voicesFor("ms", listed).map { it.id })
+        assertEquals(listOf("mira"), CloudVoicePolicy.voicesFor("sl", listed).map { it.id })
+    }
+
+    @Test fun `live voices lead, studio voices follow, and the default is the first`() {
+        // mira also lists Spanish and German here, as it would if the API added them; the live voices still lead
+        val listed = listOf(ARIA, DE_F1, multi("mira", "Mira", listOf("en", "es", "de", "zh"), tier = "studio"))
+        assertEquals("aria", CloudVoicePolicy.voiceFor("es", listed)?.id)
+        assertEquals(listOf("aria", "mira"), CloudVoicePolicy.voicesFor("es", listed).map { it.id })
+        assertEquals("de-f1", CloudVoicePolicy.voiceFor("de", listed)?.id)
+        assertEquals(listOf("de-f1", "aria", "mira"), CloudVoicePolicy.voicesFor("de", listed).map { it.id })
+        // the user's pick wins, a studio voice too, while it is offered for the language
+        assertEquals("mira", CloudVoicePolicy.voiceFor("es", listed, preferredId = "mira")?.id)
+        // a language that later gets a live voice: the live voice leads at once
+        assertEquals("mira", CloudVoicePolicy.voiceFor("zh", listed)?.id)
+        val withLiveZh = listed + multi("zh-live", "Chinese", listOf("zh"), tier = "live")
+        assertEquals(listOf("zh-live", "mira"), CloudVoicePolicy.voicesFor("zh", withLiveZh).map { it.id })
+    }
+
+    @Test fun `the 21 live languages are not touched by the studio voices of the real catalog`() {
+        val v = studioCatalog()
+        val liveOnly = live()
+        for (l in listOf("de", "es", "fr", "it", "pt", "cs", "nl", "fi", "el", "hi", "hu", "id", "ja", "pl", "ro", "ru", "sv", "tr", "uk"))
+            assertEquals(l, CloudVoicePolicy.voicesFor(l, liveOnly).map { it.id }, CloudVoicePolicy.voicesFor(l, v).map { it.id })
+    }
+
+    // Arabic as the owner decided: a live-tier Piper voice named "(Experimental)" beside the studio voices.
+    private val AR_PIPER = CloudVoice("ar-f1", "ar", "female", "Arabic female (Experimental)", setOf("ar"), "live")
+
+    @Test fun `an experimental live voice goes after the studio voices, so mira stays the default and it is an opt-in pick`() {
+        val listed = listOf(ARIA, AR_PIPER, MIRA, REMY)
+        assertEquals(listOf("mira", "remy", "ar-f1"), CloudVoicePolicy.voicesFor("ar", listed).map { it.id })
+        assertEquals("mira", CloudVoicePolicy.voiceFor("ar", listed)?.id)
+        assertEquals("ar-f1", CloudVoicePolicy.voiceFor("ar", listed, preferredId = "ar-f1")?.id)
+        assertEquals("remy", CloudVoicePolicy.voiceFor("ar", listed, preferredId = "remy")?.id)
+        assertTrue("ar" in CloudVoicePolicy.languages(listed))
+        // the Piper voice is told its own listed language, the studio voices the plain code
+        assertEquals("ar", CloudVoicePolicy.languageCode(AR_PIPER, "ar"))
+        assertEquals("ar", CloudVoicePolicy.languageCode(MIRA, "ar"))
+    }
+
+    @Test fun `the experimental label is read case-insensitively, the re-sort is stable, and a lone experimental voice is still offered`() {
+        fun v(id: String, name: String) = CloudVoice(id, "ar", "female", name, setOf("ar"), "live")
+        val listed = listOf(v("a", "One (experimental)"), v("b", "Two"), v("c", "Three (EXPERIMENTAL)"), v("d", "Four"))
+        assertEquals(listOf("b", "d", "a", "c"), CloudVoicePolicy.voicesFor("ar", listed).map { it.id })
+        assertEquals(listOf("a"), CloudVoicePolicy.voicesFor("ar", listOf(listed[0])).map { it.id })
+        assertEquals("a", CloudVoicePolicy.voiceFor("ar", listOf(listed[0]))?.id)
+        assertFalse(CloudVoice("x", "ar", null, null, setOf("ar"), "live").experimental)
+        // an experimental voice of a live language is last in that language's list only
+        val es = listOf(CloudVoice("es-x", "es", "male", "Spanish (Experimental)", setOf("es"), "live"), ARIA)
+        assertEquals(listOf("aria", "es-x"), CloudVoicePolicy.voicesFor("es", es).map { it.id })
+        assertEquals("aria", CloudVoicePolicy.voiceFor("es", es)?.id)
+    }
+
+    @Test fun `English never goes through the studio path`() {
+        for (listed in listOf(listOf(MIRA, REMY), studioCatalog(), listOf(EN_STUDIO, MIRA))) {
+            assertNull(CloudVoicePolicy.voiceFor("en", listed))
+            assertNull(CloudVoicePolicy.voiceFor("en-US", listed))
+            assertTrue(CloudVoicePolicy.voicesFor("en", listed).isEmpty())
+            assertFalse("en" in CloudVoicePolicy.languages(listed))
+        }
+        assertNull(CloudVoicePolicy.languageCode(MIRA, "en"))
+        // an English-only studio voice is never offered for another language
+        assertNull(CloudVoicePolicy.voiceFor("es", listOf(EN_STUDIO)))
+    }
+
+    @Test fun `studio-only languages appear in languages() beside the live ones`() {
+        val listed = listOf(ARIA, DE_F1, MIRA, REMY)
+        val langs = CloudVoicePolicy.languages(listed)
+        assertTrue(langs.containsAll(STUDIO_ONLY))
+        assertTrue(langs.containsAll(listOf("de", "es", "ja")))
+        assertFalse("en" in langs)
+        // a tier the app does not know is not offered
+        assertNull(CloudVoicePolicy.voiceFor("zh", listOf(multi("x", "X", listOf("en", "zh"), tier = "beta"))))
+        assertFalse("zh" in CloudVoicePolicy.languages(listOf(multi("x", "X", listOf("en", "zh"), tier = "beta"))))
+    }
+
+    @Test fun `the real studio catalog - 21 live languages unchanged, 11 studio-only languages added, keyed off voice languages`() {
+        val v = studioCatalog()
+        assertEquals(42, v.size)
+        val live = setOf("de", "es", "fr", "it", "pt", "cs", "nl", "fi", "el", "hi", "hu", "id", "ja", "pl", "ro", "ru", "sv", "tr", "uk")
+        assertEquals(live + STUDIO_ONLY, CloudVoicePolicy.languages(v))
+        for (l in STUDIO_ONLY) {
+            assertEquals(l, "mira", CloudVoicePolicy.voiceFor(l, v)?.id)
+            assertTrue(l, CloudVoicePolicy.voicesFor(l, v).all { it.studio })
+        }
+        assertEquals(listOf("mira", "remy"), CloudVoicePolicy.voicesFor("ar", v).map { it.id })
+        assertEquals(listOf("mira"), CloudVoicePolicy.voicesFor("ms", v).map { it.id })
+        // the user's pick still works among studio voices
+        assertEquals("remy", CloudVoicePolicy.voiceFor("zh", v, preferredId = "remy")?.id)
+        assertEquals("mira", CloudVoicePolicy.voiceFor("ms", v, preferredId = "remy")?.id)
+    }
+
+    @Test fun `a studio voice is sent with the plain language code`() {
+        for (l in STUDIO_ONLY) assertEquals(l, CloudVoicePolicy.languageCode(MIRA, l))
+        assertEquals("zh", CloudVoicePolicy.languageCode(MIRA, "zh-Hans-CN"))
+        // even a studio voice that lists a single language is told the language, not its home language "en"
+        assertEquals("th", CloudVoicePolicy.languageCode(CloudVoice("solo", "en", "female", "Solo", setOf("th"), "studio"), "th"))
+    }
+
+    @Test fun `Norwegian text labelled nb or nn finds the studio voice and is sent as no`() {
+        val v = studioCatalog()
+        for (l in listOf("no", "nb", "nn", "nb-NO")) {
+            assertEquals(l, "mira", CloudVoicePolicy.voiceFor(l, v)?.id)
+            assertEquals(l, "no", CloudVoicePolicy.languageCode(CloudVoicePolicy.voiceFor(l, v)!!, l))
+        }
+    }
+
+    @Test fun `the studio voice is the cache voice and passes the source check for a studio-only language`() = runTest {
+        val s = source(FakeCatalog(studioCatalog()))
+        assertEquals("mira", s.cacheVoice(TtsRequest("bella", "zh")))
+        assertEquals("remy", s.cacheVoice(TtsRequest("bella", "ar", cloudVoiceId = "remy")))
+        assertNull(s.unavailableReason(TtsRequest("bella", "th")))
+        assertEquals("es-f1", s.cacheVoice(TtsRequest("bella", "es")))
     }
 
     @Test fun `the user's voice pick is used while the API still offers it for that language, else the default`() {
@@ -144,6 +270,14 @@ class CloudVoiceTest {
         assertEquals("he", ApiLanguageCode.of("iw"))
         assertEquals("zh", ApiLanguageCode.of("zh-Hans-CN"))
         assertEquals("fil", ApiLanguageCode.of("fil"))
+        // the new languages: Norwegian under its other codes, Chinese and Serbian with a script or region
+        assertEquals("no", ApiLanguageCode.of("nb"))
+        assertEquals("no", ApiLanguageCode.of("nb-NO"))
+        assertEquals("no", ApiLanguageCode.of("nn"))
+        assertEquals("no", ApiLanguageCode.of("no"))
+        assertEquals("zh", ApiLanguageCode.of("zh-Hant-TW"))
+        assertEquals("sr", ApiLanguageCode.of("sr-Latn-RS"))
+        assertEquals("ms", ApiLanguageCode.of("ms-MY"))
         assertNull(ApiLanguageCode.of("und"))
         assertNull(ApiLanguageCode.of(""))
         assertNull(ApiLanguageCode.of(null))
