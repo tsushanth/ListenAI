@@ -173,7 +173,7 @@ export default function PrivacyPage() {
             <p className="text-gray-300">
               The speech models we operate run on cloud infrastructure under our own accounts, and
               the app connects to them over encrypted connections (TLS). Services run by others (Supabase, Anthropic, Google,
-              RevenueCat, Hugging Face, Cloudflare, PostHog) handle data under their own terms and privacy policies, and we do not
+              RevenueCat, Hugging Face, Cloudflare) handle data under their own terms and privacy policies, and we do not
               control how they operate. Apart from the points stated in this policy, we have not verified how long those providers
               keep data.
             </p>
@@ -277,15 +277,17 @@ export default function PrivacyPage() {
               For each visit we record:
             </p>
             <ul className="list-disc pl-6 text-gray-300 space-y-2">
-              <li>The page you loaded and the time</li>
+              <li>The page you loaded (the address without anything after a ?) and the time</li>
               <li>The website that sent you here (the site name only, not the address of the page you came from)</li>
-              <li>Your browser&apos;s user-agent string</li>
-              <li>Your approximate location (country and city), worked out from your IP address</li>
+              <li>Your browser, operating system and device type, read from your browser&apos;s user-agent string</li>
+              <li>Your approximate location (country, region and city), worked out from your IP address</li>
               <li>An anonymous visitor ID made from your IP address, browser and the date, which changes every day, so we cannot follow you from one day to the next</li>
             </ul>
             <p className="text-gray-300 mt-4 mb-4">
-              We do not store IP addresses ourselves. They are sent to our analytics provider, PostHog (posthog.com), only so it can work out
-              the approximate location. We do not count requests that look like bots or automated checks.
+              Page loads are counted by our own analytics server (Gaugemint). There are no cookies and no analytics script in your browser:
+              the count is made by our web server when you load a page. We use your IP address when you arrive to work out the country and
+              the daily anonymous visitor ID, and the address itself is not stored. We do not count requests that look like bots or automated
+              checks. If your browser sends Do Not Track or Global Privacy Control, we do not count your visit at all.
             </p>
             <p className="text-gray-300">
               When you play the voice demo on the homepage, we also record which example sentence you chose (or that you typed your own text and how
