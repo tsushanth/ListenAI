@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 
-const { shouldTrack, referrerHost, visitorId, toPostHog } = await import('../src/lib/pageview.ts')
+const { shouldTrack, referrerHost, isBotUserAgent } = await import('../src/lib/pageview.ts')
 const CHROME = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36'
 const base = { method: 'GET', pathname: '/developers', accept: 'text/html,application/xhtml+xml', userAgent: CHROME }
 
@@ -29,19 +29,16 @@ test('keeps only the referring host, never its path or query, and drops our own 
   assert.equal(referrerHost(null, 'readaloudai.org'), null)
 })
 
-test('visitor id is stable within a day and changes across days, IPs and browsers', async () => {
-  const d = async (s: string) => (await import('node:crypto')).createHash('sha256').update(s).digest('hex')
-  const a = await visitorId('1.2.3.4', CHROME, '2026-10-06', d)
-  assert.equal(a, await visitorId('1.2.3.4', CHROME, '2026-10-06', d))
-  assert.notEqual(a, await visitorId('1.2.3.4', CHROME, '2026-10-07', d))
-  assert.notEqual(a, await visitorId('1.2.3.5', CHROME, '2026-10-06', d))
-  assert.equal(a.length, 16)
+test('isBotUserAgent agrees with shouldTrack and treats short or missing agents as bots', () => {
+  assert.equal(isBotUserAgent(CHROME), false)
+  assert.equal(isBotUserAgent('Googlebot/2.1'), true)
+  assert.equal(isBotUserAgent('x'), true)
+  assert.equal(isBotUserAgent(null), true)
+  assert.equal(isBotUserAgent(undefined), true)
 })
 
-test('PostHog payload carries no person profile and no raw cookie-like identifiers', () => {
-  const p = toPostHog({ distinctId: 'abc', url: 'https://readaloudai.org/pricing', pathname: '/pricing', referrer: null, ua: 'x' }, 'phc_k', '9.9.9.9')
-  assert.equal(p.event, '$pageview')
-  assert.equal(p.properties.$process_person_profile, false)
-  assert.equal(p.properties.$referrer, '$direct')
-  assert.equal(p.distinct_id, 'ra-pv-abc')
+test('the page-view code no longer carries a daily visitor hash or any third-party payload', async () => {
+  const mod = await import('../src/lib/pageview.ts')
+  assert.equal('visitorId' in mod, false)
+  assert.equal('toPostHog' in mod, false)
 })
