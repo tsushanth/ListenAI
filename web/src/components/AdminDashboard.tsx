@@ -18,13 +18,17 @@ const h2: React.CSSProperties = { fontSize: 13, textTransform: 'uppercase', lett
 
 // token: for sites whose session is a bearer token held in the browser (sent as Authorization). Cookie-session sites omit it.
 // scopes: optional tabs that split one app's view (e.g. ReadAloud app vs API); value is sent as ?scope=.
-export default function AdminDashboard({ token, scopes, renderTop }: { token?: string | null; scopes?: { label: string; value: string }[]; renderTop?: (scope: string, hours: number) => React.ReactNode } = {}) {
+// standaloneScopes: tabs (by value) that show only what renderTop returns, with no overview fetch and no health/issues/usage below it
+// (the Web tab, whose numbers come from a different route).
+export default function AdminDashboard({ token, scopes, renderTop, standaloneScopes }: { token?: string | null; scopes?: { label: string; value: string }[]; renderTop?: (scope: string, hours: number) => React.ReactNode; standaloneScopes?: string[] } = {}) {
   const [hours, setHours] = useState(24);
   const [scope, setScope] = useState(scopes?.[0]?.value ?? '');
   const [d, setD] = useState<Overview | null>(null);
   const [err, setErr] = useState('');
+  const standalone = !!standaloneScopes?.includes(scope);
 
   const load = useCallback(async () => {
+    if (standalone) return;
     setErr('');
     try {
       const r = await fetch(`/api/admin/overview?hours=${hours}${scope ? `&scope=${scope}` : ''}`, {
@@ -36,7 +40,7 @@ export default function AdminDashboard({ token, scopes, renderTop }: { token?: s
     } catch (e: any) {
       setErr(e.message || 'failed to load');
     }
-  }, [hours, token, scope]);
+  }, [hours, token, scope, standalone]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -46,13 +50,13 @@ export default function AdminDashboard({ token, scopes, renderTop }: { token?: s
   return (
     <div style={{ maxWidth: 1100, margin: '0 auto', padding: 16, fontSize: 14, lineHeight: 1.45 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-        <h1 style={{ fontSize: 18, margin: 0 }}>Health, issues &amp; usage</h1>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <h1 style={{ fontSize: 18, margin: 0 }}>{standalone ? 'Website visits' : 'Health, issues & usage'}</h1>
+        {!standalone && <div style={{ display: 'flex', gap: 8 }}>
           <select value={hours} onChange={(e) => setHours(Number(e.target.value))} style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid #8886', background: 'transparent', color: 'inherit', colorScheme: 'light dark' }}>
             <option value={1}>1 hour</option><option value={24}>24 hours</option><option value={168}>7 days</option><option value={720}>30 days</option>
           </select>
           <button onClick={load} style={{ padding: '6px 10px' }}>Refresh</button>
-        </div>
+        </div>}
       </div>
       {scopes && (
         <div style={{ display: 'flex', gap: 8, margin: '12px 0 0' }}>
@@ -62,9 +66,9 @@ export default function AdminDashboard({ token, scopes, renderTop }: { token?: s
         </div>
       )}
       {renderTop?.(scope, hours)}
-      {err && <p style={{ color: '#cf222e' }}>Could not load: {err}</p>}
-      {!d && !err && <p style={{ opacity: 0.6 }}>Loading...</p>}
-      {d && (<>
+      {!standalone && err && <p style={{ color: '#cf222e' }}>Could not load: {err}</p>}
+      {!standalone && !d && !err && <p style={{ opacity: 0.6 }}>Loading...</p>}
+      {!standalone && d && (<>
         <h2 style={h2}>Health (probed every 5 min)</h2>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(220px,1fr))', gap: 8 }}>
           {d.latest.length === 0 && <p style={{ opacity: 0.6 }}>No probes yet.</p>}
