@@ -10,11 +10,12 @@ function mockFetch(status = 202) {
   const f = (async (url: string, init: any) => { calls.push({ url, init }); return { status } }) as unknown as typeof fetch
   return { f, calls }
 }
-const cfg = { url: 'https://guagemint.example', domain: 'readaloudai.org', disabled: false }
+const cfg = { url: 'https://guagemint.example', domain: 'readaloudai.org', disabled: false, senderToken: '' }
 
 test('config defaults, overrides, trailing slash and kill switch', () => {
-  assert.deepEqual(gaugemintConfig({}), { url: 'https://guagemint.com', domain: 'readaloudai.org', disabled: false })
-  assert.deepEqual(gaugemintConfig({ GAUGEMINT_URL: 'http://127.0.0.1:9/', GAUGEMINT_DOMAIN: 'x.test' }), { url: 'http://127.0.0.1:9', domain: 'x.test', disabled: false })
+  assert.deepEqual(gaugemintConfig({}), { url: 'https://guagemint.com', domain: 'readaloudai.org', disabled: false, senderToken: '' })
+  assert.deepEqual(gaugemintConfig({ GAUGEMINT_URL: 'http://127.0.0.1:9/', GAUGEMINT_DOMAIN: 'x.test' }), { url: 'http://127.0.0.1:9', domain: 'x.test', disabled: false, senderToken: '' })
+  assert.equal(gaugemintConfig({ GAUGEMINT_SENDER_TOKEN: ' not-a-real-token ' }).senderToken, 'not-a-real-token')
   assert.equal(gaugemintConfig({ ANALYTICS_DISABLED: '1' }).disabled, true)
   assert.equal(gaugemintConfig({ ANALYTICS_DISABLED: '0' }).disabled, false)
   assert.equal(gaugemintConfig({ ANALYTICS_DISABLED: '' }).disabled, false)
@@ -52,6 +53,16 @@ test('custom events carry flat props, with nulls left out', async () => {
   const { f, calls } = mockFetch()
   await sendGaugemint({ name: 'demo_done', pathname: '/', props: { preset: 2, custom_text: false, chars: 80, first_audio_ms: 640, audio_ms: null, reason: undefined }, ip: '203.0.113.7', userAgent: CHROME }, cfg, f)
   assert.deepEqual(JSON.parse(calls[0].init.body).props, { preset: 2, custom_text: false, chars: 80, first_audio_ms: 640 })
+})
+
+test('the sender token is sent as X-Gaugemint-Sender only when configured', async () => {
+  const a = mockFetch()
+  await sendGaugemint({ name: 'pageview', pathname: '/', ip: '203.0.113.7', userAgent: CHROME }, cfg, a.f)
+  assert.equal(a.calls[0].init.headers['X-Gaugemint-Sender'], undefined)
+  const b = mockFetch()
+  await sendGaugemint({ name: 'pageview', pathname: '/', ip: '203.0.113.7', userAgent: CHROME }, { ...cfg, senderToken: 'not-a-real-token' }, b.f)
+  assert.equal(b.calls[0].init.headers['X-Gaugemint-Sender'], 'not-a-real-token')
+  assert.equal(b.calls[0].init.headers['X-Forwarded-For'], '203.0.113.7')
 })
 
 test('kill switch sends nothing', async () => {

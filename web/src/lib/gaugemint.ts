@@ -6,6 +6,8 @@
 // Env (read on every call, so it can change without a rebuild):
 //   GAUGEMINT_URL        base URL of the analytics server (default https://guagemint.com)
 //   GAUGEMINT_DOMAIN     site id registered there (default readaloudai.org)
+//   GAUGEMINT_SENDER_TOKEN  shared secret (a Fly secret, never in code). Sent as X-Gaugemint-Sender so the analytics server trusts the
+//                        forwarded visitor address; without it the server sees only this app's own address and counts one visitor.
 //   ANALYTICS_DISABLED=1 kill switch: nothing is sent
 
 export const DEFAULT_GAUGEMINT_URL = 'https://guagemint.com'
@@ -15,13 +17,15 @@ export interface GaugemintConfig {
   url: string
   domain: string
   disabled: boolean
+  senderToken: string
 }
 
 export function gaugemintConfig(env: Record<string, string | undefined> = process.env): GaugemintConfig {
   const url = (env.GAUGEMINT_URL || DEFAULT_GAUGEMINT_URL).trim().replace(/\/+$/, '')
   const domain = (env.GAUGEMINT_DOMAIN || DEFAULT_GAUGEMINT_DOMAIN).trim()
   const off = (env.ANALYTICS_DISABLED || '').trim().toLowerCase()
-  return { url, domain, disabled: off === '1' || off === 'true' }
+  const senderToken = (env.GAUGEMINT_SENDER_TOKEN || '').trim()
+  return { url, domain, disabled: off === '1' || off === 'true', senderToken }
 }
 
 /** True when the visitor asked not to be counted: Do Not Track (`DNT: 1`) or Global Privacy Control (`Sec-GPC: 1`). */
@@ -75,6 +79,7 @@ export async function sendGaugemint(
     const headers: Record<string, string> = { 'Content-Type': 'application/json' }
     if (ev.ip) headers['X-Forwarded-For'] = ev.ip
     if (ev.userAgent) headers['User-Agent'] = ev.userAgent
+    if (cfg.senderToken) headers['X-Gaugemint-Sender'] = cfg.senderToken
     const res = await fetchImpl(`${cfg.url}/api/event`, {
       method: 'POST',
       headers,
