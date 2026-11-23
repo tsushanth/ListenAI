@@ -39,6 +39,8 @@ async function boot() {
   app.get('/direct-ratelimit', (_req, res) => { res.status(429).json({ error: 'RATE_LIMITED', message: 'Too many requests, please try again later' }); });
   app.get('/direct-with-code', (_req, res) => { res.status(400).json({ error: 'x', code: 'insufficient_credit' }); });
   app.get('/ok', (_req, res) => { res.status(200).json({ error: 'not an error body' }); });
+  // A streamed response that fails after the headers went out (SSE, audio): the handler must not try to write a body.
+  app.get('/stream-fail', (_req, res) => { res.write('data: 1\n\n'); throw new Error('mid-stream failure'); });
   app.use(eh.notFoundHandler);
   app.use(eh.errorHandler);
   const server = app.listen(0);
@@ -190,4 +192,16 @@ test('resolveErrorCode falls back to the HTTP status', async () => {
   assert.equal(resolveErrorCode(504, 'x'), 'timeout');
   assert.equal(resolveErrorCode(500, 'x'), 'internal_error');
   assert.equal(resolveErrorCode(418, 'x'), 'unknown_error');
+});
+
+test('an error after the headers were sent does not crash the handler or the server', async () => {
+  const { get, close, port } = await boot();
+  try {
+    await fetch(`http://127.0.0.1:${port}/stream-fail`).then((r) => r.text()).catch(() => undefined);
+    const r = await get('/direct');
+    assert.equal(r.status, 400);
+    assert.equal(r.body.code, 'device_id_required');
+  } finally {
+    close();
+  }
 });

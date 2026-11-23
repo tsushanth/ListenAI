@@ -41,7 +41,7 @@ export const errorHandler: ErrorRequestHandler = (
   err: Error,
   req: Request,
   res: Response,
-  _next: NextFunction
+  next: NextFunction
 ): void => {
   // Default values
   let statusCode = 500;
@@ -97,6 +97,13 @@ export const errorHandler: ErrorRequestHandler = (
     logger.error({ ...logData, stack: err.stack }, 'Server error');
   } else if (statusCode >= 400) {
     logger.warn(logData, 'Client error');
+  }
+
+  // A response that already started (SSE, streamed audio) cannot take an error body or new headers:
+  // it was logged above; hand over to Express, which closes the connection.
+  if (res.headersSent) {
+    next(err);
+    return;
   }
 
   // Build response
