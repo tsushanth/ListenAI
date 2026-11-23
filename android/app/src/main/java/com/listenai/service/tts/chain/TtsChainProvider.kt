@@ -39,6 +39,7 @@ object TtsChainProvider {
 
     private fun build(app: Context): Holder {
         val http = OkHttpClient.Builder()
+            .addInterceptor(com.listenai.data.remote.AcceptLanguageInterceptor())
             .connectTimeout(8, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
             .writeTimeout(10, TimeUnit.SECONDS)

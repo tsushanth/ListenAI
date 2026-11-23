@@ -594,4 +594,43 @@
         <item quantity="many">Текст, %1$d слов</item>
         <item quantity="other">Текст, %1$d слова</item>
     </plurals>
+    <!-- Server error codes, marketplace tags, Gmail errors (fix/localized-errors) -->
+    <string name="srv_err_invalid_request">Не удалось обработать запрос. Повторите попытку.</string>
+    <string name="srv_err_text_too_long">Этот текст слишком длинный для вашего тарифа. Попробуйте более короткий текст или перейдите на более высокий тариф.</string>
+    <string name="srv_err_sign_in">Войдите снова, чтобы продолжить.</string>
+    <string name="srv_err_forbidden">У вас нет доступа к этому.</string>
+    <string name="srv_err_tier_required">Для этого голоса нужен более высокий тариф.</string>
+    <string name="srv_err_not_owner">Это может сделать только владелец.</string>
+    <string name="srv_err_not_found">Не найдено.</string>
+    <string name="srv_err_quota_daily">Вы достигли сегодняшнего лимита. Повторите завтра или перейдите на более высокий тариф.</string>
+    <string name="srv_err_quota_monthly">Вы достигли лимита на этот месяц. Перейдите на более высокий тариф или дождитесь сброса.</string>
+    <string name="srv_err_quota">Вы достигли лимита использования. Перейдите на более высокий тариф или дождитесь сброса.</string>
+    <string name="srv_err_rate_limited">Слишком много запросов. Подождите немного и повторите попытку.</string>
+    <string name="srv_err_voice_already_revoked">Этот голос уже удалён из каталога.</string>
+    <string name="srv_err_cannot_report_own">Нельзя пожаловаться на собственный голос.</string>
+    <string name="srv_err_already_reported">Вы уже пожаловались на этот голос.</string>
+    <string name="srv_err_cannot_rate_own">Нельзя оценить собственный голос.</string>
+    <string name="srv_err_cloning_unavailable">Клонирование голоса сейчас недоступно.</string>
+    <string name="srv_err_service_unavailable">Сервис временно недоступен. Повторите попытку через несколько минут.</string>
+    <string name="srv_err_timeout">Время ожидания запроса истекло. Возможно, сервер перегружен.</string>
+    <string name="srv_err_internal">На нашей стороне произошла ошибка. Повторите попытку.</string>
+    <string name="srv_err_synthesis_failed">Не удалось создать это аудио. Повторите попытку.</string>
+    <string name="srv_err_too_large">Слишком большой объём для отправки.</string>
+    <string name="srv_err_generic">Что-то пошло не так. Повторите попытку.</string>
+    <string name="revoked_reason_owner">Удалён вами</string>
+    <string name="tag_expressive">Выразительный</string>
+    <string name="tag_energetic">Энергичный</string>
+    <string name="tag_deep">Глубокий</string>
+    <string name="tag_warm">Тёплый</string>
+    <string name="tag_bright">Яркий</string>
+    <string name="tag_professional">Деловой</string>
+    <string name="tag_casual">Непринуждённый</string>
+    <string name="tag_storytelling">Повествовательный</string>
+    <string name="gmail_err_not_signed_in">Вход через Google не выполнен</string>
+    <string name="gmail_err_unauthorized">Доступ к Gmail не разрешён</string>
+    <string name="gmail_err_fetch_failed">Не удалось получить письма</string>
+    <string name="gmail_err_invalid_response">Недопустимый ответ от Gmail</string>
+    <string name="gmail_err_api">Ошибка Gmail: %1$s</string>
+    <string name="model_dl_failed">Не удалось скачать. Проверьте подключение и повторите попытку.</string>
+    <string name="system_tts_engine_name">Голоса ReadAloud AI</string>
 </resources>

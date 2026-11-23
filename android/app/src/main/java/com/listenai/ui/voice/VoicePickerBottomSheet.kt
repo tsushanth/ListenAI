@@ -219,7 +219,7 @@ fun VoicePickerBottomSheet(
                     tempSelectedVoice = null
                 }
             } catch (e: VoiceCloneException) {
-                Toast.makeText(context, VoiceCloneErrors.map(e).message, Toast.LENGTH_LONG).show()
+                Toast.makeText(context, VoiceCloneErrors.map(e).text.resolve(context), Toast.LENGTH_LONG).show()
             } catch (e: Exception) {
                 android.util.Log.e("VoicePickerBottomSheet", "Failed to delete voice", e)
                 Toast.makeText(context, context.getString(R.string.vcl_delete_failed), Toast.LENGTH_SHORT).show()

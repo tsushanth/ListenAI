@@ -588,4 +588,43 @@
         <item quantity="one">Tekst, %1$d woord</item>
         <item quantity="other">Tekst, %1$d woorden</item>
     </plurals>
+    <!-- Server error codes, marketplace tags, Gmail errors (fix/localized-errors) -->
+    <string name="srv_err_invalid_request">Het verzoek kon niet worden verwerkt. Probeer het opnieuw.</string>
+    <string name="srv_err_text_too_long">Deze tekst is te lang voor je abonnement. Probeer een kortere tekst of upgrade.</string>
+    <string name="srv_err_sign_in">Meld je opnieuw aan om door te gaan.</string>
+    <string name="srv_err_forbidden">Je hebt hier geen toegang toe.</string>
+    <string name="srv_err_tier_required">Voor deze stem is een hoger abonnement nodig.</string>
+    <string name="srv_err_not_owner">Alleen de eigenaar kan dat doen.</string>
+    <string name="srv_err_not_found">Dat is niet gevonden.</string>
+    <string name="srv_err_quota_daily">Je hebt de limiet van vandaag bereikt. Probeer het morgen opnieuw of upgrade.</string>
+    <string name="srv_err_quota_monthly">Je hebt de limiet van deze maand bereikt. Upgrade of wacht tot hij wordt gereset.</string>
+    <string name="srv_err_quota">Je hebt je gebruikslimiet bereikt. Upgrade of wacht tot hij wordt gereset.</string>
+    <string name="srv_err_rate_limited">Te veel verzoeken. Wacht even en probeer het opnieuw.</string>
+    <string name="srv_err_voice_already_revoked">Deze stem is al van de marktplaats verwijderd.</string>
+    <string name="srv_err_cannot_report_own">Je kunt je eigen stem niet melden.</string>
+    <string name="srv_err_already_reported">Je hebt deze stem al gemeld.</string>
+    <string name="srv_err_cannot_rate_own">Je kunt je eigen stem niet beoordelen.</string>
+    <string name="srv_err_cloning_unavailable">Stemklonen is op dit moment niet beschikbaar.</string>
+    <string name="srv_err_service_unavailable">De dienst is tijdelijk niet beschikbaar. Probeer het over enkele minuten opnieuw.</string>
+    <string name="srv_err_timeout">Het verzoek is verlopen. De server is mogelijk druk bezet.</string>
+    <string name="srv_err_internal">Er is iets misgegaan aan onze kant. Probeer het opnieuw.</string>
+    <string name="srv_err_synthesis_failed">We konden deze audio niet genereren. Probeer het opnieuw.</string>
+    <string name="srv_err_too_large">Dat is te groot om te verzenden.</string>
+    <string name="srv_err_generic">Er is iets misgegaan. Probeer het opnieuw.</string>
+    <string name="revoked_reason_owner">Door jou verwijderd</string>
+    <string name="tag_expressive">Expressief</string>
+    <string name="tag_energetic">Energiek</string>
+    <string name="tag_deep">Diep</string>
+    <string name="tag_warm">Warm</string>
+    <string name="tag_bright">Helder</string>
+    <string name="tag_professional">Professioneel</string>
+    <string name="tag_casual">Casual</string>
+    <string name="tag_storytelling">Vertellend</string>
+    <string name="gmail_err_not_signed_in">Niet aangemeld met Google</string>
+    <string name="gmail_err_unauthorized">Gmail-toegang is niet geautoriseerd</string>
+    <string name="gmail_err_fetch_failed">E-mails ophalen is mislukt</string>
+    <string name="gmail_err_invalid_response">Ongeldig antwoord van Gmail</string>
+    <string name="gmail_err_api">Gmail-fout: %1$s</string>
+    <string name="model_dl_failed">Downloaden mislukt. Controleer je verbinding en probeer het opnieuw.</string>
+    <string name="system_tts_engine_name">ReadAloud AI-stemmen</string>
 </resources>

@@ -919,7 +919,7 @@ private fun OfflineAIRow(
 
         if (enabled && eligible && state is KokoroModelDownloader.State.Failed) {
             Text(
-                text = state.message,
+                text = stringResource(R.string.model_dl_failed), // state.message is English diagnostics (in the log)
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.error,
                 modifier = Modifier.padding(start = 48.dp)

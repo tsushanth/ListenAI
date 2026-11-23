@@ -11,6 +11,7 @@ import { logger, LOG_REDACT_PATHS } from './lib/logger.js';
 import { requireAuth } from './middleware/auth.js';
 import { requireAuthOrApiKey } from './middleware/apiKeyAuth.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
+import { errorCodeNet } from './middleware/errorCodeNet.js';
 import { reportFailure, reportCrash } from './lib/failureReporter.js';
 import { serverErrorNet } from './lib/serverErrorNet.js';
 import { runJobMonitor } from './lib/jobMonitor.js';
@@ -109,6 +110,9 @@ app.use(compression());
 
 // Reports any 5xx that a handler answered itself (the central errorHandler only sees next(err)).
 app.use(serverErrorNet());
+
+// Adds a stable `code` to every 4xx/5xx JSON body so clients can show the error in the user's language.
+app.use(errorCodeNet());
 
 // Stripe webhook needs raw body for signature verification
 // Must be before express.json() middleware

@@ -518,6 +518,8 @@ voiceMarketplaceRouter.get('/my/shares', asyncHandler(async (req: DeviceRequest,
     created_at: v.created_at,
     revoked_at: v.revoked_at,
     revoked_reason: v.revoked_reason,
+    // Stable code for the reason the server writes itself; free-text moderation reasons have none and are shown as written.
+    revoked_reason_code: v.revoked_reason === 'Owner revoked' ? 'owner_revoked' : null,
   }));
 
   res.json({ shares });

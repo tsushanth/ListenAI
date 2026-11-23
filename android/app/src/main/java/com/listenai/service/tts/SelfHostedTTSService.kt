@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.withContext
 import okhttp3.Dns
 import okhttp3.MediaType.Companion.toMediaType
+import com.listenai.service.ServerErrorText
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -95,6 +96,7 @@ class SelfHostedTTSService(private val context: Context) : TTSService {
     }
 
     private val httpClient = OkHttpClient.Builder()
+        .addInterceptor(com.listenai.data.remote.AcceptLanguageInterceptor())
         .dns(customDns)
         .connectTimeout(30, TimeUnit.SECONDS)
         .readTimeout(120, TimeUnit.SECONDS)  // TTS can take time for long text
@@ -220,7 +222,7 @@ class SelfHostedTTSService(private val context: Context) : TTSService {
                 throw TTSError.NetworkError("Unable to connect to TTS server. Please check your internet connection.")
             } catch (e: java.net.SocketTimeoutException) {
                 android.util.Log.e("SelfHostedTTS", "Connection timeout: ${e.message}")
-                throw TTSError.NetworkError("Connection timed out. The server might be busy.")
+                throw TTSError.SynthesisTimeout
             } catch (e: java.io.IOException) {
                 android.util.Log.e("SelfHostedTTS", "Network error: ${e.message}")
                 throw TTSError.NetworkError("Network error: ${e.message}")
@@ -331,8 +333,8 @@ class SelfHostedTTSService(private val context: Context) : TTSService {
                     }
                     "failed" -> {
                         val error = statusResponse.optJSONObject("error")
-                        val errorMsg = error?.optString("message") ?: "Synthesis failed"
-                        throw TTSError.NetworkError(errorMsg)
+                        // The job record carries { code, message }: translate the code, keep the English text as the fallback.
+                        throw TTSError.Server(200, error?.optString("code")?.lowercase()?.takeIf { it.isNotEmpty() }, error?.optString("message")?.takeIf { it.isNotEmpty() })
                     }
                     "canceled" -> {
                         throw TTSError.Cancelled
@@ -340,7 +342,7 @@ class SelfHostedTTSService(private val context: Context) : TTSService {
                 }
             }
 
-            throw TTSError.NetworkError("Synthesis timed out after ${maxPolls * pollInterval / 1000} seconds")
+            throw TTSError.SynthesisTimeout
 
         } finally {
             activeTasks.remove(taskId)
@@ -662,8 +664,8 @@ class SelfHostedTTSService(private val context: Context) : TTSService {
                     "failed" -> {
                         activeClonedJobs.remove(voiceId)
                         val error = statusResponse.optJSONObject("error")
-                        val errorMsg = error?.optString("message") ?: "Cloned voice synthesis failed"
-                        throw TTSError.NetworkError(errorMsg)
+                        // The job record carries { code, message }: translate the code, keep the English text as the fallback.
+                        throw TTSError.Server(200, error?.optString("code")?.lowercase()?.takeIf { it.isNotEmpty() }, error?.optString("message")?.takeIf { it.isNotEmpty() })
                     }
                     "canceled" -> {
                         activeClonedJobs.remove(voiceId)
@@ -673,7 +675,7 @@ class SelfHostedTTSService(private val context: Context) : TTSService {
             }
 
             activeClonedJobs.remove(voiceId)
-            throw TTSError.NetworkError("Cloned voice synthesis timed out after ${maxPolls * pollInterval / 1000} seconds")
+            throw TTSError.SynthesisTimeout
 
         } finally {
             activeTasks.remove(taskId)
@@ -823,30 +825,24 @@ class SelfHostedTTSService(private val context: Context) : TTSService {
     }
 
     private fun handleErrorResponse(code: Int, body: String, requiredChars: Int = 0) {
-        val json = try {
-            JSONObject(body)
-        } catch (e: Exception) {
-            null
-        }
+        // The server sends { error, message, code }: translate the code, keep its English text only as a fallback.
+        val err = ServerErrorText.parse(code, body)
 
-        val message = json?.optString("message")
-            ?: json?.optString("detail")
-            ?: json?.optString("error")
-            ?: body
-
-        when (code) {
-            400 -> throw TTSError.InvalidConfiguration(message)
-            402 -> {
+        when {
+            code == 402 -> {
                 // Quota exceeded - parse the details
-                val details = json?.optJSONObject("details")
+                val details = err.details
                 val dailyLimit = details?.optInt("daily_limit", 4000) ?: 4000
                 val dailyUsed = details?.optInt("daily_used", 0) ?: 0
                 val remaining = (dailyLimit - dailyUsed).coerceAtLeast(0)
                 throw TTSError.QuotaExceeded(remaining, requiredChars)
             }
-            429 -> throw TTSError.RateLimited(60.0)
-            500, 502, 503, 504 -> throw TTSError.ApiError(provider.displayName, code, "Service temporarily unavailable")
-            else -> throw TTSError.ApiError(provider.displayName, code, message)
+            code == 429 -> throw TTSError.RateLimited(60.0)
+            err.code == "text_too_long" && err.details?.has("max_chars") == true -> {
+                val d = err.details!!
+                throw TTSError.TextTooLong(d.optInt("current_chars", requiredChars), d.optInt("max_chars"))
+            }
+            else -> throw TTSError.Server(code, err.code, err.message)
         }
     }
 
@@ -1028,8 +1024,8 @@ class SelfHostedTTSService(private val context: Context) : TTSService {
                     "failed" -> {
                         activeClonedJobs.remove(voiceId)
                         val error = statusResponse.optJSONObject("error")
-                        val errorMsg = error?.optString("message") ?: "Cloned voice synthesis failed"
-                        throw TTSError.NetworkError(errorMsg)
+                        // The job record carries { code, message }: translate the code, keep the English text as the fallback.
+                        throw TTSError.Server(200, error?.optString("code")?.lowercase()?.takeIf { it.isNotEmpty() }, error?.optString("message")?.takeIf { it.isNotEmpty() })
                     }
                     "canceled" -> {
                         activeClonedJobs.remove(voiceId)
@@ -1039,7 +1035,7 @@ class SelfHostedTTSService(private val context: Context) : TTSService {
             }
 
             activeClonedJobs.remove(voiceId)
-            throw TTSError.NetworkError("Cloned voice synthesis timed out")
+            throw TTSError.SynthesisTimeout
 
         } finally {
             activeTasks.remove(taskId)

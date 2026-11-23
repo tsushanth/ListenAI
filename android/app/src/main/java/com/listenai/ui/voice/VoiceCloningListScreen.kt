@@ -340,7 +340,7 @@ fun VoiceCloningListScreen(
                 clonedVoices = clonedVoices.filter { it.id != voice.id }
                 Toast.makeText(context, context.getString(R.string.vcl_voice_deleted), Toast.LENGTH_SHORT).show()
             } catch (e: VoiceCloneException) {
-                Toast.makeText(context, VoiceCloneErrors.map(e).message, Toast.LENGTH_LONG).show()
+                Toast.makeText(context, VoiceCloneErrors.map(e).text.resolve(context), Toast.LENGTH_LONG).show()
             } catch (e: Exception) {
                 Toast.makeText(context, context.getString(R.string.vcl_delete_failed), Toast.LENGTH_SHORT).show()
             } finally {

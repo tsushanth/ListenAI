@@ -44,12 +44,7 @@ fun ShareVoiceScreen(
     var isSubmitting by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
-    val availableTags = listOf(
-        "male", "female", "neutral",
-        "expressive", "calm", "energetic",
-        "deep", "warm", "bright",
-        "professional", "casual", "storytelling"
-    )
+    val availableTags = MarketplaceTags.SHARE_TAGS
 
     fun loadVoices() {
         scope.launch {
@@ -267,7 +262,7 @@ fun ShareVoiceScreen(
                                         selectedTags
                                     }
                                 },
-                                label = { Text(tag.replaceFirstChar { it.uppercase() }) }
+                                label = { Text(marketplaceTagLabel(tag)) }
                             )
                         }
                     }

@@ -585,4 +585,43 @@
     <plurals name="incoming_source_text">
         <item quantity="other">Teks, %1$d perkataan</item>
     </plurals>
+    <!-- Server error codes, marketplace tags, Gmail errors (fix/localized-errors) -->
+    <string name="srv_err_invalid_request">Permintaan tidak dapat diproses. Sila cuba lagi.</string>
+    <string name="srv_err_text_too_long">Teks ini terlalu panjang untuk pelan anda. Cuba teks yang lebih pendek atau naik taraf.</string>
+    <string name="srv_err_sign_in">Sila log masuk semula untuk meneruskan.</string>
+    <string name="srv_err_forbidden">Anda tidak mempunyai akses kepada ini.</string>
+    <string name="srv_err_tier_required">Suara ini memerlukan pelan yang lebih tinggi.</string>
+    <string name="srv_err_not_owner">Hanya pemilik yang boleh melakukannya.</string>
+    <string name="srv_err_not_found">Tidak ditemui.</string>
+    <string name="srv_err_quota_daily">Anda telah mencapai had hari ini. Cuba lagi esok atau naik taraf.</string>
+    <string name="srv_err_quota_monthly">Anda telah mencapai had bulan ini. Naik taraf atau tunggu sehingga ditetapkan semula.</string>
+    <string name="srv_err_quota">Anda telah mencapai had penggunaan. Naik taraf atau tunggu sehingga ditetapkan semula.</string>
+    <string name="srv_err_rate_limited">Terlalu banyak permintaan. Sila tunggu sebentar dan cuba lagi.</string>
+    <string name="srv_err_voice_already_revoked">Suara ini telah dialih keluar daripada pasar.</string>
+    <string name="srv_err_cannot_report_own">Anda tidak boleh melaporkan suara anda sendiri.</string>
+    <string name="srv_err_already_reported">Anda sudah melaporkan suara ini.</string>
+    <string name="srv_err_cannot_rate_own">Anda tidak boleh menilai suara anda sendiri.</string>
+    <string name="srv_err_cloning_unavailable">Pengklonan suara tidak tersedia buat masa ini.</string>
+    <string name="srv_err_service_unavailable">Perkhidmatan tidak tersedia buat sementara waktu. Cuba lagi dalam beberapa minit.</string>
+    <string name="srv_err_timeout">Permintaan tamat masa. Pelayan mungkin sibuk.</string>
+    <string name="srv_err_internal">Berlaku masalah di pihak kami. Sila cuba lagi.</string>
+    <string name="srv_err_synthesis_failed">Kami tidak dapat menjana audio ini. Sila cuba lagi.</string>
+    <string name="srv_err_too_large">Terlalu besar untuk dihantar.</string>
+    <string name="srv_err_generic">Sesuatu telah berlaku. Sila cuba lagi.</string>
+    <string name="revoked_reason_owner">Dialih keluar oleh anda</string>
+    <string name="tag_expressive">Ekspresif</string>
+    <string name="tag_energetic">Bertenaga</string>
+    <string name="tag_deep">Dalam</string>
+    <string name="tag_warm">Hangat</string>
+    <string name="tag_bright">Cerah</string>
+    <string name="tag_professional">Profesional</string>
+    <string name="tag_casual">Santai</string>
+    <string name="tag_storytelling">Bercerita</string>
+    <string name="gmail_err_not_signed_in">Belum log masuk dengan Google</string>
+    <string name="gmail_err_unauthorized">Akses Gmail tidak dibenarkan</string>
+    <string name="gmail_err_fetch_failed">Gagal mendapatkan e-mel</string>
+    <string name="gmail_err_invalid_response">Respons tidak sah daripada Gmail</string>
+    <string name="gmail_err_api">Ralat Gmail: %1$s</string>
+    <string name="model_dl_failed">Muat turun gagal. Semak sambungan anda dan cuba lagi.</string>
+    <string name="system_tts_engine_name">Suara ReadAloud AI</string>
 </resources>

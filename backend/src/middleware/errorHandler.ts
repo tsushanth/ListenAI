@@ -3,6 +3,7 @@ import { ZodError } from 'zod';
 import { logger } from '../lib/logger.js';
 import { config } from '../lib/config.js';
 import { reportBackendError } from '../lib/failureReporter.js';
+import { requestLanguage, resolveErrorCode } from '../lib/errorCodes.js';
 import {
   AppError,
   AuthenticationError,
@@ -18,8 +19,12 @@ import {
 // ============================================================================
 
 interface ErrorResponse {
+  /** Coarse category, kept for old clients. */
   error: string;
+  /** English text, kept for old clients and as the fallback for a code a client does not know. */
   message: string;
+  /** Stable language-neutral code (lib/errorCodes.ts); clients translate this. */
+  code: string;
   details?: Record<string, unknown>;
   stack?: string;
 }
@@ -36,13 +41,14 @@ export const errorHandler: ErrorRequestHandler = (
   err: Error,
   req: Request,
   res: Response,
-  _next: NextFunction
+  next: NextFunction
 ): void => {
   // Default values
   let statusCode = 500;
   let errorCode = 'INTERNAL_ERROR';
   let message = 'An unexpected error occurred';
   let details: Record<string, unknown> | undefined;
+  let userCode: string | undefined;
 
   // Handle known error types
   if (err instanceof AppError) {
@@ -50,6 +56,7 @@ export const errorHandler: ErrorRequestHandler = (
     errorCode = err.code;
     message = err.message;
     details = err.details;
+    userCode = err.userCode;
   } else if (err instanceof ZodError) {
     statusCode = 400;
     errorCode = 'VALIDATION_ERROR';
@@ -60,12 +67,20 @@ export const errorHandler: ErrorRequestHandler = (
     statusCode = 400;
     errorCode = 'INVALID_JSON';
     message = 'Invalid JSON in request body';
+    userCode = 'invalid_json';
   }
+
+  // The language the client asked for. Text stays English; the client translates `code`.
+  const lang = requestLanguage(req);
+  res.locals.lang = lang;
+  const code = resolveErrorCode(statusCode, message, userCode);
 
   // Log the error
   const logData = {
     statusCode,
     errorCode,
+    code,
+    lang,
     message,
     path: req.path,
     method: req.method,
@@ -84,11 +99,20 @@ export const errorHandler: ErrorRequestHandler = (
     logger.warn(logData, 'Client error');
   }
 
+  // A response that already started (SSE, streamed audio) cannot take an error body or new headers:
+  // it was logged above; hand over to Express, which closes the connection.
+  if (res.headersSent) {
+    next(err);
+    return;
+  }
+
   // Build response
   const response: ErrorResponse = {
     error: errorCode,
     message,
+    code,
   };
+  res.setHeader('Content-Language', 'en');
 
   if (details) {
     response.details = details;
@@ -113,6 +137,7 @@ export function notFoundHandler(req: Request, res: Response): void {
   res.status(404).json({
     error: 'NOT_FOUND',
     message: `Route ${req.method} ${req.path} not found`,
+    code: 'not_found',
   });
 }
 

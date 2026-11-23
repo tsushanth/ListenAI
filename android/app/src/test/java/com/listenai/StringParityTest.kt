@@ -17,9 +17,6 @@ class StringParityTest {
     private val res: File = listOf(File("src/main/res"), File("app/src/main/res")).first { it.isDirectory }
     private val main: File = res.parentFile
 
-    /** Used only by the separate `voice` build flavor (engine name shown in the system TTS settings): a brand name. */
-    private val notTranslated = setOf("system_tts_engine_name")
-
     private class Entry(val text: String, val plural: Set<String>?)
 
     private fun parse(file: File): Map<String, Entry> {
@@ -41,7 +38,7 @@ class StringParityTest {
         return out
     }
 
-    private val base = parse(File(res, "values/strings.xml")).filterKeys { it !in notTranslated }
+    private val base = parse(File(res, "values/strings.xml"))
     private val locales: Map<String, Map<String, Entry>> = res.listFiles { f -> f.isDirectory && f.name.startsWith("values-") && File(f, "strings.xml").exists() }!!
         .sortedBy { it.name }.associate { it.name.removePrefix("values-") to parse(File(it, "strings.xml")) }
 

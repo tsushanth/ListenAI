@@ -146,6 +146,7 @@ val serviceModule = module {
     single<AccountDeletionClient> {
         val voice = get<VoiceCloningService>()
         AccountApi(VoiceCloningService.DEFAULT_BACKEND_URL, okhttp3.OkHttpClient.Builder()
+            .addInterceptor(com.listenai.data.remote.AcceptLanguageInterceptor())
             .connectTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
             // Voice removal, storage cleanup and the auth user can take a while on the server.
             .readTimeout(120, java.util.concurrent.TimeUnit.SECONDS)

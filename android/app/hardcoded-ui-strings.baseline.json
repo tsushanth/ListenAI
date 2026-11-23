@@ -1,6 +1,6 @@
 {
   "_note": "Per-file count of hard-coded user-visible English literals in src/main. NoHardcodedUiStringsTest fails if a count rises or a new file adds any. Lower counts are fine. Regenerate deliberately with scripts/update-hardcoded-baseline.sh; see docs/hardcoded-ui-strings-guard.md.",
-  "total": 185,
+  "total": 152,
   "files": {
     "src/main/java/com/listenai/FailureReporterInterceptor.kt": {"count": 1, "h": ["a4a14917"]},
     "src/main/java/com/listenai/data/models/Article.kt": {"count": 7, "h": ["001faf09", "0021699c", "0021699c", "0027b94d", "03ff5b7c", "180dfd76", "d57da186"]},
@@ -11,8 +11,7 @@
     "src/main/java/com/listenai/service/auth/AuthService.kt": {"count": 6, "h": ["29702f0f", "2ee5e1d4", "42ef437c", "eda2380f", "f739c0e4", "fb2f5ed9"]},
     "src/main/java/com/listenai/service/auth/GoogleAuthService.kt": {"count": 8, "h": ["03f94c4f", "226b4a6a", "29702f0f", "8852cd50", "92d4b98e", "9509d1e0", "dc26bccd", "f4d5e49a"]},
     "src/main/java/com/listenai/service/billing/RevenueCatManager.kt": {"count": 5, "h": ["05a7dedb", "25576e29", "3ba3d81b", "afe8fcf3", "f2d3409a"]},
-    "src/main/java/com/listenai/service/import_content/GmailService.kt": {"count": 5, "h": ["03f94c4f", "666da83f", "6bc6eed8", "84f16e4f", "b3971b22"]},
-    "src/main/java/com/listenai/service/marketplace/VoiceMarketplaceService.kt": {"count": 22, "h": ["130ad8cc", "28831267", "2ee5e1d4", "2ee5e1d4", "2ee5e1d4", "2ee5e1d4", "2ee5e1d4", "2ee5e1d4", "2ee5e1d4", "70694501", "88ee2357", "ca3cc728", "ca3cc728", "ca3cc728", "ca3cc728", "ca3cc728", "ca3cc728", "ca3cc728", "ca3cc728", "ca3cc728", "ca3cc728", "ed5c9413"]},
+    "src/main/java/com/listenai/service/marketplace/VoiceMarketplaceService.kt": {"count": 12, "h": ["130ad8cc", "28831267", "2ee5e1d4", "2ee5e1d4", "2ee5e1d4", "2ee5e1d4", "2ee5e1d4", "2ee5e1d4", "2ee5e1d4", "70694501", "88ee2357", "ed5c9413"]},
     "src/main/java/com/listenai/service/playback/AudioPlaybackService.kt": {"count": 1, "h": ["dca1d517"]},
     "src/main/java/com/listenai/service/settings/SettingsManager.kt": {"count": 2, "h": ["0001354f", "b2e623ee"]},
     "src/main/java/com/listenai/service/tts/ChainSynthesizer.kt": {"count": 2, "h": ["84de2d4b", "9558e4cd"]},
@@ -22,9 +21,8 @@
     "src/main/java/com/listenai/service/tts/KokoroG2P.kt": {"count": 1, "h": ["6f3ddbb9"]},
     "src/main/java/com/listenai/service/tts/OnDeviceTTSService.kt": {"count": 4, "h": ["1caf64ff", "21a5ee69", "8137cc45", "f5fe4654"]},
     "src/main/java/com/listenai/service/tts/RealtimeTTSService.kt": {"count": 5, "h": ["2506bc0b", "673125c2", "7d04b145", "7d04b145", "e56e8c08"]},
-    "src/main/java/com/listenai/service/tts/SelfHostedTTSService.kt": {"count": 20, "h": ["0a612a9c", "0a612a9c", "2ee5e1d4", "2ee5e1d4", "344a4bbc", "3b123152", "4dc540c9", "52350abc", "708f5c9e", "708f5c9e", "774605f2", "807993ad", "9b3ce0cf", "a39bf65b", "b0747b5f", "b0747b5f", "b0747b5f", "b0e71914", "fa9decfa", "fe3d8d94"]},
+    "src/main/java/com/listenai/service/tts/SelfHostedTTSService.kt": {"count": 16, "h": ["0a612a9c", "0a612a9c", "2ee5e1d4", "2ee5e1d4", "344a4bbc", "4dc540c9", "52350abc", "708f5c9e", "708f5c9e", "774605f2", "9b3ce0cf", "a39bf65b", "b0747b5f", "b0747b5f", "b0747b5f", "b0e71914"]},
     "src/main/java/com/listenai/service/tts/TTSJobTracker.kt": {"count": 5, "h": ["10f64896", "11854029", "7eb6f8e9", "9888540a", "e01f9559"]},
-    "src/main/java/com/listenai/service/tts/TTSModels.kt": {"count": 14, "h": ["0ce87215", "344303b6", "575dade9", "599740c0", "5d63d6df", "700faa21", "90598314", "a83de5b5", "b2819766", "d8a509e5", "d93383c8", "df2824b5", "ee7d3034", "fe2273de"]},
     "src/main/java/com/listenai/service/tts/chain/OnDeviceModelSource.kt": {"count": 1, "h": ["2eb61680"]},
     "src/main/java/com/listenai/service/tts/chain/SystemTtsSource.kt": {"count": 4, "h": ["7c9bbdb0", "82c76f48", "b9c106a4", "e24d2c65"]},
     "src/main/java/com/listenai/service/tts/chain/TtsSourceChain.kt": {"count": 1, "h": ["ee734743"]},

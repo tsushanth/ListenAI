@@ -588,4 +588,43 @@
         <item quantity="one">Teksto, %1$d salita</item>
         <item quantity="other">Teksto, %1$d salita</item>
     </plurals>
+    <!-- Server error codes, marketplace tags, Gmail errors (fix/localized-errors) -->
+    <string name="srv_err_invalid_request">Hindi naproseso ang kahilingan. Pakisubukang muli.</string>
+    <string name="srv_err_text_too_long">Masyadong mahaba ang text na ito para sa plan mo. Subukan ang mas maikling text o mag-upgrade.</string>
+    <string name="srv_err_sign_in">Mag-sign in muli para magpatuloy.</string>
+    <string name="srv_err_forbidden">Wala kang access dito.</string>
+    <string name="srv_err_tier_required">Kailangan ng mas mataas na plan para sa boses na ito.</string>
+    <string name="srv_err_not_owner">Ang may-ari lang ang makakagawa niyan.</string>
+    <string name="srv_err_not_found">Hindi ito nahanap.</string>
+    <string name="srv_err_quota_daily">Naabot mo na ang limitasyon ngayong araw. Subukan bukas o mag-upgrade.</string>
+    <string name="srv_err_quota_monthly">Naabot mo na ang limitasyon ngayong buwan. Mag-upgrade o hintaying mag-reset.</string>
+    <string name="srv_err_quota">Naabot mo na ang limitasyon sa paggamit. Mag-upgrade o hintaying mag-reset.</string>
+    <string name="srv_err_rate_limited">Masyadong maraming kahilingan. Maghintay sandali at subukang muli.</string>
+    <string name="srv_err_voice_already_revoked">Naalis na ang boses na ito sa marketplace.</string>
+    <string name="srv_err_cannot_report_own">Hindi mo maire-report ang sarili mong boses.</string>
+    <string name="srv_err_already_reported">Na-report mo na ang boses na ito.</string>
+    <string name="srv_err_cannot_rate_own">Hindi mo mari-rate ang sarili mong boses.</string>
+    <string name="srv_err_cloning_unavailable">Hindi available ang pag-clone ng boses ngayon.</string>
+    <string name="srv_err_service_unavailable">Pansamantalang hindi available ang serbisyo. Subukang muli pagkalipas ng ilang minuto.</string>
+    <string name="srv_err_timeout">Nag-time out ang kahilingan. Maaaring abala ang server.</string>
+    <string name="srv_err_internal">May nangyaring problema sa panig namin. Pakisubukang muli.</string>
+    <string name="srv_err_synthesis_failed">Hindi namin nagawa ang audio na ito. Pakisubukang muli.</string>
+    <string name="srv_err_too_large">Masyadong malaki para ipadala.</string>
+    <string name="srv_err_generic">May nangyaring mali. Pakisubukang muli.</string>
+    <string name="revoked_reason_owner">Inalis mo</string>
+    <string name="tag_expressive">Madamdamin</string>
+    <string name="tag_energetic">Masigla</string>
+    <string name="tag_deep">Malalim</string>
+    <string name="tag_warm">Magiliw</string>
+    <string name="tag_bright">Maliwanag</string>
+    <string name="tag_professional">Propesyonal</string>
+    <string name="tag_casual">Kaswal</string>
+    <string name="tag_storytelling">Pagkukuwento</string>
+    <string name="gmail_err_not_signed_in">Hindi naka-sign in gamit ang Google</string>
+    <string name="gmail_err_unauthorized">Hindi awtorisado ang access sa Gmail</string>
+    <string name="gmail_err_fetch_failed">Hindi nakuha ang mga email</string>
+    <string name="gmail_err_invalid_response">Di-wastong tugon mula sa Gmail</string>
+    <string name="gmail_err_api">Error sa Gmail: %1$s</string>
+    <string name="model_dl_failed">Nabigo ang pag-download. Suriin ang koneksyon mo at subukang muli.</string>
+    <string name="system_tts_engine_name">Mga Boses ng ReadAloud AI</string>
 </resources>

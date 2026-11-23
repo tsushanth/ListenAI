@@ -588,4 +588,43 @@
         <item quantity="one">टेक्स्ट, %1$d शब्द</item>
         <item quantity="other">टेक्स्ट, %1$d शब्द</item>
     </plurals>
+    <!-- Server error codes, marketplace tags, Gmail errors (fix/localized-errors) -->
+    <string name="srv_err_invalid_request">अनुरोध संसाधित नहीं हो सका। कृपया फिर से कोशिश करें।</string>
+    <string name="srv_err_text_too_long">यह टेक्स्ट आपके प्लान के लिए बहुत लंबा है। छोटा टेक्स्ट आज़माएँ या अपग्रेड करें।</string>
+    <string name="srv_err_sign_in">जारी रखने के लिए कृपया फिर से साइन इन करें।</string>
+    <string name="srv_err_forbidden">आपके पास इसका एक्सेस नहीं है।</string>
+    <string name="srv_err_tier_required">इस आवाज़ के लिए ऊँचा प्लान चाहिए।</string>
+    <string name="srv_err_not_owner">यह केवल मालिक कर सकता है।</string>
+    <string name="srv_err_not_found">यह नहीं मिला।</string>
+    <string name="srv_err_quota_daily">आप आज की सीमा तक पहुँच गए हैं। कल फिर कोशिश करें या अपग्रेड करें।</string>
+    <string name="srv_err_quota_monthly">आप इस महीने की सीमा तक पहुँच गए हैं। अपग्रेड करें या रीसेट होने का इंतज़ार करें।</string>
+    <string name="srv_err_quota">आप अपनी उपयोग सीमा तक पहुँच गए हैं। अपग्रेड करें या रीसेट होने का इंतज़ार करें।</string>
+    <string name="srv_err_rate_limited">बहुत ज़्यादा अनुरोध। कृपया थोड़ा रुकें और फिर कोशिश करें।</string>
+    <string name="srv_err_voice_already_revoked">यह आवाज़ पहले ही मार्केटप्लेस से हटा दी गई है।</string>
+    <string name="srv_err_cannot_report_own">आप अपनी ही आवाज़ की रिपोर्ट नहीं कर सकते।</string>
+    <string name="srv_err_already_reported">आप इस आवाज़ की रिपोर्ट पहले ही कर चुके हैं।</string>
+    <string name="srv_err_cannot_rate_own">आप अपनी ही आवाज़ को रेटिंग नहीं दे सकते।</string>
+    <string name="srv_err_cloning_unavailable">आवाज़ की क्लोनिंग अभी उपलब्ध नहीं है।</string>
+    <string name="srv_err_service_unavailable">सेवा अस्थायी रूप से उपलब्ध नहीं है। कृपया कुछ मिनट बाद फिर कोशिश करें।</string>
+    <string name="srv_err_timeout">अनुरोध का समय समाप्त हो गया। सर्वर व्यस्त हो सकता है।</string>
+    <string name="srv_err_internal">हमारी ओर से कुछ गड़बड़ हो गई। कृपया फिर से कोशिश करें।</string>
+    <string name="srv_err_synthesis_failed">हम यह ऑडियो नहीं बना सके। कृपया फिर से कोशिश करें।</string>
+    <string name="srv_err_too_large">यह भेजने के लिए बहुत बड़ा है।</string>
+    <string name="srv_err_generic">कुछ गड़बड़ हो गई। कृपया फिर से कोशिश करें।</string>
+    <string name="revoked_reason_owner">आपने हटाया</string>
+    <string name="tag_expressive">भावपूर्ण</string>
+    <string name="tag_energetic">ऊर्जावान</string>
+    <string name="tag_deep">गहरी</string>
+    <string name="tag_warm">गर्मजोशी भरी</string>
+    <string name="tag_bright">चमकदार</string>
+    <string name="tag_professional">पेशेवर</string>
+    <string name="tag_casual">अनौपचारिक</string>
+    <string name="tag_storytelling">कथावाचन</string>
+    <string name="gmail_err_not_signed_in">Google से साइन इन नहीं किया है</string>
+    <string name="gmail_err_unauthorized">Gmail एक्सेस अधिकृत नहीं है</string>
+    <string name="gmail_err_fetch_failed">ईमेल लाने में विफल</string>
+    <string name="gmail_err_invalid_response">Gmail से अमान्य प्रतिक्रिया</string>
+    <string name="gmail_err_api">Gmail त्रुटि: %1$s</string>
+    <string name="model_dl_failed">डाउनलोड विफल रहा। अपना कनेक्शन जाँचें और फिर कोशिश करें।</string>
+    <string name="system_tts_engine_name">ReadAloud AI आवाज़ें</string>
 </resources>

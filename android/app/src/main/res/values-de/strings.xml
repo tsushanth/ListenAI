@@ -588,4 +588,43 @@
         <item quantity="one">Text, %1$d Wort</item>
         <item quantity="other">Text, %1$d Wörter</item>
     </plurals>
+    <!-- Server error codes, marketplace tags, Gmail errors (fix/localized-errors) -->
+    <string name="srv_err_invalid_request">Die Anfrage konnte nicht verarbeitet werden. Bitte versuche es erneut.</string>
+    <string name="srv_err_text_too_long">Dieser Text ist für deinen Tarif zu lang. Verwende einen kürzeren Text oder wechsle zu einem höheren Tarif.</string>
+    <string name="srv_err_sign_in">Bitte melde dich erneut an, um fortzufahren.</string>
+    <string name="srv_err_forbidden">Du hast keinen Zugriff darauf.</string>
+    <string name="srv_err_tier_required">Diese Stimme erfordert einen höheren Tarif.</string>
+    <string name="srv_err_not_owner">Das kann nur der Eigentümer tun.</string>
+    <string name="srv_err_not_found">Nicht gefunden.</string>
+    <string name="srv_err_quota_daily">Du hast das heutige Limit erreicht. Versuche es morgen erneut oder wechsle zu einem höheren Tarif.</string>
+    <string name="srv_err_quota_monthly">Du hast das Limit dieses Monats erreicht. Wechsle zu einem höheren Tarif oder warte auf das Zurücksetzen.</string>
+    <string name="srv_err_quota">Du hast dein Nutzungslimit erreicht. Wechsle zu einem höheren Tarif oder warte auf das Zurücksetzen.</string>
+    <string name="srv_err_rate_limited">Zu viele Anfragen. Bitte warte einen Moment und versuche es erneut.</string>
+    <string name="srv_err_voice_already_revoked">Diese Stimme wurde bereits aus dem Marktplatz entfernt.</string>
+    <string name="srv_err_cannot_report_own">Du kannst deine eigene Stimme nicht melden.</string>
+    <string name="srv_err_already_reported">Du hast diese Stimme bereits gemeldet.</string>
+    <string name="srv_err_cannot_rate_own">Du kannst deine eigene Stimme nicht bewerten.</string>
+    <string name="srv_err_cloning_unavailable">Die Stimmklonung ist derzeit nicht verfügbar.</string>
+    <string name="srv_err_service_unavailable">Der Dienst ist vorübergehend nicht verfügbar. Bitte versuche es in einigen Minuten erneut.</string>
+    <string name="srv_err_timeout">Zeitüberschreitung bei der Anfrage. Der Server ist möglicherweise ausgelastet.</string>
+    <string name="srv_err_internal">Bei uns ist etwas schiefgelaufen. Bitte versuche es erneut.</string>
+    <string name="srv_err_synthesis_failed">Wir konnten dieses Audio nicht erzeugen. Bitte versuche es erneut.</string>
+    <string name="srv_err_too_large">Das ist zu groß zum Senden.</string>
+    <string name="srv_err_generic">Etwas ist schiefgelaufen. Bitte versuche es erneut.</string>
+    <string name="revoked_reason_owner">Von dir entfernt</string>
+    <string name="tag_expressive">Ausdrucksstark</string>
+    <string name="tag_energetic">Energisch</string>
+    <string name="tag_deep">Tief</string>
+    <string name="tag_warm">Warm</string>
+    <string name="tag_bright">Hell</string>
+    <string name="tag_professional">Professionell</string>
+    <string name="tag_casual">Locker</string>
+    <string name="tag_storytelling">Erzählend</string>
+    <string name="gmail_err_not_signed_in">Nicht mit Google angemeldet</string>
+    <string name="gmail_err_unauthorized">Gmail-Zugriff nicht autorisiert</string>
+    <string name="gmail_err_fetch_failed">E-Mails konnten nicht abgerufen werden</string>
+    <string name="gmail_err_invalid_response">Ungültige Antwort von Gmail</string>
+    <string name="gmail_err_api">Gmail-Fehler: %1$s</string>
+    <string name="model_dl_failed">Download fehlgeschlagen. Prüfe deine Verbindung und versuche es erneut.</string>
+    <string name="system_tts_engine_name">ReadAloud-AI-Stimmen</string>
 </resources>

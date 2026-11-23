@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:tools="http://schemas.android.com/tools">
     <string name="app_name">ReadAloud AI</string>
-    <string name="system_tts_engine_name" tools:ignore="MissingTranslation">ReadAloud AI Voices</string>
+    <string name="system_tts_engine_name">ReadAloud AI Voices</string>
     <string name="system_tts_back_content_description">Back</string>
 
     <!-- Analytics consent (Firebase Analytics, opt-in). English only for now; other locales fall back to English. -->
@@ -611,4 +611,42 @@
     <string name="delete_account_done_body" tools:ignore="MissingTranslation">Your account and cloud data were deleted and you have been signed out on this device.</string>
     <string name="delete_account_done_play" tools:ignore="MissingTranslation">Your Google Play subscription is still active. Cancel it in Google Play to stop being charged.</string>
     <string name="delete_account_done_stripe" tools:ignore="MissingTranslation">Your web subscription is still active. Email support@kreativekoala.llc to have it cancelled and stop being charged.</string>
+    <!-- Server error codes, marketplace tags, Gmail errors (fix/localized-errors) -->
+    <string name="srv_err_invalid_request">The request couldn\'t be processed. Please try again.</string>
+    <string name="srv_err_text_too_long">This text is too long for your plan. Try a shorter text or upgrade.</string>
+    <string name="srv_err_sign_in">Please sign in again to continue.</string>
+    <string name="srv_err_forbidden">You don\'t have access to this.</string>
+    <string name="srv_err_tier_required">This voice needs a higher plan.</string>
+    <string name="srv_err_not_owner">Only the owner can do that.</string>
+    <string name="srv_err_not_found">That couldn\'t be found.</string>
+    <string name="srv_err_quota_daily">You\'ve reached today\'s limit. Try again tomorrow or upgrade.</string>
+    <string name="srv_err_quota_monthly">You\'ve reached this month\'s limit. Upgrade or wait for it to reset.</string>
+    <string name="srv_err_quota">You\'ve reached your usage limit. Upgrade or wait for it to reset.</string>
+    <string name="srv_err_rate_limited">Too many requests. Please wait a moment and try again.</string>
+    <string name="srv_err_voice_already_revoked">This voice has already been removed from the marketplace.</string>
+    <string name="srv_err_cannot_report_own">You can\'t report your own voice.</string>
+    <string name="srv_err_already_reported">You\'ve already reported this voice.</string>
+    <string name="srv_err_cannot_rate_own">You can\'t rate your own voice.</string>
+    <string name="srv_err_cloning_unavailable">Voice cloning isn\'t available right now.</string>
+    <string name="srv_err_service_unavailable">The service is temporarily unavailable. Please try again in a few minutes.</string>
+    <string name="srv_err_timeout">The request timed out. The server might be busy.</string>
+    <string name="srv_err_internal">Something went wrong on our side. Please try again.</string>
+    <string name="srv_err_synthesis_failed">We couldn\'t generate this audio. Please try again.</string>
+    <string name="srv_err_too_large">That is too large to send.</string>
+    <string name="srv_err_generic">Something went wrong. Please try again.</string>
+    <string name="revoked_reason_owner">Removed by you</string>
+    <string name="tag_expressive">Expressive</string>
+    <string name="tag_energetic">Energetic</string>
+    <string name="tag_deep">Deep</string>
+    <string name="tag_warm">Warm</string>
+    <string name="tag_bright">Bright</string>
+    <string name="tag_professional">Professional</string>
+    <string name="tag_casual">Casual</string>
+    <string name="tag_storytelling">Storytelling</string>
+    <string name="gmail_err_not_signed_in">Not signed in with Google</string>
+    <string name="gmail_err_unauthorized">Gmail access isn\'t authorized</string>
+    <string name="gmail_err_fetch_failed">Couldn\'t fetch emails</string>
+    <string name="gmail_err_invalid_response">Invalid response from Gmail</string>
+    <string name="gmail_err_api">Gmail error: %1$s</string>
+    <string name="model_dl_failed">Download failed. Check your connection and try again.</string>
 </resources>

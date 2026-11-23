@@ -64,6 +64,7 @@ class VoiceCloningService private constructor(private val context: Context) {
     @Volatile private var cached: List<ClonedVoice> = emptyList()
 
     private val httpClient = OkHttpClient.Builder()
+        .addInterceptor(com.listenai.data.remote.AcceptLanguageInterceptor())
         .connectTimeout(30, TimeUnit.SECONDS)
         // multipart upload + server-side checks (ASR, speaker match) can take a while
         .readTimeout(180, TimeUnit.SECONDS)

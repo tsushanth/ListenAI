@@ -57,7 +57,7 @@ object VoiceCloneErrors {
             "payment_required" ->
                 failure(e, "Voice cloning requires an active paid plan. Subscribe, then try again.", Recovery.STOP, text = res(R.string.vc_err_payment_required))
 
-            "unavailable", "CLONING_UNAVAILABLE" ->
+            "unavailable", "CLONING_UNAVAILABLE", "cloning_unavailable" ->
                 failure(e, UNAVAILABLE_MESSAGE, Recovery.STOP, text = res(R.string.vc_err_unavailable))
 
             "service_unavailable", "asr_unavailable" ->

@@ -600,4 +600,43 @@
         <item quantity="many">نص،%1$d كلمة</item>
         <item quantity="other">نص،%1$d كلمة</item>
     </plurals>
+    <!-- Server error codes, marketplace tags, Gmail errors (fix/localized-errors) -->
+    <string name="srv_err_invalid_request">تعذّرت معالجة الطلب. يرجى المحاولة مرة أخرى.</string>
+    <string name="srv_err_text_too_long">هذا النص طويل جدًا لخطتك. جرّب نصًا أقصر أو قم بالترقية.</string>
+    <string name="srv_err_sign_in">يرجى تسجيل الدخول مرة أخرى للمتابعة.</string>
+    <string name="srv_err_forbidden">ليس لديك صلاحية الوصول إلى هذا.</string>
+    <string name="srv_err_tier_required">هذا الصوت يتطلب خطة أعلى.</string>
+    <string name="srv_err_not_owner">المالك فقط يمكنه القيام بذلك.</string>
+    <string name="srv_err_not_found">تعذّر العثور عليه.</string>
+    <string name="srv_err_quota_daily">لقد بلغت حد اليوم. حاول مرة أخرى غدًا أو قم بالترقية.</string>
+    <string name="srv_err_quota_monthly">لقد بلغت حد هذا الشهر. قم بالترقية أو انتظر حتى تتم إعادة التعيين.</string>
+    <string name="srv_err_quota">لقد بلغت حد الاستخدام. قم بالترقية أو انتظر حتى تتم إعادة التعيين.</string>
+    <string name="srv_err_rate_limited">طلبات كثيرة جدًا. يرجى الانتظار قليلًا ثم المحاولة مرة أخرى.</string>
+    <string name="srv_err_voice_already_revoked">تمت إزالة هذا الصوت من السوق بالفعل.</string>
+    <string name="srv_err_cannot_report_own">لا يمكنك الإبلاغ عن صوتك الخاص.</string>
+    <string name="srv_err_already_reported">لقد أبلغت عن هذا الصوت بالفعل.</string>
+    <string name="srv_err_cannot_rate_own">لا يمكنك تقييم صوتك الخاص.</string>
+    <string name="srv_err_cloning_unavailable">استنساخ الصوت غير متاح حاليًا.</string>
+    <string name="srv_err_service_unavailable">الخدمة غير متاحة مؤقتًا. يرجى المحاولة مرة أخرى بعد بضع دقائق.</string>
+    <string name="srv_err_timeout">انتهت مهلة الطلب. قد يكون الخادم مشغولًا.</string>
+    <string name="srv_err_internal">حدث خطأ من جانبنا. يرجى المحاولة مرة أخرى.</string>
+    <string name="srv_err_synthesis_failed">تعذّر علينا إنشاء هذا الصوت. يرجى المحاولة مرة أخرى.</string>
+    <string name="srv_err_too_large">حجمه أكبر من أن يُرسل.</string>
+    <string name="srv_err_generic">حدث خطأ ما. يرجى المحاولة مرة أخرى.</string>
+    <string name="revoked_reason_owner">أزلتَه أنت</string>
+    <string name="tag_expressive">معبّر</string>
+    <string name="tag_energetic">حيوي</string>
+    <string name="tag_deep">عميق</string>
+    <string name="tag_warm">دافئ</string>
+    <string name="tag_bright">مشرق</string>
+    <string name="tag_professional">احترافي</string>
+    <string name="tag_casual">غير رسمي</string>
+    <string name="tag_storytelling">قصصي</string>
+    <string name="gmail_err_not_signed_in">لم تسجّل الدخول باستخدام Google</string>
+    <string name="gmail_err_unauthorized">الوصول إلى Gmail غير مصرّح به</string>
+    <string name="gmail_err_fetch_failed">تعذّر جلب رسائل البريد الإلكتروني</string>
+    <string name="gmail_err_invalid_response">استجابة غير صالحة من Gmail</string>
+    <string name="gmail_err_api">خطأ في Gmail: %1$s</string>
+    <string name="model_dl_failed">فشل التنزيل. تحقق من اتصالك وحاول مرة أخرى.</string>
+    <string name="system_tts_engine_name">أصوات ReadAloud AI</string>
 </resources>

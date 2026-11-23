@@ -524,4 +524,43 @@
         <item quantity="one">Text, %1$d ord</item>
         <item quantity="other">Text, %1$d ord</item>
     </plurals>
+    <!-- Server error codes, marketplace tags, Gmail errors (fix/localized-errors) -->
+    <string name="srv_err_invalid_request">Begäran kunde inte behandlas. Försök igen.</string>
+    <string name="srv_err_text_too_long">Texten är för lång för ditt abonnemang. Prova en kortare text eller uppgradera.</string>
+    <string name="srv_err_sign_in">Logga in igen för att fortsätta.</string>
+    <string name="srv_err_forbidden">Du har inte åtkomst till detta.</string>
+    <string name="srv_err_tier_required">Den här rösten kräver ett högre abonnemang.</string>
+    <string name="srv_err_not_owner">Bara ägaren kan göra det.</string>
+    <string name="srv_err_not_found">Hittades inte.</string>
+    <string name="srv_err_quota_daily">Du har nått dagens gräns. Försök igen i morgon eller uppgradera.</string>
+    <string name="srv_err_quota_monthly">Du har nått den här månadens gräns. Uppgradera eller vänta tills den nollställs.</string>
+    <string name="srv_err_quota">Du har nått din användningsgräns. Uppgradera eller vänta tills den nollställs.</string>
+    <string name="srv_err_rate_limited">För många förfrågningar. Vänta en stund och försök igen.</string>
+    <string name="srv_err_voice_already_revoked">Den här rösten har redan tagits bort från marknadsplatsen.</string>
+    <string name="srv_err_cannot_report_own">Du kan inte rapportera din egen röst.</string>
+    <string name="srv_err_already_reported">Du har redan rapporterat den här rösten.</string>
+    <string name="srv_err_cannot_rate_own">Du kan inte betygsätta din egen röst.</string>
+    <string name="srv_err_cloning_unavailable">Röstkloning är inte tillgänglig just nu.</string>
+    <string name="srv_err_service_unavailable">Tjänsten är tillfälligt otillgänglig. Försök igen om några minuter.</string>
+    <string name="srv_err_timeout">Begäran tog för lång tid. Servern kan vara upptagen.</string>
+    <string name="srv_err_internal">Något gick fel hos oss. Försök igen.</string>
+    <string name="srv_err_synthesis_failed">Vi kunde inte skapa det här ljudet. Försök igen.</string>
+    <string name="srv_err_too_large">Det är för stort för att skickas.</string>
+    <string name="srv_err_generic">Något gick fel. Försök igen.</string>
+    <string name="revoked_reason_owner">Borttagen av dig</string>
+    <string name="tag_expressive">Uttrycksfull</string>
+    <string name="tag_energetic">Energisk</string>
+    <string name="tag_deep">Djup</string>
+    <string name="tag_warm">Varm</string>
+    <string name="tag_bright">Ljus</string>
+    <string name="tag_professional">Professionell</string>
+    <string name="tag_casual">Avslappnad</string>
+    <string name="tag_storytelling">Berättande</string>
+    <string name="gmail_err_not_signed_in">Inte inloggad med Google</string>
+    <string name="gmail_err_unauthorized">Gmail-åtkomsten är inte godkänd</string>
+    <string name="gmail_err_fetch_failed">Det gick inte att hämta e-post</string>
+    <string name="gmail_err_invalid_response">Ogiltigt svar från Gmail</string>
+    <string name="gmail_err_api">Gmail-fel: %1$s</string>
+    <string name="model_dl_failed">Nedladdningen misslyckades. Kontrollera anslutningen och försök igen.</string>
+    <string name="system_tts_engine_name">ReadAloud AI-röster</string>
 </resources>
