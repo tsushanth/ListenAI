@@ -524,4 +524,43 @@
         <item quantity="one">Teksti, %1$d sana</item>
         <item quantity="other">Teksti, %1$d sanaa</item>
     </plurals>
+    <!-- Server error codes, marketplace tags, Gmail errors (fix/localized-errors) -->
+    <string name="srv_err_invalid_request">Pyyntöä ei voitu käsitellä. Yritä uudelleen.</string>
+    <string name="srv_err_text_too_long">Teksti on liian pitkä tilauksellesi. Kokeile lyhyempää tekstiä tai päivitä tilaus.</string>
+    <string name="srv_err_sign_in">Kirjaudu sisään uudelleen jatkaaksesi.</string>
+    <string name="srv_err_forbidden">Sinulla ei ole pääsyä tähän.</string>
+    <string name="srv_err_tier_required">Tämä ääni vaatii korkeamman tilauksen.</string>
+    <string name="srv_err_not_owner">Vain omistaja voi tehdä sen.</string>
+    <string name="srv_err_not_found">Sitä ei löytynyt.</string>
+    <string name="srv_err_quota_daily">Päivän raja on täynnä. Yritä huomenna uudelleen tai päivitä tilaus.</string>
+    <string name="srv_err_quota_monthly">Kuukauden raja on täynnä. Päivitä tilaus tai odota nollautumista.</string>
+    <string name="srv_err_quota">Käyttöraja on täynnä. Päivitä tilaus tai odota nollautumista.</string>
+    <string name="srv_err_rate_limited">Liian monta pyyntöä. Odota hetki ja yritä uudelleen.</string>
+    <string name="srv_err_voice_already_revoked">Tämä ääni on jo poistettu markkinapaikalta.</string>
+    <string name="srv_err_cannot_report_own">Et voi ilmoittaa omaa ääntäsi.</string>
+    <string name="srv_err_already_reported">Olet jo ilmoittanut tämän äänen.</string>
+    <string name="srv_err_cannot_rate_own">Et voi arvioida omaa ääntäsi.</string>
+    <string name="srv_err_cloning_unavailable">Äänen kloonaus ei ole tällä hetkellä käytettävissä.</string>
+    <string name="srv_err_service_unavailable">Palvelu ei ole tilapäisesti käytettävissä. Yritä uudelleen muutaman minuutin kuluttua.</string>
+    <string name="srv_err_timeout">Pyyntö aikakatkaistiin. Palvelin saattaa olla kiireinen.</string>
+    <string name="srv_err_internal">Meidän päässämme tapahtui virhe. Yritä uudelleen.</string>
+    <string name="srv_err_synthesis_failed">Tämän äänen luominen epäonnistui. Yritä uudelleen.</string>
+    <string name="srv_err_too_large">Se on liian suuri lähetettäväksi.</string>
+    <string name="srv_err_generic">Jokin meni pieleen. Yritä uudelleen.</string>
+    <string name="revoked_reason_owner">Poistanut sinä</string>
+    <string name="tag_expressive">Ilmaisuvoimainen</string>
+    <string name="tag_energetic">Energinen</string>
+    <string name="tag_deep">Syvä</string>
+    <string name="tag_warm">Lämmin</string>
+    <string name="tag_bright">Kirkas</string>
+    <string name="tag_professional">Ammattimainen</string>
+    <string name="tag_casual">Rento</string>
+    <string name="tag_storytelling">Kertova</string>
+    <string name="gmail_err_not_signed_in">Et ole kirjautunut Googlella</string>
+    <string name="gmail_err_unauthorized">Gmail-käyttöä ei ole sallittu</string>
+    <string name="gmail_err_fetch_failed">Sähköpostien hakeminen epäonnistui</string>
+    <string name="gmail_err_invalid_response">Virheellinen vastaus Gmailista</string>
+    <string name="gmail_err_api">Gmail-virhe: %1$s</string>
+    <string name="model_dl_failed">Lataus epäonnistui. Tarkista yhteytesi ja yritä uudelleen.</string>
+    <string name="system_tts_engine_name">ReadAloud AI -äänet</string>
 </resources>

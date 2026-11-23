@@ -524,4 +524,43 @@
         <item quantity="one">Szöveg, %1$d szó</item>
         <item quantity="other">Szöveg, %1$d szó</item>
     </plurals>
+    <!-- Server error codes, marketplace tags, Gmail errors (fix/localized-errors) -->
+    <string name="srv_err_invalid_request">A kérést nem sikerült feldolgozni. Kérjük, próbáld újra.</string>
+    <string name="srv_err_text_too_long">Ez a szöveg túl hosszú a csomagodhoz. Próbálj rövidebb szöveget, vagy válts magasabb csomagra.</string>
+    <string name="srv_err_sign_in">A folytatáshoz jelentkezz be újra.</string>
+    <string name="srv_err_forbidden">Ehhez nincs hozzáférésed.</string>
+    <string name="srv_err_tier_required">Ehhez a hanghoz magasabb csomag szükséges.</string>
+    <string name="srv_err_not_owner">Ezt csak a tulajdonos teheti meg.</string>
+    <string name="srv_err_not_found">Nem található.</string>
+    <string name="srv_err_quota_daily">Elérted a mai korlátot. Próbáld újra holnap, vagy válts magasabb csomagra.</string>
+    <string name="srv_err_quota_monthly">Elérted a havi korlátot. Válts magasabb csomagra, vagy várd meg a visszaállítást.</string>
+    <string name="srv_err_quota">Elérted a használati korlátot. Válts magasabb csomagra, vagy várd meg a visszaállítást.</string>
+    <string name="srv_err_rate_limited">Túl sok kérés. Várj egy pillanatot, majd próbáld újra.</string>
+    <string name="srv_err_voice_already_revoked">Ezt a hangot már eltávolították a piactérről.</string>
+    <string name="srv_err_cannot_report_own">A saját hangodat nem jelentheted.</string>
+    <string name="srv_err_already_reported">Ezt a hangot már jelentetted.</string>
+    <string name="srv_err_cannot_rate_own">A saját hangodat nem értékelheted.</string>
+    <string name="srv_err_cloning_unavailable">A hangklónozás jelenleg nem érhető el.</string>
+    <string name="srv_err_service_unavailable">A szolgáltatás átmenetileg nem érhető el. Próbáld újra néhány perc múlva.</string>
+    <string name="srv_err_timeout">A kérés időtúllépés miatt megszakadt. A szerver lehet, hogy túlterhelt.</string>
+    <string name="srv_err_internal">Hiba történt a mi oldalunkon. Kérjük, próbáld újra.</string>
+    <string name="srv_err_synthesis_failed">Nem sikerült létrehozni ezt a hangfelvételt. Kérjük, próbáld újra.</string>
+    <string name="srv_err_too_large">Ez túl nagy a küldéshez.</string>
+    <string name="srv_err_generic">Valami hiba történt. Kérjük, próbáld újra.</string>
+    <string name="revoked_reason_owner">Te távolítottad el</string>
+    <string name="tag_expressive">Kifejező</string>
+    <string name="tag_energetic">Energikus</string>
+    <string name="tag_deep">Mély</string>
+    <string name="tag_warm">Meleg</string>
+    <string name="tag_bright">Fényes</string>
+    <string name="tag_professional">Professzionális</string>
+    <string name="tag_casual">Laza</string>
+    <string name="tag_storytelling">Mesélő</string>
+    <string name="gmail_err_not_signed_in">Nem vagy bejelentkezve Google-fiókkal</string>
+    <string name="gmail_err_unauthorized">A Gmail-hozzáférés nincs engedélyezve</string>
+    <string name="gmail_err_fetch_failed">Az e-mailek lekérése nem sikerült</string>
+    <string name="gmail_err_invalid_response">Érvénytelen válasz a Gmailtől</string>
+    <string name="gmail_err_api">Gmail-hiba: %1$s</string>
+    <string name="model_dl_failed">A letöltés nem sikerült. Ellenőrizd a kapcsolatot, és próbáld újra.</string>
+    <string name="system_tts_engine_name">ReadAloud AI hangok</string>
 </resources>

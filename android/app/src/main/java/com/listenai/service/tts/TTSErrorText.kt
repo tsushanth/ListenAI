@@ -2,6 +2,7 @@ package com.listenai.service.tts
 
 import android.content.Context
 import com.listenai.R
+import com.listenai.service.ServerErrorText
 
 /**
  * The text of a [TTSError] in the user's language. [TTSError.message] stays English (logs, matching in
@@ -18,7 +19,8 @@ object TTSErrorText {
         is TTSError.TextEmpty -> context.getString(R.string.tts_err_text_empty)
         is TTSError.QuotaExceeded ->
             context.resources.getQuantityString(R.plurals.tts_err_quota_exceeded, e.remaining, e.remaining, e.required)
-        is TTSError.NetworkError -> context.getString(R.string.tts_err_network, e.underlying)
+        // e.underlying is English diagnostics from the network stack (it is in the log); the user gets the translated text.
+        is TTSError.NetworkError -> context.getString(R.string.player_network_error)
         is TTSError.ApiError -> context.getString(R.string.tts_err_api, e.provider, e.code, e.errorMessage)
         is TTSError.RateLimited -> {
             val seconds = e.retryAfterSeconds.toInt()
@@ -29,6 +31,7 @@ object TTSErrorText {
         is TTSError.SubscriptionRequired -> context.getString(R.string.tts_err_subscription_required, e.tier)
         is TTSError.InvalidConfiguration -> context.getString(R.string.tts_err_invalid_configuration, e.reason)
         is TTSError.SynthesisTimeout -> context.getString(R.string.tts_err_timeout)
+        is TTSError.Server -> ServerErrorText.resolve(context, e.code, e.serverMessage)
         is TTSError.UnsupportedLanguage -> context.getString(R.string.tts_err_unsupported_language, e.language)
         else -> e.message
     }

@@ -61,12 +61,21 @@ data class GmailMessage(
 /**
  * Gmail service error types
  */
-sealed class GmailError(val message: String) {
-    object NotAuthenticated : GmailError("Not signed in with Google")
-    object Unauthorized : GmailError("Gmail access not authorized")
-    object FetchFailed : GmailError("Failed to fetch emails")
-    object InvalidResponse : GmailError("Invalid response from Gmail API")
-    data class ApiError(val code: Int, val detail: String) : GmailError("Gmail API error: $detail")
+sealed class GmailError(val message: String) { // message is English, for logs; screens show text()
+    object NotAuthenticated : GmailError("Not signed in with Google") // i18n-ok: log text
+    object Unauthorized : GmailError("Gmail access not authorized") // i18n-ok: log text
+    object FetchFailed : GmailError("Failed to fetch emails") // i18n-ok: log text
+    object InvalidResponse : GmailError("Invalid response from Gmail API") // i18n-ok: log text
+    data class ApiError(val code: Int, val detail: String) : GmailError("Gmail API error: $detail") // i18n-ok: log text
+
+    /** The error in the user's language. [ApiError.detail] is Google's own text and is shown as it came. */
+    fun text(context: android.content.Context): String = when (this) {
+        NotAuthenticated -> context.getString(com.listenai.R.string.gmail_err_not_signed_in)
+        Unauthorized -> context.getString(com.listenai.R.string.gmail_err_unauthorized)
+        FetchFailed -> context.getString(com.listenai.R.string.gmail_err_fetch_failed)
+        InvalidResponse -> context.getString(com.listenai.R.string.gmail_err_invalid_response)
+        is ApiError -> context.getString(com.listenai.R.string.gmail_err_api, detail)
+    }
 }
 
 /**

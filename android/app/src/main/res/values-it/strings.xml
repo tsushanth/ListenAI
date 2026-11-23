@@ -588,4 +588,43 @@
         <item quantity="one">Testo, %1$d parola</item>
         <item quantity="other">Testo, %1$d parole</item>
     </plurals>
+    <!-- Server error codes, marketplace tags, Gmail errors (fix/localized-errors) -->
+    <string name="srv_err_invalid_request">Non è stato possibile elaborare la richiesta. Riprova.</string>
+    <string name="srv_err_text_too_long">Questo testo è troppo lungo per il tuo piano. Prova con un testo più breve o passa a un piano superiore.</string>
+    <string name="srv_err_sign_in">Accedi di nuovo per continuare.</string>
+    <string name="srv_err_forbidden">Non hai accesso a questa risorsa.</string>
+    <string name="srv_err_tier_required">Questa voce richiede un piano superiore.</string>
+    <string name="srv_err_not_owner">Solo il proprietario può farlo.</string>
+    <string name="srv_err_not_found">Non trovato.</string>
+    <string name="srv_err_quota_daily">Hai raggiunto il limite di oggi. Riprova domani o passa a un piano superiore.</string>
+    <string name="srv_err_quota_monthly">Hai raggiunto il limite di questo mese. Passa a un piano superiore o attendi il ripristino.</string>
+    <string name="srv_err_quota">Hai raggiunto il limite di utilizzo. Passa a un piano superiore o attendi il ripristino.</string>
+    <string name="srv_err_rate_limited">Troppe richieste. Attendi un momento e riprova.</string>
+    <string name="srv_err_voice_already_revoked">Questa voce è già stata rimossa dal marketplace.</string>
+    <string name="srv_err_cannot_report_own">Non puoi segnalare la tua voce.</string>
+    <string name="srv_err_already_reported">Hai già segnalato questa voce.</string>
+    <string name="srv_err_cannot_rate_own">Non puoi valutare la tua voce.</string>
+    <string name="srv_err_cloning_unavailable">La clonazione vocale al momento non è disponibile.</string>
+    <string name="srv_err_service_unavailable">Il servizio è temporaneamente non disponibile. Riprova tra qualche minuto.</string>
+    <string name="srv_err_timeout">La richiesta è scaduta. Il server potrebbe essere occupato.</string>
+    <string name="srv_err_internal">Si è verificato un problema da parte nostra. Riprova.</string>
+    <string name="srv_err_synthesis_failed">Non siamo riusciti a generare questo audio. Riprova.</string>
+    <string name="srv_err_too_large">È troppo grande per essere inviato.</string>
+    <string name="srv_err_generic">Qualcosa è andato storto. Riprova.</string>
+    <string name="revoked_reason_owner">Rimossa da te</string>
+    <string name="tag_expressive">Espressiva</string>
+    <string name="tag_energetic">Energica</string>
+    <string name="tag_deep">Profonda</string>
+    <string name="tag_warm">Calda</string>
+    <string name="tag_bright">Brillante</string>
+    <string name="tag_professional">Professionale</string>
+    <string name="tag_casual">Informale</string>
+    <string name="tag_storytelling">Narrativa</string>
+    <string name="gmail_err_not_signed_in">Accesso con Google non effettuato</string>
+    <string name="gmail_err_unauthorized">Accesso a Gmail non autorizzato</string>
+    <string name="gmail_err_fetch_failed">Impossibile recuperare le e-mail</string>
+    <string name="gmail_err_invalid_response">Risposta non valida da Gmail</string>
+    <string name="gmail_err_api">Errore di Gmail: %1$s</string>
+    <string name="model_dl_failed">Download non riuscito. Controlla la connessione e riprova.</string>
+    <string name="system_tts_engine_name">Voci ReadAloud AI</string>
 </resources>

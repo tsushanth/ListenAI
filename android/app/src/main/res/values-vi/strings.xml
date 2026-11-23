@@ -585,4 +585,43 @@
     <plurals name="incoming_source_text">
         <item quantity="other">Văn bản, %1$d từ</item>
     </plurals>
+    <!-- Server error codes, marketplace tags, Gmail errors (fix/localized-errors) -->
+    <string name="srv_err_invalid_request">Không thể xử lý yêu cầu. Vui lòng thử lại.</string>
+    <string name="srv_err_text_too_long">Văn bản này quá dài so với gói của bạn. Hãy thử văn bản ngắn hơn hoặc nâng cấp.</string>
+    <string name="srv_err_sign_in">Vui lòng đăng nhập lại để tiếp tục.</string>
+    <string name="srv_err_forbidden">Bạn không có quyền truy cập nội dung này.</string>
+    <string name="srv_err_tier_required">Giọng này yêu cầu gói cao hơn.</string>
+    <string name="srv_err_not_owner">Chỉ chủ sở hữu mới có thể làm việc này.</string>
+    <string name="srv_err_not_found">Không tìm thấy.</string>
+    <string name="srv_err_quota_daily">Bạn đã đạt giới hạn hôm nay. Hãy thử lại vào ngày mai hoặc nâng cấp.</string>
+    <string name="srv_err_quota_monthly">Bạn đã đạt giới hạn của tháng này. Hãy nâng cấp hoặc đợi đặt lại.</string>
+    <string name="srv_err_quota">Bạn đã đạt giới hạn sử dụng. Hãy nâng cấp hoặc đợi đặt lại.</string>
+    <string name="srv_err_rate_limited">Quá nhiều yêu cầu. Vui lòng đợi một lát rồi thử lại.</string>
+    <string name="srv_err_voice_already_revoked">Giọng này đã được gỡ khỏi chợ.</string>
+    <string name="srv_err_cannot_report_own">Bạn không thể báo cáo giọng của chính mình.</string>
+    <string name="srv_err_already_reported">Bạn đã báo cáo giọng này rồi.</string>
+    <string name="srv_err_cannot_rate_own">Bạn không thể đánh giá giọng của chính mình.</string>
+    <string name="srv_err_cloning_unavailable">Hiện chưa thể nhân bản giọng nói.</string>
+    <string name="srv_err_service_unavailable">Dịch vụ tạm thời không khả dụng. Vui lòng thử lại sau vài phút.</string>
+    <string name="srv_err_timeout">Yêu cầu đã hết thời gian chờ. Máy chủ có thể đang bận.</string>
+    <string name="srv_err_internal">Đã xảy ra sự cố từ phía chúng tôi. Vui lòng thử lại.</string>
+    <string name="srv_err_synthesis_failed">Chúng tôi không thể tạo âm thanh này. Vui lòng thử lại.</string>
+    <string name="srv_err_too_large">Dung lượng quá lớn để gửi.</string>
+    <string name="srv_err_generic">Đã xảy ra lỗi. Vui lòng thử lại.</string>
+    <string name="revoked_reason_owner">Bạn đã gỡ</string>
+    <string name="tag_expressive">Biểu cảm</string>
+    <string name="tag_energetic">Năng động</string>
+    <string name="tag_deep">Trầm</string>
+    <string name="tag_warm">Ấm áp</string>
+    <string name="tag_bright">Sáng</string>
+    <string name="tag_professional">Chuyên nghiệp</string>
+    <string name="tag_casual">Thân mật</string>
+    <string name="tag_storytelling">Kể chuyện</string>
+    <string name="gmail_err_not_signed_in">Chưa đăng nhập bằng Google</string>
+    <string name="gmail_err_unauthorized">Quyền truy cập Gmail chưa được cho phép</string>
+    <string name="gmail_err_fetch_failed">Không thể tải email</string>
+    <string name="gmail_err_invalid_response">Phản hồi không hợp lệ từ Gmail</string>
+    <string name="gmail_err_api">Lỗi Gmail: %1$s</string>
+    <string name="model_dl_failed">Tải xuống thất bại. Hãy kiểm tra kết nối rồi thử lại.</string>
+    <string name="system_tts_engine_name">Giọng ReadAloud AI</string>
 </resources>

@@ -585,4 +585,43 @@
     <plurals name="incoming_source_text">
         <item quantity="other">ข้อความ, %1$d คำ</item>
     </plurals>
+    <!-- Server error codes, marketplace tags, Gmail errors (fix/localized-errors) -->
+    <string name="srv_err_invalid_request">ไม่สามารถประมวลผลคำขอได้ โปรดลองอีกครั้ง</string>
+    <string name="srv_err_text_too_long">ข้อความนี้ยาวเกินไปสำหรับแพ็กเกจของคุณ ลองใช้ข้อความที่สั้นลงหรืออัปเกรด</string>
+    <string name="srv_err_sign_in">โปรดลงชื่อเข้าใช้อีกครั้งเพื่อดำเนินการต่อ</string>
+    <string name="srv_err_forbidden">คุณไม่มีสิทธิ์เข้าถึงส่วนนี้</string>
+    <string name="srv_err_tier_required">เสียงนี้ต้องใช้แพ็กเกจที่สูงขึ้น</string>
+    <string name="srv_err_not_owner">เฉพาะเจ้าของเท่านั้นที่ทำได้</string>
+    <string name="srv_err_not_found">ไม่พบสิ่งที่ต้องการ</string>
+    <string name="srv_err_quota_daily">คุณใช้ถึงขีดจำกัดของวันนี้แล้ว ลองใหม่พรุ่งนี้หรืออัปเกรด</string>
+    <string name="srv_err_quota_monthly">คุณใช้ถึงขีดจำกัดของเดือนนี้แล้ว อัปเกรดหรือรอให้รีเซ็ต</string>
+    <string name="srv_err_quota">คุณใช้ถึงขีดจำกัดการใช้งานแล้ว อัปเกรดหรือรอให้รีเซ็ต</string>
+    <string name="srv_err_rate_limited">มีคำขอมากเกินไป โปรดรอสักครู่แล้วลองอีกครั้ง</string>
+    <string name="srv_err_voice_already_revoked">เสียงนี้ถูกนำออกจากตลาดแล้ว</string>
+    <string name="srv_err_cannot_report_own">คุณรายงานเสียงของตัวเองไม่ได้</string>
+    <string name="srv_err_already_reported">คุณรายงานเสียงนี้ไปแล้ว</string>
+    <string name="srv_err_cannot_rate_own">คุณให้คะแนนเสียงของตัวเองไม่ได้</string>
+    <string name="srv_err_cloning_unavailable">ขณะนี้ยังไม่สามารถโคลนเสียงได้</string>
+    <string name="srv_err_service_unavailable">บริการไม่พร้อมใช้งานชั่วคราว โปรดลองอีกครั้งในอีกสักครู่</string>
+    <string name="srv_err_timeout">คำขอหมดเวลา เซิร์ฟเวอร์อาจกำลังไม่ว่าง</string>
+    <string name="srv_err_internal">เกิดข้อผิดพลาดจากฝั่งเรา โปรดลองอีกครั้ง</string>
+    <string name="srv_err_synthesis_failed">เราสร้างเสียงนี้ไม่ได้ โปรดลองอีกครั้ง</string>
+    <string name="srv_err_too_large">ใหญ่เกินกว่าจะส่งได้</string>
+    <string name="srv_err_generic">เกิดข้อผิดพลาด โปรดลองอีกครั้ง</string>
+    <string name="revoked_reason_owner">คุณนำออกเอง</string>
+    <string name="tag_expressive">สื่ออารมณ์</string>
+    <string name="tag_energetic">กระปรี้กระเปร่า</string>
+    <string name="tag_deep">ทุ้มลึก</string>
+    <string name="tag_warm">อบอุ่น</string>
+    <string name="tag_bright">ใสสว่าง</string>
+    <string name="tag_professional">มืออาชีพ</string>
+    <string name="tag_casual">เป็นกันเอง</string>
+    <string name="tag_storytelling">เล่าเรื่อง</string>
+    <string name="gmail_err_not_signed_in">ยังไม่ได้ลงชื่อเข้าใช้ด้วย Google</string>
+    <string name="gmail_err_unauthorized">ไม่ได้รับอนุญาตให้เข้าถึง Gmail</string>
+    <string name="gmail_err_fetch_failed">ดึงอีเมลไม่สำเร็จ</string>
+    <string name="gmail_err_invalid_response">การตอบกลับจาก Gmail ไม่ถูกต้อง</string>
+    <string name="gmail_err_api">ข้อผิดพลาดของ Gmail: %1$s</string>
+    <string name="model_dl_failed">ดาวน์โหลดไม่สำเร็จ ตรวจสอบการเชื่อมต่อแล้วลองอีกครั้ง</string>
+    <string name="system_tts_engine_name">เสียง ReadAloud AI</string>
 </resources>

@@ -585,4 +585,43 @@
     <plurals name="incoming_source_text">
         <item quantity="other">テキスト、%1$d語</item>
     </plurals>
+    <!-- Server error codes, marketplace tags, Gmail errors (fix/localized-errors) -->
+    <string name="srv_err_invalid_request">リクエストを処理できませんでした。もう一度お試しください。</string>
+    <string name="srv_err_text_too_long">このテキストはご利用のプランには長すぎます。短いテキストにするか、プランをアップグレードしてください。</string>
+    <string name="srv_err_sign_in">続行するには、もう一度サインインしてください。</string>
+    <string name="srv_err_forbidden">このアクセス権がありません。</string>
+    <string name="srv_err_tier_required">この音声にはより上位のプランが必要です。</string>
+    <string name="srv_err_not_owner">所有者のみが行えます。</string>
+    <string name="srv_err_not_found">見つかりませんでした。</string>
+    <string name="srv_err_quota_daily">本日の上限に達しました。明日もう一度お試しいただくか、アップグレードしてください。</string>
+    <string name="srv_err_quota_monthly">今月の上限に達しました。アップグレードするか、リセットをお待ちください。</string>
+    <string name="srv_err_quota">利用上限に達しました。アップグレードするか、リセットをお待ちください。</string>
+    <string name="srv_err_rate_limited">リクエストが多すぎます。しばらくしてからもう一度お試しください。</string>
+    <string name="srv_err_voice_already_revoked">この音声はすでにマーケットプレイスから削除されています。</string>
+    <string name="srv_err_cannot_report_own">自分の音声を報告することはできません。</string>
+    <string name="srv_err_already_reported">この音声はすでに報告済みです。</string>
+    <string name="srv_err_cannot_rate_own">自分の音声を評価することはできません。</string>
+    <string name="srv_err_cloning_unavailable">現在、音声クローンはご利用いただけません。</string>
+    <string name="srv_err_service_unavailable">サービスは一時的にご利用いただけません。数分後にもう一度お試しください。</string>
+    <string name="srv_err_timeout">リクエストがタイムアウトしました。サーバーが混み合っている可能性があります。</string>
+    <string name="srv_err_internal">こちら側で問題が発生しました。もう一度お試しください。</string>
+    <string name="srv_err_synthesis_failed">この音声を生成できませんでした。もう一度お試しください。</string>
+    <string name="srv_err_too_large">サイズが大きすぎて送信できません。</string>
+    <string name="srv_err_generic">問題が発生しました。もう一度お試しください。</string>
+    <string name="revoked_reason_owner">ご自身で削除しました</string>
+    <string name="tag_expressive">表現豊か</string>
+    <string name="tag_energetic">エネルギッシュ</string>
+    <string name="tag_deep">低音</string>
+    <string name="tag_warm">温かい</string>
+    <string name="tag_bright">明るい</string>
+    <string name="tag_professional">プロフェッショナル</string>
+    <string name="tag_casual">カジュアル</string>
+    <string name="tag_storytelling">語り</string>
+    <string name="gmail_err_not_signed_in">Google でサインインしていません</string>
+    <string name="gmail_err_unauthorized">Gmail へのアクセスが許可されていません</string>
+    <string name="gmail_err_fetch_failed">メールを取得できませんでした</string>
+    <string name="gmail_err_invalid_response">Gmail から無効な応答がありました</string>
+    <string name="gmail_err_api">Gmail エラー: %1$s</string>
+    <string name="model_dl_failed">ダウンロードに失敗しました。接続を確認してもう一度お試しください。</string>
+    <string name="system_tts_engine_name">ReadAloud AI の音声</string>
 </resources>

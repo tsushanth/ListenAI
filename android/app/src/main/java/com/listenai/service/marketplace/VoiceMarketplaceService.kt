@@ -7,6 +7,7 @@ import com.listenai.R
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
+import com.listenai.service.ServerErrorText
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -58,7 +59,9 @@ class VoiceMarketplaceService private constructor(private val context: Context) 
         val ratingCount: Int,
         val createdAt: Date?,
         val revokedAt: Date?,
-        val revokedReason: String?
+        val revokedReason: String?,
+        /** Stable code for a reason the server wrote itself ("owner_revoked"); null for free-text moderation reasons. */
+        val revokedReasonCode: String? = null
     )
 
     /**
@@ -128,6 +131,10 @@ class VoiceMarketplaceService private constructor(private val context: Context) 
         data class ValidationError(val reason: String) : MarketplaceError() {
             override val message = reason
         }
+        /** The server refused or failed the request; [code] is its stable code (ServerErrorText), [serverMessage] its English text. */
+        data class Server(val httpStatus: Int, val code: String?, val serverMessage: String?) : MarketplaceError() {
+            override val message = serverMessage ?: "Server error ($httpStatus)" // i18n-ok: log text, the screen shows errorText()
+        }
     }
 
     /** The text of [e] in the user's language; [fallback] when the error carries no text of its own. */
@@ -137,6 +144,7 @@ class VoiceMarketplaceService private constructor(private val context: Context) 
         is MarketplaceError.Unauthorized -> context.getString(R.string.marketplace_err_sign_in)
         is MarketplaceError.NotFound -> context.getString(R.string.marketplace_err_not_found)
         is MarketplaceError.AlreadyShared -> context.getString(R.string.marketplace_err_already_shared)
+        is MarketplaceError.Server -> ServerErrorText.resolve(context, e.code, e.serverMessage, fallback)
         else -> e.message ?: context.getString(fallback)
     }
 
@@ -158,6 +166,7 @@ class VoiceMarketplaceService private constructor(private val context: Context) 
     private var baseUrl: String? = "https://listenai-backend.fly.dev"
 
     private val httpClient = OkHttpClient.Builder()
+        .addInterceptor(com.listenai.data.remote.AcceptLanguageInterceptor())
         .connectTimeout(30, TimeUnit.SECONDS)
         .readTimeout(60, TimeUnit.SECONDS)
         .writeTimeout(30, TimeUnit.SECONDS)
@@ -216,7 +225,7 @@ class VoiceMarketplaceService private constructor(private val context: Context) 
                 }
             }
             401 -> throw MarketplaceError.Unauthorized
-            else -> throw MarketplaceError.NetworkError("Status ${response.code}")
+            else -> throw serverError(response)
         }
     }
 
@@ -235,7 +244,7 @@ class VoiceMarketplaceService private constructor(private val context: Context) 
                 parseSharedVoice(JSONObject(body))
             }
             404 -> throw MarketplaceError.NotFound
-            else -> throw MarketplaceError.NetworkError("Status ${response.code}")
+            else -> throw serverError(response)
         }
     }
 
@@ -275,18 +284,9 @@ class VoiceMarketplaceService private constructor(private val context: Context) 
                 val responseBody = response.body?.string() ?: throw MarketplaceError.NetworkError("Empty response")
                 JSONObject(responseBody).getString("id")
             }
-            400 -> {
-                val errorBody = response.body?.string()
-                val errorMsg = try {
-                    JSONObject(errorBody ?: "").optString("error", "Validation failed")
-                } catch (e: Exception) { "Validation failed" }
-                if (errorMsg.contains("already shared", ignoreCase = true)) {
-                    throw MarketplaceError.AlreadyShared
-                }
-                throw MarketplaceError.ValidationError(errorMsg)
-            }
+            400 -> throw serverError(response)
             401 -> throw MarketplaceError.Unauthorized
-            else -> throw MarketplaceError.NetworkError("Status ${response.code}")
+            else -> throw serverError(response)
         }
     }
 
@@ -302,7 +302,7 @@ class VoiceMarketplaceService private constructor(private val context: Context) 
         when (response.code) {
             204 -> { /* Success */ }
             404 -> throw MarketplaceError.NotFound
-            else -> throw MarketplaceError.NetworkError("Status ${response.code}")
+            else -> throw serverError(response)
         }
     }
 
@@ -328,7 +328,7 @@ class VoiceMarketplaceService private constructor(private val context: Context) 
         val response = httpClient.newCall(request).execute()
 
         if (response.code != 200) {
-            throw MarketplaceError.NetworkError("Status ${response.code}")
+            throw serverError(response)
         }
     }
 
@@ -355,14 +355,8 @@ class VoiceMarketplaceService private constructor(private val context: Context) 
 
         when (response.code) {
             201 -> { /* Success */ }
-            400 -> {
-                val errorBody = response.body?.string()
-                val errorMsg = try {
-                    JSONObject(errorBody ?: "").optString("error", "Report failed")
-                } catch (e: Exception) { "Report failed" }
-                throw MarketplaceError.ValidationError(errorMsg)
-            }
-            else -> throw MarketplaceError.NetworkError("Status ${response.code}")
+            400 -> throw serverError(response)
+            else -> throw serverError(response)
         }
     }
 
@@ -387,7 +381,7 @@ class VoiceMarketplaceService private constructor(private val context: Context) 
                 }
             }
             401 -> throw MarketplaceError.Unauthorized
-            else -> throw MarketplaceError.NetworkError("Status ${response.code}")
+            else -> throw serverError(response)
         }
     }
 
@@ -415,7 +409,7 @@ class VoiceMarketplaceService private constructor(private val context: Context) 
                 )
             }
             401 -> throw MarketplaceError.Unauthorized
-            else -> throw MarketplaceError.NetworkError("Status ${response.code}")
+            else -> throw serverError(response)
         }
     }
 
@@ -438,7 +432,7 @@ class VoiceMarketplaceService private constructor(private val context: Context) 
                 JSONObject(body).optDouble("credited_minutes", 0.0)
             }
             401 -> throw MarketplaceError.Unauthorized
-            else -> throw MarketplaceError.NetworkError("Status ${response.code}")
+            else -> throw serverError(response)
         }
     }
 
@@ -461,7 +455,7 @@ class VoiceMarketplaceService private constructor(private val context: Context) 
                 }
             }
             401 -> throw MarketplaceError.Unauthorized
-            else -> throw MarketplaceError.NetworkError("Status ${response.code}")
+            else -> throw serverError(response)
         }
     }
 
@@ -477,6 +471,17 @@ class VoiceMarketplaceService private constructor(private val context: Context) 
 
         prefs.edit().putString("device_id", deviceId).apply()
         return deviceId
+    }
+
+    /** Reads the error body of a failed [response] into the matching [MarketplaceError]; the code decides, not the English text. */
+    private fun serverError(response: okhttp3.Response): MarketplaceError {
+        val err = ServerErrorText.parse(response.code, runCatching { response.body?.string() }.getOrNull())
+        return when (err.code) {
+            "voice_already_shared" -> MarketplaceError.AlreadyShared
+            "unauthenticated", "token_expired", "token_invalid" -> MarketplaceError.Unauthorized
+            "shared_voice_not_found", "voice_not_found" -> MarketplaceError.NotFound
+            else -> MarketplaceError.Server(response.code, err.code, err.message)
+        }
     }
 
     private fun createRequest(endpoint: String, method: String): Request {
@@ -533,7 +538,9 @@ class VoiceMarketplaceService private constructor(private val context: Context) 
             ratingCount = json.optInt("rating_count", 0),
             createdAt = parseDate(json.optString("created_at")),
             revokedAt = parseDate(json.optString("revoked_at")),
-            revokedReason = json.optString("revoked_reason").takeIf { it.isNotEmpty() }
+            // A JSON null must stay null: Android's optString turns it into the text "null".
+            revokedReason = json.takeUnless { it.isNull("revoked_reason") }?.optString("revoked_reason")?.takeIf { it.isNotEmpty() },
+            revokedReasonCode = json.takeUnless { it.isNull("revoked_reason_code") }?.optString("revoked_reason_code")?.takeIf { it.isNotEmpty() }
         )
     }
 

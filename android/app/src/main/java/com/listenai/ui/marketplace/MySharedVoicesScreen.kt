@@ -319,7 +319,11 @@ private fun SharedVoiceCard(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = stringResource(R.string.revoked_reason_format, share.revokedReason),
+                            text = stringResource(
+                                R.string.revoked_reason_format,
+                                // A reason the server wrote itself has a code the app translates; a moderator's free text is shown as written.
+                                if (share.revokedReasonCode == "owner_revoked") stringResource(R.string.revoked_reason_owner) else share.revokedReason
+                            ),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onErrorContainer
                         )
@@ -357,7 +361,7 @@ private fun SharedVoiceCard(
                             color = MaterialTheme.colorScheme.secondaryContainer
                         ) {
                             Text(
-                                text = tag,
+                                text = marketplaceTagLabel(tag),
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSecondaryContainer

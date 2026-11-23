@@ -530,4 +530,43 @@
         <item quantity="many">Text, %1$d slova</item>
         <item quantity="other">Text, %1$d slov</item>
     </plurals>
+    <!-- Server error codes, marketplace tags, Gmail errors (fix/localized-errors) -->
+    <string name="srv_err_invalid_request">Požadavek se nepodařilo zpracovat. Zkus to znovu.</string>
+    <string name="srv_err_text_too_long">Tento text je pro tvůj tarif příliš dlouhý. Zkus kratší text nebo přejdi na vyšší tarif.</string>
+    <string name="srv_err_sign_in">Pro pokračování se přihlas znovu.</string>
+    <string name="srv_err_forbidden">K tomu nemáš přístup.</string>
+    <string name="srv_err_tier_required">Tento hlas vyžaduje vyšší tarif.</string>
+    <string name="srv_err_not_owner">To může udělat jen vlastník.</string>
+    <string name="srv_err_not_found">Nenalezeno.</string>
+    <string name="srv_err_quota_daily">Dosáhl jsi dnešního limitu. Zkus to zítra nebo přejdi na vyšší tarif.</string>
+    <string name="srv_err_quota_monthly">Dosáhl jsi limitu pro tento měsíc. Přejdi na vyšší tarif nebo počkej na obnovení.</string>
+    <string name="srv_err_quota">Dosáhl jsi limitu využití. Přejdi na vyšší tarif nebo počkej na obnovení.</string>
+    <string name="srv_err_rate_limited">Příliš mnoho požadavků. Chvíli počkej a zkus to znovu.</string>
+    <string name="srv_err_voice_already_revoked">Tento hlas už byl z tržiště odebrán.</string>
+    <string name="srv_err_cannot_report_own">Nemůžeš nahlásit vlastní hlas.</string>
+    <string name="srv_err_already_reported">Tento hlas jsi už nahlásil.</string>
+    <string name="srv_err_cannot_rate_own">Nemůžeš ohodnotit vlastní hlas.</string>
+    <string name="srv_err_cloning_unavailable">Klonování hlasu momentálně není k dispozici.</string>
+    <string name="srv_err_service_unavailable">Služba je dočasně nedostupná. Zkus to znovu za několik minut.</string>
+    <string name="srv_err_timeout">Požadavek vypršel. Server může být vytížený.</string>
+    <string name="srv_err_internal">Na naší straně došlo k chybě. Zkus to znovu.</string>
+    <string name="srv_err_synthesis_failed">Tento zvuk se nepodařilo vytvořit. Zkus to znovu.</string>
+    <string name="srv_err_too_large">Je to příliš velké na odeslání.</string>
+    <string name="srv_err_generic">Něco se pokazilo. Zkus to znovu.</string>
+    <string name="revoked_reason_owner">Odebráno tebou</string>
+    <string name="tag_expressive">Expresivní</string>
+    <string name="tag_energetic">Energický</string>
+    <string name="tag_deep">Hluboký</string>
+    <string name="tag_warm">Teplý</string>
+    <string name="tag_bright">Jasný</string>
+    <string name="tag_professional">Profesionální</string>
+    <string name="tag_casual">Neformální</string>
+    <string name="tag_storytelling">Vyprávěcí</string>
+    <string name="gmail_err_not_signed_in">Nejsi přihlášen přes Google</string>
+    <string name="gmail_err_unauthorized">Přístup ke Gmailu není povolen</string>
+    <string name="gmail_err_fetch_failed">E-maily se nepodařilo načíst</string>
+    <string name="gmail_err_invalid_response">Neplatná odpověď od Gmailu</string>
+    <string name="gmail_err_api">Chyba Gmailu: %1$s</string>
+    <string name="model_dl_failed">Stahování se nezdařilo. Zkontroluj připojení a zkus to znovu.</string>
+    <string name="system_tts_engine_name">Hlasy ReadAloud AI</string>
 </resources>

@@ -49,7 +49,7 @@ fun VoiceMarketplaceScreen(
     var selectedTags by remember { mutableStateOf<List<String>>(emptyList()) }
     var searchQuery by remember { mutableStateOf("") }
 
-    val availableTags = listOf("male", "female", "neutral", "expressive", "calm", "energetic", "deep", "warm")
+    val availableTags = MarketplaceTags.FILTER_TAGS
 
     fun loadVoices() {
         scope.launch {
@@ -152,7 +152,7 @@ fun VoiceMarketplaceScreen(
                                 selectedTags + tag
                             }
                         },
-                        label = { Text(tag.replaceFirstChar { it.uppercase() }) }
+                        label = { Text(marketplaceTagLabel(tag)) }
                     )
                 }
             }
@@ -338,7 +338,7 @@ private fun VoiceCard(
                                 color = MaterialTheme.colorScheme.secondaryContainer
                             ) {
                                 Text(
-                                    text = tag,
+                                    text = marketplaceTagLabel(tag),
                                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSecondaryContainer

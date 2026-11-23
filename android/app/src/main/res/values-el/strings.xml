@@ -524,4 +524,43 @@
         <item quantity="one">Κείμενο, %1$d λέξη</item>
         <item quantity="other">Κείμενο, %1$d λέξεις</item>
     </plurals>
+    <!-- Server error codes, marketplace tags, Gmail errors (fix/localized-errors) -->
+    <string name="srv_err_invalid_request">Δεν ήταν δυνατή η επεξεργασία του αιτήματος. Δοκιμάστε ξανά.</string>
+    <string name="srv_err_text_too_long">Αυτό το κείμενο είναι πολύ μεγάλο για το πλάνο σας. Δοκιμάστε πιο σύντομο κείμενο ή αναβαθμίστε.</string>
+    <string name="srv_err_sign_in">Συνδεθείτε ξανά για να συνεχίσετε.</string>
+    <string name="srv_err_forbidden">Δεν έχετε πρόσβαση σε αυτό.</string>
+    <string name="srv_err_tier_required">Αυτή η φωνή απαιτεί ανώτερο πλάνο.</string>
+    <string name="srv_err_not_owner">Μόνο ο ιδιοκτήτης μπορεί να το κάνει.</string>
+    <string name="srv_err_not_found">Δεν βρέθηκε.</string>
+    <string name="srv_err_quota_daily">Φτάσατε το σημερινό όριο. Δοκιμάστε αύριο ή αναβαθμίστε.</string>
+    <string name="srv_err_quota_monthly">Φτάσατε το όριο αυτού του μήνα. Αναβαθμίστε ή περιμένετε την επαναφορά.</string>
+    <string name="srv_err_quota">Φτάσατε το όριο χρήσης. Αναβαθμίστε ή περιμένετε την επαναφορά.</string>
+    <string name="srv_err_rate_limited">Πολλά αιτήματα. Περιμένετε λίγο και δοκιμάστε ξανά.</string>
+    <string name="srv_err_voice_already_revoked">Αυτή η φωνή έχει ήδη αφαιρεθεί από την αγορά.</string>
+    <string name="srv_err_cannot_report_own">Δεν μπορείτε να αναφέρετε τη δική σας φωνή.</string>
+    <string name="srv_err_already_reported">Έχετε ήδη αναφέρει αυτή τη φωνή.</string>
+    <string name="srv_err_cannot_rate_own">Δεν μπορείτε να βαθμολογήσετε τη δική σας φωνή.</string>
+    <string name="srv_err_cloning_unavailable">Η κλωνοποίηση φωνής δεν είναι διαθέσιμη αυτή τη στιγμή.</string>
+    <string name="srv_err_service_unavailable">Η υπηρεσία δεν είναι προσωρινά διαθέσιμη. Δοκιμάστε ξανά σε λίγα λεπτά.</string>
+    <string name="srv_err_timeout">Το αίτημα έληξε. Ο διακομιστής μπορεί να είναι απασχολημένος.</string>
+    <string name="srv_err_internal">Παρουσιάστηκε πρόβλημα από τη δική μας πλευρά. Δοκιμάστε ξανά.</string>
+    <string name="srv_err_synthesis_failed">Δεν μπορέσαμε να δημιουργήσουμε αυτόν τον ήχο. Δοκιμάστε ξανά.</string>
+    <string name="srv_err_too_large">Είναι πολύ μεγάλο για αποστολή.</string>
+    <string name="srv_err_generic">Κάτι πήγε στραβά. Δοκιμάστε ξανά.</string>
+    <string name="revoked_reason_owner">Αφαιρέθηκε από εσάς</string>
+    <string name="tag_expressive">Εκφραστική</string>
+    <string name="tag_energetic">Ενεργητική</string>
+    <string name="tag_deep">Βαθιά</string>
+    <string name="tag_warm">Ζεστή</string>
+    <string name="tag_bright">Φωτεινή</string>
+    <string name="tag_professional">Επαγγελματική</string>
+    <string name="tag_casual">Χαλαρή</string>
+    <string name="tag_storytelling">Αφηγηματική</string>
+    <string name="gmail_err_not_signed_in">Δεν έχετε συνδεθεί με Google</string>
+    <string name="gmail_err_unauthorized">Η πρόσβαση στο Gmail δεν είναι εξουσιοδοτημένη</string>
+    <string name="gmail_err_fetch_failed">Δεν ήταν δυνατή η λήψη των email</string>
+    <string name="gmail_err_invalid_response">Μη έγκυρη απάντηση από το Gmail</string>
+    <string name="gmail_err_api">Σφάλμα Gmail: %1$s</string>
+    <string name="model_dl_failed">Η λήψη απέτυχε. Ελέγξτε τη σύνδεσή σας και δοκιμάστε ξανά.</string>
+    <string name="system_tts_engine_name">Φωνές ReadAloud AI</string>
 </resources>

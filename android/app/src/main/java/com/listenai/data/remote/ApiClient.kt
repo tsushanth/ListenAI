@@ -36,6 +36,7 @@ class ApiClient(
     }
 
     private val okHttpClient = OkHttpClient.Builder()
+        .addInterceptor(AcceptLanguageInterceptor())
         .addInterceptor(authInterceptor)
         .addInterceptor(loggingInterceptor)
         .connectTimeout(30, TimeUnit.SECONDS)

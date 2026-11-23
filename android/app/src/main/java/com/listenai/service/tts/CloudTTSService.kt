@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
+import com.listenai.service.ServerErrorText
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -48,6 +49,7 @@ class CloudTTSService(private val context: Context) : TTSService {
     // Individual poll requests are short — no need for the long readTimeout
     // the old single-blocking-call design required.
     private val httpClient = OkHttpClient.Builder()
+        .addInterceptor(com.listenai.data.remote.AcceptLanguageInterceptor())
         .connectTimeout(30, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
         .writeTimeout(30, TimeUnit.SECONDS)
@@ -226,8 +228,7 @@ class CloudTTSService(private val context: Context) : TTSService {
                 }
                 "failed" -> {
                     val error = statusJson.optJSONObject("error")
-                    val message = error?.optString("message") ?: "Synthesis failed"
-                    throw TTSError.ApiError(provider.displayName, 0, message)
+                    throw TTSError.Server(200, error?.optString("code")?.lowercase()?.takeIf { it.isNotEmpty() }, error?.optString("message")?.takeIf { it.isNotEmpty() })
                 }
                 "canceled" -> {
                     throw TTSError.Cancelled
@@ -365,36 +366,14 @@ class CloudTTSService(private val context: Context) : TTSService {
     }
 
     private fun handleErrorResponse(code: Int, body: String) {
-        val message = try {
-            JSONObject(body).optString("error", body)
-        } catch (e: Exception) {
-            body
-        }
-
-        val lowerMessage = message.lowercase()
+        // Decide on the HTTP status and the server's stable code, never on its English wording.
+        val err = ServerErrorText.parse(code, body)
 
         when {
-            code == 429 || lowerMessage.contains("rate") || lowerMessage.contains("limit") -> {
-                throw TTSError.RateLimited(60.0)
-            }
-            code == 401 -> {
-                if (lowerMessage.contains("rate") || lowerMessage.contains("limit")) {
-                    throw TTSError.RateLimited(60.0)
-                }
-                throw TTSError.InvalidConfiguration("Invalid API key")
-            }
-            code == 402 || lowerMessage.contains("quota") || lowerMessage.contains("exceeded") -> {
-                throw TTSError.QuotaExceeded(0, 0)
-            }
-            code == 403 -> {
-                throw TTSError.SubscriptionRequired("premium")
-            }
-            code == 404 -> {
-                throw TTSError.ApiError(provider.displayName, code, "Job API not available for this account")
-            }
-            else -> {
-                throw TTSError.ApiError(provider.displayName, code, message)
-            }
+            code == 429 || err.code == "rate_limited" -> throw TTSError.RateLimited(60.0)
+            code == 402 || err.code?.startsWith("quota_") == true -> throw TTSError.QuotaExceeded(0, 0)
+            code == 403 && err.code == "tier_required" -> throw TTSError.SubscriptionRequired("premium")
+            else -> throw TTSError.Server(code, err.code, err.message)
         }
     }
 

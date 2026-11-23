@@ -294,6 +294,7 @@ class VoiceCloneApi(
 
     companion object {
         private val JSON = "application/json".toMediaType()
+        private val CATEGORY = Regex("[A-Z][A-Z0-9_]*")
 
         /**
          * Two error envelopes exist on the backend:
@@ -304,8 +305,12 @@ class VoiceCloneApi(
         fun parseErrorBody(httpStatus: Int, body: String): VoiceCloneException {
             val json = try { JSONObject(body) } catch (e: Exception) { null }
             if (json == null) return VoiceCloneException(httpStatus, "http_$httpStatus", null)
-            val explicitCode = json.optString("code").takeIf { it.isNotEmpty() && it != "null" }
             val error = json.optString("error").takeIf { it.isNotEmpty() && it != "null" }
+            // The global handler's `error` is an upper-case category ("FORBIDDEN"); since it also sends a more specific
+            // lower-case `code` for the app to translate, that `code` must not replace the category VoiceCloneErrors
+            // already maps. The voice-clones envelope has free text in `error` and its own `code`.
+            val errorIsCategory = error != null && CATEGORY.matches(error)
+            val explicitCode = json.optString("code").takeIf { it.isNotEmpty() && it != "null" && !errorIsCategory }
             val message = json.optString("message").takeIf { it.isNotEmpty() && it != "null" }
             val code = (explicitCode ?: error ?: "http_$httpStatus")
             val serverMessage = if (explicitCode != null) error ?: message else message ?: error

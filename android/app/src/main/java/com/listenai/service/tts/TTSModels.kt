@@ -293,55 +293,55 @@ data class AudioChunk(
  */
 sealed class TTSError : Exception() {
     data class VoiceNotAvailable(val voiceName: String) : TTSError() {
-        override val message = "Voice '$voiceName' is not available on this device."
+        override val message = "Voice '$voiceName' is not available on this device." // i18n-ok: log text, screens use TTSErrorText
     }
 
     data class VoiceDownloadRequired(val voiceName: String, val sizeBytes: Long) : TTSError() {
-        override val message = "Voice '$voiceName' requires download."
+        override val message = "Voice '$voiceName' requires download." // i18n-ok: log text, screens use TTSErrorText
     }
 
     data class TextTooLong(val characterCount: Int, val limit: Int) : TTSError() {
-        override val message = "Text is too long ($characterCount characters). Maximum is $limit."
+        override val message = "Text is too long ($characterCount characters). Maximum is $limit." // i18n-ok: log text, screens use TTSErrorText
     }
 
     object TextEmpty : TTSError() {
-        override val message = "Cannot synthesize empty text."
+        override val message = "Cannot synthesize empty text." // i18n-ok: log text, screens use TTSErrorText
     }
 
     data class QuotaExceeded(val remaining: Int, val required: Int) : TTSError() {
-        override val message = "Quota exceeded. You have $remaining characters remaining, but need $required."
+        override val message = "Quota exceeded. You have $remaining characters remaining, but need $required." // i18n-ok: log text, screens use TTSErrorText
     }
 
     data class NetworkError(val underlying: String) : TTSError() {
-        override val message = "Network error: $underlying"
+        override val message = "Network error: $underlying" // i18n-ok: log text, screens use TTSErrorText
     }
 
     data class ApiError(val provider: String, val code: Int, val errorMessage: String) : TTSError() {
-        override val message = "$provider API error ($code): $errorMessage"
+        override val message = "$provider API error ($code): $errorMessage" // i18n-ok: log text, screens use TTSErrorText
     }
 
     data class RateLimited(val retryAfterSeconds: Double) : TTSError() {
-        override val message = "Rate limited. Please try again in ${retryAfterSeconds.toInt()} seconds."
+        override val message = "Rate limited. Please try again in ${retryAfterSeconds.toInt()} seconds." // i18n-ok: log text, screens use TTSErrorText
     }
 
     data class AudioEncodingFailed(val reason: String) : TTSError() {
-        override val message = "Failed to encode audio: $reason"
+        override val message = "Failed to encode audio: $reason" // i18n-ok: log text, screens use TTSErrorText
     }
 
     object Cancelled : TTSError() {
-        override val message = "Synthesis was cancelled."
+        override val message = "Synthesis was cancelled." // i18n-ok: log text, screens use TTSErrorText
     }
 
     data class SubscriptionRequired(val tier: String) : TTSError() {
-        override val message = "This voice requires a $tier subscription."
+        override val message = "This voice requires a $tier subscription." // i18n-ok: log text, screens use TTSErrorText
     }
 
     data class InvalidConfiguration(val reason: String) : TTSError() {
-        override val message = "Invalid configuration: $reason"
+        override val message = "Invalid configuration: $reason" // i18n-ok: log text, screens use TTSErrorText
     }
 
     object SynthesisTimeout : TTSError() {
-        override val message = "Synthesis timed out."
+        override val message = "Synthesis timed out." // i18n-ok: log text, screens use TTSErrorText
     }
 
     /** Every speech source failed. [installVoiceLanguage] / [installEngine] say which button to offer. */
@@ -357,7 +357,15 @@ sealed class TTSError : Exception() {
         enum class Kind { NO_VOICE_DATA, NO_ENGINE, OFFLINE, BUSY, OTHER }
     }
 
+    /**
+     * The backend refused or failed the request. [code] is its stable error code (see ServerErrorText), [serverMessage]
+     * its English text. On screen the code is translated (TTSErrorText); [message] is for logs.
+     */
+    data class Server(val httpStatus: Int, val code: String?, val serverMessage: String?) : TTSError() {
+        override val message = serverMessage ?: "Server error ($httpStatus)" // i18n-ok: log text
+    }
+
     data class UnsupportedLanguage(val language: String) : TTSError() {
-        override val message = "Language '$language' is not supported by this voice."
+        override val message = "Language '$language' is not supported by this voice." // i18n-ok: log text, screens use TTSErrorText
     }
 }

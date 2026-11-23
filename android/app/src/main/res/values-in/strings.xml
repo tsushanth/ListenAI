@@ -585,4 +585,43 @@
     <plurals name="incoming_source_text">
         <item quantity="other">Teks, %1$d kata</item>
     </plurals>
+    <!-- Server error codes, marketplace tags, Gmail errors (fix/localized-errors) -->
+    <string name="srv_err_invalid_request">Permintaan tidak dapat diproses. Silakan coba lagi.</string>
+    <string name="srv_err_text_too_long">Teks ini terlalu panjang untuk paket Anda. Coba teks yang lebih pendek atau tingkatkan paket.</string>
+    <string name="srv_err_sign_in">Silakan masuk lagi untuk melanjutkan.</string>
+    <string name="srv_err_forbidden">Anda tidak memiliki akses ke ini.</string>
+    <string name="srv_err_tier_required">Suara ini memerlukan paket yang lebih tinggi.</string>
+    <string name="srv_err_not_owner">Hanya pemilik yang dapat melakukannya.</string>
+    <string name="srv_err_not_found">Tidak ditemukan.</string>
+    <string name="srv_err_quota_daily">Anda telah mencapai batas hari ini. Coba lagi besok atau tingkatkan paket.</string>
+    <string name="srv_err_quota_monthly">Anda telah mencapai batas bulan ini. Tingkatkan paket atau tunggu hingga direset.</string>
+    <string name="srv_err_quota">Anda telah mencapai batas penggunaan. Tingkatkan paket atau tunggu hingga direset.</string>
+    <string name="srv_err_rate_limited">Terlalu banyak permintaan. Tunggu sebentar lalu coba lagi.</string>
+    <string name="srv_err_voice_already_revoked">Suara ini sudah dihapus dari marketplace.</string>
+    <string name="srv_err_cannot_report_own">Anda tidak dapat melaporkan suara Anda sendiri.</string>
+    <string name="srv_err_already_reported">Anda sudah melaporkan suara ini.</string>
+    <string name="srv_err_cannot_rate_own">Anda tidak dapat menilai suara Anda sendiri.</string>
+    <string name="srv_err_cloning_unavailable">Kloning suara tidak tersedia saat ini.</string>
+    <string name="srv_err_service_unavailable">Layanan sedang tidak tersedia sementara. Coba lagi dalam beberapa menit.</string>
+    <string name="srv_err_timeout">Permintaan habis waktu. Server mungkin sedang sibuk.</string>
+    <string name="srv_err_internal">Terjadi masalah di pihak kami. Silakan coba lagi.</string>
+    <string name="srv_err_synthesis_failed">Kami tidak dapat membuat audio ini. Silakan coba lagi.</string>
+    <string name="srv_err_too_large">Ukurannya terlalu besar untuk dikirim.</string>
+    <string name="srv_err_generic">Terjadi kesalahan. Silakan coba lagi.</string>
+    <string name="revoked_reason_owner">Dihapus oleh Anda</string>
+    <string name="tag_expressive">Ekspresif</string>
+    <string name="tag_energetic">Energik</string>
+    <string name="tag_deep">Dalam</string>
+    <string name="tag_warm">Hangat</string>
+    <string name="tag_bright">Cerah</string>
+    <string name="tag_professional">Profesional</string>
+    <string name="tag_casual">Santai</string>
+    <string name="tag_storytelling">Bercerita</string>
+    <string name="gmail_err_not_signed_in">Belum masuk dengan Google</string>
+    <string name="gmail_err_unauthorized">Akses Gmail tidak diizinkan</string>
+    <string name="gmail_err_fetch_failed">Gagal mengambil email</string>
+    <string name="gmail_err_invalid_response">Respons tidak valid dari Gmail</string>
+    <string name="gmail_err_api">Kesalahan Gmail: %1$s</string>
+    <string name="model_dl_failed">Unduhan gagal. Periksa koneksi Anda lalu coba lagi.</string>
+    <string name="system_tts_engine_name">Suara ReadAloud AI</string>
 </resources>

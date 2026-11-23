@@ -585,4 +585,43 @@
     <plurals name="incoming_source_text">
         <item quantity="other">텍스트, %1$d단어</item>
     </plurals>
+    <!-- Server error codes, marketplace tags, Gmail errors (fix/localized-errors) -->
+    <string name="srv_err_invalid_request">요청을 처리하지 못했습니다. 다시 시도해 주세요.</string>
+    <string name="srv_err_text_too_long">이 텍스트는 현재 요금제에 비해 너무 깁니다. 더 짧은 텍스트를 사용하거나 업그레이드하세요.</string>
+    <string name="srv_err_sign_in">계속하려면 다시 로그인해 주세요.</string>
+    <string name="srv_err_forbidden">이 항목에 대한 권한이 없습니다.</string>
+    <string name="srv_err_tier_required">이 음성은 더 높은 요금제가 필요합니다.</string>
+    <string name="srv_err_not_owner">소유자만 할 수 있습니다.</string>
+    <string name="srv_err_not_found">찾을 수 없습니다.</string>
+    <string name="srv_err_quota_daily">오늘의 한도에 도달했습니다. 내일 다시 시도하거나 업그레이드하세요.</string>
+    <string name="srv_err_quota_monthly">이번 달 한도에 도달했습니다. 업그레이드하거나 초기화될 때까지 기다려 주세요.</string>
+    <string name="srv_err_quota">사용 한도에 도달했습니다. 업그레이드하거나 초기화될 때까지 기다려 주세요.</string>
+    <string name="srv_err_rate_limited">요청이 너무 많습니다. 잠시 기다린 후 다시 시도해 주세요.</string>
+    <string name="srv_err_voice_already_revoked">이 음성은 이미 마켓플레이스에서 삭제되었습니다.</string>
+    <string name="srv_err_cannot_report_own">자신의 음성은 신고할 수 없습니다.</string>
+    <string name="srv_err_already_reported">이미 신고한 음성입니다.</string>
+    <string name="srv_err_cannot_rate_own">자신의 음성은 평가할 수 없습니다.</string>
+    <string name="srv_err_cloning_unavailable">지금은 음성 복제를 사용할 수 없습니다.</string>
+    <string name="srv_err_service_unavailable">서비스를 일시적으로 사용할 수 없습니다. 몇 분 후에 다시 시도해 주세요.</string>
+    <string name="srv_err_timeout">요청 시간이 초과되었습니다. 서버가 바쁠 수 있습니다.</string>
+    <string name="srv_err_internal">당사 측에서 문제가 발생했습니다. 다시 시도해 주세요.</string>
+    <string name="srv_err_synthesis_failed">이 오디오를 생성하지 못했습니다. 다시 시도해 주세요.</string>
+    <string name="srv_err_too_large">전송하기에는 너무 큽니다.</string>
+    <string name="srv_err_generic">문제가 발생했습니다. 다시 시도해 주세요.</string>
+    <string name="revoked_reason_owner">직접 삭제함</string>
+    <string name="tag_expressive">표현력 있는</string>
+    <string name="tag_energetic">활기찬</string>
+    <string name="tag_deep">깊은</string>
+    <string name="tag_warm">따뜻한</string>
+    <string name="tag_bright">밝은</string>
+    <string name="tag_professional">전문적인</string>
+    <string name="tag_casual">캐주얼한</string>
+    <string name="tag_storytelling">이야기하는</string>
+    <string name="gmail_err_not_signed_in">Google로 로그인되어 있지 않습니다</string>
+    <string name="gmail_err_unauthorized">Gmail 접근이 승인되지 않았습니다</string>
+    <string name="gmail_err_fetch_failed">이메일을 가져오지 못했습니다</string>
+    <string name="gmail_err_invalid_response">Gmail에서 잘못된 응답을 받았습니다</string>
+    <string name="gmail_err_api">Gmail 오류: %1$s</string>
+    <string name="model_dl_failed">다운로드하지 못했습니다. 연결을 확인하고 다시 시도해 주세요.</string>
+    <string name="system_tts_engine_name">ReadAloud AI 음성</string>
 </resources>

@@ -108,7 +108,7 @@ fun MailImportScreen(
     LaunchedEffect(gmailError) {
         gmailError?.let { error ->
             android.util.Log.e("MailImportScreen", "Gmail error: ${error.message}")
-            importError = error.message
+            importError = error.text(context)
         }
     }
 

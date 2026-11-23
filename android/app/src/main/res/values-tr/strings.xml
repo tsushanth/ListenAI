@@ -588,4 +588,43 @@
         <item quantity="one">Metin, %1$d kelime</item>
         <item quantity="other">Metin, %1$d kelime</item>
     </plurals>
+    <!-- Server error codes, marketplace tags, Gmail errors (fix/localized-errors) -->
+    <string name="srv_err_invalid_request">İstek işlenemedi. Lütfen tekrar deneyin.</string>
+    <string name="srv_err_text_too_long">Bu metin planınız için çok uzun. Daha kısa bir metin deneyin veya planınızı yükseltin.</string>
+    <string name="srv_err_sign_in">Devam etmek için lütfen yeniden oturum açın.</string>
+    <string name="srv_err_forbidden">Buna erişim izniniz yok.</string>
+    <string name="srv_err_tier_required">Bu ses daha üst bir plan gerektiriyor.</string>
+    <string name="srv_err_not_owner">Bunu yalnızca sahibi yapabilir.</string>
+    <string name="srv_err_not_found">Bulunamadı.</string>
+    <string name="srv_err_quota_daily">Bugünkü sınıra ulaştınız. Yarın tekrar deneyin veya planınızı yükseltin.</string>
+    <string name="srv_err_quota_monthly">Bu ayki sınıra ulaştınız. Planınızı yükseltin veya sıfırlanmasını bekleyin.</string>
+    <string name="srv_err_quota">Kullanım sınırınıza ulaştınız. Planınızı yükseltin veya sıfırlanmasını bekleyin.</string>
+    <string name="srv_err_rate_limited">Çok fazla istek var. Lütfen biraz bekleyip tekrar deneyin.</string>
+    <string name="srv_err_voice_already_revoked">Bu ses pazar yerinden zaten kaldırıldı.</string>
+    <string name="srv_err_cannot_report_own">Kendi sesinizi bildiremezsiniz.</string>
+    <string name="srv_err_already_reported">Bu sesi zaten bildirdiniz.</string>
+    <string name="srv_err_cannot_rate_own">Kendi sesinizi puanlayamazsınız.</string>
+    <string name="srv_err_cloning_unavailable">Ses klonlama şu anda kullanılamıyor.</string>
+    <string name="srv_err_service_unavailable">Hizmet geçici olarak kullanılamıyor. Lütfen birkaç dakika sonra tekrar deneyin.</string>
+    <string name="srv_err_timeout">İstek zaman aşımına uğradı. Sunucu meşgul olabilir.</string>
+    <string name="srv_err_internal">Bizim tarafımızda bir sorun oluştu. Lütfen tekrar deneyin.</string>
+    <string name="srv_err_synthesis_failed">Bu sesi oluşturamadık. Lütfen tekrar deneyin.</string>
+    <string name="srv_err_too_large">Gönderilemeyecek kadar büyük.</string>
+    <string name="srv_err_generic">Bir şeyler ters gitti. Lütfen tekrar deneyin.</string>
+    <string name="revoked_reason_owner">Sizin tarafınızdan kaldırıldı</string>
+    <string name="tag_expressive">Etkileyici</string>
+    <string name="tag_energetic">Enerjik</string>
+    <string name="tag_deep">Derin</string>
+    <string name="tag_warm">Sıcak</string>
+    <string name="tag_bright">Parlak</string>
+    <string name="tag_professional">Profesyonel</string>
+    <string name="tag_casual">Rahat</string>
+    <string name="tag_storytelling">Anlatıcı</string>
+    <string name="gmail_err_not_signed_in">Google ile oturum açılmadı</string>
+    <string name="gmail_err_unauthorized">Gmail erişimi yetkilendirilmedi</string>
+    <string name="gmail_err_fetch_failed">E-postalar alınamadı</string>
+    <string name="gmail_err_invalid_response">Gmail\'den geçersiz yanıt</string>
+    <string name="gmail_err_api">Gmail hatası: %1$s</string>
+    <string name="model_dl_failed">İndirme başarısız oldu. Bağlantınızı kontrol edip tekrar deneyin.</string>
+    <string name="system_tts_engine_name">ReadAloud AI Sesleri</string>
 </resources>

@@ -527,4 +527,43 @@
         <item quantity="few">Text, %1$d cuvinte</item>
         <item quantity="other">Text, %1$d de cuvinte</item>
     </plurals>
+    <!-- Server error codes, marketplace tags, Gmail errors (fix/localized-errors) -->
+    <string name="srv_err_invalid_request">Cererea nu a putut fi procesată. Încearcă din nou.</string>
+    <string name="srv_err_text_too_long">Acest text este prea lung pentru planul tău. Încearcă un text mai scurt sau treci la un plan superior.</string>
+    <string name="srv_err_sign_in">Conectează-te din nou pentru a continua.</string>
+    <string name="srv_err_forbidden">Nu ai acces la aceasta.</string>
+    <string name="srv_err_tier_required">Această voce necesită un plan superior.</string>
+    <string name="srv_err_not_owner">Doar proprietarul poate face asta.</string>
+    <string name="srv_err_not_found">Nu a fost găsit.</string>
+    <string name="srv_err_quota_daily">Ai atins limita de astăzi. Încearcă din nou mâine sau treci la un plan superior.</string>
+    <string name="srv_err_quota_monthly">Ai atins limita acestei luni. Treci la un plan superior sau așteaptă resetarea.</string>
+    <string name="srv_err_quota">Ai atins limita de utilizare. Treci la un plan superior sau așteaptă resetarea.</string>
+    <string name="srv_err_rate_limited">Prea multe cereri. Așteaptă un moment și încearcă din nou.</string>
+    <string name="srv_err_voice_already_revoked">Această voce a fost deja eliminată din piață.</string>
+    <string name="srv_err_cannot_report_own">Nu poți raporta propria voce.</string>
+    <string name="srv_err_already_reported">Ai raportat deja această voce.</string>
+    <string name="srv_err_cannot_rate_own">Nu poți evalua propria voce.</string>
+    <string name="srv_err_cloning_unavailable">Clonarea vocii nu este disponibilă momentan.</string>
+    <string name="srv_err_service_unavailable">Serviciul este temporar indisponibil. Încearcă din nou peste câteva minute.</string>
+    <string name="srv_err_timeout">Cererea a expirat. Serverul poate fi ocupat.</string>
+    <string name="srv_err_internal">A apărut o problemă din partea noastră. Încearcă din nou.</string>
+    <string name="srv_err_synthesis_failed">Nu am putut genera acest audio. Încearcă din nou.</string>
+    <string name="srv_err_too_large">Este prea mare pentru a fi trimis.</string>
+    <string name="srv_err_generic">Ceva nu a funcționat. Încearcă din nou.</string>
+    <string name="revoked_reason_owner">Eliminată de tine</string>
+    <string name="tag_expressive">Expresivă</string>
+    <string name="tag_energetic">Energică</string>
+    <string name="tag_deep">Gravă</string>
+    <string name="tag_warm">Caldă</string>
+    <string name="tag_bright">Strălucitoare</string>
+    <string name="tag_professional">Profesională</string>
+    <string name="tag_casual">Relaxată</string>
+    <string name="tag_storytelling">Narativă</string>
+    <string name="gmail_err_not_signed_in">Nu ești conectat cu Google</string>
+    <string name="gmail_err_unauthorized">Accesul la Gmail nu este autorizat</string>
+    <string name="gmail_err_fetch_failed">Nu s-au putut prelua e-mailurile</string>
+    <string name="gmail_err_invalid_response">Răspuns nevalid de la Gmail</string>
+    <string name="gmail_err_api">Eroare Gmail: %1$s</string>
+    <string name="model_dl_failed">Descărcarea a eșuat. Verifică conexiunea și încearcă din nou.</string>
+    <string name="system_tts_engine_name">Voci ReadAloud AI</string>
 </resources>

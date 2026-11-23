@@ -521,12 +521,14 @@ fun PlayerScreen(
                         playerState = PlayerState.Error(com.listenai.service.tts.SpeechUnavailableText.resolve(context, e), article, e.installVoiceLanguage, e.installEngine)
                     }
                     else -> {
+                        // Decided by the error TYPE (or the server's error code), never by its English wording.
                         val errorMessage = when {
-                            e.message?.contains("Network", ignoreCase = true) == true ->
+                            e is TTSError.NetworkError || e is java.net.UnknownHostException || e is java.net.ConnectException ||
+                                e is java.net.SocketException || e is javax.net.ssl.SSLException ->
                                 context.getString(R.string.player_network_error)
-                            e.message?.contains("timeout", ignoreCase = true) == true ->
+                            e is TTSError.SynthesisTimeout || e is java.net.SocketTimeoutException ->
                                 context.getString(R.string.player_timeout_error)
-                            e.message?.contains("rate limit", ignoreCase = true) == true ->
+                            e is TTSError.ApiError && e.code == 429 ->
                                 context.getString(R.string.player_rate_limit_error)
                             else -> com.listenai.service.tts.TTSErrorText.resolve(context, e) ?: context.getString(R.string.player_synthesis_failed)
                         }
