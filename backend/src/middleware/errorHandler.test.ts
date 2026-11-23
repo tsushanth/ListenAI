@@ -32,6 +32,8 @@ async function boot() {
     throw new types.QuotaExceededError('Daily limit reached', { daily_used: 5, daily_limit: 5 } as never);
   });
   app.get('/explicit', () => { throw new types.AppError(409, 'CONFLICT', 'Whatever English', undefined, 'voice_already_revoked'); });
+  // A PostgREST-style plain object (not an Error) thrown by a handler.
+  app.get('/plain-object', () => { throw { code: '22P02', message: 'invalid input syntax for type uuid: "abc"', details: null, hint: null }; });
   app.get('/boom', () => { throw new Error('db exploded: secret stuff'); });
   app.get('/cloning', () => { throw new types.AppError(503, 'CLONING_UNAVAILABLE', 'Voice cloning is not available.'); });
   // Handlers that answer themselves instead of calling next(err):
@@ -214,4 +216,16 @@ test('an error after the headers were sent does not crash the handler or the ser
   } finally {
     close();
   }
+});
+
+test('a thrown plain object (PostgREST error) is a 500 with the stable code and none of its text in the body', async () => {
+  const { get, close } = await boot();
+  try {
+    const r = await get('/plain-object');
+    assert.equal(r.status, 500);
+    assert.equal(r.body.error, 'INTERNAL_ERROR');
+    assert.equal(r.body.message, 'An unexpected error occurred');
+    assert.equal(typeof r.body.code, 'string');
+    assert.ok(!JSON.stringify(r.body).includes('uuid'));
+  } finally { close(); }
 });

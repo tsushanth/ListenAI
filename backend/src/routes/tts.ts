@@ -74,6 +74,9 @@ import { CLONE_MODEL_ID, getUsableVoice, synthesizeWithClone } from '../lib/voic
 // ============================================================================
 
 // Micro-preview configuration (must match ttsJobWorker.ts)
+// Job ids are Postgres uuids; anything else is not a job (the DB would reject it as an invalid uuid).
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 const MICRO_TARGET_CHARS = 150;
 const MICRO_MAX_CHARS = 200;
 const MICRO_MIN_CHARS = 50;
@@ -858,6 +861,12 @@ ttsRouter.get('/job/:jobId', asyncHandler(async (req: AuthenticatedRequest, res:
     return;
   }
 
+  // A malformed id can never match a job: answer 404 here instead of letting Postgres reject the uuid
+  // (the DB error used to surface as a 500 with a "[object Object]" alert).
+  if (!UUID_REGEX.test(jobId)) {
+    throw new NotFoundError('Job');
+  }
+
   // 4. Check memory cache first (fast path for in-progress jobs)
   const cachedProgress = getJobProgress(jobId);
   if (cachedProgress) {
@@ -1047,6 +1056,10 @@ ttsRouter.post('/job/:jobId/cancel', asyncHandler(async (req: AuthenticatedReque
   if (jobId.startsWith('cache-')) {
     res.json({ success: true, message: 'Cache hit jobs cannot be cancelled' });
     return;
+  }
+
+  if (!UUID_REGEX.test(jobId)) {
+    throw new NotFoundError('Job');
   }
 
   // 4. Look up the job and verify ownership

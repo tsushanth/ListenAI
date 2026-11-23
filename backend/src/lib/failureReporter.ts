@@ -11,10 +11,32 @@ const DISABLED = !KEY || process.env.FAILURE_REPORTER_DISABLED === '1' || proces
 
 type Kind = 'crash' | 'failure' | 'backend_error';
 
+/**
+ * Turn anything that was thrown into a real Error with a useful message. Supabase/PostgREST calls throw
+ * a plain object ({ message, code, details, hint }), and String() of that is "[object Object]", which
+ * made the alert useless. Only message and code are used (details/hint can echo row data), capped in length.
+ */
+export function describeThrown(err: unknown): Error {
+  if (err instanceof Error) return err;
+  if (err && typeof err === 'object') {
+    const o = err as { message?: unknown; code?: unknown; name?: unknown };
+    const msg = typeof o.message === 'string' && o.message ? o.message : '';
+    const code = typeof o.code === 'string' || typeof o.code === 'number' ? ` [${String(o.code).slice(0, 40)}]` : '';
+    if (msg) {
+      const e = new Error(`${msg.slice(0, 300)}${code}`);
+      if (typeof o.name === 'string' && o.name) e.name = o.name.slice(0, 60);
+      return e;
+    }
+    return new Error('Non-Error object thrown' + code);
+  }
+  if (typeof err === 'string' && err) return new Error(err.slice(0, 300));
+  return new Error(`Non-Error ${typeof err} thrown`);
+}
+
 async function post(kind: Kind, flow: string, err: unknown, context: Record<string, string>, timeoutMs: number): Promise<void> {
   if (DISABLED) return;
   try {
-    const e = err instanceof Error ? err : new Error(String(err));
+    const e = describeThrown(err);
     await fetch(ENDPOINT, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-Report-Key': KEY },
