@@ -331,7 +331,9 @@ export class AppError extends Error {
     public statusCode: number,
     public code: string,
     message: string,
-    public details?: Record<string, unknown>
+    public details?: Record<string, unknown>,
+    /** Specific stable code for clients (lib/errorCodes.ts); inferred from the message and status when unset. */
+    public userCode?: string
   ) {
     super(message);
     this.name = 'AppError';
