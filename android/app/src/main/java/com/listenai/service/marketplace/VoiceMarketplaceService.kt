@@ -145,6 +145,8 @@ class VoiceMarketplaceService private constructor(private val context: Context) 
         is MarketplaceError.NotFound -> context.getString(R.string.marketplace_err_not_found)
         is MarketplaceError.AlreadyShared -> context.getString(R.string.marketplace_err_already_shared)
         is MarketplaceError.Server -> ServerErrorText.resolve(context, e.code, e.serverMessage, fallback)
+        // A raw network failure (no connection, DNS, timeout): its text is English diagnostics from the network stack.
+        is java.io.IOException -> context.getString(R.string.player_network_error)
         else -> e.message ?: context.getString(fallback)
     }
 
@@ -508,7 +510,8 @@ class VoiceMarketplaceService private constructor(private val context: Context) 
         return SharedVoice(
             id = json.getString("id"),
             displayName = json.getString("display_name"),
-            description = json.optString("description").takeIf { it.isNotEmpty() },
+            description = // A JSON null must stay null: Android's optString turns it into the text "null".
+            json.takeUnless { it.isNull("description") }?.optString("description")?.takeIf { it.isNotEmpty() },
             tags = tags,
             previewAudioUrl = json.optString("preview_audio_url").takeIf { it.isNotEmpty() },
             previewDurationSec = json.optDouble("preview_duration_sec").takeIf { !it.isNaN() },
@@ -530,7 +533,8 @@ class VoiceMarketplaceService private constructor(private val context: Context) 
         return MySharedVoice(
             id = json.getString("id"),
             displayName = json.getString("display_name"),
-            description = json.optString("description").takeIf { it.isNotEmpty() },
+            description = // A JSON null must stay null: Android's optString turns it into the text "null".
+            json.takeUnless { it.isNull("description") }?.optString("description")?.takeIf { it.isNotEmpty() },
             tags = tags,
             status = json.optString("status", "active"),
             usageCount = json.optInt("usage_count", 0),
