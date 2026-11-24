@@ -61,8 +61,8 @@
     <string name="settings_rate_app">給應用評分</string>
     <string name="settings_rate_app_subtitle">給我們5星好評吧</string>
     <string name="settings_playback">播放</string>
-    <string name="settings_audio_quality">音頻質量</string>
-    <string name="settings_audio_quality_subtitle">高質量合成</string>
+    <string name="settings_audio_quality">音頻質素</string>
+    <string name="settings_audio_quality_subtitle">高質素合成</string>
     <string name="settings_skip_interval">跳過間隔</string>
     <string name="settings_skip_interval_subtitle">後退10秒，前進30秒</string>
     <string name="settings_sleep_timer">睡眠定時器</string>
@@ -316,7 +316,7 @@
     <string name="quality_free">免費</string>
 
     <!-- Settings (additional) -->
-    <string name="settings_voice_cloning_subtitle">通過錄音創建自定義語音</string>
+    <string name="settings_voice_cloning_subtitle">通過錄音創建自訂語音</string>
     <string name="settings_voice_marketplace">語音市場</string>
     <string name="settings_voice_marketplace_subtitle">瀏覽和分享社區語音</string>
 
@@ -495,7 +495,7 @@
     <!-- Machine translated, needs native review: account deletion, bookmarks, widget, share sheet, Read Text, analytics consent, offline AI -->
     <string name="system_tts_back_content_description">返回</string>
     <string name="analytics_consent_title">分享使用統計？</string>
-    <string name="analytics_consent_body">允許 Google Firebase 統計哪些功能被使用。統計數據只與隨機應用 ID 關聯，不與您的姓名或郵箱關聯。我們絕不會發送您閱讀或導入的文本，也不投放廣告。您可以隨時在“設置”中更改。</string>
+    <string name="analytics_consent_body">允許 Google Firebase 統計哪些功能被使用。統計數據只與隨機應用 ID 關聯，不與您的姓名或電郵關聯。我們絕不會發送您閱讀或導入的文本，也不投放廣告。您可以隨時在“設置”中更改。</string>
     <string name="analytics_consent_allow">允許</string>
     <string name="analytics_consent_decline">不用了</string>
     <string name="settings_analytics_title">使用統計</string>

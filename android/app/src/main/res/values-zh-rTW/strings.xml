@@ -49,7 +49,7 @@
     <string name="settings_change_voice">更改語音</string>
     <string name="settings_app_language">應用語言</string>
     <string name="settings_request_feature">功能請求</string>
-    <string name="settings_linked_accounts">關聯賬戶</string>
+    <string name="settings_linked_accounts">關聯帳戶</string>
     <string name="settings_google">Google</string>
     <string name="settings_google_subtitle">跨裝置同步文章</string>
     <string name="settings_google_connected">已連線</string>
@@ -61,8 +61,8 @@
     <string name="settings_rate_app">給應用評分</string>
     <string name="settings_rate_app_subtitle">給我們5星好評吧</string>
     <string name="settings_playback">播放</string>
-    <string name="settings_audio_quality">音訊質量</string>
-    <string name="settings_audio_quality_subtitle">高質量合成</string>
+    <string name="settings_audio_quality">音訊品質</string>
+    <string name="settings_audio_quality_subtitle">高品質合成</string>
     <string name="settings_skip_interval">跳過間隔</string>
     <string name="settings_skip_interval_subtitle">後退10秒，前進30秒</string>
     <string name="settings_sleep_timer">睡眠定時器</string>
@@ -75,7 +75,7 @@
     <string name="settings_usage_subtitle">檢視用量和限制</string>
     <string name="settings_help">幫助中心</string>
     <string name="settings_help_subtitle">常見問題和指南</string>
-    <string name="settings_feedback">傳送反饋</string>
+    <string name="settings_feedback">傳送回饋</string>
     <string name="settings_feedback_subtitle">報告問題或建議</string>
     <string name="settings_rate_us">喜歡的話請給我們評分</string>
     <string name="settings_contact">聯絡支援</string>
@@ -153,7 +153,7 @@
 
     <!-- Feedback Dialog -->
     <string name="feedback_title">喜歡ReadAloud嗎？</string>
-    <string name="feedback_subtitle">您的反饋有助於我們為大家改進應用。</string>
+    <string name="feedback_subtitle">您的回饋有助於我們為大家改進應用。</string>
     <string name="feedback_button_negative">不太喜歡</string>
     <string name="feedback_button_positive">喜歡！</string>
 
@@ -253,7 +253,7 @@
     <string name="no_rewards_title">暫無獎勵</string>
     <string name="no_rewards_description">分享您的語音，開始賺取獎勵！</string>
     <string name="characters_generated_format">%d個字元</string>
-    <string name="credited">已到賬</string>
+    <string name="credited">已到帳</string>
 
     <!-- Onboarding -->
     <string name="onboarding_back">返回</string>
@@ -316,7 +316,7 @@
     <string name="quality_free">免費</string>
 
     <!-- Settings (additional) -->
-    <string name="settings_voice_cloning_subtitle">透過錄音建立自定義語音</string>
+    <string name="settings_voice_cloning_subtitle">透過錄音建立自訂語音</string>
     <string name="settings_voice_marketplace">語音市場</string>
     <string name="settings_voice_marketplace_subtitle">瀏覽和分享社群語音</string>
 
@@ -363,7 +363,7 @@
     <string name="share_subject">看看ListenAI</string>
     <string name="share_body">用自然AI語音收聽任何文章！下載ListenAI: https://play.google.com/store/apps/details?id=com.listenai</string>
     <string name="share_chooser_title">分享ListenAI</string>
-    <string name="feedback_email_subject">ListenAI 反饋</string>
+    <string name="feedback_email_subject">ListenAI 回饋</string>
 
     <!-- Player Screen -->
     <string name="player_loading_article">正在載入文章…</string>
@@ -495,7 +495,7 @@
     <!-- Machine translated, needs native review: account deletion, bookmarks, widget, share sheet, Read Text, analytics consent, offline AI -->
     <string name="system_tts_back_content_description">返回</string>
     <string name="analytics_consent_title">分享使用統計？</string>
-    <string name="analytics_consent_body">允許 Google Firebase 統計哪些功能被使用。統計資料只與隨機應用 ID 關聯，不與您的姓名或郵箱關聯。我們絕不會傳送您閱讀或匯入的文字，也不投放廣告。您可以隨時在“設定”中更改。</string>
+    <string name="analytics_consent_body">允許 Google Firebase 統計哪些功能被使用。統計資料只與隨機應用 ID 關聯，不與您的姓名或信箱關聯。我們絕不會傳送您閱讀或匯入的文字，也不投放廣告。您可以隨時在“設定”中更改。</string>
     <string name="analytics_consent_allow">允許</string>
     <string name="analytics_consent_decline">不用了</string>
     <string name="settings_analytics_title">使用統計</string>
@@ -543,27 +543,27 @@
     <string name="follow_along_subtitle">滾動文字以跟上語音</string>
     <string name="on">開</string>
     <string name="off">關閉</string>
-    <string name="settings_account">賬號</string>
-    <string name="settings_delete_account">刪除賬號</string>
-    <string name="settings_delete_account_subtitle">永久刪除您的賬號和雲端資料</string>
-    <string name="delete_account_title">刪除您的賬號？</string>
-    <string name="delete_account_body">此操作將永久刪除您的賬號、克隆的聲音，以及為您儲存在雲端的音訊和使用資料，且無法撤銷。您匯入的文章會保留在此裝置上。</string>
-    <string name="delete_account_play_note">刪除賬號不會取消您的 Google Play 訂閱。請在 Google Play 中取消訂閱，以免繼續扣費。</string>
-    <string name="delete_account_confirm">刪除賬號</string>
-    <string name="delete_account_deleting">正在刪除您的賬號…</string>
+    <string name="settings_account">帳號</string>
+    <string name="settings_delete_account">刪除帳號</string>
+    <string name="settings_delete_account_subtitle">永久刪除您的帳號和雲端資料</string>
+    <string name="delete_account_title">刪除您的帳號？</string>
+    <string name="delete_account_body">此操作將永久刪除您的帳號、克隆的聲音，以及為您儲存在雲端的音訊和使用資料，且無法撤銷。您匯入的文章會保留在此裝置上。</string>
+    <string name="delete_account_play_note">刪除帳號不會取消您的 Google Play 訂閱。請在 Google Play 中取消訂閱，以免繼續扣費。</string>
+    <string name="delete_account_confirm">刪除帳號</string>
+    <string name="delete_account_deleting">正在刪除您的帳號…</string>
     <string name="delete_account_subscription_title">您有一個有效訂閱</string>
-    <string name="delete_account_subscription_body">刪除賬號不會取消您的訂閱，因此您仍可能被扣費。</string>
+    <string name="delete_account_subscription_body">刪除帳號不會取消您的訂閱，因此您仍可能被扣費。</string>
     <string name="delete_account_subscription_play">Google Play 訂閱：請在 Google Play（訂閱）中取消。</string>
-    <string name="delete_account_subscription_stripe">網頁訂閱：請先在 ReadAloud 網站的賬單門戶中取消，或傳送郵件至 support@kreativekoala.llc。</string>
+    <string name="delete_account_subscription_stripe">網頁訂閱：請先在 ReadAloud 網站的帳單門戶中取消，或傳送郵件至 support@kreativekoala.llc。</string>
     <string name="delete_account_open_play">開啟 Google Play</string>
     <string name="delete_account_anyway">仍要刪除</string>
-    <string name="delete_account_error_title">無法刪除您的賬號</string>
+    <string name="delete_account_error_title">無法刪除您的帳號</string>
     <string name="delete_account_error_network">無網路連線。請檢查網路後重試。</string>
-    <string name="delete_account_error_server">我們這邊出了點問題。您的賬號仍然有效。請稍後重試。</string>
+    <string name="delete_account_error_server">我們這邊出了點問題。您的帳號仍然有效。請稍後重試。</string>
     <string name="delete_account_error_unknown">出了點問題。請重試。</string>
-    <string name="delete_account_error_signin">您的會話已結束，因此已在此裝置上退出登入。如果您的賬號仍然存在，請重新登入，然後從“設定”中重試。</string>
-    <string name="delete_account_done_title">賬號已刪除</string>
-    <string name="delete_account_done_body">您的賬號和雲端資料已被刪除，並已在此裝置上退出登入。</string>
+    <string name="delete_account_error_signin">您的會話已結束，因此已在此裝置上退出登入。如果您的帳號仍然存在，請重新登入，然後從“設定”中重試。</string>
+    <string name="delete_account_done_title">帳號已刪除</string>
+    <string name="delete_account_done_body">您的帳號和雲端資料已被刪除，並已在此裝置上退出登入。</string>
     <string name="delete_account_done_play">您的 Google Play 訂閱仍然有效。請在 Google Play 中取消訂閱，以免繼續扣費。</string>
     <string name="delete_account_done_stripe">您的網頁訂閱仍然有效。請傳送郵件至 support@kreativekoala.llc 以取消訂閱並停止扣費。</string>
 
@@ -589,7 +589,7 @@
     <string name="srv_err_invalid_request">無法處理該請求，請重試。</string>
     <string name="srv_err_text_too_long">此文字對您的套餐來說太長。請嘗試較短的文字或升級套餐。</string>
     <string name="srv_err_sign_in">請重新登入以繼續。</string>
-    <string name="srv_err_forbidden">您無權訪問此內容。</string>
+    <string name="srv_err_forbidden">您無權存取此內容。</string>
     <string name="srv_err_tier_required">此語音需要更高階的套餐。</string>
     <string name="srv_err_not_owner">只有所有者才能執行此操作。</string>
     <string name="srv_err_not_found">未找到。</string>
@@ -618,7 +618,7 @@
     <string name="tag_casual">隨性</string>
     <string name="tag_storytelling">敘事</string>
     <string name="gmail_err_not_signed_in">尚未使用 Google 登入</string>
-    <string name="gmail_err_unauthorized">未獲得 Gmail 訪問授權</string>
+    <string name="gmail_err_unauthorized">未獲得 Gmail 存取授權</string>
     <string name="gmail_err_fetch_failed">無法獲取郵件</string>
     <string name="gmail_err_invalid_response">Gmail 返回了無效響應</string>
     <string name="gmail_err_api">Gmail 錯誤：%1$s</string>
