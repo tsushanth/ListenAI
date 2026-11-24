@@ -52,7 +52,7 @@ class StringParityTest {
         "cs" to setOf("one", "few", "many", "other"),
         "uk" to setOf("one", "few", "many", "other"),
         "ro" to setOf("one", "few", "other"),
-        "ja" to setOf("other"), "ko" to setOf("other"), "zh-rCN" to setOf("other"), "th" to setOf("other"),
+        "ja" to setOf("other"), "ko" to setOf("other"), "zh-rCN" to setOf("other"), "zh-rTW" to setOf("other"), "zh-rHK" to setOf("other"), "b+zh+Hant" to setOf("other"), "th" to setOf("other"),
         "vi" to setOf("other"), "in" to setOf("other"), "ms" to setOf("other"),
     ).withDefault { setOf("one", "other") }
 
@@ -90,8 +90,9 @@ class StringParityTest {
 
     @Test fun `locales_config lists exactly the shipped locales`() {
         // Folder name -> language tag the system uses (id is stored as in, Filipino is fil, regions kept).
-        val tags = locales.keys.map {
-            when (it) { "in" -> "id"; "pt-rBR" -> "pt-BR"; "zh-rCN" -> "zh-CN"; else -> it }
+        // b+zh+Hant is the script fallback (Macau and other Traditional regions): it is not a picker entry of its own.
+        val tags = locales.keys.filter { it != "b+zh+Hant" }.map {
+            when (it) { "in" -> "id"; "pt-rBR" -> "pt-BR"; "zh-rCN" -> "zh-CN"; "zh-rTW" -> "zh-TW"; "zh-rHK" -> "zh-HK"; else -> it }
         }.toSet() + "en"
         val doc = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(File(res, "xml/locales_config.xml"))
         val listed = (0 until doc.getElementsByTagName("locale").length)

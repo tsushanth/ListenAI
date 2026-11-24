@@ -23,6 +23,20 @@ class AcceptLanguageInterceptorTest {
         assertEquals("en", AcceptLanguageInterceptor.headerValue(" "))
     }
 
+    @Test fun `Chinese scripts reach the server as distinct tags`() {
+        assertEquals("zh-TW, zh;q=0.9, en;q=0.5", AcceptLanguageInterceptor.headerValue("zh-TW"))
+        assertEquals("zh-TW, zh;q=0.9, en;q=0.5", AcceptLanguageInterceptor.headerValue("zh-Hant-TW"))
+        assertEquals("zh-TW, zh;q=0.9, en;q=0.5", AcceptLanguageInterceptor.headerValue("zh-Hant"))
+        assertEquals("zh-HK, zh;q=0.9, en;q=0.5", AcceptLanguageInterceptor.headerValue("zh-HK"))
+        assertEquals("zh-HK, zh;q=0.9, en;q=0.5", AcceptLanguageInterceptor.headerValue("zh-Hant-HK"))
+        assertEquals("zh-HK, zh;q=0.9, en;q=0.5", AcceptLanguageInterceptor.headerValue("zh-Hant-MO"))
+        assertEquals("zh-CN, zh;q=0.9, en;q=0.5", AcceptLanguageInterceptor.headerValue("zh-Hans-CN"))
+        assertEquals("zh-CN, zh;q=0.9, en;q=0.5", AcceptLanguageInterceptor.headerValue("zh-Hans"))
+        assertEquals("zh-CN, zh;q=0.9, en;q=0.5", AcceptLanguageInterceptor.headerValue("zh-SG"))
+        assertEquals("zh, en;q=0.5", AcceptLanguageInterceptor.headerValue("zh"))
+        assertEquals("fr-FR, fr;q=0.9, en;q=0.5", AcceptLanguageInterceptor.headerValue("fr-FR"))
+    }
+
     @Test fun `only our own hosts`() {
         assertTrue(AcceptLanguageInterceptor.isOurHost("listenai-backend.fly.dev"))
         assertTrue(AcceptLanguageInterceptor.isOurHost("api.readaloudai.org"))

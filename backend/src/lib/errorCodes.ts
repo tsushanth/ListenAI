@@ -77,10 +77,24 @@ export function resolveErrorCode(statusCode: number, message: unknown, explicit?
 /** Interface languages the Android app ships. Text on the wire stays English; this only says what the client asked for. */
 export const SUPPORTED_LANGUAGES = [
   'en', 'ar', 'cs', 'de', 'el', 'es', 'fi', 'fil', 'fr', 'hi', 'hu', 'id', 'it', 'ja', 'ko', 'ms', 'nl', 'pl',
-  'pt-BR', 'ro', 'ru', 'sv', 'th', 'tr', 'uk', 'vi', 'zh-CN',
+  'pt-BR', 'ro', 'ru', 'sv', 'th', 'tr', 'uk', 'vi', 'zh-CN', 'zh-TW', 'zh-HK',
 ] as const;
 
 const LEGACY_TAGS: Record<string, string> = { in: 'id', tl: 'fil', iw: 'he' };
+
+/**
+ * Chinese ships in two scripts. Traditional: zh-TW (Taiwan, and a bare zh-Hant) and zh-HK (Hong Kong, Macau). Simplified: zh-CN,
+ * which is also what a bare "zh" means (every client before the Traditional locales sent that), zh-SG and zh-Hans.
+ */
+function chineseVariant(subtags: string[]): 'zh-CN' | 'zh-TW' | 'zh-HK' {
+  const lower = subtags.map((s) => s.toLowerCase());
+  const region = lower.find((s) => s.length === 2);
+  if (region === 'hk' || region === 'mo') return 'zh-HK';
+  if (region === 'tw') return 'zh-TW';
+  if (region === 'cn' || region === 'sg') return 'zh-CN';
+  if (lower.includes('hant')) return 'zh-TW';
+  return 'zh-CN';
+}
 
 /**
  * Best supported language for an Accept-Language header (RFC 9110 weights), or 'en' when the header is missing,
@@ -100,13 +114,14 @@ export function pickLanguage(header: string | undefined | null): string {
     .sort((a, b) => b.weight - a.weight || a.index - b.index);
 
   for (const { tag } of ranges) {
-    const [lang = '', region = ''] = tag.replace(/_/g, '-').split('-');
-    const base = LEGACY_TAGS[lang.toLowerCase()] ?? lang.toLowerCase();
+    const parts = tag.replace(/_/g, '-').split('-');
+    const lang = (parts[0] ?? '').toLowerCase();
+    const base = Object.hasOwn(LEGACY_TAGS, lang) ? LEGACY_TAGS[lang]! : lang;
+    if (base === 'zh') return chineseVariant(parts.slice(1));
+    const region = parts.slice(1).find((p) => p.length === 2);
     const full = region ? `${base}-${region.toUpperCase()}` : base;
     const exact = SUPPORTED_LANGUAGES.find((s) => s.toLowerCase() === full.toLowerCase());
     if (exact) return exact;
-    // zh-Hans / zh-TW etc: only Simplified Chinese ships.
-    if (base === 'zh') return 'zh-CN';
     const byBase = SUPPORTED_LANGUAGES.find((s) => s.toLowerCase() === base);
     if (byBase) return byBase;
     if (base === 'pt') return 'pt-BR';
