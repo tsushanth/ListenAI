@@ -273,7 +273,7 @@
     <plurals name="vc_hint_reference_too_long">
         <item quantity="other">太長了。請最多使用 %1$d 分鐘。</item>
     </plurals>
-    <string name="vc_hint_mic_permission">錄音需要麥克風許可權。您可以在系統設定中允許。</string>
+    <string name="vc_hint_mic_permission">錄音需要麥克風權限。您可以在系統設定中允許。</string>
     <string name="vc_hint_nothing_recorded">沒有錄到任何內容。請重試。</string>
     <string name="vc_auth_generic_failure">登入未完成。請重試。</string>
     <string name="vc_auth_invalid_credentials">信箱或密碼不正確。</string>
@@ -330,7 +330,7 @@
     <string name="vcf_intro_feature_privacy">錄音不會儲存在此裝置上，也不會被分享。您可以隨時刪除該語音。</string>
     <string name="vcf_intro_terms">繼續即表示您確認這是您自己的聲音，並同意處理您的語音錄音以建立合成語音。使用它生成的音訊帶有人耳聽不到的水印。</string>
     <string name="vcf_create_account">建立帳號</string>
-    <string name="vcf_sign_in_subtitle">您的克隆語音與您的帳號繫結，因此只有您可以使用。克隆語音需要已驗證的信箱。</string>
+    <string name="vcf_sign_in_subtitle">您的克隆語音與您的帳號綁定，因此只有您可以使用。克隆語音需要已驗證的信箱。</string>
     <string name="vcf_waiting_google">正在等待 Google…</string>
     <string name="vcf_continue_google">使用 Google 繼續</string>
     <string name="vcf_or">或</string>
