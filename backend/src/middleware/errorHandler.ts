@@ -2,7 +2,7 @@ import { Request, Response, NextFunction, ErrorRequestHandler } from 'express';
 import { ZodError } from 'zod';
 import { logger } from '../lib/logger.js';
 import { config } from '../lib/config.js';
-import { reportBackendError } from '../lib/failureReporter.js';
+import { reportBackendError, describeThrown } from '../lib/failureReporter.js';
 import { requestLanguage, resolveErrorCode } from '../lib/errorCodes.js';
 import {
   AppError,
@@ -94,7 +94,9 @@ export const errorHandler: ErrorRequestHandler = (
     res.locals.failureReported = true; // tells serverErrorNet this 5xx is already reported
     // Route template, not the concrete path: ids in the path would defeat the per-fingerprint dedupe.
     reportBackendError({ method: req.method, path: (req.baseUrl ?? '') + (typeof req.route?.path === 'string' ? req.route.path : '') || 'unmatched' }, err, statusCode);
-    logger.error({ ...logData, stack: err.stack }, 'Server error');
+    // A non-Error throw (a PostgREST error object) has no stack: log it as a real Error so the log line is readable.
+    const logged = describeThrown(err);
+    logger.error({ ...logData, message: logged.message, stack: logged.stack }, 'Server error');
   } else if (statusCode >= 400) {
     logger.warn(logData, 'Client error');
   }
