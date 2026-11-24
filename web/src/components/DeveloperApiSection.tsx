@@ -1,11 +1,18 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { Code, Copy, Check, Trash2, LogOut, Loader2 } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { ttsApiKeysApi, type TTSApiKeySummary, type FreeCredits } from '@/lib/ttsApiKeysApi'
 import { creditsAsCharacters, FREE_CREDIT_UNITS } from '@/lib/pricing'
 import type { Session } from '@supabase/supabase-js'
+import {
+  COPY_FAILED_MESSAGE,
+  FIRST_CALL_NOTE,
+  buildExportLine,
+  buildFirstCallCurl,
+  copyTextSafely,
+} from '@/lib/firstCall'
 
 export default function DeveloperApiSection() {
   const [session, setSession] = useState<Session | null>(null)
@@ -14,6 +21,11 @@ export default function DeveloperApiSection() {
   const [keysLoading, setKeysLoading] = useState(false)
   const [newKey, setNewKey] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+  const [copyFailed, setCopyFailed] = useState(false)
+  const keyBoxRef = useRef<HTMLElement | null>(null)
+  const curlRef = useRef<HTMLElement | null>(null)
+  const exportRef = useRef<HTMLElement | null>(null)
+  const [copiedSnippet, setCopiedSnippet] = useState<'curl' | 'export' | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [issuing, setIssuing] = useState(false)
   const [billingActive, setBillingActive] = useState(false)
@@ -169,6 +181,7 @@ export default function DeveloperApiSection() {
     await supabase.auth.signOut()
     setKeys([])
     setNewKey(null)
+    setCopyFailed(false)
   }
 
   const issueKey = async () => {
@@ -221,11 +234,41 @@ export default function DeveloperApiSection() {
 
   const creditsExhausted = !billingActive && !comped && credits !== null && credits.remaining <= 0
 
-  const copyKey = () => {
+  const selectElementText = (el: HTMLElement | null) => {
+    try {
+      if (!el) return
+      const range = document.createRange()
+      range.selectNodeContents(el)
+      const sel = window.getSelection()
+      sel?.removeAllRanges()
+      sel?.addRange(range)
+    } catch {
+      // Selection is best effort; the text is still visible and can be selected by hand.
+    }
+  }
+
+  const copyKey = async () => {
     if (!newKey) return
-    navigator.clipboard.writeText(newKey)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+    const ok = await copyTextSafely(newKey, typeof navigator !== 'undefined' ? navigator.clipboard : null)
+    if (ok) {
+      setCopyFailed(false)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } else {
+      setCopied(false)
+      setCopyFailed(true)
+      selectElementText(keyBoxRef.current)
+    }
+  }
+
+  const copySnippet = async (which: 'curl' | 'export', text: string, el: HTMLElement | null) => {
+    const ok = await copyTextSafely(text, typeof navigator !== 'undefined' ? navigator.clipboard : null)
+    if (ok) {
+      setCopiedSnippet(which)
+      setTimeout(() => setCopiedSnippet(null), 2000)
+    } else {
+      selectElementText(el)
+    }
   }
 
   return (
@@ -445,16 +488,54 @@ export default function DeveloperApiSection() {
                 <p className="text-sm text-green-300 mb-2 font-medium">
                   Save this key now — it won&apos;t be shown again.
                 </p>
-                <div className="flex items-center gap-2">
-                  <code className="flex-1 bg-dark-tertiary border border-white/10 rounded-lg px-3 py-2 text-sm font-mono text-white/90 truncate">
+                <div className="flex items-start gap-2">
+                  <code
+                    ref={keyBoxRef}
+                    className="flex-1 min-w-0 bg-dark-tertiary border border-white/10 rounded-lg px-3 py-2 text-sm font-mono text-white/90 break-all select-all"
+                  >
                     {newKey}
                   </code>
                   <button
                     onClick={copyKey}
+                    aria-label="Copy API key"
                     className="p-2 bg-dark-tertiary rounded-lg text-white/60 hover:text-white hover:bg-white/10 transition-colors"
                   >
                     {copied ? <Check size={18} className="text-green-400" /> : <Copy size={18} />}
                   </button>
+                </div>
+                {copyFailed && (
+                  <p role="alert" className="text-sm text-amber-300 mt-2">{COPY_FAILED_MESSAGE}</p>
+                )}
+
+                <div className="mt-4 pt-4 border-t border-green-500/20" data-testid="first-call">
+                  <p className="text-sm text-green-300 mb-2 font-medium">Make your first call</p>
+                  <p className="text-sm text-white/70 mb-2">
+                    Paste this into a terminal. It saves a spoken sentence as hello.mp3.
+                  </p>
+                  <div className="flex items-start gap-2">
+                    <pre className="flex-1 min-w-0 bg-dark-tertiary border border-white/10 rounded-lg px-3 py-2 text-xs font-mono text-white/90 overflow-x-auto"><code ref={curlRef}>{buildFirstCallCurl(newKey)}</code></pre>
+                    <button
+                      onClick={() => copySnippet('curl', buildFirstCallCurl(newKey), curlRef.current)}
+                      aria-label="Copy curl command"
+                      className="p-2 bg-dark-tertiary rounded-lg text-white/60 hover:text-white hover:bg-white/10 transition-colors"
+                    >
+                      {copiedSnippet === 'curl' ? <Check size={18} className="text-green-400" /> : <Copy size={18} />}
+                    </button>
+                  </div>
+                  <p className="text-sm text-white/70 mt-3 mb-2">
+                    Or set the key once for this terminal, so the other examples on this page work as written:
+                  </p>
+                  <div className="flex items-start gap-2">
+                    <pre className="flex-1 min-w-0 bg-dark-tertiary border border-white/10 rounded-lg px-3 py-2 text-xs font-mono text-white/90 overflow-x-auto"><code ref={exportRef}>{buildExportLine(newKey)}</code></pre>
+                    <button
+                      onClick={() => copySnippet('export', buildExportLine(newKey), exportRef.current)}
+                      aria-label="Copy export command"
+                      className="p-2 bg-dark-tertiary rounded-lg text-white/60 hover:text-white hover:bg-white/10 transition-colors"
+                    >
+                      {copiedSnippet === 'export' ? <Check size={18} className="text-green-400" /> : <Copy size={18} />}
+                    </button>
+                  </div>
+                  <p className="text-sm text-white/70 mt-3">{FIRST_CALL_NOTE}</p>
                 </div>
               </div>
             )}
