@@ -171,7 +171,7 @@
     <string name="gmail_connect_title">連線Gmail</string>
     <string name="gmail_connect_description">使用Google登入以匯入和收聽您的郵件</string>
     <string name="gmail_signin_button">使用Google登入</string>
-    <string name="gmail_privacy_notice">我們僅請求對您郵件的讀取許可權。您的資料將保持私密。</string>
+    <string name="gmail_privacy_notice">我們僅請求對您郵件的讀取權限。您的資料將保持私密。</string>
     <string name="mail_search_placeholder">在郵件中搜尋</string>
     <string name="no_emails_found">未找到郵件</string>
     <string name="no_emails_search_suggestion">嘗試不同的搜尋關鍵詞</string>
@@ -289,7 +289,7 @@
     <string name="speed_1x">1x</string>
     <string name="speed_15x">1.5x</string>
     <string name="speed_2x">2x</string>
-    <string name="feature_background_playback">後臺播放</string>
+    <string name="feature_background_playback">背景播放</string>
     <string name="feature_sleep_timer">睡眠定時器</string>
     <string name="feature_bookmarks">書籤 &amp; 章節</string>
     <string name="onboarding_voice_title">選擇您的語音</string>
