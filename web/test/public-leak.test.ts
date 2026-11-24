@@ -25,7 +25,7 @@ const SKIP = !REGISTRY_DIR || !existsSync(join(REGISTRY_DIR, 'public-policy.json
   : false
 
 /** Model names that the registry policy does not list yet but that were found on visitor-facing text. Propose them for public-policy.json. */
-const EXTRA_TERMS = ['seed-vc', 'seedvc', 'misaki']
+const EXTRA_TERMS = ['seed-vc', 'seedvc', 'misaki', 'perth', 'parler']
 
 type Allow = { file: string; terms: string[]; text?: RegExp; reason: string }
 /**
@@ -40,7 +40,7 @@ const ALLOW: Allow[] = [
   },
   {
     file: 'src/content/readaloudFacts.ts',
-    terms: ['piper', 'kokoro', 'chatterbox', 'xtts', 'orpheus', 'coqui', 'whisper', 'styletts', 'lessac'],
+    terms: ['piper', 'kokoro', 'chatterbox', 'xtts', 'orpheus', 'coqui', 'whisper', 'styletts', 'lessac', 'parler'],
     text: /^piper$|^kokoro$|^chatterbox$|^xtts$|^orpheus$|^whisper$|^parler$|^styletts$|^lessac$|^faster-whisper$|^coqui$/,
     reason: 'RA_FORBIDDEN_ENGINE_NAMES: the list of names the SEO library validators must NOT see on a page. It is never rendered; it exists to ban these words.',
   },

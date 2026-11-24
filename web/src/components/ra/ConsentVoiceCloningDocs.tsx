@@ -44,7 +44,7 @@ curl -X POST "$BASE/voice-clones/8b1d2c34-9e57-4a0b-b6f1-2f6c7d0e9a42/speech" \\
   -H "Authorization: Bearer $API_KEY" -H "Content-Type: application/json" \\
   -d '{"text": "This sentence is spoken in my cloned voice.", "speed": 1.0}' \\
   --output cloned.wav
-# Response headers: X-Watermark: perth, X-Voice-ID, X-Characters-Used, X-Synthesis-Time-Ms
+# Response headers: X-Watermark, X-Voice-ID, X-Characters-Used, X-Synthesis-Time-Ms
 
 # List your cloned voices (yours only; never returns audio)
 curl -s "$BASE/voice-clones" -H "Authorization: Bearer $API_KEY"
@@ -109,6 +109,11 @@ export default function ConsentVoiceCloningDocs() {
 
       <h4 style={{ marginTop: 24, fontSize: '1.05rem' }}>Step 3. Use it</h4>
       <pre style={{ overflowX: 'auto' }}><code>{STEP3}</code></pre>
+      <p>
+        All speech from a cloned voice is watermarked (inaudible, and it cannot be switched off). The response carries an <code>X-Watermark</code> header
+        to confirm it; its value is <code>applied</code>. Treat the header as informational and do not build logic on it.
+        The first request to a voice that has been idle can take up to about a minute while the GPU starts; see <a href="#cold-starts" style={{ textDecoration: 'underline' }}>Cold starts</a>.
+      </p>
       <p>
         Through the MCP server, pass <code>clone:&lt;id&gt;</code> as the <code>voice</code> of <code>text_to_speech</code>. The ids from this API are accepted only by the
         account that created them, on the routes above and in <code>text_to_speech</code>. They are not yet accepted by <code>/v1/audio/speech</code> or the WebSocket

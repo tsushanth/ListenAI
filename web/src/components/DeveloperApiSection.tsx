@@ -297,9 +297,9 @@ export default function DeveloperApiSection() {
                 : 'Sign in to generate an API key for the realtime TTS service.'}
             </p>
             <p className="text-xs text-white/50 mb-4">
-              Latency note: a cold worker (idle for a couple minutes) can take several
-              seconds to spin up on the first request; once warm, responses stream back
-              in under a second.
+              Latency note: the first request after an idle period is slower. ReadAloud
+              Live voices typically start in 2 to 3 seconds; ReadAloud Studio voices can take
+              up to about a minute. Once warm, responses stream back in under a second.
             </p>
             {authNotice && (
               <p className="text-sm text-green-300 bg-green-500/10 border border-green-500/30 rounded-lg px-3 py-2 mb-4">
@@ -400,9 +400,9 @@ export default function DeveloperApiSection() {
             </div>
 
             <p className="text-xs text-white/50">
-              Latency note: a cold worker (idle for a couple minutes) can take several
-              seconds to spin up on the first request; once warm, responses stream back
-              in under a second.
+              Latency note: the first request after an idle period is slower. ReadAloud
+              Live voices typically start in 2 to 3 seconds; ReadAloud Studio voices can take
+              up to about a minute. Once warm, responses stream back in under a second.
             </p>
 
             <div className="bg-dark-tertiary border border-white/10 rounded-lg p-4 flex items-center justify-between">
