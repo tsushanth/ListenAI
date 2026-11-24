@@ -29,12 +29,33 @@ class AcceptLanguageInterceptor(
 
         /** "fr-FR" -> "fr-FR, fr;q=0.9, en;q=0.5". English is the fallback the server text is written in. */
         fun headerValue(tag: String): String {
-            val clean = tag.trim().ifEmpty { "en" }
+            val clean = normalizeChinese(tag.trim()).ifEmpty { "en" }
             val base = clean.substringBefore('-')
             return buildString {
                 append(clean)
                 if (base != clean) append(", ").append(base).append(";q=0.9")
                 if (base != "en") append(", en;q=0.5")
+            }
+        }
+
+        /**
+         * Chinese comes in two scripts and the server must be able to tell them apart: Traditional (zh-TW Taiwan, zh-HK Hong Kong
+         * and Macau) versus Simplified (zh-CN). Android reports a Taiwan phone as "zh-Hant-TW", so the script and region subtags
+         * are folded into the three tags the app ships. A bare "zh" stays "zh" (old servers and clients read it as Simplified).
+         * Any other language is returned unchanged.
+         */
+        fun normalizeChinese(tag: String): String {
+            val parts = tag.replace('_', '-').split('-')
+            if (parts.first().lowercase() != "zh") return tag
+            val rest = parts.drop(1).map { it.lowercase() }
+            val region = rest.firstOrNull { it.length == 2 }
+            return when {
+                region == "hk" || region == "mo" -> "zh-HK" // i18n-ok: wire value
+                region == "tw" -> "zh-TW" // i18n-ok: wire value
+                region == "cn" || region == "sg" -> "zh-CN" // i18n-ok: wire value
+                "hant" in rest -> "zh-TW" // i18n-ok: wire value
+                "hans" in rest -> "zh-CN" // i18n-ok: wire value
+                else -> tag
             }
         }
 

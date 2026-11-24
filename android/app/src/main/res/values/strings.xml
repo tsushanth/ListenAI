@@ -532,6 +532,8 @@
     <string name="language_german">Deutsch</string>
     <string name="language_japanese">日本語</string>
     <string name="language_chinese">中文(简体)</string>
+    <string name="language_chinese_tw" translatable="false">繁體中文(台灣)</string>
+    <string name="language_chinese_hk" translatable="false">繁體中文(香港)</string>
     <string name="language_korean">한국어</string>
     <string name="language_portuguese">Português</string>
     <string name="language_italian">Italiano</string>

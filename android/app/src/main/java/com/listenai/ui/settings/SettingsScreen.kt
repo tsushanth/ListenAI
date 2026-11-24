@@ -100,6 +100,8 @@ fun SettingsScreen(
             "de" to R.string.language_german,
             "ja" to R.string.language_japanese,
             "zh-CN" to R.string.language_chinese,
+            "zh-TW" to R.string.language_chinese_tw,
+            "zh-HK" to R.string.language_chinese_hk,
             "ko" to R.string.language_korean,
             "pt-BR" to R.string.language_portuguese,
             "it" to R.string.language_italian,

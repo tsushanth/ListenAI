@@ -171,7 +171,17 @@ test('pickLanguage: weights, regions, legacy tags, junk', async () => {
   assert.equal(pickLanguage('xx, de;q=0.4'), 'de');
   assert.equal(pickLanguage('en;q=0.2, ja;q=0.8'), 'ja');
   assert.equal(pickLanguage('zh-Hans-CN'), 'zh-CN');
-  assert.equal(pickLanguage('zh-TW'), 'zh-CN');
+  assert.equal(pickLanguage('zh'), 'zh-CN');
+  assert.equal(pickLanguage('zh-SG'), 'zh-CN');
+  assert.equal(pickLanguage('zh-Hans'), 'zh-CN');
+  assert.equal(pickLanguage('zh-TW'), 'zh-TW');
+  assert.equal(pickLanguage('zh-Hant-TW, zh;q=0.9, en;q=0.5'), 'zh-TW');
+  assert.equal(pickLanguage('zh-Hant'), 'zh-TW');
+  assert.equal(pickLanguage('zh-HK, zh;q=0.9'), 'zh-HK');
+  assert.equal(pickLanguage('zh-Hant-HK'), 'zh-HK');
+  assert.equal(pickLanguage('zh-MO'), 'zh-HK');
+  assert.equal(pickLanguage('constructor'), 'en');
+  assert.equal(pickLanguage('__proto__'), 'en');
   assert.equal(pickLanguage('in-ID'), 'id');
   assert.equal(pickLanguage('tl'), 'fil');
   assert.equal(pickLanguage('pt-BR'), 'pt-BR');
