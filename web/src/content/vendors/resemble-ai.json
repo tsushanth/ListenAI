@@ -72,7 +72,7 @@
   },
   "licensing": {
     "commercialUse": null,
-    "attributionOrConditions": "The open-source models are described as MIT licensed with built-in PerTh watermarking; terms for the hosted API output were not found on pages read.",
+    "attributionOrConditions": "The open-source models are described as MIT licensed with built-in watermarking; terms for the hosted API output were not found on pages read.",
     "sourceUrl": "https://www.resemble.ai/chatterbox/"
   },
   "limits": {

@@ -53,7 +53,7 @@ fallback, unlike `requireAuth`). Everything is `503 {code:"unavailable"}` until 
 Synthesis: `POST /api/tts/cloned` (sync, <= 1500 chars) and `POST /api/tts/job-cloned` (async job) with
 `{text, voice_id (UUID from this API), speed}`. The client-supplied `voice_url` and `model:"xtts"` are gone. The voice must
 be active, owned by the caller, and the plan still active at synthesis time (a takedown or cancelled plan stops queued jobs).
-Responses carry `X-Watermark: perth`.
+Responses carry `X-Watermark: applied`.
 
 ### Web UI for the consent step
 

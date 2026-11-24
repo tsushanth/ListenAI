@@ -29,6 +29,7 @@ Two engines, ReadAloud Live and ReadAloud Studio, stream natural-sounding speech
 - Free tier: 10,000 characters, no credit card required
 - Pay-as-you-go: ReadAloud Live $0.004 per 1,000 characters ($4 per 1M), ReadAloud Studio $0.01 per 1,000 characters ($10 per 1M); batch speech to text $0.11 per hour of audio; no plan to manage, no minimums
 - Typical warm latency: about 250 ms to first audio on ReadAloud Live in our own runs (2026-10-10, one machine in San Jose); ElevenLabs Flash was faster to first audio in the same runs (about 166 to 174 ms)
+- Cold starts: ReadAloud Live voices typically start in 2 to 3 seconds on the first request; ReadAloud Studio voices that have been idle can take up to about a minute for the first request (retry, or send a short warm-up request first). Details: https://readaloudai.org/developers#cold-starts
 - Limits: 5,000 characters per request; up to 12 Live streams per server (more servers start under load); beyond capacity the API returns 429 or WebSocket close code 1013
 - Hosted MCP server (Streamable HTTP, API key as Bearer token): https://readaloudai.org/mcp — setup: https://readaloudai.org/developers/mcp
 - Local MCP server (for AI agents/coding assistants): `npx realtime-tts-mcp` — https://github.com/tsushanth/realtime-tts-mcp

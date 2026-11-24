@@ -244,6 +244,14 @@ export READALOUD_API_KEY=rtts_...`}</code></pre>
                 <h3>Capacity and errors</h3>
                 <p>Each ReadAloud Live server handles up to 12 simultaneous streams, and a second server starts automatically under load. Beyond that you get <code>{'{ "type": "error", "message": "at capacity, retry shortly" }'}</code> and the socket closes with code <code>1013</code>. Retry with a short backoff.</p>
 
+                <h3 id="cold-starts">Cold starts</h3>
+                <p>The first request to a voice that has been idle is slower than the ones after it. ReadAloud Live voices typically start in 2 to 3 seconds. ReadAloud Studio voices run on GPUs that stop when idle, so the first request after a quiet period can take up to about a minute (a first request has been measured at about 44 seconds), and a little longer is possible. Later requests run at normal speed until the voice has been idle again for a few minutes.</p>
+                <ul>
+                  <li>Set a request timeout of at least 90 seconds for ReadAloud Studio, and retry once on a timeout or a <code>5xx</code> response.</li>
+                  <li>To avoid the wait for a caller or a user, send a short warm-up request (a few characters, output discarded) with the same voice shortly before you need it, for example when a session starts.</li>
+                  <li>Speech to text and instant voice cloning have their own cold-start notes in their sections below.</li>
+                </ul>
+
                 <h3 id="languages">Languages (beta)</h3>
                 <p>ReadAloud Live has {RA_REGISTRY.phrase.liveVoicesTail}. ReadAloud Studio has {RA_VOICE_COUNTS.studio} {RA_REGISTRY.phrase.studioLanguages} voices. Every voice has a name, a language and a dialect, and is selected by its voice id: pass it as <code className="inl">voice</code> (OpenAI route) or in the path of <code className="inl">POST /v1/text-to-speech/&#123;voice_id&#125;</code>, and write the text in that language. <code className="inl">GET /v1/voices</code> lists them with <code>name</code>, <code>language</code>, <code>dialect</code> and <code>gender</code>.</p>
                 <table className="ra-table">
@@ -256,7 +264,7 @@ export READALOUD_API_KEY=rtts_...`}</code></pre>
                 </table>
                 <ul>
                   <li><b>Beta quality.</b> Spanish is a pilot and can sound weak on very short sentences. German and French read at a slow, audiobook pace. Portuguese starts with a short lead-in silence on some voices.</li>
-                  <li><b>First use.</b> Voices that are not kept warm can take 2 to 3 seconds on the first request, then run at normal speed.</li>
+                  <li><b>First use.</b> ReadAloud Live voices typically start in 2 to 3 seconds on the first request. ReadAloud Studio voices that have been idle can take up to about a minute. After that both run at normal speed; see <a href="#cold-starts" style={{ textDecoration: 'underline' }}>Cold starts</a>.</li>
                   <li><b>Model ids.</b> <code>eleven_flash_v2_5</code> and <code>eleven_turbo_v2_5</code> still list English only; a language voice is selected by its voice id.</li>
                   <li><b>Attribution.</b> The German, French, Spanish, Italian and Portuguese voices are trained on openly licensed (CC BY 4.0) data. If you publish audio, credit the dataset authors listed on the <a href="/credits" style={{ textDecoration: 'underline' }}>credits page</a>.</li>
                 </ul>

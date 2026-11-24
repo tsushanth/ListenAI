@@ -381,7 +381,7 @@ test('delete_voice_clone deletes only by id for this account; someone else\'s vo
 test('text_to_speech accepts clone:<id> and speaks through the cloning service; another account\'s voice is not found; built-in voices still use the engine path', async () => {
   install()
   handler = (c) => {
-    if (c.url === `${API}/${VOICE}/speech`) return new Response(new Uint8Array(WAV), { status: 200, headers: { 'Content-Type': 'audio/wav', 'X-Watermark': 'perth', 'X-Synthesis-Time-Ms': '1234' } })
+    if (c.url === `${API}/${VOICE}/speech`) return new Response(new Uint8Array(WAV), { status: 200, headers: { 'Content-Type': 'audio/wav', 'X-Watermark': 'applied', 'X-Synthesis-Time-Ms': '1234' } })
     if (c.url.endsWith('/speech')) return json(404, { error: 'Cloned voice not found.', code: 'voice_not_found' })
     return undefined
   }
@@ -391,7 +391,7 @@ test('text_to_speech accepts clone:<id> and speaks through the cloning service; 
     assert.ok(!r.isError, text(r))
     assert.equal(r.content[0]!.type, 'audio')
     assert.equal(Buffer.from(r.content[0]!.data!, 'base64').equals(WAV), true)
-    assert.equal(r.structuredContent!.watermark, 'perth')
+    assert.equal(r.structuredContent!.watermark, 'applied')
     const c = backendCalls()[0]!
     assert.deepEqual(JSON.parse(c.body as string), { text: 'Hello in my voice', speed: 1.2 })
     assert.equal(c.headers['x-gateway-uid'], UID)
@@ -543,7 +543,7 @@ test('REST: speech returns the WAV with watermark headers; validation, ids and o
   const { handleVoiceCloneRest } = await loadRest()
   install()
   handler = (c) => {
-    if (c.url === `${API}/${VOICE}/speech`) return new Response(new Uint8Array(WAV), { status: 200, headers: { 'Content-Type': 'audio/wav', 'X-Watermark': 'perth', 'X-Voice-ID': VOICE } })
+    if (c.url === `${API}/${VOICE}/speech`) return new Response(new Uint8Array(WAV), { status: 200, headers: { 'Content-Type': 'audio/wav', 'X-Watermark': 'applied', 'X-Voice-ID': VOICE } })
     if (c.url === `${API}/${UID}/speech`) return json(404, { error: 'Cloned voice not found.', code: 'voice_not_found' })
     return json(402, { error: 'Voice cloning requires an active paid plan.', code: 'payment_required' })
   }
@@ -552,7 +552,7 @@ test('REST: speech returns the WAV with watermark headers; validation, ids and o
     const ok = await post(VOICE, { text: 'hello', speed: 1.5 })
     assert.equal(ok.status, 200)
     assert.equal(ok.headers.get('content-type'), 'audio/wav')
-    assert.equal(ok.headers.get('x-watermark'), 'perth')
+    assert.equal(ok.headers.get('x-watermark'), 'applied')
     assert.equal(Buffer.from(await ok.arrayBuffer()).equals(WAV), true)
     assert.equal((await post(UID, { text: 'x' })).status, 404)
     assert.equal((await post('not-a-uuid', { text: 'x' })).status, 400)

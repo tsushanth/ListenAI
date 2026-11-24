@@ -210,7 +210,7 @@ export default function VoiceDesigner() {
               <div className="ra-vs-spin" aria-hidden="true" />
               <div>
                 <h3 style={{ margin: 0 }}>Generating voice</h3>
-                <p>Parler-TTS is creating your voice from the description. This usually takes 5–10 seconds.</p>
+                <p>ReadAloud is creating your voice from the description. This usually takes 5–10 seconds.</p>
               </div>
             </div>
           </div>
@@ -240,7 +240,7 @@ export default function VoiceDesigner() {
         <div className="ra-vs-card" style={{ marginTop: 20 }}>
           <h3 style={{ marginBottom: 8 }}>Your saved descriptions</h3>
           <p className="ra-lede" style={{ fontSize: '1rem', marginBottom: 12 }}>
-            Reusing a description generates the same kind of voice, but not an identical copy — Parler-TTS sampling varies between runs.
+            Reusing a description generates the same kind of voice, but not an identical copy, because the result varies between runs.
           </p>
           <ul className="ra-vs-list">
             {presets.map((p) => (
