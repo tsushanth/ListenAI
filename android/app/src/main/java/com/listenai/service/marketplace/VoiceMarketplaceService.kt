@@ -168,6 +168,7 @@ class VoiceMarketplaceService private constructor(private val context: Context) 
     private var baseUrl: String? = "https://listenai-backend.fly.dev"
 
     private val httpClient = OkHttpClient.Builder()
+        .addInterceptor(com.listenai.FailureReporterInterceptor())
         .addInterceptor(com.listenai.data.remote.AcceptLanguageInterceptor())
         .connectTimeout(30, TimeUnit.SECONDS)
         .readTimeout(60, TimeUnit.SECONDS)

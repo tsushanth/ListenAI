@@ -46,7 +46,7 @@ object TtsSourceFlags {
         try {
             val p = prefs(c)
             if (!force && System.currentTimeMillis() - p.getLong("fetched_at", 0) < REFRESH_EVERY_MS) return
-            val client = OkHttpClient.Builder().connectTimeout(5, TimeUnit.SECONDS).readTimeout(5, TimeUnit.SECONDS).build()
+            val client = OkHttpClient.Builder().addInterceptor(com.listenai.FailureReporterInterceptor()).connectTimeout(5, TimeUnit.SECONDS).readTimeout(5, TimeUnit.SECONDS).build()
             client.newCall(Request.Builder().url("${ListenAIApplication.BACKEND_URL}/api/config").build()).execute().use { resp ->
                 if (!resp.isSuccessful) return
                 val remote = TtsFlagLogic.parseRemote(resp.body?.string().orEmpty())

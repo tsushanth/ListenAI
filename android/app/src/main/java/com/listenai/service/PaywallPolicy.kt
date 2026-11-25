@@ -67,6 +67,7 @@ object PaywallRemoteConfig {
     fun refresh(context: Context) {
         try {
             val client = OkHttpClient.Builder()
+                .addInterceptor(com.listenai.FailureReporterInterceptor())
                 .connectTimeout(5, TimeUnit.SECONDS)
                 .readTimeout(5, TimeUnit.SECONDS)
                 .build()

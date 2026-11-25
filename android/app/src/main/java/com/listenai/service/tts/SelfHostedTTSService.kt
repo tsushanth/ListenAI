@@ -96,6 +96,7 @@ class SelfHostedTTSService(private val context: Context) : TTSService {
     }
 
     private val httpClient = OkHttpClient.Builder()
+        .addInterceptor(com.listenai.FailureReporterInterceptor())
         .addInterceptor(com.listenai.data.remote.AcceptLanguageInterceptor())
         .dns(customDns)
         .connectTimeout(30, TimeUnit.SECONDS)
