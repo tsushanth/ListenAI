@@ -54,6 +54,8 @@ export const USER_ROW_TARGETS: ReadonlyArray<readonly [string, string]> = [
   ['realtimetts_api_keys', 'user_id'],
   ['realtimetts_billing', 'user_id'],
   ['entitlement_sources', 'user_id'],
+  ['revenuecat_entitlements', 'user_id'],
+  ['revenuecat_webhook_events', 'user_id'],
   ['subscriptions', 'user_id'],
   ['user_devices', 'user_id'],
   ['app_users', 'id'],
@@ -138,6 +140,9 @@ export function createSupabaseAccountStore(db: SupabaseLike = supabase): Account
           if (row.source === 'revenuecat') flags.play = true;
         }
       }
+      const store = await from('revenuecat_entitlements').select('status, expires_at').eq('user_id', userId).maybeSingle();
+      if (store.error) { if (!isMissingTable(store.error)) fail('read revenuecat_entitlements', store.error); }
+      else if (store.data?.status === 'active' && store.data.expires_at && Date.parse(store.data.expires_at) > Date.now()) flags.play = true;
       // The developer-API plan is a Stripe subscription too (never a comped row: that has no Stripe objects).
       const billing = await from('realtimetts_billing').select('active, comped, stripe_subscription_id').eq('user_id', userId).maybeSingle();
       if (billing.error) { if (!isMissingTable(billing.error)) fail('read realtimetts_billing', billing.error); }
