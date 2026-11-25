@@ -79,3 +79,8 @@ git diff <deployed ref> origin/main -- backend web        # must be empty for th
 ```
 
 If the deployed ref no longer exists (squash merge), compare trees instead: `git diff <tree-of-deployed> <tree-of-main> -- backend web`.
+
+## Speech worker (`listenai-tts-worker`, `tts-service-cpu-test/`)
+
+v13, image `deployment-01M8ACVB4N8YMMSF4JG9DZ9BB4`, deployed 2026-11-25 about 22:25 UTC from `origin/main` `e5d0d041` (ListenAI #139 plus the 2026-10-06 changes). A request that cannot be spoken in full now fails instead of returning audio with parts missing, and the text is no longer logged. Non-English requests to this worker answer 501 (the unlicensed fallback engine is off; non-English Kokoro voices are off). Checked after deploy: long English text 200; Spanish to the worker 501; Spanish, French, German, Portuguese, Hindi and Japanese through `api.readaloudai.org` 200 (they are served by the ReadAloud API, not this worker).
+Rollback: `flyctl deploy -a listenai-tts-worker --image registry.fly.io/listenai-tts-worker:deployment-01KZ45SYAKK5RD1W08E7T98A8V` (v12; brings back the skipped parts and the unlicensed engine).
