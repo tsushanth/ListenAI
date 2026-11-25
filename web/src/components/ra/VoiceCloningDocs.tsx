@@ -44,7 +44,7 @@ curl -s "$BASE/v1/voices/v-a1b2c3d4e5" \\
 # -> {"id":"v-a1b2c3d4e5","status":"ready", ...}
 
 # 6. Preview
-curl -X POST "$BASE/v1/voices/v-a1b2c3d4e5/preview" \\
+curl -f --show-error -X POST "$BASE/v1/voices/v-a1b2c3d4e5/preview" \\
   -H "Authorization: Bearer $API_KEY" \\
   -H "Content-Type: application/json" \\
   -d '{"text": "Hello, this is a test of my cloned voice."}' \\
@@ -59,7 +59,7 @@ const SYNTHESIZE = `API_KEY="YOUR_API_KEY"
 BASE="https://api.readaloudai.org"
 
 # 8. Synthesize with your custom voice
-curl -X POST "$BASE/v1/text-to-speech" \\
+curl -f --show-error -X POST "$BASE/v1/text-to-speech" \\
   -H "Authorization: Bearer $API_KEY" \\
   -H "Content-Type: application/json" \\
   -d '{

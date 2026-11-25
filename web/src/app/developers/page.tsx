@@ -102,11 +102,12 @@ const res = await client.audio.speech.create({
 fs.writeFileSync('hello.mp3', Buffer.from(await res.arrayBuffer()))`}</code></pre>
 
             <h3>curl</h3>
-            <pre style={{ overflowX: 'auto' }}><code>{`curl https://api.readaloudai.org/v1/audio/speech \\
+            <pre style={{ overflowX: 'auto' }}><code>{`curl -f --show-error https://api.readaloudai.org/v1/audio/speech \\
   -H "Authorization: Bearer $READALOUD_API_KEY" \\
   -H "Content-Type: application/json" \\
   -d '{"model":"tts-1","voice":"readaloud-default","input":"Hello from ReadAloud.","response_format":"mp3"}' \\
   --output hello.mp3`}</code></pre>
+            <p style={{ marginTop: 12 }}>Run <code>export READALOUD_API_KEY=your_key</code> first; an empty key returns <code>401</code>.</p>
 
             <h3>Supported fields</h3>
             <div className="ra-table-wrap" style={{ marginTop: 8 }}>
@@ -181,7 +182,7 @@ session = AgentSession(
 
             <h3 id="vapi">Vapi</h3>
             <p>Vapi can call ReadAloud as a custom voice at <code>POST https://api.readaloudai.org/v1/vapi/custom-voice</code>. We have verified the endpoint directly: it returns raw 16-bit mono PCM (<code>application/octet-stream</code>) at 8000, 16000 and 24000 Hz and accepts your key as the <code>x-vapi-secret</code> header. On 2026-10-10 we also ran one real Vapi assistant call that used it as a custom voice with the inline secret: the call lasted 24 seconds, the assistant spoke five lines in the ReadAloud voice, and Vapi reported custom-voice latency of 266&nbsp;ms and 493&nbsp;ms on the two turns it measured. We have <b>not</b> tested the Custom Credential flow, the sample rate Vapi requested, how Vapi handles <code>429</code> responses and timeouts, or the audio quality by ear, so treat the Vapi setup as lightly tested.{integrationLink('vapi', 'Vapi integration')}</p>
-            <pre style={{ overflowX: 'auto' }}><code>{`curl -X POST 'https://api.readaloudai.org/v1/vapi/custom-voice?voice=readaloud-default' \\
+            <pre style={{ overflowX: 'auto' }}><code>{`curl -f --show-error -X POST 'https://api.readaloudai.org/v1/vapi/custom-voice?voice=readaloud-default' \\
   -H "x-vapi-secret: $READALOUD_API_KEY" -H 'Content-Type: application/json' \\
   -d '{"message":{"type":"voice-request","text":"Hello from ReadAloud.","sampleRate":16000,"timestamp":1}}' \\
   -o out.pcm`}</code></pre>

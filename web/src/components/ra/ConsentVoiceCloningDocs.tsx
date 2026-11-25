@@ -40,7 +40,7 @@ curl -X POST "$BASE/voice-clones" \\
 # }`
 
 const STEP3 = `# Speak with the cloned voice (WAV, 24 kHz, up to 1,500 characters per call)
-curl -X POST "$BASE/voice-clones/8b1d2c34-9e57-4a0b-b6f1-2f6c7d0e9a42/speech" \\
+curl -f --show-error -X POST "$BASE/voice-clones/8b1d2c34-9e57-4a0b-b6f1-2f6c7d0e9a42/speech" \\
   -H "Authorization: Bearer $API_KEY" -H "Content-Type: application/json" \\
   -d '{"text": "This sentence is spoken in my cloned voice.", "speed": 1.0}' \\
   --output cloned.wav
