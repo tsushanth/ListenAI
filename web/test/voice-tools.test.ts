@@ -277,7 +277,7 @@ test('clone client maps 404 to invalid_input and 402 to payment_required', async
 // ---------------------------------------------------------------------------
 
 test('all new tools are registered with correct read/destructive annotations', async () => {
-  const server = createMcpServer({ apiKey: ctx.apiKey, keyId: ctx.keyId }) as unknown as {
+  const server = createMcpServer({ apiKey: ctx.apiKey, keyId: ctx.keyId }, { voiceDesign: true, customVoiceStudio: true }) as unknown as {
     _registeredTools: Record<string, { annotations?: { readOnlyHint?: boolean; destructiveHint?: boolean } }>
   }
   const tools = server._registeredTools

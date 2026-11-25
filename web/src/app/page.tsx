@@ -5,6 +5,7 @@ import LiveDemo from '@/components/ra/LiveDemo'
 import CodeTabs from '@/components/ra/CodeTabs'
 import { RA_LANGUAGES, RA_VOICES } from '@/content/readaloudFacts'
 import { playUrl } from '@/lib/playLinks'
+import { OFFERED_FEATURES } from '@/content/launchFlags'
 
 export default function Home() {
   return (
@@ -105,6 +106,7 @@ export default function Home() {
           </div>
         </section>
 
+        {OFFERED_FEATURES.customVoiceStudio && (
         <section className="ra-section">
           <div className="ra-wrap ra-two">
             <div>
@@ -126,6 +128,7 @@ export default function Home() {
             </div>
           </div>
         </section>
+        )}
 
         <section className="ra-section" id="pricing">
           <div className="ra-wrap">

@@ -125,3 +125,20 @@ test('key management stays session-only: /api/tts-api-keys is not behind the key
 test('request logging redacts every credential header via the shared list', () => {
   assert.match(src, /pinoHttp\(\{[\s\S]*redact:\s*LOG_REDACT_PATHS/);
 });
+
+test('switchable features: every mount of a switched-off feature goes through its gate, after any auth middleware', () => {
+  const found = mounts();
+  const gated: Record<string, string> = {
+    '/api/voice-design': 'voice_design',
+    '/api/voice-studio': 'voice_studio',
+    '/internal/voice-studio-api': 'voice_studio',
+    '/internal/orpheus-clone-api': 'voice_studio',
+    '/api/orpheus-voice-studio': 'voice_studio',
+  };
+  for (const [path, feature] of Object.entries(gated)) {
+    const m = found.find((x) => x.path === path)!;
+    assert.match(m.chunk, new RegExp(`featureGate\\('${feature}'[^\\n]*, \\w+Router\\);`), path);
+  }
+  assert.match(found.find((x) => x.path === '/api/voice-design')!.chunk, /requireAuthOrApiKey, featureGate/);
+});
+

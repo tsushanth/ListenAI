@@ -14,6 +14,7 @@ import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 import { errorCodeNet } from './middleware/errorCodeNet.js';
 import { reportFailure, reportCrash } from './lib/failureReporter.js';
 import { serverErrorNet } from './lib/serverErrorNet.js';
+import { featureGate, allowPresetDelete } from './lib/offeredFeatures.js';
 import { runJobMonitor } from './lib/jobMonitor.js';
 import { signalConfigMissing, missingProdEnv, signalLoopFailure } from './lib/failureSignals.js';
 import { standardRateLimit, ttsRateLimitByTier, previewRateLimit, burstRateLimit, jobPollingRateLimit, realtimeTtsAuthorizeRateLimit } from './middleware/rateLimit.js';
@@ -291,7 +292,8 @@ app.use('/api/tts-api-keys', ttsApiKeysRouter);
 // Voice design — Parler-TTS text-to-voice generation (dark unless VOICE_DESIGN_URL is configured).
 // requireAuthOrApiKey: accepts a real Supabase JWT (web) or a gateway-forwarded API-key identity (MCP);
 // the router's requireUser() still enforces the active-subscription check for both. See MCP_AUTH_BRIDGE.md.
-app.use('/api/voice-design', requireAuthOrApiKey, voiceDesignRouter);
+// Off unless VOICE_DESIGN_PUBLIC=true (lib/offeredFeatures.ts).
+app.use('/api/voice-design', requireAuthOrApiKey, featureGate('voice_design', { allow: allowPresetDelete }), voiceDesignRouter);
 // Voice convert — Seed-VC speech-to-speech voice conversion (dark unless VOICE_CONVERT_URL is configured).
 // Same bridge as voice-design. API-key callers have no browser to click "Deploy": POST /deploy is itself
 // bridged, and a 400 with code 'deployment_required' tells them to call it (the MCP convert_voice tool does).
@@ -327,12 +329,13 @@ app.use('/api/sound-effects', (_req, res, next) => {
   res.status(503).json({ error: 'Sound effects are temporarily unavailable.' });
 }, requireAuthOrApiKey, soundEffectsRouter);
 // strict Supabase auth like the API-key routes above.
-app.use('/api/voice-studio', voiceStudioRouter);
+// Trained custom voices are off unless VOICE_STUDIO_PUBLIC=true (lib/offeredFeatures.ts).
+app.use('/api/voice-studio', featureGate('voice_studio'), voiceStudioRouter);
 
 // Same voice-studio logic via an API key instead of a Supabase session, reachable only from the gateway
 // (realtime-tts-gateway proxies /v1/voices here after validating the key) — see routes/voiceStudioApiKey.ts.
 // Not behind requireAuth/standardRateLimit: it does its own shared-secret check and its own rate limiting.
-app.use('/internal/voice-studio-api', voiceStudioApiKeyRouter);
+app.use('/internal/voice-studio-api', featureGate('voice_studio', { emptyListAtRoot: true }), voiceStudioApiKeyRouter);
 
 // Consent-gated instant voice cloning (Chatterbox) via an API key: same trusted-forwarder pattern, and the same
 // createVoiceClonesRouter as /api/voice-clones underneath — see routes/voiceCloneApiKey.ts. Does its own shared-secret
@@ -342,12 +345,12 @@ app.use('/internal/voice-clone-api', voiceCloneApiKeyRouter);
 // Orpheus streaming voice cloning: same gateway-trusted pattern as voice-studio-api above, but a plain
 // direct router (no createVoiceStudioRouter factory) proxying to the Modal training/serving service.
 // See routes/orpheusVoiceStudioApiKey.ts.
-app.use('/internal/orpheus-clone-api', orpheusVoiceStudioApiKeyRouter);
+app.use('/internal/orpheus-clone-api', featureGate('voice_studio'), orpheusVoiceStudioApiKeyRouter);
 
 // Same Orpheus cloning operations, but for real logged-in customers via their Supabase session (not the
 // gateway shared secret above) — powers the web UI at web/src/components/ra/OrpheusVoiceStudio.tsx. See
 // routes/orpheusVoiceStudio.ts for why this is a separate file rather than reusing the gateway-trusted one.
-app.use('/api/orpheus-voice-studio', orpheusVoiceStudioRouter);
+app.use('/api/orpheus-voice-studio', featureGate('voice_studio'), orpheusVoiceStudioRouter);
 
 // Voice marketplace routes - for sharing and discovering cloned voices
 app.use('/api/marketplace', voiceMarketplaceRouter);

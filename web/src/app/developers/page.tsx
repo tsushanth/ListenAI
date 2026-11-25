@@ -9,13 +9,15 @@ import ConsentVoiceCloningDocs from '@/components/ra/ConsentVoiceCloningDocs'
 import publish from '../../content/publish.json'
 import { isPublished } from '@/lib/seoLibrary/publish'
 import { RA_REGISTRY, RA_LIVE_LANGUAGE_ROWS, RA_VOICE_COUNTS } from '@/content/readaloudFacts'
-import { LAUNCH_FLAGS } from '@/content/launchFlags'
+import { LAUNCH_FLAGS, OFFERED_FEATURES, UNAVAILABLE_COPY } from '@/content/launchFlags'
 import { ELEVENLABS_PRICES, READALOUD_PRICES } from '@/content/migrationPrices'
 import { formatUsd } from '@/lib/migrationCalc'
 
 // Wording that depends on a switch that is off by default in the service (see src/content/launchFlags.ts).
 const ONE_KEY = LAUNCH_FLAGS.oneKeyEverywhere
 const CLONE_EL = LAUNCH_FLAGS.elevenLabsInstantClone
+const DESIGN = OFFERED_FEATURES.voiceDesign
+const STUDIO = OFFERED_FEATURES.customVoiceStudio
 
 // An /integrations page is linked from here only once it is listed in src/content/publish.json (the same list that decides what is indexed).
 const integrationHref = (slug: string): string | null => (isPublished(publish as { published: string[] }, 'integration', slug) ? `/integrations/${slug}` : null)
@@ -51,7 +53,7 @@ export default function DevelopersPage() {
             <p className="ra-lede" style={{ marginBottom: 24 }}>Sign in, create a key, and it works straight away.</p>
             <div className="ra-dark-panel"><DeveloperApiSection /></div>
             <p className="ra-small" id="free-credits" style={{ marginTop: 16 }}>
-              <b>Free credits.</b> Every account gets a one-time grant of free credits (worth $0.10, about 10,000 characters of speech), shared across speech, transcription, dubbing, voice conversion and voice design. Long jobs use more credits than short ones. When they run out those tools return <code>402</code> until you add a payment method; after that you pay as you go. Accounts without a payment method can hold one active API key. The free credits are one capped pool per account, shared across all of your keys (creating or revoking a key does not reset it), and they are used up first. Voice cloning and music generation always need a payment method.
+              <b>Free credits.</b> Every account gets a one-time grant of free credits (worth $0.10, about 10,000 characters of speech), shared across speech, transcription, dubbing{DESIGN ? ', voice conversion and voice design' : ' and voice conversion'}. Long jobs use more credits than short ones. When they run out those tools return <code>402</code> until you add a payment method; after that you pay as you go. Accounts without a payment method can hold one active API key. The free credits are one capped pool per account, shared across all of your keys (creating or revoking a key does not reset it), and they are used up first. Voice cloning and music generation always need a payment method.
             </p>
           </div>
         </section>
@@ -271,8 +273,12 @@ export READALOUD_API_KEY=rtts_...`}</code></pre>
                 </ul>
 
                 <h3 id="voice-cloning">Voice cloning</h3>
+                {STUDIO ? (<>
                 <p>Two ways to clone. <b>Trained voice:</b> upload your own recordings and use the result with <code className="inl">custom:&lt;id&gt;</code>; training runs automatically on GPU and takes about 30–60 minutes. <b>Instant clone:</b> from a short recording plus a spoken consent phrase, ready immediately; see <a href="#voice-cloning-api" style={{ textDecoration: 'underline' }}>instant voice cloning</a> below. Only clone your own voice, or one you have the speaker&rsquo;s recorded consent for.</p>
                 <VoiceCloningDocs />
+                </>) : (
+                <p>{UNAVAILABLE_COPY.customVoiceStudio} <b>Instant clone</b> works today: a short recording plus a spoken consent phrase, ready immediately; see <a href="#voice-cloning-api" style={{ textDecoration: 'underline' }}>instant voice cloning</a> below. Only clone your own voice, or one you have the speaker&rsquo;s recorded consent for.</p>
+                )}
 
                 <h3 id="voice-cloning-api">Instant voice cloning with consent (your own voice only)</h3>
                 {CLONE_EL ? <p>Coming from ElevenLabs? The same cloning is also available at the ElevenLabs path <code className="inl">POST https://api.readaloudai.org/v1/voices/add</code>, so <code className="inl">voices.ivc.create</code> in the official SDKs works with a consent step added; see <Link href="/developers/migrate-from-elevenlabs#voice-cloning" style={{ textDecoration: 'underline' }}>Migrate from ElevenLabs</Link>.</p> : <p>Coming from ElevenLabs? Cloning at the ElevenLabs path (<code className="inl">voices.ivc.create</code> in the official SDKs, with a consent step added) is coming soon; see <Link href="/developers/migrate-from-elevenlabs#voice-cloning" style={{ textDecoration: 'underline' }}>Migrate from ElevenLabs</Link>.</p>}
@@ -330,14 +336,14 @@ curl -L -X POST "<url>/v1/stt?language=auto" \\
                 </p>
                 {ONE_KEY ? (
                 <p><b>Credentials.</b> One key works everywhere. The REST endpoints below (dubbing, voice
-                  conversion, voice design, audio isolation and audiobooks) accept your <code>rtts_</code> key
+                  conversion, {DESIGN ? 'voice design, ' : ''}audio isolation and audiobooks) accept your <code>rtts_</code> key
                   directly, the same key you use for text to speech and speech to text. Send it as{' '}
                   <code>Authorization: Bearer rtts_...</code> or as the <code>xi-api-key</code> header
                   (the header name ElevenLabs SDKs and scripts already use). They also still accept a
                   signed-in <b>session token</b> (<code>Authorization: Bearer &lt;session token&gt;</code>),
                   and the <Link href="/developers/mcp" style={{ textDecoration: 'underline' }}>MCP server</Link> tools
                   work with the same key (<code>dub_audio</code>, <code>convert_voice</code>,{' '}
-                  <code>design_voice</code>, the audiobook tools). The work is billed to the account the key
+                  {DESIGN && <><code>design_voice</code>, </>}the audiobook tools). The work is billed to the account the key
                   belongs to. Keys you create in the console above belong to your account; a key that is not
                   tied to an account gets <code>403</code>, and a revoked or unknown key gets <code>401</code>.
                   A key whose account has used up its free credits and has no payment method gets <code>402</code>.
@@ -348,16 +354,16 @@ curl -L -X POST "<url>/v1/stt?language=auto" \\
                 </p>
                 ) : (
                 <p><b>Credentials.</b> The REST endpoints below (dubbing, voice
-                  conversion, voice design, audio isolation and audiobooks) accept either a signed-in{' '}
+                  conversion, {DESIGN ? 'voice design, ' : ''}audio isolation and audiobooks) accept either a signed-in{' '}
                   <b>session token</b> (<code>Authorization: Bearer &lt;session token&gt;</code>) or an
                   API key that our own <Link href="/developers/mcp" style={{ textDecoration: 'underline' }}>MCP server</Link>{' '}
                   passes on for you. They do <b>not</b> accept your <code>rtts_</code> key
                   directly yet: using it straight on these paths is coming soon. To
                   use an API key today, call the matching MCP tool (<code>dub_audio</code>,{' '}
-                  <code>convert_voice</code>, <code>design_voice</code>, the audiobook tools).
+                  <code>convert_voice</code>, {DESIGN && <><code>design_voice</code>, </>}the audiobook tools).
                   Through MCP, the work is billed to the account the key belongs to. Keys you create
                   in the console above belong to your account; a key that is not tied to an account
-                  gets <code>402</code> from dubbing, voice design and voice conversion. Free credits are per account, so they follow the account, not the key.
+                  gets <code>402</code> from dubbing{DESIGN ? ', voice design' : ''} and voice conversion. Free credits are per account, so they follow the account, not the key.
                   Speech to text and voice cloning have their own key-based routes, described in their
                   sections (instant voice cloning is at <code>https://readaloudai.org/api/v1/voice-clones</code>).
                 </p>
@@ -386,7 +392,7 @@ curl -L -X POST "<url>/v1/stt?language=auto" \\
                 <h3 id="sound-effects">Sound effects</h3>
                 <p>Sound effect generation is temporarily unavailable while we rework its cost. It will return here when it is ready.</p>
 
-                <h3 id="voice-convert">Voice conversion &amp; voice design</h3>
+                <h3 id="voice-convert">{DESIGN ? <>Voice conversion &amp; voice design</> : 'Voice conversion'}</h3>
                 <p>
                   <b>Voice conversion</b> spins up your own on-demand GPU container so your
                   audio never sits on a shared server, and re-sings/re-speaks a source
@@ -396,12 +402,16 @@ curl -L -X POST "<url>/v1/stt?language=auto" \\
                   under dubbing above), which sets up your private converter on the first call (about 3
                   minutes, and it returns a temporary error until it is ready, so call it again).
                 </p>
+                {DESIGN ? (
                 <p><b>Voice design.</b> <code>POST /api/voice-design</code> generates a synthetic voice from a
                   text description and a sample sentence ({ONE_KEY ? <>your <code>rtts_</code> key or a session token, or</> : <>session token, or</>} the MCP tools{' '}
                   <code>design_voice</code> and <code>get_voice_design</code>). Try it at{' '}
                   <Link href="/design-voice" style={{ textDecoration: 'underline' }}>/design-voice</Link>. It uses your free
                   credits, then needs a payment method.
                 </p>
+                ) : (
+                <p><b>Voice design.</b> {UNAVAILABLE_COPY.voiceDesign}</p>
+                )}
                 <p><b>1. Deploy your container.</b> <code>POST /api/voice-convert/deploy</code> ({ONE_KEY ? 'same key or session-token auth' : 'same session-token auth'}).
                   Check status with <code>GET .../deploy</code>, tear down with <code>DELETE .../deploy</code> when you&rsquo;re done
                   &mdash; you aren&rsquo;t billed for idle deploy time, only completed jobs (see pricing below).
@@ -420,7 +430,7 @@ curl -L -X POST "<url>/v1/stt?language=auto" \\
                   <li><code>409</code> a deployment already exists. <code>429</code> over 10 requests/hour.</li>
                   <li><code>503</code> the GPU backend isn&rsquo;t configured in this environment.</li>
                 </ul>
-                <p><b>Price:</b> voice conversion is $0.10 per minute of source audio, with a 45 second minimum ($0.075). It is billed by the second rounded up, only for completed jobs. On your invoice it appears as character equivalents on the same meter as text-to-speech (10,000 per minute). Voice design is billed per generated voice on its own meter.</p>
+                <p><b>Price:</b> voice conversion is $0.10 per minute of source audio, with a 45 second minimum ($0.075). It is billed by the second rounded up, only for completed jobs. On your invoice it appears as character equivalents on the same meter as text-to-speech (10,000 per minute).{DESIGN ? ' Voice design is billed per generated voice on its own meter.' : ''}</p>
 
                 <h3 id="audiobooks">Audiobooks</h3>
                 <p>

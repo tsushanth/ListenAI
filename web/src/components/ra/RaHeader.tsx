@@ -3,9 +3,10 @@
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { ChevronDown, Menu, X } from 'lucide-react'
+import { OFFERED_FEATURES } from '@/content/launchFlags'
 
 const TOOLS = [
-  { href: '/design-voice', label: 'Design a voice' },
+  ...(OFFERED_FEATURES.voiceDesign ? [{ href: '/design-voice', label: 'Design a voice' }] : []),
   { href: '/convert-voice', label: 'Convert voice' },
   { href: '/transcribe', label: 'Transcribe audio' },
   { href: '/dub', label: 'Dub audio' },

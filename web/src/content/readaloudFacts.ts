@@ -1,5 +1,6 @@
 import { FREE_CREDIT_UNITS, FREE_CREDIT_USD, PRICING } from '../lib/pricing.ts'
 import { TTS_REGISTRY } from '../generated/tts-registry.ts'
+import { OFFERED_FEATURES } from './launchFlags.ts'
 
 // Single source of truth for every statement the programmatic library (src/lib/seoLibrary) makes about ReadAloud.
 // No template types a ReadAloud price, limit, format, latency figure or capability: they all come from here, and
@@ -126,7 +127,7 @@ export const RA_FREE_CREDITS = {
   units: FREE_CREDIT_UNITS,
   usd: FREE_CREDIT_USD,
   approxCharacters: FREE_CREDIT_UNITS,
-  wording: `Every account gets a one-time grant of free credits (worth $${FREE_CREDIT_USD.toFixed(2)}, about ${FREE_CREDIT_UNITS.toLocaleString('en-US')} characters of speech). It is one capped pool per account, shared across all of the account's keys and across speech, transcription, dubbing, voice conversion and voice design, and it is used first. When it runs out, requests return 402 until a payment method is added, then billing is pay as you go.`,
+  wording: `Every account gets a one-time grant of free credits (worth $${FREE_CREDIT_USD.toFixed(2)}, about ${FREE_CREDIT_UNITS.toLocaleString('en-US')} characters of speech). It is one capped pool per account, shared across all of the account's keys and across speech, transcription, dubbing${OFFERED_FEATURES.voiceDesign ? ', voice conversion and voice design' : ' and voice conversion'}, and it is used first. When it runs out, requests return 402 until a payment method is added, then billing is pay as you go.`,
   /** One short sentence for tables and lists. */
   short: `A one-time grant of free credits worth $${FREE_CREDIT_USD.toFixed(2)} (about ${FREE_CREDIT_UNITS.toLocaleString('en-US')} characters of speech), shared by all keys on the account.`,
   noCardToStart: true,
@@ -268,7 +269,7 @@ export const RA_CLONING = {
 export const RA_OTHER_PRODUCTS = [
   'speech to text (batch, uploaded recordings)',
   'dubbing',
-  'voice conversion and voice design',
+  OFFERED_FEATURES.voiceDesign ? 'voice conversion and voice design' : 'voice conversion',
   'audiobook export',
   'a reader app for Android and the web',
 ] as const

@@ -1,6 +1,8 @@
 import RaHeader from '@/components/ra/RaHeader'
 import RaFooter from '@/components/ra/RaFooter'
 import VoiceStudio from '@/components/ra/VoiceStudio'
+import FeatureUnavailable from '@/components/ra/FeatureUnavailable'
+import { OFFERED_FEATURES, UNAVAILABLE_COPY } from '@/content/launchFlags'
 
 export const metadata = {
   title: 'Custom voice - ReadAloud AI',
@@ -9,6 +11,9 @@ export const metadata = {
 }
 
 export default function VoicesPage() {
+  if (!OFFERED_FEATURES.customVoiceStudio) {
+    return <FeatureUnavailable title="Custom voice" message={UNAVAILABLE_COPY.customVoiceStudio} alternative={{ href: '/clone-voice', label: 'Clone a voice instantly from a short recording' }} />
+  }
   return (
     <div className="ra">
       <RaHeader />

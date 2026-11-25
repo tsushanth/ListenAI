@@ -1,4 +1,5 @@
 // Docs for the consent-gated instant voice cloning API (REST + MCP). Contract: docs/VOICE_CLONING_CONSENT.md, "API-key access".
+import { OFFERED_FEATURES } from '@/content/launchFlags'
 // Static server component: no state, nothing to hydrate.
 const STEP1 = `API_KEY="YOUR_API_KEY"
 BASE="https://readaloudai.org/api/v1"
@@ -86,8 +87,8 @@ export default function ConsentVoiceCloningDocs() {
         </p>
       </div>
       <p>
-        Instant cloning from a short recording, in three steps. It is separate from the trained custom voices above: no dataset ZIP
-        and no training wait, and the voice is ready as soon as the call returns. Base URL <code className="inl">https://readaloudai.org/api/v1</code>,
+        Instant cloning from a short recording, in three steps.{OFFERED_FEATURES.customVoiceStudio ? ' It is separate from the trained custom voices above.' : ''} No dataset ZIP
+        and no training wait: the voice is ready as soon as the call returns. Base URL <code className="inl">https://readaloudai.org/api/v1</code>,
         auth <code className="inl">Authorization: Bearer &lt;your API key&gt;</code>. The key must belong to an account with a verified email and a paid or
         complimentary plan (the same gate as the website). Cloned voices are private to the account, and the speech they produce carries
         an inaudible watermark identifying it as synthetic.

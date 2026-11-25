@@ -28,3 +28,21 @@ export const availabilityLabel = (flag: LaunchFlag): string => (LAUNCH_FLAGS[fla
 
 /** The date these flags were last set from a real check (empty while everything is off). */
 export const LAUNCH_FLAGS_VERIFIED_ON = '2026-11-14'
+
+// Features that are hidden altogether (not "coming soon"): with a flag false the web app shows an "unavailable" message on
+// the feature's page, and drops its links, docs, parity rows and MCP tools. All are OFF.
+//
+// To offer one again: set the matching backend env first (voiceDesign: VOICE_DESIGN_PUBLIC=true, customVoiceStudio:
+// VOICE_STUDIO_PUBLIC=true), make sure its worker is deployed, run one real call on the production host, then set the flag
+// here to true, update public/llms.txt, and redeploy the web app.
+export type OfferedFeatures = { readonly voiceDesign: boolean; readonly customVoiceStudio: boolean }
+
+export const OFFERED_FEATURES: OfferedFeatures = {
+  voiceDesign: false,
+  customVoiceStudio: false,
+}
+
+export const UNAVAILABLE_COPY = {
+  voiceDesign: 'Voice design is not available right now.',
+  customVoiceStudio: 'Training a custom voice from your own recordings is not available right now.',
+} as const

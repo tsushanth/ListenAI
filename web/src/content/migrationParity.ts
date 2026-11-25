@@ -1,4 +1,4 @@
-import { LAUNCH_FLAGS, type LaunchFlag } from './launchFlags.ts'
+import { LAUNCH_FLAGS, OFFERED_FEATURES, type LaunchFlag } from './launchFlags.ts'
 import { RA_LANGUAGES } from './readaloudFacts.ts'
 
 // The "works today / partial / not yet" table on /developers/migrate-from-elevenlabs.
@@ -33,8 +33,12 @@ export const PARITY_ROWS: readonly ParityRow[] = [
   // Voices
   { area: 'Voices', feature: 'Instant voice clone (POST /v1/voices/add)', status: 'partial', flag: 'elevenLabsInstantClone', note: 'English, Spanish and German, a recorded consent step that ElevenLabs does not have, a key with billing enabled, 1,500 characters per request, no timestamps or WebSocket for cloned voices. The first create after a long idle can take about a minute.' },
   { area: 'Voices', feature: 'Voice library and shared voices', status: 'partial', note: 'A small catalogue of named voices; no community library.' },
-  { area: 'Voices', feature: 'Professional voice clone (trained voice)', status: 'partial', note: "Through ReadAloud's own cloning API, not the ElevenLabs path; needs a payment method." },
-  { area: 'Voices', feature: 'Voice design from a text description', status: 'partial', note: 'Separate ReadAloud route, not the ElevenLabs path. Works with the rtts_ key once one-key access is on.' },
+  OFFERED_FEATURES.customVoiceStudio
+    ? { area: 'Voices', feature: 'Professional voice clone (trained voice)', status: 'partial', note: "Through ReadAloud's own cloning API, not the ElevenLabs path; needs a payment method." }
+    : { area: 'Voices', feature: 'Professional voice clone (trained voice)', status: 'not-yet', note: 'Not available right now. Instant voice cloning is the option today.' },
+  OFFERED_FEATURES.voiceDesign
+    ? { area: 'Voices', feature: 'Voice design from a text description', status: 'partial', note: 'Separate ReadAloud route, not the ElevenLabs path. Works with the rtts_ key once one-key access is on.' }
+    : { area: 'Voices', feature: 'Voice design from a text description', status: 'not-yet', note: 'Not available right now.' },
   { area: 'Voices', feature: 'Voice changer (speech to speech)', status: 'partial', note: 'Works on the ElevenLabs path (POST /v1/speech-to-speech) into two built-in voices; the first request after a long idle can take about a minute. ReadAloud also has its own voice conversion route.' },
   { area: 'Voices', feature: 'Voice remixing', status: 'not-yet', note: '' },
   // Speech to text
@@ -53,7 +57,7 @@ export const PARITY_ROWS: readonly ParityRow[] = [
   // Agents
   { area: 'Agents', feature: 'Agents platform, Speech Engine, realtime speech to speech, realtime translation', status: 'not-yet', note: 'ReadAloud is the voice inside LiveKit, Pipecat and Vapi agents, not an agent platform.' },
   // Platform
-  { area: 'Platform', feature: 'One API key on every REST family', status: 'works', flag: 'oneKeyEverywhere', note: 'One rtts_ key (Authorization: Bearer or xi-api-key) for speech, speech to text, dubbing, voice conversion, voice design, audio isolation, audiobooks and sound effects.' },
+  { area: 'Platform', feature: 'One API key on every REST family', status: 'works', flag: 'oneKeyEverywhere', note: `One rtts_ key (Authorization: Bearer or xi-api-key) for speech, speech to text, dubbing, voice conversion, ${OFFERED_FEATURES.voiceDesign ? 'voice design, ' : ''}audio isolation, audiobooks and sound effects.` },
   { area: 'Platform', feature: 'Usage and subscription endpoints', status: 'works', note: '/v1/user, /v1/user/subscription and usage statistics work (the statistics call needs start_unix and end_unix).' },
   { area: 'Platform', feature: 'MCP server', status: 'works', note: 'Hosted, with the same key.' },
   { area: 'Platform', feature: 'SDKs', status: 'partial', note: "Use ElevenLabs' official SDKs for speech, voices, models and user. ReadAloud's own packages cover text to speech only." },
