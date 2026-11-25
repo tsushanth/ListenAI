@@ -4,7 +4,7 @@ import RaFooter from '@/components/ra/RaFooter'
 import MigrationCostCalculator from '@/components/ra/MigrationCostCalculator'
 import { ELEVENLABS_PRICES, READALOUD_PRICES, CHARS_PER_SPOKEN_MINUTE, calculatorLists } from '@/content/migrationPrices'
 import { PARITY_AS_OF, PARITY_ROWS, STATUS_LABEL, shownStatus } from '@/content/migrationParity'
-import { LAUNCH_FLAGS, availabilityLabel } from '@/content/launchFlags'
+import { LAUNCH_FLAGS, availabilityLabel, OFFERED_FEATURES } from '@/content/launchFlags'
 import { RA_LATENCY, RA_LIVE, RA_STUDIO, RA_LIMITS, RA_FREE_CREDITS } from '@/content/readaloudFacts'
 import { compareCosts, formatUsd } from '@/lib/migrationCalc'
 
@@ -199,7 +199,7 @@ const ONE_KEY_ROWS: readonly [string, string][] = [
   ['Text to speech, voices, models, user (ElevenLabs routes)', 'Works today'],
   ['Speech to text (Scribe-shaped route)', 'Switched by the speech-to-text flag below'],
   ['Instant voice cloning (ElevenLabs path)', 'Switched by the cloning flag below'],
-  ['Dubbing, voice conversion, voice design, audio isolation, audiobooks, sound effects', 'Session token or MCP today; the rtts_ key directly once one-key access is on'],
+  [`Dubbing, voice conversion, ${OFFERED_FEATURES.voiceDesign ? 'voice design, ' : ''}audio isolation, audiobooks, sound effects`, 'Session token or MCP today; the rtts_ key directly once one-key access is on'],
 ]
 
 const ERR = `# 404, unknown voice id (an ElevenLabs voice id)
@@ -350,9 +350,9 @@ export default function MigrateFromElevenLabsPage() {
           <div className="ra-wrap ra-narrow ra-ref" style={{ maxWidth: 820 }}>
             <h2>One key on every REST family <span className="ra-small" data-flag="oneKeyEverywhere" style={{ fontWeight: 400 }}>&middot; {availabilityLabel('oneKeyEverywhere')}</span></h2>
             {LAUNCH_FLAGS.oneKeyEverywhere ? (
-              <p>The same <code>rtts_</code> key, sent as <code>Authorization: Bearer</code> or <code>xi-api-key</code>, works on text to speech, speech to text, voice cloning, dubbing, voice conversion, voice design, audio isolation, audiobooks and sound effects. Work is billed to the account the key belongs to, and free credits follow the account.</p>
+              <p>The same <code>rtts_</code> key, sent as <code>Authorization: Bearer</code> or <code>xi-api-key</code>, works on text to speech, speech to text, voice cloning, dubbing, voice conversion, {OFFERED_FEATURES.voiceDesign ? 'voice design, ' : ''}audio isolation, audiobooks and sound effects. Work is billed to the account the key belongs to, and free credits follow the account.</p>
             ) : (
-              <p><b>Coming soon.</b> Today the <code>rtts_</code> key works on the text-to-speech routes and the ReadAloud transcription route. Dubbing, voice conversion, voice design, audio isolation and audiobooks take a signed-in session token, or the same key through the MCP tools. When one-key access is switched on, the key will work on all of them directly.</p>
+              <p><b>Coming soon.</b> Today the <code>rtts_</code> key works on the text-to-speech routes and the ReadAloud transcription route. Dubbing, voice conversion, {OFFERED_FEATURES.voiceDesign ? 'voice design, ' : ''}audio isolation and audiobooks take a signed-in session token, or the same key through the MCP tools. When one-key access is switched on, the key will work on all of them directly.</p>
             )}
             <div className="ra-table-wrap">
               <table className="ra-table">
@@ -520,7 +520,7 @@ export default function MigrateFromElevenLabsPage() {
             <ul>
               <li>Dubbing, <code>/v1/dubbing</code>. ReadAloud&rsquo;s dubbing is a separate API with its own paths (the same <code>rtts_</code> key works on it once <a href="#one-key" style={ul}>one-key access</a> is on).</li>
               <li>The Agents platform (Conversational AI), <code>/v1/convai/...</code>, speech engine, realtime speech to speech and realtime translation.</li>
-              <li>Professional voice cloning on the ElevenLabs path (ReadAloud&rsquo;s own trained-voice API needs a payment method).</li>
+              <li>Professional voice cloning on the ElevenLabs path{OFFERED_FEATURES.customVoiceStudio ? <> (ReadAloud&rsquo;s own trained-voice API needs a payment method)</> : ''}.</li>
               <li>Text to voice (voice design), audio isolation, sound generation, music and projects on their ElevenLabs paths. Speech to speech, history, pronunciation dictionaries and text to dialogue are available; see the status table.</li>
               <li>Entity detection, keyterms and webhooks on the batch speech-to-text route.</li>
               <li>Not tested: the deprecated ElevenLabs npm package and the ElevenLabs plugins for voice-agent frameworks against production, see above.</li>

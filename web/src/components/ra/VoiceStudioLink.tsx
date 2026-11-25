@@ -4,12 +4,14 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabaseClient'
 import { isMockMode, voiceStudioApi } from '@/lib/voiceStudioApi'
+import { OFFERED_FEATURES } from '@/content/launchFlags'
 
 // Shown on /developers only when the signed-in user has the voice studio enabled (the backend answers 404
 // otherwise), so the feature stays invisible while it ships dark.
 export default function VoiceStudioLink() {
   const [on, setOn] = useState(false)
   useEffect(() => {
+    if (!OFFERED_FEATURES.customVoiceStudio) return
     let live = true
     const check = async () => {
       const { data } = await supabase.auth.getSession()

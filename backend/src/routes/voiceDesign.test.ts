@@ -294,3 +294,58 @@ test('validation still applies to gateway-forwarded callers', async () => {
   assert.equal((await s.callH(GW(), 'POST', '/designs', { description: 'x', text: 'hi' })).status, 400);
   s.close();
 });
+
+// ---------------------------------------------------------------------------
+// The feature switch mounted in front of the router (lib/offeredFeatures.ts)
+// ---------------------------------------------------------------------------
+
+async function gated(env: NodeJS.ProcessEnv, feature: 'voice_design' | 'voice_studio', options: import('../lib/offeredFeatures.js').GateOptions = {}) {
+  const { featureGate } = await import('../lib/offeredFeatures.js');
+  const { serverErrorNet } = await import('../lib/serverErrorNet.js');
+  const reports: string[] = [];
+  const reached: string[] = [];
+  const app = express();
+  app.use(serverErrorNet((flow) => { reports.push(flow); }));
+  app.use('/f', featureGate(feature, options, env), (req, res) => { reached.push(`${req.method} ${req.path}`); res.json({ reached: true }); });
+  const server = app.listen(0);
+  const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}/f`;
+  const call = async (method: string, path = '') => { const r = await originalFetch(base + path, { method }); return { status: r.status, body: await r.json() as Record<string, unknown> }; };
+  return { call, reports, reached, close: () => new Promise((r) => server.close(r)) };
+}
+
+test('voice design is off unless VOICE_DESIGN_PUBLIC is exactly "true": plain message, router never reached, nothing reported', async () => {
+  const { allowPresetDelete } = await import('../lib/offeredFeatures.js');
+  for (const env of [{}, { VOICE_DESIGN_PUBLIC: '' }, { VOICE_DESIGN_PUBLIC: '1' }, { VOICE_STUDIO_PUBLIC: 'true' }]) {
+    const g = await gated(env, 'voice_design', { allow: allowPresetDelete });
+    for (const [method, path] of [['POST', '/designs'], ['GET', '/designs/abc'], ['GET', '/presets'], ['POST', '/presets']] as const) {
+      const r = await g.call(method, path);
+      assert.equal(r.status, 503, `${method} ${path}`);
+      assert.deepEqual(r.body, { error: 'Voice design is not available right now.', code: 'service_unavailable' });
+    }
+    assert.deepEqual(g.reached, []);
+    assert.deepEqual(g.reports, []);
+    assert.equal((await g.call('DELETE', '/presets/p1')).status, 200, 'saved descriptions can still be deleted');
+    await g.close();
+  }
+});
+
+test('voice design passes through when VOICE_DESIGN_PUBLIC=true', async () => {
+  const g = await gated({ VOICE_DESIGN_PUBLIC: 'true' }, 'voice_design');
+  assert.equal((await g.call('POST', '/designs')).status, 200);
+  assert.deepEqual(g.reached, ['POST /designs']);
+  await g.close();
+});
+
+test('voice studio off: listing is empty, everything else says unavailable, and the allowlists cannot turn it on', async () => {
+  const g = await gated({ VOICE_STUDIO_ENABLED_USERS: '*', VOICE_STUDIO_API_ENABLED_KEYS: '*' }, 'voice_studio', { emptyListAtRoot: true });
+  assert.deepEqual(await g.call('GET'), { status: 200, body: { voices: [] } });
+  for (const [method, path] of [['POST', ''], ['GET', '/enabled'], ['GET', '/v-a1b2c3d4e5'], ['POST', '/streaming']] as const) {
+    const r = await g.call(method, path);
+    assert.equal(r.status, 503, `${method} ${path}`);
+    assert.equal(r.body.error, 'Training a custom voice is not available right now.');
+  }
+  assert.deepEqual(g.reached, []);
+  assert.deepEqual(g.reports, []);
+  await g.close();
+});
+

@@ -11,6 +11,8 @@ import {
 } from './schemas.ts'
 import { piperNormalizeFields } from '../piperNormalize.ts'
 import { PUBLIC_VOICES, DEFAULT_LIVE_VOICE, DEFAULT_STUDIO_VOICE, backendVoiceId, resolveVoice, upstreamEngine } from './voices.ts'
+import { OFFERED_FEATURES, type OfferedFeatures } from '../../content/launchFlags.ts'
+import { hiddenMcpTools } from './hiddenTools.ts'
 import { TTS_REGISTRY } from '../../generated/tts-registry.ts'
 import {
   UpstreamError, authorize, authorizeStt, fetchPiperHealth, synthesize, transcribe, type ErrorCode,
@@ -59,9 +61,9 @@ function toolError(code: ErrorCode, message: string, retryable: boolean, extra: 
   }
 }
 
-export function createMcpServer(ctx: RequestContext): McpServer {
+export function createMcpServer(ctx: RequestContext, offered: OfferedFeatures = OFFERED_FEATURES): McpServer {
   const server = new McpServer({ name: 'readaloud-ai', version: '1.0.0' }, {
-    instructions: 'ReadAloud AI text-to-speech, speech-to-text, dubbing, audiobooks, voice design, voice conversion and voice cloning. Use text_to_speech to turn short text into a WAV audio clip. Use list_voices before picking a non-default voice. Use speech_to_text to transcribe spoken audio. Use create_audiobook to turn long text or an ePub into a chaptered audiobook, then get_audiobook_status and export_audiobook. Use dub_audio to re-voice a spoken audio clip into another language (audio in, audio out — no video), then get_dub_status to poll for the result. Use generate_sound_effect to make a short sound effect from a text description. Use design_voice to generate a synthetic voice from a description (poll get_voice_design), and convert_voice to re-speak a clip in a target voice (poll get_voice_conversion). To clone a voice: create_voice_clone, upload_voice_clone_dataset, commit_voice_clone_dataset (billed, needs confirms_charge), get_voice_clone_status until ready, then deploy_voice_clone and use custom:<voice_id> in text_to_speech; delete_voice_clone removes it. To clone a voice instantly from a short recording (own voice, or a speaker who consents by reading a phrase themselves): readaloud_issue_consent_phrase, have the speaker record that phrase, then readaloud_create_voice_clone with the reference and consent recordings; use clone:<voice_id> in text_to_speech; readaloud_list_voices shows your cloned voices and readaloud_delete_voice_clone deletes one. Never clone a voice without the speaker\'s own consent recording.',
+    instructions: 'ReadAloud AI text-to-speech, speech-to-text, dubbing, audiobooks, voice conversion and voice cloning. Use text_to_speech to turn short text into a WAV audio clip. Use list_voices before picking a non-default voice. Use speech_to_text to transcribe spoken audio. Use create_audiobook to turn long text or an ePub into a chaptered audiobook, then get_audiobook_status and export_audiobook. Use dub_audio to re-voice a spoken audio clip into another language (audio in, audio out — no video), then get_dub_status to poll for the result. Use generate_sound_effect to make a short sound effect from a text description. ' + (offered.voiceDesign ? 'Use design_voice to generate a synthetic voice from a description (poll get_voice_design). ' : '') + 'Use convert_voice to re-speak a clip in a target voice (poll get_voice_conversion). ' + (offered.customVoiceStudio ? 'To clone a voice: create_voice_clone, upload_voice_clone_dataset, commit_voice_clone_dataset (billed, needs confirms_charge), get_voice_clone_status until ready, then deploy_voice_clone and use custom:<voice_id> in text_to_speech; delete_voice_clone removes it. ' : '') + 'To clone a voice instantly from a short recording (own voice, or a speaker who consents by reading a phrase themselves): readaloud_issue_consent_phrase, have the speaker record that phrase, then readaloud_create_voice_clone with the reference and consent recordings; use clone:<voice_id> in text_to_speech; readaloud_list_voices shows your cloned voices and readaloud_delete_voice_clone deletes one. Never clone a voice without the speaker\'s own consent recording.',
   })
 
   const failClone = (e: unknown, fallback: string): CallToolResult => {
@@ -71,6 +73,10 @@ export function createMcpServer(ctx: RequestContext): McpServer {
     }
     return toolError('upstream', fallback, true)
   }
+
+  // Tools of a switched-off feature are never registered, so tools/list (and the server card built from it) omits them.
+  const hidden = hiddenMcpTools(offered)
+  const registerOffered = ((name: string, ...rest: unknown[]) => (hidden.has(name) ? undefined : (server.registerTool as (...a: unknown[]) => unknown).call(server, name, ...rest))) as typeof server.registerTool
 
   server.registerTool('text_to_speech', {
     title: 'Text to speech',
@@ -427,7 +433,7 @@ export function createMcpServer(ctx: RequestContext): McpServer {
   }
   const decodedBytes = (b64: string) => Math.floor((b64.length * 3) / 4)
 
-  server.registerTool('design_voice', {
+  registerOffered('design_voice', {
     title: 'Design a voice',
     description:
       `Generate a brand-new synthetic voice from a text description (e.g. "a warm, friendly female narrator with a calm British accent") ` +
@@ -449,7 +455,7 @@ export function createMcpServer(ctx: RequestContext): McpServer {
     } catch (e) { return failVoice(e, 'Unexpected error while submitting the voice design job.') }
   })
 
-  server.registerTool('get_voice_design', {
+  registerOffered('get_voice_design', {
     title: 'Get voice design status/result',
     description:
       `Check a design_voice job by job_id. While status is "queued" or "processing" it returns just the status: poll again after a few seconds. ` +
@@ -540,7 +546,7 @@ export function createMcpServer(ctx: RequestContext): McpServer {
     } catch (e) { return failVoice(e, 'Unexpected error while checking the voice conversion job.') }
   })
 
-  server.registerTool('create_voice_clone', {
+  registerOffered('create_voice_clone', {
     title: 'Create a voice clone',
     description:
       `Start a custom TRAINED voice (fine-tuned from a ZIP of recordings, 30-60 minutes) for a speaker who has agreed to it. For an instant clone from a short recording with a spoken consent check, use readaloud_issue_consent_phrase and readaloud_create_voice_clone instead. Records the speaker's consent and returns a voice_id; ` +
@@ -564,7 +570,7 @@ export function createMcpServer(ctx: RequestContext): McpServer {
     } catch (e) { return failVoice(e, 'Unexpected error while creating the voice clone.') }
   })
 
-  server.registerTool('upload_voice_clone_dataset', {
+  registerOffered('upload_voice_clone_dataset', {
     title: 'Upload voice clone recordings',
     description:
       `Upload the recordings for a voice made with create_voice_clone: a ZIP of clean, single-speaker WAV/FLAC/MP3 files (10-60 minutes is ideal). ` +
@@ -597,7 +603,7 @@ export function createMcpServer(ctx: RequestContext): McpServer {
     } catch (e) { return failVoice(e, 'Unexpected error while uploading the recordings.') }
   })
 
-  server.registerTool('commit_voice_clone_dataset', {
+  registerOffered('commit_voice_clone_dataset', {
     title: 'Commit voice clone and start training',
     description:
       `Finish the upload for a voice and start training (about 30-60 minutes on GPU). THIS BILLS $2.50 (one-time, per voice) to the account behind this API key, ` +
@@ -618,7 +624,7 @@ export function createMcpServer(ctx: RequestContext): McpServer {
     } catch (e) { return failVoice(e, 'Unexpected error while starting training.') }
   })
 
-  server.registerTool('get_voice_clone_status', {
+  registerOffered('get_voice_clone_status', {
     title: 'Get voice clone status',
     description:
       `Check a cloned voice: status moves created -> training -> ready (or rejected, with a reason if the recordings could not be used). ` +
@@ -637,7 +643,7 @@ export function createMcpServer(ctx: RequestContext): McpServer {
     } catch (e) { return failVoice(e, 'Unexpected error while checking the voice clone.') }
   })
 
-  server.registerTool('deploy_voice_clone', {
+  registerOffered('deploy_voice_clone', {
     title: 'Deploy voice clone',
     description:
       `Make a trained (status "ready") cloned voice available for synthesis. Returns the voice name to pass to text_to_speech, in the form "custom:<voice_id>". No extra charge.`,
@@ -656,7 +662,7 @@ export function createMcpServer(ctx: RequestContext): McpServer {
     } catch (e) { return failVoice(e, 'Unexpected error while deploying the voice clone.') }
   })
 
-  server.registerTool('delete_voice_clone', {
+  registerOffered('delete_voice_clone', {
     title: 'Delete voice clone',
     description:
       `Permanently delete a cloned voice and its recordings. This cannot be undone and does not refund the $2.50 creation charge.`,

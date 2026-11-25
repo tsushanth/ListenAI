@@ -1,5 +1,6 @@
 import { allPages, getLibrary, hubChildren, pageIsPublished } from './index.ts'
 import { absoluteUrl } from './routes.ts'
+import { OFFERED_FEATURES } from '../../content/launchFlags.ts'
 import type { HubKey } from './pages.ts'
 
 export type SitemapEntry = { url: string; lastModified?: string }
@@ -7,7 +8,7 @@ export type SitemapEntry = { url: string; lastModified?: string }
 // Existing marketing pages. There was no sitemap before the library, so these are listed here once; add a page here when it ships.
 // /developers/migrate-from-elevenlabs is the hand-written migration guide; the library never generates a duplicate of it.
 export const CORE_PATHS = [
-  '/', '/developers', '/developers/mcp', '/developers/migrate-from-elevenlabs', '/reader', '/transcribe', '/dub', '/audiobooks', '/design-voice', '/convert-voice', '/privacy', '/terms',
+  '/', '/developers', '/developers/mcp', '/developers/migrate-from-elevenlabs', '/reader', '/transcribe', '/dub', '/audiobooks', ...(OFFERED_FEATURES.voiceDesign ? ['/design-voice'] : []), '/convert-voice', '/privacy', '/terms',
 ]
 
 /**
