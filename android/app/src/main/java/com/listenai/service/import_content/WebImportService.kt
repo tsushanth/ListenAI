@@ -48,6 +48,7 @@ private data class ServerExtractionResponse(
 class WebImportService {
 
     private val client = OkHttpClient.Builder()
+        .addInterceptor(com.listenai.FailureReporterInterceptor())
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
         .followRedirects(true)

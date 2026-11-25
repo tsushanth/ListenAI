@@ -49,6 +49,7 @@ class CloudTTSService(private val context: Context) : TTSService {
     // Individual poll requests are short — no need for the long readTimeout
     // the old single-blocking-call design required.
     private val httpClient = OkHttpClient.Builder()
+        .addInterceptor(com.listenai.FailureReporterInterceptor())
         .addInterceptor(com.listenai.data.remote.AcceptLanguageInterceptor())
         .connectTimeout(30, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)

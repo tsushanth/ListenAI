@@ -49,6 +49,7 @@ class StreamingTTSService(
 
     // HTTP client with long timeout for streaming
     private val httpClient = OkHttpClient.Builder()
+        .addInterceptor(com.listenai.FailureReporterInterceptor())
         .addInterceptor(com.listenai.data.remote.AcceptLanguageInterceptor())
         .connectTimeout(30, TimeUnit.SECONDS)
         .readTimeout(15, TimeUnit.MINUTES)

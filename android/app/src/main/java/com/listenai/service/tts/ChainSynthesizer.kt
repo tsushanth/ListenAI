@@ -85,6 +85,8 @@ object ChainSynthesizer {
             file.delete()
             val unavailable = speechUnavailable(e)
             runCatching { FirebaseAnalyticsHelper.logVoiceFallback(language, voiceFallbackReason(unavailable.kind)) }
+            com.listenai.service.tts.chain.TtsFailureSignals.noAudio(e.failures, language)
+                ?.let { com.listenai.FailureReporter.failure(it.flow, message = it.code, context = it.context) }
             throw unavailable
         } catch (e: Throwable) {
             file.delete()

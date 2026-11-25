@@ -52,6 +52,7 @@ class SupabaseGoTrueClient(
     private val baseUrl: String = SupabaseConfig.SUPABASE_URL,
     private val anonKey: String = SupabaseConfig.SUPABASE_ANON_KEY,
     private val http: OkHttpClient = OkHttpClient.Builder()
+        .addInterceptor(com.listenai.FailureReporterInterceptor())
         .connectTimeout(30, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
         .build(),

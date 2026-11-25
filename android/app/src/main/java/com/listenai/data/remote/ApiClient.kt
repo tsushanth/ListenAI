@@ -36,6 +36,7 @@ class ApiClient(
     }
 
     private val okHttpClient = OkHttpClient.Builder()
+        .addInterceptor(com.listenai.FailureReporterInterceptor())
         .addInterceptor(AcceptLanguageInterceptor())
         .addInterceptor(authInterceptor)
         .addInterceptor(loggingInterceptor)

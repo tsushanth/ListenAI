@@ -96,6 +96,7 @@ class RealtimeTTSService(
         java.util.concurrent.Executors.newSingleThreadScheduledExecutor { r -> Thread(r, "tts-align-watchdog").apply { isDaemon = true } }
 
     private val httpClient = OkHttpClient.Builder()
+        .addInterceptor(com.listenai.FailureReporterInterceptor())
         .addInterceptor(com.listenai.data.remote.AcceptLanguageInterceptor())
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(60, TimeUnit.SECONDS)

@@ -39,6 +39,7 @@ object TtsChainProvider {
 
     private fun build(app: Context): Holder {
         val http = OkHttpClient.Builder()
+            .addInterceptor(com.listenai.FailureReporterInterceptor())
             .addInterceptor(com.listenai.data.remote.AcceptLanguageInterceptor())
             .connectTimeout(8, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
@@ -86,6 +87,7 @@ object TtsChainProvider {
                     "fallback=${first?.first}:${first?.second} ok=${report.succeeded} lang=${report.language}"
             )
             runCatching { FirebaseAnalyticsHelper.logTtsSession(report) }
+            TtsFailureSignals.apiFallback(report)?.let { com.listenai.FailureReporter.failure(it.flow, message = it.code, context = it.context) }
         }
     }
 }

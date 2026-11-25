@@ -144,6 +144,7 @@ class GoogleAuthService(private val context: Context) {
 
     // HTTP client for backend communication
     private val httpClient = OkHttpClient.Builder()
+        .addInterceptor(com.listenai.FailureReporterInterceptor())
         .addInterceptor(com.listenai.data.remote.AcceptLanguageInterceptor())
         .connectTimeout(30, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
