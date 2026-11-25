@@ -203,7 +203,6 @@ class SelfHostedTTSService(private val context: Context) : TTSService {
                 .post(requestBody.toString().toRequestBody("application/json".toMediaType()))
                 .addHeader("Content-Type", "application/json")
                 .addHeader("Accept", "application/json")
-                .addHeader("X-Debug-Bypass-Quota", "true")  // TODO: Remove for production
                 .build()
 
             onProgress(SynthesisProgress.INITIAL.copy(
@@ -386,12 +385,8 @@ class SelfHostedTTSService(private val context: Context) : TTSService {
             .get()
             .addHeader("Accept", "application/json")
             .apply {
-                if (authToken != null) {
-                    // Cloned-voice jobs are user-scoped: authenticate, and never send the debug quota bypass.
-                    addHeader("Authorization", "Bearer $authToken")
-                } else {
-                    addHeader("X-Debug-Bypass-Quota", "true")  // TODO: Remove for production
-                }
+                // Cloned-voice jobs are user-scoped.
+                if (authToken != null) addHeader("Authorization", "Bearer $authToken")
             }
             .build()
 
