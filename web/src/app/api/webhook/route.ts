@@ -5,10 +5,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { stripe } from '@/lib/stripe'
 import Stripe from 'stripe'
+import { reportServerFailure, withFailureReport } from '@/lib/serverReport'
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!
 
-export async function POST(request: NextRequest) {
+export const POST = withFailureReport('stripe_webhook', handlePost)
+
+async function handlePost(request: NextRequest): Promise<Response> {
   const body = await request.text()
   const signature = request.headers.get('stripe-signature')!
 
@@ -18,6 +21,8 @@ export async function POST(request: NextRequest) {
     event = stripe.webhooks.constructEvent(body, signature, webhookSecret)
   } catch (err) {
     console.error('Webhook signature verification failed:', err)
+    // A request with no signature header is internet noise; a signature that does not verify may mean real events are lost.
+    if (signature) reportServerFailure('stripe_webhook', 'SIGNATURE_INVALID')
     return NextResponse.json({ error: 'Invalid signature' }, { status: 400 })
   }
 

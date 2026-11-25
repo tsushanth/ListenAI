@@ -10,6 +10,7 @@ import {
 import { checkoutAccess } from '@/lib/webPro'
 import { bearerToken, verifySupabaseUser } from '@/lib/checkoutAuth'
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from '@/lib/supabaseConfig'
+import { withFailureReport } from '@/lib/serverReport'
 
 const VISITOR_COOKIE = 'ra_vid'
 const sessionCookie = (plan: CheckoutPlan) => `ra_co_${plan}`
@@ -65,7 +66,9 @@ async function startCheckout(request: NextRequest, plan: CheckoutPlan): Promise<
 }
 
 // A Checkout Session exists only because a signed-in person pressed a plan button (the button POSTs JSON with the bearer token).
-export async function POST(request: NextRequest) {
+export const POST = withFailureReport('checkout', handlePost)
+
+async function handlePost(request: NextRequest): Promise<Response> {
   const contentType = request.headers.get('content-type') ?? ''
   let raw: unknown = null
   if (contentType.includes('application/json')) raw = ((await request.json().catch(() => null)) as { plan?: unknown } | null)?.plan

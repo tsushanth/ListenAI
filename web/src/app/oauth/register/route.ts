@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { clientIp, configured, json, notConfigured, oauthError, preflight, registerLimiter } from '@/lib/oauth/http'
 import { validateRegistration } from '@/lib/oauth/redirect'
 import { mintClientId } from '@/lib/oauth/tokens'
+import { withFailureReport } from '@/lib/serverReport'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -9,7 +10,9 @@ export const OPTIONS = preflight
 
 // RFC 7591 dynamic client registration, stateless: client_id is an HMAC-signed token that carries the
 // registered redirect URIs and name. Public clients only (no secret).
-export async function POST(req: NextRequest) {
+export const POST = withFailureReport('oauth_register', handlePost)
+
+async function handlePost(req: NextRequest): Promise<Response> {
   if (!configured()) return notConfigured()
   const rl = registerLimiter.check(clientIp(req))
   if (!rl.ok) return oauthError('temporarily_unavailable', 'Too many registrations. Try again later.', 429, { 'Retry-After': String(rl.retryAfterSec) })

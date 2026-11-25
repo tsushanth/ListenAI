@@ -3,6 +3,7 @@ import { ApproveError, approve } from '@/lib/oauth/approve'
 import { getApproveDeps } from '@/lib/oauth/deps'
 import { approveLimiter, clientIp, configured, json, notConfigured } from '@/lib/oauth/http'
 import { SECURITY_HEADERS } from '@/lib/oauth/page'
+import { withFailureReport } from '@/lib/serverReport'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -10,7 +11,9 @@ export const dynamic = 'force-dynamic'
 // Called by the consent page with the signed-in user's Supabase access token in an Authorization header
 // (never a cookie, so a cross-site form post cannot ride the user's session: CSRF-safe). No CORS headers
 // are sent, so other origins cannot read the response either. The OAuth params are re-validated here.
-export async function POST(req: NextRequest) {
+export const POST = withFailureReport('oauth_approve', handlePost)
+
+async function handlePost(req: NextRequest): Promise<Response> {
   const h = { ...SECURITY_HEADERS }
   if (!configured()) return notConfigured()
   const rl = approveLimiter.check(clientIp(req))
