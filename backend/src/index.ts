@@ -67,6 +67,8 @@ import { initRolloutFromEnv } from './lib/rollout.js';
 import { reportUsageToStripe } from './lib/realtimeTtsBilling.js';
 import { pushHeadlineMetrics, defaultPushDeps } from './lib/reporterUsage.js';
 import { pruneOldEvents } from './lib/eventLog.js';
+import { pruneOldRequestLog, requestLogIngestEnabled } from './lib/requestLog.js';
+import { requestLogIngestRouter } from './routes/requestLogIngest.js';
 
 // Initialize rollout configuration from environment
 initRolloutFromEnv();
@@ -118,6 +120,11 @@ app.use(errorCodeNet());
 // Stripe webhook needs raw body for signature verification
 // Must be before express.json() middleware
 app.use('/api/webhooks', express.raw({ type: 'application/json' }), stripeWebhookRouter);
+
+// Gateway request-log ingest: before the global 1 MB json parser (the router parses its own 256 KB body, after its
+// shared-secret check) and before standardRateLimit (one gateway IP would trip a per-IP limiter). 404 unless
+// REQUEST_LOG_INGEST_ENABLED is on and the gateway secret matches. See routes/requestLogIngest.ts.
+app.use('/api/gateway/request-log', requestLogIngestRouter);
 
 // Body parsing
 app.use(express.json({ limit: '1mb' }));
@@ -433,6 +440,7 @@ const server = app.listen(PORT, () => {
     const job = () => {
       void pushHeadlineMetrics(defaultPushDeps).catch(() => {});
       void pruneOldEvents().catch(() => {});
+      if (requestLogIngestEnabled()) void pruneOldRequestLog().catch(() => {});
     };
     setTimeout(job, 60_000).unref();
     setInterval(job, THIRTY_MINUTES_MS).unref();
