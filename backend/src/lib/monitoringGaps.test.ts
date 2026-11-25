@@ -131,8 +131,9 @@ function fakeMonitorDb(tables: Record<string, Row[]>, opts: { failAll?: boolean 
       const q: any = {
         select() { return q; },
         in(_c: string, v: string[]) { filters.push(r => v.includes(r.status)); return q; },
-        gte(_c: string, v: string) { filters.push(r => r.created_at >= v); return q; },
-        lt(_c: string, v: string) { filters.push(r => r.created_at < v); return q; },
+        gte(c: string, v: string) { filters.push(r => String((r as any)[c] ?? '') >= v); return q; },
+        lt(c: string, v: string) { filters.push(r => { const x = (r as any)[c]; return x != null && x < v; }); return q; },
+        not(c: string) { filters.push(r => (r as any)[c] != null); return q; },
         then(res: (v: unknown) => void) {
           if (opts.failAll) return res({ count: null, error: { message: 'down' } });
           res({ count: (tables[table] ?? []).filter(r => filters.every(f => f(r))).length, error: null });
@@ -198,3 +199,75 @@ test('jobMonitor: poll-driven tables never raise STALLED; unreadable tables rais
   assert.deepEqual(out.alerts, ['JOB_MONITOR_BLIND']);
   assert.equal(r.calls.length, 1);
 });
+
+// ---- count checks, in-memory jobs and the heartbeat ----
+const checksOnly = async (tables: Record<string, any[]>, extra: Record<string, unknown> = {}) => {
+  const { runJobMonitor, COUNT_CHECKS } = await monP;
+  const r = recorder();
+  const beats: string[] = [];
+  const out = await runJobMonitor({ db: fakeMonitorDb(tables), now: () => NOW, report: r.report, sources: [], checks: COUNT_CHECKS, beat: async (j: string) => { beats.push(j); }, ...extra });
+  return { ...out, calls: r.calls, beats };
+};
+const row = (status: string, min: number, extra: Record<string, unknown> = {}) => ({ status, created_at: ago(min), updated_at: ago(min), ...extra });
+
+test('jobMonitor: the default pass covers voice design, audiobooks, cloning consent and per-user deployments', async () => {
+  const { COUNT_CHECKS } = await monP;
+  assert.deepEqual([...new Set(COUNT_CHECKS.map((c) => c.table))].sort(), ['audiobooks', 'user_voice_convert_deployments', 'user_voice_isolate_deployments', 'voice_consent_challenges', 'voice_design_jobs']);
+});
+
+test('jobMonitor: quiet tables raise nothing and the pass beats', async () => {
+  const out = await checksOnly({});
+  assert.deepEqual(out.alerts, []);
+  assert.deepEqual(out.beats, ['jobmonitor']);
+});
+
+test('jobMonitor: 3 failed designs or audiobooks with no success in a day raise; one success silences it', async () => {
+  const failed = [60, 120, 180].map((m) => row('failed', m));
+  assert.deepEqual((await checksOnly({ voice_design_jobs: failed, audiobooks: failed })).alerts, ['VOICE_DESIGN_FAILING', 'AUDIOBOOK_FAILING']);
+  assert.deepEqual((await checksOnly({ voice_design_jobs: [...failed, row('ready', 90)], audiobooks: failed.slice(0, 2) })).alerts, []);
+  assert.deepEqual((await checksOnly({ voice_design_jobs: [5, 6, 7].map((m) => row('failed', m)) })).alerts, [], 'grace period');
+});
+
+test('jobMonitor: consent phrases issued and none accepted raise', async () => {
+  const issued = [60, 120, 180].map((m) => row('', m, { consumed_at: null }));
+  assert.deepEqual((await checksOnly({ voice_consent_challenges: issued })).alerts, ['VOICE_CLONE_CONSENT_NO_SUCCESS']);
+  assert.deepEqual((await checksOnly({ voice_consent_challenges: [...issued, row('', 90, { consumed_at: ago(89) })] })).alerts, []);
+});
+
+test('jobMonitor: a deployment stuck or failed raises; a fresh or old-failed one does not', async () => {
+  assert.deepEqual((await checksOnly({ user_voice_convert_deployments: [row('deploying', 20)], user_voice_isolate_deployments: [row('failed', 30)] })).alerts,
+    ['VOICE_CONVERT_DEPLOY_STUCK', 'VOICE_ISOLATE_DEPLOY_FAILED']);
+  assert.deepEqual((await checksOnly({ user_voice_convert_deployments: [row('deploying', 5)], user_voice_isolate_deployments: [row('failed', 600)] })).alerts, []);
+});
+
+test('jobMonitor: in-memory dub jobs stalled or all failing raise', async () => {
+  const memory = (jobs: Array<{ status: 'processing' | 'ready' | 'failed'; createdAt: string }>) => ({ memory: [{ kind: 'DUB', list: () => jobs }] });
+  assert.deepEqual((await checksOnly({}, memory([{ status: 'processing', createdAt: ago(25) }]))).alerts, ['DUB_JOBS_STALLED']);
+  const failed = [1, 2, 3].map((m) => ({ status: 'failed' as const, createdAt: ago(m) }));
+  assert.deepEqual((await checksOnly({}, memory(failed))).alerts, ['DUB_JOBS_NO_SUCCESS']);
+  assert.deepEqual((await checksOnly({}, memory([...failed, { status: 'ready', createdAt: ago(2) }, { status: 'processing', createdAt: ago(3) }]))).alerts, []);
+});
+
+test('jobMonitor: a blind pass sends no heartbeat', async () => {
+  const { runJobMonitor, COUNT_CHECKS } = await monP;
+  const beats: string[] = [];
+  const out = await runJobMonitor({ db: fakeMonitorDb({}, { failAll: true }), now: () => NOW, report: () => {}, sources: src, checks: COUNT_CHECKS, beat: async (j: string) => { beats.push(j); } });
+  assert.deepEqual(out.alerts, ['JOB_MONITOR_BLIND']);
+  assert.deepEqual(beats, []);
+});
+
+test('heartbeat: posts heartbeat.<job> to the usage route with the key; silent without a key or in tests', async () => {
+  const { postHeartbeat } = await import('./heartbeat.js');
+  const calls: Array<{ url: string; key: string; body: string }> = [];
+  const fetchImpl = (async (url: string, init: RequestInit) => { calls.push({ url, key: (init.headers as Record<string, string>)['X-Report-Key']!, body: String(init.body) }); return new Response(null, { status: 204 }); }) as unknown as typeof fetch;
+  assert.equal(await postHeartbeat('jobmonitor', { env: {}, fetchImpl }), false);
+  assert.equal(await postHeartbeat('jobmonitor', { env: { FAILURE_REPORTER_KEY: 'k', NODE_ENV: 'test' }, fetchImpl }), false);
+  assert.equal(await postHeartbeat('jobmonitor', { env: { FAILURE_REPORTER_KEY: 'k', NODE_ENV: 'production' }, fetchImpl }), true);
+  assert.equal(calls.length, 1);
+  assert.match(calls[0]!.url, /\/v1\/usage$/);
+  assert.equal(calls[0]!.key, 'k');
+  assert.deepEqual(JSON.parse(calls[0]!.body), { metric: 'heartbeat.jobmonitor', value: 1 });
+  const down = (async () => { throw new Error('offline'); }) as unknown as typeof fetch;
+  assert.equal(await postHeartbeat('jobmonitor', { env: { FAILURE_REPORTER_KEY: 'k' }, fetchImpl: down }), false);
+});
+

@@ -55,7 +55,7 @@ import { voiceStudioApiKeyRouter } from './routes/voiceStudioApiKey.js';
 import { voiceCloneApiKeyRouter } from './routes/voiceCloneApiKey.js';
 import { orpheusVoiceStudioApiKeyRouter } from './routes/orpheusVoiceStudioApiKey.js';
 import { orpheusVoiceStudioRouter } from './routes/orpheusVoiceStudio.js';
-import { dubRouter } from './routes/dub.js';
+import { dubRouter, dubJobStates } from './routes/dub.js';
 import { soundEffectsRouter } from './routes/soundEffects.js';
 import { aggregateLatencyMetrics, checkSupabaseHealth, checkStorageHealth } from './lib/supabaseClient.js';
 import { startWorker, stopWorker } from './workers/ttsJobWorker.js';
@@ -451,7 +451,8 @@ const server = app.listen(PORT, () => {
 
   // Dead-man / invariant monitor over every job table (jobs created vs jobs that finished). Never in tests.
   if (process.env.NODE_ENV !== 'test' && process.env.JOB_MONITOR !== 'false') {
-    const monitor = () => { void runJobMonitor().catch((err) => logger.warn({ err }, 'job monitor failed (non-critical)')); };
+    const memory = [{ kind: 'DUB', list: dubJobStates }];
+    const monitor = () => { void runJobMonitor({ memory }).catch((err) => logger.warn({ err }, 'job monitor failed (non-critical)')); };
     setTimeout(monitor, 5 * 60_000).unref();
     setInterval(monitor, THIRTY_MINUTES_MS).unref();
   }
