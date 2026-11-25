@@ -21,7 +21,8 @@ async function handlePost(request: NextRequest): Promise<Response> {
     event = stripe.webhooks.constructEvent(body, signature, webhookSecret)
   } catch (err) {
     console.error('Webhook signature verification failed:', err)
-    reportServerFailure('stripe_webhook', 'SIGNATURE_INVALID')
+    // A request with no signature header is internet noise; a signature that does not verify may mean real events are lost.
+    if (signature) reportServerFailure('stripe_webhook', 'SIGNATURE_INVALID')
     return NextResponse.json({ error: 'Invalid signature' }, { status: 400 })
   }
 
