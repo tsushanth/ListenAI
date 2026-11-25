@@ -316,6 +316,11 @@ interface DubJob {
 
 const dubJobs = new Map<string, DubJob>();
 
+/** Status and age of the jobs held in memory, for the job monitor. No ids, users or text. */
+export function dubJobStates(): Array<{ status: DubJobStatus; createdAt: string }> {
+  return [...dubJobs.values()].map((j) => ({ status: j.status, createdAt: j.createdAt }));
+}
+
 // Best-effort cleanup so this doesn't leak memory across a long-running
 // process - jobs older than an hour are dropped. Not a substitute for real
 // persistence; see file header.
