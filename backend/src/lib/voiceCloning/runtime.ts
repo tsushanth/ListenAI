@@ -6,6 +6,8 @@ import { asrFromEnv } from './asrClient.js';
 import { supabaseCloneStore, supabaseConsentBlobs } from './supabaseStore.js';
 import { getBillingForUser } from '../realtimeTtsBilling.js';
 import { logger } from '../logger.js';
+import { supabaseRevenueCatStore, type EntitlementRow } from '../revenuecat/store.js';
+import { hasLiveSubscription } from '../revenuecat/lookup.js';
 import type { CloneDeps } from './service.js';
 import type { BillingPlan, Eligibility } from './types.js';
 
@@ -36,8 +38,50 @@ export function resolvePlan(
   return paymentRequired(env) ? null : 'free';
 }
 
-export async function planForUser(userId: string): Promise<BillingPlan | null> {
-  return resolvePlan(await getBillingForUser(userId));
+export interface PlanDeps {
+  getBilling: (userId: string) => Promise<{ active?: boolean; comped?: boolean } | null | undefined>;
+  /** The row the RevenueCat webhook keeps. */
+  getEntitlement: (userId: string) => Promise<EntitlementRow | null>;
+  /** Asks RevenueCat directly, for subscribers no webhook has reported yet. False when no API key is configured. */
+  liveSubscription: (userId: string) => Promise<boolean>;
+  now: () => number;
+}
+const defaultPlanDeps: PlanDeps = {
+  getBilling: getBillingForUser,
+  getEntitlement: (u) => supabaseRevenueCatStore.getEntitlement(u),
+  liveSubscription: (u) => hasLiveSubscription(u),
+  now: Date.now,
+};
+
+/**
+ * A Google Play / App Store subscription: the webhook's row when it says active and unexpired, otherwise RevenueCat's
+ * live answer. Either source failing counts as "no", so an outage never grants cloning.
+ */
+async function hasStoreSubscription(userId: string, deps: PlanDeps): Promise<boolean> {
+  try {
+    const ent = await deps.getEntitlement(userId);
+    if (ent && ent.status === 'active' && ent.plan_id !== 'free' && ent.expires_at && Date.parse(ent.expires_at) > deps.now()) return true;
+  } catch (err) {
+    logger.warn({ err }, 'revenuecat entitlement read failed');
+  }
+  try {
+    return await deps.liveSubscription(userId);
+  } catch (err) {
+    logger.warn({ err: err instanceof Error ? err.message : String(err) }, 'revenuecat live lookup failed');
+    return false;
+  }
+}
+
+/**
+ * comped (billing row) > paid > free (only when payment is switched off) > null. 'paid' = active realtimetts_billing
+ * (Stripe) OR a store subscription (see above). The legacy `subscriptions` table is deliberately NOT consulted:
+ * POST /api/subscription/sync lets any signed-in user write their own row.
+ */
+export async function planForUser(userId: string, deps: PlanDeps = defaultPlanDeps, env: Record<string, string | undefined> = process.env): Promise<BillingPlan | null> {
+  const billing = await deps.getBilling(userId);
+  if (billing?.active) return billing.comped ? 'comped' : 'paid';
+  if (await hasStoreSubscription(userId, deps)) return 'paid';
+  return resolvePlan(billing, env);
 }
 
 /**

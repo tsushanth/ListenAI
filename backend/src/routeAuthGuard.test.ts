@@ -21,7 +21,7 @@ type Auth =
 
 // key = "<method> <path>" where method is USE for app.use
 const TABLE: Record<string, Auth> = {
-  'USE /api/webhooks': { public: 'Stripe webhook: authenticated by Stripe signature inside the router' },
+  'USE /api/webhooks': { public: 'Stripe webhook (Stripe signature) and RevenueCat webhook (shared Authorization secret), each checked inside its router' },
   'GET /health': { public: 'health check' },
   'USE /api': { public: 'rate limiter only, mounted before the routes' },
   'GET /api/tts/job/:jobId': { mw: 'requireAuth' },
