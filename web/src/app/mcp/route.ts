@@ -7,6 +7,8 @@ import { UpstreamError, authorize, warmStt } from '@/lib/mcp/upstream'
 import { resourceMetadataUrl } from '@/lib/oauth/config'
 import { oauthConfigured } from '@/lib/oauth/crypto'
 import { looksLikeOAuthToken, verifyAccessToken } from '@/lib/oauth/tokens'
+import { withFailureReport } from '@/lib/serverReport'
+import { reportToolFailures } from '@/lib/mcp/toolFailures'
 
 // Hosted MCP server for the ReadAloud AI voice API. Stateless Streamable HTTP (MCP spec 2025-06-18):
 // every POST is a self-contained JSON-RPC exchange answered as plain JSON, no sessions, no SSE.
@@ -67,7 +69,9 @@ const notAllowed = () => rpcError(405, -32000, 'This server is stateless: use PO
 export const GET = notAllowed
 export const DELETE = notAllowed
 
-export async function POST(req: NextRequest) {
+export const POST = withFailureReport('mcp', handlePost)
+
+async function handlePost(req: NextRequest): Promise<Response> {
   const ip = ipLimiter.check(clientIp(req))
   if (!ip.ok) return rpcError(429, -32002, 'Too many requests from this IP. Slow down.', { 'Retry-After': String(ip.retryAfterSec) })
 
@@ -115,6 +119,7 @@ export async function POST(req: NextRequest) {
     const res = await transport.handleRequest(req, { parsedBody: body })
     // The key was checked at connect time; if it was revoked since, upstream says 401 during a tool call.
     if (ctx.authFailed) return unauthorized(revokedMsg)
+    void reportToolFailures(body, res.clone())
     return withHeaders(res)
   } finally {
     void server.close()

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { withFailureReport } from '../../../lib/serverReport.ts'
 
 // Mints a short-lived ReadAloud Live session token for the homepage demo. The demo API key lives only in
 // this server's env (TTS_DEMO_API_KEY); the browser never sees it. ReadAloud Live only: it is the
@@ -8,7 +9,9 @@ const hits = new Map<string, number[]>()
 const LIMIT = 8
 const WINDOW_MS = 60_000
 
-export async function POST(req: NextRequest) {
+export const POST = withFailureReport('demo_token', handlePost)
+
+async function handlePost(req: NextRequest): Promise<Response> {
   const key = process.env.TTS_DEMO_API_KEY
   if (!key) return NextResponse.json({ error: 'demo not configured' }, { status: 503 })
 

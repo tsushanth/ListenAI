@@ -18,6 +18,7 @@ import {
   AUDIO_MIME_TYPES, CLONE_MAX_AUDIO_MB, CLONE_VOICE_ID_RE, cloneCreateLimiter, cloneRequest, consentPhrasePath, cloneSpeechLimiter, createCloneRaw,
   createClonedVoiceSchema, makeAudio, resolveAudioInput, sniffAudioMime, speechRaw, type AudioBlob,
 } from './cloneClient.ts'
+import { withFailureReport } from '../serverReport.ts'
 
 const ipLimiter = new SlidingWindowLimiter(120, 60_000)
 const readLimiter = new SlidingWindowLimiter(30, 60_000)
@@ -118,7 +119,11 @@ async function phraseLanguage(req: Request): Promise<string | undefined> {
   } catch { return undefined }
 }
 
-export async function handleVoiceCloneRest(req: Request, route: { op: VoiceCloneOp; id?: string }): Promise<Response> {
+export function handleVoiceCloneRest(req: Request, route: { op: VoiceCloneOp; id?: string }): Promise<Response> {
+  return withFailureReport(`voice_clone_${route.op}`, handle)(req, route)
+}
+
+async function handle(req: Request, route: { op: VoiceCloneOp; id?: string }): Promise<Response> {
   const ip = req.headers.get('fly-client-ip') || req.headers.get('x-forwarded-for')?.split(',')[0].trim() || 'unknown'
   const ipRl = ipLimiter.check(ip)
   if (!ipRl.ok) return jsonError(429, 'rate_limited', 'Too many requests from this IP. Slow down.', {}, { 'Retry-After': String(ipRl.retryAfterSec) })

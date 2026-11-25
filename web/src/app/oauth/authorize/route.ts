@@ -3,13 +3,16 @@ import { baseUrl } from '@/lib/oauth/config'
 import { oauthConfigured } from '@/lib/oauth/crypto'
 import { validateAuthorize } from '@/lib/oauth/authorize'
 import { SECURITY_HEADERS, errorPage } from '@/lib/oauth/page'
+import { withFailureReport } from '@/lib/serverReport'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 // Validates the request, then hands off to the consent page. On ANY problem it renders an error page;
 // it never redirects to a redirect_uri that has not been validated (no open redirect).
-export function GET(req: NextRequest) {
+export const GET = withFailureReport('oauth_authorize', handleGet)
+
+function handleGet(req: NextRequest): Response {
   if (!oauthConfigured()) return errorPage('OAuth is not configured on this server.', 503)
   const q = req.nextUrl.searchParams
   const v = validateAuthorize(q)

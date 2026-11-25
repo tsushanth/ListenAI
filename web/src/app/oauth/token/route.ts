@@ -4,6 +4,7 @@ import { clientIp, configured, json, notConfigured, oauthError, preflight, readP
 import { isGrantError, issueTokenPair, readClientId, redeemCode, sameResource, verifyRefreshToken } from '@/lib/oauth/tokens'
 import { resourceUrl } from '@/lib/oauth/config'
 import { UpstreamError, authorize } from '@/lib/mcp/upstream'
+import { withFailureReport } from '@/lib/serverReport'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -12,7 +13,9 @@ export const OPTIONS = preflight
 // Stateless token endpoint (public clients, PKCE). Note: a stateless authorization code cannot be marked
 // single-use; it is bounded by a 60 s TTL and PKCE. Refresh tokens are "rotated" (a new one is issued
 // each time) but the old one stays valid until it expires, since there is nowhere to record use.
-export async function POST(req: NextRequest) {
+export const POST = withFailureReport('oauth_token', handlePost)
+
+async function handlePost(req: NextRequest): Promise<Response> {
   if (!configured()) return notConfigured()
   const rl = tokenLimiter.check(clientIp(req))
   if (!rl.ok) return oauthError('temporarily_unavailable', 'Too many requests.', 429, { 'Retry-After': String(rl.retryAfterSec) })
