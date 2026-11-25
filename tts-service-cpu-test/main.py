@@ -4,12 +4,14 @@ Lightweight, cost-effective TTS using ONNX Runtime instead of PyTorch+GPU.
 API-compatible with the GPU service for benchmarking.
 """
 
+import asyncio
 import os
 import io
 import re
 import time
 import hashlib
 import logging
+import threading
 import traceback
 from typing import Optional
 
@@ -311,6 +313,43 @@ def split_in_two(text: str) -> tuple:
     return text[:cut].strip(), text[cut:].strip()
 
 
+class TurnLock:
+    """One model call at a time, served in the order asked, so a long render cannot hold off a short request.
+    A plain Lock does not promise that order: the thread that releases it can take it straight back."""
+
+    def __init__(self):
+        self._cond = threading.Condition()
+        self._next = 0
+        self._serving = 0
+
+    def __enter__(self):
+        with self._cond:
+            ticket = self._next
+            self._next += 1
+            self._cond.wait_for(lambda: self._serving == ticket)
+
+    def __exit__(self, *exc):
+        with self._cond:
+            self._serving += 1
+            self._cond.notify_all()
+
+
+# Neither the model nor espeak is safe to call from two threads, so every call takes a turn.
+_model_turn = TurnLock()
+# A long render holds all its audio in memory until it is joined. Only one is in progress at a time; short requests
+# are not held back by this and take turns between its parts.
+LONG_RENDER_CHARS = 2000
+_long_render = asyncio.Semaphore(1)
+
+
+async def render_off_the_event_loop(text: str, voice_id: str, speed: float, language: str) -> tuple:
+    """Synthesis takes minutes for long text. In a thread, /health and other requests are answered meanwhile."""
+    if len(text) > LONG_RENDER_CHARS:
+        async with _long_render:
+            return await asyncio.to_thread(synthesize_with_kokoro_onnx, text, voice_id, speed, language)
+    return await asyncio.to_thread(synthesize_with_kokoro_onnx, text, voice_id, speed, language)
+
+
 def synthesize_piece(model, text: str, voice_id: str, speed: float, lang: str) -> list:
     """Audio segments covering ALL of text. Splits until each part fits the model's phoneme limit.
     Returns [] only when the text has nothing to pronounce. Any model error propagates."""
@@ -400,7 +439,8 @@ def synthesize_with_kokoro_onnx(text: str, voice_id: str, speed: float, language
 
     if onnx_lang_for_voice(voice_id) is not None and not KOKORO_NON_ENGLISH_ENABLED:
         raise LanguageNotServed(_KOKORO_GATE_MSG)  # checked before any model load
-    model = load_kokoro()
+    with _model_turn:
+        model = load_kokoro()
     processed_text = preprocess_text_for_kokoro(text)
     # A native non-English voice fixes the language regardless of the `language` hint (see route_voice_for_language).
     native_lang = onnx_lang_for_voice(voice_id)
@@ -418,7 +458,8 @@ def synthesize_with_kokoro_onnx(text: str, voice_id: str, speed: float, language
     sample_rate = KOKORO_SAMPLE_RATE
     for i, chunk in enumerate(chunks):
         try:
-            segments = synthesize_piece(model, chunk, voice_id, speed, kokoro_lang)
+            with _model_turn:
+                segments = synthesize_piece(model, chunk, voice_id, speed, kokoro_lang)
         except Exception as e:
             # Never log the text. Never skip: a request that cannot be spoken in full must fail.
             logger.error(f"Chunk {i+1}/{len(chunks)} failed ({type(e).__name__}); failing the request. chars={len(chunk)}")
@@ -639,7 +680,7 @@ async def synthesize(request: SynthesizeRequest, background_tasks: BackgroundTas
         if engine == "edge":
             wav_array, sample_rate = await synthesize_with_edge_tts(request.text, request.language, speaker=picked, speed=request.speed)
         else:
-            wav_array, sample_rate = synthesize_with_kokoro_onnx(request.text, picked, request.speed, language=request.language)
+            wav_array, sample_rate = await render_off_the_event_loop(request.text, picked, request.speed, request.language)
 
         audio_buffer = io.BytesIO()
         sf.write(audio_buffer, wav_array, sample_rate, format='WAV')
@@ -692,7 +733,7 @@ async def synthesize_long(request: SynthesizeLongRequest):
             if engine == "edge":
                 wav_array, sample_rate = await synthesize_with_edge_tts(request.text, request.language, speaker=picked, speed=request.speed)
             else:
-                wav_array, sample_rate = synthesize_with_kokoro_onnx(request.text, picked, request.speed, language=request.language)
+                wav_array, sample_rate = await render_off_the_event_loop(request.text, picked, request.speed, request.language)
 
             audio_buffer = io.BytesIO()
             sf.write(audio_buffer, wav_array, sample_rate, format='WAV')
