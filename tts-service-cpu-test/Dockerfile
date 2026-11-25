@@ -35,7 +35,7 @@ RUN wget -q https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-
 COPY download_model.py .
 RUN python download_model.py
 
-COPY main.py .
+COPY main.py failure_reporter.py ./
 
 # Nightly prune of /app/audio_cache: delete WAVs untouched in 7+ days at
 # 03:00 UTC. Prevents the cache from filling the container's 7.8 GB rootfs
