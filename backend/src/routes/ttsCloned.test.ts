@@ -103,3 +103,41 @@ test('/job-cloned checks the voice before creating any job (disabled voice -> 40
     assert.equal((await post(ctx.base, '/job-cloned', { text: 'hi', voice_id: VID }, 'intruder')).status, 404);
   } finally { ctx.close(); }
 });
+
+test('no request header can skip the quota: a signed-in account over its limit is refused, X-Debug-Bypass-Quota included', async () => {
+  const realFetch = globalThis.fetch;
+  const rpc: string[] = [];
+  const json = (body: unknown) => new Response(JSON.stringify(body), { status: 200, headers: { 'Content-Type': 'application/json' } });
+  globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = input instanceof Request ? input.url : String(input);
+    if (!url.startsWith('http://localhost:54321')) return realFetch(input, init);
+    if (url.includes('/rpc/can_synthesize_v2')) { rpc.push(url); return json([{ allowed: false, reason: 'Daily audio limit exceeded.' }]); }
+    return json([]); // no subscription row: free tier
+  }) as typeof fetch;
+  const ctx = await boot();
+  try {
+    await ctx.mkVoice(VID, 'user-1');
+    const send = (headers: Record<string, string>) => fetch(`${ctx.base}/job-cloned`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-test-user': 'user-1', ...headers }, body: JSON.stringify({ text: 'hi', voice_id: VID }) });
+    const plain = await send({});
+    const bypass = await send({ 'X-Debug-Bypass-Quota': 'true' });
+    assert.equal(plain.status, 402);
+    assert.equal(bypass.status, 402);
+    assert.match(JSON.stringify(await bypass.json()), /Daily audio limit exceeded/);
+    assert.equal(rpc.length, 2, 'the quota was checked both times');
+    const long = await fetch(`${ctx.base}/job-cloned`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-test-user': 'user-1', 'X-Debug-Bypass-Quota': 'true' }, body: JSON.stringify({ text: 'a'.repeat(30_000), voice_id: VID }) });
+    assert.equal(long.status, 400, 'the per-job length limit applies too');
+  } finally { ctx.close(); globalThis.fetch = realFetch; }
+});
+
+test('the bypass header is read nowhere in the backend or the Android app', async () => {
+  const { readFileSync, readdirSync } = await import('node:fs');
+  const { dirname, join } = await import('node:path');
+  const { fileURLToPath } = await import('node:url');
+  const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
+  const hits: string[] = [];
+  const walk = (dir: string) => { for (const e of readdirSync(dir, { withFileTypes: true })) { const p = join(dir, e.name); if (e.isDirectory()) walk(p); else if (/\.(ts|kt)$/.test(e.name) && !e.name.endsWith('.test.ts') && /x-debug-bypass-quota/i.test(readFileSync(p, 'utf8'))) hits.push(p); } };
+  walk(join(root, 'backend', 'src'));
+  walk(join(root, 'android', 'app', 'src', 'main'));
+  assert.deepEqual(hits, []);
+});
+

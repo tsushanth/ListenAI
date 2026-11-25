@@ -302,15 +302,8 @@ ttsRouter.post('/', asyncHandler(async (req: AuthenticatedRequest, res: Response
   }
 
   // 4. Check quota
-  // DEBUG: Allow bypassing quota for testing via header
-  // TODO: Remove this before production or gate behind environment variable
-  const debugBypassQuota = req.headers['x-debug-bypass-quota'] === 'true';
-  if (debugBypassQuota) {
-    ttsLogger.warn({ userId }, 'DEBUG: Quota bypass enabled via header (main TTS route)');
-  }
-
   const quotaCheck = await canSynthesize(userId, characterCount);
-  if (!debugBypassQuota && !quotaCheck.allowed) {
+  if (!quotaCheck.allowed) {
     throw new QuotaExceededError(quotaCheck.reason ?? 'Quota exceeded', quotaCheck);
   }
 
@@ -693,17 +686,10 @@ ttsRouter.post('/job', asyncHandler(async (req: AuthenticatedRequest, res: Respo
   }
 
   // 5. Check quota (v2 with seconds tracking and max chars per job)
-  // DEBUG: Allow bypassing quota for testing via header
-  // TODO: Remove this before production or gate behind environment variable
-  const debugBypassQuota = req.headers['x-debug-bypass-quota'] === 'true';
-  if (debugBypassQuota) {
-    ttsLogger.warn({ userId }, 'DEBUG: Quota bypass enabled via header');
-  }
-
   const quotaCheck = await canSynthesizeV2(userId, characterCount);
 
-  // First check max chars per job (skip if debug bypass)
-  if (!debugBypassQuota && characterCount > quotaCheck.max_chars_per_job) {
+  // First check max chars per job
+  if (characterCount > quotaCheck.max_chars_per_job) {
     throw new ValidationError(
       `Text too long. Maximum ${quotaCheck.max_chars_per_job.toLocaleString()} characters per job for ${quotaCheck.tier} tier. Upgrade for higher limits.`,
       {
@@ -714,7 +700,7 @@ ttsRouter.post('/job', asyncHandler(async (req: AuthenticatedRequest, res: Respo
     );
   }
 
-  if (!debugBypassQuota && !quotaCheck.allowed) {
+  if (!quotaCheck.allowed) {
     throw new QuotaExceededError(quotaCheck.reason ?? 'Quota exceeded', quotaCheck);
   }
 
@@ -1183,15 +1169,10 @@ ttsRouter.post('/job-cloned', asyncHandler(async (req: AuthenticatedRequest, res
   await getUsableVoice(cloneDeps.store, voiceId, await eligibilityForSynthesis(userId));
 
   // 2. Check quota (cloned voices use the same quota as regular synthesis)
-  const debugBypassQuota = req.headers['x-debug-bypass-quota'] === 'true';
-  if (debugBypassQuota) {
-    ttsLogger.warn({ userId }, 'DEBUG: Quota bypass enabled for cloned voice job');
-  }
-
   const quotaCheck = await canSynthesizeV2(userId, characterCount);
 
   // Check max chars per job
-  if (!debugBypassQuota && characterCount > quotaCheck.max_chars_per_job) {
+  if (characterCount > quotaCheck.max_chars_per_job) {
     throw new ValidationError(
       `Text too long. Maximum ${quotaCheck.max_chars_per_job.toLocaleString()} characters per job.`,
       {
@@ -1202,7 +1183,7 @@ ttsRouter.post('/job-cloned', asyncHandler(async (req: AuthenticatedRequest, res
     );
   }
 
-  if (!debugBypassQuota && !quotaCheck.allowed) {
+  if (!quotaCheck.allowed) {
     throw new QuotaExceededError(quotaCheck.reason ?? 'Quota exceeded', quotaCheck);
   }
 
