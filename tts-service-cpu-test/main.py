@@ -10,12 +10,15 @@ import re
 import time
 import hashlib
 import logging
+import traceback
 from typing import Optional
 
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 import soundfile as sf
+
+import failure_reporter
 
 # ============================================================================
 # Configuration
@@ -196,6 +199,8 @@ def load_kokoro():
     start_time = time.time()
 
     from kokoro_onnx import Kokoro
+    # The engine sets its own logger from LOG_LEVEL, and at DEBUG it prints the phonemes of the text being read.
+    logging.getLogger("kokoro_onnx").setLevel(logging.WARNING)
     kokoro_model = Kokoro("/app/kokoro-v1.0.onnx", "/app/voices-v1.0.bin")
 
     load_time = time.time() - start_time
@@ -268,6 +273,60 @@ def kokoro_lang_for(language: str) -> str:
     return entry[0] if entry else "en-us"
 
 
+# kokoro-onnx cuts a punctuation-free run at 510 phonemes: past that it either raises IndexError or silently drops the
+# end of the run. Anything at or above this many phonemes is split further before it reaches the model.
+MAX_PHONEMES = 500
+
+
+class ChunkSynthesisError(RuntimeError):
+    """Part of the text could not be synthesized. The whole request fails: partial audio is never returned."""
+
+    def __init__(self, index: int, total: int, cause: str):
+        super().__init__(f"synthesis failed for part {index} of {total} ({cause})")
+        self.index = index
+        self.total = total
+        self.cause = cause
+
+
+def hard_split(piece: str, max_chars: int) -> list:
+    """Cut a piece into parts of at most max_chars, at a space where there is one, without losing any text."""
+    parts = []
+    rest = piece.strip()
+    while len(rest) > max_chars:
+        cut = rest.rfind(" ", 0, max_chars + 1)
+        if cut <= 0:
+            cut = max_chars
+        parts.append(rest[:cut].strip())
+        rest = rest[cut:].strip()
+    if rest:
+        parts.append(rest)
+    return parts
+
+
+def split_in_two(text: str) -> tuple:
+    """Two non-empty halves of text (len >= 2), cut at the space nearest the middle when there is one."""
+    mid = len(text) // 2
+    spaces = [i for i in (text.rfind(" ", 1, mid + 1), text.find(" ", mid, len(text) - 1)) if i > 0]
+    cut = min(spaces, key=lambda i: abs(i - mid)) if spaces else mid
+    return text[:cut].strip(), text[cut:].strip()
+
+
+def synthesize_piece(model, text: str, voice_id: str, speed: float, lang: str) -> list:
+    """Audio segments covering ALL of text. Splits until each part fits the model's phoneme limit.
+    Returns [] only when the text has nothing to pronounce. Any model error propagates."""
+    if not text.strip():
+        return []
+    phonemes = model.tokenizer.phonemize(text, lang)
+    if not phonemes.strip():
+        return []
+    if len(phonemes) >= MAX_PHONEMES and len(text) > 1:
+        left, right = split_in_two(text)
+        return (synthesize_piece(model, left, voice_id, speed, lang)
+                + synthesize_piece(model, right, voice_id, speed, lang))
+    samples, _ = model.create(text, voice=voice_id, speed=speed, lang=lang)
+    return [samples]
+
+
 def chunk_for_kokoro(text: str, language: str, max_chars: int = 25) -> list:
     """Split text into chunks small enough to stay under Kokoro's 510
     phoneme limit. CJK / Hindi / dense scripts produce ~10-15 phonemes
@@ -321,14 +380,11 @@ def chunk_for_kokoro(text: str, language: str, max_chars: int = 25) -> list:
             else:
                 chunks.append(buf)
                 buf = p
-        # Comma-split piece can still exceed max_chars (no commas). Hard split.
         if buf:
-            while len(buf) > max_chars:
-                chunks.append(buf[:max_chars])
-                buf = buf[max_chars:]
-            if buf:
-                chunks.append(buf)
-    return chunks
+            chunks.append(buf)
+    # A comma piece longer than max_chars can sit anywhere in a sentence, so EVERY chunk is capped here, not only the
+    # last one of each sentence.
+    return [part for c in chunks for part in hard_split(c, max_chars)]
 
 
 def synthesize_with_kokoro_onnx(text: str, voice_id: str, speed: float, language: str = "en") -> tuple:
@@ -358,34 +414,43 @@ def synthesize_with_kokoro_onnx(text: str, voice_id: str, speed: float, language
         f"input_chars={len(processed_text)}, chunks={len(chunks)}"
     )
 
-    if len(chunks) == 1:
-        samples, sample_rate = model.create(
-            chunks[0], voice=voice_id, speed=speed, lang=kokoro_lang
-        )
-        return samples, sample_rate
-
-    # Multi-chunk path (non-English long text)
     all_samples: list = []
     sample_rate = KOKORO_SAMPLE_RATE
     for i, chunk in enumerate(chunks):
         try:
-            seg_samples, sample_rate = model.create(
-                chunk, voice=voice_id, speed=speed, lang=kokoro_lang
-            )
-            all_samples.append(seg_samples)
+            segments = synthesize_piece(model, chunk, voice_id, speed, kokoro_lang)
+        except Exception as e:
+            # Never log the text. Never skip: a request that cannot be spoken in full must fail.
+            logger.error(f"Chunk {i+1}/{len(chunks)} failed ({type(e).__name__}); failing the request. chars={len(chunk)}")
+            raise ChunkSynthesisError(i + 1, len(chunks), type(e).__name__) from e
+        for seg in segments:
             # ~150ms silence between sub-segments so concatenated audio
             # sounds like natural pauses, not abrupt cuts.
-            if i < len(chunks) - 1:
-                silence = np.zeros(int(sample_rate * 0.15), dtype=seg_samples.dtype)
-                all_samples.append(silence)
-        except Exception as e:
-            logger.warning(f"Chunk {i+1}/{len(chunks)} failed ({e}); skipping. text={chunk!r}")
+            if all_samples:
+                all_samples.append(np.zeros(int(sample_rate * 0.15), dtype=seg.dtype))
+            all_samples.append(seg)
 
     if not all_samples:
-        raise RuntimeError("All chunks failed synthesis")
+        raise RuntimeError("nothing to synthesize")
 
-    combined = np.concatenate(all_samples)
+    combined = all_samples[0] if len(all_samples) == 1 else np.concatenate(all_samples)
     return combined, sample_rate
+
+
+def log_failure(what: str, error: Exception) -> None:
+    """What broke and where. Never the exception message: it can quote the text being read."""
+    frames = "".join(traceback.format_tb(error.__traceback__))
+    logger.error(f"{what}: {type(error).__name__}\n{frames}")
+
+
+def report_synthesis_failure(endpoint: str, engine: str, error: Exception, chars: int) -> None:
+    """Tell the central reporter. Class names and counts only: no text, no voice names from the caller."""
+    context = {"endpoint": endpoint, "engine": engine, "error": type(error).__name__, "chars": chars}
+    code = "TTS_WORKER_SYNTHESIS_FAILED"
+    if isinstance(error, ChunkSynthesisError):
+        code = "TTS_WORKER_CHUNK_FAILED"
+        context.update({"part": error.index, "parts": error.total, "error": error.cause})
+    failure_reporter.report("tts_worker", code, context)
 
 
 async def synthesize_with_edge_tts(text: str, language: str, speaker: str = "female", speed: float = 1.0) -> tuple:
@@ -600,7 +665,8 @@ async def synthesize(request: SynthesizeRequest, background_tasks: BackgroundTas
             }
         )
     except Exception as e:
-        logger.error(f"Synthesis failed: {e}", exc_info=True)
+        log_failure("Synthesis failed", e)
+        report_synthesis_failure("synthesize", engine, e, len(request.text))
         raise HTTPException(status_code=500, detail=f"Synthesis failed: {str(e)}")
 
 
@@ -622,15 +688,20 @@ async def synthesize_long(request: SynthesizeLongRequest):
         logger.info(f"Long synthesis from cache: {len(request.text)} chars")
     else:
         logger.info(f"Long synthesis: {len(request.text)} chars, engine={engine}")
-        if engine == "edge":
-            wav_array, sample_rate = await synthesize_with_edge_tts(request.text, request.language, speaker=picked, speed=request.speed)
-        else:
-            wav_array, sample_rate = synthesize_with_kokoro_onnx(request.text, picked, request.speed, language=request.language)
+        try:
+            if engine == "edge":
+                wav_array, sample_rate = await synthesize_with_edge_tts(request.text, request.language, speaker=picked, speed=request.speed)
+            else:
+                wav_array, sample_rate = synthesize_with_kokoro_onnx(request.text, picked, request.speed, language=request.language)
 
-        audio_buffer = io.BytesIO()
-        sf.write(audio_buffer, wav_array, sample_rate, format='WAV')
-        audio_buffer.seek(0)
-        audio_data = audio_buffer.read()
+            audio_buffer = io.BytesIO()
+            sf.write(audio_buffer, wav_array, sample_rate, format='WAV')
+            audio_buffer.seek(0)
+            audio_data = audio_buffer.read()
+        except Exception as e:
+            log_failure("Long synthesis failed", e)
+            report_synthesis_failure("synthesize-long", engine, e, len(request.text))
+            raise HTTPException(status_code=500, detail=f"Synthesis failed: {str(e)}")
         save_to_cache(cache_key, audio_data)
 
     total_time = time.time() - start_time
