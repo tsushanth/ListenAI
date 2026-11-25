@@ -4,6 +4,7 @@ python3 -m pytest tts-service-cpu-test/test_chunking.py   (needs numpy; the web 
 Set KOKORO_MODEL_DIR to a folder holding kokoro-v1.0.onnx and voices-v1.0.bin to also run the real-model test."""
 import asyncio
 import importlib.util
+import logging
 import os
 import re
 import sys
@@ -147,6 +148,43 @@ def test_endpoint_answers_500_and_reports_without_text(fake, monkeypatch, handle
     assert err.value.status_code == 500 and "SECRETWORD" not in err.value.detail
     assert sent and sent[0][0] == "tts_worker" and sent[0][1] == "TTS_WORKER_CHUNK_FAILED"
     assert "SECRETWORD" not in repr(sent)
+
+
+@pytest.mark.parametrize("handler", ["synthesize", "synthesize_long"])
+def test_an_error_message_that_quotes_the_text_never_reaches_the_log(fake, monkeypatch, caplog, handler):
+    fake()
+    monkeypatch.setattr(m.failure_reporter, "report", lambda *a: None)
+
+    request = types.SimpleNamespace(text="SECRETWORD here.", voice_id="af_heart", language="en", speed=1.0, model="kokoro")
+
+    def write_fails(*a, **k):
+        raise ValueError("cannot encode: " + request.text)
+
+    monkeypatch.setattr(m, "sf", types.SimpleNamespace(write=write_fails))
+    args = (request, None) if handler == "synthesize" else (request,)
+    with pytest.raises(_HTTPError):
+        asyncio.run(getattr(m, handler)(*args))
+    assert "ValueError" in caplog.text and "write_fails" in caplog.text  # still says what broke and where
+    assert "SECRETWORD" not in caplog.text
+
+
+def test_engine_logger_is_held_at_warning_even_when_debug_is_asked_for(monkeypatch):
+    def kokoro(*a, **k):
+        return object()
+
+    engine_log = logging.getLogger("kokoro_onnx")
+
+    class _Module(types.ModuleType):
+        def __getattr__(self, name):  # the real library sets its logger from LOG_LEVEL when imported
+            engine_log.setLevel(logging.DEBUG)
+            if name == "Kokoro":
+                return kokoro
+            raise AttributeError(name)
+
+    monkeypatch.setitem(sys.modules, "kokoro_onnx", _Module("kokoro_onnx"))
+    monkeypatch.setattr(m, "kokoro_model", None)
+    m.load_kokoro()
+    assert engine_log.getEffectiveLevel() >= logging.WARNING  # at DEBUG it prints the phonemes of the text
 
 
 def test_reporter_is_off_without_a_key(monkeypatch):

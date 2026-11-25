@@ -10,6 +10,7 @@ import re
 import time
 import hashlib
 import logging
+import traceback
 from typing import Optional
 
 from fastapi import FastAPI, HTTPException, BackgroundTasks
@@ -198,6 +199,8 @@ def load_kokoro():
     start_time = time.time()
 
     from kokoro_onnx import Kokoro
+    # The engine sets its own logger from LOG_LEVEL, and at DEBUG it prints the phonemes of the text being read.
+    logging.getLogger("kokoro_onnx").setLevel(logging.WARNING)
     kokoro_model = Kokoro("/app/kokoro-v1.0.onnx", "/app/voices-v1.0.bin")
 
     load_time = time.time() - start_time
@@ -434,6 +437,12 @@ def synthesize_with_kokoro_onnx(text: str, voice_id: str, speed: float, language
     return combined, sample_rate
 
 
+def log_failure(what: str, error: Exception) -> None:
+    """What broke and where. Never the exception message: it can quote the text being read."""
+    frames = "".join(traceback.format_tb(error.__traceback__))
+    logger.error(f"{what}: {type(error).__name__}\n{frames}")
+
+
 def report_synthesis_failure(endpoint: str, engine: str, error: Exception, chars: int) -> None:
     """Tell the central reporter. Class names and counts only: no text, no voice names from the caller."""
     context = {"endpoint": endpoint, "engine": engine, "error": type(error).__name__, "chars": chars}
@@ -656,7 +665,7 @@ async def synthesize(request: SynthesizeRequest, background_tasks: BackgroundTas
             }
         )
     except Exception as e:
-        logger.error(f"Synthesis failed: {type(e).__name__}", exc_info=not isinstance(e, ChunkSynthesisError))
+        log_failure("Synthesis failed", e)
         report_synthesis_failure("synthesize", engine, e, len(request.text))
         raise HTTPException(status_code=500, detail=f"Synthesis failed: {str(e)}")
 
@@ -690,7 +699,7 @@ async def synthesize_long(request: SynthesizeLongRequest):
             audio_buffer.seek(0)
             audio_data = audio_buffer.read()
         except Exception as e:
-            logger.error(f"Long synthesis failed: {type(e).__name__}", exc_info=not isinstance(e, ChunkSynthesisError))
+            log_failure("Long synthesis failed", e)
             report_synthesis_failure("synthesize-long", engine, e, len(request.text))
             raise HTTPException(status_code=500, detail=f"Synthesis failed: {str(e)}")
         save_to_cache(cache_key, audio_data)
