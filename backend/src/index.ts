@@ -66,6 +66,7 @@ import { checkPubSubHealth } from './lib/pubsub.js';
 import { initRolloutFromEnv } from './lib/rollout.js';
 import { reportUsageToStripe } from './lib/realtimeTtsBilling.js';
 import { pushHeadlineMetrics, defaultPushDeps } from './lib/reporterUsage.js';
+import { countListening, listenUsage, pushListenTotals, defaultListenDeps } from './lib/listenUsage.js';
 import { pruneOldEvents } from './lib/eventLog.js';
 
 // Initialize rollout configuration from environment
@@ -214,7 +215,7 @@ app.use('/api/tts', burstRateLimit, requireAuth, ttsRateLimitByTier, ttsRouter);
 // against the shared REALTIME_TTS_API_KEY, it is bounded by realtimeTtsAuthorizeRateLimit (IP-keyed,
 // stricter than the general-purpose burstRateLimit) in addition to burstRateLimit. This must be
 // revisited before any public (non-invite-only) launch — see middleware/rateLimit.ts for details.
-app.use('/api/realtime-tts', burstRateLimit, realtimeTtsAuthorizeRateLimit, requireAuth, realtimeTtsRouter);
+app.use('/api/realtime-tts', countListening(), burstRateLimit, realtimeTtsAuthorizeRateLimit, requireAuth, realtimeTtsRouter);
 
 // Preview endpoint has stricter rate limit (10 req/min)
 app.use('/api/tts/preview', previewRateLimit);
@@ -436,6 +437,11 @@ const server = app.listen(PORT, () => {
     };
     setTimeout(job, 60_000).unref();
     setInterval(job, THIRTY_MINUTES_MS).unref();
+    // Android listening totals: stored every 5 minutes, posted to the reporter every 30 (lib/listenUsage.ts).
+    setInterval(() => { void listenUsage.flush(defaultListenDeps); }, FIVE_MINUTES_MS).unref();
+    const listening = () => { void pushListenTotals(defaultListenDeps); };
+    setTimeout(listening, 90_000).unref();
+    setInterval(listening, THIRTY_MINUTES_MS).unref();
   }
 
   // Voice conversions whose client never polled stay 'queued' forever; mark rows older than 2h failed and send one
@@ -506,8 +512,9 @@ function shutdown(signal: string) {
 
   server.close(() => {
     logger.info('HTTP server closed');
-    // Send pending Claude spend rows (capped at 2.5 s) before exiting.
-    void flushLlmUsage(2500).finally(() => process.exit(0));
+    // Store listening counts, then send pending Claude spend rows (each capped at 2.5 s), before exiting.
+    const listening = Promise.race([listenUsage.flush(defaultListenDeps), new Promise((resolve) => setTimeout(resolve, 2500))]);
+    void listening.finally(() => flushLlmUsage(2500).finally(() => process.exit(0)));
   });
 
   // Force exit after 10 seconds

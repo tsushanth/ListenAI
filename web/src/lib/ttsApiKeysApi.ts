@@ -12,6 +12,10 @@ export interface FreeCredits {
   remaining: number
 }
 
+export type FirstCallResult =
+  | { ok: true; status: number; characters: number; audio_base64: string }
+  | { ok: false; status: number; characters: number; message: string }
+
 export interface TTSApiKeySummary {
   id: string
   label: string | null
@@ -49,6 +53,10 @@ export const ttsApiKeysApi = {
       '/api/tts-api-keys',
       { method: 'POST', body: JSON.stringify({ label }) }
     ),
+
+  // "Run it now": the server makes one fixed, tiny speech call with this key, on free credits only, and records the attempt.
+  firstCall: (key: string) =>
+    authedRequest<FirstCallResult>('/api/tts-api-keys/first-call', { method: 'POST', body: JSON.stringify({ key }) }),
 
   revoke: (id: string) => authedRequest<{ revoked: boolean }>(`/api/tts-api-keys/${id}`, { method: 'DELETE' }),
 

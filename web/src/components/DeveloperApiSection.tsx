@@ -9,7 +9,10 @@ import type { Session } from '@supabase/supabase-js'
 import {
   COPY_FAILED_MESSAGE,
   FIRST_CALL_NOTE,
+  RUN_NOW_FAILED_MESSAGE,
   buildExportLine,
+  canRunFirstCall,
+  runNowSuccessLine,
   buildFirstCallCurl,
   copyTextSafely,
 } from '@/lib/firstCall'
@@ -27,6 +30,8 @@ export default function DeveloperApiSection() {
   const exportRef = useRef<HTMLElement | null>(null)
   const [copiedSnippet, setCopiedSnippet] = useState<'curl' | 'export' | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [running, setRunning] = useState(false)
+  const [runResult, setRunResult] = useState<{ ok: boolean; line: string; audioUrl?: string } | null>(null)
   const [issuing, setIssuing] = useState(false)
   const [billingActive, setBillingActive] = useState(false)
   const [comped, setComped] = useState(false)
@@ -184,11 +189,31 @@ export default function DeveloperApiSection() {
     setCopyFailed(false)
   }
 
+  const runFirstCall = async () => {
+    if (!newKey) return
+    setRunning(true)
+    setRunResult(null)
+    try {
+      const r = await ttsApiKeysApi.firstCall(newKey)
+      setRunResult(
+        r.ok
+          ? { ok: true, line: runNowSuccessLine(r.characters, comped), audioUrl: `data:audio/mpeg;base64,${r.audio_base64}` }
+          : { ok: false, line: r.message },
+      )
+      await loadKeys() // refresh the free-credit figure
+    } catch (e) {
+      setRunResult({ ok: false, line: e instanceof Error && e.message ? e.message : RUN_NOW_FAILED_MESSAGE })
+    } finally {
+      setRunning(false)
+    }
+  }
+
   const issueKey = async () => {
     setIssuing(true)
     setError(null)
     try {
       const result = await ttsApiKeysApi.create()
+      setRunResult(null)
       setNewKey(result.key)
       await loadKeys()
     } catch (e) {
@@ -509,8 +534,31 @@ export default function DeveloperApiSection() {
 
                 <div className="mt-4 pt-4 border-t border-green-500/20" data-testid="first-call">
                   <p className="text-sm text-green-300 mb-2 font-medium">Make your first call</p>
+                  {(canRunFirstCall(comped, credits?.remaining) || runResult) && (
+                    <div className="mb-3" data-testid="run-now">
+                      <button
+                        type="button"
+                        onClick={runFirstCall}
+                        disabled={running || !canRunFirstCall(comped, credits?.remaining)}
+                        className="inline-flex items-center gap-2 bg-green-500 text-black font-semibold px-4 py-2 rounded-lg text-sm hover:bg-green-400 transition-colors disabled:opacity-50"
+                      >
+                        {running ? <Loader2 size={14} className="animate-spin" /> : null}
+                        {running ? 'Running...' : 'Run it now'}
+                      </button>
+                      <span className="ml-3 text-xs text-white/50">One short sentence, spoken with your new key.</span>
+                      {running && (
+                        <p className="text-sm text-white/60 mt-2" role="status">The first call can take a little while.</p>
+                      )}
+                      {runResult && (
+                        <div className="mt-2">
+                          <p role="status" className={`text-sm ${runResult.ok ? 'text-green-300' : 'text-amber-300'}`}>{runResult.line}</p>
+                          {runResult.audioUrl && <audio controls src={runResult.audioUrl} className="mt-2 w-full max-w-sm" />}
+                        </div>
+                      )}
+                    </div>
+                  )}
                   <p className="text-sm text-white/70 mb-2">
-                    Paste this into a terminal. It saves a spoken sentence as hello.mp3.
+                    Or paste this into a terminal. It saves a spoken sentence as hello.mp3.
                   </p>
                   <div className="flex items-start gap-2">
                     <pre className="flex-1 min-w-0 bg-dark-tertiary border border-white/10 rounded-lg px-3 py-2 text-xs font-mono text-white/90 overflow-x-auto"><code ref={curlRef}>{buildFirstCallCurl(newKey)}</code></pre>
