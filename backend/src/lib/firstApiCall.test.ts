@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { createFirstCall, FIRST_CALL_BODY, FIRST_CALL_TEXT, type FirstCallRecord } from './firstApiCall.js';
 import { publicLeakTerm } from './publicText.js';
 
-const KEY = 'rtts_abcdefgh12345678';
+const KEY = 'rtts_example_not_a_real_key';
 function make(opts: { free?: boolean; respond?: () => Response | Promise<Response>; recordFails?: boolean } = {}) {
   const records: FirstCallRecord[] = [];
   const sent: Array<{ url: string; init: RequestInit }> = [];
