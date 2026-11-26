@@ -74,6 +74,8 @@ const router = Router();
         return;
       }
       admission = decision;
+      // Daily listening totals (lib/listenUsage.ts) count distinct installs by this hashed bucket.
+      res.locals.listenBucket = decision.bucket;
     }
     const refund = () => { if (admission) quota.refund(admission); };
 

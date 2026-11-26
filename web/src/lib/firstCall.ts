@@ -1,6 +1,6 @@
 // Pure helpers for the "Make your first call" block shown under a freshly generated API key
-// (components/DeveloperApiSection.tsx). The key is only ever placed into strings that the page renders
-// and the person copies; nothing here logs it, stores it or sends it anywhere.
+// (components/DeveloperApiSection.tsx). Nothing here logs or stores the key. It is placed into strings that the page renders
+// and the person copies, and it is sent to our own backend only when the person presses "Run it now".
 
 export const FIRST_CALL_ENDPOINT = 'https://api.readaloudai.org/v1/audio/speech'
 export const FIRST_CALL_BODY =
@@ -8,6 +8,17 @@ export const FIRST_CALL_BODY =
 export const FIRST_CALL_NOTE =
   'If hello.mp3 will not play, open it in a text editor: it contains the error message.'
 export const COPY_FAILED_MESSAGE = 'Copy failed, select the key and copy it manually'
+
+export const RUN_NOW_FAILED_MESSAGE = 'The test call could not be made. The command below does the same thing.'
+
+/** The button is offered only when the call costs nothing: a complimentary account, or free credits left. */
+export function canRunFirstCall(comped: boolean, freeRemaining: number | null | undefined): boolean {
+  return comped || (typeof freeRemaining === 'number' && freeRemaining >= 100)
+}
+
+export function runNowSuccessLine(characters: number, comped: boolean): string {
+  return comped ? 'It worked. Press play to hear it.' : `It worked and used ${characters} characters of your free credits. Press play to hear it.`
+}
 
 /** Single-quote a value for a POSIX shell. */
 export function shellQuote(value: string): string {

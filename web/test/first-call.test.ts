@@ -10,6 +10,8 @@ import {
   shellQuote,
   FIRST_CALL_NOTE,
   COPY_FAILED_MESSAGE,
+  canRunFirstCall,
+  runNowSuccessLine,
 } from '../src/lib/firstCall.ts'
 
 // The web app has no component-test setup (no jsdom / testing-library), so the first-call block is tested as:
@@ -100,4 +102,22 @@ test('B: every curl that writes audio to a file on the developers page uses -f -
 test('B: the OpenAI-compatible curl is followed by the export sentence', () => {
   const p = read('../src/app/developers/page.tsx')
   assert.match(p, /--output hello\.mp3`\}<\/code><\/pre>\n\s*<p[^>]*>Run <code>export READALOUD_API_KEY=your_key<\/code> first; an empty key returns <code>401<\/code>\.<\/p>/)
+})
+
+test('D: Run it now is offered only when the call is free, and says what it used', () => {
+  assert.equal(canRunFirstCall(true, 0), true)
+  assert.equal(canRunFirstCall(false, 10000), true)
+  assert.equal(canRunFirstCall(false, 20), false)
+  assert.equal(canRunFirstCall(false, 0), false)
+  assert.equal(canRunFirstCall(false, undefined), false)
+  assert.equal(runNowSuccessLine(21, false), 'It worked and used 21 characters of your free credits. Press play to hear it.')
+  assert.equal(runNowSuccessLine(21, true), 'It worked. Press play to hear it.')
+})
+
+test('D: the button sends the new key to our backend route only, and the result is shown with a player', () => {
+  const c = read('../src/components/DeveloperApiSection.tsx')
+  assert.match(c, /Run it now/)
+  assert.match(c, /ttsApiKeysApi\.firstCall\(newKey\)/)
+  assert.match(c, /<audio controls src=\{runResult\.audioUrl\}/)
+  assert.match(read('../src/lib/ttsApiKeysApi.ts'), /'\/api\/tts-api-keys\/first-call'/)
 })

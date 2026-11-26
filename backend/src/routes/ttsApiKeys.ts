@@ -11,6 +11,9 @@ import { issueGatewayKey, revokeGatewayKey, setGatewayKeyBilling } from '../lib/
 import { createApiKeyRecord, listApiKeysForUser, revokeApiKeyRecord, countActiveKeysForUser } from '../lib/ttsApiKeys.js';
 import { isBillingActiveForUser, getBillingForUser, getFreeCredits, createCheckoutSession, createPortalSession } from '../lib/realtimeTtsBilling.js';
 import { logger } from '../lib/logger.js';
+import { createFirstCall, FIRST_CALL_TEXT } from '../lib/firstApiCall.js';
+import { supabase } from '../lib/supabaseClient.js';
+import { reportFailure } from '../lib/failureReporter.js';
 
 const routeLogger = logger.child({ module: 'ttsApiKeys.route' });
 
@@ -80,6 +83,33 @@ ttsApiKeysRouter.get(
         revoked: !!k.revoked_at,
       })),
     });
+  })
+);
+
+const firstCall = createFirstCall({
+  // Free credits are spent first, so while enough remain the call costs nothing, with or without a payment method.
+  async isFree(userId) {
+    const billing = await getBillingForUser(userId);
+    if (billing?.active && billing.comped) return true;
+    return (await getFreeCredits(userId)).remaining >= FIRST_CALL_TEXT.length;
+  },
+  async record(row) {
+    const { error } = await supabase.from('realtimetts_first_call').insert(row);
+    if (error) throw new Error(error.message);
+  },
+  fetchImpl: (...args) => fetch(...args),
+  now: () => Date.now(),
+});
+
+// "Run it now" on /developers: one fixed, tiny call with the person's new key (see lib/firstApiCall.ts).
+ttsApiKeysRouter.post(
+  '/first-call',
+  asyncHandler(async (req, res) => {
+    const result = await firstCall(req.userId!, req.body?.key);
+    if (result.http === 200 && !result.body.ok && result.body.status !== 402 && result.body.status !== 429) {
+      reportFailure('developer_first_call', new Error('A developer test call from the website failed'), { status: String(result.body.status) });
+    }
+    res.status(result.http).json(result.body);
   })
 );
 
