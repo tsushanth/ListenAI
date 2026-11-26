@@ -1,11 +1,13 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import Link from 'next/link'
 import { Play, Pause, RotateCcw, Loader2, Volume2, Download } from 'lucide-react'
 import { synthesizeWithPiper, PIPER_VOICE } from '@/lib/piperReader'
 import { READER_SPEEDS, loadReaderSettings, saveReaderSettings } from '@/lib/readerSettings'
 import { READER_VOICES, resolveReaderVoice } from '@/lib/readerVoices'
 import { readerDownloadFilename } from '@/lib/readerDownload'
+import { AUDIOBOOK_CTA } from '@/lib/audiobookCta'
 
 // The reader speaks with Piper voices (the same engine and voice ids the Android app uses); see lib/readerVoices.ts.
 
@@ -276,6 +278,11 @@ export default function ReaderPage() {
             </>
           )}
         </div>
+
+        <p className="mt-4 text-sm text-white/60">
+          {AUDIOBOOK_CTA.readerPrompt}{' '}
+          <Link href={AUDIOBOOK_CTA.href} className="text-primary underline">{AUDIOBOOK_CTA.readerLinkLabel}</Link>
+        </p>
       </div>
 
       {/* Tips */}

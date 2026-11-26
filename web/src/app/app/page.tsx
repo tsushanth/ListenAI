@@ -1,10 +1,11 @@
 'use client'
 
 import Link from 'next/link'
-import { Store, Mic, Gift, BookOpen, ArrowRight } from 'lucide-react'
+import { Store, Mic, Gift, BookOpen, Library, ArrowRight } from 'lucide-react'
 import { useMarketplaceStore } from '@/store/marketplaceStore'
 import { useEffect } from 'react'
 import UsageCard from '@/components/app/UsageCard'
+import { AUDIOBOOK_CTA } from '@/lib/audiobookCta'
 
 const features = [
   {
@@ -34,6 +35,13 @@ const features = [
     title: 'Reader',
     description: 'Convert any text to natural-sounding speech instantly.',
     color: 'bg-blue-500/20 text-blue-400',
+  },
+  {
+    href: AUDIOBOOK_CTA.href,
+    icon: Library,
+    title: AUDIOBOOK_CTA.title,
+    description: AUDIOBOOK_CTA.description,
+    color: 'bg-pink-500/20 text-pink-400',
   },
 ]
 
